@@ -18,9 +18,7 @@ class FlextInfraModelsCodegenRender:
         """Validated context for one generated module skeleton."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            frozen=True,
-            str_strip_whitespace=False,
+            extra="forbid", frozen=True, str_strip_whitespace=False
         )
 
         class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
@@ -34,10 +32,7 @@ class FlextInfraModelsCodegenRender:
         """Validated common context for a generated MkDocs configuration."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            frozen=True,
-            strict=True,
-            str_strip_whitespace=False,
+            extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
         site_title: t.NonEmptyStr = m.Field(description="Rendered site title.")
@@ -47,7 +42,7 @@ class FlextInfraModelsCodegenRender:
         exclude_docs_block: str = m.Field(description="Rendered docs exclusions.")
         exclude_plugin_block: str = m.Field(description="Rendered plugin exclusions.")
         mkdocstrings_paths_block: str = m.Field(
-            description="Rendered mkdocstrings source paths.",
+            description="Rendered mkdocstrings source paths."
         )
 
     class MkdocsProjectRenderContext(MkdocsRenderContext):
@@ -58,22 +53,16 @@ class FlextInfraModelsCodegenRender:
     class LazyInitUnitManifestRender(m.ArbitraryTypesModel):
         """Template context for a package ``__unit__.py`` manifest."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            frozen=True,
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
-        current_pkg: t.NonEmptyStr = m.Field(
-            description="Importable package name.",
-        )
+        current_pkg: t.NonEmptyStr = m.Field(description="Importable package name.")
         lazy_module_groups: t.StrSequencePairSequence = m.Field(
             default_factory=tuple,
             description="Lazy imports grouped by module (module -> names).",
         )
         lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
-            default_factory=tuple,
-            description="Lazy alias imports grouped by module.",
+            default_factory=tuple, description="Lazy alias imports grouped by module."
         )
         child_module_paths: t.StrSequence = m.Field(
             default_factory=tuple,
@@ -91,16 +80,11 @@ class FlextInfraModelsCodegenRender:
     class LazyInitRootThinRender(m.ArbitraryTypesModel):
         """Template context for a thin package ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid",
-            frozen=True,
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        current_pkg: t.NonEmptyStr = m.Field(
-            description="Importable package name.",
-        )
+        current_pkg: t.NonEmptyStr = m.Field(description="Importable package name.")
         runtime_import_lines: str = m.Field(
             default_factory=str,
             description="Eager runtime imports (``__version__`` dunders).",
@@ -110,7 +94,7 @@ class FlextInfraModelsCodegenRender:
             description="Derived ``if TYPE_CHECKING:`` imports for static resolvers.",
         )
         has_child_paths: bool = m.Field(
-            description="Whether the root merges child lazy registries at runtime.",
+            description="Whether the root merges child lazy registries at runtime."
         )
 
 

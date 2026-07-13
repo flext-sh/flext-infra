@@ -6,8 +6,8 @@ import time
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, m
 
 if TYPE_CHECKING:
@@ -26,8 +26,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
 
     @classmethod
     def run_github_pull_request(
-        cls,
-        params: m.Infra.GithubPullRequestRequest,
+        cls, params: m.Infra.GithubPullRequestRequest
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command from the canonical single-repo payload."""
         result = cls._run_github_pull_request_for_repo(
@@ -37,7 +36,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         )
         if result.success and result.value.exit_code != 0:
             return r[m.Infra.GithubPullRequestOutcome].fail(
-                f"PR operation exited with code {result.value.exit_code}",
+                f"PR operation exited with code {result.value.exit_code}"
             )
         return result
 
@@ -62,20 +61,18 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         ensure_dir_result = u.Cli.ensure_dir(report_dir)
         if ensure_dir_result.failure:
             return r[m.Infra.GithubPullRequestOutcome].fail(
-                ensure_dir_result.error or "failed to create report directory",
+                ensure_dir_result.error or "failed to create report directory"
             )
         report_dir = ensure_dir_result.value
         log_path = report_dir / f"{display}.log"
         command = cls._github_build_pr_command(
-            repo_root=repo_root,
-            workspace_root=workspace_root,
-            request=request,
+            repo_root=repo_root, workspace_root=workspace_root, request=request
         )
         started = time.monotonic()
         to_file_result = u.Cli.run_to_file(command, log_path)
         if to_file_result.failure:
             return r[m.Infra.GithubPullRequestOutcome].fail(
-                to_file_result.error or "command execution error",
+                to_file_result.error or "command execution error"
             )
         exit_code = to_file_result.value
         elapsed = int(time.monotonic() - started)
@@ -89,7 +86,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
                 elapsed=elapsed,
                 exit_code=exit_code,
                 log_path=str(log_path),
-            ),
+            )
         )
 
     @staticmethod

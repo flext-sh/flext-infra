@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): lazy generation
 # delegates its exact models to the sole flext-cli template engine.
 class FlextInfraCodegenGenerationRenderersMixin(
-    FlextInfraCodegenGenerationLazyEntriesMixin,
+    FlextInfraCodegenGenerationLazyEntriesMixin
 ):
     """Render codegen models through the canonical CLI template facade."""
 

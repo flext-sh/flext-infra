@@ -70,7 +70,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 continue
             dependencies[dependency_name] = rewritten_value
             changes.append(
-                f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}",
+                f"{location}.{dependency_name}: {current_value!r} -> {rewritten_value!r}"
             )
         return tuple(changes)
 
@@ -98,13 +98,11 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 project[c.Infra.DEPENDENCIES] = project_deps
                 changes.extend(project_changes)
             optional_dependencies = u.Cli.toml_mapping_child(
-                project,
-                c.Infra.OPTIONAL_DEPENDENCIES,
+                project, c.Infra.OPTIONAL_DEPENDENCIES
             )
             if optional_dependencies is not None:
                 optional_dependencies = u.Cli.toml_mapping_ensure_table(
-                    project,
-                    c.Infra.OPTIONAL_DEPENDENCIES,
+                    project, c.Infra.OPTIONAL_DEPENDENCIES
                 )
                 for group_name in list(optional_dependencies):
                     group_deps, group_changes = self._rewrite_requirement_group(
@@ -119,13 +117,11 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     optional_dependencies[group_name] = group_deps
                     changes.extend(group_changes)
         dependency_groups_view = u.Cli.toml_mapping_child(
-            payload,
-            c.Infra.DEPENDENCY_GROUPS,
+            payload, c.Infra.DEPENDENCY_GROUPS
         )
         if dependency_groups_view is not None:
             dependency_groups = u.Cli.toml_mapping_ensure_table(
-                payload,
-                c.Infra.DEPENDENCY_GROUPS,
+                payload, c.Infra.DEPENDENCY_GROUPS
             )
             for group_name in list(dependency_groups):
                 group_deps, group_changes = self._rewrite_requirement_group(
@@ -140,8 +136,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 dependency_groups[group_name] = group_deps
                 changes.extend(group_changes)
         poetry_dependencies = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES),
+            payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES)
         )
         if poetry_dependencies is not None:
             changes.extend(
@@ -151,11 +146,10 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     internal_names=internal_names,
                     policy=policy,
                     location="tool.poetry.dependencies",
-                ),
+                )
             )
         poetry_groups = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+            payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP)
         )
         if poetry_groups is not None:
             for group_name in list(poetry_groups):
@@ -178,7 +172,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                         internal_names=internal_names,
                         policy=policy,
                         location=(f"tool.poetry.group.{group_name}.dependencies"),
-                    ),
+                    )
                 )
         return tuple(changes)
 

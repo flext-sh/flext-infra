@@ -80,70 +80,50 @@ class FlextInfraConstantsSourceCode:
     FUTURE_ANNOTATIONS: Final[str] = "from __future__ import annotations"
     "Standard future annotations import line."
     ENCODING_COOKIE_RE: Final[t.RegexPattern] = re.compile(
-        r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+",
+        r"^[ \t\f]*#.*?coding[:=][ \t]*[-\w.]+"
     )
     "Regex: Python source encoding cookie on a header line."
-    IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^import\s+(.+)",
-        re.MULTILINE,
-    )
+    IMPORT_RE: Final[t.RegexPattern] = re.compile(r"^import\s+(.+)", re.MULTILINE)
     "Regex: ``import <module>``."
     DEF_CLASS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:def|async\s+def|class)\s+(\w+)",
-        re.MULTILINE,
+        r"^(?:def|async\s+def|class)\s+(\w+)", re.MULTILINE
     )
     "Regex: ``def/async def/class <name>``."
-    CLASS_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^class\s+(\w+)",
-        re.MULTILINE,
-    )
+    CLASS_NAME_RE: Final[t.RegexPattern] = re.compile(r"^class\s+(\w+)", re.MULTILINE)
     "Regex: any class definition — captures name only."
     CLASS_WITH_BASES_RE: Final[t.RegexPattern] = re.compile(
-        r"^class\s+(\w+)\s*\(([^)]*)\)\s*:",
-        re.MULTILINE,
+        r"^class\s+(\w+)\s*\(([^)]*)\)\s*:", re.MULTILINE
     )
     "Regex: ``class <name>(<bases>):`` — requires parentheses, captures bases."
-    ASSIGN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w+)\s*(?::.*)?=",
-        re.MULTILINE,
-    )
+    ASSIGN_RE: Final[t.RegexPattern] = re.compile(r"^(\w+)\s*(?::.*)?=", re.MULTILINE)
     "Regex: ``<name> [: ...] = ...`` assignment."
     FUNC_PARAM_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:def|async\s+def)\s+\w+\s*\(([^)]*)\)",
-        re.MULTILINE | re.DOTALL,
+        r"^(?:def|async\s+def)\s+\w+\s*\(([^)]*)\)", re.MULTILINE | re.DOTALL
     )
     "Regex: function parameter list."
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*from\s+import\s",
-        re.MULTILINE,
+        r"^\s*from\s+import\s", re.MULTILINE
     )
     "Regex: malformed ``from import ...`` (missing module)."
     IMPORT_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?:from\s+\S+\s+import\s|import\s)",
-        re.MULTILINE,
+        r"^\s*(?:from\s+\S+\s+import\s|import\s)", re.MULTILINE
     )
     "Regex: any import line (from or import)."
     FUTURE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*from\s+__future__\s+import\s",
+        r"^\s*from\s+__future__\s+import\s"
     )
     "Regex: future import line."
     FROM_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
-        re.MULTILINE,
+        r"^\s*from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$", re.MULTILINE
     )
     "Regex: from-import with optional trailing comment."
     FROM_IMPORT_BLOCK_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*from\s+([\w.]+)\s+import\s*\((.*?)\)",
-        re.MULTILINE | re.DOTALL,
+        r"^\s*from\s+([\w.]+)\s+import\s*\((.*?)\)", re.MULTILINE | re.DOTALL
     )
     "Regex: multiline from-import block."
-    DOCSTRING_RE: Final[t.RegexPattern] = re.compile(
-        r"""^\s*(?:'''|\"\"\"|\"|')""",
-    )
+    DOCSTRING_RE: Final[t.RegexPattern] = re.compile(r"""^\s*(?:'''|\"\"\"|\"|')""")
     "Regex: docstring opening (single/triple quote)."
-    CONSTANT_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^_?[A-Z][A-Z0-9_]*$",
-    )
+    CONSTANT_NAME_RE: Final[t.RegexPattern] = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
     "Regex: constant name pattern (UPPER_CASE with optional leading underscore)."
     FINAL_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^(_?[A-Z][A-Z0-9_]*)\s*:\s*(?:Final|typing\.Final)(?:\[.*?\])?\s*=",
@@ -156,12 +136,10 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: @deprecated decorated class/function block."
     REQUIRES_PYTHON_RE: Final[t.RegexPattern] = re.compile(
-        r'requires-python\s*=\s*"[>!=]*(\d+)\.(\d+)',
+        r'requires-python\s*=\s*"[>!=]*(\d+)\.(\d+)'
     )
     'Regex: ``requires-python = ">=3.X"`` — captures major and minor.'
-    DEPENDENCY_VERSION_OP_RE: Final[t.RegexPattern] = re.compile(
-        r"[<>=!~]",
-    )
+    DEPENDENCY_VERSION_OP_RE: Final[t.RegexPattern] = re.compile(r"[<>=!~]")
     "Regex: dependency version operator characters (used to split a name+spec)."
 
     REGEX_ERROR: Final[type[Exception]] = re.error
@@ -172,7 +150,7 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``@<name>`` decorator usage."
 
     DICT_STR_JSONVALUE_RE: Final[t.RegexPattern] = re.compile(
-        r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]",
+        r"\b(?:dict|Dict)\[str,\s*t\.JsonValue\]"
     )
     "Regex: ``dict[str, t.JsonValue]`` / ``Dict[str, t.JsonValue]`` annotation."
     DICT_GENERIC_RE: Final[t.RegexPattern] = re.compile(r"\b(?:dict|Dict)\[")
@@ -184,8 +162,7 @@ class FlextInfraConstantsSourceCode:
     ANCHOR_DASH_COLLAPSE_RE: Final[t.RegexPattern] = re.compile(r"-+")
     "Regex: collapse consecutive hyphens to one in anchor slugs."
     TOC_BLOCK_RE: Final[t.RegexPattern] = re.compile(
-        r"<!-- TOC START -->.*?<!-- TOC END -->",
-        re.DOTALL,
+        r"<!-- TOC START -->.*?<!-- TOC END -->", re.DOTALL
     )
     "Regex: TOC marker block (start..end), DOTALL."
     DUNDER_ALL_SINGLE_LINE_RE: Final[t.RegexPattern] = re.compile(
@@ -201,24 +178,18 @@ class FlextInfraConstantsSourceCode:
     BLANK_LINE_RUN_RE: Final[t.RegexPattern] = re.compile(r"\n{4,}")
     "Regex: 4+ consecutive newlines — collapsed to triple newline."
     LEGACY_TYPEALIAS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$",
-        re.MULTILINE,
+        r"^(\w+)\s*:\s*TypeAlias\s*=\s*(.+)$", re.MULTILINE
     )
     "Regex: legacy ``X: TypeAlias = expr`` (rewritten to PEP 695 ``type X = ...``)."
     T_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+\S+\s+import\s+.*\bt\b",
-        re.MULTILINE,
+        r"^from\s+\S+\s+import\s+.*\bt\b", re.MULTILINE
     )
     "Regex: any ``from X import ... t ...`` line (canonical t import detector)."
     IMPORT_LINE_ANCHORED_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$",
-        re.MULTILINE,
+        r"^(?:from\s+\S+\s+import\s+.+|import\s+.+)$", re.MULTILINE
     )
     "Regex: any anchored import line (used to find the insertion offset)."
-    IMPORT_PAREN_CLOSE_RE: Final[t.RegexPattern] = re.compile(
-        r"^\)\s*$",
-        re.MULTILINE,
-    )
+    IMPORT_PAREN_CLOSE_RE: Final[t.RegexPattern] = re.compile(r"^\)\s*$", re.MULTILINE)
     "Regex: closing ``)`` of a parenthesized import block, anchored at line start."
 
     @staticmethod
@@ -237,7 +208,7 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(?<!import\s)(?<!\.)(?<!class\s)(?<!def\s)"
             rf"\b{re.escape(name)}\b"
-            rf"(?!\s*=)",
+            rf"(?!\s*=)"
         )
 
     @staticmethod
@@ -247,13 +218,12 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_import_symbol_rename(
-        target_module: str,
-        old_name: str,
+        target_module: str, old_name: str
     ) -> t.RegexPattern:
         r"""Compile ``(from <target_module> import .*?)\b<old_name>\b`` rename."""
         return re.compile(
             rf"(from\s+{re.escape(target_module)}\s+import\s+.*?)"
-            rf"\b{re.escape(old_name)}\b",
+            rf"\b{re.escape(old_name)}\b"
         )
 
     @staticmethod
@@ -272,35 +242,29 @@ class FlextInfraConstantsSourceCode:
         return re.compile(rf"\b{re.escape(name)}(\s*=)")
 
     BARE_ALIAS_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$",
+        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$"
     )
     "Regex: ``X = Y`` bare alias on a single stripped line (no leading indent)."
 
     @staticmethod
     def compile_helper_call_site(name: str) -> t.RegexPattern:
         r"""Compile ``(?<!.)(?<!class )(?<!def )\b<name>\s*\(`` for free-call detection."""
-        return re.compile(
-            rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(",
-        )
+        return re.compile(rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(")
 
     @staticmethod
     def compile_function_signature(name: str) -> t.RegexPattern:
         r"""Compile ``def\s+<name>\s*\(([^)]*)\)`` (DOTALL) for signature capture."""
-        return re.compile(
-            rf"def\s+{re.escape(name)}\s*\(([^)]*)\)",
-            re.DOTALL,
-        )
+        return re.compile(rf"def\s+{re.escape(name)}\s*\(([^)]*)\)", re.DOTALL)
 
     @staticmethod
     def compile_class_header_with_bases_for(name: str) -> t.RegexPattern:
         r"""Compile ``^(\s*class\s+<name>)\s*\([^)]*\)\s*:`` (MULTILINE) header capture."""
         return re.compile(
-            rf"^(\s*class\s+{re.escape(name)})\s*\([^)]*\)\s*:",
-            re.MULTILINE,
+            rf"^(\s*class\s+{re.escape(name)})\s*\([^)]*\)\s*:", re.MULTILINE
         )
 
     FLEXT_CORE_DIRECT_SUBMODULE_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+(flext_core\.\S+)\s+import",
+        r"^from\s+(flext_core\.\S+)\s+import"
     )
     "Regex: ``from flext_core.<sub> import`` direct-submodule import (captures full path)."
 
@@ -318,8 +282,7 @@ class FlextInfraConstantsSourceCode:
     def compile_from_module_import_line(module_name: str) -> t.RegexPattern:
         """Compile ``^from <module_name> import .+$`` (MULTILINE) for whole-line replace."""
         return re.compile(
-            rf"^from\s+{re.escape(module_name)}\s+import\s+.+$",
-            re.MULTILINE,
+            rf"^from\s+{re.escape(module_name)}\s+import\s+.+$", re.MULTILINE
         )
 
     @staticmethod
@@ -348,19 +311,16 @@ class FlextInfraConstantsSourceCode:
         return re.compile(rf"from\s+{re.escape(module_name)}\s+import\s*\(")
 
     FROM_IMPORT_CAPTURE_PAREN_OPEN_RE: Final[t.RegexPattern] = re.compile(
-        r"from\s+([\w.]+)\s+import\s*\(",
+        r"from\s+([\w.]+)\s+import\s*\("
     )
     "Regex: ``from <module> import (`` capturing the module name."
 
     @staticmethod
-    def compile_mro_import_rewrite(
-        module_name: str,
-        old_symbol: str,
-    ) -> t.RegexPattern:
+    def compile_mro_import_rewrite(module_name: str, old_symbol: str) -> t.RegexPattern:
         r"""Compile ``(from <module> import )(\b<old>\b)`` — captures both groups."""
         return re.compile(
             rf"(from\s+{re.escape(module_name)}\s+import\s+)"
-            rf"(\b{re.escape(old_symbol)}\b)",
+            rf"(\b{re.escape(old_symbol)}\b)"
         )
 
     @staticmethod
@@ -370,14 +330,11 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
             rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))(?!\s*\()",
+            rf"(?!\s*[=:](?!=))(?!\s*\()"
         )
 
     @staticmethod
-    def compile_mro_prefixed_annotation(
-        prefix: str,
-        old_symbol: str,
-    ) -> t.RegexPattern:
+    def compile_mro_prefixed_annotation(prefix: str, old_symbol: str) -> t.RegexPattern:
         r"""Compile ``(<prefix>[ \t]*)\b<old>\b`` for annotation-prefixed qualification."""
         escaped_prefix = re.escape(prefix)
         return re.compile(rf"({escaped_prefix}[ \t]*)\b{re.escape(old_symbol)}\b")
@@ -388,7 +345,7 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(from\s+\S+\s+import\s+(?:.*?,\s*)?)"
             rf"\b{re.escape(old_name)}\b"
-            rf"((?:\s*,.*)?)",
+            rf"((?:\s*,.*)?)"
         )
 
     @staticmethod
@@ -396,7 +353,7 @@ class FlextInfraConstantsSourceCode:
         r"""Compile ``from <mod> import [^\n]*\b<old>\b\s+as\s+(\w+)`` to find alias bindings."""
         return re.compile(
             rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
-            rf"([A-Za-z_]\w*)",
+            rf"([A-Za-z_]\w*)"
         )
 
     @staticmethod
@@ -406,7 +363,7 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
             rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))",
+            rf"(?!\s*[=:](?!=))"
         )
 
     @staticmethod
@@ -416,7 +373,7 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)(?<!as\s)"
             rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))",
+            rf"(?!\s*[=:](?!=))"
         )
 
     @staticmethod
@@ -426,8 +383,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_facade_alias_assignment(
-        family_alias: str,
-        class_suffix: str,
+        family_alias: str, class_suffix: str
     ) -> t.RegexPattern:
         r"""Compile ``^<alias>\s*=\s*([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for facade-alias detection."""
         return re.compile(
@@ -439,15 +395,14 @@ class FlextInfraConstantsSourceCode:
     def compile_class_with_suffix(class_suffix: str) -> t.RegexPattern:
         r"""Compile ``^class\s+([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for class-header detection."""
         return re.compile(
-            rf"^class\s+([A-Za-z_]\w*{re.escape(class_suffix)})\b",
-            re.MULTILINE,
+            rf"^class\s+([A-Za-z_]\w*{re.escape(class_suffix)})\b", re.MULTILINE
         )
 
     @staticmethod
     def compile_class_header_with_bases(name: str) -> t.RegexPattern:
         r"""Compile ``^class\s+<name>(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:`` to capture bases."""
         return re.compile(
-            rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:",
+            rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:"
         )
 
     @staticmethod
@@ -501,77 +456,67 @@ class FlextInfraConstantsSourceCode:
     DUNDER_ALL_DECL_RE: Final[t.RegexPattern] = re.compile(r"^__all__\s*:")
     "Regex: ``__all__: ...`` declaration line."
     MODULE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
-        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$",
+        r"^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*$"
     )
     "Regex: module-level ``X = Y`` identity-alias line."
     MODULE_ASSIGNMENT_RE: Final[t.RegexPattern] = re.compile(
-        r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$",
+        r"^([A-Za-z_]\w*)\s*(?::\s*[^=]+)?=\s*(.+)$"
     )
     "Regex: module-level ``X [: T] = value`` assignment (captures name, value)."
     CAST_CALL_RE: Final[t.RegexPattern] = re.compile(
-        r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)",
+        r"\bcast\s*\(\s*[^,]+\s*,\s*([^)]+)\s*\)"
     )
     "Regex: ``cast(Type, value)`` call — captures the value to retain."
     AS_KEYWORD_RE: Final[t.RegexPattern] = re.compile(r"\s+as\s+")
     "Regex: ``<sp>as<sp>`` keyword for splitting import-as forms."
     FROM_IMPORT_SIMPLE_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+([\w.]+)\s+import\s+(.+?)$",
-        re.MULTILINE,
+        r"^from\s+([\w.]+)\s+import\s+(.+?)$", re.MULTILINE
     )
     "Regex: simple from-import line (no trailing-comment strip)."
     FROM_IMPORT_LINE_TRIM_RE: Final[t.RegexPattern] = re.compile(
-        r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$",
+        r"from\s+([\w.]+)\s+import\s+(.+?)(?:\s*#.*)?$"
     )
     "Regex: from-import line with optional trailing comment (no anchor)."
 
     # --- Pytest log parsing patterns ---
     PYTEST_SLOWEST_HEADER_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ slowest durations =+",
+        r"^=+ slowest durations =+"
     )
     "Regex: pytest 'slowest durations' section header."
     PYTEST_SECTION_DIVIDER_RE: Final[t.RegexPattern] = re.compile(r"^=+")
     "Regex: pytest section divider line (``===...``)."
     PYTEST_WARNINGS_HEADER_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ warnings summary =+",
+        r"^=+ warnings summary =+"
     )
     "Regex: pytest 'warnings summary' section header."
     PYTEST_DOCS_FOOTER_RE: Final[t.RegexPattern] = re.compile(
-        r"^-- Docs: https://docs.pytest.org/",
+        r"^-- Docs: https://docs.pytest.org/"
     )
     "Regex: pytest warnings-section docs footer."
     PYTEST_KNOWN_WARNINGS_RE: Final[t.RegexPattern] = re.compile(
-        r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning",
+        r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning"
     )
     "Regex: known pytest warning class names."
     PYTEST_FAILED_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"(^FAILED |::.* FAILED( |$))",
+        r"(^FAILED |::.* FAILED( |$))"
     )
     "Regex: pytest FAILED status line."
     PYTEST_SKIPPED_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"(^SKIPPED |::.* SKIPPED( |$))",
+        r"(^SKIPPED |::.* SKIPPED( |$))"
     )
     "Regex: pytest SKIPPED status line."
     PYTEST_FAILURES_OR_ERRORS_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ (FAILURES|ERRORS) =+",
+        r"^=+ (FAILURES|ERRORS) =+"
     )
     "Regex: pytest FAILURES/ERRORS section header."
     PYTEST_BLOCK_END_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ (short test summary info|warnings summary|.+ in [0-9.]+s) =+",
+        r"^=+ (short test summary info|warnings summary|.+ in [0-9.]+s) =+"
     )
     "Regex: pytest block-end markers (summary/warnings/timing)."
 
-    DEFAULT_CHECK_DIRS: Final[t.StrSequence] = (
-        "src",
-        "tests",
-        "examples",
-        "scripts",
-    )
+    DEFAULT_CHECK_DIRS: Final[t.StrSequence] = ("src", "tests", "examples", "scripts")
     "Default directories to check in a project (root only uses scripts)."
-    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = (
-        "src",
-        "tests",
-        "examples",
-    )
+    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src", "tests", "examples")
     "Subprojects: type-check src/tests/examples only (scripts are workspace copies, run from root)."
 
     GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
@@ -611,9 +556,7 @@ class FlextInfraConstantsSourceCode:
         "TimestampedModel",
     })
     "Pydantic model base class names for placement detection."
-    PLACEMENT_PROTOCOL_BASE_NAMES: Final[frozenset[str]] = frozenset({
-        "Protocol",
-    })
+    PLACEMENT_PROTOCOL_BASE_NAMES: Final[frozenset[str]] = frozenset({"Protocol"})
     "Protocol base class names for placement detection."
     PLACEMENT_ENUM_BASE_NAMES: Final[frozenset[str]] = frozenset({
         "StrEnum",
@@ -626,20 +569,18 @@ class FlextInfraConstantsSourceCode:
         "Utility",
     })
     "Class-name suffixes that identify a utility class for placement detection."
-    PLACEMENT_CANONICAL_MODEL_FILES: Final[frozenset[str]] = frozenset({
-        "models.py",
-    })
+    PLACEMENT_CANONICAL_MODEL_FILES: Final[frozenset[str]] = frozenset({"models.py"})
     "Canonical file names where Pydantic models should live."
     PLACEMENT_CANONICAL_PROTOCOL_FILES: Final[frozenset[str]] = frozenset({
-        "protocols.py",
+        "protocols.py"
     })
     "Canonical file names where Protocol classes should live."
     PLACEMENT_CANONICAL_CONSTANTS_FILES: Final[frozenset[str]] = frozenset({
-        "constants.py",
+        "constants.py"
     })
     "Canonical file names where Enum constants should live."
     PLACEMENT_CANONICAL_UTILITY_FILES: Final[frozenset[str]] = frozenset({
-        "utilities.py",
+        "utilities.py"
     })
     "Canonical file names where utility classes should live."
     PLACEMENT_CANONICAL_MODEL_DIRS: Final[frozenset[str]] = frozenset({
@@ -647,25 +588,17 @@ class FlextInfraConstantsSourceCode:
         "models",
     })
     "Canonical directory names where Pydantic models should live."
-    PLACEMENT_CANONICAL_PROTOCOL_DIRS: Final[frozenset[str]] = frozenset({
-        "_protocols",
-    })
+    PLACEMENT_CANONICAL_PROTOCOL_DIRS: Final[frozenset[str]] = frozenset({"_protocols"})
     "Canonical directory names where Protocol classes should live."
     PLACEMENT_CANONICAL_CONSTANTS_DIRS: Final[frozenset[str]] = frozenset({
-        "_constants",
+        "_constants"
     })
     "Canonical directory names where Enum constants should live."
-    PLACEMENT_CANONICAL_UTILITY_DIRS: Final[frozenset[str]] = frozenset({
-        "_utilities",
-    })
+    PLACEMENT_CANONICAL_UTILITY_DIRS: Final[frozenset[str]] = frozenset({"_utilities"})
     "Canonical directory names where utility classes should live."
-    PLACEMENT_CANONICAL_TYPING_FILES: Final[frozenset[str]] = frozenset({
-        "typings.py",
-    })
+    PLACEMENT_CANONICAL_TYPING_FILES: Final[frozenset[str]] = frozenset({"typings.py"})
     "Canonical file names where type aliases should live."
-    PLACEMENT_CANONICAL_TYPING_DIRS: Final[frozenset[str]] = frozenset({
-        "_typings",
-    })
+    PLACEMENT_CANONICAL_TYPING_DIRS: Final[frozenset[str]] = frozenset({"_typings"})
     "Canonical directory names where type aliases should live."
 
     # --- Shared threshold constants (was: class Thresholds) ---
@@ -679,8 +612,7 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: matches both 'from X import Y' and 'import X [as Z]' forms."
     FUNCTION_DEF_SIMPLE_RE: Final[t.RegexPattern] = re.compile(
-        r"^def\s+(\w+)\s*\(",
-        re.MULTILINE,
+        r"^def\s+(\w+)\s*\(", re.MULTILINE
     )
     "Regex: simple function definition (def name(), captures name only)."
 
@@ -692,20 +624,18 @@ class FlextInfraConstantsSourceCode:
     CODE_FRAME_BODY_RE: Final[t.RegexPattern] = re.compile(r"^\s*\|")
     "Regex: code frame continuation lines."
     UNUSED_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"`([^`]+)` imported but unused",
+        r"`([^`]+)` imported but unused"
     )
     "Regex: ruff F401 unused import message, capturing the import name."
     LINT_SUMMARY_RE: Final[t.RegexPattern] = re.compile(
-        r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$",
+        r"^(Found \d+ errors?\.|\[\*\] \d+ fixable .*)$"
     )
     "Regex: ruff summary line (Found N errors / N fixable)."
 
     # --- Semantic versioning (was: class Versioning) ---
     SEMVER_PROJECT_SECTION: Final[str] = "[project]"
     "TOML section header for project metadata."
-    SEMVER_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\d+)\.(\d+)\.(\d+)(?:-dev)?$",
-    )
+    SEMVER_RE: Final[t.RegexPattern] = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-dev)?$")
     "Regex pattern for parsing semantic version strings."
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: Final[str] = ".reports"

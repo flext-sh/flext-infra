@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
-from flext_core import r
 
+from flext_core import r
 from flext_infra import m, u
 from flext_infra.refactor._namespace_enforcer_project import (
     FlextInfraNamespaceEnforcerProjectMixin,
@@ -16,17 +16,14 @@ from flext_infra.refactor.namespace_enforcer_phases import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-    )
+    from collections.abc import Callable
     from pathlib import Path
 
     from flext_infra import p, t
 
 
 class FlextInfraNamespaceEnforcer(
-    FlextInfraNamespaceEnforcerPhasesMixin,
-    FlextInfraNamespaceEnforcerProjectMixin,
+    FlextInfraNamespaceEnforcerPhasesMixin, FlextInfraNamespaceEnforcerProjectMixin
 ):
     """Orchestrate namespace enforcement across a workspace."""
 
@@ -35,7 +32,7 @@ class FlextInfraNamespaceEnforcer(
         super().__init__()
         self._workspace_root = workspace_root.resolve()
         self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
-            self._workspace_root,
+            self._workspace_root
         )
 
     @override
@@ -65,19 +62,16 @@ class FlextInfraNamespaceEnforcer(
             )
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
-            workspace=str(self._workspace_root),
-            projects=project_reports,
+            workspace=str(self._workspace_root), projects=project_reports
         )
 
     @override
     def _resolve_project_roots(
-        self,
-        *,
-        project_names: t.StrSequence | None = None,
+        self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[Path]:
         """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
-            workspace_root=self._workspace_root,
+            workspace_root=self._workspace_root
         )
         project_roots = [
             project_root
@@ -115,9 +109,7 @@ class FlextInfraNamespaceEnforcer(
         return post_violations
 
     @staticmethod
-    def render_text(
-        report: m.Infra.WorkspaceEnforcementReport,
-    ) -> str:
+    def render_text(report: m.Infra.WorkspaceEnforcementReport) -> str:
         """Render a workspace enforcement report as plain text."""
         lines = [
             "Namespace Enforcement Report",
@@ -154,20 +146,17 @@ class FlextInfraNamespaceEnforcer(
 
     @classmethod
     def execute_command(
-        cls,
-        params: m.Infra.RefactorNamespaceEnforceInput,
+        cls, params: m.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)
         report = enforcer.enforce(
-            apply=params.apply,
-            project_names=params.project_names,
-            gates=params.gates,
+            apply=params.apply, project_names=params.project_names, gates=params.gates
         )
         cli.display_text(cls.render_text(report))
         if report.has_violations:
             return r[m.Infra.WorkspaceEnforcementReport].fail(
-                "Namespace violations found",
+                "Namespace violations found"
             )
         return r[m.Infra.WorkspaceEnforcementReport].ok(report)
 

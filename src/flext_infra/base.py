@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
 from flext_cli import p as cli_p, u as cli_u
-from flext_core import s
 
+from flext_core import s
 from flext_infra import c, m, p, settings, t
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
@@ -16,8 +16,7 @@ type _InfraResultValue = t.Cli.ResultValue
 
 
 class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
-    s[TDomainResult],
-    FlextInfraCommandPayloadMixin,
+    s[TDomainResult], FlextInfraCommandPayloadMixin
 ):
     """Domain command context shared by all flext-infra CLI services.
 
@@ -41,13 +40,9 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
 
     workspace_root: Annotated[
         Path,
-        m.BeforeValidator(
-            lambda v: (v if isinstance(v, Path) else Path(v)).resolve(),
-        ),
+        m.BeforeValidator(lambda v: (v if isinstance(v, Path) else Path(v)).resolve()),
     ] = m.Field(
-        default_factory=Path.cwd,
-        alias="workspace",
-        description="Workspace root",
+        default_factory=Path.cwd, alias="workspace", description="Workspace root"
     )
     apply_changes: bool = m.Field(
         default=False,
@@ -55,11 +50,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         description="Apply changes",
         json_schema_extra={"typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)},
     )
-    check_only: bool = m.Field(
-        default=False,
-        alias="check",
-        description="Check mode",
-    )
+    check_only: bool = m.Field(default=False, alias="check", description="Check mode")
     dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
     fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     output_format: Annotated[
@@ -93,16 +84,12 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         m.BeforeValidator(ub.normalize_optional_path),
     ] = None
     output_dir: Annotated[
-        Path | None,
-        m.Field(description="Output directory", exclude=True),
+        Path | None, m.Field(description="Output directory", exclude=True)
     ] = None
 
     @m.field_validator("project_filter", mode="before")
     @classmethod
-    def _normalize_project_filter(
-        cls,
-        value: str | t.StrSequence | None,
-    ) -> str | None:
+    def _normalize_project_filter(cls, value: str | t.StrSequence | None) -> str | None:
         """Normalize project filters into a compact comma-separated string."""
         if value is None:
             return None
@@ -152,7 +139,4 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
 
 s = FlextInfraServiceBase
 
-__all__: list[str] = [
-    "FlextInfraServiceBase",
-    "s",
-]
+__all__: list[str] = ["FlextInfraServiceBase", "s"]

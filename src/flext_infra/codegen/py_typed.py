@@ -14,7 +14,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, u
 from flext_infra.base import s
 
@@ -71,9 +70,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        u.Cli.info(
-            f"py.typed {mode}: {created} created, {removed} removed",
-        )
+        u.Cli.info(f"py.typed {mode}: {created} created, {removed} removed")
         return created + removed
 
 

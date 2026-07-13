@@ -36,11 +36,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         def _refactor_header(message: str) -> None: ...
 
     def _try_safety_checkpoint(
-        self,
-        target: Path,
-        *,
-        apply_safety: bool,
-        dry_run: bool,
+        self, target: Path, *, apply_safety: bool, dry_run: bool
     ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
         """Try safety checkpoint."""
         if not apply_safety or dry_run:
@@ -89,7 +85,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
                 result.file_path
                 for result in results
                 if result.success and result.modified
-            ],
+            ]
         )
         if cleared.failure:
             u.Cli.error(cleared.error or "checkpoint clear failed")
@@ -127,24 +123,19 @@ class FlextInfraRefactorOrchestratorScopeMixin:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor files under configured project directories."""
         checkpoint_ref, error_results = self._try_safety_checkpoint(
-            project_path,
-            apply_safety=apply_safety,
-            dry_run=dry_run,
+            project_path, apply_safety=apply_safety, dry_run=dry_run
         )
         if error_results is not None:
             results_out: t.SequenceOf[m.Infra.Result] = error_results
             return results_out
         collected = u.Infra.collect_refactor_project_files(
-            self.loader.settings,
-            project_path,
-            pattern=pattern,
+            self.loader.settings, project_path, pattern=pattern
         )
         if collected is None:
             return [
                 self._error_result(
-                    project_path,
-                    f"File iteration failed for {project_path}",
-                ),
+                    project_path, f"File iteration failed for {project_path}"
+                )
             ]
         u.Cli.info(f"Found {len(collected)} files to process")
         results: t.MutableSequenceOf[m.Infra.Result] = []
@@ -173,18 +164,13 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         if not root.exists() or not root.is_dir():
             u.Cli.error(f"Invalid workspace root: {workspace_root}")
             return []
-        projects = u.Infra.discover_refactor_projects(
-            self.loader.settings,
-            root,
-        )
+        projects = u.Infra.discover_refactor_projects(self.loader.settings, root)
         if not projects:
             u.Cli.error(f"No projects discovered under: {workspace_root}")
             return []
         u.Cli.info(f"Discovered {len(projects)} projects in workspace")
         checkpoint_ref, error_results = self._try_safety_checkpoint(
-            root,
-            apply_safety=apply_safety,
-            dry_run=dry_run,
+            root, apply_safety=apply_safety, dry_run=dry_run
         )
         if error_results is not None:
             results_out: t.SequenceOf[m.Infra.Result] = error_results
@@ -202,7 +188,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
                     pattern=pattern,
                     apply_safety=False,
                     gates=gates,
-                ),
+                )
             )
             if apply_safety and not dry_run:
                 processed.append(str(project))

@@ -19,14 +19,11 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     """Private pipeline passes for codegen fixer composition."""
 
     @staticmethod
-    def _run_mro_migration(
-        ctx: m.Infra.FixContext,
-        project_path: Path,
-    ) -> None:
+    def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run the MRO migrator and accumulate fixed/skipped violations."""
-        report = FlextInfraRefactorMigrateToClassMRO(
-            workspace_root=project_path,
-        ).run(target="all", apply=True, gates=(c.Infra.LINT,))
+        report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
+            target="all", apply=True, gates=(c.Infra.LINT,)
+        )
         _log.info(
             "mro_migration_complete",
             project=project_path.name,
@@ -71,14 +68,11 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         )
 
     @staticmethod
-    def _run_namespace_enforcement(
-        ctx: m.Infra.FixContext,
-        project_path: Path,
-    ) -> None:
+    def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
-        enforcement = FlextInfraNamespaceEnforcer(
-            workspace_root=project_path,
-        ).enforce(apply=True, gates=(c.Infra.LINT,))
+        enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
+            apply=True, gates=(c.Infra.LINT,)
+        )
         violating_projects = tuple(
             project_report
             for project_report in enforcement.projects
@@ -104,8 +98,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
 
     @staticmethod
     def _run_lazy_init_regeneration(
-        ctx: m.Infra.FixContext,
-        project_path: Path,
+        ctx: m.Infra.FixContext, project_path: Path
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
         lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)

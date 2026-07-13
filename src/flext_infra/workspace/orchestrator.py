@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.workspace._orchestrator_discovery import (
@@ -48,7 +47,7 @@ class FlextInfraOrchestratorService(
         if self.verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
             return r[bool].fail(
-                f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})",
+                f"unsupported orchestrate verb '{self.verb}' (allowed: {allowed})"
             )
 
         resolved_projects = self._resolved_projects()
@@ -60,10 +59,7 @@ class FlextInfraOrchestratorService(
             return r[bool].fail("no projects discovered")
 
         workspace_root = self.root
-        prepare_result = self._prepare_projects(
-            projects,
-            workspace_root=workspace_root,
-        )
+        prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
         if prepare_result.failure:
             return prepare_result
 
@@ -78,7 +74,7 @@ class FlextInfraOrchestratorService(
         )
         if orchestrate_result.failure:
             return r[bool].fail(
-                orchestrate_result.error or "orchestration completed with failures",
+                orchestrate_result.error or "orchestration completed with failures"
             )
         return r[bool].ok(True)
 

@@ -20,22 +20,13 @@ class {{ class_stem }}ModelsPing:
     class PingInput(BaseModel):
         """Input model for the ``ping`` health-check command (no fields)."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="forbid",
-            frozen=True,
-        )
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
 
     class PingResult(BaseModel):
         """Result model for the ``ping`` health-check command."""
 
-        model_config: ClassVar[ConfigDict] = ConfigDict(
-            extra="forbid",
-            frozen=True,
-        )
-        message: Annotated[
-            str,
-            Field(description="Health-check reply message."),
-        ]
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
+        message: Annotated[str, Field(description="Health-check reply message.")]
 
 
 __all__: list[str] = ["{{ class_stem }}ModelsPing"]

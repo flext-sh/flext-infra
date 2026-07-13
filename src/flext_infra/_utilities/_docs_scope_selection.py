@@ -25,15 +25,12 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes for selected project names."""
         project_by_name = FlextInfraUtilitiesDocsScopeSelectionMixin._project_by_name(
-            discovered,
+            discovered
         )
         scopes: list[m.Infra.DocScope] = []
         for name in selected_names:
             scope = FlextInfraUtilitiesDocsScopeSelectionMixin._selected_scope(
-                workspace_root,
-                name,
-                project_by_name,
-                output_dir,
+                workspace_root, name, project_by_name, output_dir
             )
             if scope is not None:
                 scopes.append(scope)
@@ -50,13 +47,10 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         selected = project_by_name.get(name)
         if selected is not None:
             return FlextInfraUtilitiesDocsScopeSelectionMixin._doc_scope(
-                project=selected,
-                output_dir=output_dir,
+                project=selected, output_dir=output_dir
             )
         return FlextInfraUtilitiesDocsScopeSelectionMixin._optional_path_scope(
-            workspace_root,
-            name,
-            output_dir,
+            workspace_root, name, output_dir
         )
 
     @staticmethod
@@ -72,9 +66,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _optional_path_scope(
-        workspace_root: Path,
-        name: str,
-        output_dir: Path | str,
+        workspace_root: Path, name: str, output_dir: Path | str
     ) -> m.Infra.DocScope | None:
         """Build a selected path scope when it is a local pyproject project."""
         project_root = (workspace_root / name).resolve()
@@ -84,15 +76,12 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         ):
             return None
         return FlextInfraUtilitiesDocsScopeSelectionMixin._governed_scope(
-            project_root,
-            output_dir,
+            project_root, output_dir
         )
 
     @staticmethod
     def _doc_scope(
-        *,
-        project: m.Infra.ProjectInfo,
-        output_dir: Path | str,
+        *, project: m.Infra.ProjectInfo, output_dir: Path | str
     ) -> m.Infra.DocScope:
         """Build one canonical docs scope model."""
         resolved = project.path.resolve()
@@ -105,10 +94,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         )
 
     @staticmethod
-    def _governed_scope(
-        project_root: Path,
-        output_dir: Path | str,
-    ) -> m.Infra.DocScope:
+    def _governed_scope(project_root: Path, output_dir: Path | str) -> m.Infra.DocScope:
         """Build docs scope for a governed project root."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
@@ -117,13 +103,10 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             path=project_root,
             report_dir=(project_root / output_dir).resolve(),
             project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                project_root.name,
-                docs_meta,
+                project_root.name, docs_meta
             ),
             package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                project_root,
-                payload,
-                docs_meta,
+                project_root, payload, docs_meta
             ),
         )
 

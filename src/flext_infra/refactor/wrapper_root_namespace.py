@@ -5,14 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
@@ -66,16 +59,12 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if not self.effective_dry_run and accumulator.wrapper_candidates:
             for wrapper in self._WRAPPER_PACKAGES:
                 u.Infra.rewrite_import_violations(
-                    py_files=accumulator.wrapper_candidates,
-                    project_package=wrapper,
+                    py_files=accumulator.wrapper_candidates, project_package=wrapper
                 )
-        report_payload = self._build_report_payload(
-            len(py_files),
-            accumulator,
-        )
+        report_payload = self._build_report_payload(len(py_files), accumulator)
         if self.check_only and accumulator.changed_files:
             return r[t.JsonPayload].fail(
-                "pending wrapper-root namespace rewrites detected",
+                "pending wrapper-root namespace rewrites detected"
             )
         return r[t.JsonPayload].ok(report_payload)
 
@@ -84,8 +73,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
     ) -> p.Result[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]]:
         """Resolve project paths and discover Python files + runtime alias map."""
         resolved = u.Infra.resolve_projects(
-            self.workspace_root,
-            self.project_names or (),
+            self.workspace_root, self.project_names or ()
         )
         if resolved.failure:
             return r[
@@ -93,8 +81,8 @@ class FlextInfraWrapperRootNamespaceRefactor(
             ].fail(resolved.error or "project resolution failed")
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
-                project_roots=tuple(project.path for project in resolved.value),
-            ),
+                project_roots=tuple(project.path for project in resolved.value)
+            )
         )
         if iter_result.failure:
             return r[
@@ -107,13 +95,11 @@ class FlextInfraWrapperRootNamespaceRefactor(
         }
         return r[
             tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-        ].ok(
-            (
-                iter_result.value,
-                project_runtime_aliases,
-                u.facade_module_names(c.Infra.PKG_INFRA_UNDERSCORE),
-            ),
-        )
+        ].ok((
+            iter_result.value,
+            project_runtime_aliases,
+            u.facade_module_names(c.Infra.PKG_INFRA_UNDERSCORE),
+        ))
 
     def _persist_updates(self, updates: Mapping[Path, str]) -> str | None:
         """Write batched updates via the protected pipeline; ``None`` on success."""
@@ -122,8 +108,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         ok, report = u.Infra.protected_source_writes(
             dict(updates),
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root,
-                skip_pytest=True,
+                workspace=self.workspace_root, skip_pytest=True
             ),
         )
         if ok:
@@ -131,9 +116,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         return " ; ".join(report[:5]) or "protected write failed"
 
     def _build_report_payload(
-        self,
-        files_scanned: int,
-        accumulator: _WrapperRewriteAccumulator,
+        self, files_scanned: int, accumulator: _WrapperRewriteAccumulator
     ) -> t.MutableJsonMapping:
         """Build the canonical JSON payload from the accumulated wrapper run state."""
         mode_value = (
@@ -144,10 +127,10 @@ class FlextInfraWrapperRootNamespaceRefactor(
             else "apply"
         )
         per_project_changes_payload: t.JsonDict = dict(
-            accumulator.per_project_changes.items(),
+            accumulator.per_project_changes.items()
         )
         per_project_replacements_payload: t.JsonDict = dict(
-            accumulator.per_project_replacements.items(),
+            accumulator.per_project_replacements.items()
         )
         changed_files_preview: t.JsonValueList = list(accumulator.changed_files[:200])
         report_payload: t.MutableJsonMapping = {

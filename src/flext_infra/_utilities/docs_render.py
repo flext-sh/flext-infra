@@ -18,17 +18,12 @@ class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
     @staticmethod
-    def _is_object_list(
-        value: t.Infra.InfraValue | None,
-    ) -> bool:
+    def _is_object_list(value: t.Infra.InfraValue | None) -> bool:
         """Type guard: narrow one infra value to a mutable sequence."""
         return isinstance(value, list)
 
     @staticmethod
-    def as_string_sequence(
-        data: t.Infra.ContainerDict,
-        key: str,
-    ) -> t.SequenceOf[str]:
+    def as_string_sequence(data: t.Infra.ContainerDict, key: str) -> t.SequenceOf[str]:
         """Return one contract field as a normalized string sequence."""
         value = data.get(key)
         if not isinstance(value, list):
@@ -51,20 +46,14 @@ class FlextInfraUtilitiesDocsRender:
         return value.replace("|", "\\|").strip()
 
     @staticmethod
-    def _module_relative_doc_path(
-        package_name: str,
-        module_name: str,
-    ) -> str:
+    def _module_relative_doc_path(package_name: str, module_name: str) -> str:
         """Return the generated relative path for one module page."""
         relative = module_name.removeprefix(f"{package_name}.").replace(".", "/")
         return f"{relative}.md"
 
     @staticmethod
     def _resolve_governance_link(
-        prefix: str,
-        path: str,
-        *,
-        is_dir: bool = False,
+        prefix: str, path: str, *, is_dir: bool = False
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -81,8 +70,7 @@ class FlextInfraUtilitiesDocsRender:
     def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(
-            data,
-            "exclude_docs",
+            data, "exclude_docs"
         )
         if not patterns:
             return []
@@ -107,13 +95,9 @@ class FlextInfraUtilitiesDocsRender:
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
                 "/README.md",
-            ]),
+            ])
         )
-        return [
-            "exclude_docs: |",
-            *[f"  {pattern}" for pattern in patterns],
-            "",
-        ]
+        return ["exclude_docs: |", *[f"  {pattern}" for pattern in patterns], ""]
 
     @staticmethod
     def docs_directive_page(title: str, dotted_path: str) -> str:
@@ -161,9 +145,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _collection_rules_lines(
-        scope: m.Infra.DocScope,
-        *,
-        link_prefix: str,
+        scope: m.Infra.DocScope, *, link_prefix: str
     ) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Collection Rules.
 
@@ -176,8 +158,7 @@ class FlextInfraUtilitiesDocsRender:
         """
         _ = scope
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            "AGENTS.md",
+            link_prefix, "AGENTS.md"
         )
         return [
             "## Collection Rules",
@@ -189,8 +170,7 @@ class FlextInfraUtilitiesDocsRender:
     def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface."""
         skill_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            ".agents/skills/flext-quality-gates/SKILL.md",
+            link_prefix, ".agents/skills/flext-quality-gates/SKILL.md"
         )
         return [
             "## Quality Gates",
@@ -202,21 +182,16 @@ class FlextInfraUtilitiesDocsRender:
     def _governance_pointer_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical governance surface."""
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            "AGENTS.md",
+            link_prefix, "AGENTS.md"
         )
         skills_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            ".agents/skills/",
-            is_dir=True,
+            link_prefix, ".agents/skills/", is_dir=True
         )
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            "docs/guides/onboarding.md",
+            link_prefix, "docs/guides/onboarding.md"
         )
         governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            "docs/GOVERNANCE.md",
+            link_prefix, "docs/GOVERNANCE.md"
         )
         return [
             "## Governance Pointer",
@@ -229,8 +204,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_index(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
+        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page."""
         data = contract
@@ -259,24 +233,22 @@ class FlextInfraUtilitiesDocsRender:
                 *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
                 "",
                 *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                    scope,
-                    link_prefix=link_prefix,
+                    scope, link_prefix=link_prefix
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                    link_prefix=link_prefix,
+                    link_prefix=link_prefix
                 ),
                 "",
                 *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                    link_prefix=link_prefix,
+                    link_prefix=link_prefix
                 ),
             ],
         )
 
     @staticmethod
     def docs_project_readme(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
+        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
@@ -307,8 +279,7 @@ class FlextInfraUtilitiesDocsRender:
             *FlextInfraUtilitiesDocsRender._public_surface_lines(scope),
             "",
             *FlextInfraUtilitiesDocsRender._collection_rules_lines(
-                scope,
-                link_prefix=link_prefix,
+                scope, link_prefix=link_prefix
             ),
             "",
             "## Operation Flow",
@@ -324,11 +295,11 @@ class FlextInfraUtilitiesDocsRender:
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
             *FlextInfraUtilitiesDocsRender._quality_gates_lines(
-                link_prefix=link_prefix,
+                link_prefix=link_prefix
             ),
             "",
             *FlextInfraUtilitiesDocsRender._governance_pointer_lines(
-                link_prefix=link_prefix,
+                link_prefix=link_prefix
             ),
             "- Full project portal: [`docs/index.md`](docs/index.md).",
             "",
@@ -351,8 +322,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_api_readme(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
+        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the standard API readme for a project."""
         data = contract
@@ -395,14 +365,7 @@ class FlextInfraUtilitiesDocsRender:
         layout shared by every ``docs_*_page``/``docs_*_index``/``docs_*_readme``
         renderer. Body lines are passed verbatim — no further escaping.
         """
-        return "\n".join([
-            c.Infra.GENERATED_HEADER,
-            "",
-            f"# {title}",
-            "",
-            *body,
-            "",
-        ])
+        return "\n".join([c.Infra.GENERATED_HEADER, "", f"# {title}", "", *body, ""])
 
     @staticmethod
     def _render_block(lines: t.SequenceOf[str]) -> str:
@@ -446,14 +409,14 @@ class FlextInfraUtilitiesDocsRender:
             repo_name=c.Infra.GITHUB_REPO_NAME,
             scope_name=scope.name,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
             ),
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data)
             ),
-            mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
-                ("src",),
-            ),
+            mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block((
+                "src",
+            )),
         )
         template_path = (
             Path(__file__).resolve().parent.parent
@@ -464,22 +427,19 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_overview_page(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
+        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the generated overview page for a project API."""
         data = contract
         aliases = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "aliases"),
-            limit=11,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "aliases"), limit=11
         )
         exports = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "public_symbols"),
             limit=10,
         )
         facades = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades"),
-            limit=8,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades"), limit=8
         )
         module_exports = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "module_exports"),
@@ -487,8 +447,7 @@ class FlextInfraUtilitiesDocsRender:
         )
         modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
         keywords = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"),
-            limit=8,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
         return "\n".join([
             c.Infra.GENERATED_HEADER,
@@ -516,10 +475,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_modules_index(
-        scope: m.Infra.DocScope,
-        modules: t.SequenceOf[str],
-    ) -> str:
+    def docs_modules_index(scope: m.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
         """Return the generated module index page for one project."""
         lines: t.MutableSequenceOf[str] = [
             c.Infra.GENERATED_HEADER,
@@ -534,8 +490,7 @@ class FlextInfraUtilitiesDocsRender:
             return "\n".join(lines)
         for module_name in modules:
             relative_path = FlextInfraUtilitiesDocsRender._module_relative_doc_path(
-                scope.package_name,
-                module_name,
+                scope.package_name, module_name
             )
             lines.append(f"- [{module_name}]({relative_path})")
         lines.append("")
@@ -543,8 +498,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_mkdocs(
-        contract: t.Infra.ContainerDict,
-        src_paths: t.SequenceOf[str] = (),
+        contract: t.Infra.ContainerDict, src_paths: t.SequenceOf[str] = ()
     ) -> str:
         """Return the managed mkdocs.yml for the workspace root.
 
@@ -561,13 +515,13 @@ class FlextInfraUtilitiesDocsRender:
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=c.Infra.GITHUB_REPO_NAME,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
             ),
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data)
             ),
             mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
-                src_paths,
+                src_paths
             ),
         )
         template_path = (
@@ -628,7 +582,7 @@ class FlextInfraUtilitiesDocsRender:
         for entry in entries:
             lines.append(
                 f"- [{entry['name']}]({entry['name']}/modules/index.md)"
-                f" — `{entry['module_count']}` modules",
+                f" — `{entry['module_count']}` modules"
             )
         lines.append("")
         return "\n".join(lines)
@@ -646,19 +600,18 @@ class FlextInfraUtilitiesDocsRender:
             + " | ".join([
                 f"[{entry['name']}]({entry['api_page']})",
                 FlextInfraUtilitiesDocsRender._escape_table_cell(
-                    entry["project_class"],
+                    entry["project_class"]
                 ),
                 f"`{entry['package_name']}`",
                 FlextInfraUtilitiesDocsRender._escape_table_cell(
-                    entry["description"] or "_not declared_",
+                    entry["description"] or "_not declared_"
                 ),
             ])
             + " |"
             for entry in entries
             if not any(
                 fnmatch.fnmatch(
-                    entry.get("api_page", "").removeprefix("../../"),
-                    pattern,
+                    entry.get("api_page", "").removeprefix("../../"), pattern
                 )
                 for pattern in exclude_patterns
             )

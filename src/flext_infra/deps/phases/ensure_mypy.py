@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import c, m, u
+from flext_infra import c, config, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraEnsureMypyConfigPhase:
@@ -25,7 +20,7 @@ class FlextInfraEnsureMypyConfigPhase:
             {
                 "module": u.normalize_to_json_value(list(entry.modules)),
                 "disable_error_code": u.normalize_to_json_value(
-                    list(entry.disable_error_codes),
+                    list(entry.disable_error_codes)
                 ),
             }
             for entry in configured
@@ -35,7 +30,11 @@ class FlextInfraEnsureMypyConfigPhase:
             .Builder("mypy")
             .table(c.Infra.MYPY)
             .deprecated("strict_concatenate")
-            .value(c.Infra.PYTHON_VERSION_UNDERSCORE, "3.13")
+            # mro-j47u (codex): tool Python derives from the codegen toolchain SSOT.
+            .value(
+                c.Infra.PYTHON_VERSION_UNDERSCORE,
+                config.Infra.codegen.toolchain.python_minor_version,
+            )
             .list(
                 c.Infra.PLUGINS,
                 self._tool_config.tools.mypy.plugins,
@@ -49,8 +48,7 @@ class FlextInfraEnsureMypyConfigPhase:
         )
         if self._tool_config.tools.mypy.exclude:
             phase_builder = phase_builder.value(
-                c.Infra.EXCLUDE,
-                self._tool_config.tools.mypy.exclude,
+                c.Infra.EXCLUDE, self._tool_config.tools.mypy.exclude
             )
         else:
             phase_builder = phase_builder.deprecated(c.Infra.EXCLUDE)
@@ -66,10 +64,7 @@ class FlextInfraEnsureMypyConfigPhase:
         """Apply mypy defaults, overrides, and toggles from tool configuration."""
         return FlextInfraTomlPhaseService.apply_phases(doc, self._phase())
 
-    def apply_payload(
-        self,
-        payload: t.MutableJsonMapping,
-    ) -> t.StrSequence:
+    def apply_payload(self, payload: t.MutableJsonMapping) -> t.StrSequence:
         """Apply canonical mypy settings directly to one normalized payload."""
         return FlextInfraTomlPhaseService.apply_payload_phases(payload, self._phase())
 

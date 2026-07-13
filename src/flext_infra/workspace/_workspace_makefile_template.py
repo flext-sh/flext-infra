@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
 from jinja2.environment import Environment
 from jinja2.exceptions import TemplateError
 from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
+from flext_core import r
 from flext_infra import c, p, t, u
 
 
@@ -32,23 +32,17 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         for line in lines:
             header_done = (
                 FlextInfraWorkspaceMakefileTemplateMixin._append_template_line(
-                    output,
-                    line,
-                    header_done=header_done,
+                    output, line, header_done=header_done
                 )
             )
         template_content = "".join(output)
         return FlextInfraWorkspaceMakefileTemplateMixin._ensure_custom_include(
-            template_content,
-            content,
+            template_content, content
         )
 
     @staticmethod
     def _append_template_line(
-        output: t.MutableSequenceOf[str],
-        line: str,
-        *,
-        header_done: bool,
+        output: t.MutableSequenceOf[str], line: str, *, header_done: bool
     ) -> bool:
         """Append one bootstrapped template line and return header state."""
         if not header_done and line.startswith("#"):
@@ -93,49 +87,36 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         )
 
     def _write_bootstrap_template(
-        self,
-        *,
-        makefile: Path,
-        pr_branch: str,
-        template_content: str,
+        self, *, makefile: Path, pr_branch: str, template_content: str
     ) -> p.Result[bool]:
         """Persist the generated template and rendered workspace Makefile."""
         _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
         template_write = u.Cli.atomic_write_text_file(
-            self.template_path,
-            template_content,
+            self.template_path, template_content
         )
         if template_write.failure:
             return template_write
         render_result = self._render_template(
-            pr_branch=pr_branch,
-            template_text=template_content,
+            pr_branch=pr_branch, template_text=template_content
         )
         if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         return u.Cli.atomic_write_text_file(makefile, render_result.value)
 
     def _render_template(
-        self,
-        *,
-        pr_branch: str,
-        template_text: str | None = None,
+        self, *, pr_branch: str, template_text: str | None = None
     ) -> p.Result[str]:
         """Render the workspace Makefile template with canonical make metadata."""
         try:
             rendered = self._render_template_unchecked(
-                pr_branch=pr_branch,
-                template_text=template_text,
+                pr_branch=pr_branch, template_text=template_text
             )
         except (OSError, TemplateError, TypeError, ValueError) as exc:
             return r[str].fail_op("template render", exc)
         return r[str].ok(rendered)
 
     def _render_template_unchecked(
-        self,
-        *,
-        pr_branch: str,
-        template_text: str | None,
+        self, *, pr_branch: str, template_text: str | None
     ) -> str:
         """Render the workspace Makefile template without exception wrapping."""
         environment = Environment(
@@ -155,15 +136,10 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
 
     @staticmethod
     def _render_template_content(
-        template: p.Infra.RenderableTemplate,
-        *,
-        pr_branch: str,
+        template: p.Infra.RenderableTemplate, *, pr_branch: str
     ) -> str:
         """Render a validated template object into the final Makefile text."""
-        rendered: str = template.render(
-            pr_branch=pr_branch,
-            make=c.Infra,
-        )
+        rendered: str = template.render(pr_branch=pr_branch, make=c.Infra)
         return rendered
 
 

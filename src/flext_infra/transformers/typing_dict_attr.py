@@ -21,8 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorTypingDictAttr(
-    FlextInfraEnsureCanonicalTImportMixin,
-    FlextInfraRopeTransformer,
+    FlextInfraEnsureCanonicalTImportMixin, FlextInfraRopeTransformer
 ):
     """Rewrite ``typing.Dict[K, V]`` to ``t.MappingKV[K, V]``.
 
@@ -34,15 +33,9 @@ class FlextInfraRefactorTypingDictAttr(
     _description = "rewrite typing.Dict to t.MappingKV"
 
     # Matches typing.Dict[...] usage.
-    _TYPING_DICT_ATTR_RE: re.Pattern[str] = re.compile(
-        r"\btyping\s*\.\s*Dict\s*\[",
-    )
+    _TYPING_DICT_ATTR_RE: re.Pattern[str] = re.compile(r"\btyping\s*\.\s*Dict\s*\[")
 
-    def __init__(
-        self,
-        *,
-        file_path: Path | None = None,
-    ) -> None:
+    def __init__(self, *, file_path: Path | None = None) -> None:
         """Initialize with optional file path for canonical t import resolution."""
         super().__init__()
         self._file_path = file_path
@@ -53,13 +46,12 @@ class FlextInfraRefactorTypingDictAttr(
         updated = self._rewrite_dict_annotations(source)
         if updated != source:
             added, did_add = self._ensure_t_import(
-                updated,
-                self._canonical_import_module(self._file_path),
+                updated, self._canonical_import_module(self._file_path)
             )
             if did_add:
                 self._record_change(
                     "Added canonical t import from "
-                    f"{self._canonical_import_module(self._file_path)}",
+                    f"{self._canonical_import_module(self._file_path)}"
                 )
             updated = added
         return updated, list(self.changes)
@@ -69,7 +61,7 @@ class FlextInfraRefactorTypingDictAttr(
 
         def replacer(_match: re.Match[str]) -> str:
             self._record_change(
-                "Rewrote typing.Dict[...] annotation to t.MappingKV[...]",
+                "Rewrote typing.Dict[...] annotation to t.MappingKV[...]"
             )
             return "t.MappingKV["
 

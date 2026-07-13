@@ -21,9 +21,7 @@ class FlextInfraUtilitiesIterationDirectory:
     """Static helpers for iterating Python files within a single directory tree."""
 
     @staticmethod
-    def iter_directory_python_files(
-        directory: Path,
-    ) -> t.SequenceOf[Path]:
+    def iter_directory_python_files(directory: Path) -> t.SequenceOf[Path]:
         """Iterate production Python files in one configured source tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
@@ -57,7 +55,7 @@ class FlextInfraUtilitiesIterationDirectory:
             if file_path.is_file()
             and file_path.suffixes == [c.Infra.EXT_PYTHON]
             and not config.Infra.source_scan.ignored_resources.intersection(
-                file_path.parts,
+                file_path.parts
             )
         ]
 

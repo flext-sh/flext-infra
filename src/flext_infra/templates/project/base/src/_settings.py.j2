@@ -1,4 +1,4 @@
-{# NOTE (multi-agent, mro-wkii.19.1): the private loader composes the pure model and exports only the direct singleton. #}
+{# NOTE (multi-agent, mro-wkii.19.1): the private loader composes the pure model and exports only the direct singleton. -#}
 """Direct {{ class_stem }} settings singleton export.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -12,19 +12,24 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_settings import SettingsConfigDict
 
-from flext_core import FlextSettings
 from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
+from flext_core import FlextSettings
 
 if TYPE_CHECKING:
-    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
+{% if 48 + (package_name | length) + (class_stem | length) <= tooling.tools.ruff.line_length %}    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
+{% else %}    from {{ package_name }}._protocols.settings import (
+        {{ class_stem }}ProtocolsSettings,
+    )
+{% endif %}
 
-
+{% if class_stem | length <= 16 -%}
+class _{{ class_stem }}Settings(FlextSettings, {{ class_stem }}SettingsModels.SettingsRoot):
+{% else -%}
 class _{{ class_stem }}Settings(
-    FlextSettings,
-    {{ class_stem }}SettingsModels.SettingsRoot,
+    FlextSettings, {{ class_stem }}SettingsModels.SettingsRoot
 ):
-    """Private environment loader composed with the validated settings root."""
+{% endif %}    """Private environment loader composed with the validated settings root."""
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_prefix={{ class_stem }}ConstantsSettings.ENV_PREFIX,

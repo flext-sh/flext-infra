@@ -45,18 +45,12 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         )
 
     def _fix_scope(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        apply: bool,
+        self, scope: m.Infra.DocScope, *, apply: bool
     ) -> m.Infra.DocsPhaseReport:
         """Run TOC, link and python-codeblock fixes on one scope."""
         collected: list[m.Infra.DocsPhaseItemModel] = []
         for md_file in u.Infra.iter_scope_markdown_files(scope):
-            item = u.Infra.docs_process_markdown_file(
-                md_file,
-                apply=apply,
-            )
+            item = u.Infra.docs_process_markdown_file(md_file, apply=apply)
             if item.links or item.toc:
                 collected.append(
                     m.Infra.DocsPhaseItemModel(
@@ -64,12 +58,9 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                         file=md_file.relative_to(scope.path).as_posix(),
                         links=item.links,
                         toc=item.toc,
-                    ),
+                    )
                 )
-        codeblock_changes = u.Infra.docs_fix_python_codeblocks(
-            scope,
-            apply=apply,
-        )
+        codeblock_changes = u.Infra.docs_fix_python_codeblocks(scope, apply=apply)
         collected.extend(
             m.Infra.DocsPhaseItemModel(
                 phase="fix",
@@ -79,11 +70,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             for generated in codeblock_changes
         )
         items = tuple(collected)
-        u.Infra.docs_write_fix_reports(
-            scope,
-            items=items,
-            apply=apply,
-        )
+        u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
         report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope=scope.name,

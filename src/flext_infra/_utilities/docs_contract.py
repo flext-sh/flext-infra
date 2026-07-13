@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t
@@ -18,15 +16,12 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def docs_workspace_contract(
-        workspace_root: Path,
-    ) -> t.Infra.ContainerDict:
+    def docs_workspace_contract(workspace_root: Path) -> t.Infra.ContainerDict:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            workspace_root,
-            "exclude_docs",
+            workspace_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
         project_meta: t.Infra.ContainerDict = (
@@ -49,23 +44,19 @@ class FlextInfraUtilitiesDocsContract:
             "site_url": str(
                 project_urls.get("Documentation")
                 or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL,
+                or c.Infra.GITHUB_REPO_URL
             ).strip(),
             "repo_url": str(
                 project_urls.get("Repository")
                 or project_urls.get("Homepage")
-                or c.Infra.GITHUB_REPO_URL,
+                or c.Infra.GITHUB_REPO_URL
             ).strip(),
             "exclude_docs": list(exclude_docs),
         })
 
     @staticmethod
     def docs_write_if_needed(
-        path: Path,
-        content: str,
-        *,
-        apply: bool,
-        overwrite: bool = True,
+        path: Path, content: str, *, apply: bool, overwrite: bool = True
     ) -> m.Infra.GeneratedFile:
         """Write generated content only when needed and allowed."""
         if path.exists() and not overwrite:

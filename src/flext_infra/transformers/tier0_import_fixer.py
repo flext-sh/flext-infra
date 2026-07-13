@@ -11,9 +11,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_infra import c, m, t, u
-from flext_infra.transformers._tier0_transformer import (
-    FlextInfraTier0TransformerMixin,
-)
+from flext_infra.transformers._tier0_transformer import FlextInfraTier0TransformerMixin
 
 
 class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
@@ -23,13 +21,11 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
         """Detection results for a single Python file's self-import patterns."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            arbitrary_types_allowed=True,
+            frozen=True, arbitrary_types_allowed=True
         )
 
         package_name: Annotated[
-            str,
-            m.Field(description="Resolved package name for the analyzed file"),
+            str, m.Field(description="Resolved package name for the analyzed file")
         ]
         file_path: Annotated[
             Path,
@@ -54,7 +50,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
         category_d: Annotated[
             frozenset[str],
             m.Field(
-                description="Runtime-used aliases requiring direct import handling",
+                description="Runtime-used aliases requiring direct import handling"
             ),
         ] = m.Field(default_factory=frozenset)
 
@@ -95,17 +91,14 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
             )
             if not pkg_name or project_root is None or not pkg_dir.is_dir():
                 return FlextInfraTransformerTier0ImportFixer.Analysis(
-                    package_name="",
-                    file_path=self._file_path,
+                    package_name="", file_path=self._file_path
                 )
             source = u.Cli.files_read_text(self._file_path).unwrap()
             self._scan_self_imports(source, pkg_name)
             self._scan_runtime_usage(source)
             alias_map: dict[str, str] = {
                 alias_name: alias_name
-                for alias_name in u.runtime_alias_names(
-                    c.Infra.PKG_INFRA_UNDERSCORE,
-                )
+                for alias_name in u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
             }
             if u.Infra.matches_module_toplevel(self._file_path):
                 return FlextInfraTransformerTier0ImportFixer.Analysis(

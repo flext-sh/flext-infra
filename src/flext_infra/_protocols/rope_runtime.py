@@ -40,8 +40,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope semantic object shape."""
 
         def get_attribute(
-            self,
-            name: str,
+            self, name: str
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def get_attributes(
@@ -114,8 +113,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         source_code: str
 
         def get_attribute(
-            self,
-            name: str,
+            self, name: str
         ) -> FlextInfraProtocolsRopeRuntime.RopePyName: ...
 
         def get_name(self) -> str: ...
@@ -143,8 +141,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource: ...
 
         def get_pymodule(
-            self,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
         ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         def find_module(
@@ -162,8 +159,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         def do(self, changes: FlextInfraProtocolsRopeRuntime.RopeChangeSet) -> None: ...
 
         def validate(
-            self,
-            root: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
+            self, root: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None
         ) -> None: ...
 
         def close(self) -> None: ...
@@ -223,8 +219,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope import organizer shape."""
 
         def organize_imports(
-            self,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            self, resource: FlextInfraProtocolsRopeRuntime.RopeResource
         ) -> FlextInfraProtocolsRopeRuntime.RopeChangeSet | None: ...
 
     @runtime_checkable
@@ -248,9 +243,7 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope occurrence finder shape."""
 
         def find_occurrences(
-            self,
-            *,
-            resource: FlextInfraProtocolsRopeRuntime.RopeResource,
+            self, *, resource: FlextInfraProtocolsRopeRuntime.RopeResource
         ) -> t.SequenceOf[FlextInfraProtocolsRopeRuntime.RopeOccurrence]: ...
 
 

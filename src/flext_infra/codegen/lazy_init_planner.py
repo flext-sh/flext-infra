@@ -37,29 +37,28 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
     lazy_init: m.Infra.LazyInitConfig = m.Field(
-        description="Validated lazy-init policy document",
+        description="Validated lazy-init policy document"
     )
 
     _module_exports_cache: dict[
-        tuple[str, bool, bool, bool, bool, bool],
-        t.LazyAliasMap,
+        tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
     ] = u.PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _source_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _source_plan_cache: dict[str, m.Infra.LazyInitPlan] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _source_exports_visiting: set[str] = u.PrivateAttr(default_factory=set)
     _parent_package_cache: dict[str, t.StrSequence] = u.PrivateAttr(
-        default_factory=dict,
+        default_factory=dict
     )
     _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
     _version_module_name: str = u.PrivateAttr(
-        default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py",
+        default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
     _collision_count: int = u.PrivateAttr(default_factory=int)
 
@@ -83,10 +82,7 @@ class FlextInfraCodegenLazyInitPlanner(
 
     @override
     def build_plan(
-        self,
-        pkg_dir: Path,
-        *,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+        self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
@@ -101,9 +97,7 @@ class FlextInfraCodegenLazyInitPlanner(
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions(
-                include_dunder=True,
-            ),
+            export_options=m.Infra.ExportOptions(include_dunder=True),
         )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
         # Version-submodule dunders are emitted as eager imports rather than

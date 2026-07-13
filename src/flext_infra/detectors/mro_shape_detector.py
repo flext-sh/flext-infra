@@ -10,7 +10,6 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import u as core_u
-
 from flext_infra import m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 
@@ -41,9 +40,7 @@ class FlextInfraMROShapeDetector:
         file_path = ctx.file_path
         rope_project = ctx.rope_project
         res = u.Infra.fetch_python_resource(
-            rope_project,
-            file_path,
-            skip_protected=True,
+            rope_project, file_path, skip_protected=True
         )
         if res is None:
             FlextInfraMROShapeDetector._record_parse_failure(
@@ -62,9 +59,7 @@ class FlextInfraMROShapeDetector:
             ValueError,
         ) as exc:
             FlextInfraMROShapeDetector._record_parse_failure(
-                ctx,
-                error_type=type(exc).__name__,
-                detail=str(exc),
+                ctx, error_type=type(exc).__name__, detail=str(exc)
             )
             return ()
         tree = pymodule.get_ast()
@@ -118,10 +113,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _record_parse_failure(
-        ctx: m.Infra.DetectorContext,
-        *,
-        error_type: str,
-        detail: str,
+        ctx: m.Infra.DetectorContext, *, error_type: str, detail: str
     ) -> None:
         """Record MRO-shape parse failures, or fail loud without a collector."""
         if ctx.parse_failures is None:
@@ -133,7 +125,7 @@ class FlextInfraMROShapeDetector:
                 stage="mro_shape",
                 error_type=error_type,
                 detail=detail,
-            ),
+            )
         )
 
     @staticmethod
@@ -166,20 +158,17 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _is_alias_or_service_base(
-        base_name: str,
-        valid_suffixes: tuple[str, ...],
+        base_name: str, valid_suffixes: tuple[str, ...]
     ) -> bool:
         """Return True when ``base_name`` is an alias, alias-base, or service root."""
         unparametrized = base_name.split("[", 1)[0]
         return unparametrized == "FlextService" or unparametrized.endswith(
-            valid_suffixes,
+            valid_suffixes
         )
 
     @staticmethod
     def _is_service_alias_base(
-        first_base: str,
-        project_prefix: str,
-        pymodule: t.Infra.RopePyModule,
+        first_base: str, project_prefix: str, pymodule: t.Infra.RopePyModule
     ) -> bool:
         """Return True when the first base is a project service alias base."""
         unparametrized = first_base.split("[", 1)[0]
@@ -202,9 +191,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _alias_base_set(
-        base_name: str,
-        valid_suffixes: tuple[str, ...],
-        pymodule: t.Infra.RopePyModule,
+        base_name: str, valid_suffixes: tuple[str, ...], pymodule: t.Infra.RopePyModule
     ) -> set[str]:
         """Return alias-base names reachable from one base class via rope."""
         attributes = pymodule.get_attributes()
@@ -241,10 +228,8 @@ class FlextInfraMROShapeDetector:
             return False
         return bool(
             FlextInfraMROShapeDetector._alias_base_set(
-                unparametrized,
-                valid_suffixes,
-                pymodule,
-            ),
+                unparametrized, valid_suffixes, pymodule
+            )
         )
 
     @staticmethod
@@ -269,9 +254,7 @@ class FlextInfraMROShapeDetector:
             return False
         alias_base_sets = [
             FlextInfraMROShapeDetector._alias_base_set(
-                base.split("[", 1)[0],
-                valid_suffixes,
-                pymodule,
+                base.split("[", 1)[0], valid_suffixes, pymodule
             )
             for base in bases
         ]
@@ -282,8 +265,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _all_superclasses(
-        pyclass: object,
-        visited: frozenset[int] | None = None,
+        pyclass: object, visited: frozenset[int] | None = None
     ) -> t.SequenceOf[object]:
         """Return every superclass reachable from ``pyclass`` via rope."""
         visited_ids = visited or frozenset()
@@ -307,9 +289,8 @@ class FlextInfraMROShapeDetector:
         for superclass in direct:
             result.extend(
                 FlextInfraMROShapeDetector._all_superclasses(
-                    superclass,
-                    visited=next_visited,
-                ),
+                    superclass, visited=next_visited
+                )
             )
         return tuple(result)
 
@@ -330,19 +311,15 @@ class FlextInfraMROShapeDetector:
             return None
         unparametrized = first_base.split("[", 1)[0]
         if FlextInfraMROShapeDetector._is_utilities_self_root(
-            file_path,
-            unparametrized,
+            file_path, unparametrized
         ):
             return None
         if FlextInfraMROShapeDetector._is_alias_or_service_base(
-            unparametrized,
-            valid_suffixes,
+            unparametrized, valid_suffixes
         ):
             return None
         if FlextInfraMROShapeDetector._is_service_alias_base(
-            first_base,
-            project_prefix,
-            pymodule,
+            first_base, project_prefix, pymodule
         ):
             return None
         if len(bases) == 1 and FlextInfraMROShapeDetector._single_peer_base_allowed(
@@ -382,11 +359,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _check_enforce_046(
-        *,
-        node: object,
-        qualname: str,
-        first_base: str,
-        file_path: Path,
+        *, node: object, qualname: str, first_base: str, file_path: Path
     ) -> m.Infra.MROShapeViolation | None:
         """Return ENFORCE-046 violation for redundant nested namespace class."""
         outer_name, _, _ = qualname.partition(".")
@@ -423,8 +396,7 @@ class FlextInfraMROShapeDetector:
         if len(bases) < FlextInfraMROShapeDetector._BINARY_ARITY:
             return None
         if not FlextInfraMROShapeDetector._is_utilities_self_root(
-            file_path,
-            first_base,
+            file_path, first_base
         ):
             return None
         if not FlextInfraMROShapeDetector._class_body_uses_name(node, "u"):
@@ -482,8 +454,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _collect_class_nodes(
-        tree: object,
-        parent_map: dict[int, object],
+        tree: object, parent_map: dict[int, object]
     ) -> t.SequenceOf[tuple[object, str]]:
         """Return every ClassDef node with its dotted qualname."""
         result: list[tuple[object, str]] = []
@@ -535,10 +506,7 @@ class FlextInfraMROShapeDetector:
         if not isinstance(body, (list, tuple)):
             return False
         for statement in body:
-            if u.Infra.node_kind(statement) not in {
-                "FunctionDef",
-                "AsyncFunctionDef",
-            }:
+            if u.Infra.node_kind(statement) not in {"FunctionDef", "AsyncFunctionDef"}:
                 continue
             for child in u.Infra.walk_ast_nodes(statement):
                 if (
@@ -547,9 +515,7 @@ class FlextInfraMROShapeDetector:
                 ):
                     return True
                 if u.Infra.node_kind(child) == "Attribute" and getattr(
-                    child,
-                    "attr",
-                    "",
+                    child, "attr", ""
                 ):
                     value = getattr(child, "value", None)
                     if (

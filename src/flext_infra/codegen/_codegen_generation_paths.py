@@ -31,8 +31,7 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _should_publish_root_export(
-        export_name: str,
-        lazy_filtered: t.LazyAliasMap,
+        export_name: str, lazy_filtered: t.LazyAliasMap
     ) -> bool:
         """Return whether a root export belongs in the frozen ``__all__`` ABI."""
         if export_name in c.Infra.INFRA_ONLY_EXPORTS | c.Infra.PUBLISHED_ALL_EXCLUDE:
@@ -42,11 +41,11 @@ class FlextInfraCodegenGenerationPathsMixin:
             return True
         module_path, attr_name = target
         if FlextInfraCodegenGenerationPathsMixin._is_module_or_package_export(
-            attr_name,
+            attr_name
         ):
             return export_name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         if not FlextInfraCodegenGenerationPathsMixin._is_private_subpackage_source(
-            module_path,
+            module_path
         ):
             return True
         return (
@@ -65,7 +64,7 @@ class FlextInfraCodegenGenerationPathsMixin:
         """Return whether ``current_pkg`` is a generated public package ABI root."""
         return (
             FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
-                current_pkg,
+                current_pkg
             )
             and current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
         )
@@ -108,8 +107,7 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _normalize_type_checking_module_path(
-        mod: str,
-        local_package_root: str | None,
+        mod: str, local_package_root: str | None
     ) -> str:
         """Normalize a TYPE_CHECKING module path to its canonical absolute form."""
         if not local_package_root:
@@ -133,9 +131,7 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _reject_non_absolute_import(
-        mod: str,
-        local_package_root: str | None,
-        items: t.StrPairSequence,
+        mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
         """Reject generated TYPE_CHECKING imports that are not absolute."""
         if mod.startswith("."):

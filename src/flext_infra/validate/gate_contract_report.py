@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
 
@@ -28,8 +27,7 @@ class FlextInfraGateContractReportMixin:
 
     @staticmethod
     def _severity_count(
-        script: FlextInfraGateContractModels.ScriptInfo,
-        severity: str,
+        script: FlextInfraGateContractModels.ScriptInfo, severity: str
     ) -> int:
         return sum(
             1 for violation in script.violations if violation.severity == severity
@@ -71,8 +69,7 @@ class FlextInfraGateContractReportMixin:
         return ", ".join(details) if details else "contract compliant"
 
     def _print_script_result(
-        self,
-        script: FlextInfraGateContractModels.ScriptInfo,
+        self, script: FlextInfraGateContractModels.ScriptInfo
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
         errors = self._severity_count(script, c.Infra.GateSeverity.ERROR.value)
@@ -80,7 +77,7 @@ class FlextInfraGateContractReportMixin:
         self._eprint(
             f"{script.path:<60} {script.role:<10} "
             f"{self._status_for(errors, warnings):<22} "
-            f"{self._detail_for(errors, warnings)}",
+            f"{self._detail_for(errors, warnings)}"
         )
         for violation in script.violations:
             color = (
@@ -89,17 +86,16 @@ class FlextInfraGateContractReportMixin:
                 else ansi.YELLOW
             )
             self._eprint(
-                f"  {color}[{violation.check}]{ansi.RESET} {violation.message}",
+                f"  {color}[{violation.check}]{ansi.RESET} {violation.message}"
             )
 
     def _print_results(
-        self,
-        scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo],
+        self, scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo]
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
         self._eprint(f"{ansi.CYAN}Gate Contract Validation{ansi.RESET}")
         self._eprint(
-            f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}",
+            f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}"
         )
         for script in self._visible_scripts(scripts):
             self._print_script_result(script)
@@ -117,12 +113,11 @@ class FlextInfraGateContractReportMixin:
             sorted(
                 rows,
                 key=lambda row: (str(row.get("script", "")), str(row.get("check", ""))),
-            ),
+            )
         )
 
     def _summary_for(
-        self,
-        scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo],
+        self, scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo]
     ) -> FlextInfraGateContractModels.Summary:
         gate_scripts = self._gate_scripts(scripts)
         errors = sum(
@@ -139,10 +134,7 @@ class FlextInfraGateContractReportMixin:
             if self._severity_count(script, c.Infra.GateSeverity.ERROR.value) == 0
         )
         return FlextInfraGateContractModels.Summary(
-            errors=errors,
-            gate_scripts=len(gate_scripts),
-            ok=ok,
-            warnings=warnings,
+            errors=errors, gate_scripts=len(gate_scripts), ok=ok, warnings=warnings
         )
 
     def _write_report(
@@ -155,7 +147,7 @@ class FlextInfraGateContractReportMixin:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         summary = self._summary_for(scripts)
         violations: t.JsonValue = t.json_value_adapter().validate_python(
-            list(self._violation_rows(scripts)),
+            list(self._violation_rows(scripts))
         )
         payload: t.JsonMapping = {
             "checked": len(self._visible_scripts(scripts)),
@@ -174,9 +166,7 @@ class FlextInfraGateContractReportMixin:
         return r[Path].ok(report_path)
 
     def _print_summary(
-        self,
-        summary: FlextInfraGateContractModels.Summary,
-        report_path: Path,
+        self, summary: FlextInfraGateContractModels.Summary, report_path: Path
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
         self._eprint(
@@ -184,7 +174,7 @@ class FlextInfraGateContractReportMixin:
             f"gate_scripts={summary.gate_scripts} "
             f"{ansi.GREEN}ok={summary.ok}{ansi.RESET} "
             f"{ansi.RED}errors={summary.errors}{ansi.RESET} "
-            f"{ansi.YELLOW}warnings={summary.warnings}{ansi.RESET}",
+            f"{ansi.YELLOW}warnings={summary.warnings}{ansi.RESET}"
         )
         self._eprint(f"Report: {report_path}")
 

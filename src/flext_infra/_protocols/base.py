@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_core import p
-
     from flext_infra import m, t
 
 
@@ -106,9 +105,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def members(
-            self,
-        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def members(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Attached workspace member repositories."""
             ...
 
@@ -140,9 +137,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project and workspace quality checking services."""
 
         def run(
-            self,
-            project: str,
-            gates: t.StrSequence,
+            self, project: str, gates: t.StrSequence
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
@@ -168,8 +163,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for artifact and documentation generation services."""
 
         def generate(
-            self,
-            request: m.Infra.DocsGenerateRequest,
+            self, request: m.Infra.DocsGenerateRequest
         ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
@@ -179,8 +173,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self,
-            workspace_root: Path,
+            self, workspace_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
@@ -239,9 +232,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for JSON serialization and persistence."""
 
         def write_json(
-            self,
-            path: Path,
-            payload: t.MappingKV[str, t.Infra.InfraValue],
+            self, path: Path, payload: t.MappingKV[str, t.Infra.InfraValue]
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
@@ -259,26 +250,19 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self,
-            workspace_root: Path,
-            *,
-            projects_filter: t.StrSequence | None = None,
+            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
 
         def run_deptry(
-            self,
-            project_path: Path,
-            venv_bin: Path,
+            self, project_path: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
-            self,
-            project_name: str,
-            deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
+            self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
@@ -288,8 +272,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for typing-related dependency detection."""
 
         def load_dependency_limits(
-            self,
-            limits_path: Path | None = None,
+            self, limits_path: Path | None = None
         ) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Load dependency limits from TOML file."""
             ...
@@ -309,9 +292,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self,
-            workspace_root: Path,
-            venv_bin: Path,
+            self, workspace_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -345,8 +326,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for template renderers."""
 
         def render_all(
-            self,
-            settings: m.Infra.BaseMkConfig | None = None,
+            self, settings: m.Infra.BaseMkConfig | None = None
         ) -> p.Result[str]:
             """Render all templates with given configuration."""
             ...
@@ -441,9 +421,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for post-transform quality gate validators."""
 
         def validate(
-            self,
-            files: t.SequenceOf[Path],
-            project_dir: Path,
+            self, files: t.SequenceOf[Path], project_dir: Path
         ) -> p.Result[m.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""
             ...
@@ -460,8 +438,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         def iter(
-            self,
-            tag: str | None = None,
+            self, tag: str | None = None
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
             ...
@@ -490,29 +467,25 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for GitHub CLI handler mixins."""
 
         def sync_github_workflows(
-            self,
-            params: m.Infra.GithubWorkflowSyncRequest,
+            self, params: m.Infra.GithubWorkflowSyncRequest
         ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
             """Sync GitHub workflow files."""
             ...
 
         def lint_github_workflows(
-            self,
-            params: m.Infra.GithubWorkflowLintRequest,
+            self, params: m.Infra.GithubWorkflowLintRequest
         ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
             """Lint GitHub workflow files."""
             ...
 
         def run_github_pull_request(
-            self,
-            params: m.Infra.GithubPullRequestRequest,
+            self, params: m.Infra.GithubPullRequestRequest
         ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
             """Manage pull request for a single project."""
             ...
 
         def run_github_workspace_pull_requests(
-            self,
-            params: m.Infra.GithubPullRequestWorkspaceRequest,
+            self, params: m.Infra.GithubPullRequestWorkspaceRequest
         ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...

@@ -45,19 +45,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         return m.Infra.PyrightConfig.ExecutionEnvironment(
             root=root,
             report_private_usage=self._report_private_usage_for_env(
-                env_dir,
-                rules=rules,
+                env_dir, rules=rules
             ),
             extra_paths=[*extra_paths],
         )
 
     def _extra_paths_for_env(
-        self,
-        *,
-        env_dir: str,
-        source_path: str,
-        project_root: str,
-        source_dir: str,
+        self, *, env_dir: str, source_path: str, project_root: str, source_dir: str
     ) -> t.StrSequence:
         """``src/`` owns only its own path; every other discovered dir also imports from src + root."""
         if env_dir == source_dir:
@@ -90,34 +84,22 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in env_dirs
         ]
 
-    def _project_source_path(
-        self,
-        project_dir: Path,
-        *,
-        prefix: str = "",
-    ) -> str:
+    def _project_source_path(self, *, prefix: str = "") -> str:
         """Project source path."""
         rules = self._tool_config.tools.pyright.path_rules
-        src_dir = project_dir / rules.source_dir
-        if src_dir.is_dir():
-            return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
-        return prefix or rules.project_root
+        return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
     def _expected_envs(
-        self,
-        *,
-        is_root: bool,
-        workspace_root: Path | None,
-        project_dir: Path | None = None,
+        self, *, is_root: bool, workspace_root: Path | None
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
-            return self._expected_envs_for_project(project_dir)
+            return self._expected_envs_for_project()
         rules = self._tool_config.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
-        root_source_path = self._project_source_path(workspace_root)
+        root_source_path = self._project_source_path()
         for env_dir in u.Infra.discover_python_dirs(workspace_root):
             if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
@@ -132,7 +114,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                         source_dir=rules.source_dir,
                     ),
                     rules=rules,
-                ),
+                )
             )
         discovered = u.Infra.discover_projects(workspace_root)
         child_projects = (
@@ -153,10 +135,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         for child_project in child_projects:
             relative_root = child_project.relative_to(workspace_root)
             relative_project_root = relative_root.as_posix()
-            child_source_path = self._project_source_path(
-                child_project,
-                prefix=relative_project_root,
-            )
+            child_source_path = self._project_source_path(prefix=relative_project_root)
             for env_dir in u.Infra.discover_python_dirs(child_project):
                 expected_envs.append(
                     self._env_entry(
@@ -169,57 +148,57 @@ class FlextInfraEnsurePyrightConfigPhase:
                             source_dir=rules.source_dir,
                         ),
                         rules=rules,
-                    ),
+                    )
                 )
         return expected_envs
 
     def _expected_envs_for_project(
         self,
-        project_dir: Path | None,
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build executionEnvironments from auto-discovered top-level Python dirs."""
         rules = self._tool_config.tools.pyright.path_rules
-        env_dirs = (
-            list(u.Infra.discover_python_dirs(project_dir))
-            if project_dir is not None
-            else list(rules.env_dirs)
-        )
+        env_dirs = rules.env_dirs
         return self._envs_for_dirs(
             env_dirs=env_dirs,
-            source_path=(
-                self._project_source_path(project_dir)
-                if project_dir is not None
-                else rules.source_dir
-            ),
+            source_path=self._project_source_path(),
             project_root=rules.project_root,
             rules=rules,
         )
 
+    def environment_payloads_for_dirs(
+        self, env_dirs: t.StrSequence
+    ) -> t.SequenceOf[t.JsonDict]:
+        """Render configured environments for Python roots declared before writes."""
+        rules = self._tool_config.tools.pyright.path_rules
+        environments = self._envs_for_dirs(
+            env_dirs=env_dirs,
+            source_path=self._project_source_path(),
+            project_root=rules.project_root,
+            rules=rules,
+        )
+        return tuple(self._environment_payload(item) for item in environments)
+
     def _environment_payload(
-        self,
-        environment: m.Infra.PyrightConfig.ExecutionEnvironment,
+        self, environment: m.Infra.PyrightConfig.ExecutionEnvironment
     ) -> t.JsonDict:
         """Render one environment with its closed, scope-specific diagnostics."""
         rules = self._tool_config.tools.pyright.path_rules
         env_dir = Path(environment.root).name
         diagnostics: t.MutableStrMapping = {
-            **self._tool_config.tools.pyright.lazy_import_suppressions,
+            **self._tool_config.tools.pyright.lazy_import_suppressions
         }
         if env_dir == rules.source_dir:
-            diagnostics.update(
-                self._tool_config.tools.pyright.source_env_suppressions,
-            )
+            diagnostics.update(self._tool_config.tools.pyright.source_env_suppressions)
         elif env_dir in rules.test_like_dirs:
             diagnostics.update(
-                self._tool_config.tools.pyright.test_like_env_suppressions,
+                self._tool_config.tools.pyright.test_like_env_suppressions
             )
         payload: t.JsonDict = environment.model_dump(mode="json", by_alias=True)
         payload.update(diagnostics)
         return payload
 
     def _override_for_kind(
-        self,
-        project_kind: str,
+        self, project_kind: str
     ) -> m.Infra.ProjectTypeOverrideConfig | None:
         """Return the project-type override settings for the given kind."""
         overrides = self._tool_config.project_type_overrides
@@ -232,40 +211,23 @@ class FlextInfraEnsurePyrightConfigPhase:
         }
         return kind_map.get(project_kind)
 
-    def _venv_settings(
-        self,
-        *,
-        is_root: bool,
-    ) -> t.StrMapping:
+    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
         """Venv settings."""
         rules = self._tool_config.tools.pyright.path_rules
         venv_path = rules.root_venv_path if is_root else rules.project_venv_path
-        return {
-            c.Infra.VENV_PATH: venv_path,
-            "venv": rules.venv_name,
-        }
+        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
-    def _expected_excludes(self, project_root: Path | None) -> t.StrSequence:
+    def _expected_excludes(self) -> t.StrSequence:
         """Build pyright exclude list from discovered workspace/project dirs."""
         rules = self._tool_config.tools.pyright.path_rules
-        default_excludes = set(rules.default_excludes)
-        if project_root is None or not project_root.is_dir():
-            return sorted(default_excludes)
-        dynamic_excludes = {
-            directory
-            for directory in sorted(rules.dynamic_exclude_dirs)
-            if (project_root / directory).is_dir()
-        }
-        return sorted(default_excludes | dynamic_excludes)
+        return sorted({*rules.default_excludes, *rules.dynamic_exclude_dirs})
 
     def _existing_paths(
-        self,
-        base_dir: Path | None,
-        configured_paths: t.StrSequence,
+        self, base_dir: Path | None, configured_paths: t.StrSequence
     ) -> t.StrSequence:
         """Existing paths."""
         if base_dir is None:
-            return []
+            return ()
         existing: t.StrSequence = [
             relative_path
             for relative_path in configured_paths
@@ -274,11 +236,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         return existing
 
     def _expected_ignores(
-        self,
-        *,
-        is_root: bool,
-        workspace_root: Path | None,
-        project_dir: Path | None,
+        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
     ) -> t.StrSequence:
         """Ignore typings and stub diagnostics."""
         rules = self._tool_config.tools.pyright.path_rules
@@ -288,7 +246,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             ignores.extend(self._existing_paths(root_dir, rules.root_typings_paths))
         else:
             ignores.extend(
-                self._existing_paths(project_dir, rules.project_typings_paths),
+                self._existing_paths(project_dir, rules.project_typings_paths)
             )
         for pattern in rules.ignored_diagnostic_globs:
             if pattern not in ignores:
@@ -296,25 +254,15 @@ class FlextInfraEnsurePyrightConfigPhase:
         return list(ignores)
 
     def _expected_includes(
-        self,
-        *,
-        is_root: bool,
-        workspace_root: Path | None,
-        project_dir: Path | None,
+        self, *, is_root: bool, workspace_root: Path | None
     ) -> t.StrSequence:
         """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
         if not is_root:
-            if project_dir is None:
-                return list(rules.env_dirs)
-            return list(u.Infra.discover_python_dirs(project_dir))
+            return list(rules.env_dirs)
         if workspace_root is None:
             return list(rules.env_dirs)
-        includes: t.MutableSequenceOf[str] = [
-            env_dir
-            for env_dir in u.Infra.discover_python_dirs(workspace_root)
-            if not (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file()
-        ]
+        includes: t.MutableSequenceOf[str] = list(rules.env_dirs)
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
             return includes
@@ -346,16 +294,12 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
-        expected_excludes = self._expected_excludes(project_root)
+        expected_excludes = self._expected_excludes()
         expected_ignores = self._expected_ignores(
-            is_root=is_root,
-            workspace_root=workspace_root,
-            project_dir=project_dir,
+            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         expected_includes = self._expected_includes(
-            is_root=is_root,
-            workspace_root=workspace_root,
-            project_dir=project_dir,
+            is_root=is_root, workspace_root=workspace_root
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -368,12 +312,10 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         )
         expected_envs = self._expected_envs(
-            is_root=is_root,
-            workspace_root=workspace_root,
-            project_dir=project_dir,
+            is_root=is_root, workspace_root=workspace_root
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
-            c.Infra.PYRIGHT,
+            c.Infra.PYRIGHT
         )
         if expected_excludes:
             phase_builder = phase_builder.list(c.Infra.EXCLUDE, expected_excludes)
@@ -391,8 +333,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             phase_builder = phase_builder.list(
                 "extraPaths",
                 paths_manager.pyright_extra_paths(
-                    project_dir=project_root,
-                    is_root=is_root,
+                    project_dir=project_root, is_root=is_root
                 ),
             )
         if expected_stub_path is not None:
@@ -421,7 +362,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         for key, value in self._tool_config.tools.pyright.strict_settings.items():
             phase_builder = phase_builder.value(key, value)
         merged_settings: t.MutableStrMapping = {
-            **self._tool_config.tools.pyright.extended_settings,
+            **self._tool_config.tools.pyright.extended_settings
         }
         override = self._override_for_kind(project_kind)
         if override is not None:

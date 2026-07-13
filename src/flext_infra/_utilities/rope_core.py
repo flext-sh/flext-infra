@@ -15,27 +15,22 @@ from flext_infra._utilities._rope_core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
 )
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.rope_pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
+from flext_infra._utilities.rope_pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
+    FlextInfraUtilitiesRopeCoreResourcesMixin, FlextInfraUtilitiesRopeCorePyModuleMixin
 ):
     """Core Rope lifecycle helpers."""
 
     @staticmethod
-    def init_rope_project(
-        workspace_root: Path,
-    ) -> t.Infra.RopeProject:
+    def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts."""
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
         discovered_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            resolved_root,
+            resolved_root
         )
         project_roots = tuple(
             project_root
@@ -64,17 +59,13 @@ class FlextInfraUtilitiesRopeCore(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
-                ignored_resources=sorted(
-                    config.Infra.source_scan.ignored_resources,
-                ),
+                ignored_resources=sorted(config.Infra.source_scan.ignored_resources),
                 source_folders=source_folders,
             )
 
     @staticmethod
     @contextmanager
-    def open_project(
-        workspace_root: Path,
-    ) -> Generator[t.Infra.RopeProject]:
+    def open_project(workspace_root: Path) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary."""
         rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
         try:

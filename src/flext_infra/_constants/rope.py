@@ -111,16 +111,14 @@ class FlextInfraConstantsRope:
 
     ASSIGNED_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
         FlextInfraUtilitiesRopeRuntime.runtime_type(
-            "rope.base.pynamesdef",
-            "AssignedName",
+            "rope.base.pynamesdef", "AssignedName"
         ),
     )
     "Rope pyname classes treated as assigned-name shapes."
 
     PARAMETER_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
         FlextInfraUtilitiesRopeRuntime.runtime_type(
-            "rope.base.pynamesdef",
-            "ParameterName",
+            "rope.base.pynamesdef", "ParameterName"
         ),
     )
     "Rope pyname classes treated as parameter-name shapes."

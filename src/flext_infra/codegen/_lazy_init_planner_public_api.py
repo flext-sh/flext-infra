@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitPlannerPublicApiMixin(
-    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin
 ):
     """Root public contract helpers for the lazy-init planner."""
 

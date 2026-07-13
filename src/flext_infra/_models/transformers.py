@@ -31,24 +31,19 @@ class FlextInfraModelsTransformers:
         """
 
         shebang_end: Annotated[
-            int,
-            m.Field(description="Byte offset just after the shebang line"),
+            int, m.Field(description="Byte offset just after the shebang line")
         ] = 0
         encoding_end: Annotated[
-            int,
-            m.Field(description="Byte offset just after the encoding cookie"),
+            int, m.Field(description="Byte offset just after the encoding cookie")
         ] = 0
         comments_end: Annotated[
-            int,
-            m.Field(description="Byte offset after the leading comment block"),
+            int, m.Field(description="Byte offset after the leading comment block")
         ] = 0
         docstring_end: Annotated[
-            int,
-            m.Field(description="Byte offset after the module docstring"),
+            int, m.Field(description="Byte offset after the module docstring")
         ] = 0
         last_import_end: Annotated[
-            int,
-            m.Field(description="Byte offset after the last import statement"),
+            int, m.Field(description="Byte offset after the last import statement")
         ] = 0
 
     class HeaderInfo(m.ArbitraryTypesModel):
@@ -57,8 +52,7 @@ class FlextInfraModelsTransformers:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         has_future_annotations: Annotated[
-            bool,
-            m.Field(description="Whether the module already imports annotations"),
+            bool, m.Field(description="Whether the module already imports annotations")
         ]
         aliases: Annotated[
             frozenset[str],

@@ -34,15 +34,13 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Check."""
         _ = ctx
         started = time.monotonic()
         files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
+            m.Infra.SourceScanRequest(project_roots=(project_dir,))
         )
         if files_result.failure:
             issue = m.Infra.Issue(
@@ -74,7 +72,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
                         file_path=file_path,
                         project_root=project_dir,
                         rope_project=rope_project,
-                    ),
+                    )
                 )
             ]
         finally:
@@ -94,10 +92,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx, check_dirs
@@ -105,10 +100,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = result, project_dir, ctx

@@ -28,10 +28,10 @@ class _WrapperRewriteAccumulator:
     total_core_replacements: int = 0
     import_rewrite_candidates: int = 0
     per_project_changes: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int),
+        default_factory=lambda: defaultdict(int)
     )
     per_project_replacements: defaultdict[str, int] = field(
-        default_factory=lambda: defaultdict(int),
+        default_factory=lambda: defaultdict(int)
     )
 
 
@@ -69,8 +69,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             rel = file_path
         project_name = rel.parts[0] if rel.parts else "."
         runtime_aliases = project_runtime_aliases.get(
-            project_name,
-            metadata_runtime_aliases,
+            project_name, metadata_runtime_aliases
         )
         if not any(
             part in c.Infra.ROOT_WRAPPER_SEGMENTS and part != c.Infra.DEFAULT_SRC_DIR
@@ -86,9 +85,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         module_ast = pymodule.get_ast()
         line_offsets = self._build_line_offsets(source)
         core_rewrites = self._collect_core_test_rewrites(
-            module_ast,
-            line_offsets=line_offsets,
-            runtime_aliases=runtime_aliases,
+            module_ast, line_offsets=line_offsets, runtime_aliases=runtime_aliases
         )
         has_import_candidate = self._has_wrapper_import_candidate(
             module_ast,
@@ -186,15 +183,12 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
 
     @staticmethod
     def _apply_byte_rewrites(
-        source: str,
-        rewrites: t.SequenceOf[tuple[int, int, str]],
+        source: str, rewrites: t.SequenceOf[tuple[int, int, str]]
     ) -> str:
         """Apply ``(start, end, replacement)`` triples to ``source`` (right-to-left)."""
         updated = source
         for start, end, replacement in sorted(
-            rewrites,
-            key=itemgetter(0),
-            reverse=True,
+            rewrites, key=itemgetter(0), reverse=True
         ):
             updated = updated[:start] + replacement + updated[end:]
         return updated

@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -37,16 +36,10 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         m.Field(description="Project kind: internal (monorepo member) or external."),
     ]
     output_root: Annotated[
-        Path,
-        m.Field(
-            description="Directory that becomes the generated project root.",
-        ),
+        Path, m.Field(description="Directory that becomes the generated project root.")
     ]
     package_name: Annotated[
-        str,
-        m.Field(
-            description="Python package name (default: name with '-'→'_').",
-        ),
+        str, m.Field(description="Python package name (default: name with '-'→'_').")
     ] = ""
     # NOTE (multi-agent, mro-wkii.14 / agent: codegen): field renamed
     # ``namespace``→``project_namespace`` to avoid colliding with the inherited
@@ -59,41 +52,28 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         ),
     ] = ""
     description: Annotated[
-        str,
-        m.Field(default="", description="Project description (default: derived)."),
+        str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
     # NOTE (multi-agent, mro-wkii.4.15 / agent: codex): project config owns the
     # already-validated version value consumed directly by project generation.
     version: Annotated[
         str,
-        m.Field(
-            description="Initial project version (default: config.Infra.version).",
-        ),
+        m.Field(description="Initial project version (default: config.Infra.version)."),
     ] = config.Infra.version
     provider: Annotated[
-        str,
-        m.Field(min_length=1, description="Configured Git provider key."),
+        str, m.Field(min_length=1, description="Configured Git provider key.")
     ]
     license: Annotated[
-        str,
-        m.Field(min_length=1, description="SPDX project license identifier."),
+        str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
     author_name: Annotated[
-        str,
-        m.Field(min_length=1, description="Author/maintainer display name."),
+        str, m.Field(min_length=1, description="Author/maintainer display name.")
     ]
     author_email: Annotated[
-        str,
-        m.Field(min_length=3, description="Author/maintainer email."),
+        str, m.Field(min_length=3, description="Author/maintainer email.")
     ]
-    upstream: Annotated[
-        str,
-        m.Field(description="Upstream facade module (flext_core / flext_cli)."),
-    ]
-    year: Annotated[
-        int,
-        m.Field(ge=2025, description="Deterministic copyright year."),
-    ]
+    upstream: Annotated[str, m.Field(description="Upstream facade module (flext_cli).")]
+    year: Annotated[int, m.Field(ge=2025, description="Deterministic copyright year.")]
 
     @override
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
@@ -121,7 +101,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         )
         if provider is None:
             return r[m.Infra.CodegenResult].fail(
-                f"unknown codegen repository provider: {self.provider}",
+                f"unknown codegen repository provider: {self.provider}"
             )
         known = next(
             (
@@ -133,7 +113,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         )
         if known is not None and known.provider != provider.name:
             return r[m.Infra.CodegenResult].fail(
-                f"repository provider differs from catalog: {self.name}",
+                f"repository provider differs from catalog: {self.name}"
             )
         package_name = self.package_name or self.name.replace("-", "_")
         class_stem = u.derive_class_stem(self.name)
@@ -191,8 +171,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         return FlextInfraCodegenConform.execute_request(
-            request,
-            initial_workspace=workspace,
+            request, initial_workspace=workspace
         )
 
 

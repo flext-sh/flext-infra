@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import (
-    Mapping,
-)
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -30,9 +27,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check only local Python roots to avoid scanning dependency trees."""
         _ = ctx
@@ -40,17 +35,14 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         if discovered_dirs:
             return discovered_dirs
         if any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi"),
+            project_dir.glob("*.pyi")
         ):
             return ["."]
         return []
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
@@ -74,10 +66,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
@@ -93,7 +82,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         code="PARSE_ERROR",
                         message=f"pyrefly output unreadable/invalid: {read.error}",
                         severity="ERROR",
-                    ),
+                    )
                 )
                 return False, issues
             parsed_value = read.value
@@ -101,8 +90,8 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             if error_items.failure:
                 issues.append(
                     self._parse_error_issue(
-                        error_items.error or "Tool output parsing failed",
-                    ),
+                        error_items.error or "Tool output parsing failed"
+                    )
                 )
                 return False, issues
             try:
@@ -119,7 +108,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                             f"{type(err).__name__}"
                         ),
                         severity=c.Infra.ERROR,
-                    ),
+                    )
                 )
         if (not issues) and result.exit_code != 0:
             message = (result.stderr or result.stdout).strip()
@@ -136,7 +125,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     code="pyrefly-exec",
                     message=message,
                     severity=c.Infra.ERROR,
-                ),
+                )
             )
         return result.exit_code == 0, issues
 
@@ -154,8 +143,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @classmethod
     def _error_items_from_output(
-        cls,
-        parsed_value: t.Infra.InfraValue,
+        cls, parsed_value: t.Infra.InfraValue
     ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
         """Return pyrefly error items from either object or list JSON output."""
         if isinstance(parsed_value, Mapping):
@@ -173,16 +161,15 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             parsed_mapping = u.Cli.json_as_mapping(parsed_value)
         except c.EXC_VALIDATION_TYPE as err:
             return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
-                f"Tool output parsing failed: {type(err).__name__}",
+                f"Tool output parsing failed: {type(err).__name__}"
             )
         try:
             error_items = u.Cli.json_deep_mapping_list(
-                parsed_mapping,
-                c.Infra.PYREFLY_ERRORS_KEY,
+                parsed_mapping, c.Infra.PYREFLY_ERRORS_KEY
             )
         except c.EXC_VALIDATION_TYPE as err:
             return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
-                f"Tool output parsing failed: {type(err).__name__}",
+                f"Tool output parsing failed: {type(err).__name__}"
             )
         return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
 
@@ -195,7 +182,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             error_items = u.Cli.json_as_mapping_list(parsed_value)
         except c.EXC_VALIDATION_TYPE as err:
             return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
-                f"Tool output parsing failed: {type(err).__name__}",
+                f"Tool output parsing failed: {type(err).__name__}"
             )
         return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
 

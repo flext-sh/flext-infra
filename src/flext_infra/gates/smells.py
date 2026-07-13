@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import FlextSmellViolation
-
 from flext_infra import c, c as core_c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.smells import smell_fixer_for
@@ -43,11 +42,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     _scan_cache: ClassVar[dict[str, m.Cli.CommandOutput]] = {}
 
     @override
-    def fix(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Apply AST-based fixers for auto-fixable smell findings.
 
         Runs the same scan as ``check()``, then attempts a registered fixer
@@ -94,9 +89,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """One cached full-workspace qlty scan, filtered to ``project_dir``."""
         _ = ctx
@@ -122,10 +115,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Full-workspace scan command (check() bypasses per-project dirs)."""
         _ = project_dir, ctx, check_dirs
@@ -134,10 +124,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
@@ -199,9 +186,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @classmethod
     def _issues_from_sarif(
-        cls,
-        sarif_json: str,
-        project_name: str,
+        cls, sarif_json: str, project_name: str
     ) -> tuple[m.Infra.Issue, ...]:
         """Extract one Issue per smell finding inside ``project_name``.
 
@@ -219,21 +204,15 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
 
     @classmethod
-    def _issue_from_result(
-        cls,
-        result: t.JsonMapping,
-        prefix: str,
-    ) -> m.Infra.Issue:
+    def _issue_from_result(cls, result: t.JsonMapping, prefix: str) -> m.Infra.Issue:
         """Map one SARIF result to an Issue enriched with the FLEXT fix text."""
         rule_id = u.Cli.json_pick_str(result, "ruleId")
         code = rule_id.removeprefix(c.Infra.SMELLS_RULE_PREFIX)
         physical = u.Cli.json_deep_mapping(
-            cls._first_location(result),
-            "physicalLocation",
+            cls._first_location(result), "physicalLocation"
         )
         sarif_text = u.Cli.json_pick_str(
-            u.Cli.json_deep_mapping(result, "message"),
-            "text",
+            u.Cli.json_deep_mapping(result, "message"), "text"
         )
         return m.Infra.Issue(
             file=cls._result_uri(result).removeprefix(prefix),
@@ -249,9 +228,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """Workspace-relative URI of the finding's first location."""
         uri: str = u.Cli.json_pick_str(
             u.Cli.json_deep_mapping(
-                cls._first_location(result),
-                "physicalLocation",
-                "artifactLocation",
+                cls._first_location(result), "physicalLocation", "artifactLocation"
             ),
             "uri",
         )

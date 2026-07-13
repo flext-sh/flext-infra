@@ -35,13 +35,13 @@ class FlextInfraGateContractScanMixin:
         )
         if result.failure:
             raise FlextInfraGateContractModels.InfraError(
-                result.error or "git ls-files failed",
+                result.error or "git ls-files failed"
             )
         output = result.value
         if output.exit_code != 0:
             stderr = (output.stderr or "").strip()
             raise FlextInfraGateContractModels.InfraError(
-                stderr or "git ls-files failed",
+                stderr or "git ls-files failed"
             )
 
         scripts = (

@@ -6,8 +6,8 @@ one class with ``app_name``/``app_help`` ClassVars, an app built via
 ``name``/``help_text``/``add_completion`` — there is NO ``settings=`` kwarg;
 settings is a global singleton applied by the common-params callback), routes
 declared as ``m.Cli.ResultCommandRoute`` and registered with
-``cli.register_result_route``. Ships with exactly one command (``ping``) so the
-scaffold is executable out-of-the-box with zero ceremony.
+``cli.register_result_route``. The configured example command keeps the new
+project executable without becoming an implicit project capability.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -38,30 +38,27 @@ class {{ class_stem }}Cli:
         # (flext_cli services/_cli_parts/part_02) => nothing to pass.
         self._service = {{ alias }}
         self._app = cli.create_app_with_common_params(
-            name=self.app_name,
-            help_text=self.app_help,
+            name=self.app_name, help_text=self.app_help
         )
         self._register_commands()
 
     def run(self, args: t.StrSequence | None = None) -> p.Result[bool]:
         """Execute the CLI app through the public flext-cli facade."""
         result: p.Result[bool] = cli.execute_app(
-            self._app,
-            prog_name=self.app_name,
-            args=args,
+            self._app, prog_name=self.app_name, args=args
         )
         return result
 
     def _register_commands(self) -> None:
-        """Register the declarative result routes (ships with ``ping`` only)."""
+        """Register the configured example result route."""
         cli.register_result_route(
             self._app,
             route=m.Cli.ResultCommandRoute(
                 name=c.{{ ns }}.CommandType.PING,
-                help_text="Health check — prints pong.",
+                help_text={{ scaffold.ping_example.help_text | tojson }},
                 model_cls=m.{{ ns }}.PingInput,
                 handler=self._service.ping,
-                success_message="pong",
+                success_message={{ scaffold.ping_example.success_message | tojson }},
             ),
         )
 

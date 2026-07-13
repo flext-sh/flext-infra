@@ -7,7 +7,6 @@ import sys
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -35,30 +34,21 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     def build_report(self) -> p.Result[t.Infra.ContainerDict]:
         """Execute quality gate and return structured report payload."""
-        FlextInfraCodegenLazyInit(
-            workspace_root=self.workspace_root,
-        ).generate_inits()
+        FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
         census_report = FlextInfraRefactorCensus(
             workspace_root=self.workspace_root,
             include_local_scopes=False,
             kinds=("constant",),
         ).build_report()
-        modified_files = self.modified_python_files(
-            self.workspace_root,
-        )
+        modified_files = self.modified_python_files(self.workspace_root)
         pyrefly_check = self.run_static_check(
-            self.workspace_root,
-            modified_files,
-            c.Infra.PYREFLY,
+            self.workspace_root, modified_files, c.Infra.PYREFLY
         )
         ruff_check = self.run_static_check(
-            self.workspace_root,
-            modified_files,
-            c.Infra.RUFF,
+            self.workspace_root, modified_files, c.Infra.RUFF
         )
         after_metrics = self.after_metrics(
-            census_report=census_report,
-            modified_files=modified_files,
+            census_report=census_report, modified_files=modified_files
         )
         checks = self.build_checks(
             after_metrics=after_metrics,
@@ -90,11 +80,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
         if artifacts.failure:
             return r[t.Infra.ContainerDict].fail(
-                artifacts.error or "quality gate artifact write failed",
+                artifacts.error or "quality gate artifact write failed"
             )
         report_data["artifacts"] = artifacts.value
         return r[t.Infra.ContainerDict].ok(
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data),
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
         )
 
     @staticmethod
@@ -126,9 +116,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def run_static_check(
-        workspace_root: Path,
-        modified_files: t.StrSequence,
-        tool: str,
+        workspace_root: Path, modified_files: t.StrSequence, tool: str
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Run a targeted static tool on modified files and normalize result."""
         if not modified_files:
@@ -182,9 +170,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def after_metrics(
-        *,
-        census_report: m.Infra.Census.WorkspaceReport,
-        modified_files: t.StrSequence,
+        *, census_report: m.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Build post-run metrics summary used by quality checks."""
         by_kind: t.MutableIntMapping = {}
@@ -193,12 +179,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 by_kind[parsed.kind] = by_kind.get(parsed.kind, 0) + 1
         total = len(census_report.projects)
         passed = u.count(
-            census_report.projects,
-            lambda project: project.violations_total == 0,
+            census_report.projects, lambda project: project.violations_total == 0
         )
         modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
         violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
-            sorted(by_kind.items()),
+            sorted(by_kind.items())
         )
         summary: dict[str, t.Infra.InfraValue] = {
             "total_violations": census_report.total_violations,
@@ -227,22 +212,14 @@ class FlextInfraCodegenQualityGate(s[bool]):
         # construction. The detail-label key may differ from the metric path
         # (e.g. ``total_violations`` → ``total``).
         metric_check_rows: tuple[tuple[str, str, str], ...] = (
-            (
-                c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE,
-                "total_violations",
-                "total",
-            ),
+            (c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE, "total_violations", "total"),
             (c.Infra.QG_CHECK_MRO_VALIDITY, "mro_failures", "mro_failures"),
             (
                 c.Infra.QG_CHECK_IMPORT_RESOLUTION,
                 "cross_project_reference_violations",
                 "cross_project_reference_violations",
             ),
-            (
-                c.Infra.QG_CHECK_LAYER_COMPLIANCE,
-                "layer_violations",
-                "layer_violations",
-            ),
+            (c.Infra.QG_CHECK_LAYER_COMPLIANCE, "layer_violations", "layer_violations"),
             (
                 c.Infra.QG_CHECK_DUPLICATION_REDUCTION,
                 "duplicate_groups",
@@ -314,9 +291,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def write_artifacts(
-        workspace_root: Path,
-        report: t.Infra.ContainerDict,
-        render_text: str,
+        workspace_root: Path, report: t.Infra.ContainerDict, render_text: str
     ) -> p.Result[t.Infra.ContainerDict]:
         """Persist quality gate artifacts to the report directory."""
         report_dir = workspace_root / c.Infra.QG_REPORT_DIR
@@ -326,21 +301,22 @@ class FlextInfraCodegenQualityGate(s[bool]):
         json_write = u.Cli.atomic_write_text_file(
             report_json,
             t.Infra.INFRA_MAPPING_ADAPTER.dump_json(report, by_alias=True).decode(
-                c.Cli.ENCODING_DEFAULT,
+                c.Cli.ENCODING_DEFAULT
             ),
         )
         if json_write.failure:
             return r[t.Infra.ContainerDict].fail(
-                json_write.error or f"cannot write {report_json}",
+                json_write.error or f"cannot write {report_json}"
             )
         txt_write = u.Cli.atomic_write_text_file(report_txt, render_text)
         if txt_write.failure:
             return r[t.Infra.ContainerDict].fail(
-                txt_write.error or f"cannot write {report_txt}",
+                txt_write.error or f"cannot write {report_txt}"
             )
-        return r[t.Infra.ContainerDict].ok(
-            {"report_json": str(report_json), "report_text": str(report_txt)},
-        )
+        return r[t.Infra.ContainerDict].ok({
+            "report_json": str(report_json),
+            "report_text": str(report_txt),
+        })
 
     @classmethod
     def render_text(cls, report: t.Infra.ContainerDict) -> str:
@@ -348,8 +324,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         checks = u.Cli.json_deep_mapping_list(report, "checks")
         after = u.Cli.json_deep_mapping(report, "after")
         duplicate_groups = u.Cli.json_deep_mapping_list(
-            report,
-            "duplicate_constant_groups",
+            report, "duplicate_constant_groups"
         )
         lines: t.MutableSequenceOf[str] = [
             f"Workspace: {report.get('workspace', '')}",
@@ -360,7 +335,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         for check in checks:
             status = "PASS" if u.Cli.json_pick_bool(check, "passed") else "FAIL"
             lines.append(
-                f"- [{status}] {u.Cli.json_pick_str(check, 'name', 'unknown')}",
+                f"- [{status}] {u.Cli.json_pick_str(check, 'name', 'unknown')}"
             )
             detail = u.Cli.json_pick_str(check, "detail")
             if detail:
@@ -384,7 +359,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 f"{parsed_group.name}: "
                 f"projects={len(projects)}, "
                 f"definitions={len(parsed_group.definitions)}, "
-                f"values_identical={parsed_group.value_identical}",
+                f"values_identical={parsed_group.value_identical}"
             )
             if projects:
                 lines.append(f"  projects: {', '.join(projects)}")

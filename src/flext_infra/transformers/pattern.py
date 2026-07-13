@@ -22,8 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorPatternTransformer(
-    FlextInfraEnsureCanonicalTImportMixin,
-    FlextInfraRopeTransformer,
+    FlextInfraEnsureCanonicalTImportMixin, FlextInfraRopeTransformer
 ):
     """Apply declarative regex substitutions declared in enforcement catalog rules.
 
@@ -86,9 +85,7 @@ class FlextInfraRefactorPatternTransformer(
         return updated, list(self.changes)
 
     def _apply_pattern(
-        self,
-        source: str,
-        pattern_spec: t.MappingKV[str, t.JsonValue],
+        self, source: str, pattern_spec: t.MappingKV[str, t.JsonValue]
     ) -> str:
         """Apply one regex substitution spec to source."""
         raw_regex = pattern_spec.get("regex")

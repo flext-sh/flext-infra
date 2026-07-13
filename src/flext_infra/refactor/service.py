@@ -22,8 +22,7 @@ class FlextInfraRefactorService:
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.orchestrator = FlextInfraRefactorOrchestrator(
-            self.rule_loader,
-            safety_manager=FlextInfraRefactorSafetyManager(),
+            self.rule_loader, safety_manager=FlextInfraRefactorSafetyManager()
         )
 
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
@@ -34,8 +33,7 @@ class FlextInfraRefactorService:
         self,
     ) -> p.Result[
         t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind,
-            c.Infra.RefactorFileRuleKind,
+            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
         ]
     ]:
         """Delegate rule loading to the dedicated refactor loader."""
@@ -72,11 +70,7 @@ class FlextInfraRefactorService:
         gates: t.StrSequence | None = None,
     ) -> m.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_file(
-            file_path,
-            dry_run=dry_run,
-            gates=gates,
-        )
+        return self.orchestrator.refactor_file(file_path, dry_run=dry_run, gates=gates)
 
     def refactor_files(
         self,
@@ -87,9 +81,7 @@ class FlextInfraRefactorService:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_files(
-            file_paths,
-            dry_run=dry_run,
-            gates=gates,
+            file_paths, dry_run=dry_run, gates=gates
         )
 
     def refactor_project(

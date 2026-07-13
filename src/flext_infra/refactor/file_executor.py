@@ -18,18 +18,14 @@ from flext_infra.transformers.nested_class_propagation import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
+    from collections.abc import MutableMapping
 
 
 class FlextInfraClassNestingPostCheckGate:
     """Run post-transform validation gates for direct class-nesting execution."""
 
     def validate(
-        self,
-        result: m.Infra.Result,
-        expected: t.Infra.ContainerDict,
+        self, result: m.Infra.Result, expected: t.Infra.ContainerDict
     ) -> t.Pair[bool, t.StrSequence]:
         """Validate post-check expectations against one transformed file result."""
         if not result.success:
@@ -42,7 +38,7 @@ class FlextInfraClassNestingPostCheckGate:
         quality_gates = u.Infra.string_list(expected.get(c.Infra.RK_QUALITY_GATES))
         source_symbol = str(expected.get(c.Infra.RK_SOURCE_SYMBOL, ""))
         expected_chain = u.Infra.string_list(
-            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN),
+            expected.get(c.Infra.RK_EXPECTED_BASE_CHAIN)
         )
         if c.Infra.RK_IMPORTS_RESOLVE in post_checks:
             errors.extend(self._validate_imports(file_path))
@@ -65,10 +61,7 @@ class FlextInfraClassNestingPostCheckGate:
         ]
 
     def _validate_mro(
-        self,
-        file_path: Path,
-        class_name: str,
-        expected_bases: t.StrSequence,
+        self, file_path: Path, class_name: str, expected_bases: t.StrSequence
     ) -> t.StrSequence:
         """Validate mro."""
         read = u.Cli.files_read_text(file_path)
@@ -80,7 +73,7 @@ class FlextInfraClassNestingPostCheckGate:
         expected_prefix = list(expected_bases)[: len(actual_clean)]
         if actual_clean != expected_prefix:
             return [
-                f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}",
+                f"mro_mismatch:{class_name}:expected={expected_prefix}:actual={actual_clean}"
             ]
         return list[str]()
 
@@ -132,9 +125,7 @@ class FlextInfraRefactorFileExecutor:
         )
         try:
             return self._apply_class_nesting_checked(
-                resource,
-                file_path,
-                dry_run=dry_run,
+                resource, file_path, dry_run=dry_run
             )
         except Exception as exc:
             return m.Infra.Result(
@@ -147,11 +138,7 @@ class FlextInfraRefactorFileExecutor:
             )
 
     def _apply_class_nesting_checked(
-        self,
-        resource: t.Infra.RopeResource,
-        file_path: Path,
-        *,
-        dry_run: bool,
+        self, resource: t.Infra.RopeResource, file_path: Path, *, dry_run: bool
     ) -> m.Infra.Result:
         """Apply class nesting after the public error boundary."""
         source = resource.read()
@@ -183,17 +170,12 @@ class FlextInfraRefactorFileExecutor:
             )
         changes: t.MutableSequenceOf[str] = []
         updated = self._apply_class_nesting_transforms(
-            source,
-            class_map,
-            helper_map,
-            changes,
+            source, class_map, helper_map, changes
         )
         modified = updated != source
         if modified and not dry_run:
             postcheck_result = self._run_class_nesting_postcheck(
-                file_path=file_path,
-                updated=updated,
-                changes=changes,
+                file_path=file_path, updated=updated, changes=changes
             )
             if postcheck_result is not None:
                 return postcheck_result
@@ -207,11 +189,7 @@ class FlextInfraRefactorFileExecutor:
         )
 
     def _run_class_nesting_postcheck(
-        self,
-        *,
-        file_path: Path,
-        updated: str,
-        changes: t.StrSequence,
+        self, *, file_path: Path, updated: str, changes: t.StrSequence
     ) -> m.Infra.Result | None:
         """Run postchecks for a modified class-nesting result."""
         expected_base_chain: t.JsonValueList = []
@@ -253,7 +231,7 @@ class FlextInfraRefactorFileExecutor:
             return self._class_nesting_config
         rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
         loaded = u.Cli.yaml_load_mapping(
-            rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME,
+            rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME
         )
         settings: MutableMapping[str, t.Infra.InfraValue] = {}
         threshold = loaded.get(c.Infra.RK_CONFIDENCE_THRESHOLD)
@@ -265,7 +243,7 @@ class FlextInfraRefactorFileExecutor:
                 settings[key] = [
                     dict(entry)
                     for entry in self._coerce_class_nesting_entries(
-                        u.Cli.json_as_mapping_list(raw),
+                        u.Cli.json_as_mapping_list(raw)
                     )
                 ]
         self._class_nesting_config = settings
@@ -277,32 +255,26 @@ class FlextInfraRefactorFileExecutor:
             rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
             self._class_nesting_policy_by_family = (
                 u.Infra.class_nesting_policy_by_family(
-                    rules_dir / c.Infra.CLASS_NESTING_POLICY_FILENAME,
+                    rules_dir / c.Infra.CLASS_NESTING_POLICY_FILENAME
                 )
             )
         return self._class_nesting_policy_by_family
 
     def _class_nesting_precheck(
-        self,
-        config: t.Infra.ContainerDict,
-        file_path: Path,
-        threshold: str,
+        self, config: t.Infra.ContainerDict, file_path: Path, threshold: str
     ) -> t.MutableSequenceOf[str]:
         """Class nesting precheck."""
         entries: t.MutableSequenceOf[t.StrMapping] = []
         for key in c.Infra.NESTING_SECTION_KEYS:
             entries.extend(
                 self._filter_class_nesting_entries(
-                    u.Infra.entry_list(config.get(key)),
-                    file_path,
-                    threshold,
-                ),
+                    u.Infra.entry_list(config.get(key)), file_path, threshold
+                )
             )
         violations: t.MutableSequenceOf[str] = []
         for entry in entries:
             ok, violation = u.Infra.validate_class_nesting_entry(
-                entry,
-                policy_by_family=self._class_nesting_policy(),
+                entry, policy_by_family=self._class_nesting_policy()
             )
             if not ok and violation is not None:
                 violation_parts: list[str] = [
@@ -325,9 +297,7 @@ class FlextInfraRefactorFileExecutor:
         """Class nesting symbol map."""
         result: t.MutableStrMapping = {}
         for entry in self._filter_class_nesting_entries(
-            u.Infra.entry_list(config.get(section)),
-            file_path,
-            threshold,
+            u.Infra.entry_list(config.get(section)), file_path, threshold
         ):
             name = entry.get(name_key)
             target = entry.get(c.Infra.RK_TARGET_NAMESPACE)
@@ -336,10 +306,7 @@ class FlextInfraRefactorFileExecutor:
         return result
 
     def _filter_class_nesting_entries(
-        self,
-        raw: t.SequenceOf[t.StrMapping],
-        file_path: Path,
-        threshold: str,
+        self, raw: t.SequenceOf[t.StrMapping], file_path: Path, threshold: str
     ) -> t.SequenceOf[t.StrMapping]:
         """Filter class nesting entries."""
         module_path = u.Infra.normalize_module_path(file_path)
@@ -350,13 +317,12 @@ class FlextInfraRefactorFileExecutor:
                 continue
             current_module = u.Infra.normalize_module_path(Path(current_file))
             if current_module != module_path and not module_path.endswith(
-                f"/{current_module}",
+                f"/{current_module}"
             ):
                 continue
             confidence = entry.get(c.Infra.RK_CONFIDENCE, c.Infra.SeverityLevel.LOW)
             if c.Infra.CONFIDENCE_RANKS.get(
-                u.norm_str(confidence, case="lower"),
-                0,
+                u.norm_str(confidence, case="lower"), 0
             ) < c.Infra.CONFIDENCE_RANKS.get(threshold, 0):
                 continue
             result.append(entry)

@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
@@ -35,11 +34,7 @@ class FlextInfraProjectMakefileUpdater:
     """
 
     def update(
-        self,
-        project_root: Path,
-        *,
-        canonical_root: Path,
-        apply: bool = True,
+        self, project_root: Path, *, canonical_root: Path, apply: bool = True
     ) -> p.Result[bool]:
         """Regenerate project Makefile from pyproject.toml.
 
@@ -63,7 +58,7 @@ class FlextInfraProjectMakefileUpdater:
             metadata_result = u.read_project_metadata(project_root)
             if metadata_result.failure:
                 result = r[bool].fail(
-                    metadata_result.error or "pyproject.toml metadata load failed",
+                    metadata_result.error or "pyproject.toml metadata load failed"
                 )
             else:
                 meta = metadata_result.value
@@ -72,14 +67,12 @@ class FlextInfraProjectMakefileUpdater:
                 )
                 if bootstrap_result.failure:
                     result = r[bool].fail(
-                        bootstrap_result.error or "bootstrap template read failed",
+                        bootstrap_result.error or "bootstrap template read failed"
                     )
                 else:
                     bootstrap = bootstrap_result.value
                     new_content = self._build_makefile(
-                        meta,
-                        bootstrap,
-                        tests_dir=self._tests_dir(project_root, meta),
+                        meta, bootstrap, tests_dir=self._tests_dir(project_root, meta)
                     )
                     makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
@@ -88,22 +81,20 @@ class FlextInfraProjectMakefileUpdater:
                         if read.failure:
                             result = r[bool].fail(read.error or "Makefile read failed")
                         elif u.Cli.sha256_content(read.value) == u.Cli.sha256_content(
-                            new_content,
+                            new_content
                         ):
                             result = r[bool].ok(False)
                         elif not apply:
                             result = r[bool].ok(True)
                         else:
                             result = u.Cli.atomic_write_text_file(
-                                makefile_path,
-                                new_content,
+                                makefile_path, new_content
                             )
                     elif not apply:
                         result = r[bool].ok(True)
                     else:
                         result = u.Cli.atomic_write_text_file(
-                            makefile_path,
-                            new_content,
+                            makefile_path, new_content
                         )
         return result
 
@@ -120,10 +111,7 @@ class FlextInfraProjectMakefileUpdater:
 
     @staticmethod
     def _build_makefile(
-        meta: m.ProjectMetadata,
-        bootstrap: str,
-        *,
-        tests_dir: str,
+        meta: m.ProjectMetadata, bootstrap: str, *, tests_dir: str
     ) -> str:
         """Build the fully-generated Makefile content."""
         title = f"# {meta.project.name}"

@@ -35,9 +35,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     @override
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Scan one project's Python sources for abstraction-boundary breaches."""
         _ = ctx
@@ -45,7 +43,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         if project_dir.name in c.Infra.BOUNDARY_SKIP_PROJECTS:
             return self._skip_result(project_dir, started)
         files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,)),
+            m.Infra.SourceScanRequest(project_roots=(project_dir,))
         )
         if files_result.failure:
             issue = m.Infra.Issue(
@@ -64,10 +62,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         return self._result(project_dir, started, issues)
 
     def _result(
-        self,
-        project_dir: Path,
-        started: float,
-        issues: t.SequenceOf[m.Infra.Issue],
+        self, project_dir: Path, started: float, issues: t.SequenceOf[m.Infra.Issue]
     ) -> m.Infra.GateExecution:
         """Assemble the gate execution from collected issues."""
         return self._build_gate_result(
@@ -106,16 +101,13 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             and project not in c.Infra.BOUNDARY_TOML_ALLOWED
         ):
             issues.append(
-                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file"),
+                self._issue(path, "imports tomllib/tomlkit — use cli.read_toml_file")
             )
         issues.extend(self._concrete_cli_issues(path, text, posix))
         return issues
 
     def _concrete_cli_issues(
-        self,
-        path: Path,
-        text: str,
-        posix: str,
+        self, path: Path, text: str, posix: str
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Flag concrete FlextCli<X> imports outside src extension files."""
         if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
@@ -123,13 +115,12 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
             for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(
-                match.group("imports"),
+                match.group("imports")
             ):
                 issues.append(
                     self._issue(
-                        path,
-                        f"imports concrete `{name}` (use cli/c/m/p/t/u/s)",
-                    ),
+                        path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)"
+                    )
                 )
         return issues
 
@@ -146,10 +137,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """No external tool — scanning happens in `check`."""
         _ = project_dir, ctx, check_dirs
@@ -157,10 +145,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Unused — `check` is overridden directly."""
         _ = result, project_dir, ctx

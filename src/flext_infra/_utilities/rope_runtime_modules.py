@@ -24,8 +24,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         project_factory = cls._runtime_callable("rope.base.project", "Project")
         # mro-i6nq.10: FLEXT owns writes; disable Rope's leaking Git subprocess.
         fscommands_factory = cls._runtime_callable(
-            "rope.base.fscommands",
-            "FileSystemCommands",
+            "rope.base.fscommands", "FileSystemCommands"
         )
         project = project_factory(
             root,
@@ -42,13 +41,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def module_imports_for_pymodule(
-        cls,
-        rope_project: t.Infra.RopeProject,
-        pymodule: t.Infra.RopePyModule,
+        cls, rope_project: t.Infra.RopeProject, pymodule: t.Infra.RopePyModule
     ) -> t.Infra.RopeModuleImports:
         loader = cls._runtime_callable(
-            "rope.refactor.importutils",
-            "get_module_imports",
+            "rope.refactor.importutils", "get_module_imports"
         )
         result = loader(rope_project, pymodule)
         if not isinstance(result, p.Infra.RopeModuleImports):
@@ -58,9 +54,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def get_string_module(
-        cls,
-        rope_project: t.Infra.RopeProject,
-        source: str,
+        cls, rope_project: t.Infra.RopeProject, source: str
     ) -> t.Infra.RopePyModule:
         loader = cls._runtime_callable("rope.base.libutils", "get_string_module")
         pymodule = loader(rope_project, source)
@@ -71,12 +65,10 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def import_organizer(
-        cls,
-        rope_project: t.Infra.RopeProject,
+        cls, rope_project: t.Infra.RopeProject
     ) -> p.Infra.RopeImportOrganizer:
         organizer_factory = cls._runtime_callable(
-            "rope.refactor.importutils",
-            "ImportOrganizer",
+            "rope.refactor.importutils", "ImportOrganizer"
         )
         organizer = organizer_factory(rope_project)
         if not isinstance(organizer, p.Infra.RopeImportOrganizer):
@@ -119,8 +111,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         names_and_aliases: t.SequenceOf[tuple[str, str | None]],
     ) -> t.Infra.RopeFromImport:
         from_import_factory = cls._runtime_callable(
-            "rope.refactor.importutils.importinfo",
-            "FromImport",
+            "rope.refactor.importutils.importinfo", "FromImport"
         )
         from_import = from_import_factory(module_name, level, list(names_and_aliases))
         if not isinstance(from_import, p.Infra.RopeFromImport):

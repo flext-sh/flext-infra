@@ -7,10 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING, NamedTuple, override
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
+from collections.abc import Mapping
+from typing import NamedTuple, override
 
 
 class _SilentFailureFinding(NamedTuple):
@@ -49,8 +47,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
         return self.findings
 
     def _enclosing_function(
-        self,
-        node: ast.AST,
+        self, node: ast.AST
     ) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
         current: ast.AST | None = node
         while current is not None:
@@ -60,8 +57,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
         return None
 
     def _result_inner_type(
-        self,
-        func: ast.FunctionDef | ast.AsyncFunctionDef,
+        self, func: ast.FunctionDef | ast.AsyncFunctionDef
     ) -> str | None:
         returns = func.returns
         if not isinstance(returns, ast.Subscript):
@@ -103,7 +99,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
                 detail=detail,
                 fix_action=fix_action,
                 replacement=replacement,
-            ),
+            )
         )
 
     @override
@@ -197,14 +193,14 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
             if type_name in self._BROAD_EXCEPTION_NAMES or not type_name:
                 return False
         return not self._body_has_raise_or_fail(
-            node.body,
+            node.body
         ) and self._body_has_sentinel_return(node.body)
 
     def _body_has_sentinel_return(self, body: list[ast.stmt]) -> bool:
         for stmt in body:
             for child in ast.walk(stmt):
                 if isinstance(child, ast.Return) and self._is_sentinel_value(
-                    child.value,
+                    child.value
                 ):
                     return True
         return False
@@ -322,16 +318,13 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
         for stmt in body:
             for child in ast.walk(stmt):
                 if isinstance(child, ast.Return) and self._is_sentinel_value(
-                    child.value,
+                    child.value
                 ):
                     return child
         return None
 
 
-def _resolve_call_name(
-    node: ast.Call,
-    import_aliases: Mapping[str, str],
-) -> str:
+def _resolve_call_name(node: ast.Call, import_aliases: Mapping[str, str]) -> str:
     """Resolve a call expression to a dotted name using alias context."""
     func = node.func
     if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
@@ -350,20 +343,14 @@ def _is_unwrap_or_call(node: ast.Call) -> bool:
     if not node.args:
         return False
     first_arg = node.args[0]
-    if isinstance(first_arg, ast.Constant) and first_arg.value in {
-        False,
-        None,
-    }:
+    if isinstance(first_arg, ast.Constant) and first_arg.value in {False, None}:
         return True
     if isinstance(first_arg, ast.List) and not first_arg.elts:
         return True
     return isinstance(first_arg, ast.Dict) and not first_arg.keys
 
 
-def _expression_name(
-    node: ast.expr | None,
-    import_aliases: Mapping[str, str],
-) -> str:
+def _expression_name(node: ast.expr | None, import_aliases: Mapping[str, str]) -> str:
     """Resolve a bare expression to a dotted name."""
     if node is None:
         return ""
@@ -376,18 +363,14 @@ def _expression_name(
 
 
 def collect_silent_failure_findings(
-    tree: ast.Module,
-    source: str,
+    tree: ast.Module, source: str
 ) -> list[_SilentFailureFinding]:
     """Collect all silent-failure findings from a rope-backed module AST."""
     return _SilentFailureAstVisitor(source).analyze(tree)
 
 
 def collect_silent_failure_fixes(
-    tree: ast.Module,
-    source: str,
-    *,
-    kinds: set[str] | frozenset[str] | None = None,
+    tree: ast.Module, source: str, *, kinds: set[str] | frozenset[str] | None = None
 ) -> list[tuple[int, int, str]]:
     """Return deterministic auto-fix replacements for silent-failure sentinels."""
     allowed = kinds if kinds is not None else frozenset()
@@ -398,7 +381,4 @@ def collect_silent_failure_fixes(
     ]
 
 
-__all__: list[str] = [
-    "collect_silent_failure_findings",
-    "collect_silent_failure_fixes",
-]
+__all__: list[str] = ["collect_silent_failure_findings", "collect_silent_failure_fixes"]

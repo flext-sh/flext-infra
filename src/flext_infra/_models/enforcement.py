@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 
+from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import p
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
@@ -40,20 +40,11 @@ class FlextInfraModelsEnforcement:
         inspect via ``getattr``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            extra="allow",
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
 
         file_path: Annotated[str, m.Field(description="Target file path")]
-        line: Annotated[
-            int,
-            m.Field(description="Line number of the violation"),
-        ] = 0
-        rule_id: Annotated[
-            str,
-            m.Field(description="Originating rule identifier"),
-        ] = ""
+        line: Annotated[int, m.Field(description="Line number of the violation")] = 0
+        rule_id: Annotated[str, m.Field(description="Originating rule identifier")] = ""
 
 
 __all__: list[str] = ["FlextInfraModelsEnforcement"]

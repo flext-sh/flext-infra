@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_core.__version__ import FlextVersion
-
 from flext_infra import c, u
 from flext_infra.base import s
 
@@ -61,7 +60,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
             if metadata_result.failure:
                 return r[bool].fail(
                     metadata_result.error
-                    or f"version-file: cannot load {project_info.path}",
+                    or f"version-file: cannot load {project_info.path}"
                 )
             meta = metadata_result.value
             class_name = f"{meta.class_stem}Version"
@@ -81,7 +80,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
             rendered = u.Cli.template_render(template_path, meta)
             if rendered.failure:
                 return r[bool].fail(
-                    rendered.error or f"version-file: cannot render {target}",
+                    rendered.error or f"version-file: cannot render {target}"
                 )
             content = rendered.value
 
@@ -89,7 +88,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 current = u.Cli.files_read_text(target)
                 if current.failure:
                     return r[bool].fail(
-                        current.error or f"version-file: cannot read {target}",
+                        current.error or f"version-file: cannot read {target}"
                     )
                 if current.value == content:
                     continue
@@ -102,17 +101,13 @@ class FlextInfraCodegenVersionFile(s[bool]):
             write_result = u.Cli.atomic_write_text_file(target, content)
             if write_result.failure:
                 return r[bool].fail(
-                    write_result.error or f"version-file: cannot write {target}",
+                    write_result.error or f"version-file: cannot write {target}"
                 )
             generated += 1
-            u.Cli.info(
-                f"  generated: {target.relative_to(self.workspace_root)}",
-            )
+            u.Cli.info(f"  generated: {target.relative_to(self.workspace_root)}")
 
         verb = "would generate" if (self.check_only or self.dry_run) else "generated"
-        u.Cli.info(
-            f"version-file: {verb} {generated}, skipped {skipped}",
-        )
+        u.Cli.info(f"version-file: {verb} {generated}, skipped {skipped}")
         return r[bool].ok(True)
 
 

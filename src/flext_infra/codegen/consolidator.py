@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.codegen._consolidator_steps import (
@@ -15,18 +14,12 @@ from flext_infra.codegen._consolidator_steps import (
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodegenConsolidator(
-    s[str],
-    FlextInfraCodegenConsolidatorStepsMixin,
-):
+class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):
     """Consolidate inline constants into canonical ``c.*`` references."""
 
     project_name: Annotated[
         str | None,
-        m.Field(
-            alias="project",
-            description="Single project to consolidate",
-        ),
+        m.Field(alias="project", description="Single project to consolidate"),
     ] = None
 
     @override
@@ -51,11 +44,11 @@ class FlextInfraCodegenConsolidator(
 
                 constants_file = project_layout.package_dir / c.Infra.CONSTANTS_PY
                 value_map_result = self._build_value_map_from_constants_file(
-                    constants_file,
+                    constants_file
                 )
                 if value_map_result.failure:
                     return r[str].fail(
-                        value_map_result.error or "constants file read failed",
+                        value_map_result.error or "constants file read failed"
                     )
                 value_map = value_map_result.value
                 if not value_map:
@@ -64,7 +57,7 @@ class FlextInfraCodegenConsolidator(
                 project_files = self._project_python_files(project.path)
                 if project_files.failure:
                     return r[str].fail(
-                        project_files.error or "project python file discovery failed",
+                        project_files.error or "project python file discovery failed"
                     )
                 for python_file in project_files.value:
                     scanned = self._scan_file(rope.rope_project, python_file, value_map)
@@ -94,7 +87,7 @@ class FlextInfraCodegenConsolidator(
                             file=str(rel_path),
                             status="applied" if ok else "reverted",
                             changes=tuple(changes),
-                        ),
+                        )
                     )
                     if ok:
                         applied += len(changes)
@@ -120,11 +113,11 @@ class FlextInfraCodegenConsolidator(
     def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Return governed Python files for one project consolidation pass."""
         files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_root,)),
+            m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
             return r[t.SequenceOf[Path]].fail(
-                files_result.error or "project python file discovery failed",
+                files_result.error or "project python file discovery failed"
             )
         constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
         return r[t.SequenceOf[Path]].ok(
@@ -132,19 +125,18 @@ class FlextInfraCodegenConsolidator(
                 path
                 for path in files_result.value
                 if constants_directory not in path.parts
-            ),
+            )
         )
 
     def _selected_projects(
-        self,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        self, rope_workspace: p.Infra.RopeWorkspaceDsl
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Return the selected projects."""
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                discovered.error or "project discovery failed",
+                discovered.error or "project discovery failed"
             )
         selected = tuple(
             project

@@ -11,7 +11,6 @@ from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p, t
 
 
@@ -62,9 +61,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         ) -> m.Infra.Census.WorkspaceReport: ...
 
     @staticmethod
-    def _should_collect_object_references(
-        rule_names: t.StrSequence | None,
-    ) -> bool:
+    def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
         """Decide whether to collect object references."""
         if rule_names is None:
             return True
@@ -102,8 +99,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
 
     @staticmethod
     def _project_name_for_module(
-        module: m.Infra.RopeModuleIndexEntry,
-        convention: m.Infra.RopeModuleConvention,
+        module: m.Infra.RopeModuleIndexEntry, convention: m.Infra.RopeModuleConvention
     ) -> str:
         """Project name for a module entry."""
         layout = convention.project_layout
@@ -122,9 +118,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _mro_facade_module_names(
-        selected_families: frozenset[str],
-    ) -> frozenset[str]:
+    def _mro_facade_module_names(selected_families: frozenset[str]) -> frozenset[str]:
         """Mro facade module names."""
         families = selected_families or c.Infra.MRO_FAMILIES
         return frozenset(
@@ -171,7 +165,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
                 module.project_root.resolve()
                 for module in modules
                 if module.project_root is not None
-            }),
+            })
         )
         project_filter = frozenset(project_names or ())
         entries: list[m.Infra.RopeModuleIndexEntry] = []
@@ -237,18 +231,17 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             selected_kinds=frozenset(kind_names) if kind_names else None,
             selected_rules=selected_rules,
             collect_object_inventory=self._should_collect_object_inventory(
-                rule_names,
-                selected_rules=selected_rules,
+                rule_names, selected_rules=selected_rules
             ),
             include_object_references=self._should_collect_object_references(
-                rule_names,
+                rule_names
             ),
             include_local_scopes=include_local_scopes,
             applied=applied,
         )
         project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
         project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
-            list,
+            list
         )
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()

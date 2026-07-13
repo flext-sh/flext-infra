@@ -28,15 +28,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         ) -> t.MutableLazyAliasMap: ...
 
         def _package_entry(
-            self,
-            pkg_dir: Path,
+            self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _parents_from_constants_module(
-            self,
-            module_path: Path,
-            current_pkg: str,
-            visited: set[str] | None = None,
+            self, module_path: Path, current_pkg: str, visited: set[str] | None = None
         ) -> t.StrSequence: ...
 
         def _resolve_inherited_alias_source(
@@ -67,11 +63,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             and not is_test_runtime_alias_surface
         ):
             return
-        self._resolve_local_aliases(
-            lazy_map,
-            current_pkg=current_pkg,
-            pkg_dir=pkg_dir,
-        )
+        self._resolve_local_aliases(lazy_map, current_pkg=current_pkg, pkg_dir=pkg_dir)
         inherited_key = (
             surface if surface in self.lazy_init.inherited_exports else "src"
         )
@@ -86,7 +78,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             dict.fromkeys((
                 *self.lazy_init.inherited_exports.get(inherited_key, ()),
                 *runtime_alias_names,
-            )),
+            ))
         )
         local_alias_names = frozenset(
             alias_name
@@ -138,11 +130,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         return package_name
 
     def _resolve_local_aliases(
-        self,
-        lazy_map: t.MutableLazyAliasMap,
-        *,
-        current_pkg: str,
-        pkg_dir: Path,
+        self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_dir: Path
     ) -> None:
         """Inject public_file_aliases from the lazy-init config into the lazy map."""
         alias_to_files: dict[str, list[str]] = {}
@@ -160,9 +148,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 if module_file.is_file() and alias_name in self._module_exports(
                     module_file,
                     module_name,
-                    export_options=m.Infra.ExportOptions(
-                        allow_assignments=True,
-                    ),
+                    export_options=m.Infra.ExportOptions(allow_assignments=True),
                 ):
                     lazy_map[alias_name] = (module_name, alias_name)
                     break
@@ -170,17 +156,14 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                     package_exports = self._module_exports(
                         package_dir / c.Infra.INIT_PY,
                         module_name,
-                        export_options=m.Infra.ExportOptions(
-                            allow_assignments=True,
-                        ),
+                        export_options=m.Infra.ExportOptions(allow_assignments=True),
                     )
                     if alias_name in package_exports:
                         lazy_map[alias_name] = (module_name, alias_name)
                         break
 
     def _resolve_transitive_parent_packages(
-        self,
-        package_names: t.StrSequence,
+        self, package_names: t.StrSequence
     ) -> t.StrSequence:
         """Return package_names plus transitive parents, ordered nearest-first.
 
@@ -198,7 +181,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 continue
             ordered.append(package_name)
             package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-                package_name,
+                package_name
             )
             if package_dir is not None:
                 queue.extend(self._parent_packages(package_dir))

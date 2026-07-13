@@ -38,9 +38,7 @@ class FlextInfraRefactorCastRemover(FlextInfraRopeTransformer):
             return source, list(self.changes)
         ast.fix_missing_locations(new_tree)
         updated = ast.unparse(new_tree)
-        self._record_change(
-            f"Removed {rewriter.removed_count} cast() call(s)",
-        )
+        self._record_change(f"Removed {rewriter.removed_count} cast() call(s)")
         return updated, list(self.changes)
 
 

@@ -15,7 +15,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, config, u
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
@@ -54,13 +53,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             return r[bool].fail(
                 f"init aborted: {self._duplicate_class_names} "
                 "duplicate class name(s) detected (see errors above); "
-                "rename one side before regenerating",
+                "rename one side before regenerating"
             )
         if errors > 0:
             return r[bool].fail(f"init failed in {errors} package directories")
         if effective_dry_run and self._modified_files:
             return r[bool].fail(
-                f"init drift detected in {len(self._modified_files)} generated artifacts",
+                f"init drift detected in {len(self._modified_files)} generated artifacts"
             )
         return r[bool].ok(True)
 
@@ -74,7 +73,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         started_at = perf_counter()
         u.Cli.info(
             "lazy-init: starting "
-            f"({'check' if check_only else 'apply'}) for {self.workspace_root}",
+            f"({'check' if check_only else 'apply'}) for {self.workspace_root}"
         )
         lazy_init = config.Infra.tooling.lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
@@ -88,11 +87,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     ),
                     key=lambda path: len(path.parts),
                     reverse=True,
-                ),
+                )
             )
             if self.target_module:
                 mapped_package_dir = workspace_index.package_dir_by_name.get(
-                    self.target_module,
+                    self.target_module
                 )
                 target_module_dirs = frozenset(
                     entry.package_dir.resolve()
@@ -107,18 +106,17 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 sorted_target_dirs = tuple(sorted(target_module_dirs))
                 if not sorted_target_dirs:
                     u.Cli.error(
-                        f"lazy-init target module not found: {self.target_module}",
+                        f"lazy-init target module not found: {self.target_module}"
                     )
                     return 1
                 if sorted_target_dirs[1:]:
                     u.Cli.error(
-                        f"lazy-init target module is ambiguous: {self.target_module}",
+                        f"lazy-init target module is ambiguous: {self.target_module}"
                     )
                     return 1
                 package_dirs = (sorted_target_dirs[0],)
             duplicates = self._detect_duplicate_class_names(
-                rope,
-                package_dirs=package_dirs,
+                rope, package_dirs=package_dirs
             )
             if duplicates:
                 self._duplicate_class_names = len(duplicates)
@@ -126,38 +124,31 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     joined = ", ".join(locations)
                     u.Cli.error(
                         f"duplicate class name {class_name!r} in: {joined}; "
-                        "rename one before regenerating __init__.py",
+                        "rename one before regenerating __init__.py"
                     )
                 u.Cli.info(
                     "Lazy-init summary: 0 generated, "
                     f"{len(duplicates)} duplicate class name(s) "
-                    "(aborted before codegen)",
+                    "(aborted before codegen)"
                 )
                 return len(duplicates)
             planner = FlextInfraCodegenLazyInitPlanner(
-                rope_workspace=rope,
-                lazy_init=lazy_init,
+                rope_workspace=rope, lazy_init=lazy_init
             )
-            u.Cli.info(
-                f"lazy-init: planning {len(package_dirs)} package dirs",
-            )
+            u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
             total, ok, errors, _dir_exports = self._generate_all_inits(
-                package_dirs,
-                check_only=check_only,
-                planner=planner,
+                package_dirs, check_only=check_only, planner=planner
             )
         warnings = planner.collision_count
         u.Cli.info(
             f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"
-            f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)",
+            f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)"
         )
         return errors
 
     @staticmethod
     def _detect_duplicate_class_names(
-        rope: FlextInfraRopeWorkspace,
-        *,
-        package_dirs: t.SequenceOf[Path],
+        rope: FlextInfraRopeWorkspace, *, package_dirs: t.SequenceOf[Path]
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return class-name collisions.
 
@@ -183,9 +174,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 else ""
             )
             for obj in rope.objects(
-                entry.file_path,
-                include_local_scopes=False,
-                include_references=False,
+                entry.file_path, include_local_scopes=False, include_references=False
             ):
                 if obj.kind != "class" or obj.scope_path:
                     continue
@@ -196,9 +185,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return {
             f"[{Path(scope_key).name}] {name}"
             if scope_key
-            else f"[workspace] {name}": tuple(
-                sorted(modules),
-            )
+            else f"[workspace] {name}": tuple(sorted(modules))
             for (name, scope_key), modules in scoped_modules.items()
             if len(modules) > 1
         }

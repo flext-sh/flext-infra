@@ -26,9 +26,7 @@ class FlextInfraUtilitiesLogParser:
 
     @staticmethod
     def extract_errors(
-        log_path: Path,
-        *,
-        max_lines: int = 5,
+        log_path: Path, *, max_lines: int = 5
     ) -> t.Pair[int, t.StrSequence]:
         """Read log tail and extract error lines.
 

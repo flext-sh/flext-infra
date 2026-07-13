@@ -77,10 +77,7 @@ class FlextInfraProtocolsRope(Protocol):
         def workspace_index(self) -> m.Infra.RopeWorkspaceIndex: ...
 
         def refresh(
-            self,
-            *,
-            preserve_indexes: bool = False,
-            validate_project: bool = True,
+            self, *, preserve_indexes: bool = False, validate_project: bool = True
         ) -> m.Infra.RopeWorkspaceSession: ...
 
         def reload(self) -> m.Infra.RopeWorkspaceSession: ...
@@ -96,25 +93,16 @@ class FlextInfraProtocolsRope(Protocol):
 
         def close(self) -> None: ...
 
-        def resource(
-            self,
-            file_path: Path,
-        ) -> t.Infra.RopeResource | None: ...
+        def resource(self, file_path: Path) -> t.Infra.RopeResource | None: ...
 
-        def module(
-            self,
-            file_path: Path,
-        ) -> m.Infra.RopeModuleIndexEntry | None: ...
+        def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None: ...
 
         def package(
-            self,
-            package_dir: Path,
+            self, package_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def modules(
-            self,
-            *,
-            project_names: t.StrSequence | None = None,
+            self, *, project_names: t.StrSequence | None = None
         ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]: ...
 
         def source(self, file_path: Path) -> str: ...
@@ -133,14 +121,10 @@ class FlextInfraProtocolsRope(Protocol):
 
         def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
 
-        def layout(
-            self,
-            project_root: Path,
-        ) -> m.Infra.RopeProjectLayout | None: ...
+        def layout(self, project_root: Path) -> m.Infra.RopeProjectLayout | None: ...
 
         def package_context(
-            self,
-            package_dir: Path,
+            self, package_dir: Path
         ) -> m.Infra.LazyInitPackageContext: ...
 
         def policy(
@@ -152,16 +136,10 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> m.Infra.NamespaceModulePolicy: ...
 
         def convention(
-            self,
-            file_path: Path,
-            *,
-            rel_path: Path | None = None,
+            self, file_path: Path, *, rel_path: Path | None = None
         ) -> m.Infra.RopeModuleConvention: ...
 
-        def semantic(
-            self,
-            file_path: Path,
-        ) -> m.Infra.ModuleSemanticState: ...
+        def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState: ...
 
         def exports(
             self,
@@ -175,10 +153,7 @@ class FlextInfraProtocolsRope(Protocol):
         """Contract for post-processing hooks invoked after Rope refactoring."""
 
         def __call__(
-            self,
-            path: Path,
-            *,
-            dry_run: bool,
+            self, path: Path, *, dry_run: bool
         ) -> t.SequenceOf[m.Infra.Result]:
             """Execute the hook and return results."""
             ...
@@ -217,9 +192,7 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> None: ...
 
         def _child_nodes(
-            self,
-            nodes: t.SequenceOf[ast.AST],
-            separator: str,
+            self, nodes: t.SequenceOf[ast.AST], separator: str
         ) -> list[p.AttributeProbe]: ...
 
     @runtime_checkable
@@ -228,8 +201,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         @staticmethod
         def get_module_classes(
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
+            rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
         ) -> t.StrSequence: ...
 
         @staticmethod
@@ -245,14 +217,11 @@ class FlextInfraProtocolsRope(Protocol):
         def project_root(file_path: Path) -> Path | None: ...
 
         @staticmethod
-        def init_rope_project(
-            workspace_root: Path,
-        ) -> t.Infra.RopeProject: ...
+        def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject: ...
 
         @staticmethod
         def get_resource_from_path(
-            rope_project: t.Infra.RopeProject,
-            file_path: Path,
+            rope_project: t.Infra.RopeProject, file_path: Path
         ) -> t.Infra.RopeResource | None: ...
 
 

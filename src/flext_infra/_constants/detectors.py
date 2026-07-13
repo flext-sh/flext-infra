@@ -18,14 +18,10 @@ class FlextInfraConstantsDetectors:
     CONTEXTLIB_SUPPRESS: Final[str] = "contextlib.suppress"
     "Dotted name for the failure-swallowing context manager flagged by the silent-failure detector."
 
-    INLINE_IMPORT_EXEMPT_PATH_PARTS: Final[frozenset[str]] = frozenset({
-        "beartype",
-    })
+    INLINE_IMPORT_EXEMPT_PATH_PARTS: Final[frozenset[str]] = frozenset({"beartype"})
     "Path parts that exempt a file from inline-import detection (SSOT: detector-local)."
 
-    INLINE_IMPORT_EXEMPT_FILE_NAMES: Final[frozenset[str]] = frozenset({
-        "__init__.py",
-    })
+    INLINE_IMPORT_EXEMPT_FILE_NAMES: Final[frozenset[str]] = frozenset({"__init__.py"})
     "File names that exempt a module from inline-import detection."
 
 

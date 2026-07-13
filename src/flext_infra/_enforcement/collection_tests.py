@@ -7,13 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra._enforcement.collection_base import (
-    FlextInfraEnforcementCollectionBase,
-)
+from flext_infra._enforcement.collection_base import FlextInfraEnforcementCollectionBase
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p
     from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
@@ -22,20 +19,15 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
     """Collect violations from flext-tests validator methods."""
 
     def collect_tests_validator(
-        self,
-        project_dir: Path,
-        rule: me.EnforcementRuleSpec,
+        self, project_dir: Path, rule: me.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        list[fr.FailedFix],
+        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
     ]:
         """Run the flext-tests validator method declared by ``rule``."""
         source = rule.source
         if source.kind != "flext_tests_validator":
             return self._empty_failure(
-                project_dir,
-                rule,
-                f"invalid validator source kind {source.kind!r}",
+                project_dir, rule, f"invalid validator source kind {source.kind!r}"
             )
         try:
             validator_cls = getattr(
@@ -45,15 +37,11 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
             )
         except ImportError as exc:
             return self._empty_failure(
-                project_dir,
-                rule,
-                f"unable to import flext_tests.validator: {exc}",
+                project_dir, rule, f"unable to import flext_tests.validator: {exc}"
             )
         if validator_cls is None:
             return self._empty_failure(
-                project_dir,
-                rule,
-                "flext_tests.validator missing FlextTestsValidator",
+                project_dir, rule, "flext_tests.validator missing FlextTestsValidator"
             )
         method = getattr(validator_cls, source.method, None)
         if method is None or not callable(method):
@@ -76,9 +64,7 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
         scan = getattr(result, "value", None)
         if scan is None:
             return self._empty_failure(
-                project_dir,
-                rule,
-                "validator returned empty scan payload",
+                project_dir, rule, "validator returned empty scan payload"
             )
         wanted_ids = frozenset(source.rule_ids)
         out: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []

@@ -24,9 +24,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @classmethod
     def _lightweight_symbol_index(
-        cls,
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
+        cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
     ) -> dict[str, tuple[str, int]]:
         """Top-level symbol index for detector-only rule sets."""
         resource = rope.resource(file_path)
@@ -34,8 +32,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
             return {}
         try:
             attributes = u.Infra.get_pymodule(
-                rope.rope_project,
-                resource,
+                rope.rope_project, resource
             ).get_attributes()
         except (
             *FlextInfraConstantsRope.RUNTIME_ERRORS,
@@ -61,9 +58,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         for line, name, pyname in sorted(candidates, key=itemgetter(0)):
             obj = pyname.get_object()
             kind = cls._lightweight_symbol_kind(
-                name=name,
-                obj=obj,
-                object_kinds=object_kinds,
+                name=name, obj=obj, object_kinds=object_kinds
             )
             symbols.setdefault(name, (kind, line))
             if kind in {"class", "function"}:
@@ -72,8 +67,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @staticmethod
     def _lightweight_symbol_line(
-        pyname: t.Infra.RopePyName,
-        resource: t.Infra.RopeResource,
+        pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> int | None:
         """Return the local definition line for one top-level Rope symbol."""
         location = pyname.get_definition_location()
@@ -85,10 +79,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @staticmethod
     def _lightweight_symbol_kind(
-        *,
-        name: str,
-        obj: t.Infra.RopePyObject | None,
-        object_kinds: dict[int, str],
+        *, name: str, obj: t.Infra.RopePyObject | None, object_kinds: dict[int, str]
     ) -> str:
         """Infer a detector-only symbol kind from Rope metadata."""
         inherited_kind = object_kinds.get(id(obj))

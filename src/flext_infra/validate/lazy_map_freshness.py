@@ -22,7 +22,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import m
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -36,10 +35,7 @@ if TYPE_CHECKING:
 class FlextInfraValidateLazyMapFreshness(s[bool]):
     """Flags ``__init__.py`` files whose lazy maps are out of sync with siblings."""
 
-    def build_report(
-        self,
-        workspace_root: Path,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
@@ -56,7 +52,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
             return r[m.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
         if errors > 0:
             return r[m.Infra.ValidationReport].fail(
-                f"lazy-map freshness scan errored in {errors} package(s)",
+                f"lazy-map freshness scan errored in {errors} package(s)"
             )
         modified = tuple(generator.modified_files)
         violations: t.MutableSequenceOf[str] = [
@@ -70,10 +66,8 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=violations,
-                summary=summary,
-            ),
+                passed=passed, violations=violations, summary=summary
+            )
         )
 
     @override
@@ -82,7 +76,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "lazy-map freshness validation failed",
+                report_result.error or "lazy-map freshness validation failed"
             )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
@@ -27,9 +25,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Ruff always runs — never skip."""
         _ = ctx
@@ -37,10 +33,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
@@ -56,10 +49,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
@@ -76,13 +66,11 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                                 file=u.Cli.json_pick_str(entry, "filename", "?"),
                                 line=u.Cli.json_nested_int(entry, "location", "row"),
                                 column=u.Cli.json_nested_int(
-                                    entry,
-                                    "location",
-                                    "column",
+                                    entry, "location", "column"
                                 ),
                                 code=u.Cli.json_pick_str(entry, "code"),
                                 message=u.Cli.json_pick_str(entry, "message"),
-                            ),
+                            )
                         )
         except c.EXC_VALIDATION_TYPE as err:
             issues.append(
@@ -93,17 +81,14 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                     code="PARSE_ERROR",
                     message=f"Tool output parsing failed: {type(err).__name__}",
                     severity="ERROR",
-                ),
+                )
             )
             return False, issues
         return result.exit_code == 0, issues
 
     @override
     def _build_fix_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir

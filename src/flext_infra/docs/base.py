@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 from flext_core import e, r
-
 from flext_infra import c, m
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
@@ -26,10 +25,9 @@ if TYPE_CHECKING:
 class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC):
     """Shared abstract base for ``audit``, ``build``, ``fix``, ``generate``, ``validate``."""
 
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
+    output_dir: Annotated[Path | None, m.Field(description="Docs output dir")] = Path(
+        c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    )
 
     @staticmethod
     def _propagate_phase_outcome(

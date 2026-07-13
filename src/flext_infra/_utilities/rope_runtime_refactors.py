@@ -60,15 +60,10 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         in_hierarchy: bool,
     ) -> t.Infra.RopeOccurrenceFinder:
         create_finder = cls._runtime_callable(
-            "rope.refactor.occurrences",
-            "create_finder",
+            "rope.refactor.occurrences", "create_finder"
         )
         finder = create_finder(
-            rope_project,
-            name,
-            pyname,
-            imports=imports,
-            in_hierarchy=in_hierarchy,
+            rope_project, name, pyname, imports=imports, in_hierarchy=in_hierarchy
         )
         if not isinstance(finder, p.Infra.RopeOccurrenceFinder):
             msg = "rope occurrence finder does not satisfy p.Infra.RopeOccurrenceFinder"

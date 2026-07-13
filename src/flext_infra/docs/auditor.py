@@ -25,18 +25,13 @@ class FlextInfraDocAuditor(
     """Audit governed docs scopes using code-backed and policy-backed checks."""
 
     strict_mode: Annotated[
-        bool,
-        m.Field(
-            alias="strict",
-            description="Strict audit mode",
-        ),
+        bool, m.Field(alias="strict", description="Strict audit mode")
     ] = False
 
     # kimi-docs mro-3o9s: seletor de checks via CLI como --checks (flag --check é o
     # alias bool de check_only na base); default "all" = comportamento anterior.
     checks: Annotated[
-        str,
-        m.Field(description="Comma-separated audit checks (default: all)"),
+        str, m.Field(description="Comma-separated audit checks (default: all)")
     ] = "all"
 
     # kimi-docs mro-3o9s: threshold de cobertura de docstrings via CLI
@@ -44,7 +39,7 @@ class FlextInfraDocAuditor(
     docstring_min: Annotated[
         float | None,
         m.Field(
-            description="Minimum docstring coverage percent; breach fails the audit",
+            description="Minimum docstring coverage percent; breach fails the audit"
         ),
     ] = None
 
@@ -66,10 +61,7 @@ class FlextInfraDocAuditor(
         )
 
     def audit_scope(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        params: m.Infra.AuditScopeParams,
+        self, scope: m.Infra.DocScope, *, params: m.Infra.AuditScopeParams
     ) -> m.Infra.DocsPhaseReport:
         """Audit one scope and persist the standard reports."""
         checks = sorted(self.resolve_checks(params.check))
@@ -122,9 +114,7 @@ class FlextInfraDocAuditor(
         )
 
     def _audit_params(
-        self,
-        workspace_root: Path,
-        params: m.Infra.AuditScopeParams | None,
+        self, workspace_root: Path, params: m.Infra.AuditScopeParams | None
     ) -> m.Infra.AuditScopeParams:
         """Resolve runtime audit parameters and load default budgets when absent."""
         if params is not None and params.budgets is not None:

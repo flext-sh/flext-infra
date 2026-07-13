@@ -17,7 +17,7 @@ type _LazyEntryContext = tuple[str, frozenset[str], bool]
 
 
 class FlextInfraCodegenGenerationLazyEntriesMixin(
-    FlextInfraCodegenGenerationTypeCheckingMixin,
+    FlextInfraCodegenGenerationTypeCheckingMixin
 ):
     """Lazy-entry grouping and publication helper methods."""
 
@@ -35,7 +35,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
                 continue
             mod, attr = lazy_filtered[exp]
             module_or_package_export = FlextInfraCodegenGenerationLazyEntriesMixin._is_module_or_package_export(
-                attr,
+                attr
             )
             if module_or_package_export and not include_module_exports:
                 continue
@@ -46,8 +46,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
             )
             compact_mod = (
                 FlextInfraCodegenGenerationLazyEntriesMixin._compact_lazy_module_path(
-                    current_pkg,
-                    mod,
+                    current_pkg, mod
                 )
             )
             if mod in child_aliases and not attr and not child_package_module:
@@ -58,10 +57,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
     @staticmethod
     def _group_lazy_entries(
         lazy_entries: t.SequenceOf[tuple[str, str, str]],
-    ) -> tuple[
-        t.SequenceOf[t.StrSequencePair],
-        t.SequenceOf[t.StrPairSequencePair],
-    ]:
+    ) -> tuple[t.SequenceOf[t.StrSequencePair], t.SequenceOf[t.StrPairSequencePair]]:
         """Group lazy entries by module and alias group."""
         module_groups: dict[str, list[str]] = defaultdict(list)
         alias_groups: dict[str, list[t.StrPair]] = defaultdict(list)
@@ -73,23 +69,20 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         module_items = tuple(
             (mod, tuple(sorted(names)))
             for mod, names in sorted(
-                module_groups.items(),
-                key=lambda item: item[0].lower(),
+                module_groups.items(), key=lambda item: item[0].lower()
             )
         )
         alias_items = tuple(
             (mod, tuple(sorted(pairs)))
             for mod, pairs in sorted(
-                alias_groups.items(),
-                key=lambda item: item[0].lower(),
+                alias_groups.items(), key=lambda item: item[0].lower()
             )
         )
         return module_items, alias_items
 
     @staticmethod
     def _build_published_exports(
-        exports: t.StrSequence,
-        lazy_filtered: t.LazyAliasMap,
+        exports: t.StrSequence, lazy_filtered: t.LazyAliasMap
     ) -> t.StrSequence:
         """Build root public exports preserving canonical alias order."""
         export_candidates = tuple(dict.fromkeys(exports))
@@ -97,8 +90,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
             export_name
             for export_name in export_candidates
             if FlextInfraCodegenGenerationLazyEntriesMixin._should_publish_root_export(
-                export_name,
-                lazy_filtered,
+                export_name, lazy_filtered
             )
         )
         alias_order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER

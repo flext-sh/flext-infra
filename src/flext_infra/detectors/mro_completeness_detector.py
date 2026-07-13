@@ -39,7 +39,7 @@ class FlextInfraMROCompletenessDetector:
                         stage="mro-completeness",
                         error_type="ResourceNotFound",
                         detail=f"Cannot resolve {file_path.name}",
-                    ),
+                    )
                 )
             return []
         # Resolve facade class from declared module classes.
@@ -48,8 +48,7 @@ class FlextInfraMROCompletenessDetector:
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         if suffix:
             facade = next(
-                (name for name in module_classes if name.endswith(suffix)),
-                None,
+                (name for name in module_classes if name.endswith(suffix)), None
             )
         if facade is None:
             facade = next(
@@ -91,14 +90,12 @@ class FlextInfraMROCompletenessDetector:
                     expected[ci.name] = ci.line
         declared.update(u.Infra.parse_class_bases(res.read(), facade))
         declared = FlextInfraMROCompletenessDetector._expand_declared_bases(
-            declared,
-            local_bases_by_class,
+            declared, local_bases_by_class
         )
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(
-                family,
-                [],
+                family, []
             ):
                 expected.setdefault(base, 1)
         return [
@@ -116,8 +113,7 @@ class FlextInfraMROCompletenessDetector:
 
     @staticmethod
     def _expand_declared_bases(
-        declared: set[str],
-        local_bases_by_class: t.MappingKV[str, set[str]],
+        declared: set[str], local_bases_by_class: t.MappingKV[str, set[str]]
     ) -> set[str]:
         """Return direct and local-transitive bases declared by the facade."""
         expanded = set(declared)

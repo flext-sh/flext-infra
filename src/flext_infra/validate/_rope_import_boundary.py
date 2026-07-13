@@ -15,7 +15,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-
 from flext_infra import m, u
 from flext_infra.base import s
 
@@ -38,16 +37,13 @@ class _RopeImportBoundaryBase(s[bool]):
     _VIOLATION_KIND: ClassVar[str] = ""
     _SCAN_KIND: ClassVar[str] = ""
 
-    def build_report(
-        self,
-        workspace_root: Path,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Scan ``workspace_root`` and return a ``ValidationReport``."""
         try:
             violations = self._collect_violations(workspace_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail(
-                f"{self._SCAN_KIND} scan failed: {exc}",
+                f"{self._SCAN_KIND} scan failed: {exc}"
             )
         passed = not violations
         summary = (
@@ -57,10 +53,8 @@ class _RopeImportBoundaryBase(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=list(violations),
-                summary=summary,
-            ),
+                passed=passed, violations=list(violations), summary=summary
+            )
         )
 
     def _collect_violations(self, workspace_root: Path) -> t.StrSequence:
@@ -75,7 +69,7 @@ class _RopeImportBoundaryBase(s[bool]):
                 if module_imports is None:
                     continue
                 violations.extend(
-                    self._violations_for_module(file_path, module_imports),
+                    self._violations_for_module(file_path, module_imports)
                 )
         return tuple(violations)
 
@@ -88,9 +82,7 @@ class _RopeImportBoundaryBase(s[bool]):
         return False
 
     def _violations_for_module(
-        self,
-        file_path: Path,
-        module_imports: t.Infra.RopeModuleImports,
+        self, file_path: Path, module_imports: t.Infra.RopeModuleImports
     ) -> t.StrSequence:
         """Return banned-import violation strings for one module."""
         out: t.MutableSequenceOf[str] = []
@@ -98,13 +90,13 @@ class _RopeImportBoundaryBase(s[bool]):
             module_name = u.Infra.import_statement_module_name(stmt)
             if module_name is not None:
                 if self._top_module(
-                    module_name,
+                    module_name
                 ) in self._BANNED and not self._is_allowlisted(file_path, module_name):
                     out.append(self._format_violation(file_path, module_name))
                 continue
             for imported, _alias in u.Infra.import_statement_names_and_aliases(stmt):
                 if self._top_module(
-                    imported,
+                    imported
                 ) in self._BANNED and not self._is_allowlisted(file_path, imported):
                     out.append(self._format_violation(file_path, imported))
         return tuple(out)
@@ -126,7 +118,7 @@ class _RopeImportBoundaryBase(s[bool]):
         report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or f"{self._VIOLATION_KIND} validation failed",
+                report_result.error or f"{self._VIOLATION_KIND} validation failed"
             )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

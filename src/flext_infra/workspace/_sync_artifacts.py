@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-
 from flext_infra import c, m, p, t, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
@@ -25,57 +24,42 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     """
 
     def _sync_makefile_if_needed(
-        self,
-        resolved: Path,
-        effective_root: Path | None,
-        *,
-        apply: bool,
+        self, resolved: Path, effective_root: Path | None, *, apply: bool
     ) -> p.Result[int]:
         """Sync workspace or project Makefile and surface generator failures."""
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         if is_workspace_root:
             workspace_makefile_result = FlextInfraWorkspaceMakefileGenerator().generate(
-                resolved,
-                apply=apply,
+                resolved, apply=apply
             )
             if workspace_makefile_result.failure:
                 return r[int].fail(
                     workspace_makefile_result.error
-                    or "workspace Makefile generation failed",
+                    or "workspace Makefile generation failed"
                 )
             return r[int].ok(1 if workspace_makefile_result.value else 0)
         if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
-                resolved,
-                effective_root or resolved,
-                apply=apply,
+                resolved, effective_root or resolved, apply=apply
             )
             if makefile_result.failure:
                 return r[int].fail(
-                    makefile_result.error or "project Makefile generation failed",
+                    makefile_result.error or "project Makefile generation failed"
                 )
             return r[int].ok(1 if makefile_result.value else 0)
         return r[int].ok(0)
 
     @staticmethod
     def _sync_project_makefile(
-        workspace_root: Path,
-        canonical_root: Path,
-        *,
-        apply: bool,
+        workspace_root: Path, canonical_root: Path, *, apply: bool
     ) -> p.Result[bool]:
         """Sync the generated section of a project Makefile from pyproject.toml."""
         return FlextInfraProjectMakefileUpdater().update(
-            workspace_root,
-            canonical_root=canonical_root,
-            apply=apply,
+            workspace_root, canonical_root=canonical_root, apply=apply
         )
 
     @staticmethod
-    def _is_workspace_root(
-        workspace_root: Path,
-        canonical_root: Path | None,
-    ) -> bool:
+    def _is_workspace_root(workspace_root: Path, canonical_root: Path | None) -> bool:
         """Detect whether the sync target is the workspace root."""
         resolved_root = workspace_root.resolve()
         if canonical_root is not None:
@@ -90,11 +74,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         )
 
     def _ensure_gitignore_entries(
-        self,
-        workspace_root: Path,
-        required: t.StrSequence,
-        *,
-        apply: bool,
+        self, workspace_root: Path, required: t.StrSequence, *, apply: bool
     ) -> p.Result[bool]:
         """Idempotently sync one managed .gitignore block."""
         gitignore = workspace_root / c.Infra.GITIGNORE
@@ -116,8 +96,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
 
     @staticmethod
     def _render_gitignore_with_managed_entries(
-        existing: str,
-        required: t.StrSequence,
+        existing: str, required: t.StrSequence
     ) -> str:
         """Return ``existing`` with one canonical managed ignore block."""
         managed_patterns = frozenset(required)
@@ -136,22 +115,15 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         return "\n".join(unmanaged) + "\n"
 
     def _sync_environment_files(
-        self,
-        workspace_root: Path,
-        *,
-        apply: bool,
+        self, workspace_root: Path, *, apply: bool
     ) -> p.Result[int]:
         """Sync generated direnv and mise files without overwriting custom files."""
         return FlextInfraWorkspaceEnvironment.sync_environment_files(
-            workspace_root,
-            apply=apply,
+            workspace_root, apply=apply
         )
 
     def _sync_pre_commit_config(
-        self,
-        workspace_root: Path,
-        *,
-        apply: bool,
+        self, workspace_root: Path, *, apply: bool
     ) -> p.Result[bool]:
         """Sync the workspace pre-commit config from the canonical SSOT."""
         target_path = workspace_root / ".pre-commit-config.yaml"

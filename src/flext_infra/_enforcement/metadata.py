@@ -11,7 +11,6 @@ from flext_infra.refactor.declarative_enforcement import (
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import m, p, t
 
 
@@ -20,8 +19,7 @@ class FlextInfraEnforcementMetadata:
 
     @staticmethod
     def detect_declarative(
-        rule: me.EnforcementRuleSpec,
-        ctx: m.Infra.DetectorContext,
+        rule: me.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Detect one declarative rule for one detector context."""
         return FlextInfraRefactorDeclarativeEnforcement.detect(rule, ctx)
@@ -62,9 +60,7 @@ class FlextInfraEnforcementMetadata:
 
     @staticmethod
     def description(
-        rule: me.EnforcementRuleSpec,
-        probe: p.AttributeProbe,
-        object_name: str,
+        rule: me.EnforcementRuleSpec, probe: p.AttributeProbe, object_name: str
     ) -> str:
         """Return a human-readable description for a declarative violation."""
         base = rule.description

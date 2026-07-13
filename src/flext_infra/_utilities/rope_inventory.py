@@ -4,15 +4,11 @@ from __future__ import annotations
 
 from operator import itemgetter
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p
+from flext_infra import c, m, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -78,10 +74,7 @@ class FlextInfraUtilitiesRopeInventory:
                 child_scope=cls._child_scope_for(child_scopes, pyname),
                 rope_workspace=rope_workspace,
             )
-            record = cls._record(
-                record_options,
-                include_references=include_references,
-            )
+            record = cls._record(record_options, include_references=include_references)
             if record is None:
                 continue
             items.append(record)
@@ -92,7 +85,7 @@ class FlextInfraUtilitiesRopeInventory:
                     record_options=record_options,
                     include_local_scopes=include_local_scopes,
                     include_references=include_references,
-                ),
+                )
             )
         return tuple(items)
 
@@ -110,16 +103,9 @@ class FlextInfraUtilitiesRopeInventory:
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
             record_options = parent_options.model_copy(
-                update={
-                    "name": name,
-                    "pyname": pyname,
-                    "child_scope": child_scope,
-                },
+                update={"name": name, "pyname": pyname, "child_scope": child_scope}
             )
-            record = cls._record(
-                record_options,
-                include_references=include_references,
-            )
+            record = cls._record(record_options, include_references=include_references)
             if record is None:
                 continue
             items.append(record)
@@ -129,7 +115,7 @@ class FlextInfraUtilitiesRopeInventory:
                     child_scope=child_scope,
                     record_options=record_options,
                     include_references=include_references,
-                ),
+                )
             )
         return tuple(items)
 
@@ -152,17 +138,13 @@ class FlextInfraUtilitiesRopeInventory:
             return ()
         return cls._scope_objects(
             scope=child_scope,
-            parent_options=cls._descend_options(
-                record_options,
-                record,
-            ),
+            parent_options=cls._descend_options(record_options, record),
             include_references=include_references,
         )
 
     @staticmethod
     def _descend_options(
-        parent_options: m.Infra.RopeInventoryRecordInput,
-        record: m.Infra.Census.Object,
+        parent_options: m.Infra.RopeInventoryRecordInput, record: m.Infra.Census.Object
     ) -> m.Infra.RopeInventoryRecordInput:
         """Descend options."""
         return parent_options.model_copy(
@@ -173,35 +155,30 @@ class FlextInfraUtilitiesRopeInventory:
                 "class_chain": tuple(
                     part for part in record.class_path.split(".") if part
                 ),
-            },
+            }
         )
 
     @staticmethod
     def _sorted_module_names(
-        pymodule: t.Infra.RopePyModule,
-        resource: t.Infra.RopeResource,
+        pymodule: t.Infra.RopePyModule, resource: t.Infra.RopeResource
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         """Sorted module names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
-            pymodule.get_attributes(),
-            resource,
+            pymodule.get_attributes(), resource
         )
 
     @staticmethod
     def _sorted_scope_names(
-        scope: p.Infra.RopeScopeDsl,
-        resource: t.Infra.RopeResource,
+        scope: p.Infra.RopeScopeDsl, resource: t.Infra.RopeResource
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         """Sorted scope names."""
         return FlextInfraUtilitiesRopeInventory._sorted_names(
-            scope.get_names(),
-            resource,
+            scope.get_names(), resource
         )
 
     @staticmethod
     def _sorted_names(
-        names: t.MappingKV[str, t.Infra.RopePyName],
-        resource: t.Infra.RopeResource,
+        names: t.MappingKV[str, t.Infra.RopePyName], resource: t.Infra.RopeResource
     ) -> tuple[tuple[str, t.Infra.RopePyName], ...]:
         """Sorted names."""
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
@@ -218,10 +195,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @classmethod
     def _record(
-        cls,
-        options: m.Infra.RopeInventoryRecordInput,
-        *,
-        include_references: bool,
+        cls, options: m.Infra.RopeInventoryRecordInput, *, include_references: bool
     ) -> m.Infra.Census.Object | None:
         """Record."""
         line = cls._definition_line(options.pyname, options.resource)
@@ -241,9 +215,7 @@ class FlextInfraUtilitiesRopeInventory:
         if kind == "parameter" and options.name in {"self", "cls"}:
             return None
         is_facade_member = cls._is_facade_member(
-            options.convention,
-            name=options.name,
-            scope_chain=options.scope_chain,
+            options.convention, name=options.name, scope_chain=options.scope_chain
         )
         if (
             include_references
@@ -315,8 +287,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _definition_line(
-        pyname: t.Infra.RopePyName,
-        resource: t.Infra.RopeResource,
+        pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> int | None:
         """Definition line."""
         location = pyname.get_definition_location()
@@ -329,8 +300,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _child_scope_for(
-        scopes: t.SequenceOf[p.Infra.RopeScopeDsl],
-        pyname: t.Infra.RopePyName,
+        scopes: t.SequenceOf[p.Infra.RopeScopeDsl], pyname: t.Infra.RopePyName
     ) -> p.Infra.RopeScopeDsl | None:
         """Child scope for."""
         location = pyname.get_definition_location()
@@ -415,15 +385,12 @@ class FlextInfraUtilitiesRopeInventory:
         """Collect the reference sites for a symbol."""
         lines = source.splitlines(keepends=True)
         offset = FlextInfraUtilitiesRopeCore.find_identifier_offset_in_lines(
-            lines,
-            line=line,
-            symbol=name,
+            lines, line=line, symbol=name
         )
         if offset is None:
             return ((), (), (), ())
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
-            rope_project,
-            resource,
+            rope_project, resource
         )
         search_resources: tuple[t.Infra.RopeResource, ...] | None = None
         if rope_workspace is not None and definition_path is not None:
@@ -440,9 +407,7 @@ class FlextInfraUtilitiesRopeInventory:
             dependent_import_targets = (
                 (module_name, f"{module_name}.{name}")
                 if module_name
-                and FlextInfraUtilitiesRopeInventory._reference_surface(
-                    definition_path,
-                )
+                and FlextInfraUtilitiesRopeInventory._reference_surface(definition_path)
                 != c.Infra.DEFAULT_SRC_DIR
                 else ()
             )
@@ -454,10 +419,7 @@ class FlextInfraUtilitiesRopeInventory:
                 dependent_import_targets=dependent_import_targets,
             )
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
-            rope_project,
-            resource,
-            offset,
-            resources=search_resources,
+            rope_project, resource, offset, resources=search_resources
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
@@ -469,10 +431,7 @@ class FlextInfraUtilitiesRopeInventory:
             if (
                 not skipped_definition
                 and FlextInfraUtilitiesRopeInventory._is_definition_occurrence(
-                    hit,
-                    definition_path=definition_path,
-                    line=line,
-                    offset=offset,
+                    hit, definition_path=definition_path, line=line, offset=offset
                 )
             ):
                 skipped_definition = True
@@ -502,37 +461,29 @@ class FlextInfraUtilitiesRopeInventory:
             runtime_reference_sites.append(reference_site)
         if not skipped_definition and definition_path is not None:
             surface = FlextInfraUtilitiesRopeInventory._reference_surface(
-                definition_path,
+                definition_path
             )
             if surface == c.Infra.DIR_TESTS:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    test_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
+                    test_reference_sites, definition_path=definition_path, line=line
                 )
             elif surface == c.Infra.DIR_EXAMPLES:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    example_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
+                    example_reference_sites, definition_path=definition_path, line=line
                 )
             elif surface == c.Infra.DIR_SCRIPTS:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    script_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
+                    script_reference_sites, definition_path=definition_path, line=line
                 )
             else:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    runtime_reference_sites,
-                    definition_path=definition_path,
-                    line=line,
+                    runtime_reference_sites, definition_path=definition_path, line=line
                 )
         has_reference_sites = bool(
             runtime_reference_sites
             or test_reference_sites
             or example_reference_sites
-            or script_reference_sites,
+            or script_reference_sites
         )
         if (
             not has_reference_sites
@@ -604,13 +555,13 @@ class FlextInfraUtilitiesRopeInventory:
                     raise TypeError(msg)
                 dependent_paths.add(
                     FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                        path.resolve(),
-                    ),
+                        path.resolve()
+                    )
                 )
         if not dependent_paths:
             return ((), (), (), ())
         normalized_definition = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-            definition_path.resolve(),
+            definition_path.resolve()
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
@@ -619,7 +570,7 @@ class FlextInfraUtilitiesRopeInventory:
         seen_sites: set[tuple[str, int, str]] = set()
         for path, surface, lines in name_index_getter().get(name, ()):
             normalized_path = FlextInfraUtilitiesRopeInventory._normalize_file_path(
-                path.resolve(),
+                path.resolve()
             )
             if path.name == c.Infra.INIT_PY or normalized_path == normalized_definition:
                 continue
@@ -631,9 +582,7 @@ class FlextInfraUtilitiesRopeInventory:
                     continue
                 seen_sites.add(site_key)
                 reference_site = m.Infra.Census.ReferenceSite(
-                    file_path=normalized_path,
-                    line=line,
-                    surface=surface,
+                    file_path=normalized_path, line=line, surface=surface
                 )
                 if surface == c.Infra.DIR_TESTS:
                     test_reference_sites.append(reference_site)
@@ -654,11 +603,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _fast_reference_sites_from_index(
-        rope_workspace: p.AttributeProbe,
-        *,
-        name: str,
-        definition_path: Path,
-        line: int,
+        rope_workspace: p.AttributeProbe, *, name: str, definition_path: Path, line: int
     ) -> (
         tuple[
             tuple[m.Infra.Census.ReferenceSite, ...],
@@ -725,10 +670,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _discard_definition_site(
-        sites: list[m.Infra.Census.ReferenceSite],
-        *,
-        definition_path: Path,
-        line: int,
+        sites: list[m.Infra.Census.ReferenceSite], *, definition_path: Path, line: int
     ) -> None:
         """Discard definition site."""
         definition_key = (
@@ -776,7 +718,7 @@ class FlextInfraUtilitiesRopeInventory:
         return bool(
             definition_path is not None
             and location_path == definition_path
-            and location_line == line,
+            and location_line == line
         )
 
     @staticmethod
@@ -799,11 +741,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _fingerprint(
-        source: str,
-        *,
-        name: str,
-        line: int,
-        child_scope: p.Infra.RopeScopeDsl | None,
+        source: str, *, name: str, line: int, child_scope: p.Infra.RopeScopeDsl | None
     ) -> str:
         """Fingerprint."""
         start = max(1, line)
@@ -852,7 +790,7 @@ class FlextInfraUtilitiesRopeInventory:
         if name == alias:
             return True
         return bool(
-            layout is not None and family and name == f"{layout.class_stem}{family}",
+            layout is not None and family and name == f"{layout.class_stem}{family}"
         )
 
 

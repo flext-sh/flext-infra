@@ -26,15 +26,12 @@ knew about these nodes:
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
+from flext_infra import p
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    import ast
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopePep695Patch:
@@ -53,8 +50,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             return
         walker = FlextInfraUtilitiesRopeRuntime.patched_ast_walker()
         original_function_def: Callable[..., None] = getattr(
-            walker,
-            "_handle_function_def_node",
+            walker, "_handle_function_def_node"
         )
         original_class_def: Callable[..., None] = getattr(walker, "_ClassDef")
 
@@ -72,8 +68,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             return children
 
         def _pattern_opening_token(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.AST,
+            self: p.Infra.PatchingASTWalker, node: ast.AST
         ) -> str:
             """Pattern opening token."""
             lineno = getattr(node, "lineno", None)
@@ -108,8 +103,7 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _patched_class_def(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.ClassDef,
+            self: p.Infra.PatchingASTWalker, node: ast.ClassDef
         ) -> None:
             """Patched class def."""
             if not getattr(node, "type_params", None):
@@ -128,43 +122,32 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(node.body)
             self._handle(node, children)
 
-        def _type_alias(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.TypeAlias,
-        ) -> None:
+        def _type_alias(self: p.Infra.PatchingASTWalker, node: ast.TypeAlias) -> None:
             """Type alias."""
             children: list[p.AttributeProbe] = ["type", node.name]
             children.extend(_type_params_children(node))
             children.extend(["=", node.value])
             self._handle(node, children)
 
-        def _type_var(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.TypeVar,
-        ) -> None:
+        def _type_var(self: p.Infra.PatchingASTWalker, node: ast.TypeVar) -> None:
             """Type var."""
             children: list[p.AttributeProbe] = [node.name]
             if getattr(node, "bound", None) is not None:
                 children.extend([":", node.bound])
             self._handle(node, children)
 
-        def _param_spec(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.ParamSpec,
-        ) -> None:
+        def _param_spec(self: p.Infra.PatchingASTWalker, node: ast.ParamSpec) -> None:
             """Param spec."""
             self._handle(node, ["**", node.name])
 
         def _type_var_tuple(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.TypeVarTuple,
+            self: p.Infra.PatchingASTWalker, node: ast.TypeVarTuple
         ) -> None:
             """Type var tuple."""
             self._handle(node, ["*", node.name])
 
         def _match_sequence(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.MatchSequence,
+            self: p.Infra.PatchingASTWalker, node: ast.MatchSequence
         ) -> None:
             """Match sequence."""
             children = self._child_nodes(node.patterns, ",")
@@ -178,23 +161,16 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children, eat_parens=opening == "(")
 
         def _match_singleton(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.MatchSingleton,
+            self: p.Infra.PatchingASTWalker, node: ast.MatchSingleton
         ) -> None:
             """Match singleton."""
             self._handle(node, [str(node.value)])
 
-        def _match_star(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.MatchStar,
-        ) -> None:
+        def _match_star(self: p.Infra.PatchingASTWalker, node: ast.MatchStar) -> None:
             """Match star."""
             self._handle(node, ["*", node.name or "_"])
 
-        def _match_or(
-            self: p.Infra.PatchingASTWalker,
-            node: ast.MatchOr,
-        ) -> None:
+        def _match_or(self: p.Infra.PatchingASTWalker, node: ast.MatchOr) -> None:
             """Match or."""
             self._handle(node, self._child_nodes(node.patterns, "|"))
 

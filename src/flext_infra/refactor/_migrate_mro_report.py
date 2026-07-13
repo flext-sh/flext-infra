@@ -57,9 +57,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
 
     @staticmethod
     def _report_to_results(
-        *,
-        report: m.Infra.MROMigrationReport,
-        dry_run: bool,
+        *, report: m.Infra.MROMigrationReport, dry_run: bool
     ) -> t.SequenceOf[m.Infra.Result]:
         """Convert MRO migration report into rope-compatible Result sequence."""
         per_file_changes: MutableMapping[Path, t.MutableSequenceOf[str]] = {}
@@ -76,7 +74,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
             changes = per_file_changes.setdefault(file_path, [])
             action = "planned" if dry_run else "rewrote"
             changes.append(
-                f"{action} {rewrite.replacements} consumer references after MRO migration",
+                f"{action} {rewrite.replacements} consumer references after MRO migration"
             )
         return [
             m.Infra.Result(
@@ -88,8 +86,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
                 refactored_code=None,
             )
             for file_path, changes in sorted(
-                per_file_changes.items(),
-                key=lambda item: str(item[0]),
+                per_file_changes.items(), key=lambda item: str(item[0])
             )
         ]
 

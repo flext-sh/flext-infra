@@ -15,7 +15,6 @@ import ast
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.base import s
@@ -45,16 +44,15 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         return r[bool].ok(report.passed)
 
     def validate_project(
-        self,
-        project_root: Path,
+        self, project_root: Path
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate namespace rules inside one project."""
         files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_root,)),
+            m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
             return r[m.Infra.ValidationReport].fail(
-                files_result.error or "Namespace validation failed: discovery failed",
+                files_result.error or "Namespace validation failed: discovery failed"
             )
         files = [
             py_file
@@ -88,7 +86,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                             strict_top_level=is_facade,
                             strict_single_class=is_facade,
                             require_public_class=is_facade,
-                        ),
+                        )
                     )
                     if is_facade and not is_test_file:
                         violations.extend(self.check_rule_1(tree, rel))
@@ -96,19 +94,14 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                 if not is_test_file:
                     violations.extend(
                         self.check_rule_3(
-                            tree,
-                            rel,
-                            class_stem=prefix,
-                            package_name=package_name,
-                        ),
+                            tree, rel, class_stem=prefix, package_name=package_name
+                        )
                     )
         return self._validation_report(files=files, violations=violations)
 
     @staticmethod
     def _validation_report(
-        *,
-        files: t.SequenceOf[Path],
-        violations: t.SequenceOf[str],
+        *, files: t.SequenceOf[Path], violations: t.SequenceOf[str]
     ) -> p.Result[m.Infra.ValidationReport]:
         """Build the namespace validation report."""
         passed = not violations
@@ -119,16 +112,11 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=tuple(violations),
-                summary=summary,
-            ),
+                passed=passed, violations=tuple(violations), summary=summary
+            )
         )
 
-    def _is_exempt_file(
-        self,
-        filepath: Path,
-    ) -> bool:
+    def _is_exempt_file(self, filepath: Path) -> bool:
         """Check whether a file should be skipped from validation."""
         name = filepath.name
         if name in c.Infra.EXEMPT_FILENAMES:
@@ -136,9 +124,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         return any(name.startswith(prefix) for prefix in c.Infra.EXEMPT_PREFIXES)
 
     def _parse_file(
-        self,
-        rope_project: t.Infra.RopeProject,
-        path: Path,
+        self, rope_project: t.Infra.RopeProject, path: Path
     ) -> p.Result[ast.AST]:
         """Return the AST module for ``path`` via rope.
 
@@ -170,14 +156,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         if FlextInfraNamespaceValidator._is_facade_module(rel_path):
             return True
         return any(
-            part
-            in {
-                "_constants",
-                "_models",
-                "_protocols",
-                "_typings",
-                "_utilities",
-            }
+            part in {"_constants", "_models", "_protocols", "_typings", "_utilities"}
             for part in rel_path.parts
         )
 

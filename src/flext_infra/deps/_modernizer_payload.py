@@ -20,8 +20,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
     """
 
     def _ensure_build_system_payload(
-        self,
-        payload: t.MutableJsonMapping,
+        self, payload: t.MutableJsonMapping
     ) -> t.StrSequence:
         """Ensure canonical build-system backend/requirements in one plain payload."""
         changes: t.MutableSequenceOf[str] = []
@@ -44,8 +43,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             build_system["requires"] = requires_list
             changes.append("build-system.requires set to ['hatchling']")
         metadata_table = u.Cli.toml_mapping_ensure_path(
-            payload,
-            (c.Infra.TOOL, "hatch", "metadata"),
+            payload, (c.Infra.TOOL, "hatch", "metadata")
         )
         current_allow = metadata_table.get("allow-direct-references", None) is True
         if not current_allow:
@@ -54,13 +52,11 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         return changes
 
     def _remove_empty_poetry_groups_payload(
-        self,
-        payload: t.MutableJsonMapping,
+        self, payload: t.MutableJsonMapping
     ) -> t.StrSequence:
         """Remove empty Poetry group tables from one normalized payload."""
         poetry_groups = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+            payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP)
         )
         if poetry_groups is None:
             return []
@@ -90,10 +86,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         return changes
 
     def _ordered_keys(
-        self,
-        keys: t.StrSequence,
-        *,
-        preferred_first: t.StrSequence | None = None,
+        self, keys: t.StrSequence, *, preferred_first: t.StrSequence | None = None
     ) -> t.StrSequence:
         """Return keys with optional preferred-first order then alphabetical."""
         preferred = list(preferred_first or [])
@@ -104,9 +97,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
         return ordered
 
     def _recurse_into_item(
-        self,
-        item: t.Cli.TomlContainer | t.Cli.TomlItem,
-        table_key: str,
+        self, item: t.Cli.TomlContainer | t.Cli.TomlItem, table_key: str
     ) -> None:
         """Reorder children of one TOML node; Table/AoT only, no-op otherwise."""
         if u.Cli.toml_is_table(item):
@@ -127,8 +118,7 @@ class FlextInfraPyprojectModernizerPayloadMixin:
             return
         original_keys = [str(key) for key in table]
         ordered_keys = self._ordered_keys(
-            original_keys,
-            preferred_first=preferred_first,
+            original_keys, preferred_first=preferred_first
         )
         if ordered_keys == original_keys:
             for key in ordered_keys:

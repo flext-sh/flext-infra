@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, u
 from flext_infra.base import s
 
@@ -23,11 +22,7 @@ class FlextInfraLocDeltaValidator(s[bool]):
 
     @classmethod
     def evaluate(
-        cls,
-        *,
-        subject: str,
-        insertions: int,
-        deletions: int,
+        cls, *, subject: str, insertions: int, deletions: int
     ) -> p.Result[None]:
         """Pure rule: net positive delta on a labelled commit is a violation."""
         lowered = subject.lower()
@@ -38,7 +33,7 @@ class FlextInfraLocDeltaValidator(s[bool]):
             return r[None].fail(
                 f"net-LOC-delta violation (§3.5): '{subject}' adds +{delta} "
                 f"(insertions={insertions}, deletions={deletions}); refactor/cleanup "
-                "commits must be net non-positive",
+                "commits must be net non-positive"
             )
         return r[None].ok(None)
 
@@ -60,9 +55,7 @@ class FlextInfraLocDeltaValidator(s[bool]):
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
         subject_result = u.Cli.run_raw(
-            ["git", "log", "-1", "--format=%s"],
-            cwd=self.workspace_root,
-            timeout=30,
+            ["git", "log", "-1", "--format=%s"], cwd=self.workspace_root, timeout=30
         )
         if subject_result.failure:
             return r[bool].fail(subject_result.error or "git subject read failed")

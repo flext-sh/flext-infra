@@ -30,9 +30,7 @@ from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransforme
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-from flext_infra.transformers.typing_dict_attr import (
-    FlextInfraRefactorTypingDictAttr,
-)
+from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
@@ -40,7 +38,6 @@ from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnif
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import m, p, t
     from flext_infra.transformers.base import FlextInfraRopeTransformer
 
@@ -59,12 +56,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         super().__init__(workspace_root)
 
     # Canonical transformer registry. New deterministic transformers register here.
-    _TRANSFORMERS: ClassVar[
-        dict[
-            str,
-            type[FlextInfraRopeTransformer],
-        ]
-    ] = {
+    _TRANSFORMERS: ClassVar[dict[str, type[FlextInfraRopeTransformer]]] = {
         "cast_remover": FlextInfraRefactorCastRemover,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
@@ -81,10 +73,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     }
 
     @override
-    def can_fix(
-        self,
-        fix_action: me.EnforcementFixAction,
-    ) -> bool:
+    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
@@ -112,7 +101,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(project_dir),
                         error=f"transformer {target} not registered",
-                    ),
+                    )
                 )
                 continue
             fix_action = target_violations[0][0].fix_action
@@ -126,7 +115,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                             reason=(
                                 f"project {project_dir.name} owns library abstraction"
                             ),
-                        ),
+                        )
                     )
                     continue
                 result = self._fix_file(
@@ -149,7 +138,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         rule_id="",
                         file_path=str(project_dir),
                         error=normalize_result.error or "import normalization failed",
-                    ),
+                    )
                 )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -162,9 +151,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _is_owned_library_exempt(
-        project_dir: Path,
-        fix_action: me.EnforcementFixAction | None,
-        file_path: Path,
+        project_dir: Path, fix_action: me.EnforcementFixAction | None, file_path: Path
     ) -> bool:
         """Skip import modernization inside the library's owning project.
 
@@ -176,7 +163,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if fix_action is None or fix_action.target != "import_modernizer":
             return False
         imports_to_remove = u.Cli.json_as_sequence(
-            fix_action.params.get("imports_to_remove"),
+            fix_action.params.get("imports_to_remove")
         )
         for module in imports_to_remove:
             if not isinstance(module, str):
@@ -186,10 +173,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 return True
         return False
 
-    def _normalize_imports(
-        self,
-        file_paths: t.SequenceOf[str],
-    ) -> p.Result[bool]:
+    def _normalize_imports(self, file_paths: t.SequenceOf[str]) -> p.Result[bool]:
         """Run rope+ruff import cleanup on files touched by transformers.
 
         Keeps canonical runtime-alias imports (c/m/p/t/u) that Ruff may consider
@@ -199,9 +183,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         paths = tuple(Path(path) for path in file_paths)
         with u.Infra.open_project(self._workspace_root) as rope_project:
             return FlextInfraUtilitiesRopeImports.normalize_imports(
-                rope_project,
-                file_paths=paths,
-                preserve_canonical_aliases=True,
+                rope_project, file_paths=paths, preserve_canonical_aliases=True
             )
 
     def _fix_file(
@@ -239,9 +221,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             )
         source = read.value
         transformer = self._build_transformer(
-            transformer_cls=transformer_cls,
-            fix_action=fix_action,
-            file_path=file_path,
+            transformer_cls=transformer_cls, fix_action=fix_action, file_path=file_path
         )
         updated, changes = transformer.apply_to_source(source)
         if not changes:
@@ -312,8 +292,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     "t.MappingKV[str, t.JsonValue]"
                 )
             return FlextInfraRefactorTypingUnifier(
-                canonical_map=canonical_map,
-                file_path=file_path,
+                canonical_map=canonical_map, file_path=file_path
             )
         if transformer_cls in {
             FlextInfraRefactorTypingDictImport,
@@ -325,31 +304,25 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         if transformer_cls is FlextInfraRefactorImportModernizer:
             imports_to_remove = tuple(
                 name
-                for name in u.Cli.json_as_sequence(
-                    params.get("imports_to_remove"),
-                )
+                for name in u.Cli.json_as_sequence(params.get("imports_to_remove"))
                 if isinstance(name, str)
             )
             symbols_to_replace = {
                 k: str(v)
                 for k, v in u.Cli.json_as_mapping(
-                    params.get("symbols_to_replace"),
+                    params.get("symbols_to_replace")
                 ).items()
                 # mro-i6nq.10: Mapping keys are already typed as strings.
                 if isinstance(v, (str, int, float))
             }
             runtime_aliases = {
                 name
-                for name in u.Cli.json_as_sequence(
-                    params.get("runtime_aliases"),
-                )
+                for name in u.Cli.json_as_sequence(params.get("runtime_aliases"))
                 if isinstance(name, str)
             }
             blocked_aliases = {
                 name
-                for name in u.Cli.json_as_sequence(
-                    params.get("blocked_aliases"),
-                )
+                for name in u.Cli.json_as_sequence(params.get("blocked_aliases"))
                 if isinstance(name, str)
             }
             return FlextInfraRefactorImportModernizer(

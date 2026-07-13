@@ -4,26 +4,26 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): field-only protocols describe direct singleton data without forwarding properties. #}
+{# NOTE (multi-agent, mro-wkii.19.1): field-only protocols describe direct singleton data without forwarding properties. -#}
 from __future__ import annotations
 
-from typing import Final, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from {{ package_name }}.models import m
 
 
 class {{ class_stem }}ProtocolsSettings:
     """Protocol namespace for validated settings data."""
 
     @runtime_checkable
-    class SettingsNamespace(Protocol):
-        """Validated ``settings.{{ ns }}`` fields."""
-
-        enabled: Final[bool]
-
-    @runtime_checkable
     class Settings(Protocol):
         """Direct project settings singleton surface."""
 
-        {{ ns }}: Final[{{ class_stem }}ProtocolsSettings.SettingsNamespace]
+        @property
+        def {{ ns }}(self) -> m.{{ ns }}.SettingsRoot.SettingsNamespace:
+            """The canonical validated settings namespace model."""
+            ...
 
 
 __all__: list[str] = ["{{ class_stem }}ProtocolsSettings"]

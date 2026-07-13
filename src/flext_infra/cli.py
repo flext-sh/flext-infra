@@ -6,8 +6,8 @@ import sys
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, m, u
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
@@ -58,10 +58,7 @@ class FlextInfraCli(type(cli_facade)):
             return 0
         group, group_args = cli_args[0], cli_args[1:]
         if group not in c.Infra.CLI_GROUP_DESCRIPTIONS:
-            self.display_message(
-                f"unknown group '{group}'",
-                c.Cli.MessageTypes.ERROR,
-            )
+            self.display_message(f"unknown group '{group}'", c.Cli.MessageTypes.ERROR)
             self.print_help()
             return 1
         return self._run_group(group, group_args)
@@ -69,8 +66,7 @@ class FlextInfraCli(type(cli_facade)):
     def print_help(self) -> None:
         """Display the canonical command groups."""
         self.display_message(
-            "Usage: flext-infra <group> [subcommand] [args...]",
-            c.Cli.MessageTypes.INFO,
+            "Usage: flext-infra <group> [subcommand] [args...]", c.Cli.MessageTypes.INFO
         )
         self.display_message("Groups", c.Cli.MessageTypes.INFO)
         for group in sorted(c.Infra.CLI_GROUP_DESCRIPTIONS):
@@ -151,31 +147,23 @@ class FlextInfraCli(type(cli_facade)):
         what_result = self._translate_what(group, args)
         if what_result.failure:
             self.display_message(
-                what_result.error or "invalid --what phase",
-                c.Cli.MessageTypes.ERROR,
+                what_result.error or "invalid --what phase", c.Cli.MessageTypes.ERROR
             )
             return int(c.Infra.ScriptExitCode.USAGE)
         normalized_args = self._normalize_group_args(what_result.value)
         if not normalized_args:
             _ = self.execute_app(
-                app,
-                prog_name=f"{self.app_name} {group}",
-                args=["--help"],
+                app, prog_name=f"{self.app_name} {group}", args=["--help"]
             )
             return 1
         result = self.execute_app(
-            app,
-            prog_name=f"{self.app_name} {group}",
-            args=normalized_args,
+            app, prog_name=f"{self.app_name} {group}", args=normalized_args
         )
         if result.success:
             return 0
         error_message = result.error
         if error_message:
-            self.display_message(
-                error_message,
-                c.Cli.MessageTypes.ERROR,
-            )
+            self.display_message(error_message, c.Cli.MessageTypes.ERROR)
         return 2 if error_message and u.Cli.cli_usage_error(error_message) else 1
 
 

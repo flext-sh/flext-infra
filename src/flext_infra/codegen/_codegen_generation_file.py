@@ -9,9 +9,7 @@ from flext_infra.codegen._codegen_generation_standard import (
 
 
 # mro-i6nq.10: Every package uses one manifest-backed thin initializer contract.
-class FlextInfraCodegenGenerationFileMixin(
-    FlextInfraCodegenGenerationStandardMixin,
-):
+class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMixin):
     """Render canonical initializer artifacts from one validated plan."""
 
     @classmethod

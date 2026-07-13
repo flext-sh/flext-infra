@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra import c
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, p, t
 
 
 class FlextInfraUtilitiesRelease:
@@ -73,8 +67,7 @@ class FlextInfraUtilitiesRelease:
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
             u.fetch_logger(__name__).info(
-                "release_notes_written",
-                path=str(output_path),
+                "release_notes_written", path=str(output_path)
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -82,10 +75,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def update_changelog(
-        workspace_root: Path,
-        version: str,
-        tag: str,
-        notes_path: Path,
+        workspace_root: Path, version: str, tag: str, notes_path: Path
     ) -> p.Result[bool]:
         """Update docs/changelog and docs/releases entries."""
         docs = workspace_root / c.Infra.DIR_DOCS
@@ -123,9 +113,7 @@ class FlextInfraUtilitiesRelease:
             else "# Changelog\n\n"
         )
         updated = FlextInfraUtilitiesRelease._updated_changelog(
-            existing=existing,
-            version=version,
-            tag=tag,
+            existing=existing, version=version, tag=tag
         )
         changelog_path.parent.mkdir(parents=True, exist_ok=True)
         u.write_file(changelog_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
@@ -133,12 +121,10 @@ class FlextInfraUtilitiesRelease:
         u.write_file(latest_path, notes_text, encoding=c.Cli.ENCODING_DEFAULT)
         u.write_file(tagged_path, notes_text, encoding=c.Cli.ENCODING_DEFAULT)
         u.fetch_logger(__name__).info(
-            "release_changelog_written",
-            path=str(changelog_path),
+            "release_changelog_written", path=str(changelog_path)
         )
         u.fetch_logger(__name__).info(
-            "release_tagged_notes_written",
-            path=str(tagged_path),
+            "release_tagged_notes_written", path=str(tagged_path)
         )
 
     @staticmethod

@@ -23,13 +23,10 @@ from flext_infra.detectors.compatibility_alias_detector import (
 from flext_infra.detectors.loose_test_function_detector import (
     FlextInfraLooseTestFunctionDetector,
 )
-from flext_infra.detectors.mro_shape_detector import (
-    FlextInfraMROShapeDetector,
-)
+from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import m, p, t
 
 
@@ -75,9 +72,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def detect(
-        cls,
-        rule: me.EnforcementRuleSpec,
-        ctx: m.Infra.DetectorContext,
+        cls, rule: me.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for violations of ``rule`` inside ``ctx.file_path``."""
         rule_id = cls._rule_id_short(rule.id)
@@ -110,10 +105,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_stub_files(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return a probe for ``ctx.file_path`` when it is a prohibited ``.pyi``."""
         file_path = ctx.file_path
@@ -123,15 +115,11 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_magic_literals(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for magic numbers/strings in executable code."""
         res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            ctx.rope_project,
-            ctx.file_path,
+            ctx.rope_project, ctx.file_path
         )
         if res is None:
             msg = (
@@ -163,20 +151,14 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 continue
             probes.append(
                 cls._probe(
-                    ctx.file_path,
-                    line=line,
-                    rule_id=rule_id,
-                    literal=repr(value),
-                ),
+                    ctx.file_path, line=line, rule_id=rule_id, literal=repr(value)
+                )
             )
         return tuple(probes)
 
     @classmethod
     def _detect_classvar_constants(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate ClassVar-outside-_constants detection to the canonical scanner."""
         try:
@@ -201,10 +183,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_loose_test_functions(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate loose-test-function detection to the canonical scanner."""
         try:
@@ -216,21 +195,13 @@ class FlextInfraRefactorDeclarativeEnforcement:
             )
             raise RuntimeError(msg) from exc
         return tuple(
-            cls._probe(
-                Path(v.file),
-                line=v.line,
-                rule_id=rule_id,
-                object_name=v.name,
-            )
+            cls._probe(Path(v.file), line=v.line, rule_id=rule_id, object_name=v.name)
             for v in violations
         )
 
     @classmethod
     def _detect_mro_shape(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate MRO-shape detection to the canonical rope scanner."""
         try:
@@ -267,10 +238,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_foreign_canonical_aliases(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        *,
-        rule_id: str,
+        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate foreign-canonical-alias detection to the canonical scanner."""
         try:
@@ -284,8 +252,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         probes: list[p.AttributeProbe] = []
         for violation in violations:
             action = FlextInfraCompatibilityAliasDetector.fix_action_for(
-                violation,
-                current_project=ctx.project_name,
+                violation, current_project=ctx.project_name
             )
             if action != "rewrite_foreign_canonical_alias":
                 continue
@@ -297,7 +264,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
                     object_name=violation.alias_name,
                     target_name=violation.target_name,
                     module_name=violation.module_name,
-                ),
+                )
             )
         return tuple(probes)
 
@@ -317,30 +284,21 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _is_exempt_literal_position(
-        cls,
-        node: p.AttributeProbe,
-        parent_map: dict[int, p.AttributeProbe],
+        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
     ) -> bool:
         """Return True when a Constant node lives in an exempt syntactic position."""
         parent = parent_map.get(id(node))
         if parent is None:
             return False
         parent_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(parent)
-        return parent_kind in {
-            "arguments",
-            "arg",
-            "keyword",
-            "AnnAssign",
-        } or (
+        return parent_kind in {"arguments", "arg", "keyword", "AnnAssign"} or (
             parent_kind in {"Assign", "AnnAssign"}
             and cls._is_module_level(parent, parent_map)
         )
 
     @classmethod
     def _is_module_level(
-        cls,
-        node: p.AttributeProbe,
-        parent_map: dict[int, p.AttributeProbe],
+        cls, node: p.AttributeProbe, parent_map: dict[int, p.AttributeProbe]
     ) -> bool:
         """Return True when ``node`` is a direct child of the module body."""
         current = node
@@ -357,18 +315,11 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @staticmethod
     def _probe(
-        file_path: Path,
-        *,
-        line: int,
-        rule_id: str,
-        **kwargs: t.JsonValue,
+        file_path: Path, *, line: int, rule_id: str, **kwargs: t.JsonValue
     ) -> p.AttributeProbe:
         """Build a probe consumable by fixer adapters."""
         return SimpleNamespace(
-            file_path=str(file_path),
-            line=line,
-            rule_id=rule_id,
-            **kwargs,
+            file_path=str(file_path), line=line, rule_id=rule_id, **kwargs
         )
 
     @staticmethod

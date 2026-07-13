@@ -22,7 +22,7 @@ class FlextInfraConstantsCodegenLazy:
     ROOT_EXPORTS_DIR: Final[str] = "_constants"
     "Directory under each package where lazy-init registries must live."
     GENERATED_EXPORT_SIDECAR_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$",
+        r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$"
     )
     "Regex matching every generated lazy-export sidecar filename "
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
@@ -52,8 +52,7 @@ class FlextInfraConstantsCodegenLazy:
     "Root import surfaces generated as private lazy plumbing, not public ABI."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+import\s",
-        re.MULTILINE,
+        r"^from\s+import\s", re.MULTILINE
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
@@ -132,9 +131,7 @@ class FlextInfraConstantsCodegenLazy:
         "normalize_lazy_imports",
     })
     "Public-module symbols withheld from generated root-facade __all__."
-    FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({
-        "settings",
-    })
+    FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({"settings"})
     "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",

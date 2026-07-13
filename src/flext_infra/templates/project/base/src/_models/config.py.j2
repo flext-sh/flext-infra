@@ -1,4 +1,4 @@
-{# NOTE (multi-agent, mro-wkii.19.1): config shapes are pure Pydantic declarations; source loading belongs to _config.py. #}
+{# NOTE (multi-agent, mro-wkii.19.1): config shapes are pure Pydantic declarations; source loading belongs to _config.py. -#}
 """{{ class_stem }} pure Pydantic config models.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -25,12 +25,11 @@ class {{ class_stem }}ConfigModels:
 
             name: str
             version: str
-            greeting: str
             ping_reply: str
             disabled_reply: str
 
         {{ ns }}: ConfigNamespace = Field(
-            description="Validated {{ ns }} project configuration.",
+            description="Validated {{ ns }} project configuration."
         )
 
 

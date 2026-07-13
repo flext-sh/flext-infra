@@ -30,16 +30,13 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
 
     @override
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run the runtime census scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraRuntimeCensusValidator(
-            workspace_root=self._workspace_root,
-            project_filter=project_dir.name,
+            workspace_root=self._workspace_root, project_filter=project_dir.name
         )
         result = validator.execute()
         passed = result.success and result.value is True
@@ -63,10 +60,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """No external tool — execution happens in ``check``."""
         _ = project_dir, ctx, check_dirs
@@ -74,10 +68,7 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx

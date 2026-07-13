@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from flext_cli import u
-from flext_core import r
 
-from flext_infra import c, t
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-
-if TYPE_CHECKING:
-    from flext_infra import m, p
 
 
 class FlextInfraUtilitiesPyprojectConform:
@@ -46,12 +40,9 @@ class FlextInfraUtilitiesPyprojectConform:
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
         cls._sync_dependency_groups(
-            payload,
-            project_name=project_name,
-            workspace=workspace,
+            payload, project_name=project_name, workspace=workspace
         )
         cls._remove_legacy_tooling(payload)
-        cls._sync_typecheck_paths(payload)
         sources_result = cls._sync_uv_sources(
             payload,
             project_name=project_name,
@@ -68,22 +59,13 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[str].ok(rendered)
 
     @classmethod
-    def _normalize_requirements(
-        cls,
-        payload: t.MutableJsonMapping,
-    ) -> p.Result[bool]:
+    def _normalize_requirements(cls, payload: t.MutableJsonMapping) -> p.Result[bool]:
         """Remove direct local references from every declared FLEXT requirement."""
         project = u.Cli.toml_mapping_ensure_table(payload, c.Infra.PROJECT)
-        normalized = cls._normalize_requirement_field(
-            project,
-            c.Infra.DEPENDENCIES,
-        )
+        normalized = cls._normalize_requirement_field(project, c.Infra.DEPENDENCIES)
         if normalized.failure:
             return normalized
-        for section_name in (
-            c.Infra.OPTIONAL_DEPENDENCIES,
-            c.Infra.DEPENDENCY_GROUPS,
-        ):
+        for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
             section = u.Cli.toml_mapping_child(
                 project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else payload,
                 section_name,
@@ -96,8 +78,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             for group_name in tuple(section):
                 group_result = cls._normalize_requirement_field(
-                    mutable_section,
-                    group_name,
+                    mutable_section, group_name
                 )
                 if group_result.failure:
                     return group_result
@@ -105,9 +86,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _normalize_requirement_field(
-        cls,
-        container: t.MutableJsonMapping,
-        key: str,
+        cls, container: t.MutableJsonMapping, key: str
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
         raw_value = container.get(key, None)
@@ -119,7 +98,7 @@ class FlextInfraUtilitiesPyprojectConform:
         except c.ValidationError as exc:
             return r[bool].fail_op(f"validate dependency group {key}", exc)
         canonical = FlextInfraUtilitiesDependencies.dedupe_specs(
-            tuple(cls._canonical_requirement(item) for item in items),
+            tuple(cls._canonical_requirement(item) for item in items)
         )
         u.Cli.toml_mapping_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
@@ -161,10 +140,7 @@ class FlextInfraUtilitiesPyprojectConform:
         optional_dev: t.StrSequence = ()
         if optional is not None:
             optional_dev = u.Cli.toml_as_string_list(optional.get(str(c.Infra.DEV)))
-        dev = [
-            *u.Cli.toml_as_string_list(groups.get(str(c.Infra.DEV))),
-            *optional_dev,
-        ]
+        dev = [*u.Cli.toml_as_string_list(groups.get(str(c.Infra.DEV))), *optional_dev]
         if project_name != "flext-tests":
             dev.append("flext-tests")
         u.Cli.toml_mapping_sync_string_list(
@@ -186,25 +162,16 @@ class FlextInfraUtilitiesPyprojectConform:
             if project_name == workspace.repository.distribution
             else ()
         )
-        u.Cli.toml_mapping_sync_string_list(
-            groups,
-            "workspace",
-            workspace_members,
-        )
+        u.Cli.toml_mapping_sync_string_list(groups, "workspace", workspace_members)
 
         optional_mutable = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.PROJECT, c.Infra.OPTIONAL_DEPENDENCIES),
+            payload, (c.Infra.PROJECT, c.Infra.OPTIONAL_DEPENDENCIES)
         )
         if optional_mutable is not None:
-            u.Cli.toml_mapping_remove_key_if_present(
-                optional_mutable,
-                str(c.Infra.DEV),
-            )
+            u.Cli.toml_mapping_remove_key_if_present(optional_mutable, str(c.Infra.DEV))
             if not optional_mutable:
                 u.Cli.toml_mapping_remove_key_if_present(
-                    project,
-                    c.Infra.OPTIONAL_DEPENDENCIES,
+                    project, c.Infra.OPTIONAL_DEPENDENCIES
                 )
 
     @staticmethod
@@ -246,14 +213,12 @@ class FlextInfraUtilitiesPyprojectConform:
             return
         mutable_pyright = u.Cli.toml_mapping_ensure_table(tool, c.Infra.PYRIGHT)
         u.Cli.toml_mapping_sync_string_list(
-            mutable_pyright,
-            c.Infra.EXTRA_PATHS,
-            (".", "src"),
+            mutable_pyright, c.Infra.EXTRA_PATHS, (".", "src")
         )
         for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
             u.Cli.toml_mapping_remove_key_if_present(mutable_pyright, key)
         environments = u.Cli.json_as_sequence(
-            mutable_pyright.get("executionEnvironments"),
+            mutable_pyright.get("executionEnvironments")
         )
         for environment in environments:
             if not isinstance(environment, dict):
@@ -261,9 +226,7 @@ class FlextInfraUtilitiesPyprojectConform:
             root = environment.get("root")
             expected_paths = ("src",) if root == "src" else (".", "src")
             u.Cli.toml_mapping_sync_string_list(
-                environment,
-                c.Infra.EXTRA_PATHS,
-                expected_paths,
+                environment, c.Infra.EXTRA_PATHS, expected_paths
             )
             for key in ("venv", "venvPath", "pythonPath", "pythonInterpreterPath"):
                 u.Cli.toml_mapping_remove_key_if_present(environment, key)
@@ -281,8 +244,8 @@ class FlextInfraUtilitiesPyprojectConform:
         """Replace managed sources with exact Git URL and branch pairs."""
         declared = set(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
-                payload,
-            ),
+                payload
+            )
         )
         required_names = {name for name in declared if name.startswith("flext-")}
         if project_name == workspace.repository.distribution:
@@ -302,7 +265,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if not matches:
                 return r[bool].fail(
-                    f"repository catalog lacks required distribution: {distribution}",
+                    f"repository catalog lacks required distribution: {distribution}"
                 )
             reference = matches[0]
             if any(
@@ -310,7 +273,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 for item in matches[1:]
             ):
                 return r[bool].fail(
-                    f"repository catalog conflicts for distribution: {distribution}",
+                    f"repository catalog conflicts for distribution: {distribution}"
                 )
             resolved.append(reference)
 

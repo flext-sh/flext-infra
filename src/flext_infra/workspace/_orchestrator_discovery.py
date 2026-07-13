@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from flext_core import r
-
 from flext_infra import c, u
 from flext_infra.workspace.sync import FlextInfraSyncService
 
@@ -34,17 +33,11 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Resolve selected projects using workspace discovery."""
         return u.Infra.resolve_projects(
-            self.root,
-            self.project_names or (),
-            include_attached=True,
+            self.root, self.project_names or (), include_attached=True
         )
 
     @staticmethod
-    def _project_target(
-        project: m.Infra.ProjectInfo,
-        *,
-        workspace_root: Path,
-    ) -> str:
+    def _project_target(project: m.Infra.ProjectInfo, *, workspace_root: Path) -> str:
         """Map a project info object into a relative make target."""
         project_path = project.path.resolve()
         resolved_workspace_root = workspace_root.resolve()
@@ -55,19 +48,14 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
 
     @staticmethod
     def _prepare_projects(
-        projects: t.SequenceOf[m.Infra.ProjectInfo],
-        *,
-        workspace_root: Path,
+        projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
     ) -> p.Result[bool]:
         """Ensure each selected project has ``base.mk`` and ``Makefile``."""
         for project in projects:
             project_root = project.path.resolve()
             needs_sync = any(
                 not (project_root / filename).is_file()
-                for filename in (
-                    c.Infra.BASE_MK,
-                    c.Infra.MAKEFILE_FILENAME,
-                )
+                for filename in (c.Infra.BASE_MK, c.Infra.MAKEFILE_FILENAME)
             )
             if not needs_sync:
                 continue
@@ -82,6 +70,4 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
         return r[bool].ok(True)
 
 
-__all__: list[str] = [
-    "FlextInfraWorkspaceOrchestratorDiscoveryMixin",
-]
+__all__: list[str] = ["FlextInfraWorkspaceOrchestratorDiscoveryMixin"]

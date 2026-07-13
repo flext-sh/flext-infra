@@ -10,48 +10,16 @@ from __future__ import annotations
 LAZY_MODULES: dict[str, tuple[str, ...]] = {
     "._config": ("config",),
     "._settings": ("settings",),
-    ".api": (
-        "FlextInfra",
-        "infra",
-    ),
-    ".base": (
-        "FlextInfraServiceBase",
-        "s",
-    ),
+    ".api": ("FlextInfra", "infra"),
+    ".base": ("FlextInfraServiceBase", "s"),
     ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-    ".cli": (
-        "FlextInfraCli",
-        "docs_main",
-        "main",
-    ),
-    ".constants": (
-        "FlextInfraConstants",
-        "c",
-    ),
-    ".models": (
-        "FlextInfraModels",
-        "m",
-    ),
-    ".protocols": (
-        "FlextInfraProtocols",
-        "FlextInfraProtocolsBase",
-        "p",
-    ),
-    ".typings": (
-        "FlextInfraTypes",
-        "t",
-    ),
-    ".utilities": (
-        "FlextInfraUtilities",
-        "u",
-    ),
-    "flext_cli": (
-        "d",
-        "e",
-        "h",
-        "r",
-        "x",
-    ),
+    ".cli": ("FlextInfraCli", "docs_main", "main"),
+    ".constants": ("FlextInfraConstants", "c"),
+    ".models": ("FlextInfraModels", "m"),
+    ".protocols": ("FlextInfraProtocols", "FlextInfraProtocolsBase", "p"),
+    ".typings": ("FlextInfraTypes", "t"),
+    ".utilities": ("FlextInfraUtilities", "u"),
+    "flext_cli": ("d", "e", "h", "r", "x"),
 }
 
 LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}

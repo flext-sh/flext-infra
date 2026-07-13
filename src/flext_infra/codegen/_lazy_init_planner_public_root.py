@@ -48,9 +48,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         ) -> t.StrSequence: ...
 
         def _merged_child_export_names(
-            self,
-            child_package: str,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
+            self, child_package: str, dir_exports: t.MappingKV[str, t.LazyAliasMap]
         ) -> frozenset[str]: ...
 
         @staticmethod
@@ -75,12 +73,10 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         )
         public_children = self._public_root_child_packages(child_packages, dir_exports)
         child_export_names = self._public_root_child_export_names(
-            public_children,
-            dir_exports,
+            public_children, dir_exports
         )
         child_packages_for_lazy = self._child_packages_without_main_export(
-            public_children,
-            dir_exports,
+            public_children, dir_exports
         )
         module_export_names = {
             name
@@ -166,9 +162,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         """Return whether a root package uses the governed public facade contract."""
         return (
             bool(explicit_public_exports)
-            or bool(
-                set(root_namespace_files) & present_files,
-            )
+            or bool(set(root_namespace_files) & present_files)
             or any(
                 u.Infra.runtime_singleton_export(file_name) is not None
                 for file_name in present_files
@@ -198,7 +192,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             return False
         local_module = module_path.removeprefix(prefix)
         runtime_singleton_export = u.Infra.runtime_singleton_export(
-            f"{local_module}.py",
+            f"{local_module}.py"
         )
         if runtime_singleton_export is not None:
             # mro-i6nq.10: publish the singleton, never its loader class.

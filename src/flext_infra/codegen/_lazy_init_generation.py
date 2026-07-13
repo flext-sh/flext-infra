@@ -49,14 +49,9 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                     if self.workspace_root in pkg_dir.parents
                     else pkg_dir
                 )
-                u.Cli.info(
-                    f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}",
-                )
+                u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             result, exports = self._process_directory(
-                pkg_dir,
-                check_only=check_only,
-                dir_exports=dir_exports,
-                planner=planner,
+                pkg_dir, check_only=check_only, dir_exports=dir_exports, planner=planner
             )
             if exports:
                 dir_exports[str(pkg_dir.resolve())] = exports
@@ -80,14 +75,11 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         result: t.Infra.LazyInitProcessResult
         failed_lazy_map: t.MutableLazyAliasMap
         try:
-            plan = planner.build_plan(
-                pkg_dir,
-                dir_exports=dir_exports,
-            )
+            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
         except ValueError as exc:
             u.Cli.error(
                 f"export collision in {pkg_dir}: {exc}; "
-                "correct the source exports before regenerating __init__.py",
+                "correct the source exports before regenerating __init__.py"
             )
             failed_lazy_map = {}
             result = (-1, failed_lazy_map)
@@ -100,10 +92,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         return result
 
     def _process_plan(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool,
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool
     ) -> t.Infra.LazyInitProcessResult:
         """Process a resolved lazy-init plan."""
         if plan.action == c.Infra.LazyInitAction.SKIP:

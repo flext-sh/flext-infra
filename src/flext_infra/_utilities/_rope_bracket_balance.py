@@ -15,10 +15,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
 
     @staticmethod
     def _extend_block_through_open_brackets(
-        source: str,
-        block: str,
-        *,
-        match_end: int,
+        source: str, block: str, *, match_end: int
     ) -> str:
         r"""Extend ``block`` when its regex capture ends mid-bracket-group.
 
@@ -55,7 +52,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
         total = 0
         for line in text.splitlines():
             total += FlextInfraUtilitiesRopeBracketBalanceMixin.bracket_balance_line(
-                line,
+                line
             )
         return total
 
@@ -70,7 +67,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
             )
         except tokenize.TokenError:
             return FlextInfraUtilitiesRopeBracketBalanceMixin._fallback_bracket_balance_line(
-                line,
+                line
             )
 
     @staticmethod

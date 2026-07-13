@@ -24,7 +24,7 @@ class {{ class_stem }}ConstantsBase:
     class CommandType(StrEnum):
         """CLI command names for {{ package_name }} (str-compatible)."""
 
-        PING = "ping"
+        PING = {{ scaffold.ping_example.command_name | tojson }}
 
 
 __all__: list[str] = ["{{ class_stem }}ConstantsBase"]

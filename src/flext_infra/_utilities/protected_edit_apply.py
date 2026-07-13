@@ -5,21 +5,16 @@ from __future__ import annotations
 import ast
 import difflib
 import shutil
-from typing import TYPE_CHECKING, ClassVar
+from collections.abc import MutableMapping
+from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra import c, m
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities.protected_edit_preview import (
     FlextInfraUtilitiesProtectedEditPreview,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-    from pathlib import Path
-
-    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -27,9 +22,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def _backup_paths_for_updates(
-        updates: t.MappingKV[Path, str],
-        *,
-        keep_backup: bool,
+        updates: t.MappingKV[Path, str], *, keep_backup: bool
     ) -> MutableMapping[Path, Path]:
         """Backup paths for updates."""
         if not keep_backup:
@@ -51,8 +44,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         if new_errors or request.skip_pytest:
             return None
         pytest_result = FlextInfraUtilitiesProtectedEditApply._pytest_failure(
-            path,
-            request.workspace,
+            path, request.workspace
         )
         if pytest_result.failure:
             error_message = pytest_result.error
@@ -70,20 +62,15 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         reports: list[str] = []
         failed = False
         after_lints = FlextInfraUtilitiesProtectedEditApply.lint_snapshots(
-            tuple(updates),
-            request.workspace,
-            gates=request.gates,
+            tuple(updates), request.workspace, gates=request.gates
         )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
-                before_lints[path],
-                after_lints[path],
+                before_lints[path], after_lints[path]
             )
             test_fail = (
                 FlextInfraUtilitiesProtectedEditApply._protected_write_test_failure(
-                    path,
-                    request,
-                    new_errors,
+                    path, request, new_errors
                 )
             )
             if not new_errors and not test_fail:
@@ -96,14 +83,13 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                     before_sources[path] or "",
                     new_errors,
                     test_fail,
-                ),
+                )
             )
         return (not failed, reports)
 
     @staticmethod
     def _backup_reports(
-        backup_paths: t.MappingKV[Path, Path],
-        workspace: Path,
+        backup_paths: t.MappingKV[Path, Path], workspace: Path
     ) -> list[str]:
         """Backup reports."""
         return [
@@ -134,8 +120,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             return False
         for node in ast.walk(tree):
             if isinstance(
-                node,
-                ast.FunctionDef | ast.AsyncFunctionDef,
+                node, ast.FunctionDef | ast.AsyncFunctionDef
             ) and node.name.startswith("test_"):
                 return True
             if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
@@ -195,7 +180,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         if not py_file.exists():
             return None
         backup_path = py_file.with_suffix(
-            py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
+            py_file.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
         )
         if not backup_path.exists():
             shutil.copy2(py_file, backup_path)
@@ -203,19 +188,14 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_file_edit(
-        py_file: Path,
-        *,
-        request: m.Infra.ProtectedFileEditRequest,
+        py_file: Path, *, request: m.Infra.ProtectedFileEditRequest
     ) -> t.Infra.EditResult:
         """Apply one edit, validate lint deltas, and restore on failure."""
         rel = FlextInfraUtilitiesProtectedEditApply._relative_path(
-            py_file,
-            request.workspace,
+            py_file, request.workspace
         )
         before = FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-            py_file,
-            request.workspace,
-            gates=request.gates,
+            py_file, request.workspace, gates=request.gates
         )
         backup_path = (
             FlextInfraUtilitiesProtectedEditApply._preserve_backup(py_file)
@@ -228,10 +208,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             if request.restore_fn is not None:
                 request.restore_fn()
                 return
-            py_file.write_text(
-                request.before_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            py_file.write_text(request.before_source, encoding=c.Cli.ENCODING_DEFAULT)
 
         edit_completed = False
         try:
@@ -244,30 +221,22 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         new_errors = FlextInfraUtilitiesProtectedEditApply.lint_new_errors(
             before,
             FlextInfraUtilitiesProtectedEditApply.lint_snapshot(
-                py_file,
-                request.workspace,
-                gates=request.gates,
+                py_file, request.workspace, gates=request.gates
             ),
         )
         test_fail: str | None = (
             None
             if new_errors
             else FlextInfraUtilitiesProtectedEditApply._pytest_failure(
-                py_file,
-                request.workspace,
-            ).fold(
-                on_failure=lambda msg: msg,
-                on_success=lambda _: None,
-            )
+                py_file, request.workspace
+            ).fold(on_failure=lambda msg: msg, on_success=lambda _: None)
         )
         if not new_errors and not test_fail:
             if backup_path is None:
                 return (True, [])
             return (True, [f"  BACKUP {rel} -> {backup_path.name}"])
 
-        modified = py_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        modified = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         diff = list(
             difflib.unified_diff(
                 request.before_source.splitlines(keepends=True),
@@ -275,7 +244,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 fromfile=f"a/{rel}",
                 tofile=f"b/{rel}",
                 n=3,
-            ),
+            )
         )
         _restore()
         report: t.MutableSequenceOf[str] = [f"  REVERTED {rel}:"]
@@ -291,30 +260,20 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_source_write(
-        py_file: Path,
-        *,
-        request: m.Infra.ProtectedSourceWriteRequest,
+        py_file: Path, *, request: m.Infra.ProtectedSourceWriteRequest
     ) -> t.Infra.EditResult:
         """Write validated source content with protected validation and rollback."""
-        original_source = py_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         if request.updated_source == original_source:
             return (True, [])
 
         def _write_updated() -> None:
             """Write updated."""
-            py_file.write_text(
-                request.updated_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            py_file.write_text(request.updated_source, encoding=c.Cli.ENCODING_DEFAULT)
 
         def _restore_original() -> None:
             """Restore original."""
-            py_file.write_text(
-                original_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
 
         return FlextInfraUtilitiesProtectedEditApply.protected_file_edit(
             py_file,
@@ -344,42 +303,33 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         }
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditApply._preview_write_baselines(
-                normalized_updates,
-                request.workspace,
-                gates=request.gates,
+                normalized_updates, request.workspace, gates=request.gates
             )
         )
         backup_paths = FlextInfraUtilitiesProtectedEditApply._backup_paths_for_updates(
-            normalized_updates,
-            keep_backup=request.keep_backup,
+            normalized_updates, keep_backup=request.keep_backup
         )
 
         write_completed = False
         try:
             for path, updated_source in normalized_updates.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(
-                    updated_source,
-                    encoding=c.Cli.ENCODING_DEFAULT,
-                )
+                path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
             if request.post_write is not None:
                 request.post_write()
             write_completed = True
         finally:
             if not write_completed:
                 FlextInfraUtilitiesProtectedEditApply._restore_preview_sources(
-                    before_sources,
+                    before_sources
                 )
 
         ok, reports = FlextInfraUtilitiesProtectedEditApply._protected_write_reports(
-            normalized_updates,
-            before_sources,
-            before_lints,
-            request,
+            normalized_updates, before_sources, before_lints, request
         )
         if not ok:
             FlextInfraUtilitiesProtectedEditApply._restore_preview_sources(
-                before_sources,
+                before_sources
             )
             return (False, reports)
 
@@ -388,8 +338,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         return (
             True,
             FlextInfraUtilitiesProtectedEditApply._backup_reports(
-                backup_paths,
-                request.workspace,
+                backup_paths, request.workspace
             ),
         )
 

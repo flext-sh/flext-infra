@@ -40,9 +40,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result
 
     def _apply_migration(
-        self,
-        source: str,
-        migration: m.Infra.SignatureMigration,
+        self, source: str, migration: m.Infra.SignatureMigration
     ) -> str:
         """Apply a single migration to source text."""
         keyword_renames = dict(migration.keyword_renames)
@@ -51,7 +49,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         if not keyword_renames and not remove_keywords and not add_keywords:
             return source
         targets = set(migration.target_simple_names) | set(
-            migration.target_qualified_names,
+            migration.target_qualified_names
         )
         for target in targets:
             simple_name = target.rsplit(".", 1)[-1] if "." in target else target
@@ -106,11 +104,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
             edits.append((start, end, replacement))
             self._record_change(f"[{migration_id}] Updated call: {simple_name}(...)")
         updated = source
-        for start, end, replacement in sorted(
-            edits,
-            key=itemgetter(0),
-            reverse=True,
-        ):
+        for start, end, replacement in sorted(edits, key=itemgetter(0), reverse=True):
             updated = updated[:start] + replacement + updated[end:]
         return updated
 
@@ -134,8 +128,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         for remove_name in remove_keywords:
             pattern = c.Infra.compile_keyword_argument(remove_name)
             stripped, drops = FlextInfraRefactorSignaturePropagator._drop_keyword(
-                result,
-                pattern,
+                result, pattern
             )
             if drops:
                 changed = True
@@ -146,7 +139,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
                 existing = {
                     match.group(0).split("=", 1)[0].strip()
                     for match in c.Infra.compile_keyword_argument(r"\w+").finditer(
-                        result,
+                        result
                     )
                 }
                 additions = [
@@ -167,10 +160,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, changed
 
     @staticmethod
-    def _drop_keyword(
-        text: str,
-        pattern: t.Infra.RegexPattern,
-    ) -> tuple[str, int]:
+    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[str, int]:
         """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
         result = text
         drops = 0

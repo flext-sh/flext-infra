@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra.base import s
 from flext_infra.validate._pytest_diag_xml import (
@@ -34,28 +33,23 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
     """
 
     junit: Annotated[Path, m.Field(description="JUnit XML path")]
-    log_path: Annotated[
-        Path,
-        m.Field(description="Pytest log path"),
-    ] = m.Field(alias="log")
+    log_path: Annotated[Path, m.Field(description="Pytest log path")] = m.Field(
+        alias="log"
+    )
     failed: Annotated[
-        Path | None,
-        m.Field(description="Path to write failed cases"),
+        Path | None, m.Field(description="Path to write failed cases")
     ] = None
     errors: Annotated[
-        Path | None,
-        m.Field(description="Path to write error traces"),
+        Path | None, m.Field(description="Path to write error traces")
     ] = None
     warnings: Annotated[Path | None, m.Field(description="Path to write warnings")] = (
         None
     )
     slowest: Annotated[
-        Path | None,
-        m.Field(description="Path to write slowest entries"),
+        Path | None, m.Field(description="Path to write slowest entries")
     ] = None
     skips: Annotated[
-        Path | None,
-        m.Field(description="Path to write skipped cases"),
+        Path | None, m.Field(description="Path to write skipped cases")
     ] = None
 
     @staticmethod
@@ -108,9 +102,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         diag.error_traces = block
 
     def extract(
-        self,
-        junit_path: Path,
-        log_path: Path,
+        self, junit_path: Path, log_path: Path
     ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML and pytest log.
 
@@ -126,8 +118,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             return self._extract_diagnostics(junit_path, log_path)
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.PytestDiagnostics].fail_op(
-                "pytest diagnostics extraction",
-                exc,
+                "pytest diagnostics extraction", exc
             )
 
     @staticmethod
@@ -138,7 +129,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         log_read = u.Cli.files_read_text(log_path)
         if log_read.failure:
             return r[str].fail(
-                log_read.error or f"Failed to read pytest log: {log_path}",
+                log_read.error or f"Failed to read pytest log: {log_path}"
             )
         return r[str].ok(log_read.value)
 
@@ -158,15 +149,13 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         )
 
     def _extract_diagnostics(
-        self,
-        junit_path: Path,
-        log_path: Path,
+        self, junit_path: Path, log_path: Path
     ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Extract pytest diagnostics after input normalization."""
         log_text_result = self._read_log_text(log_path)
         if log_text_result.failure:
             return r[m.Infra.PytestDiagnostics].fail(
-                log_text_result.error or f"Failed to read pytest log: {log_path}",
+                log_text_result.error or f"Failed to read pytest log: {log_path}"
             )
         lines = log_text_result.value.splitlines()
         diag = _DiagResult()
@@ -207,7 +196,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
             f"failed_count={result.value.failed_count}\n"
             f"error_count={result.value.error_count}\n"
             f"warning_count={result.value.warning_count}\n"
-            f"skipped_count={result.value.skipped_count}\n",
+            f"skipped_count={result.value.skipped_count}\n"
         )
         return r[bool].ok(True)
 

@@ -13,9 +13,7 @@ import re
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.codegen_detection import (
-    FlextInfraConstantsCodegenDetection,
-)
+from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
 from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
 from flext_infra._constants.codegen_render_names import (
     FlextInfraConstantsCodegenRenderNames,
@@ -58,7 +56,7 @@ class FlextInfraConstantsCodegen(
     )
     "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
+        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
 

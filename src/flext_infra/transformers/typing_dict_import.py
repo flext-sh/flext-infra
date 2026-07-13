@@ -21,8 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorTypingDictImport(
-    FlextInfraEnsureCanonicalTImportMixin,
-    FlextInfraRopeTransformer,
+    FlextInfraEnsureCanonicalTImportMixin, FlextInfraRopeTransformer
 ):
     """Remove ``from typing import Dict`` and rewrite ``Dict[K, V]`` annotations.
 
@@ -34,20 +33,13 @@ class FlextInfraRefactorTypingDictImport(
 
     # Matches a `from typing import ...` line that includes Dict.
     _TYPING_DICT_IMPORT_RE: re.Pattern[str] = re.compile(
-        r"^from\s+typing\s+import\s+(?P<items>[^#\n]+)",
-        re.MULTILINE,
+        r"^from\s+typing\s+import\s+(?P<items>[^#\n]+)", re.MULTILINE
     )
 
     # Matches Dict[...] usage (bare name, imported from typing).
-    _DICT_USAGE_RE: re.Pattern[str] = re.compile(
-        r"\bDict\s*\[",
-    )
+    _DICT_USAGE_RE: re.Pattern[str] = re.compile(r"\bDict\s*\[")
 
-    def __init__(
-        self,
-        *,
-        file_path: Path | None = None,
-    ) -> None:
+    def __init__(self, *, file_path: Path | None = None) -> None:
         """Initialize with optional file path for canonical t import resolution."""
         super().__init__()
         self._file_path = file_path
@@ -59,13 +51,12 @@ class FlextInfraRefactorTypingDictImport(
         updated = self._rewrite_dict_annotations(updated)
         if updated != source:
             added, did_add = self._ensure_t_import(
-                updated,
-                self._canonical_import_module(self._file_path),
+                updated, self._canonical_import_module(self._file_path)
             )
             if did_add:
                 self._record_change(
                     "Added canonical t import from "
-                    f"{self._canonical_import_module(self._file_path)}",
+                    f"{self._canonical_import_module(self._file_path)}"
                 )
             updated = added
         return updated, list(self.changes)

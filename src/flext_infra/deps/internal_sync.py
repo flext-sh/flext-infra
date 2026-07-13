@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-
 from flext_infra import FlextInfraServiceBase, c, m, p, settings, t, u
 from flext_infra._utilities.deps_repos import FlextInfraInternalSyncRepoMixin
 from flext_infra.deps._internal_sync_collect import FlextInfraInternalSyncCollectMixin
@@ -72,25 +71,24 @@ class FlextInfraInternalDependencySyncService(
                 parsed_map_result = self.parse_repo_map(map_file)
                 if parsed_map_result.failure:
                     return r[int].fail(
-                        parsed_map_result.error or "failed to parse standalone map",
+                        parsed_map_result.error or "failed to parse standalone map"
                     )
                 repo_map = {**parsed_map_result.value, **repo_map}
         elif not map_file.exists():
             owner = self.infer_owner_from_origin(project_root)
             if owner is None:
                 return r[int].fail(
-                    "missing flext-repo-map.toml for standalone dependency resolution and unable to infer GitHub owner from remote.origin.url",
+                    "missing flext-repo-map.toml for standalone dependency resolution and unable to infer GitHub owner from remote.origin.url"
                 )
             repo_map = self.synthesized_repo_map(
-                owner,
-                {dep_path.name for dep_path in deps.values()},
+                owner, {dep_path.name for dep_path in deps.values()}
             )
             self.log.warning("sync_deps_synthesized_repo_map", owner=owner)
         else:
             parsed_map_result = self.parse_repo_map(map_file)
             if parsed_map_result.failure:
                 return r[int].fail(
-                    parsed_map_result.error or "failed to parse repo map",
+                    parsed_map_result.error or "failed to parse repo map"
                 )
             repo_map = parsed_map_result.value
         ref_name = self.resolve_ref(project_root)
@@ -106,7 +104,7 @@ class FlextInfraInternalDependencySyncService(
                     symlink_result = self.ensure_symlink(dep_path, sibling)
                     if symlink_result.failure:
                         return r[int].fail(
-                            symlink_result.error or f"failed symlink for {repo_name}",
+                            symlink_result.error or f"failed symlink for {repo_name}"
                         )
                     continue
             urls = repo_map[repo_name]
@@ -114,7 +112,7 @@ class FlextInfraInternalDependencySyncService(
             checkout_result = self.ensure_checkout(dep_path, selected_url, ref_name)
             if checkout_result.failure:
                 return r[int].fail(
-                    checkout_result.error or f"checkout failed for {repo_name}",
+                    checkout_result.error or f"checkout failed for {repo_name}"
                 )
         return r[int].ok(0)
 
@@ -123,10 +121,7 @@ class FlextInfraInternalDependencySyncService(
         return u.Cli.ensure_symlink(dep_path, sibling)
 
     def ensure_checkout(
-        self,
-        dep_path: Path,
-        repo_url: str,
-        ref_name: str,
+        self, dep_path: Path, repo_url: str, ref_name: str
     ) -> p.Result[bool]:
         """Ensure dependency checkout exists and matches requested ref."""
         safe_repo_url_result = self.validate_repo_url(repo_url)
@@ -140,8 +135,7 @@ class FlextInfraInternalDependencySyncService(
         parent_dir_result = u.Cli.ensure_dir(dep_path.parent)
         if parent_dir_result.failure:
             return r[bool].fail(
-                parent_dir_result.error
-                or f"failed to create parent dir for {dep_path}",
+                parent_dir_result.error or f"failed to create parent dir for {dep_path}"
             )
         if not (dep_path / c.Infra.GIT_DIR).exists():
             try:
@@ -166,22 +160,19 @@ class FlextInfraInternalDependencySyncService(
                 return r[bool].fail(f"clone failed for {dep_path.name}: {cloned.error}")
             return r[bool].ok(True)
         fetch = u.Cli.run_checked(
-            [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN],
-            cwd=dep_path,
+            [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=dep_path
         )
         if fetch.failure:
             return r[bool].fail(f"fetch failed for {dep_path.name}: {fetch.error}")
         checkout = u.Cli.run_checked(
-            [c.Infra.GIT, "checkout", safe_ref_name],
-            cwd=dep_path,
+            [c.Infra.GIT, "checkout", safe_ref_name], cwd=dep_path
         )
         if checkout.failure:
             return r[bool].fail(
-                f"checkout failed for {dep_path.name}: {checkout.error}",
+                f"checkout failed for {dep_path.name}: {checkout.error}"
             )
         _ = u.Cli.run_checked(
-            [c.Infra.GIT, "pull", c.Infra.GIT_ORIGIN, safe_ref_name],
-            cwd=dep_path,
+            [c.Infra.GIT, "pull", c.Infra.GIT_ORIGIN, safe_ref_name], cwd=dep_path
         )
         return r[bool].ok(True)
 

@@ -91,9 +91,7 @@ class FlextInfraNamespaceRules:
         return ""
 
     def _accumulate_violations(
-        self,
-        rule_prefix: str,
-        messages: Iterable[str],
+        self, rule_prefix: str, messages: Iterable[str]
     ) -> t.StrSequence:
         """Render messages into ``[<prefix>-<NNN>] <message>`` lines."""
         return [
@@ -146,14 +144,14 @@ class FlextInfraNamespaceRules:
             names = ", ".join(getattr(cls, "name", "") for cls in public_classes)
             messages.append(
                 f"{filepath}:{first_line} — Multiple outer classes found "
-                f"(expected 1, got {len(public_classes)}: {names})",
+                f"(expected 1, got {len(public_classes)}: {names})"
             )
         for cls in public_classes:
             cls_name = getattr(cls, "name", "")
             if expected_prefix and not cls_name.startswith(expected_prefix):
                 messages.append(
                     f"{filepath}:{getattr(cls, 'lineno', 0)} — Class "
-                    f"{cls_name!r} does not start with prefix {expected_prefix!r}",
+                    f"{cls_name!r} does not start with prefix {expected_prefix!r}"
                 )
         if strict_top_level:
             body = getattr(tree, "body", []) or []
@@ -163,15 +161,11 @@ class FlextInfraNamespaceRules:
                 if not self._is_allowed_module_level(node, filepath):
                     messages.append(
                         f"{filepath}:{getattr(node, 'lineno', 0)} — "
-                        f"Disallowed top-level statement: {self._kind(node)}",
+                        f"Disallowed top-level statement: {self._kind(node)}"
                     )
         return self._accumulate_violations("NS-000", messages)
 
-    def check_rule_1(
-        self,
-        tree: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def check_rule_1(self, tree: object, filepath: Path) -> t.StrSequence:
         """Rule 1 — Constants centralization."""
         if filepath.name == c.Infra.CONSTANTS_PY:
             return self._check_rule_1_canonical(tree, filepath)
@@ -182,11 +176,7 @@ class FlextInfraNamespaceRules:
         bases = getattr(cls_node, "bases", []) or []
         return {self.call_name(base) for base in bases if self.call_name(base)}
 
-    def _check_rule_1_canonical(
-        self,
-        tree: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def _check_rule_1_canonical(self, tree: object, filepath: Path) -> t.StrSequence:
         """Constants module — each class must inherit from a Constants base."""
         messages: list[str] = []
         for cls in self._outer_classes(tree):
@@ -194,7 +184,7 @@ class FlextInfraNamespaceRules:
             if not any("Constants" in b or b == "c" for b in base_strs):
                 messages.append(
                     f"{filepath}:{getattr(cls, 'lineno', 0)} — Constants class "
-                    f"{getattr(cls, 'name', '')!r} must inherit from a Constants base",
+                    f"{getattr(cls, 'name', '')!r} must inherit from a Constants base"
                 )
             messages.extend(
                 f"{filepath}:{getattr(inner, 'lineno', 0)} — Method "
@@ -205,9 +195,7 @@ class FlextInfraNamespaceRules:
         return self._accumulate_violations("NS-001", messages)
 
     def _check_rule_1_non_canonical(
-        self,
-        tree: object,
-        filepath: Path,
+        self, tree: object, filepath: Path
     ) -> t.StrSequence:
         """Non-constants module — flag loose Final/collection/Enum constants."""
         messages: list[str] = []
@@ -223,8 +211,7 @@ class FlextInfraNamespaceRules:
     def _check_loose_final(self, node: object, filepath: Path) -> t.StrSequence:
         """Flag bare ``X: Final = ...`` outside ``constants.py``/``_constants/``."""
         if self._kind(node) != "AnnAssign" or not self._annotation_contains(
-            getattr(node, "annotation", None),
-            "Final",
+            getattr(node, "annotation", None), "Final"
         ):
             return []
         target = self.target_name(getattr(node, "target", None))
@@ -233,15 +220,11 @@ class FlextInfraNamespaceRules:
                 (
                     f"{filepath}:{getattr(node, 'lineno', 0)} — Loose Final "
                     f"constant {target!r} belongs in constants.py"
-                ),
+                )
             ]
         return []
 
-    def _check_loose_collection(
-        self,
-        node: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def _check_loose_collection(self, node: object, filepath: Path) -> t.StrSequence:
         """Flag bare ``X = frozenset({...})``-style declarations outside constants."""
         if self._kind(node) != "Assign":
             return []
@@ -262,15 +245,11 @@ class FlextInfraNamespaceRules:
                 (
                     f"{filepath}:{getattr(node, 'lineno', 0)} — Loose collection "
                     f"constant {target_name!r} belongs in constants.py"
-                ),
+                )
             ]
         return []
 
-    def _check_loose_enums(
-        self,
-        cls: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def _check_loose_enums(self, cls: object, filepath: Path) -> t.StrSequence:
         """Flag inner ``Enum``-derived classes outside the ``_constants`` tree."""
         messages: list[str] = []
         body = getattr(cls, "body", []) or []
@@ -281,15 +260,11 @@ class FlextInfraNamespaceRules:
             if any(base in c.Infra.ENUM_BASES for base in inner_bases):
                 messages.append(
                     f"{filepath}:{getattr(inner, 'lineno', 0)} — Loose Enum "
-                    f"{getattr(inner, 'name', '')!r} belongs in constants.py",
+                    f"{getattr(inner, 'name', '')!r} belongs in constants.py"
                 )
         return messages
 
-    def check_rule_2(
-        self,
-        tree: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def check_rule_2(self, tree: object, filepath: Path) -> t.StrSequence:
         """Rule 2 — Types centralization."""
         if filepath.name == c.Infra.TYPINGS_PY:
             return self._check_rule_2_canonical(tree, filepath)
@@ -297,11 +272,7 @@ class FlextInfraNamespaceRules:
             return []
         return self._check_rule_2_non_canonical(tree, filepath)
 
-    def _check_rule_2_canonical(
-        self,
-        tree: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def _check_rule_2_canonical(self, tree: object, filepath: Path) -> t.StrSequence:
         """Types module — each class must inherit from a Types base; inner classes guarded."""
         messages: list[str] = []
         for cls in self._outer_classes(tree):
@@ -309,7 +280,7 @@ class FlextInfraNamespaceRules:
             if not any("Types" in b or b == "t" for b in base_strs):
                 messages.append(
                     f"{filepath}:{getattr(cls, 'lineno', 0)} — Types class "
-                    f"{getattr(cls, 'name', '')!r} must inherit from a Types base",
+                    f"{getattr(cls, 'name', '')!r} must inherit from a Types base"
                 )
             body = getattr(cls, "body", []) or []
             for inner in body:
@@ -320,14 +291,12 @@ class FlextInfraNamespaceRules:
                     messages.append(
                         f"{filepath}:{getattr(inner, 'lineno', 0)} — Inner class "
                         f"{getattr(inner, 'name', '')!r} in Types must not inherit "
-                        f"from BaseModel/Protocol",
+                        f"from BaseModel/Protocol"
                     )
         return self._accumulate_violations("NS-002", messages)
 
     def _check_rule_2_non_canonical(
-        self,
-        tree: object,
-        filepath: Path,
+        self, tree: object, filepath: Path
     ) -> t.StrSequence:
         """Non-typings module — flag loose TypeVar/TypeAlias declarations."""
         messages: list[str] = []
@@ -338,11 +307,7 @@ class FlextInfraNamespaceRules:
             messages.extend(self._check_loose_pep695_typealias(node, filepath))
         return self._accumulate_violations("NS-002", messages)
 
-    def _check_loose_typevar(
-        self,
-        node: object,
-        filepath: Path,
-    ) -> t.StrSequence:
+    def _check_loose_typevar(self, node: object, filepath: Path) -> t.StrSequence:
         """Flag bare ``X = TypeVar(...)`` outside typings.py."""
         if self._kind(node) != "Assign":
             return []
@@ -358,18 +323,15 @@ class FlextInfraNamespaceRules:
             (
                 f"{filepath}:{getattr(node, 'lineno', 0)} — TypeVar "
                 f"{target_name!r} belongs in typings.py"
-            ),
+            )
         ]
 
     def _check_loose_typealias_annotation(
-        self,
-        node: object,
-        filepath: Path,
+        self, node: object, filepath: Path
     ) -> t.StrSequence:
         """Flag bare ``X: TypeAlias = ...`` outside typings.py."""
         if self._kind(node) != "AnnAssign" or not self._annotation_contains(
-            getattr(node, "annotation", None),
-            "TypeAlias",
+            getattr(node, "annotation", None), "TypeAlias"
         ):
             return []
         target_name = self.target_name(getattr(node, "target", None))
@@ -377,13 +339,11 @@ class FlextInfraNamespaceRules:
             (
                 f"{filepath}:{getattr(node, 'lineno', 0)} — TypeAlias "
                 f"{target_name!r} belongs in typings.py"
-            ),
+            )
         ]
 
     def _check_loose_pep695_typealias(
-        self,
-        node: object,
-        filepath: Path,
+        self, node: object, filepath: Path
     ) -> t.StrSequence:
         """Flag bare PEP 695 ``type X = ...`` outside typings.py."""
         if self._kind(node) != "TypeAlias":
@@ -394,16 +354,11 @@ class FlextInfraNamespaceRules:
             (
                 f"{filepath}:{getattr(node, 'lineno', 0)} — PEP 695 TypeAlias "
                 f"{name_str!r} belongs in typings.py"
-            ),
+            )
         ]
 
     def check_rule_3(
-        self,
-        tree: object,
-        filepath: Path,
-        *,
-        class_stem: str,
-        package_name: str,
+        self, tree: object, filepath: Path, *, class_stem: str, package_name: str
     ) -> t.StrSequence:
         """Rule 3 — Runtime modules use namespaced MRO aliases (c/m/p/t/u)."""
         if self._is_private_dir_file(filepath):
@@ -424,7 +379,7 @@ class FlextInfraNamespaceRules:
                 messages.append(
                     f"{filepath}:{getattr(node, 'lineno', 0)} — Runtime module must "
                     f"use namespaced MRO aliases (c/m/p/t/u) instead of direct "
-                    f"import {alias_name!r}",
+                    f"import {alias_name!r}"
                 )
         return self._accumulate_violations("NS-003", messages)
 
@@ -446,8 +401,7 @@ class FlextInfraNamespaceRules:
 
     @staticmethod
     def _is_local_facade_owner_import(
-        imported_name: str,
-        owner_rules: tuple[tuple[str, str, str], ...],
+        imported_name: str, owner_rules: tuple[tuple[str, str, str], ...]
     ) -> bool:
         """Return whether ``imported_name`` would target a local facade."""
         return any(
@@ -456,8 +410,7 @@ class FlextInfraNamespaceRules:
         )
 
     def _owner_direct_facade_rules(
-        self,
-        class_stem: str,
+        self, class_stem: str
     ) -> tuple[tuple[str, str, str], ...]:
         """Materialize the ``(prefix, facade_filename, private_dir)`` owner table."""
         return tuple(
@@ -465,11 +418,7 @@ class FlextInfraNamespaceRules:
             for suffix, facade_filename, private_dir in self._DIRECT_FACADE_SUFFIX_RULES
         )
 
-    def _is_allowed_module_level(
-        self,
-        node: object,
-        filepath: Path,
-    ) -> bool:
+    def _is_allowed_module_level(self, node: object, filepath: Path) -> bool:
         """Return whether ``node`` is permitted at module level."""
         kind = self._kind(node)
         if kind in {"Import", "ImportFrom"}:
@@ -482,12 +431,7 @@ class FlextInfraNamespaceRules:
             return self._is_allowed_assignment(node, filepath, kind)
         return False
 
-    def _is_allowed_assignment(
-        self,
-        node: object,
-        filepath: Path,
-        kind: str,
-    ) -> bool:
+    def _is_allowed_assignment(self, node: object, filepath: Path, kind: str) -> bool:
         """Return whether an ``Assign``/``TypeAlias``/``AnnAssign`` is permitted."""
         typings_dir: str = c.Infra.FAMILY_DIRECTORIES["t"]
         if kind == "Assign":
@@ -509,11 +453,7 @@ class FlextInfraNamespaceRules:
             return False
         return isinstance(getattr(value, "value", None), str)
 
-    def _is_allowed_assign(
-        self,
-        node: object,
-        filepath: Path,
-    ) -> bool:
+    def _is_allowed_assign(self, node: object, filepath: Path) -> bool:
         """Return whether a bare ``Assign`` is allowed at module scope."""
         typings_dir: str = c.Infra.FAMILY_DIRECTORIES["t"]
         targets = getattr(node, "targets", []) or []
@@ -535,11 +475,7 @@ class FlextInfraNamespaceRules:
                 )
         return False
 
-    def _is_allowed_ann_assign(
-        self,
-        node: object,
-        filepath: Path,
-    ) -> bool:
+    def _is_allowed_ann_assign(self, node: object, filepath: Path) -> bool:
         """Return whether an ``AnnAssign`` is allowed at module scope."""
         typings_dir: str = c.Infra.FAMILY_DIRECTORIES["t"]
         target_id = self.target_name(getattr(node, "target", None))
@@ -547,10 +483,7 @@ class FlextInfraNamespaceRules:
             return True
         if target_id and target_id in c.Infra.ALIAS_NAMES:
             return True
-        if self._annotation_contains(
-            getattr(node, "annotation", None),
-            "TypeAlias",
-        ):
+        if self._annotation_contains(getattr(node, "annotation", None), "TypeAlias"):
             return (
                 filepath.name == c.Infra.TYPINGS_PY
                 or filepath.parent.name == typings_dir
@@ -558,10 +491,7 @@ class FlextInfraNamespaceRules:
         if (
             target_id
             and target_id.startswith("_")
-            and self._annotation_contains(
-                getattr(node, "annotation", None),
-                "Final",
-            )
+            and self._annotation_contains(getattr(node, "annotation", None), "Final")
         ):
             return (
                 filepath.name == c.Infra.CONSTANTS_PY

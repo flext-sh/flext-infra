@@ -6,8 +6,8 @@ import time
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from flext_infra.gates.bandit import FlextInfraBanditGate
@@ -26,9 +26,7 @@ from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
+    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import p, t
@@ -84,16 +82,16 @@ class _LoopOutcome(m.ArbitraryTypesModel):
     """Bundled results from the project-checking loop."""
 
     results: tuple[m.Infra.ProjectResult, ...] = m.Field(
-        description="Individual project execution results.",
+        description="Individual project execution results."
     )
     failed: int = m.Field(
-        description="Number of projects that failed one or more gates.",
+        description="Number of projects that failed one or more gates."
     )
     skipped: int = m.Field(
-        description="Number of projects that were skipped during execution.",
+        description="Number of projects that were skipped during execution."
     )
     total_elapsed: float = m.Field(
-        description="Total time elapsed in seconds for the entire loop.",
+        description="Total time elapsed in seconds for the entire loop."
     )
 
 
@@ -106,9 +104,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     def _isolate_context(
-        self,
-        ctx: m.Infra.GateContext,
-        target: m.Infra.CheckProjectTarget,
+        self, ctx: m.Infra.GateContext, target: m.Infra.CheckProjectTarget
     ) -> m.Infra.GateContext:
         """Create a fresh GateContext scoped to a single project."""
         return m.Infra.GateContext(
@@ -140,9 +136,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         _ = u.Cli.ensure_dir(project_ctx.reports_dir)
         start = time.monotonic()
         project_result = self._check_project_with_ctx(
-            project_dir,
-            resolved_gates,
-            project_ctx,
+            project_dir, resolved_gates, project_ctx
         )
         elapsed = time.monotonic() - start
         u.Cli.status(
@@ -169,11 +163,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         loop_start = time.monotonic()
         for index, target in enumerate(projects, 1):
             project_result = self._run_single_project(
-                target,
-                index,
-                total,
-                resolved_gates,
-                ctx,
+                target, index, total, resolved_gates, ctx
             )
             if project_result is None:
                 skipped += 1
@@ -190,10 +180,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             total_elapsed=time.monotonic() - loop_start,
         )
 
-    def _gate_ctx(
-        self,
-        reports_dir: Path | None = None,
-    ) -> m.Infra.GateContext:
+    def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
         """Gate ctx."""
         return m.Infra.GateContext(
             workspace=self._workspace_root,
@@ -225,10 +212,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
 
     def _check_project_with_ctx(
-        self,
-        project_dir: Path,
-        gates: t.StrSequence,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, gates: t.StrSequence, ctx: m.Infra.GateContext
     ) -> m.Infra.ProjectResult:
         """Run gates for one project as independent DAG stages."""
         project_name = project_dir.name
@@ -243,12 +227,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 cli.stage(
                     gate_id,
                     handler=self._make_gate_handler(
-                        gate_instance,
-                        project_dir,
-                        ctx,
-                        result.gates,
+                        gate_instance, project_dir, ctx, result.gates
                     ),
-                ),
+                )
             )
 
         if not stages:
@@ -318,19 +299,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
             )
             return r[m.Cli.PipelineStageResult].ok(
                 cli.stage_result(
-                    gate_id,
-                    status=status,
-                    output={"errors": execution.error_count},
-                ),
+                    gate_id, status=status, output={"errors": execution.error_count}
+                )
             )
 
         return _handler
 
     @staticmethod
     def _execute_gate(
-        gate_instance: FlextInfraGate,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        gate_instance: FlextInfraGate, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run fix-then-check or check-only for a single gate instance."""
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:

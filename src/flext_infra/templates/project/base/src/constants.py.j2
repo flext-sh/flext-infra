@@ -4,10 +4,11 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): config/settings foundation parts compose the single constants namespace. #}
+{# NOTE (multi-agent, mro-wkii.19.1): config/settings foundation parts compose the single constants namespace. -#}
 from __future__ import annotations
 
 from {{ upstream }} import c
+
 from {{ package_name }}._constants.base import {{ class_stem }}ConstantsBase
 from {{ package_name }}._constants.config import {{ class_stem }}ConstantsConfig
 from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
@@ -16,12 +17,16 @@ from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSett
 class {{ class_stem }}Constants(c):
     """{{ class_stem }} constants extending the upstream facade."""
 
-    class {{ ns }}(
+{% if 62 + (ns | length) + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}({{ class_stem }}ConstantsBase, {{ class_stem }}ConstantsConfig, {{ class_stem }}ConstantsSettings):
+{% elif 57 + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}(
+        {{ class_stem }}ConstantsBase, {{ class_stem }}ConstantsConfig, {{ class_stem }}ConstantsSettings
+    ):
+{% else %}    class {{ ns }}(
         {{ class_stem }}ConstantsBase,
         {{ class_stem }}ConstantsConfig,
         {{ class_stem }}ConstantsSettings,
     ):
-        """Complete {{ ns }} constants namespace."""
+{% endif %}        """Complete {{ ns }} constants namespace."""
 
 
 c = {{ class_stem }}Constants

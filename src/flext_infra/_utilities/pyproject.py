@@ -8,14 +8,11 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
+from tomlkit import TOMLDocument
 
 from flext_infra import c, t
-
-if TYPE_CHECKING:
-    from tomlkit import TOMLDocument
 
 
 def _validate_infra_payload(payload: object) -> t.Infra.ContainerDict | None:
@@ -35,9 +32,7 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def pyproject_payload(
-        pyproject_path: Path,
-    ) -> t.Infra.ContainerDict:
+    def pyproject_payload(pyproject_path: Path) -> t.Infra.ContainerDict:
         """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
 
         Disk read is delegated to ``u.Cli.toml_read_json`` (cached at
@@ -63,12 +58,10 @@ class FlextInfraUtilitiesPyproject:
         return validated if validated is not None else {}
 
     @staticmethod
-    def tool_flext_meta(
-        project_root: Path,
-    ) -> t.Infra.ContainerDict:
+    def tool_flext_meta(project_root: Path) -> t.Infra.ContainerDict:
         """Return the normalized ``tool.flext`` table from a project root."""
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-            project_root / c.Infra.PYPROJECT_FILENAME,
+            project_root / c.Infra.PYPROJECT_FILENAME
         )
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -77,9 +70,7 @@ class FlextInfraUtilitiesPyproject:
         return flext if isinstance(flext, dict) else {}
 
     @staticmethod
-    def docs_meta_from_payload(
-        payload: t.Infra.ContainerDict,
-    ) -> t.Infra.ContainerDict:
+    def docs_meta_from_payload(payload: t.Infra.ContainerDict) -> t.Infra.ContainerDict:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -91,10 +82,7 @@ class FlextInfraUtilitiesPyproject:
         return docs if isinstance(docs, dict) else {}
 
     @staticmethod
-    def project_name_from_payload(
-        entry: Path,
-        payload: t.Infra.ContainerDict,
-    ) -> str:
+    def project_name_from_payload(entry: Path, payload: t.Infra.ContainerDict) -> str:
         """Return the declared project name from ``[project].name``."""
         project_section = payload.get("project")
         if not isinstance(project_section, dict):
@@ -136,8 +124,7 @@ class FlextInfraUtilitiesPyproject:
                     child_path: Path = child
                     return child_path.name
         project_name = FlextInfraUtilitiesPyproject.project_name_from_payload(
-            project_root,
-            payload,
+            project_root, payload
         )
         if project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN):
             msg = (
@@ -152,13 +139,11 @@ class FlextInfraUtilitiesPyproject:
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project root."""
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-            project_root / c.Infra.PYPROJECT_FILENAME,
+            project_root / c.Infra.PYPROJECT_FILENAME
         )
         docs_meta = FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
         return FlextInfraUtilitiesPyproject.package_name_from_payload(
-            project_root,
-            payload,
-            docs_meta,
+            project_root, payload, docs_meta
         )
 
     @staticmethod
@@ -197,7 +182,4 @@ class FlextInfraUtilitiesPyproject:
         return ()
 
 
-__all__: list[str] = [
-    "FlextInfraUtilitiesPyproject",
-    "_validate_infra_payload",
-]
+__all__: list[str] = ["FlextInfraUtilitiesPyproject", "_validate_infra_payload"]

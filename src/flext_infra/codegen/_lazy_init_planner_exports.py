@@ -17,42 +17,31 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
         _module_exports_cache: dict[
-            tuple[str, bool, bool, bool, bool, bool],
-            t.LazyAliasMap,
+            tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
         _version_module_name: str
 
         @classmethod
         def _is_private_test_fixture_package(
-            cls,
-            pkg_dir: Path,
-            surface: str,
+            cls, pkg_dir: Path, surface: str
         ) -> bool: ...
 
         def _package_entry(
-            self,
-            pkg_dir: Path,
+            self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
-            self,
-            index: t.MutableLazyAliasMap,
-            name: str,
-            target: t.StrPair,
+            self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
-        self,
-        context: m.Infra.LazyInitPackageContext,
+        self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
-        if self._is_private_test_fixture_package(
-            context.pkg_dir,
-            context.surface,
-        ):
+        if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
             return {}
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
@@ -76,8 +65,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             ):
                 continue
             convention = self.rope_workspace.convention(
-                py_file,
-                rel_path=py_file.relative_to(context.pkg_dir),
+                py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
             if not policy.include_in_lazy_init or not module_entry.module_name:
@@ -155,8 +143,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     "require_explicit_all": (
                         resolved_export_options.require_explicit_all
                         and not resolved_export_options.include_dunder
-                    ),
-                },
+                    )
+                }
             ),
         )
         exports = {

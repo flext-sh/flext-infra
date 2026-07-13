@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin(
-    FlextInfraCodegenLazyInitPlannerParentAstMixin,
+    FlextInfraCodegenLazyInitPlannerParentAstMixin
 ):
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
@@ -25,10 +25,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
 
     @override
     def _parents_from_constants_module(
-        self,
-        module_path: Path,
-        current_pkg: str,
-        visited: set[str] | None = None,
+        self, module_path: Path, current_pkg: str, visited: set[str] | None = None
     ) -> t.StrSequence:
         """Extract upstream package parents from a constants module.
 
@@ -49,7 +46,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
             if (
                 package_name := self._package_name_from_target(
                     state.declared_imports.get(base_name)
-                    or state.semantic_imports.get(base_name, ""),
+                    or state.semantic_imports.get(base_name, "")
                 )
             )
         )
@@ -69,9 +66,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
             is not None
             and str(module_file.resolve()) not in seen
             for parent in self._parents_from_constants_module(
-                module_file,
-                current_pkg,
-                seen,
+                module_file, current_pkg, seen
             )
         )
         rope_parents = tuple(
@@ -83,13 +78,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
                     *same_package_parents,
                 )
                 if package_name and package_name != current_pkg
-            ),
+            )
         )
-        ast_parents = self._parents_from_constants_ast(
-            module_path,
-            current_pkg,
-            seen,
-        )
+        ast_parents = self._parents_from_constants_ast(module_path, current_pkg, seen)
         return tuple(dict.fromkeys((*rope_parents, *ast_parents)))
 
     @staticmethod

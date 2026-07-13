@@ -40,11 +40,7 @@ class FlextInfraSkillRuleRunnerMixin:
         match rule_type:
             case "ast-grep":
                 count = self._run_ast_grep_count(
-                    rule_obj,
-                    skill_dir,
-                    root,
-                    include_globs,
-                    exclude_globs,
+                    rule_obj, skill_dir, root, include_globs, exclude_globs
                 )
             case "custom":
                 count = self._run_custom_count(rule_obj, skill_dir, root, mode)
@@ -74,22 +70,14 @@ class FlextInfraSkillRuleRunnerMixin:
             rule_file = (skill_dir / rule_file_raw).resolve()
         if not rule_file.exists():
             return 0
-        cmd = [
-            c.Infra.SG,
-            c.Infra.SCAN,
-            "--rule",
-            str(rule_file),
-            "--json=stream",
-        ]
+        cmd = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_file), "--json=stream"]
         for pat in include_globs:
             cmd.extend(["--globs", pat])
         for pat in exclude_globs:
             cmd.extend(["--globs", f"!{pat}"])
         cmd.append(str(project_path))
         result_wrapper = u.Cli.run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_DEFAULT,
+            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
         if result_wrapper.failure:
             return 0
@@ -147,9 +135,7 @@ class FlextInfraSkillRuleRunnerMixin:
         if bool(rule.get("pass_mode")):
             cmd.extend(["--mode", mode.value])
         result_wrapper = u.Cli.run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_DEFAULT,
+            cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
         if result_wrapper.failure:
             return 0

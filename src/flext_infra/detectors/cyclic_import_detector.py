@@ -59,8 +59,7 @@ class FlextInfraCyclicImportDetector:
         graph: dict[str, t.Infra.StrSet] = {module: set() for module in file_map}
         for module_name, _, resource in module_resources:
             for semantic_target in u.Infra.get_semantic_module_imports(
-                rope_project,
-                resource,
+                rope_project, resource
             ).values():
                 target_module = semantic_target
                 while target_module not in file_map and "." in target_module:
@@ -79,7 +78,7 @@ class FlextInfraCyclicImportDetector:
                     m.Infra.CyclicImportViolation(
                         cycle=normalized,
                         files=tuple(file_map.get(n, n) for n in normalized),
-                    ),
+                    )
                 )
         return violations
 

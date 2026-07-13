@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
@@ -31,8 +30,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """
 
     all_projects: Annotated[
-        bool,
-        m.Field(alias="all", description="Validate all projects"),
+        bool, m.Field(alias="all", description="Validate all projects")
     ] = False
     _runner: p.Cli.CommandRunner | None = m.PrivateAttr(default_factory=lambda: None)
 
@@ -129,9 +127,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return False
 
     def analyze(
-        self,
-        project_dir: Path,
-        workspace_root: Path,
+        self, project_dir: Path, workspace_root: Path
     ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze a project for missing typed dependencies.
 
@@ -150,13 +146,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return self._analyze_project(project_dir, workspace_root)
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.StubAnalysisReport].fail(
-                f"typed dependency analysis failed for {project_dir.name}: {exc}",
+                f"typed dependency analysis failed for {project_dir.name}: {exc}"
             )
 
     def build_report(
-        self,
-        workspace_root: Path,
-        project_dirs: t.SequenceOf[Path] | None = None,
+        self, workspace_root: Path, project_dirs: t.SequenceOf[Path] | None = None
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate typed dependency supply chain across projects.
 
@@ -176,9 +170,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             )
 
     def _classify_missing_imports(
-        self,
-        missing_imports: t.StrSequence,
-        project_name: str,
+        self, missing_imports: t.StrSequence, project_name: str
     ) -> tuple[t.StrSequence, t.StrSequence]:
         """Split missing imports into internal and unresolved external groups."""
         internal = tuple(
@@ -199,9 +191,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         return internal, unresolved
 
     def _analyze_project(
-        self,
-        project_dir: Path,
-        workspace_root: Path,
+        self, project_dir: Path, workspace_root: Path
     ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze one project after path resolution."""
         _ = workspace_root
@@ -209,8 +199,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         mypy_hints = self._run_mypy_hints(proj)
         missing_imports = self._run_pyrefly_missing(proj)
         internal, unresolved = self._classify_missing_imports(
-            missing_imports,
-            proj.name,
+            missing_imports, proj.name
         )
         return r[m.Infra.StubAnalysisReport].ok(
             m.Infra.StubAnalysisReport(
@@ -219,13 +208,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 internal_missing=internal,
                 unresolved_missing=unresolved,
                 total_missing=len(missing_imports),
-            ),
+            )
         )
 
     def _project_violations(
-        self,
-        project_dir: Path,
-        workspace_root: Path,
+        self, project_dir: Path, workspace_root: Path
     ) -> t.StrSequence:
         """Return typed-dependency violations for one project."""
         result = self.analyze(project_dir, workspace_root)
@@ -235,22 +222,20 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         violations: t.MutableSequenceOf[str] = []
         if data.mypy_hints:
             violations.append(
-                f"{project_dir.name}: {len(data.mypy_hints)} missing typing packages",
+                f"{project_dir.name}: {len(data.mypy_hints)} missing typing packages"
             )
         if data.internal_missing:
             violations.append(
-                f"{project_dir.name}: {len(data.internal_missing)} internal missing imports",
+                f"{project_dir.name}: {len(data.internal_missing)} internal missing imports"
             )
         if data.unresolved_missing:
             violations.append(
-                f"{project_dir.name}: {len(data.unresolved_missing)} unresolved imports",
+                f"{project_dir.name}: {len(data.unresolved_missing)} unresolved imports"
             )
         return tuple(violations)
 
     def _typed_dependency_violations(
-        self,
-        projects: t.SequenceOf[Path],
-        workspace_root: Path,
+        self, projects: t.SequenceOf[Path], workspace_root: Path
     ) -> t.StrSequence:
         """Collect typed-dependency violations for all selected projects."""
         violations: t.MutableSequenceOf[str] = []
@@ -259,9 +244,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         return tuple(violations)
 
     def _build_typed_dependency_report(
-        self,
-        workspace_root: Path,
-        project_dirs: t.SequenceOf[Path] | None,
+        self, workspace_root: Path, project_dirs: t.SequenceOf[Path] | None
     ) -> p.Result[m.Infra.ValidationReport]:
         """Build the workspace typed-dependency validation report."""
         root = workspace_root.resolve()
@@ -274,19 +257,18 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 summary=(
                     f"typed dependency chain: {len(projects)} projects, {len(violations)} issues"
                 ),
-            ),
+            )
         )
 
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the typed-dependency validation CLI flow."""
         report_result = self.build_report(
-            self.workspace_root,
-            project_dirs=self.project_dirs,
+            self.workspace_root, project_dirs=self.project_dirs
         )
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "typed dependency validation failed",
+                report_result.error or "typed dependency validation failed"
             )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

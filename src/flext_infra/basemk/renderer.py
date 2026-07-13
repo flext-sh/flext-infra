@@ -11,15 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -43,7 +35,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     """Render base.mk templates with configuration context."""
 
     _environment: t.Infra.JinjaEnvironment = u.PrivateAttr(
-        default_factory=_build_default_environment,
+        default_factory=_build_default_environment
     )
 
     @staticmethod
@@ -72,27 +64,23 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         """Normalize user-provided config to the canonical BaseMk model."""
         if settings is None:
             return r[m.Infra.BaseMkConfig].ok(
-                FlextInfraBaseMkTemplateRenderer.default_config(),
+                FlextInfraBaseMkTemplateRenderer.default_config()
             )
         if isinstance(settings, m.Infra.BaseMkConfig):
             return r[m.Infra.BaseMkConfig].ok(settings)
         try:
-            normalized = m.Infra.BaseMkConfig.model_validate(
-                settings,
-            )
+            normalized = m.Infra.BaseMkConfig.model_validate(settings)
             return r[m.Infra.BaseMkConfig].ok(normalized)
         except c.EXC_TYPE_VALIDATION as exc:
             return r[m.Infra.BaseMkConfig].fail_op(
-                "base.mk configuration validation",
-                exc,
+                "base.mk configuration validation", exc
             )
 
     @staticmethod
     def render_bootstrap_include() -> p.Result[str]:
         """Render the canonical Makefile bootstrap include block."""
         return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
-            make=c.Infra,
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
         )
 
     @override
@@ -109,10 +97,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         rendered: str = template.render(**kwargs)
         return rendered
 
-    def render_all(
-        self,
-        settings: m.Infra.BaseMkConfig | None = None,
-    ) -> p.Result[str]:
+    def render_all(self, settings: m.Infra.BaseMkConfig | None = None) -> p.Result[str]:
         """Render all base.mk templates into a single output string."""
         active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
@@ -120,7 +105,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         try:
             for template_name in c.Infra.TEMPLATE_ORDER:
                 template: p.Infra.RenderableTemplate = self._environment.get_template(
-                    template_name,
+                    template_name
                 )
                 rendered = self._render_template(
                     template,
@@ -142,7 +127,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         """Render a single named template with the given context."""
         try:
             template: p.Infra.RenderableTemplate = self._environment.get_template(
-                template_name,
+                template_name
             )
             content = self._render_template(template, **kwargs)
             return r[str].ok(content.rstrip("\n"))

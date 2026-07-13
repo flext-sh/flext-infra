@@ -11,6 +11,4 @@ class FlextInfraEnforcementEngine(FlextInfraEnforcementSourceCollectors):
     """Single SSOT-backed collector for validation, census, and fix flows."""
 
 
-__all__: list[str] = [
-    "FlextInfraEnforcementEngine",
-]
+__all__: list[str] = ["FlextInfraEnforcementEngine"]

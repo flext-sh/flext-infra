@@ -24,10 +24,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def fix_action_for(
-        cls,
-        violation: m.Infra.CompatibilityAliasViolation,
-        *,
-        current_project: str,
+        cls, violation: m.Infra.CompatibilityAliasViolation, *, current_project: str
     ) -> str:
         """Return the catalog fix action for a compatibility-alias violation.
 
@@ -44,8 +41,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def detect_file(
-        cls,
-        ctx: m.Infra.DetectorContext,
+        cls, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
 
@@ -77,7 +73,7 @@ class FlextInfraCompatibilityAliasDetector:
                     line=line_number,
                     alias_name=alias_name,
                     target_name=target_name,
-                ),
+                )
             )
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return violations
@@ -88,19 +84,17 @@ class FlextInfraCompatibilityAliasDetector:
         current_module = u.Infra.package_name(file_path)
         for from_import in cls._all_from_imports(ctx.rope_project, resource):
             module_name = cls._resolve_imported_module(
-                current_module=current_module,
-                from_import=from_import,
+                current_module=current_module, from_import=from_import
             )
             for name, alias in from_import.names_and_aliases:
                 bound_name = alias if alias is not None else name
                 if bound_name in alias_renames.values():
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
-                        bound_name,
+                        bound_name
                     )
         for from_import in cls._all_from_imports(ctx.rope_project, resource):
             module_name = cls._resolve_imported_module(
-                current_module=current_module,
-                from_import=from_import,
+                current_module=current_module, from_import=from_import
             )
             for name, alias in from_import.names_and_aliases:
                 canonical_alias = alias_renames.get(name)
@@ -114,8 +108,7 @@ class FlextInfraCompatibilityAliasDetector:
                     # compatibility-alias violation.
                     continue
                 if canonical_alias in canonical_aliases_by_module.get(
-                    module_name,
-                    set(),
+                    module_name, set()
                 ):
                     # The canonical short alias is also imported from the same
                     # module; this is a re-export/facade file, not a consumer
@@ -135,35 +128,30 @@ class FlextInfraCompatibilityAliasDetector:
                         alias_name=name,
                         target_name=canonical_alias,
                         module_name=module_name,
-                    ),
+                    )
                 )
 
         violations.extend(
-            cls._detect_foreign_canonical_aliases(
-                source=source,
-                file_path=file_path,
-            ),
+            cls._detect_foreign_canonical_aliases(source=source, file_path=file_path)
         )
         return violations
 
     @staticmethod
     def _detect_foreign_canonical_aliases(
-        *,
-        source: str,
-        file_path: Path,
+        *, source: str, file_path: Path
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect canonical aliases imported from ``flext_core`` into local owners."""
         current_module = u.Infra.package_name(file_path)
         current_package = current_module.split(".", maxsplit=1)[0]
         local_aliases = (
             FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
-                current_package,
+                current_package
             )
         )
         if not local_aliases:
             return ()
         if FlextInfraCompatibilityAliasDetector._is_private_facade_implementation(
-            file_path,
+            file_path
         ):
             return ()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
@@ -176,11 +164,11 @@ class FlextInfraCompatibilityAliasDetector:
         local_aliases_set = frozenset(local_aliases)
         violations: list[m.Infra.CompatibilityAliasViolation] = []
         for node in FlextInfraCompatibilityAliasDetector._iter_runtime_from_imports(
-            tree,
+            tree
         ):
             module = node.module or ""
             if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
-                f"{c.Infra.PKG_CORE_UNDERSCORE}.",
+                f"{c.Infra.PKG_CORE_UNDERSCORE}."
             ):
                 continue
             for alias in node.names:
@@ -194,7 +182,7 @@ class FlextInfraCompatibilityAliasDetector:
                         alias_name=bound_name,
                         target_name=bound_name,
                         module_name=current_package,
-                    ),
+                    )
                 )
         return violations
 
@@ -212,10 +200,7 @@ class FlextInfraCompatibilityAliasDetector:
         return owners
 
     @classmethod
-    def _iter_runtime_from_imports(
-        cls,
-        tree: ast.AST,
-    ) -> t.SequenceOf[ast.ImportFrom]:
+    def _iter_runtime_from_imports(cls, tree: ast.AST) -> t.SequenceOf[ast.ImportFrom]:
         """Return ``from`` imports while skipping ``TYPE_CHECKING`` branches."""
         imports: list[ast.ImportFrom] = []
         cls._collect_runtime_from_imports(tree, imports)
@@ -223,9 +208,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def _collect_runtime_from_imports(
-        cls,
-        node: ast.AST,
-        imports: list[ast.ImportFrom],
+        cls, node: ast.AST, imports: list[ast.ImportFrom]
     ) -> None:
         """Collect runtime ``from`` imports recursively."""
         if isinstance(node, ast.If) and cls._is_type_checking_if(node):
@@ -262,8 +245,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @staticmethod
     def _all_from_imports(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[t.Infra.RopeFromImport]:
         """Return all ``from ... import ...`` descriptors in a module."""
         module_imports = u.Infra.get_module_imports(rope_project, resource)
@@ -278,9 +260,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @staticmethod
     def _resolve_imported_module(
-        *,
-        current_module: str,
-        from_import: t.Infra.RopeFromImport,
+        *, current_module: str, from_import: t.Infra.RopeFromImport
     ) -> str:
         """Return the absolute module name for a possibly-relative ``FromImport``."""
         module_name: str = from_import.module_name

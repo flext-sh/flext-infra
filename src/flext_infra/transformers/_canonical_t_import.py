@@ -21,22 +21,14 @@ class FlextInfraEnsureCanonicalTImportMixin:
     _DEFAULT_ALIAS_MODULE: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
     _IMPORT_ALIAS_PARTS: ClassVar[int] = 2
 
-    def _ensure_t_import(
-        self,
-        source: str,
-        module_name: str,
-    ) -> tuple[str, bool]:
+    def _ensure_t_import(self, source: str, module_name: str) -> tuple[str, bool]:
         """Inject ``from <module_name> import t`` if needed."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
         updated = _header.ensure_alias_import(source, target_module, "t")
         return updated, updated != source
 
     def _ensure_alias_import(
-        self,
-        *,
-        source: str,
-        module_name: str,
-        alias: str,
+        self, *, source: str, module_name: str, alias: str
     ) -> tuple[str, bool]:
         """Inject ``from <module_name> import <alias>`` when the alias is used."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE

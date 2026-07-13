@@ -102,12 +102,7 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                 FlextInfraCodegenPyTyped,
                 "py-typed markers updated",
             ),
-            (
-                "pipeline",
-                "Run full codegen pipeline",
-                FlextInfraCodegenPipeline,
-                None,
-            ),
+            ("pipeline", "Run full codegen pipeline", FlextInfraCodegenPipeline, None),
             (
                 "constants-quality-gate",
                 "Run constants migration quality gate",

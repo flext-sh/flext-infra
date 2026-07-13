@@ -56,10 +56,7 @@ class FlextInfraTier0TransformerMixin:
             self._type_checking_pending = set(analysis.category_c)
             self._direct_pending: MutableMapping[str, t.Infra.StrSet] = {}
             for a in sorted(analysis.category_d):
-                sub = alias_to_submodule.get(
-                    a,
-                    analysis.alias_to_module.get(a, ""),
-                )
+                sub = alias_to_submodule.get(a, analysis.alias_to_module.get(a, ""))
                 if sub:
                     self._direct_pending.setdefault(sub, set()).add(a)
             self._missing_classes: t.Infra.StrSet = set()
@@ -71,9 +68,7 @@ class FlextInfraTier0TransformerMixin:
             return self._changes
 
         def transform(
-            self,
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
+            self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
         ) -> t.Infra.TransformResult:
             """Apply tier 0 import fixes via rope."""
             source = resource.read()
@@ -106,13 +101,7 @@ class FlextInfraTier0TransformerMixin:
                     )
             for name in sorted(self._missing_classes):
                 mod = self._CLASS_IMPORTS_MAP[name]
-                u.Infra.add_import(
-                    rope_project,
-                    resource,
-                    mod,
-                    [name],
-                    apply=True,
-                )
+                u.Infra.add_import(rope_project, resource, mod, [name], apply=True)
             if self._type_checking_pending:
                 self._add_type_checking_block(rope_project, resource)
             final = resource.read()
@@ -126,9 +115,7 @@ class FlextInfraTier0TransformerMixin:
                     self._missing_classes.add(name)
 
         def _add_type_checking_block(
-            self,
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
+            self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
         ) -> None:
             """Add TYPE_CHECKING block with pending type-only imports."""
             source = resource.read()
@@ -136,11 +123,7 @@ class FlextInfraTier0TransformerMixin:
             tc_import = f"from {self._package_name} import {names}"
             if "from typing import TYPE_CHECKING" not in source:
                 u.Infra.add_import(
-                    rope_project,
-                    resource,
-                    "typing",
-                    ["TYPE_CHECKING"],
-                    apply=True,
+                    rope_project, resource, "typing", ["TYPE_CHECKING"], apply=True
                 )
                 self._changes.append("Added 'from typing import TYPE_CHECKING'")
                 source = resource.read()
@@ -152,7 +135,7 @@ class FlextInfraTier0TransformerMixin:
                 new_source = "".join(lines)
                 resource.write(new_source)
                 self._changes.append(
-                    f"Added TYPE_CHECKING block for {self._package_name}",
+                    f"Added TYPE_CHECKING block for {self._package_name}"
                 )
 
 

@@ -34,8 +34,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def is_normal_import(
-        cls,
-        value: p.AttributeProbe,
+        cls, value: p.AttributeProbe
     ) -> TypeGuard[t.Infra.RopeNormalImport]:
         return isinstance(
             value,
@@ -44,8 +43,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def is_assigned_name(
-        cls,
-        value: p.AttributeProbe,
+        cls, value: p.AttributeProbe
     ) -> TypeGuard[t.Infra.RopeAssignedName]:
         return isinstance(
             value, cls.runtime_type("rope.base.pynamesdef", "AssignedName")
@@ -53,33 +51,30 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
 
     @classmethod
     def is_runtime_pyclass(
-        cls,
-        value: p.AttributeProbe,
+        cls, value: p.AttributeProbe
     ) -> TypeGuard[t.Infra.RopePyObject]:
         return isinstance(value, cls.runtime_type("rope.base.pyobjects", "PyClass"))
 
     module_syntax_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleSyntaxError"),
+        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleSyntaxError")
     )
     refactoring_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "RefactoringError"),
+        lambda cls: cls._exception_type("rope.base.exceptions", "RefactoringError")
     )
     resource_not_found_error_type = classmethod(
-        lambda cls: cls._exception_type(
-            "rope.base.exceptions", "ResourceNotFoundError"
-        ),
+        lambda cls: cls._exception_type("rope.base.exceptions", "ResourceNotFoundError")
     )
     module_not_found_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),
+        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleNotFoundError")
     )
     rope_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "RopeError"),
+        lambda cls: cls._exception_type("rope.base.exceptions", "RopeError")
     )
     abstract_class_type = classmethod(
-        lambda cls: cls.runtime_type("rope.base.pyobjects", "AbstractClass"),
+        lambda cls: cls.runtime_type("rope.base.pyobjects", "AbstractClass")
     )
     py_function_type = classmethod(
-        lambda cls: cls.runtime_type("rope.base.pyobjectsdef", "PyFunction"),
+        lambda cls: cls.runtime_type("rope.base.pyobjectsdef", "PyFunction")
     )
 
 

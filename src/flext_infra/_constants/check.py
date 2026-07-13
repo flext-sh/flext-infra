@@ -40,10 +40,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/silent-failure",
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
-        "markdown": (
-            "MarkdownLint",
-            "https://github.com/DavidAnson/markdownlint",
-        ),
+        "markdown": ("MarkdownLint", "https://github.com/DavidAnson/markdownlint"),
         "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -53,18 +50,12 @@ class FlextInfraConstantsCheck:
             "Flext Runtime Enforcement Census",
             "internal://flext-infra/runtime-census",
         ),
-        "namespace": (
-            "Flext Namespace Rule Gate",
-            "internal://flext-infra/namespace",
-        ),
+        "namespace": ("Flext Namespace Rule Gate", "internal://flext-infra/namespace"),
         "tier-whitelist": (
             "Flext Tier Whitelist Gate",
             "internal://flext-infra/tier-whitelist",
         ),
-        "smells": (
-            "Flext Code Smell Detector",
-            "internal://flext-infra/smells",
-        ),
+        "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
@@ -73,10 +64,10 @@ class FlextInfraConstantsCheck:
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*-->\s*(.+?):\d+:\d+\s*$",
+        r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$",
+        r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$"
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
@@ -132,8 +123,7 @@ class FlextInfraConstantsCheck:
     BOUNDARY_SIMPLE_RULES: Final[tuple[tuple[t.RegexPattern, str], ...]] = (
         (
             re.compile(
-                rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)",
-                re.MULTILINE,
+                rf"^\s*(import|from)\s+{'sub' + 'process'}(\s|$|\.)", re.MULTILINE
             ),
             "imports subprocess — use cli.run / cli.capture",
         ),
@@ -163,15 +153,13 @@ class FlextInfraConstantsCheck:
         "flext_infra/gates/abstraction_boundary.py",
     })
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)",
-        re.MULTILINE,
+        r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
     BOUNDARY_CONCRETE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$",
-        re.MULTILINE,
+        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
     )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
-        r"\bFlextCli[A-Z]\w*",
+        r"\bFlextCli[A-Z]\w*"
     )
 
     # --- 200-LOC SUPREME LAW (§3.1) gate SSOT ---
@@ -213,65 +201,74 @@ class FlextInfraConstantsCheck:
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
     # --- Manual-command blocker (§5 Make Contract) SSOT ---
-    MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset(
-        {"ruff", "pytest", "pyrefly", "mypy", "pyright"},
-    )
-    MANUAL_CMD_BLOCKED_GIT: Final[frozenset[str]] = frozenset(
-        {"commit", "add", "push", "tag"},
-    )
+    MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
+        "ruff",
+        "pytest",
+        "pyrefly",
+        "mypy",
+        "pyright",
+    })
+    MANUAL_CMD_BLOCKED_GIT: Final[frozenset[str]] = frozenset({
+        "commit",
+        "add",
+        "push",
+        "tag",
+    })
     MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
     MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
-    MANUAL_CMD_UV_RUN_VALUE_OPTIONS: Final[frozenset[str]] = frozenset(
-        {
-            "--default-index",
-            "--directory",
-            "--env-file",
-            "--extra",
-            "--find-links",
-            "--from",
-            "--group",
-            "--index",
-            "--index-url",
-            "--index-strategy",
-            "--keyring-provider",
-            "--link-mode",
-            "--no-extra",
-            "--no-group",
-            "--only-group",
-            "--package",
-            "--prerelease",
-            "--project",
-            "--python",
-            "--python-platform",
-            "--resolution",
-            "--with",
-            "--with-editable",
-            "--with-requirements",
-        },
-    )
+    MANUAL_CMD_UV_RUN_VALUE_OPTIONS: Final[frozenset[str]] = frozenset({
+        "--default-index",
+        "--directory",
+        "--env-file",
+        "--extra",
+        "--find-links",
+        "--from",
+        "--group",
+        "--index",
+        "--index-url",
+        "--index-strategy",
+        "--keyring-provider",
+        "--link-mode",
+        "--no-extra",
+        "--no-group",
+        "--only-group",
+        "--package",
+        "--prerelease",
+        "--project",
+        "--python",
+        "--python-platform",
+        "--resolution",
+        "--with",
+        "--with-editable",
+        "--with-requirements",
+    })
     "``uv run`` options that consume the following token before the real command."
-    MANUAL_CMD_WRAPPERS: Final[frozenset[str]] = frozenset(
-        {
-            "env",
-            "time",
-            "nohup",
-            "xargs",
-            "sudo",
-            "command",
-            "nice",
-            "ionice",
-            "stdbuf",
-        },
-    )
-    MANUAL_CMD_REWRITE_FLAGS: Final[frozenset[str]] = frozenset(
-        {"--rewrite", "-U", "--update-all"},
-    )
+    MANUAL_CMD_WRAPPERS: Final[frozenset[str]] = frozenset({
+        "env",
+        "time",
+        "nohup",
+        "xargs",
+        "sudo",
+        "command",
+        "nice",
+        "ionice",
+        "stdbuf",
+    })
+    MANUAL_CMD_REWRITE_FLAGS: Final[frozenset[str]] = frozenset({
+        "--rewrite",
+        "-U",
+        "--update-all",
+    })
     MANUAL_CMD_SEGMENT_RE: Final[t.RegexPattern] = re.compile(r"&&|\|\||;|\||\n|`|\$\(")
 
     # --- Net-LOC-delta validator (§3.5) SSOT ---
-    REFACTOR_COMMIT_LABELS: Final[frozenset[str]] = frozenset(
-        {"refactor", "deduplicate", "cleanup", "yagni", "simplify"},
-    )
+    REFACTOR_COMMIT_LABELS: Final[frozenset[str]] = frozenset({
+        "refactor",
+        "deduplicate",
+        "cleanup",
+        "yagni",
+        "simplify",
+    })
 
     # Canonical .pre-commit-config.yaml (SSOT; was templates/pre_commit_config.yaml.j2).
     # Static — no Jinja vars; hooks route through the workspace uv environment.

@@ -40,10 +40,7 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
     @classmethod
     def contribution(cls) -> EnforcementContribution:
         """Return the registry contribution for the flext-tests dispatcher."""
-        return EnforcementContribution(
-            source_kind=cls.source_kind(),
-            builder=cls(),
-        )
+        return EnforcementContribution(source_kind=cls.source_kind(), builder=cls())
 
     @classmethod
     def register(cls) -> None:
@@ -63,14 +60,8 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
         if infra_report is None:
             return []
 
-        grouped = self.group_violations(
-            rule,
-            infra_report,
-        )
-        collector = EnforcementCollector(
-            name="flext-enforcement",
-            parent=session,
-        )
+        grouped = self.group_violations(rule, infra_report)
+        collector = EnforcementCollector(name="flext-enforcement", parent=session)
         return [
             EnforcementItem(
                 name=f"{rule.id}[{project}]",
@@ -85,9 +76,7 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
 
     @classmethod
     def group_violations(
-        cls,
-        rule: m.EnforcementRuleSpec,
-        report: p.AttributeProbe,
+        cls, rule: m.EnforcementRuleSpec, report: p.AttributeProbe
     ) -> dict[str, list[p.AttributeProbe]]:
         """Group detector violations by owning project."""
         source = rule.source
@@ -95,27 +84,20 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
         match_missing = bool(getattr(source, "match_missing", False))
         grouped: dict[str, list[p.AttributeProbe]] = {}
         for project, entry in cls.iter_violations(
-            report,
-            field,
-            match_missing=match_missing,
+            report, field, match_missing=match_missing
         ):
             grouped.setdefault(project, []).append(entry)
         return grouped
 
     @staticmethod
     def iter_violations(
-        report: p.AttributeProbe,
-        field: str,
-        *,
-        match_missing: bool,
+        report: p.AttributeProbe, field: str, *, match_missing: bool
     ) -> Iterable[tuple[str, p.AttributeProbe]]:
         """Yield ``(project_name, violation)`` from a workspace report."""
         projects = getattr(report, "projects", ())
         for project in projects:
             project_name = getattr(project, "project", "") or getattr(
-                project,
-                "project_name",
-                "",
+                project, "project_name", ""
             )
             entries = getattr(project, field, ())
             if match_missing:
@@ -129,6 +111,4 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
 FlextInfraEnforcementPytestPlugin.register()
 
 
-__all__: list[str] = [
-    "FlextInfraEnforcementPytestPlugin",
-]
+__all__: list[str] = ["FlextInfraEnforcementPytestPlugin"]

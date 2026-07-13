@@ -31,11 +31,7 @@ class FlextInfraTypes(cli_t):
     transparently from ``FlextTypes`` via MRO.
     """
 
-    class Infra(
-        FlextInfraTypesAdapters,
-        FlextInfraTypesRope,
-        FlextInfraTypesBase,
-    ):
+    class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
         """Infrastructure-domain type aliases.
 
         These aliases compose CLI JSON contracts and infrastructure-specific

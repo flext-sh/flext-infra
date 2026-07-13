@@ -30,7 +30,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         super().__init__(on_change=on_change)
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                order_config,
+                order_config
             )
             self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
                 m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
@@ -57,18 +57,14 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             if not FlextInfraUtilitiesRopeAnalysis.is_pyclass(class_obj):
                 continue
             block_edits = self._class_block_edits(
-                class_name=class_name,
-                class_obj=class_obj,
-                lines=lines,
+                class_name=class_name, class_obj=class_obj, lines=lines
             )
             edits.extend(block_edits)
         if not edits:
             return source, list(self.changes)
         updated = source
         for start, end, replacement in sorted(
-            edits,
-            key=operator.itemgetter(0),
-            reverse=True,
+            edits, key=operator.itemgetter(0), reverse=True
         ):
             updated = f"{updated[:start]}{replacement}{updated[end:]}"
         return updated, list(self.changes)
@@ -87,16 +83,14 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         source = "".join(lines)
         edits: list[tuple[int, int, str]] = []
         for block in self._contiguous_method_blocks(
-            method_chunks=method_chunks,
-            source=source,
+            method_chunks=method_chunks, source=source
         ):
             if len(block) < c.Infra.MIN_METHODS_FOR_REORDER:
                 continue
             sorted_chunks = sorted(
                 block,
                 key=lambda item: u.Infra.build_method_sort_key(
-                    item[0],
-                    self._order_config,
+                    item[0], self._order_config
                 ),
             )
             if [item[0].name for item in block] == [
@@ -112,21 +106,12 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 replacement_parts.append(item[3])
                 if index < len(separators):
                     replacement_parts.append(separators[index])
-            edits.append((
-                block[0][1],
-                block[-1][2],
-                "".join(replacement_parts),
-            ))
-            self._record_change(
-                f"Reordered {len(block)} methods in class {class_name}",
-            )
+            edits.append((block[0][1], block[-1][2], "".join(replacement_parts)))
+            self._record_change(f"Reordered {len(block)} methods in class {class_name}")
         return edits
 
     def _collect_method_chunks(
-        self,
-        *,
-        class_obj: t.Infra.RopePyObject,
-        lines: t.SequenceOf[str],
+        self, *, class_obj: t.Infra.RopePyObject, lines: t.SequenceOf[str]
     ) -> list[tuple[m.Infra.MethodInfo, int, int, str]]:
         """Collect ``(MethodInfo, start_offset, end_offset, source_chunk)`` ordered by line."""
         line_offsets = self._line_offsets(lines)
@@ -147,8 +132,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 continue
             decorators = FlextInfraUtilitiesRopeAnalysis.decorator_names(method_obj)
             start_line = FlextInfraUtilitiesRopeAnalysis.first_decorator_line(
-                method_obj,
-                default_line=location[1],
+                method_obj, default_line=location[1]
             )
             method_scope = method_obj.get_scope()
             end_line = (
@@ -186,7 +170,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         if not method_chunks:
             return []
         blocks: list[list[tuple[m.Infra.MethodInfo, int, int, str]]] = [
-            [method_chunks[0]],
+            [method_chunks[0]]
         ]
         for chunk in method_chunks[1:]:
             previous = blocks[-1][-1]

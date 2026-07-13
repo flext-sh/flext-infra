@@ -16,7 +16,6 @@ import pkgutil
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import FlextUtilitiesEnforcement, r
-
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 
@@ -28,13 +27,11 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
     """Post-import runtime enforcement census across workspace projects."""
 
     project_filter: Annotated[
-        str | None,
-        m.Field(description="Project filter (comma-separated)"),
+        str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
     def _selected_projects(
-        self,
-        projects: t.SequenceOf[p.Infra.ProjectInfo],
+        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
     ) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Apply comma-separated project filter when provided."""
         if self.project_filter is None:
@@ -45,9 +42,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         return [project for project in projects if project.name in selected]
 
     @staticmethod
-    def _package_name_for_project(
-        project: p.Infra.ProjectInfo,
-    ) -> str | None:
+    def _package_name_for_project(project: p.Infra.ProjectInfo) -> str | None:
         """Resolve the importable package name for a project root."""
         layout = u.Infra.layout(project.path, project=project)
         if layout is not None:
@@ -78,9 +73,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         modules: list[str] = [package.__name__]
         try:
             for _, modname, _ in pkgutil.walk_packages(
-                package.__path__,
-                prefix=prefix,
-                onerror=lambda _name: None,
+                package.__path__, prefix=prefix, onerror=lambda _name: None
             ):
                 modules.append(modname)
         except Exception as exc:
@@ -97,7 +90,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     passed=False,
                     violations=(f"{module_name}: import failed: {exc}",),
                     summary=f"{module_name}: import failed",
-                ),
+                )
             ]
         violations: list[str] = []
         for _name, obj in inspect.getmembers(module, inspect.isclass):
@@ -107,7 +100,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 report = FlextUtilitiesEnforcement.check(obj)
             except Exception as exc:
                 violations.append(
-                    f"{module_name}:{obj.__qualname__}: check raised: {exc}",
+                    f"{module_name}:{obj.__qualname__}: check raised: {exc}"
                 )
                 continue
             for violation in report.violations:
@@ -116,7 +109,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 rule_part = f" [{violation.rule_id}]" if violation.rule_id else ""
                 violations.append(
                     f"{file_part}{line_part}{obj.__qualname__}{rule_part}: "
-                    f"{violation.message}",
+                    f"{violation.message}"
                 )
         return [
             m.Infra.ValidationReport(
@@ -127,13 +120,10 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     if violations
                     else f"{module_name}: clean"
                 ),
-            ),
+            )
         ]
 
-    def _project_report(
-        self,
-        project: p.Infra.ProjectInfo,
-    ) -> m.Infra.ValidationReport:
+    def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
@@ -161,7 +151,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             name
             for name in real_modules
             if not config.Infra.source_scan.ignored_resources.intersection(
-                name.split("."),
+                name.split(".")
             )
         ]
         all_reports: list[m.Infra.ValidationReport] = [
@@ -169,7 +159,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 passed=False,
                 violations=tuple(import_failures),
                 summary=(f"{project.name}: {len(import_failures)} import failure(s)"),
-            ),
+            )
         ]
         for module_name in real_modules:
             all_reports.extend(self._check_module(module_name))
@@ -183,9 +173,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             else f"{project.name}: runtime census passed ({len(real_modules)} module(s))"
         )
         return m.Infra.ValidationReport(
-            passed=passed,
-            violations=merged_violations,
-            summary=summary,
+            passed=passed, violations=merged_violations, summary=summary
         )
 
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
@@ -193,7 +181,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         projects_result = u.Infra.projects(self.workspace_root)
         if projects_result.failure:
             return r[m.Infra.ValidationReport].fail(
-                projects_result.error or "project discovery failed",
+                projects_result.error or "project discovery failed"
             )
         projects = self._selected_projects(projects_result.unwrap())
         if not projects:
@@ -202,7 +190,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                     passed=True,
                     violations=(),
                     summary="runtime census: no projects selected",
-                ),
+                )
             )
         merged_violations: list[str] = []
         for project in projects:
@@ -216,10 +204,8 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=tuple(merged_violations),
-                summary=summary,
-            ),
+                passed=passed, violations=tuple(merged_violations), summary=summary
+            )
         )
 
     @override

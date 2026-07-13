@@ -4,31 +4,33 @@
 # FLEXT source are Git-first in every profile; local editables are setup overlays.
 
 [build-system]
-build-backend = "hatchling.build"
-requires = [ "hatchling" ]
+build-backend = {{ scaffold.build.backend | tojson }}
+requires = [
+{% for item in scaffold.build.requirements %}
+  {{ item | tojson }},
+{% endfor %}
+]
 
 [project]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.13",
-  "Topic :: Software Development :: Libraries :: Python Modules",
-  "Typing :: Typed",
+{% for item in scaffold.project.classifiers %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 dependencies = [
-  "flext-cli",
-  "flext-core",
-  "pydantic-settings>=2.14.0",
-  "pydantic>=2.13.3",
-  "structlog>=25.5.0",
+{% for item in dependency_profile.runtime %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 description = "{{ description }}"
-keywords = [ "clean-architecture", "ddd", "flext", "integration", "typed" ]
+keywords = [
+{% for item in scaffold.project.keywords %}
+  {{ item | tojson }},
+{% endfor %}
+]
 license = "{{ license }}"
 name = "{{ dist }}"
-readme = "README.md"
+readme = {{ scaffold.project.readme | tojson }}
 requires-python = "{{ python_required_version }}"
 version = "{{ version }}"
 
@@ -42,20 +44,14 @@ name = "{{ author_name }}"
 
 [dependency-groups]
 codegen = [
-{% if dist != "flext-infra" %}
-  "flext-infra",
-{% endif %}
+{% for item in dependency_profile.codegen if item != dist %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 dev = [
-{% if dist != "flext-tests" %}
-  "flext-tests",
-{% endif %}
-  "hypothesis>=6.125",
-  "pyrefly>=1.1.1,<1.2.0",
-  "pytest>=8.4",
-  "pytest-cov>=6.2",
-  "pytest-xdist>=3.8",
-  "ruff>=0.12.3",
+{% for item in dependency_profile.dev if item != dist %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 workspace = [
 {% for repository in workspace_repositories %}
@@ -74,503 +70,276 @@ Repository = "{{ repository }}"
 {% endif %}
 
 [tool.codespell]
-check-filenames = true
-ignore-words-list = "crate,nd"
+check-filenames = {{ tooling.tools.codespell.check_filenames | lower }}
+ignore-words-list = {{ tooling.tools.codespell.ignore_words_list | tojson }}
 
 [tool.coverage.report]
-exclude_also = [ "if TYPE_CHECKING:" ]
-fail_under = 0
-precision = 2
-show_missing = true
-skip_covered = false
+exclude_also = [
+{% for item in tooling.tools.coverage.exclude_also %}
+  {{ item | tojson }},
+{% endfor %}
+]
+fail_under = {{ tooling_runtime.coverage_fail_under }}
+precision = {{ tooling.tools.coverage.precision }}
+show_missing = {{ tooling.tools.coverage.show_missing | lower }}
+skip_covered = {{ tooling.tools.coverage.skip_covered | lower }}
 
 [tool.coverage.run]
-omit = [ "*/dependency_injector/providers.pyx" ]
+omit = [
+{% for item in tooling.tools.coverage.omit %}
+  {{ item | tojson }},
+{% endfor %}
+]
 
 [tool.deptry]
-known_first_party = [ "{{ package_name }}", "flext_core" ]
-pep621_dev_dependency_groups = [ "dev" ]
+known_first_party = [
+{% for item in tooling_runtime.first_party %}
+  {{ item | tojson }},
+{% endfor %}
+]
+pep621_dev_dependency_groups = [
+{% for item in tooling.tools.deptry.pep621_dev_dependency_groups %}
+  {{ item | tojson }},
+{% endfor %}
+]
 
 [tool.hatch.metadata]
-allow-direct-references = true
+allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
 
 [tool.mypy]
-check_untyped_defs = true
 disable_error_code = [
-  "assignment",
-  "attr-defined",
-  "call-arg",
-  "misc",
-  "name-defined",
-  "prop-decorator",
-  "valid-type",
+{% for item in tooling.tools.mypy.disabled_error_codes | sort %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-explicit_package_bases = true
-extra_checks = true
-follow_imports = "normal"
-ignore_missing_imports = true
-local_partial_types = true
-mypy_path = [ ".", "src" ]
-namespace_packages = true
-no_implicit_reexport = true
-overrides = [  ]
-plugins = [ "pydantic.mypy", "returns.contrib.mypy.returns_plugin" ]
-python_version = "{{ python_version }}"
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_ignores = true
+exclude = {{ tooling.tools.mypy.exclude | tojson }}
+mypy_path = [
+{% for item in tooling_runtime.mypy_path %}
+  {{ item | tojson }},
+{% endfor %}
+]
+plugins = [
+{% for item in tooling.tools.mypy.plugins %}
+  {{ item | tojson }},
+{% endfor %}
+]
+python_version = {{ python_version | tojson }}
+{% for key, value in tooling.tools.mypy.boolean_settings | dictsort %}
+{{ key }} = {{ value | lower }}
+{% endfor %}
+{% for key, value in tooling.tools.mypy.string_settings | dictsort %}
+{{ key }} = {{ value | tojson }}
+{% endfor %}
+{% for override in tooling.tools.mypy.overrides %}
+
+[[tool.mypy.overrides]]
+module = [
+{% for item in override.modules %}
+  {{ item | tojson }},
+{% endfor %}
+]
+disable_error_code = [
+{% for item in override.disable_error_codes %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endfor %}
 
 [tool.pydantic-mypy]
-init_forbid_extra = true
-init_typed = true
-warn_required_dynamic_aliases = true
-warn_untyped_fields = true
+init_forbid_extra = {{ tooling.tools.pydantic_mypy.init_forbid_extra | lower }}
+init_typed = {{ tooling.tools.pydantic_mypy.init_typed | lower }}
+warn_required_dynamic_aliases = {{ tooling.tools.pydantic_mypy.warn_required_dynamic_aliases | lower }}
+warn_untyped_fields = {{ tooling.tools.pydantic_mypy.warn_untyped_fields | lower }}
 
 [tool.pyrefly]
-disable-project-excludes-heuristics = true
-ignore-errors-in-generated-code = true
+disable-project-excludes-heuristics = {{ tooling.tools.pyrefly.disable_project_excludes_heuristics | lower }}
+ignore-errors-in-generated-code = {{ tooling.tools.pyrefly.ignore_errors_in_generated_code | lower }}
 project-excludes = [
-  "**/.venv/**",
-  "**/__pycache__",
-  "**/__pyrefly_virtual__/**",
-  "**/node_modules",
-  "**/site-packages/**",
-  "**/typings/**",
-  "**/vendor/**",
-  "**/venv/**",
-  ".venv/**",
-  "typings/**",
-  "vendor/**",
+{% for item in tooling.tools.pyrefly.project_exclude_globs | sort %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-project-includes = [ "src/**/*.py*", "tests/**/*.py*" ]
-python-version = "{{ python_version }}"
+project-includes = [
+{% for item in tooling_runtime.pyrefly_project_includes %}
+  {{ item | tojson }},
+{% endfor %}
+]
+python-interpreter-path = {{ tooling_runtime.pyrefly_interpreter_path | tojson }}
+python-version = {{ python_version | tojson }}
 search-path = [
-  ".",
-  "src",
+{% for item in tooling_runtime.pyrefly_search_path %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-use-ignore-files = false
+use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 
 [tool.pyrefly.errors]
-abstract-method-call = false
-bad-argument-count = "error"
-bad-argument-type = "error"
-bad-assignment = "error"
-bad-class-definition = "error"
-bad-context-manager = "error"
-bad-dunder-all = "error"
-bad-function-definition = "error"
-bad-index = "error"
-bad-instantiation = "error"
-bad-keyword-argument = "error"
-bad-match = "error"
-bad-override = false
-bad-param-name-override = "error"
-bad-raise = "error"
-bad-return = "error"
-bad-specialization = "error"
-bad-typed-dict = "error"
-bad-typed-dict-key = "error"
-bad-unpacking = "error"
-deprecated = "error"
-implicit-abstract-class = "error"
-implicit-any = "error"
-implicit-import = "error"
-implicitly-defined-attribute = "error"
-inconsistent-inheritance = "error"
-inconsistent-overload = "error"
-inconsistent-overload-default = "error"
-invalid-annotation = "error"
-invalid-argument = "error"
-invalid-decorator = "error"
-invalid-inheritance = "error"
-invalid-literal = "error"
-invalid-overload = "error"
-invalid-param-spec = "error"
-invalid-pattern = "error"
-invalid-self-type = "error"
-invalid-super-call = "error"
-invalid-type-alias = "error"
-invalid-type-var = "error"
-invalid-type-var-tuple = "error"
-invalid-variance = "error"
-invalid-yield = "error"
-missing-argument = "error"
-missing-attribute = "error"
-missing-import = "error"
-missing-module-attribute = "error"
-missing-override-decorator = "error"
-missing-source = "error"
-missing-source-for-stubs = "error"
-no-access = "error"
-no-matching-overload = "error"
-non-convergent-recursion = false
-non-exhaustive-match = false
-not-a-type = "error"
-not-async = "error"
-not-callable = "error"
-not-iterable = "error"
-not-required-key-access = "error"
-open-unpacking = "error"
-protocol-implicitly-defined-attribute = "error"
-read-only = "error"
-redefinition = "error"
-redundant-cast = "error"
-redundant-condition = "error"
-unannotated-attribute = "error"
-unannotated-parameter = "error"
-unannotated-return = "error"
-unbound-name = "error"
-unexpected-keyword = "error"
-unexpected-positional-argument = "error"
-unknown-name = "error"
-unnecessary-comparison = "error"
-unnecessary-type-conversion = "error"
-unreachable = "error"
-unresolvable-dunder-all = "error"
-unsafe-overlap = "error"
-unsupported = "error"
-unsupported-delete = "error"
-unsupported-operation = "error"
-untyped-import = "error"
-unused-coroutine = "error"
-unused-ignore = "error"
-variance-mismatch = "error"
+{% for item in tooling.tools.pyrefly.disabled_errors | sort %}
+{{ item }} = false
+{% endfor %}
+{% for item in tooling.tools.pyrefly.strict_errors | sort %}
+{{ item }} = "error"
+{% endfor %}
 
 [tool.pyright]
 exclude = [
-  "**/.*",
-  "**/.mypy_cache",
-  "**/.pytest_cache",
-  "**/.ruff_cache",
-  "**/.venv",
-  "**/.venv/**",
-  "**/__pycache__",
-  "**/__pyrefly_virtual__",
-  "**/dist-packages",
-  "**/node_modules",
-  "**/site-packages",
-  "**/tests/fixtures",
-  "**/venv",
-  ".reports",
-  ".venv",
+{% for item in tooling_runtime.pyright_exclude %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-extraPaths = [ ".", "src" ]
-include = [ "src", "tests" ]
-pythonPlatform = "Linux"
-pythonVersion = "{{ python_version }}"
-reportArgumentType = "none"
-reportAttributeAccessIssue = "none"
-reportCallIssue = "none"
-reportConstantRedefinition = "error"
-reportIncompatibleMethodOverride = "error"
-reportIncompatibleVariableOverride = "none"
-reportInconsistentConstructor = "error"
-reportInvalidTypeForm = "none"
-reportMissingImports = "error"
-reportMissingModuleSource = "error"
-reportMissingTypeStubs = "none"
-reportPrivateUsage = "warning"
-reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
-reportUnknownMemberType = "none"
-reportUnknownParameterType = "none"
-reportUnknownVariableType = "none"
-reportUnnecessaryCast = "error"
-reportUnnecessaryComparison = "warning"
-reportUnnecessaryIsInstance = "warning"
-reportUnreachable = "none"
-reportUnsupportedDunderAll = "none"
-reportUntypedBaseClass = "none"
-reportUntypedFunctionDecorator = "none"
-reportUnusedClass = "error"
-reportUnusedFunction = "error"
-reportUnusedImport = "error"
-reportUnusedVariable = "error"
-typeCheckingMode = "strict"
+{% if tooling_runtime.pyright_ignore %}
+ignore = [
+{% for item in tooling_runtime.pyright_ignore %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% endif %}
+include = [
+{% for item in tooling_runtime.pyright_include %}
+  {{ item | tojson }},
+{% endfor %}
+]
+extraPaths = [
+{% for item in tooling_runtime.pyright_extra_paths %}
+  {{ item | tojson }},
+{% endfor %}
+]
+venv = {{ tooling_runtime.pyright_venv | tojson }}
+venvPath = {{ tooling_runtime.pyright_venv_path | tojson }}
+{% for setting in tooling_runtime.pyright_settings %}
+{% if setting.value is boolean %}
+{{ setting.name }} = {{ setting.value | lower }}
+{% elif setting.value is number %}
+{{ setting.name }} = {{ setting.value }}
+{% else %}
+{{ setting.name }} = {{ setting.value | tojson }}
+{% endif %}
+{% endfor %}
+{% for environment in tooling_runtime.pyright_execution_environments %}
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = [ "src" ]
-reportPrivateUsage = "error"
-root = "src"
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = [ ".", "src" ]
-reportPrivateUsage = "none"
-root = "tests"
+root = {{ environment.root | tojson }}
+extraPaths = [
+{% for item in environment.extra_paths %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% for setting in environment.settings %}
+{% if setting.value is boolean %}
+{{ setting.name }} = {{ setting.value | lower }}
+{% elif setting.value is number %}
+{{ setting.name }} = {{ setting.value }}
+{% else %}
+{{ setting.name }} = {{ setting.value | tojson }}
+{% endif %}
+{% endfor %}
+{% endfor %}
 
 [tool.pytest.ini_options]
 addopts = [
-  "--cov-report=term-missing:skip-covered",
-  "--cov=.",
-  "--durations=10",
-  "--strict-markers",
+{% for item in tooling.tools.pytest.standard_addopts %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 filterwarnings = [
-  "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
+{% for item in tooling.tools.pytest.filter_warnings %}
+  {{ item | tojson }},
+{% endfor %}
 ]
 markers = [
-  "e2e: end-to-end integration tests",
-  "integration: integration tests",
-  "slow: slow-running tests",
-  "smoke: smoke tests",
-  "unit: unit tests",
+{% for item in tooling.tools.pytest.standard_markers %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-minversion = "8.0"
-python_classes = [ "Test*" ]
-python_files = [ "*_test.py", "*_tests.py", "test_*.py" ]
+minversion = {{ tooling.tools.pytest.min_version | tojson }}
+python_classes = [
+{% for item in tooling.tools.pytest.python_classes %}
+  {{ item | tojson }},
+{% endfor %}
+]
+python_files = [
+{% for item in tooling.tools.pytest.python_files %}
+  {{ item | tojson }},
+{% endfor %}
+]
 
 [tool.ruff]
 exclude = [
-  "**/__pyrefly_virtual__/**",
-  ".git",
-  ".mypy_cache",
-  ".pytest_cache",
-  ".ruff_cache",
-  ".venv",
-  "__pycache__",
-  "build",
-  "dist",
-  "htmlcov",
-  "tests/fixtures",
-  "typings",
-  "vendor",
-  "venv",
+{% for item in tooling.tools.ruff.exclude | sort %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-fix = false
-line-length = 88
-preview = true
-respect-gitignore = true
-show-fixes = true
-src = [ "src", "tests" ]
-target-version = "py313"
+fix = {{ tooling.tools.ruff.fix | lower }}
+line-length = {{ tooling.tools.ruff.line_length }}
+preview = {{ tooling.tools.ruff.preview | lower }}
+respect-gitignore = {{ tooling.tools.ruff.respect_gitignore | lower }}
+show-fixes = {{ tooling.tools.ruff.show_fixes | lower }}
+src = [
+{% for item in tooling_runtime.ruff_src %}
+  {{ item | tojson }},
+{% endfor %}
+]
+target-version = {{ tooling.tools.ruff.target_version | tojson }}
 
 [tool.ruff.format]
-docstring-code-format = true
-indent-style = "space"
-line-ending = "lf"
-quote-style = "double"
-skip-magic-trailing-comma = true
+docstring-code-format = {{ tooling.tools.ruff.format.docstring_code_format | lower }}
+indent-style = {{ tooling.tools.ruff.format.indent_style | tojson }}
+line-ending = {{ tooling.tools.ruff.format.line_ending | tojson }}
+quote-style = {{ tooling.tools.ruff.format.quote_style | tojson }}
+skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_comma | lower }}
 
 [tool.ruff.lint]
 ignore = [
-  "ANN202",
-  "B009",
-  "B010",
-  "B017",
-  "BLE001",
-  "C901",
-  "COM812",
-  "CPY001",
-  "D203",
-  "D213",
-  "D401",
-  "D417",
-  "DOC201",
-  "DOC202",
-  "DOC402",
-  "DOC501",
-  "DOC502",
-  "E501",
-  "ERA001",
-  "FBT003",
-  "G004",
-  "N805",
-  "N813",
-  "N816",
-  "PIE790",
-  "PLR0904",
-  "PLR0911",
-  "PLR0912",
-  "PLR0913",
-  "PLR0914",
-  "PLR0915",
-  "PLR0917",
-  "PLR1702",
-  "PLR6301",
-  "PLW0108",
-  "PLW2901",
-  "PLW3201",
-  "PYI042",
-  "Q000",
-  "RUF001",
-  "RUF002",
-  "RUF003",
-  "RUF005",
-  "S608",
-  "TC001",
-  "TC002",
-  "TC003",
-  "TRY003",
-  "TRY300",
-  "TRY301",
-  "UP040",
-  "W293",
+{% for item in tooling.tools.ruff.lint.ignore | sort %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-select = [ "ALL" ]
+select = [
+{% for item in tooling.tools.ruff.lint.select | sort %}
+  {{ item | tojson }},
+{% endfor %}
+]
+{% for name, message in tooling.tools.ruff.lint.banned_api | dictsort %}
 
-[tool.ruff.lint.flake8-tidy-imports.banned-api.argparse]
-msg = "Use cli.register_result_command + Pydantic model from flext_cli."
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api.click]
-msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api.rich]
-msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api.typer]
-msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
+[tool.ruff.lint.flake8-tidy-imports.banned-api.{{ name }}]
+msg = {{ message | tojson }}
+{% endfor %}
 
 [tool.ruff.lint.isort]
-combine-as-imports = true
-force-single-line = false
-known-first-party = [ "{{ package_name }}", "flext_core" ]
-split-on-trailing-comma = false
+combine-as-imports = {{ tooling.tools.ruff.lint.isort.combine_as_imports | lower }}
+force-single-line = {{ tooling.tools.ruff.lint.isort.force_single_line | lower }}
+known-first-party = [
+{% for item in tooling_runtime.first_party %}
+  {{ item | tojson }},
+{% endfor %}
+]
+split-on-trailing-comma = {{ tooling.tools.ruff.lint.isort.split_on_trailing_comma | lower }}
 
 [tool.ruff.lint.per-file-ignores]
-"**/__init__.py" = [
-  "A004",
-  "ANN401",
-  "D107",
-  "F401",
-  "F403",
-  "F405",
-  "F822",
-  "INP001",
-  "N999",
-  "PLC2701",
-  "RUF067",
-  "TC004",
+{% for pattern, rules in tooling.tools.ruff.lint.per_file_ignores | dictsort %}
+{{ pattern | tojson }} = [
+{% for item in rules | sort %}
+  {{ item | tojson }},
+{% endfor %}
 ]
-"**/_constants/*.py" = [ "S105" ]
-"**/constants.py" = [ "S105" ]
-"**/container.py" = [ "ANN401", "SLF001" ]
-"**/models.py" = [ "PLC0415", "PLC2801", "S102", "S105" ]
-"**/settings.py" = [ "ANN401", "FBT001", "SLF001" ]
-"**/typings.py" = [ "RUF036" ]
-{# mro-wkii.14 (agent: codegen) - N802 for PascalCase namespace config.<Ns>/settings.<Ns> (cosmos-main pattern / AGENTS.md U2-U8). #}
-"**/_config.py" = [ "N802" ]
-"**/_settings.py" = [ "N802" ]
-"**/_protocols/*.py" = [ "N802" ]
-"**/*docs*" = [ "INP001", "S404", "S603", "T201" ]
-"**/*examples*" = [
-  "ANN401",
-  "D103",
-  "FBT001",
-  "FBT002",
-  "INP001",
-  "N999",
-  "S404",
-  "S603",
-  "T201",
-]
-"**/*exceptions*" = [ "A001", "S105", "SLF001" ]
-"**/*models*" = [ "ANN401", "FBT001", "PLC2701", "PLR0206", "PLW0603" ]
-"**/*result*" = [ "PLC2701", "SLF001" ]
-"**/*runtime*" = [  ]
-"**/*scripts*" = [ "EXE001", "INP001", "PLR2004", "S404", "S603", "T201" ]
-"**/*service*" = [ "N815", "PLC2801", "S404", "S603", "SLF001" ]
-"**/*tests*" = [
-  "ANN001",
-  "ANN002",
-  "ANN003",
-  "ANN401",
-  "ARG001",
-  "ARG002",
-  "ARG003",
-  "ARG004",
-  "ARG005",
-  "B009",
-  "B010",
-  "B018",
-  "C901",
-  "D100",
-  "D101",
-  "D102",
-  "D103",
-  "D104",
-  "D106",
-  "D107",
-  "F822",
-  "FBT001",
-  "FBT002",
-  "FBT003",
-  "INP001",
-  "N818",
-  "N999",
-  "PLC2701",
-  "PLC2801",
-  "PLR0904",
-  "PLR0912",
-  "PLR0913",
-  "PLR0915",
-  "PLR0917",
-  "PLR2004",
-  "PLR6301",
-  "PLW2901",
-  "PT011",
-  "PT018",
-  "PT019",
-  "RUF012",
-  "RUF029",
-  "S101",
-  "S103",
-  "S104",
-  "S105",
-  "S106",
-  "S107",
-  "S108",
-  "S110",
-  "S112",
-  "S311",
-  "S404",
-  "S603",
-  "S607",
-  "S608",
-  "SLF001",
-  "TID252",
-  "TRY003",
-  "TRY004",
-]
-"**/*typings*" = [ "ANN401" ]
-"**/*utilities*" = [ "C901", "E402", "PLC2801", "PLW1510", "S404", "S603" ]
+{% endfor %}
 
 [tool.tomlsort]
-all = true
-in_place = true
-sort_first = [ "build-system", "project", "tool" ]
-[tool.uv]
-required-version = "{{ uv_required_version }}"
-
-{% if make_profile == "workspace-root" %}
-{% for repository in workspace_repositories %}
-[tool.uv.sources.{{ repository.distribution }}]
-git = "{{ repository.url }}"
-branch = "{{ repository.branch }}"
-
+all = {{ tooling.tools.tomlsort.all | lower }}
+in_place = {{ tooling.tools.tomlsort.in_place | lower }}
+sort_first = [
+{% for item in tooling.tools.tomlsort.sort_first %}
+  {{ item | tojson }},
 {% endfor %}
-{% else %}
-[tool.uv.sources.flext-cli]
-git = "{{ flext_git_base_url }}/flext-cli.git"
-branch = "{{ flext_git_branch }}"
-
-[tool.uv.sources.flext-core]
-git = "{{ flext_git_base_url }}/flext-core.git"
-branch = "{{ flext_git_branch }}"
-
-[tool.uv.sources.flext-infra]
-git = "{{ flext_git_base_url }}/flext-infra.git"
-branch = "{{ flext_git_branch }}"
-
-[tool.uv.sources.flext-tests]
-git = "{{ flext_git_base_url }}/flext-tests.git"
-branch = "{{ flext_git_branch }}"
-{% endif %}
+]
 
 [tool.yamlfix]
-explicit_start = false
-line_length = 88
-preserve_quotes = true
-section_whitelines = 1
-whitelines = 1
+explicit_start = {{ tooling.tools.yamlfix.explicit_start | lower }}
+line_length = {{ tooling.tools.yamlfix.line_length }}
+preserve_quotes = {{ tooling.tools.yamlfix.preserve_quotes | lower }}
+section_whitelines = {{ tooling.tools.yamlfix.section_whitelines }}
+whitelines = {{ tooling.tools.yamlfix.whitelines }}
+
+[tool.uv]
+link-mode = "{{ uv_link_mode }}"
+required-version = "{{ uv_required_version }}"

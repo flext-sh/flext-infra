@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, t, u
 
 if TYPE_CHECKING:
@@ -20,10 +19,7 @@ class FlextInfraWorkspaceVscode:
 
     @classmethod
     def sync_settings(
-        cls,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
+        cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[bool]:
         """Ensure ``.vscode/settings.json`` carries the canonical FLEXT defaults."""
         if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
@@ -56,19 +52,19 @@ class FlextInfraWorkspaceVscode:
         read_result = u.Cli.files_read_text(settings_path)
         if read_result.failure:
             return r[t.JsonMapping].fail(
-                read_result.error or "VS Code settings read failed",
+                read_result.error or "VS Code settings read failed"
             )
         parsed = u.Cli.json_loads(read_result.value)
         if parsed.failure:
             parsed = u.Cli.json_loads(cls.normalize_jsonc(read_result.value))
         if parsed.failure:
             return r[t.JsonMapping].fail(
-                parsed.error or "VS Code settings JSONC parse failed",
+                parsed.error or "VS Code settings JSONC parse failed"
             )
         if not isinstance(parsed.value, Mapping):
             return r[t.JsonMapping].fail("VS Code settings root must be an object")
         return r[t.JsonMapping].ok(
-            t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed.value),
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed.value)
         )
 
     @classmethod

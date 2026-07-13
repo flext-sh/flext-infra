@@ -46,9 +46,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             if "@staticmethod" not in func_src:
                 func_src = f"@staticmethod\n{func_src}"
             updated = u.Infra.append_to_class_body(
-                updated,
-                ns,
-                textwrap.indent(func_src, "    "),
+                updated, ns, textwrap.indent(func_src, "    ")
             )
             self._record_change(f"Moved {name} into {ns}")
         updated = self._rewrite_calls(updated)
@@ -74,8 +72,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         if not getattr(policy, attr, True):
             return False
         allowed: bool = u.Infra.target_allowed(
-            policy=policy,
-            target_namespace=target_ns,
+            policy=policy, target_namespace=target_ns
         )
         return allowed
 

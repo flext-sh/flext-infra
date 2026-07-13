@@ -90,9 +90,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
     def _ensure_u_import(cls, source: str) -> str:
         """Ensure ``from flext_core import u`` is present."""
         pkg_match = re.search(
-            r"^from\s+flext_core\s+import\s+([^\n]+)",
-            source,
-            re.MULTILINE,
+            r"^from\s+flext_core\s+import\s+([^\n]+)", source, re.MULTILINE
         )
         if pkg_match:
             names = pkg_match.group(1).strip()
@@ -124,9 +122,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                     call_text = self.node_text(value)
                     new_call = re.sub(r"\bprint\b", "logger.info", call_text, count=1)
                     self.append_rewrite(
-                        node,
-                        new_call,
-                        "Replaced print() with logger.info()",
+                        node, new_call, "Replaced print() with logger.info()"
                     )
                     return
                 if value.func.id == "breakpoint":
@@ -148,9 +144,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                     new_line = f"{indent}except Exception:\n"
                     start = self._offset(lineno, 0)
                     end = start + len(line)
-                    self.rewrites.append(
-                        FlextInfraSourceRewrite(start, end, new_line),
-                    )
+                    self.rewrites.append(FlextInfraSourceRewrite(start, end, new_line))
                     self.changes.append("Fixed bare except: → except Exception:")
             self.generic_visit(node)
 
@@ -166,9 +160,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                 if call_text.endswith(")"):
                     new_call = call_text[:-1] + ', encoding="utf-8")'
                     self.append_rewrite(
-                        node,
-                        new_call,
-                        'Added encoding="utf-8" to open()',
+                        node, new_call, 'Added encoding="utf-8" to open()'
                     )
             self.generic_visit(node)
 

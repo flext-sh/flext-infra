@@ -10,11 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
-from flext_infra import config
-from flext_infra._models.deps_tool_config import (
-    FlextInfraModelsDepsToolSettings as mdts,
-)
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -29,11 +24,6 @@ class FlextInfraUtilitiesBase:
     Generic ``validate`` and ``deep`` methods use PEP 695 type parameters
     so callers can validate ANY shape with a single SSOT helper.
     """
-
-    @staticmethod
-    def load_tool_config() -> p.Result[mdts.ToolConfigDocument]:
-        """Return the already validated config singleton tooling domain."""
-        return r[mdts.ToolConfigDocument].ok(config.Infra.tooling)
 
     @staticmethod
     def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
@@ -88,7 +78,7 @@ class FlextInfraUtilitiesBase:
         if phase not in phases:
             valid = ", ".join(sorted(phases)) or "(none)"
             return r[t.StrSequence].fail(
-                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})",
+                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})"
             )
         return r[t.StrSequence].ok((phase,))
 

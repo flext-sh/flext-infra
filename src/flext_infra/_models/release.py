@@ -13,23 +13,16 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsRelease:
     """Models for release management."""
 
-    class BuildRecord(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class BuildRecord(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Base model for build result data."""
 
         path: Annotated[t.NonEmptyStr, m.Field(description="Project absolute path")]
         exit_code: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Exit code returned by make build"),
+            t.NonNegativeInt, m.Field(description="Exit code returned by make build")
         ]
         log: Annotated[t.NonEmptyStr, m.Field(description="Build log file path")]
 
-    class ReleaseSpec(
-        mm.VersionTagMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class ReleaseSpec(mm.VersionTagMixin, m.ArbitraryTypesModel):
         """Release descriptor with version, tag, and bump metadata."""
 
         bump_type: Annotated[t.NonEmptyStr, m.Field(description="Release bump type")]
@@ -44,12 +37,10 @@ class FlextInfraModelsRelease:
 
         version: Annotated[t.NonEmptyStr, m.Field(description="Release version")]
         total: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total projects attempted"),
+            t.NonNegativeInt, m.Field(description="Total projects attempted")
         ]
         failures: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total projects with non-zero exit"),
+            t.NonNegativeInt, m.Field(description="Total projects with non-zero exit")
         ]
         records: Annotated[
             list[FlextInfraModelsRelease.BuildRecord],
@@ -71,8 +62,7 @@ class FlextInfraModelsRelease:
         dry_run: Annotated[bool, m.Field(description="Dry run flag")] = False
         phases: Annotated[t.StrSequence, m.Field(description="Ordered list of phases")]
         create_branches: Annotated[
-            bool,
-            m.Field(description="Create branches flag"),
+            bool, m.Field(description="Create branches flag")
         ] = True
         next_dev: Annotated[bool, m.Field(description="Next dev flag")] = False
         next_bump: Annotated[str, m.Field(description="Next bump")] = "minor"

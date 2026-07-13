@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p, t
 
 
@@ -40,10 +39,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         return FlextInfraGateRegistry.default()
 
     @override
-    def can_fix(
-        self,
-        fix_action: me.EnforcementFixAction,
-    ) -> bool:
+    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         if fix_action.kind != self.kind:
             return False
@@ -151,29 +147,21 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
             )
             if ctx.apply:
                 fixed_violation: fr.FixedViolation = fr.FixedViolation(
-                    rule_id=rule.id,
-                    file_path=str(project_dir),
-                    message=message,
+                    rule_id=rule.id, file_path=str(project_dir), message=message
                 )
-                fixed = [
-                    fixed_violation,
-                ]
+                fixed = [fixed_violation]
             else:
                 previewed_violation: fr.PreviewedViolation = fr.PreviewedViolation(
-                    rule_id=rule.id,
-                    file_path=str(project_dir),
-                    message=message,
+                    rule_id=rule.id, file_path=str(project_dir), message=message
                 )
-                previewed = [
-                    previewed_violation,
-                ]
+                previewed = [previewed_violation]
         else:
             failed = [
                 fr.FailedFix(
                     rule_id=rule.id,
                     file_path=str(project_dir),
                     error=execution.raw_output or "gate fix failed",
-                ),
+                )
             ]
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -225,8 +213,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _matching_issues(
-        rule: me.EnforcementRuleSpec,
-        issues: t.SequenceOf[m.Infra.Issue],
+        rule: me.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
     ) -> tuple[m.Infra.Issue, ...]:
         """Return gate issues that correspond to the selected rule fix action."""
         fix_action = rule.fix_action

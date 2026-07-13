@@ -4,26 +4,30 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1 + mro-wkii.17): one MRO namespace composes
-   project declarations over the CLI model facade required by the generated router. #}
+{# NOTE (mro-j47u, codex): import the canonical upstream short alias, subclass
+   that exact facade, and publish the local facade under the same alias. -#}
 from __future__ import annotations
 
-from flext_cli import FlextCliModels
+from {{ upstream }} import m
 
 from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 from {{ package_name }}._models.ping import {{ class_stem }}ModelsPing
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
 
 
-class {{ class_stem }}Models(FlextCliModels):
+class {{ class_stem }}Models(m):
     """{{ class_stem }} models extending the CLI model facade."""
 
-    class {{ ns }}(
+{% if 53 + (ns | length) + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}({{ class_stem }}ModelsPing, {{ class_stem }}ConfigModels, {{ class_stem }}SettingsModels):
+{% elif 48 + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}(
+        {{ class_stem }}ModelsPing, {{ class_stem }}ConfigModels, {{ class_stem }}SettingsModels
+    ):
+{% else %}    class {{ ns }}(
         {{ class_stem }}ModelsPing,
         {{ class_stem }}ConfigModels,
         {{ class_stem }}SettingsModels,
     ):
-        """Complete {{ ns }} model namespace."""
+{% endif %}        """Complete {{ ns }} model namespace."""
 
 
 m = {{ class_stem }}Models

@@ -31,25 +31,21 @@ class FlextInfraReleaseOrchestrator(
     phase: Annotated[str, m.Field(description="Release phase")] = "all"
     bump: Annotated[str, m.Field(description="Bump type (major/minor/patch)")] = ""
     interactive: Annotated[
-        int,
-        m.Field(description="Interactive mode (1=yes, 0=no)"),
+        int, m.Field(description="Interactive mode (1=yes, 0=no)")
     ] = 1
     next_dev: Annotated[bool, m.Field(description="Prepare next dev version")] = False
     next_bump: Annotated[str, m.Field(description="Next bump type")] = "minor"
     create_branches: Annotated[
-        int,
-        m.Field(description="Create release branches (1=yes, 0=no)"),
+        int, m.Field(description="Create release branches (1=yes, 0=no)")
     ] = 1
 
     @override
     def _build_targets(
-        self,
-        workspace_root: Path,
-        project_names: t.StrSequence,
+        self, workspace_root: Path, project_names: t.StrSequence
     ) -> t.SequenceOf[t.Pair[str, Path]]:
         """Resolve release build targets."""
         targets: t.MutableSequenceOf[t.Pair[str, Path]] = [
-            (c.Infra.RK_ROOT, workspace_root),
+            (c.Infra.RK_ROOT, workspace_root)
         ]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.success:
@@ -65,14 +61,10 @@ class FlextInfraReleaseOrchestrator(
 
     @override
     def _version_files(
-        self,
-        workspace_root: Path,
-        project_names: t.StrSequence,
+        self, workspace_root: Path, project_names: t.StrSequence
     ) -> t.SequenceOf[Path]:
         """Resolve candidate pyproject files for version updates."""
-        files: t.MutableSequenceOf[Path] = [
-            workspace_root / c.Infra.PYPROJECT_FILENAME,
-        ]
+        files: t.MutableSequenceOf[Path] = [workspace_root / c.Infra.PYPROJECT_FILENAME]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.success:
             for project in projects_result.value:

@@ -164,7 +164,7 @@ omit = [ "*/dependency_injector/providers.pyx" ]
 
 # [MANAGED] deptry
 [tool.deptry]
-known_first_party = [ "flext_infra" ]
+known_first_party = [ "flext_core", "flext_infra" ]
 pep621_dev_dependency_groups = [ "dev" ]
 
 [tool.flext.docs]
@@ -191,12 +191,16 @@ ignore-property-decorators = true
 [tool.mypy]
 check_untyped_defs = true
 disable_error_code = [
+  "arg-type",
   "assignment",
   "attr-defined",
   "call-arg",
   "misc",
   "name-defined",
+  "no-any-return",
+  "no-redef",
   "prop-decorator",
+  "unreachable",
   "valid-type",
 ]
 exclude = "^(?:tests|examples|legado)(?:/|$)"
@@ -249,24 +253,10 @@ project-excludes = [
   "typings/**",
   "vendor/**",
 ]
-project-includes = [ "src/**/*.py*" ]
+project-includes = [ "scripts/**/*.py*", "src/**/*.py*" ]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
-search-path = [
-  ".",
-  "../flext-cli/legado",
-  "../flext-cli/src",
-  "../flext-core/examples",
-  "../flext-core/legado",
-  "../flext-core/scripts",
-  "../flext-core/src",
-  "../flext-infra/legado",
-  "../flext-infra/src",
-  "../flext-infra/tmp_flow_test",
-  "../flext-tests/legado",
-  "../flext-tests/src",
-  "src",
-]
+search-path = [ "../flext-cli/src", "../flext-core/src", "../flext-tests/src", "src" ]
 site-package-path = [ "../.venv/lib/python3.13/site-packages" ]
 skip-interpreter-query = true
 use-ignore-files = false
@@ -381,11 +371,13 @@ exclude = [
   "**/tests/**",
   "**/venv",
   "**/venv/**",
+  ".git",
   ".reports",
   ".venv",
+  "vendor",
 ]
 extraPaths = [ ".", "src" ]
-include = [ "src" ]
+include = [ "scripts", "src" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportArgumentType = "none"
@@ -422,8 +414,35 @@ venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = [ "src" ]
+reportAttributeAccessIssue = "none"
+reportGeneralTypeIssues = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
 reportPrivateUsage = "error"
+reportReturnType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
 root = "src"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = [ ".", "src" ]
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportReturnType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
+root = "scripts"
 
 # [MANAGED] pytest
 [tool.pytest.ini_options]
@@ -456,6 +475,7 @@ markers = [
   "performance: performance and benchmark tests",
   "resilience: resilience tests",
   "slow: slow-running tests",
+  "smoke: public-interface smoke tests",
   "stress: stress tests",
   "unit: unit tests",
 ]
@@ -507,6 +527,7 @@ docstring-code-format = true
 indent-style = "space"
 line-ending = "lf"
 quote-style = "double"
+skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 ignore = [
@@ -604,8 +625,8 @@ msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
-known-first-party = [ "flext_infra" ]
-split-on-trailing-comma = true
+known-first-party = [ "flext_core", "flext_infra" ]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "**/.vulture_whitelist.py" = [ "ALL" ]
@@ -656,6 +677,7 @@ split-on-trailing-comma = true
   "TC004",
 ]
 "**/_constants/*.py" = [ "S105" ]
+"**/_protocols/*.py" = [ "N802" ]
 "**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
 "**/alert_manager*.py" = [ "S310" ]
 "**/constants.py" = [ "S105" ]

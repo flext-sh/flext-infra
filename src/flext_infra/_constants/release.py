@@ -37,8 +37,7 @@ class FlextInfraConstantsRelease:
         ReleasePhase.PUBLISH,
     })
     VERSION_RE: Final[t.RegexPattern] = re.compile(
-        r"^version\s*=\s*['\"](.+?)['\"]",
-        re.MULTILINE,
+        r"^version\s*=\s*['\"](.+?)['\"]", re.MULTILINE
     )
 
 

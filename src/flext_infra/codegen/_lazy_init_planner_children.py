@@ -17,15 +17,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
         def _package_entry(
-            self,
-            pkg_dir: Path,
+            self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
-            self,
-            index: t.MutableLazyAliasMap,
-            name: str,
-            target: t.StrPair,
+            self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
         @staticmethod
@@ -100,7 +96,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 for child_package in child_packages
                 for name in self._merged_child_export_names(child_package, dir_exports)
                 if name not in allowed_export_names and name not in runtime_lazy_names
-            }),
+            })
         )
 
     def _child_packages_without_main_export(
@@ -144,13 +140,11 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         )
 
     def _merged_child_export_names(
-        self,
-        child_package: str,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+        self, child_package: str, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> frozenset[str]:
         """Return export names from the child lazy map produced bottom-up."""
         child_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            child_package,
+            child_package
         )
         if child_dir is None:
             return self._export_names_for_package(child_package)
@@ -169,8 +163,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
 
     @staticmethod
     def _is_public_root_child_package(
-        child_package: str,
-        export_names: frozenset[str],
+        child_package: str, export_names: frozenset[str]
     ) -> bool:
         """Return whether a child package may bubble into a public root."""
         public_names = frozenset(
@@ -183,7 +176,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         if not public_names:
             return False
         if FlextInfraCodegenLazyInitPlannerChildrenMixin._is_internal_root_child_package(
-            child_package,
+            child_package
         ):
             return False
         child_name = child_package.rsplit(".", maxsplit=1)[-1]
@@ -191,8 +184,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             return True
         return all(
             FlextInfraCodegenLazyInitPlannerChildrenMixin._is_public_root_child_export(
-                child_package,
-                name,
+                child_package, name
             )
             for name in public_names
         )
@@ -203,7 +195,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         if name in c.Infra.ALIAS_NAMES or name == "main":
             return False
         if FlextInfraCodegenLazyInitPlannerChildrenMixin._is_internal_root_child_package(
-            child_package,
+            child_package
         ):
             return False
         child_name = child_package.rsplit(".", maxsplit=1)[-1]

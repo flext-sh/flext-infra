@@ -7,20 +7,13 @@ validating post-transform quality via gates, and restoring on failure.
 from __future__ import annotations
 
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
+
 from flext_core import r
-
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-    )
-
-    from flext_infra import p, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesSafety:
@@ -35,15 +28,13 @@ class FlextInfraUtilitiesSafety:
         result: p.Result[str]
         checkpoint_label = label.strip() or "checkpoint"
         repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
-            cwd=repo,
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
         )
         if repo_check.failure or repo_check.value.exit_code != 0:
             result = r[str].ok("")
         else:
             status_result = u.Cli.run_raw(
-                [c.Infra.GIT, "status", "--porcelain"],
-                cwd=repo,
+                [c.Infra.GIT, "status", "--porcelain"], cwd=repo
             )
             if status_result.failure or status_result.value.exit_code != 0:
                 result = r[str].fail(status_result.error or "git status failed")
@@ -52,7 +43,7 @@ class FlextInfraUtilitiesSafety:
             else:
                 result = r[str].fail(
                     "dirty git worktree cannot be checkpointed automatically "
-                    f"({checkpoint_label}); use file-scoped backup APIs",
+                    f"({checkpoint_label}); use file-scoped backup APIs"
                 )
         return result
 
@@ -65,14 +56,13 @@ class FlextInfraUtilitiesSafety:
         if not checkpoint:
             return r[bool].ok(True)
         repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
-            cwd=repo,
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
         )
         if repo_check.failure or repo_check.value.exit_code != 0:
             return r[bool].ok(True)
         return r[bool].fail(
             "repository-wide checkpoint rollback is unsupported; "
-            "use file-scoped backup APIs",
+            "use file-scoped backup APIs"
         )
 
     @staticmethod
@@ -83,7 +73,7 @@ class FlextInfraUtilitiesSafety:
             if not file_path.exists():
                 continue
             bak = file_path.with_suffix(
-                file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX,
+                file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
             )
             shutil.copy2(file_path, bak)
             bak_paths.append(bak)
@@ -121,10 +111,7 @@ class FlextInfraUtilitiesSafety:
 
         if mode == c.Infra.ExecutionMode.DRY_RUN:
             return m.Infra.SafeExecutionResult(
-                mode=mode,
-                files_backed_up=file_strs,
-                gate_results=[],
-                rolled_back=False,
+                mode=mode, files_backed_up=file_strs, gate_results=[], rolled_back=False
             )
 
         bak_paths = FlextInfraUtilitiesSafety.backup_files(files)
@@ -142,10 +129,7 @@ class FlextInfraUtilitiesSafety:
         if mode == c.Infra.ExecutionMode.APPLY_FORCE:
             FlextInfraUtilitiesSafety.cleanup_backups(bak_paths)
             return m.Infra.SafeExecutionResult(
-                mode=mode,
-                files_backed_up=file_strs,
-                gate_results=[],
-                rolled_back=False,
+                mode=mode, files_backed_up=file_strs, gate_results=[], rolled_back=False
             )
 
         validate_result = validate(files)
@@ -160,10 +144,7 @@ class FlextInfraUtilitiesSafety:
 
         FlextInfraUtilitiesSafety.cleanup_backups(bak_paths)
         return m.Infra.SafeExecutionResult(
-            mode=mode,
-            files_backed_up=file_strs,
-            gate_results=[],
-            rolled_back=False,
+            mode=mode, files_backed_up=file_strs, gate_results=[], rolled_back=False
         )
 
 

@@ -31,8 +31,7 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
             )
             raise RuntimeError(msg)
         format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
+            ["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
             msg = (

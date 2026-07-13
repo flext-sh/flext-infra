@@ -4,10 +4,11 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-{# NOTE (multi-agent, mro-wkii.19.1): config/settings protocols compose one declaration-only namespace. #}
+{# NOTE (multi-agent, mro-wkii.19.1): config/settings protocols compose one declaration-only namespace. -#}
 from __future__ import annotations
 
 from {{ upstream }} import p
+
 from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
 from {{ package_name }}._protocols.ping import {{ class_stem }}ProtocolsPing
 from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings
@@ -16,12 +17,16 @@ from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSett
 class {{ class_stem }}Protocols(p):
     """{{ class_stem }} protocols extending the upstream facade."""
 
-    class {{ ns }}(
+{% if 59 + (ns | length) + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}({{ class_stem }}ProtocolsPing, {{ class_stem }}ProtocolsConfig, {{ class_stem }}ProtocolsSettings):
+{% elif 54 + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}(
+        {{ class_stem }}ProtocolsPing, {{ class_stem }}ProtocolsConfig, {{ class_stem }}ProtocolsSettings
+    ):
+{% else %}    class {{ ns }}(
         {{ class_stem }}ProtocolsPing,
         {{ class_stem }}ProtocolsConfig,
         {{ class_stem }}ProtocolsSettings,
     ):
-        """Complete {{ ns }} protocol namespace."""
+{% endif %}        """Complete {{ ns }} protocol namespace."""
 
 
 p = {{ class_stem }}Protocols

@@ -15,14 +15,12 @@ if TYPE_CHECKING:
 
 # mro-i6nq.10: One renderer family replaces every removed legacy init strategy.
 class FlextInfraCodegenGenerationStandardMixin(
-    FlextInfraCodegenGenerationRenderersMixin,
+    FlextInfraCodegenGenerationRenderersMixin
 ):
     """Render the two canonical generated package artifacts."""
 
     @staticmethod
-    def _type_checking_filtered(
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.LazyAliasMap:
+    def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return public static imports not already bound eagerly."""
         source = plan.type_checking_map or plan.lazy_map
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
@@ -34,10 +32,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         }
 
     @classmethod
-    def _runtime_import_lines(
-        cls,
-        plan: m.Infra.LazyInitPlan,
-    ) -> str:
+    def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render eager and wildcard runtime imports."""
         lines: t.MutableSequenceOf[str] = [
             f"from {module} import *"
@@ -64,19 +59,14 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _unit_manifest_context(
-        cls,
-        plan: m.Infra.LazyInitPlan,
+        cls, plan: m.Infra.LazyInitPlan
     ) -> m.Infra.LazyInitUnitManifestRender:
         """Build a package lazy-manifest context."""
         current_pkg = plan.context.current_pkg
         lazy_entries = cls._build_lazy_entries(
             plan.exports,
             dict(plan.lazy_map),
-            (
-                current_pkg,
-                frozenset(plan.child_packages_for_lazy),
-                False,
-            ),
+            (current_pkg, frozenset(plan.child_packages_for_lazy), False),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
         return m.Infra.LazyInitUnitManifestRender(
@@ -94,8 +84,7 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _root_thin_context(
-        cls,
-        plan: m.Infra.LazyInitPlan,
+        cls, plan: m.Infra.LazyInitPlan
     ) -> m.Infra.LazyInitRootThinRender:
         """Build the thin project-root initializer context."""
         current_pkg = plan.context.current_pkg
@@ -123,16 +112,14 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _render_unit_manifest(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render the root lazy manifest."""
         return cls._render_model(
-            c.Infra.TEMPLATE_UNIT_MANIFEST,
-            cls._unit_manifest_context(plan),
+            c.Infra.TEMPLATE_UNIT_MANIFEST, cls._unit_manifest_context(plan)
         )
 
     @classmethod
     def _render_root_thin(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render the thin root initializer."""
         return cls._render_model(
-            c.Infra.TEMPLATE_ROOT_THIN,
-            cls._root_thin_context(plan),
+            c.Infra.TEMPLATE_ROOT_THIN, cls._root_thin_context(plan)
         )
 
 

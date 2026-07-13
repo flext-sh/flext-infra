@@ -6,18 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, p, u
 from flext_infra.deps._detector_runtime_steps import (
     FlextInfraDependencyDetectorRuntimeSteps,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        Callable,
-        Mapping,
-        MutableMapping,
-    )
+    from collections.abc import Callable, Mapping, MutableMapping
 
     from flext_infra import m, t
 
@@ -49,8 +44,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         projects, limits_path = env_result.value
         do_typings = params.typings or params.apply_typings
         projects_report: MutableMapping[
-            str,
-            MutableMapping[str, t.Infra.InfraValue],
+            str, MutableMapping[str, t.Infra.InfraValue]
         ] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
@@ -66,13 +60,11 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         )
         if do_typings:
             limits_setup = self._configure_typings_limits(
-                typing_deps,
-                limits_path,
-                report_model,
+                typing_deps, limits_path, report_model
             )
             if limits_setup.failure:
                 return r[bool].fail(
-                    limits_setup.error or "typings limits configuration failed",
+                    limits_setup.error or "typings limits configuration failed"
                 )
         for project_path in projects:
             project_result = self._run_project_detection(
@@ -86,15 +78,9 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
                 projects_report=projects_report,
             )
             if project_result.failure:
-                return r[bool].fail(
-                    project_result.error or "project detection failed",
-                )
+                return r[bool].fail(project_result.error or "project detection failed")
         pip_check_result = self._run_pip_check(
-            deps_service,
-            root,
-            venv_bin,
-            params,
-            report_model,
+            deps_service, root, venv_bin, params, report_model
         )
         if pip_check_result.failure:
             return r[bool].fail(pip_check_result.error or "pip check failed")
@@ -102,18 +88,12 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         if params.output_format == c.Cli.OutputFormats.JSON:
             return r[bool].ok(True)
         write_result = self._write_workspace_report(
-            params,
-            root,
-            report_model,
-            projects_report,
+            params, root, report_model, projects_report
         )
         if write_result.failure:
             return r[bool].fail(write_result.error or "failed to write report")
         return self._summarize_run(
-            projects,
-            projects_report,
-            pip_ok=pip_ok,
-            params=params,
+            projects, projects_report, pip_ok=pip_ok, params=params
         )
 
     def _write_workspace_report(
@@ -159,8 +139,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         """Aggregate deptry counts, log the summary, decide overall pass/fail."""
         total_issues = sum(
             u.Cli.json_pick_int(
-                u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY)),
-                "raw_count",
+                u.Cli.json_as_mapping(payload.get(c.Infra.DEPTRY)), "raw_count"
             )
             for payload in projects_report.values()
         )

@@ -23,15 +23,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
+    from collections.abc import MutableMapping
 
     from flext_infra import p, t
 
@@ -47,10 +44,7 @@ class FlextInfraValidateImportCycles(s[bool]):
 
     _MIN_CYCLE_SIZE: ClassVar[int] = 2
 
-    def build_report(
-        self,
-        workspace_root: Path,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Scan ``workspace_root`` for runtime import cycles via rope.
 
         Detection is scoped per project root: each governed project is an
@@ -94,15 +88,12 @@ class FlextInfraValidateImportCycles(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=violations,
-                summary=summary,
-            ),
+                passed=passed, violations=violations, summary=summary
+            )
         )
 
     def _build_graphs(
-        self,
-        workspace_root: Path,
+        self, workspace_root: Path
     ) -> list[tuple[str, MutableMapping[str, set[str]]]]:
         """Build one import graph per governed project root (one import unit).
 
@@ -115,10 +106,7 @@ class FlextInfraValidateImportCycles(s[bool]):
             return [("", self._build_graph(workspace_root))]
         return [(root.name, self._build_graph(root)) for root in roots]
 
-    def _build_graph(
-        self,
-        workspace_root: Path,
-    ) -> MutableMapping[str, set[str]]:
+    def _build_graph(self, workspace_root: Path) -> MutableMapping[str, set[str]]:
         """Build ``{module_name: {imported_modules}}`` via rope."""
         graph: MutableMapping[str, set[str]] = {}
         with u.Infra.open_project(workspace_root) as project:
@@ -128,10 +116,7 @@ class FlextInfraValidateImportCycles(s[bool]):
                     continue
                 module_name = module_name_result.value
                 graph.setdefault(module_name, set())
-                module_imports = u.Infra.get_module_imports(
-                    project,
-                    resource,
-                )
+                module_imports = u.Infra.get_module_imports(project, resource)
                 if module_imports is None:
                     continue
                 for imported_name in self._iter_imported_modules(module_imports):
@@ -139,9 +124,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return graph
 
     def _module_name_for(
-        self,
-        project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> p.Result[str]:
         """Resolve a rope resource to its fully-qualified module name.
 
@@ -170,8 +153,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return r[str].ok(".".join(parts))
 
     def _iter_imported_modules(
-        self,
-        module_imports: t.Infra.RopeModuleImports,
+        self, module_imports: t.Infra.RopeModuleImports
     ) -> t.StrSequence:
         """Extract imported module names from the boundary import-info collection.
 
@@ -181,8 +163,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return u.Infra.imported_module_paths(module_imports)
 
     def _tarjan(
-        self,
-        graph: MutableMapping[str, set[str]],
+        self, graph: MutableMapping[str, set[str]]
     ) -> t.SequenceOf[t.StrSequence]:
         """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
         index_counter = [0]
@@ -226,7 +207,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "import-cycles validation failed",
+                report_result.error or "import-cycles validation failed"
             )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

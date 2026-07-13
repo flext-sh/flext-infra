@@ -12,51 +12,40 @@ from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntim
 
 
 class FlextInfraRuntimeDevDependencyDetector(
-    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraProjectSelectionServiceBase[bool]
 ):
     """CLI tool for detecting runtime vs dev dependencies across workspace."""
 
     output_format: Annotated[
-        str,
-        m.Field(alias="format", description="Output format for dependency report"),
+        str, m.Field(alias="format", description="Output format for dependency report")
     ] = "text"
     output: Annotated[str | None, m.Field(None, description="Optional output path")] = (
         None
     )
     quiet: Annotated[bool, m.Field(False, description="Reduce command output")] = False
     no_fail: Annotated[
-        bool,
-        m.Field(alias="no-fail", description="Exit successfully even with issues"),
+        bool, m.Field(alias="no-fail", description="Exit successfully even with issues")
     ] = False
     typings: Annotated[
-        bool,
-        m.Field(False, description="Detect required typing packages"),
+        bool, m.Field(False, description="Detect required typing packages")
     ] = False
     apply_typings: Annotated[
         bool,
         m.Field(alias="apply-typings", description="Install missing typing packages"),
     ] = False
     no_pip_check: Annotated[
-        bool,
-        m.Field(alias="no-pip-check", description="Skip workspace pip check"),
+        bool, m.Field(alias="no-pip-check", description="Skip workspace pip check")
     ] = False
     limits: Annotated[
-        str | None,
-        m.Field(None, description="Dependency limits TOML"),
+        str | None, m.Field(None, description="Dependency limits TOML")
     ] = None
     deps: Annotated[
         p.Infra.DepsService,
-        m.Field(
-            exclude=True,
-            description="Dependency analysis service",
-        ),
+        m.Field(exclude=True, description="Dependency analysis service"),
     ] = m.Field(default_factory=FlextInfraDependencyDetectionService)
     runner: Annotated[
         p.Infra.RunnerService,
-        m.Field(
-            exclude=True,
-            description="Command runner for follow-up operations",
-        ),
+        m.Field(exclude=True, description="Command runner for follow-up operations"),
     ] = m.Field(default_factory=lambda: u.Cli)
 
     @property
@@ -101,6 +90,4 @@ class FlextInfraRuntimeDevDependencyDetector(
         return runtime.run(params)
 
 
-__all__: list[str] = [
-    "FlextInfraRuntimeDevDependencyDetector",
-]
+__all__: list[str] = ["FlextInfraRuntimeDevDependencyDetector"]

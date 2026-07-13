@@ -22,10 +22,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _module_file_by_name: dict[str, Path]
 
         def build_plan(
-            self,
-            pkg_dir: Path,
-            *,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
+            self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
         ) -> m.Infra.LazyInitPlan: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -43,7 +40,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
     def _package_init_exports(self, package_name: str) -> frozenset[str]:
         """Return names exported from the package __init__.py."""
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name,
+            package_name
         )
         if package_dir is None:
             return frozenset()
@@ -52,11 +49,8 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             return frozenset()
         return frozenset(
             self.rope_workspace.exports(
-                init_path,
-                export_options=m.Infra.ExportOptions(
-                    allow_assignments=True,
-                ),
-            ),
+                init_path, export_options=m.Infra.ExportOptions(allow_assignments=True)
+            )
         )
 
     def _source_export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -67,7 +61,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         if package_name in self._source_exports_visiting:
             return frozenset()
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
-            package_name,
+            package_name
         )
         if package_dir is None:
             return frozenset()
@@ -93,16 +87,12 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             return ""
         project_pkg: str = (
             self.rope_workspace.workspace_index.project_package_by_root.get(
-                str(package_entry.project_root),
-                "",
+                str(package_entry.project_root), ""
             )
         )
         return project_pkg
 
-    def _package_entry(
-        self,
-        pkg_dir: Path,
-    ) -> m.Infra.RopePackageIndexEntry | None:
+    def _package_entry(self, pkg_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
         """Return the workspace index entry for a package directory."""
         return self.rope_workspace.package(pkg_dir)
 

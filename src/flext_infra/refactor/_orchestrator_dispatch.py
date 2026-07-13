@@ -130,33 +130,25 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         analysis = FlextInfraRefactorViolationAnalyzer.analyze_files(files)
         self._print_violation_summary(analysis)
         if args.analysis_output is not None:
-            _ = u.Cli.json_write(
-                args.analysis_output,
-                analysis.model_dump(mode="json"),
-            )
+            _ = u.Cli.json_write(args.analysis_output, analysis.model_dump(mode="json"))
             u.Cli.info(f"Analysis report written: {args.analysis_output}")
         return 0
 
     def _collect_files(
-        self,
-        args: p.Infra.RefactorCliArgs,
+        self, args: p.Infra.RefactorCliArgs
     ) -> t.MutableSequenceOf[Path] | None:
         """Collect files."""
         result: t.MutableSequenceOf[Path] | None
         if args.project:
             collected = u.Infra.collect_refactor_project_files(
-                self.loader.settings,
-                args.project,
-                pattern=args.pattern,
+                self.loader.settings, args.project, pattern=args.pattern
             )
             result = None if collected is None else list(collected)
         elif args.workspace:
             result = list(
                 u.Infra.collect_refactor_workspace_files(
-                    self.loader.settings,
-                    args.workspace,
-                    pattern=args.pattern,
-                ),
+                    self.loader.settings, args.workspace, pattern=args.pattern
+                )
             )
         elif args.file:
             if not args.file.exists():
@@ -175,18 +167,14 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         if args.project:
             results = list(
                 self.refactor_project(
-                    args.project,
-                    dry_run=args.dry_run,
-                    pattern=args.pattern,
-                ),
+                    args.project, dry_run=args.dry_run, pattern=args.pattern
+                )
             )
         elif args.workspace:
             results = list(
                 self.refactor_workspace(
-                    args.workspace,
-                    dry_run=args.dry_run,
-                    pattern=args.pattern,
-                ),
+                    args.workspace, dry_run=args.dry_run, pattern=args.pattern
+                )
             )
         elif args.file:
             if not args.file.exists():
@@ -200,9 +188,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             result = self.refactor_file(args.file, dry_run=args.dry_run)
             if args.show_diff and result.modified:
                 self._print_diff(
-                    original,
-                    result.refactored_code or original,
-                    args.file,
+                    original, result.refactored_code or original, args.file
                 )
             results = [result]
         elif args.files:
@@ -215,10 +201,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             results = list[m.Infra.Result]()
         self._print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
-            _ = u.Infra.write_impact_map(
-                results,
-                args.impact_map_output,
-            )
+            _ = u.Infra.write_impact_map(results, args.impact_map_output)
         return 0 if u.count(results, lambda item: not item.success) == 0 else 1
 
 

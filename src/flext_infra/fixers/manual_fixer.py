@@ -14,7 +14,6 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import m, p, t
 
 
@@ -30,10 +29,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
     kind: ClassVar[str] = "manual"
 
     @override
-    def can_fix(
-        self,
-        fix_action: me.EnforcementFixAction,
-    ) -> bool:
+    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Accept every ``manual`` fix action."""
         return fix_action.kind == self.kind
 
@@ -75,7 +71,7 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
                             f"manual fix required for {rule_id}: "
                             f"{project_dir.name}/{Path(file_path).name}:{line} {message}"
                         ),
-                    ),
+                    )
                 )
             else:
                 previewed.append(
@@ -83,12 +79,10 @@ class FlextInfraManualFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(file_path),
                         message=f"line {line}: {message}",
-                    ),
+                    )
                 )
         return fr.ProjectFixResult(
-            project=project_dir.name,
-            previewed=tuple(previewed),
-            failed=tuple(failed),
+            project=project_dir.name, previewed=tuple(previewed), failed=tuple(failed)
         )
 
     @staticmethod

@@ -8,10 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-    Mapping,
-)
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t, u
@@ -45,8 +42,7 @@ class FlextInfraDocAuditorMixin:
         if isinstance(by_scope_raw_value, Mapping):
             try:
                 by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                    by_scope_raw_value,
-                    strict=True,
+                    by_scope_raw_value, strict=True
                 )
             except c.ValidationError:
                 by_scope_raw = {}
@@ -61,8 +57,7 @@ class FlextInfraDocAuditorMixin:
 
     @classmethod
     def load_audit_budgets(
-        cls,
-        workspace_root: Path,
+        cls, workspace_root: Path
     ) -> t.Pair[int | None, t.IntMapping]:
         """Load audit budgets from the nearest architecture settings."""
         result: t.Pair[int | None, t.IntMapping]
@@ -85,8 +80,7 @@ class FlextInfraDocAuditorMixin:
                         try:
                             validated_gate = (
                                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                                    audit_gate,
-                                    strict=False,
+                                    audit_gate, strict=False
                                 )
                             )
                         except c.ValidationError:
@@ -154,10 +148,7 @@ class FlextInfraDocAuditorMixin:
             c.Infra.RK_SUMMARY: summary,
             "issues": issues_payload,
         }
-        _ = u.Cli.json_write(
-            scope.report_dir / "audit-summary.json",
-            summary_payload,
-        )
+        _ = u.Cli.json_write(scope.report_dir / "audit-summary.json", summary_payload)
         _ = u.Infra.write_markdown(
             scope.report_dir / "audit-report.md",
             to_markdown_fn(scope, issues, docstring_coverage),

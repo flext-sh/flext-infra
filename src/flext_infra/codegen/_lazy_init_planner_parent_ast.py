@@ -24,19 +24,13 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
         def _module_path_from_target(target: str) -> str: ...
 
         def _parents_from_constants_module(
-            self,
-            module_path: Path,
-            current_pkg: str,
-            visited: set[str] | None = None,
+            self, module_path: Path, current_pkg: str, visited: set[str] | None = None
         ) -> t.StrSequence: ...
 
         def _package_name_from_target(self, target: str) -> str: ...
 
     def _parents_from_constants_ast(
-        self,
-        module_path: Path,
-        current_pkg: str,
-        visited: set[str],
+        self, module_path: Path, current_pkg: str, visited: set[str]
     ) -> t.StrSequence:
         """Extract parent packages from the constants module AST."""
         tree = ast.parse(
@@ -51,7 +45,7 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
             for base in node.bases
             if (
                 package_name := self._package_name_from_target(
-                    imports.get(self._ast_dotted_name(base), ""),
+                    imports.get(self._ast_dotted_name(base), "")
                 )
             )
         )
@@ -71,9 +65,7 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
             is not None
             and str(module_file.resolve()) not in visited
             for parent in self._parents_from_constants_module(
-                module_file,
-                current_pkg,
-                visited,
+                module_file, current_pkg, visited
             )
         )
         return tuple(
@@ -85,7 +77,7 @@ class FlextInfraCodegenLazyInitPlannerParentAstMixin:
                     *same_package_parents,
                 )
                 if package_name and package_name != current_pkg
-            ),
+            )
         )
 
     @staticmethod

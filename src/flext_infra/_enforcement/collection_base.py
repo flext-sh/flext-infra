@@ -12,7 +12,6 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p
 
 
@@ -29,8 +28,7 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collect_project_probe(
-        project_dir: Path,
-        rule: me.EnforcementRuleSpec,
+        project_dir: Path, rule: me.EnforcementRuleSpec
     ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
         """Return one project-level probe for gate-backed rules."""
         return [(rule, FlextInfraEnforcementCollectionBase.probe_for_path(project_dir))]
@@ -55,22 +53,13 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collection_failure(
-        project_dir: Path,
-        rule: me.EnforcementRuleSpec,
-        message: str,
+        project_dir: Path, rule: me.EnforcementRuleSpec, message: str
     ) -> fr.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
-        return fr.FailedFix(
-            rule_id=rule.id,
-            file_path=str(project_dir),
-            error=message,
-        )
+        return fr.FailedFix(rule_id=rule.id, file_path=str(project_dir), error=message)
 
     def _empty_failure(
-        self,
-        project_dir: Path,
-        rule: me.EnforcementRuleSpec,
-        message: str,
+        self, project_dir: Path, rule: me.EnforcementRuleSpec, message: str
     ) -> tuple[
         list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
     ]:

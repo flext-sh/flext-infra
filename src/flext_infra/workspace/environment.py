@@ -6,7 +6,6 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, u
 
 if TYPE_CHECKING:
@@ -20,11 +19,7 @@ class FlextInfraWorkspaceEnvironment:
 
     @classmethod
     def sync_environment_files(
-        cls,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
-        force: bool = False,
+        cls, workspace_root: Path, *, apply: bool = True, force: bool = False
     ) -> p.Result[int]:
         """Sync generated workspace environment files."""
         if not cls.has_pyproject(workspace_root):
@@ -40,27 +35,17 @@ class FlextInfraWorkspaceEnvironment:
 
     @classmethod
     def sync_envrc(
-        cls,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
-        force: bool = False,
+        cls, workspace_root: Path, *, apply: bool = True, force: bool = False
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
         target_path = workspace_root / c.Infra.ENVRC_FILENAME
         return cls.write_generated_text(
-            target_path,
-            c.Infra.WORKSPACE_ENVRC_CONTENT,
-            apply=apply,
-            force=force,
+            target_path, c.Infra.WORKSPACE_ENVRC_CONTENT, apply=apply, force=force
         )
 
     @classmethod
     def sync_mise_toml(
-        cls,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
+        cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[bool]:
         """Render or merge canonical Python tool pins into ``.mise.toml``."""
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
@@ -68,26 +53,15 @@ class FlextInfraWorkspaceEnvironment:
         if rendered.failure:
             return r[bool].fail(rendered.error or ".mise.toml render failed")
         if not target_path.is_file():
-            return cls.write_text_if_different(
-                target_path,
-                rendered.value,
-                apply=apply,
-            )
+            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
         read = u.Cli.files_read_text(target_path)
         if read.failure:
             return r[bool].fail(read.error or ".mise.toml read failed")
         current = read.value
         if cls.is_generated_environment_text(current):
-            return cls.write_text_if_different(
-                target_path,
-                rendered.value,
-                apply=apply,
-            )
+            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
         return cls.merge_custom_mise_toml(
-            target_path,
-            current,
-            workspace_root,
-            apply=apply,
+            target_path, current, workspace_root, apply=apply
         )
 
     @classmethod
@@ -155,7 +129,7 @@ class FlextInfraWorkspaceEnvironment:
         for name, value in tools.items():
             if not isinstance(value, str):
                 return r[dict[str, str]].fail(
-                    f"canonical .mise.toml [tools].{name} must be a string",
+                    f"canonical .mise.toml [tools].{name} must be a string"
                 )
             pins[name] = value
         python_version = cls.workspace_python_version(workspace_root)
@@ -190,10 +164,7 @@ class FlextInfraWorkspaceEnvironment:
 
     @classmethod
     def remove_generated_environment_files(
-        cls,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
+        cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[int]:
         """Remove generated environment files from non-Python workspaces."""
         changed = 0
@@ -207,10 +178,7 @@ class FlextInfraWorkspaceEnvironment:
 
     @classmethod
     def remove_generated_environment_file(
-        cls,
-        target_path: Path,
-        *,
-        apply: bool = True,
+        cls, target_path: Path, *, apply: bool = True
     ) -> p.Result[bool]:
         """Remove one generated environment file without touching custom files."""
         if not target_path.exists():
@@ -225,18 +193,13 @@ class FlextInfraWorkspaceEnvironment:
         delete_result = u.Cli.files_delete(target_path)
         if delete_result.failure:
             return r[bool].fail(
-                delete_result.error or f"{target_path.name} delete failed",
+                delete_result.error or f"{target_path.name} delete failed"
             )
         return r[bool].ok(True)
 
     @classmethod
     def write_generated_text(
-        cls,
-        target_path: Path,
-        content: str,
-        *,
-        apply: bool = True,
-        force: bool = False,
+        cls, target_path: Path, content: str, *, apply: bool = True, force: bool = False
     ) -> p.Result[bool]:
         """Write generated content without clobbering custom files."""
         if target_path.exists():
@@ -252,10 +215,7 @@ class FlextInfraWorkspaceEnvironment:
 
     @staticmethod
     def write_text_if_different(
-        target_path: Path,
-        content: str,
-        *,
-        apply: bool = True,
+        target_path: Path, content: str, *, apply: bool = True
     ) -> p.Result[bool]:
         """Write text when content differs."""
         if target_path.is_file():

@@ -47,16 +47,12 @@ class FlextInfraModelsDepsToml:
                 values: t.StrSequence = m.Field(description="Expected values")
                 strategy: Annotated[
                     c.Infra.TomlMergeMode,
-                    m.Field(
-                        description="Merge strategy",
-                        validate_default=True,
-                    ),
+                    m.Field(description="Merge strategy", validate_default=True),
                 ] = c.Infra.TomlMergeMode.REPLACE
                 sort: Annotated[
                     bool,
                     m.Field(
-                        description="Sort values before sync",
-                        validate_default=True,
+                        description="Sort values before sync", validate_default=True
                     ),
                 ] = True
 
@@ -72,14 +68,12 @@ class FlextInfraModelsDepsToml:
                 table_path: Annotated[
                     t.StrSequence,
                     m.Field(
-                        description="Relative sub-table path",
-                        validate_default=True,
+                        description="Relative sub-table path", validate_default=True
                     ),
                 ] = ()
 
             type Operation = Annotated[
-                SetOp | ListOp | RemoveOp,
-                m.Field(discriminator="kind"),
+                SetOp | ListOp | RemoveOp, m.Field(discriminator="kind")
             ]
 
             class PhaseConfig(m.ContractModel):
@@ -87,20 +81,14 @@ class FlextInfraModelsDepsToml:
 
                 name: str = m.Field(description="Phase name")
                 root_path: Annotated[
-                    t.StrSequence,
-                    m.Field(
-                        description="Root path before table_path",
-                    ),
+                    t.StrSequence, m.Field(description="Root path before table_path")
                 ] = (c.Infra.TOOL,)
                 table_path: Annotated[
-                    t.StrSequence,
-                    m.Field(description="Primary table path"),
+                    t.StrSequence, m.Field(description="Primary table path")
                 ] = ()
                 operations: Annotated[
                     t.SequenceOf[FlextInfraModelsDepsToml.Deps.Toml.Operation],
-                    m.Field(
-                        description="Declarative TOML operations",
-                    ),
+                    m.Field(description="Declarative TOML operations"),
                 ] = ()
                 nested_tables: Annotated[
                     t.SequenceOf[FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig],
@@ -108,24 +96,19 @@ class FlextInfraModelsDepsToml:
                 ] = ()
                 custom_handler: Annotated[
                     Callable[..., t.StrSequence] | None,
-                    m.Field(
-                        exclude=True,
-                        description="Custom handler",
-                    ),
+                    m.Field(exclude=True, description="Custom handler"),
                 ] = None
 
                 class Builder(
-                    m.Builder.Identity[
-                        "FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"
-                    ],
+                    m.Builder.Identity["FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig"]
                 ):
                     """Fluent builder for ``m.Infra.Deps.Toml.PhaseConfig``."""
 
                     def __init__(self, name: str) -> None:
                         super().__init__(
                             state=FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig(
-                                name=name,
-                            ),
+                                name=name
+                            )
                         )
 
                     @classmethod
@@ -141,25 +124,21 @@ class FlextInfraModelsDepsToml:
                             chain(
                                 (
                                     FlextInfraModelsDepsToml.Deps.Toml.SetOp(
-                                        key=key,
-                                        value=value,
+                                        key=key, value=value
                                     )
                                     for key, value in values
                                 ),
                                 (
                                     FlextInfraModelsDepsToml.Deps.Toml.ListOp(
-                                        key=key,
-                                        values=tuple(entries),
+                                        key=key, values=tuple(entries)
                                     )
                                     for key, entries in lists
                                 ),
                                 (
-                                    FlextInfraModelsDepsToml.Deps.Toml.RemoveOp(
-                                        key=key,
-                                    )
+                                    FlextInfraModelsDepsToml.Deps.Toml.RemoveOp(key=key)
                                     for key in deprecated_keys
                                 ),
-                            ),
+                            )
                         )
 
                     def operation(
@@ -178,9 +157,9 @@ class FlextInfraModelsDepsToml:
                                     "operations": (
                                         *self.state.operations,
                                         operation_item,
-                                    ),
-                                },
-                            ),
+                                    )
+                                }
+                            )
                         )
                         return replaced
 
@@ -244,7 +223,7 @@ class FlextInfraModelsDepsToml:
                                     values=values,
                                     lists=lists,
                                     deprecated_keys=deprecated_keys,
-                                ),
+                                )
                             ),
                         )
                         replaced: Self = self._replace(
@@ -253,16 +232,16 @@ class FlextInfraModelsDepsToml:
                                     "nested_tables": (
                                         *self.state.nested_tables,
                                         nested_table,
-                                    ),
-                                },
-                            ),
+                                    )
+                                }
+                            )
                         )
                         return replaced
 
                     def handler(self, fn: Callable[..., t.StrSequence]) -> Self:
                         """Set a custom handler function."""
                         replaced: Self = self._replace(
-                            self.state.model_copy(update={"custom_handler": fn}),
+                            self.state.model_copy(update={"custom_handler": fn})
                         )
                         return replaced
 

@@ -6,28 +6,31 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): services consume the direct root singletons; no runtime settings accessor. #}
 
-from flext_core import r, s
 from {{ package_name }} import config, settings
 from {{ package_name }}.models import {{ class_stem }}Models as m
 from {{ package_name }}.protocols import {{ class_stem }}Protocols as p
+from flext_core import r, s
 
 
 class {{ class_stem }}Service(s):
     """Base for {{ package_name }} services."""
 
-    def ping(
-        self,
-        params: p.{{ ns }}.PingInput,
+{% if ns | length <= 10 %}    def ping(self, params: p.{{ ns }}.PingInput) -> p.Result[p.{{ ns }}.PingResult]:
+{% else %}    def ping(
+        self, params: p.{{ ns }}.PingInput
     ) -> p.Result[p.{{ ns }}.PingResult]:
-        """Return the configured public health response."""
+{% endif %}        """Return the configured public health response."""
         _ = params
         message = (
             config.{{ ns }}.ping_reply
             if settings.{{ ns }}.enabled
             else config.{{ ns }}.disabled_reply
         )
-        return r[p.{{ ns }}.PingResult].ok(m.{{ ns }}.PingResult(message=message))
-
+{% if 76 + (ns | length) <= tooling.tools.ruff.line_length %}        return r[p.{{ ns }}.PingResult].ok(m.{{ ns }}.PingResult(message=message))
+{% else %}        return r[p.{{ ns }}.PingResult].ok(
+            m.{{ ns }}.PingResult(message=message)
+        )
+{% endif %}
 
 s = {{ class_stem }}Service
 

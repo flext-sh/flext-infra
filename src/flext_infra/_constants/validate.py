@@ -77,37 +77,33 @@ class FlextInfraConstantsSharedInfra:
     })
     SKILL_REPORT_SKIPPED_FILES: Final[frozenset[str]] = frozenset({".gitkeep"})
     SKILL_OWNER_MARKER_RE: Final[t.RegexPattern] = re.compile(
-        r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$",
+        r"^# Owner-Skill:\s+(.agents/skills/([a-z0-9][-a-z0-9]*)/SKILL\.md)\s*$"
     )
     SKILL_REPORT_ARTIFACT_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^[a-z][-a-z0-9]*--[a-z]+--[a-z][-a-z0-9]*\.[a-z]+$",
+        r"^[a-z][-a-z0-9]*--[a-z]+--[a-z][-a-z0-9]*\.[a-z]+$"
     )
     SKILL_REPORT_ARTIFACT_SKILL_RE: Final[t.RegexPattern] = re.compile(
-        r"^[a-z][-a-z0-9]*$",
+        r"^[a-z][-a-z0-9]*$"
     )
     SKILL_REPORT_ARTIFACT_SLUG_INVALID_RE: Final[t.RegexPattern] = re.compile(
-        r"[^a-z0-9-]+",
+        r"[^a-z0-9-]+"
     )
-    SKILL_REPORT_ARTIFACT_MULTI_DASH_RE: Final[t.RegexPattern] = re.compile(
-        r"-+",
-    )
-    SKILL_REPORTS_PATH_RE: Final[t.RegexPattern] = re.compile(
-        r"\.reports/([^\s\"']+)",
-    )
+    SKILL_REPORT_ARTIFACT_MULTI_DASH_RE: Final[t.RegexPattern] = re.compile(r"-+")
+    SKILL_REPORTS_PATH_RE: Final[t.RegexPattern] = re.compile(r"\.reports/([^\s\"']+)")
     SKILL_BASH_EXIT_RE: Final[t.RegexPattern] = re.compile(r"^\s*exit\s+(\d+)")
     SKILL_INTERACTIVE_PY_RE: Final[t.RegexPattern] = re.compile(r"\binput\s*\(")
     SKILL_INTERACTIVE_SH_RE: Final[t.RegexPattern] = re.compile(
-        r"\bread\s+-p\b|\bselect\s+\w+\s+in\b|\bdialog\b|\bwhiptail\b",
+        r"\bread\s+-p\b|\bselect\s+\w+\s+in\b|\bdialog\b|\bwhiptail\b"
     )
     SKILL_INTERACTIVE_GATE_RE: Final[t.RegexPattern] = re.compile(r"--interactive")
     SKILL_VALIDATOR_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^(enforce|check|validate|test|verify|audit|lint|scan)[-_]",
+        r"^(enforce|check|validate|test|verify|audit|lint|scan)[-_]"
     )
     SKILL_FIXER_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^(fix|autofix|repair|correct|reorder|refactor|standardize)[-_]",
+        r"^(fix|autofix|repair|correct|reorder|refactor|standardize)[-_]"
     )
     MISSING_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"Cannot find module `([^`]+)` \[missing-import\]",
+        r"Cannot find module `([^`]+)` \[missing-import\]"
     )
     MYPY_HINT_RE: Final[t.RegexPattern] = re.compile(
         r'note:\s+(?:hint|note):\s+(?:["`].*?\bpip\s+install\s+|install\s+stub\s+package\s+["`]?)'
@@ -115,7 +111,7 @@ class FlextInfraConstantsSharedInfra:
         re.IGNORECASE,
     )
     MYPY_STUB_RE: Final[t.RegexPattern] = re.compile(
-        r"Library stubs not installed for ['\"](\S+?)['\"]",
+        r"Library stubs not installed for ['\"](\S+?)['\"]"
     )
     INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
@@ -180,7 +176,7 @@ class FlextInfraConstantsSharedInfra:
         DIR_SCRIPTS,
     })
     TIER_WHITELIST_SETTINGS_MODULE_LIBRARIES: Final[frozenset[str]] = frozenset({
-        "pydantic_settings",
+        "pydantic_settings"
     })
     DIR_TYPINGS: Final[str] = "typings"
     DIR_DOCS: Final[str] = "docs"

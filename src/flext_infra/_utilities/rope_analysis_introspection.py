@@ -10,9 +10,7 @@ from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
+    from collections.abc import MutableMapping
     from pathlib import Path
 
     from flext_infra import p, t
@@ -39,9 +37,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         """Return names of nested classes within a given class."""
         try:
             return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
-                rope_project,
-                resource,
-                class_name,
+                rope_project, resource, class_name
             )
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
@@ -69,8 +65,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
 
     @staticmethod
     def get_module_symbols(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[m.Infra.SymbolInfo]:
         """Return top-level symbols defined in one module through Rope metadata."""
         result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
@@ -83,8 +78,8 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
             for node in body:
                 result.extend(
                     FlextInfraUtilitiesRopeAnalysisIntrospection._module_symbols_from_node(
-                        node,
-                    ),
+                        node
+                    )
                 )
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return result
@@ -114,8 +109,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         return tuple(
             m.Infra.SymbolInfo(name=name, kind="assignment", line=line)
             for name in FlextInfraUtilitiesRopeAnalysisIntrospection._assignment_names(
-                node,
-                node_kind,
+                node, node_kind
             )
         )
 
@@ -132,7 +126,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 if (
                     name
                     := FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(
-                        target,
+                        target
                     )
                 )
             )
@@ -169,14 +163,11 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
 
     @classmethod
     def extract_public_methods_from_dir(
-        cls: type[p.Infra.RopeAnalysisMethods],
-        package_dir: Path,
+        cls: type[p.Infra.RopeAnalysisMethods], package_dir: Path
     ) -> t.MappingKV[str, t.SequenceOf[t.Triple[str, str, str]]]:
         """Extract public methods from all Python files in a package directory."""
         result: MutableMapping[str, t.MutableSequenceOf[t.Triple[str, str, str]]] = {}
-        project_root = FlextInfraUtilitiesDiscovery.project_root(
-            package_dir / "foo.py",
-        )
+        project_root = FlextInfraUtilitiesDiscovery.project_root(package_dir / "foo.py")
         if project_root is None:
             return result
         with FlextInfraUtilitiesRopeCore.open_project(project_root.parent) as rope_proj:
@@ -189,18 +180,14 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 classes = cls.get_module_classes(rope_proj, resource)
                 for class_name in classes:
                     class_methods = cls.get_class_methods(
-                        rope_proj,
-                        resource,
-                        class_name,
-                        include_private=False,
+                        rope_proj, resource, class_name, include_private=False
                     )
                     methods = result.setdefault(class_name, [])
                     for method_name, method_kind in class_methods.items():
                         methods.append((
                             method_name,
                             FlextInfraUtilitiesRopeAnalysisIntrospection._METHOD_KIND_LABELS.get(
-                                method_kind,
-                                "instance",
+                                method_kind, "instance"
                             ),
                             py_file.name,
                         ))

@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra.base import s
 
@@ -43,20 +42,15 @@ class FlextInfraPythonVersionEnforcer(s[int]):
     """
 
     check_only: Annotated[
-        bool,
-        m.Field(description="Only validate Python version constraints"),
+        bool, m.Field(description="Only validate Python version constraints")
     ] = False
     verbose: Annotated[
-        bool,
-        m.Field(description="Emit detailed per-project validation logs"),
+        bool, m.Field(description="Emit detailed per-project validation logs")
     ] = False
 
     @override
     def execute(
-        self,
-        *,
-        check_only: bool | None = None,
-        verbose: bool | None = None,
+        self, *, check_only: bool | None = None, verbose: bool | None = None
     ) -> p.Result[int]:
         """Execute Python version enforcement; returns r[int] exit code."""
         if check_only is not None:

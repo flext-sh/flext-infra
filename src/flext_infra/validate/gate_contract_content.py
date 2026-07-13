@@ -17,9 +17,7 @@ class FlextInfraGateContractContentMixin:
 
     @staticmethod
     def _check_interactive(
-        script: str,
-        content: str,
-        extension: str,
+        script: str, content: str, extension: str
     ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
         if c.Infra.SKILL_INTERACTIVE_GATE_RE.search(content):
             return ()
@@ -45,14 +43,13 @@ class FlextInfraGateContractContentMixin:
                         ),
                         script=script,
                         severity=c.Infra.GateSeverity.WARNING.value,
-                    ),
+                    )
                 )
         return tuple(violations)
 
     @staticmethod
     def _check_artifact_naming(
-        script: str,
-        content: str,
+        script: str, content: str
     ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
         violations: list[FlextInfraGateContractModels.Violation] = []
         for i, line in enumerate(content.splitlines(), 1):
@@ -73,7 +70,7 @@ class FlextInfraGateContractContentMixin:
                         ),
                         script=script,
                         severity=c.Infra.GateSeverity.WARNING.value,
-                    ),
+                    )
                 )
         return tuple(violations)
 

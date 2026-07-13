@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
@@ -38,12 +36,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
         interpreter_path = f"{venv_path}/{venv_rules.venv_name}/bin/python"
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
-                project_dir=project_dir,
-                is_root=is_root,
+                project_dir=project_dir, is_root=is_root
             )
             expected_includes = paths_manager.pyrefly_project_includes(
-                project_dir=project_dir,
-                is_root=is_root,
+                project_dir=project_dir, is_root=is_root
             )
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
@@ -81,20 +77,14 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 c.Infra.PROJECT_EXCLUDES,
                 sorted(set(pyrefly_rules.project_exclude_globs)),
             )
-            .nested(
-                "errors",
-                values=error_values,
-                deprecated_keys=stale_error_keys,
-            )
+            .nested("errors", values=error_values, deprecated_keys=stale_error_keys)
             .build()
         )
 
     def _configured_error_keys(self) -> frozenset[str]:
         """Return pyrefly error keys governed by the canonical tool config."""
         pyrefly_rules = self._tool_config.tools.pyrefly
-        return frozenset(
-            (*pyrefly_rules.strict_errors, *pyrefly_rules.disabled_errors),
-        )
+        return frozenset((*pyrefly_rules.strict_errors, *pyrefly_rules.disabled_errors))
 
     def apply(
         self,
@@ -107,8 +97,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
         configured_error_keys = self._configured_error_keys()
         errors_table = u.Cli.toml_table_path(
-            doc,
-            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
+            doc, (c.Infra.TOOL, c.Infra.PYREFLY, "errors")
         )
         stale_error_keys = (
             tuple(key for key in errors_table if key not in configured_error_keys)
@@ -136,8 +125,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         """Apply canonical pyrefly settings to one normalized payload."""
         configured_error_keys = self._configured_error_keys()
         errors_table = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.PYREFLY, "errors"),
+            payload, (c.Infra.TOOL, c.Infra.PYREFLY, "errors")
         )
         stale_error_keys = (
             tuple(key for key in errors_table if key not in configured_error_keys)

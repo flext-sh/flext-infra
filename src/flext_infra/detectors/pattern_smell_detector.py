@@ -52,10 +52,7 @@ class FlextInfraPatternSmellDetector:
                 "flext-target-ldap facades"
             ),
         ),
-        "pdb": (
-            "breakpoint",
-            "import pdb is forbidden — remove debugging code",
-        ),
+        "pdb": ("breakpoint", "import pdb is forbidden — remove debugging code"),
     }
 
     # module name -> {imported name -> (kind, detail)}; "*" bans any name.
@@ -74,7 +71,7 @@ class FlextInfraPatternSmellDetector:
             "*": (
                 "breakpoint",
                 "from pdb import ... is forbidden — remove debugging code",
-            ),
+            )
         },
     }
 
@@ -95,14 +92,8 @@ class FlextInfraPatternSmellDetector:
 
     # bare call name -> (kind, detail)
     _BANNED_BARE_CALLS: ClassVar[t.MappingKV[str, t.StrPair]] = {
-        "print": (
-            "print",
-            "print() call in source code — use structured logging",
-        ),
-        "breakpoint": (
-            "breakpoint",
-            "breakpoint() left in code",
-        ),
+        "print": ("print", "print() call in source code — use structured logging"),
+        "breakpoint": ("breakpoint", "breakpoint() left in code"),
     }
 
     # call name -> (kind, required kwarg, detail)
@@ -111,7 +102,7 @@ class FlextInfraPatternSmellDetector:
             "open_encoding",
             "encoding",
             'open() without explicit encoding — add encoding="utf-8"',
-        ),
+        )
     }
 
     # annotation root name -> (kind, detail)
@@ -119,7 +110,7 @@ class FlextInfraPatternSmellDetector:
         "dict": (
             "dict_annotation",
             "`dict` in type annotation — prefer Mapping / MutableMapping / TypedDict",
-        ),
+        )
     }
 
     _SMELL_KINDS: ClassVar[frozenset[str]] = frozenset({
@@ -143,9 +134,7 @@ class FlextInfraPatternSmellDetector:
 
     @classmethod
     def _is_owned_library_exempt(
-        cls,
-        project_name: str | None,
-        module_name: str,
+        cls, project_name: str | None, module_name: str
     ) -> bool:
         """Return True when the current project owns the library abstraction.
 
@@ -160,8 +149,7 @@ class FlextInfraPatternSmellDetector:
 
     @classmethod
     def detect_file(
-        cls,
-        ctx: m.Infra.DetectorContext,
+        cls, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[m.Infra.PatternSmellViolation]:
         """Return all pattern-smell violations in ``ctx.file_path``."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
@@ -179,7 +167,7 @@ class FlextInfraPatternSmellDetector:
                     stage="pattern_smell",
                     error_type=type(exc).__name__,
                     detail=str(exc),
-                ),
+                )
             )
             return ()
         if not isinstance(tree, ast.Module):
@@ -210,8 +198,7 @@ class FlextInfraPatternSmellDetector:
 
     @staticmethod
     def _detect_comment_smells(
-        source: str,
-        file_path: Path,
+        source: str, file_path: Path
     ) -> list[m.Infra.PatternSmellViolation]:
         """Detect suppression-comment smells in ``source``."""
         violations: list[m.Infra.PatternSmellViolation] = []
@@ -235,7 +222,7 @@ class FlextInfraPatternSmellDetector:
                             "# type: ignore suppression is forbidden "
                             "— fix the underlying typing issue"
                         ),
-                    ),
+                    )
                 )
             if noqa_re.search(comment):
                 violations.append(
@@ -247,7 +234,7 @@ class FlextInfraPatternSmellDetector:
                             "# noqa suppression is forbidden "
                             "— fix the underlying lint issue"
                         ),
-                    ),
+                    )
                 )
         return violations
 
@@ -288,8 +275,7 @@ class _PatternSmellVisitor(ast.NodeVisitor):
         for alias in node.names:
             canonical = alias.name
             if canonical in self._banned_module_imports and not self._owned_exempt(
-                self.project_name,
-                canonical,
+                self.project_name, canonical
             ):
                 kind, detail = self._banned_module_imports[canonical]
                 self._add_violation(node.lineno, kind, detail)
@@ -309,8 +295,7 @@ class _PatternSmellVisitor(ast.NodeVisitor):
                     kind, detail = banned_from[key]
                     self._add_violation(node.lineno, kind, detail)
         if module in self._banned_module_imports and not self._owned_exempt(
-            self.project_name,
-            module,
+            self.project_name, module
         ):
             kind, detail = self._banned_module_imports[module]
             self._add_violation(node.lineno, kind, detail)
@@ -384,19 +369,11 @@ class _PatternSmellVisitor(ast.NodeVisitor):
             and node.value.id in self._banned_annotations
         )
 
-    def _add_violation(
-        self,
-        line: int,
-        kind: str,
-        detail: str,
-    ) -> None:
+    def _add_violation(self, line: int, kind: str, detail: str) -> None:
         self.violations.append(
             m.Infra.PatternSmellViolation(
-                file=str(self.file_path),
-                line=line,
-                kind=kind,
-                detail=detail,
-            ),
+                file=str(self.file_path), line=line, kind=kind, detail=detail
+            )
         )
 
 

@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra.base import s
 
@@ -39,10 +38,8 @@ class FlextInfraCodegenScaffolder(s[str]):
             if result.files_created
         )
         lines.append(
-            (
-                f"Scaffold: {total_created} created, {total_skipped} skipped"
-                f" across {len(results)} projects"
-            ),
+            f"Scaffold: {total_created} created, {total_skipped} skipped"
+            f" across {len(results)} projects"
         )
         return r[str].ok("\n".join(lines))
 
@@ -75,10 +72,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         ]
 
     def _scaffold_project(
-        self,
-        project: p.Infra.ProjectInfo,
-        *,
-        dry_run: bool = False,
+        self, project: p.Infra.ProjectInfo, *, dry_run: bool = False
     ) -> m.Infra.ScaffoldResult:
         """Scaffold missing base modules for a single project.
 
@@ -94,9 +88,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return m.Infra.ScaffoldResult(
-                project=project_path.name,
-                files_created=[],
-                files_skipped=[],
+                project=project_path.name, files_created=[], files_skipped=[]
             )
         files_created: t.MutableSequenceOf[str] = []
         files_skipped: t.MutableSequenceOf[str] = []
@@ -111,7 +103,7 @@ class FlextInfraCodegenScaffolder(s[str]):
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
-                ),
+                )
             )
             files_created.extend(created)
             files_skipped.extend(skipped)
@@ -127,7 +119,7 @@ class FlextInfraCodegenScaffolder(s[str]):
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
-                ),
+                )
             )
             files_created.extend(created)
             files_skipped.extend(skipped)
@@ -143,7 +135,7 @@ class FlextInfraCodegenScaffolder(s[str]):
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
-                ),
+                )
             )
             files_created.extend(created)
             files_skipped.extend(skipped)
@@ -159,7 +151,7 @@ class FlextInfraCodegenScaffolder(s[str]):
                     dry_run=dry_run,
                     files_created=[],
                     files_skipped=[],
-                ),
+                )
             )
             files_created.extend(created)
             files_skipped.extend(skipped)
@@ -170,8 +162,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         )
 
     def _scaffold_dir(
-        self,
-        request: m.Infra.ScaffoldDirRequest,
+        self, request: m.Infra.ScaffoldDirRequest
     ) -> tuple[t.MutableSequenceOf[str], t.MutableSequenceOf[str]]:
         """Generate missing modules in a directory and return file lists."""
         files_created: t.MutableSequenceOf[str] = []
@@ -189,18 +180,13 @@ class FlextInfraCodegenScaffolder(s[str]):
             )
             docstring = f"{doc_suffix} for {request.prefix.lower()}."
             content = u.Infra.generate_module_skeleton(
-                class_name=class_name,
-                base_class=resolved_base,
-                docstring=docstring,
+                class_name=class_name, base_class=resolved_base, docstring=docstring
             )
             if request.dry_run:
                 files_created.append(str(filepath))
                 continue
             # mro-i6nq.10: Normalize the in-memory artifact before its first write.
-            normalized = u.Infra.normalize_python_source(
-                content,
-                filename=filepath,
-            )
+            normalized = u.Infra.normalize_python_source(content, filename=filepath)
             if normalized.failure:
                 message = f"normalizing scaffold {filepath}: {normalized.error}"
                 raise OSError(message)

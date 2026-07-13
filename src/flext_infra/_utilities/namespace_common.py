@@ -28,7 +28,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         if not existing_files:
             return Path.cwd()
         project_root = FlextInfraUtilitiesIteration.resolve_project_root(
-            existing_files[0],
+            existing_files[0]
         )
         return (
             project_root.parent
@@ -37,9 +37,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         )
 
     @staticmethod
-    def _parse_simple_from_import_line(
-        line: str,
-    ) -> t.Infra.TransformResult | None:
+    def _parse_simple_from_import_line(line: str) -> t.Infra.TransformResult | None:
         """Parse simple from import line."""
         stripped = line.strip()
         if (
@@ -50,7 +48,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         ):
             return None
         module_name, separator, imported_names = stripped.removeprefix(
-            "from ",
+            "from "
         ).partition(" import ")
         if not separator or not module_name or not imported_names:
             return None
@@ -59,26 +57,21 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
 
     @staticmethod
     def insert_import_lines(
-        *,
-        lines: t.StrSequence,
-        imports: t.StrSequence,
+        *, lines: t.StrSequence, imports: t.StrSequence
     ) -> t.StrSequence:
         """Insert import lines."""
         if not imports:
             return list(lines)
         insert_idx = (
             FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines,
+                lines
             )
         )
         return [*lines[:insert_idx], *imports, *lines[insert_idx:]]
 
     @staticmethod
     def canonical_target_file(
-        *,
-        project_root: Path,
-        source_file: Path,
-        filename: str,
+        *, project_root: Path, source_file: Path, filename: str
     ) -> Path:
         """Canonical target file."""
         parts = source_file.parts
@@ -92,9 +85,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
 
     @staticmethod
     def find_top_level_block(
-        *,
-        lines: t.StrSequence,
-        header: str,
+        *, lines: t.StrSequence, header: str
     ) -> tuple[int, int] | None:
         """Find top level block."""
         start_idx = -1
@@ -113,11 +104,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return (start_idx, end_idx)
 
     @staticmethod
-    def compat_assignment_target(
-        line: str,
-        *,
-        alias_map: t.StrMapping,
-    ) -> str | None:
+    def compat_assignment_target(line: str, *, alias_map: t.StrMapping) -> str | None:
         """Compat assignment target."""
         stripped = line.strip()
         if "=" not in stripped or stripped.startswith("#"):
@@ -126,16 +113,11 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
         return left if alias_map.get(left) == right else None
 
     @staticmethod
-    def apply_token_replacements(
-        *,
-        source: str,
-        alias_map: t.StrMapping,
-    ) -> str:
+    def apply_token_replacements(*, source: str, alias_map: t.StrMapping) -> str:
         """Apply token replacements."""
         line_buffer = source.splitlines(keepends=True)
         replacements_by_line: t.MappingKV[
-            int,
-            t.MutableSequenceOf[t.Triple[int, int, str]],
+            int, t.MutableSequenceOf[t.Triple[int, int, str]]
         ] = defaultdict(list)
         token_generator = tokenize.generate_tokens(StringIO(source).readline)
         for tok in token_generator:
@@ -158,9 +140,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
                 continue
             line_text = line_buffer[line_idx]
             for start_col, end_col, replacement in sorted(
-                replacements,
-                key=operator.itemgetter(0),
-                reverse=True,
+                replacements, key=operator.itemgetter(0), reverse=True
             ):
                 line_text = line_text[:start_col] + replacement + line_text[end_col:]
             line_buffer[line_idx] = line_text

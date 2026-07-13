@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-
 from flext_infra import t
 from flext_infra.base import s
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
@@ -16,16 +15,13 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfra(
-    s[t.JsonDict],
-):
+class FlextInfra(s[t.JsonDict]):
     """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
 
     def rope_workspace(
-        self,
-        workspace_root: Path | None = None,
+        self, workspace_root: Path | None = None
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
         # NOTE (multi-agent, mro-wkii.17.24): Rope reads its source policy

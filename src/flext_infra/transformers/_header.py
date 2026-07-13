@@ -35,10 +35,7 @@ class _HeaderSpan:
         After shebang/encoding/comments and any module docstring.
         """
         return max(
-            self.shebang_end,
-            self.encoding_end,
-            self.comments_end,
-            self.docstring_end,
+            self.shebang_end, self.encoding_end, self.comments_end, self.docstring_end
         )
 
     @property
@@ -50,10 +47,7 @@ class _HeaderSpan:
         if self.last_import_end:
             return self.last_import_end
         return max(
-            self.shebang_end,
-            self.encoding_end,
-            self.comments_end,
-            self.docstring_end,
+            self.shebang_end, self.encoding_end, self.comments_end, self.docstring_end
         )
 
 
@@ -90,11 +84,7 @@ def ensure_future_annotations(source: str) -> str:
     return "".join(body)
 
 
-def ensure_alias_import(
-    source: str,
-    module: str,
-    alias: str,
-) -> str:
+def ensure_alias_import(source: str, module: str, alias: str) -> str:
     """Inject ``from <module> import <alias>`` when the alias is actually used."""
     if not alias or not alias_used(source, alias):
         return source
@@ -258,9 +248,7 @@ def _leading_comments_end(source: str, start: int) -> int:
 
 
 def _find_import_line_end(
-    source: str,
-    tokens: t.SequenceOf[tokenize.TokenInfo],
-    from_index: int,
+    source: str, tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int
 ) -> int:
     """Return the byte offset just after the import statement starting at from_index."""
     for tok in tokens[from_index:]:
@@ -291,17 +279,14 @@ def _position_offset(source: str, position: tuple[int, int]) -> int:
 
 
 def _imports_name(
-    tokens: t.SequenceOf[tokenize.TokenInfo],
-    from_index: int,
-    name: str,
+    tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int, name: str
 ) -> bool:
     """Return whether the ``from ... import (...)`` binds ``name``."""
     return name in _extract_imported_aliases(tokens, from_index)
 
 
 def _extract_imported_aliases(
-    tokens: t.SequenceOf[tokenize.TokenInfo],
-    from_index: int,
+    tokens: t.SequenceOf[tokenize.TokenInfo], from_index: int
 ) -> frozenset[str]:
     """Return local names bound by a ``from`` import statement."""
     aliases: set[str] = set()

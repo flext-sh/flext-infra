@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import c
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraInjectCommentsPhase:
@@ -40,8 +35,7 @@ class FlextInfraInjectCommentsPhase:
 
     @classmethod
     def _strip_managed_lines(
-        cls,
-        lines: t.StrSequence,
+        cls, lines: t.StrSequence
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Strip managed lines."""
         changes: t.MutableSequenceOf[str] = []
@@ -117,7 +111,7 @@ class FlextInfraInjectCommentsPhase:
                 changes.append(f"marker injected for {stripped}")
                 emitted_markers.add(marker)
             if stripped == "[project.optional-dependencies]" or stripped.startswith(
-                "optional-dependencies.dev",
+                "optional-dependencies.dev"
             ):
                 self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)

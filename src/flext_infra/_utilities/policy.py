@@ -10,15 +10,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra import c, m, t
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesRefactorPolicy:
@@ -45,7 +40,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         raw = u.Cli.yaml_load_mapping(policy_path)
         if not raw:
             return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
-                f"Failed to load policy {policy_path}",
+                f"Failed to load policy {policy_path}"
             )
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
         return r[t.MappingKV[str, t.Infra.InfraValue]].ok(validated)
@@ -61,7 +56,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             else FlextInfraUtilitiesRefactorPolicy.default_class_policy_path()
         )
         loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
-            resolved_path,
+            resolved_path
         )
         by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
         if loaded.failure:
@@ -107,9 +102,7 @@ class FlextInfraUtilitiesRefactorPolicy:
 
     @staticmethod
     def target_allowed(
-        *,
-        policy: m.Infra.ClassNestingPolicy,
-        target_namespace: str,
+        *, policy: m.Infra.ClassNestingPolicy, target_namespace: str
     ) -> bool:
         """Check whether policy allows writing the symbol to target namespace."""
         allowed_targets = tuple(policy.allowed_targets)
@@ -162,8 +155,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             }
         if any(
             FlextInfraUtilitiesRefactorPolicy._class_nesting_target_matches(
-                request.target_namespace,
-                pattern,
+                request.target_namespace, pattern
             )
             for pattern in policy.forbidden_targets
         ):
@@ -185,10 +177,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_path: Path | None = None,
     ) -> t.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""
-        symbol = entry.get(c.Infra.RK_LOOSE_NAME, "") or entry.get(
-            "helper_name",
-            "",
-        )
+        symbol = entry.get(c.Infra.RK_LOOSE_NAME, "") or entry.get("helper_name", "")
         target_namespace = entry.get(c.Infra.RK_TARGET_NAMESPACE, "")
         current_file = entry.get(c.Infra.RK_CURRENT_FILE, "")
         if not symbol or not target_namespace or not current_file:
@@ -200,7 +189,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             policy_by_family
             if policy_by_family is not None
             else FlextInfraUtilitiesRefactorPolicy.class_nesting_policy_by_family(
-                policy_path,
+                policy_path
             )
         )
         operation = (
@@ -215,8 +204,7 @@ class FlextInfraUtilitiesRefactorPolicy:
             operation=operation,
         )
         violation = FlextInfraUtilitiesRefactorPolicy._class_nesting_violation(
-            request=request,
-            policy_by_family=policies,
+            request=request, policy_by_family=policies
         )
         return (False, violation) if violation is not None else (True, None)
 

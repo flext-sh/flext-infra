@@ -34,23 +34,19 @@ class FlextInfraUtilitiesRefactorMroScan:
         scanned = 0
         specs = FlextInfraUtilitiesMroScanCatalog.target_specs(normalized)
         for project_root in FlextInfraUtilitiesMroScanCatalog.project_roots(
-            workspace_root.resolve(),
-            project_names,
+            workspace_root.resolve(), project_names
         ):
             for file_path in FlextInfraUtilitiesMroScanCatalog.python_files(
-                project_root,
+                project_root
             ):
                 for spec in specs:
                     if not FlextInfraUtilitiesMroScanCatalog.matches_target(
-                        file_path,
-                        spec,
+                        file_path, spec
                     ):
                         continue
                     scanned += 1
                     report = cls.scan_file(
-                        file_path=file_path,
-                        project_root=project_root,
-                        target_spec=spec,
+                        file_path=file_path, project_root=project_root, target_spec=spec
                     )
                     if report is not None and report.candidates:
                         results.append(report)
@@ -76,8 +72,7 @@ class FlextInfraUtilitiesRefactorMroScan:
         return FlextInfraModelsMroScan.MROScanReport(
             file=str(file_path.resolve()),
             module=FlextInfraUtilitiesMroScanCatalog.module_name(
-                file_path,
-                project_root,
+                file_path, project_root
             ),
             constants_class=facade,
             facade_alias=target_spec.family_alias,

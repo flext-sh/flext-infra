@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import m, p, t
     from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
@@ -29,10 +28,7 @@ class FlextInfraFixerAdapter:
         """Bind the workspace root used during fix execution."""
         self._workspace_root = workspace_root
 
-    def can_fix(
-        self,
-        fix_action: me.EnforcementFixAction,
-    ) -> bool:
+    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind
 

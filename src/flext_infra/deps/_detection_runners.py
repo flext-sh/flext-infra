@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, t, u
 
 if TYPE_CHECKING:
@@ -23,8 +22,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         # Conversion helper provided by the concrete analyzer; declared for static
         # resolution only (runtime impl lives on the concrete via MRO).
         def _to_toml_config(
-            self,
-            payload: t.MappingKV[str, t.Infra.InfraValue],
+            self, payload: t.MappingKV[str, t.Infra.InfraValue]
         ) -> t.Infra.ContainerDict: ...
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
@@ -72,21 +70,17 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if extend_exclude:
             for excluded in extend_exclude:
                 cmd.extend(["--extend-exclude", excluded])
-        result = self._run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
+        result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
         if result.failure:
             return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                result.error or "deptry execution failed",
+                result.error or "deptry execution failed"
             )
         issues: t.SequenceOf[t.Infra.ContainerDict] = []
         if out_file.exists():
             loaded_result = u.Cli.files_read_json(out_file)
             if loaded_result.failure:
                 return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                    loaded_result.error or "deptry JSON output unreadable/invalid",
+                    loaded_result.error or "deptry JSON output unreadable/invalid"
                 )
             if isinstance(loaded_result.value, list):
                 normalized_issues: t.MutableSequenceOf[t.Infra.ContainerDict] = []
@@ -106,7 +100,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     out_file.unlink()
                 except OSError as exc:
                     return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                        f"failed to cleanup deptry temp output: {exc}",
+                        f"failed to cleanup deptry temp output: {exc}"
                     )
         cmd_result: m.Cli.CommandOutput = result.value
         return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok((
@@ -115,8 +109,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         ))
 
     def run_mypy_stub_hints(
-        self,
-        project_path: Path,
+        self, project_path: Path
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy via the command runner to detect missing stubs and hint packages."""
         cmd: t.StrSequence = [
@@ -128,14 +121,10 @@ class FlextInfraDependencyDetectionRunnersMixin:
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]
-        result = self._run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
+        result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
         if result.failure:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                result.error or "mypy execution failed",
+                result.error or "mypy execution failed"
             )
         command_output: m.Cli.CommandOutput = result.value
         output = f"{command_output.stdout}\n{command_output.stderr}"
@@ -155,9 +144,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         ))
 
     def run_pip_check(
-        self,
-        workspace_root: Path,
-        venv_bin: Path,
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[t.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
@@ -172,7 +159,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         )
         if result.failure:
             return r[t.Pair[t.StrSequence, int]].fail(
-                result.error or "pip check failed",
+                result.error or "pip check failed"
             )
         cmd_result: m.Cli.CommandOutput = result.value
         output = cmd_result.stdout

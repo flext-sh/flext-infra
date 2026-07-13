@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra.base import s
 from flext_infra.detectors.silent_failure_detector import (
@@ -20,13 +19,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
     """Validate that failure paths do not collapse into sentinel returns."""
 
     project_filter: Annotated[
-        str | None,
-        m.Field(description="Project filter (comma-separated)"),
+        str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
     def _selected_projects(
-        self,
-        projects: t.SequenceOf[p.Infra.ProjectInfo],
+        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
     ) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the selected projects."""
         if self.project_filter is None:
@@ -41,16 +38,16 @@ class FlextInfraSilentFailureValidator(s[bool]):
         issues: t.MutableSequenceOf[str] = []
         projects_result = u.Infra.projects(self.workspace_root)
         projects = self._selected_projects(
-            tuple(projects_result.unwrap()) if projects_result.success else (),
+            tuple(projects_result.unwrap()) if projects_result.success else ()
         )
         for project in projects:
             iter_result = u.Infra.iter_python_files(
-                m.Infra.SourceScanRequest(project_roots=(project.path,)),
+                m.Infra.SourceScanRequest(project_roots=(project.path,))
             )
             if iter_result.failure:
                 return r[m.Infra.ValidationReport].fail(
                     iter_result.error
-                    or f"python file iteration failed for {project.name}",
+                    or f"python file iteration failed for {project.name}"
                 )
             rope_project = u.Infra.init_rope_project(project.path)
             try:
@@ -62,7 +59,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
                                 file_path=file_path,
                                 project_root=project.path,
                                 rope_project=rope_project,
-                            ),
+                            )
                         )
                     )
             finally:
@@ -75,10 +72,8 @@ class FlextInfraSilentFailureValidator(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=list(issues),
-                summary=summary,
-            ),
+                passed=passed, violations=list(issues), summary=summary
+            )
         )
 
     @override
@@ -91,7 +86,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         report_result = self.build_report()
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "silent failure validation failed",
+                report_result.error or "silent failure validation failed"
             )
         report = report_result.value
         if report.passed:

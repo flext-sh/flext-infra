@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): root exports only direct config/settings singleton surfaces, never loader classes. #}
 
 from {{ upstream }} import r
+
 from {{ package_name }}._config import config
 from {{ package_name }}._settings import settings
 from {{ package_name }}.api import {{ class_stem }}, {{ alias }}
@@ -29,9 +30,9 @@ __all__: list[str] = [
     "{{ class_stem }}Service",
     "{{ class_stem }}Types",
     "{{ class_stem }}Utilities",
+    "{{ alias }}",
     "c",
     "config",
-    "{{ alias }}",
     "m",
     "p",
     "r",

@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraEnsureFormattingToolingPhase:
@@ -24,23 +19,42 @@ class FlextInfraEnsureFormattingToolingPhase:
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,
+        m.Infra.Deps.Toml.PhaseConfig,
+        m.Infra.Deps.Toml.PhaseConfig,
     ]:
         """Build the canonical formatting phases."""
         codespell_builder = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("codespell")
             .table("codespell")
-            .value(
-                "check-filenames",
-                self._tool_config.tools.codespell.check_filenames,
-            )
+            .value("check-filenames", self._tool_config.tools.codespell.check_filenames)
         )
         if self._tool_config.tools.codespell.ignore_words_list:
             codespell_builder = codespell_builder.value(
-                "ignore-words-list",
-                self._tool_config.tools.codespell.ignore_words_list,
+                "ignore-words-list", self._tool_config.tools.codespell.ignore_words_list
             )
         codespell_phase = codespell_builder.build()
+        deptry_phase = (
+            m.Infra.Deps.Toml.PhaseConfig
+            .Builder("deptry")
+            .table("deptry")
+            .list("known_first_party", self._tool_config.tools.deptry.known_first_party)
+            .list(
+                "pep621_dev_dependency_groups",
+                self._tool_config.tools.deptry.pep621_dev_dependency_groups,
+            )
+            .build()
+        )
+        hatch_phase = (
+            m.Infra.Deps.Toml.PhaseConfig
+            .Builder("hatch")
+            .table("hatch", "metadata")
+            .value(
+                "allow-direct-references",
+                self._tool_config.tools.hatch.allow_direct_references,
+            )
+            .build()
+        )
         tomlsort_phase = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("tomlsort")
@@ -55,46 +69,43 @@ class FlextInfraEnsureFormattingToolingPhase:
             .Builder("yamlfix")
             .table("yamlfix")
             .value("line_length", self._tool_config.tools.yamlfix.line_length)
-            .value(
-                "preserve_quotes",
-                self._tool_config.tools.yamlfix.preserve_quotes,
-            )
+            .value("preserve_quotes", self._tool_config.tools.yamlfix.preserve_quotes)
             .value("whitelines", self._tool_config.tools.yamlfix.whitelines)
             .value(
-                "section_whitelines",
-                self._tool_config.tools.yamlfix.section_whitelines,
+                "section_whitelines", self._tool_config.tools.yamlfix.section_whitelines
             )
-            .value(
-                "explicit_start",
-                self._tool_config.tools.yamlfix.explicit_start,
-            )
+            .value("explicit_start", self._tool_config.tools.yamlfix.explicit_start)
             .build()
         )
-        return (codespell_phase, tomlsort_phase, yamlfix_phase)
+        return (
+            codespell_phase,
+            deptry_phase,
+            hatch_phase,
+            tomlsort_phase,
+            yamlfix_phase,
+        )
 
     @staticmethod
     def _remove_codespell_skip_doc(doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Remove the stale hardcoded codespell skip entry from one TOML document."""
         tool_table = u.Cli.toml_table_child(doc, "tool")
         if tool_table is None:
-            return []
+            return ()
         codespell_table = u.Cli.toml_table_child(tool_table, "codespell")
         if codespell_table is None or "skip" not in codespell_table:
-            return []
+            return ()
         del codespell_table["skip"]
         return ["removed codespell.skip hardcode"]
 
     @staticmethod
-    def _remove_codespell_skip_payload(
-        payload: t.MutableJsonMapping,
-    ) -> t.StrSequence:
+    def _remove_codespell_skip_payload(payload: t.MutableJsonMapping) -> t.StrSequence:
         """Remove the stale hardcoded codespell skip entry from one plain payload."""
         codespell_table = u.Cli.toml_mapping_path(payload, ("tool", "codespell"))
         if codespell_table is None:
-            return []
+            return ()
         if u.Cli.toml_mapping_remove_key_if_present(codespell_table, "skip"):
             return ["removed codespell.skip hardcode"]
-        return []
+        return ()
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
         """Apply canonical codespell, tomlsort, and yamlfix configuration."""
@@ -102,13 +113,10 @@ class FlextInfraEnsureFormattingToolingPhase:
         changes.extend(self._remove_codespell_skip_doc(doc))
         return changes
 
-    def apply_payload(
-        self,
-        payload: t.MutableJsonMapping,
-    ) -> t.StrSequence:
+    def apply_payload(self, payload: t.MutableJsonMapping) -> t.StrSequence:
         """Apply formatting defaults directly to one normalized payload."""
         changes = list(
-            FlextInfraTomlPhaseService.apply_payload_phases(payload, *self._phases()),
+            FlextInfraTomlPhaseService.apply_payload_phases(payload, *self._phases())
         )
         changes.extend(self._remove_codespell_skip_payload(payload))
         return changes

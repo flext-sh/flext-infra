@@ -143,8 +143,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @classmethod
     def _impact_map_results(
-        cls,
-        report: m.Infra.Census.WorkspaceReport,
+        cls, report: m.Infra.Census.WorkspaceReport
     ) -> tuple[m.Infra.Result, ...]:
         """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)
@@ -173,9 +172,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _append_impact_change(
-        changes_by_file: dict[Path, list[str]],
-        file_path: Path,
-        change: str,
+        changes_by_file: dict[Path, list[str]], file_path: Path, change: str
     ) -> None:
         """Append impact change."""
         normalized_path = file_path.resolve()

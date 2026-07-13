@@ -21,44 +21,30 @@ class FlextInfraModelsWorkspace:
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
-    class ProjectInfo(
-        mm.ProjectEntryNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class ProjectInfo(mm.ProjectEntryNameMixin, m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            validate_default=False,
+            frozen=True, validate_default=False
         )
 
         path: Annotated[Path, m.Field(description="Absolute or relative project path")]
-        stack: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Primary technology stack"),
-        ]
+        stack: Annotated[t.NonEmptyStr, m.Field(description="Primary technology stack")]
         has_tests: Annotated[bool, m.Field(description="Project has test suite")] = (
             False
         )
         has_src: Annotated[
-            bool,
-            m.Field(description="Project has source directory"),
+            bool, m.Field(description="Project has source directory")
         ] = True
         project_class: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Docs/governance project classification",
-            ),
+            t.NonEmptyStr, m.Field(description="Docs/governance project classification")
         ] = "platform"
         package_name: Annotated[
-            str,
-            m.Field(description="Primary Python package name"),
+            str, m.Field(description="Primary Python package name")
         ] = ""
         workspace_role: Annotated[
             c.Infra.WorkspaceProjectRole,
-            m.Field(
-                description="Operational role relative to the uv workspace root",
-            ),
+            m.Field(description="Operational role relative to the uv workspace root"),
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
@@ -69,41 +55,34 @@ class FlextInfraModelsWorkspace:
         """
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            validate_default=False,
+            frozen=True, validate_default=False
         )
 
         project_root: Annotated[Path, m.Field(description="Project root path")]
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         payload: Annotated[
-            t.Infra.ContainerDict,
-            m.Field(description="Parsed pyproject payload"),
+            t.Infra.ContainerDict, m.Field(description="Parsed pyproject payload")
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         docs_meta: Annotated[
-            t.Infra.ContainerDict,
-            m.Field(description="Parsed tool.flext.docs payload"),
+            t.Infra.ContainerDict, m.Field(description="Parsed tool.flext.docs payload")
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[
-            t.StrSequence,
-            m.Field(description="Declared dependency names"),
+            t.StrSequence, m.Field(description="Declared dependency names")
         ] = m.Field(default_factory=tuple)
 
     class SyncResult(m.ArbitraryTypesModel):
         """Result payload for sync operations."""
 
         files_changed: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total changed files"),
+            t.NonNegativeInt, m.Field(description="Total changed files")
         ] = 0
         source: Annotated[Path, m.Field(description="Sync source path")]
         target: Annotated[Path, m.Field(description="Sync target path")]
         timestamp: Annotated[
             datetime,
-            m.Field(
-                description="Execution timestamp in the configured timezone",
-            ),
+            m.Field(description="Execution timestamp in the configured timezone"),
         ] = m.Field(default_factory=u.now)
 
         @u.field_serializer("source", "target", when_used="json")
@@ -116,20 +95,15 @@ class FlextInfraModelsWorkspace:
             """Serialize execution timestamp for JSON result boundaries."""
             return value.isoformat()
 
-    class MigrationResult(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class MigrationResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Migration operation outcome with applied changes and errors."""
 
-        changes: Annotated[
-            t.StrSequence,
-            m.Field(description="Applied changes"),
-        ] = m.Field(default_factory=tuple)
-        errors: Annotated[
-            t.StrSequence,
-            m.Field(description="Migration errors"),
-        ] = m.Field(default_factory=tuple)
+        changes: Annotated[t.StrSequence, m.Field(description="Applied changes")] = (
+            m.Field(default_factory=tuple)
+        )
+        errors: Annotated[t.StrSequence, m.Field(description="Migration errors")] = (
+            m.Field(default_factory=tuple)
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspace"]

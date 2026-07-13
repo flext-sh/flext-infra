@@ -10,15 +10,12 @@ type _InfraResultValue = t.Cli.ResultValue
 
 
 class FlextInfraProjectSelectionServiceBase[TDomainResult: _InfraResultValue](
-    FlextInfraServiceBase[TDomainResult],
-    FlextInfraProjectSelectionMixin,
+    FlextInfraServiceBase[TDomainResult], FlextInfraProjectSelectionMixin
 ):
     """Shared service foundation for commands that target workspace projects."""
 
     selected_projects: t.StrSequence | None = m.Field(
-        default=None,
-        alias="projects",
-        description="Projects to process",
+        default=None, alias="projects", description="Projects to process"
     )
 
 

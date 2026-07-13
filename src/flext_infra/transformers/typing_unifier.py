@@ -63,21 +63,16 @@ class FlextInfraRefactorTypingUnifier(
         if self._is_definition_file:
             return source, list(self.changes)
         for member_set, canonical in sorted(
-            self._canonical_map.items(),
-            key=lambda i: len(i[0]),
-            reverse=True,
+            self._canonical_map.items(), key=lambda i: len(i[0]), reverse=True
         ):
             pattern = self._union_pattern(member_set)
             if pattern is None:
                 continue
 
-            def replacer(
-                match: t.Infra.RegexMatch,
-                canonical: str = canonical,
-            ) -> str:
+            def replacer(match: t.Infra.RegexMatch, canonical: str = canonical) -> str:
                 """Replace one matched union with the canonical alias."""
                 self._record_change(
-                    f"Canonicalized inline union {match.group(0)} -> {canonical}",
+                    f"Canonicalized inline union {match.group(0)} -> {canonical}"
                 )
                 return canonical
 
@@ -85,13 +80,12 @@ class FlextInfraRefactorTypingUnifier(
         source = self._canonicalize_annotation_builtins(source)
         source = self._modernize_typealias(source)
         added, did_add = self._ensure_t_import(
-            source,
-            self._canonical_import_module(self._file_path),
+            source, self._canonical_import_module(self._file_path)
         )
         if did_add:
             self._record_change(
                 "Added canonical t import from "
-                f"{self._canonical_import_module(self._file_path)}",
+                f"{self._canonical_import_module(self._file_path)}"
             )
         source = added
         return source, list(self.changes)
@@ -110,20 +104,15 @@ class FlextInfraRefactorTypingUnifier(
             return None
         escaped = [c.Infra.escape(m) for m in sorted(members)]
         part = rf"(?:{'|'.join(escaped)})"
-        return c.Infra.compile(
-            rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b",
-        )
+        return c.Infra.compile(rf"\b{part}(?:\s*\|\s*{part}){{{len(members) - 1}}}\b")
 
     def _modernize_typealias(self, source: str) -> str:
         """Convert ``X: TypeAlias = expr`` to ``type X = expr`` (PEP 695)."""
         for match in c.Infra.LEGACY_TYPEALIAS_RE.finditer(source):
             self._record_change(
-                f"Converted legacy TypeAlias assignment: {match.group(1)}",
+                f"Converted legacy TypeAlias assignment: {match.group(1)}"
             )
-        new_source: str = c.Infra.LEGACY_TYPEALIAS_RE.sub(
-            r"type \1 = \2",
-            source,
-        )
+        new_source: str = c.Infra.LEGACY_TYPEALIAS_RE.sub(r"type \1 = \2", source)
         return new_source
 
     @staticmethod

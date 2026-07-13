@@ -22,11 +22,7 @@ class FlextInfraUtilitiesIterationMatching:
 
     @classmethod
     def iter_matching_files(
-        cls,
-        root: Path,
-        *,
-        includes: t.StrSequence,
-        excludes: t.StrSequence = (),
+        cls, root: Path, *, includes: t.StrSequence, excludes: t.StrSequence = ()
     ) -> t.SequenceOf[Path]:
         """Return files in one scope through the canonical git-aware selection path."""
         if not root.is_dir():
@@ -38,24 +34,22 @@ class FlextInfraUtilitiesIterationMatching:
             if tracked_files is not None
             else [path for path in root.rglob("*") if path.is_file()]
         )
-        return sorted(
-            {
-                path
-                for path in candidates
-                if path.is_file()
-                if (
-                    not includes
-                    or any(
-                        fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
-                        for pattern in includes
-                    )
-                )
-                if not any(
+        return sorted({
+            path
+            for path in candidates
+            if path.is_file()
+            if (
+                not includes
+                or any(
                     fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
-                    for pattern in excludes
+                    for pattern in includes
                 )
-            },
-        )
+            )
+            if not any(
+                fnmatch.fnmatch(path.relative_to(root).as_posix(), pattern)
+                for pattern in excludes
+            )
+        })
 
 
 __all__: list[str] = ["FlextInfraUtilitiesIterationMatching"]

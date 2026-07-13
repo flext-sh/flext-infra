@@ -2,6 +2,5 @@
 {{ ns }}:
   name: "{{ const_name }}"
   version: "{{ version }}"
-  greeting: "hello"
-  ping_reply: "pong"
-  disabled_reply: "disabled"
+  ping_reply: {{ scaffold.ping_example.reply | tojson }}
+  disabled_reply: {{ scaffold.ping_example.disabled_reply | tojson }}

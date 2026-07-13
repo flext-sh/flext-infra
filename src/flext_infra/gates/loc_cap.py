@@ -30,10 +30,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Run tokei over the project's Python directories, emitting JSON."""
         _ = project_dir, ctx
@@ -41,10 +38,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
@@ -66,8 +60,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for language, payload in data.items():
             if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(
-                payload,
-                Mapping,
+                payload, Mapping
             ):
                 continue
             reports = payload.get("reports")
@@ -87,7 +80,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
                             code="LOC_CAP",
                             message=f"{code} code LOC exceeds {cap}-line SUPREME LAW",
                             severity="ERROR",
-                        ),
+                        )
                     )
         return tuple(issues)
 

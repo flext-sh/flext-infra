@@ -1,30 +1,7 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-.eggs/
-build/
-dist/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# FLEXT
-.venv/
-.reports/
-# NOTE(mro-wkii.14, agent codegen): .flext-src/* are git SUBMODULES (versioned
-# via .gitmodules), NOT ignored. The editable overlay lives in .venv, nothing to ignore.
-*.tpl.rej
-
-# Env / secrets
-.env
-.env.*
-
-# Editors
-.vscode/
-.idea/
-*.swp
-.DS_Store
+{% for section in scaffold.gitignore_sections -%}
+# {{ section.name }}
+{% for pattern in section.patterns -%}
+{{ pattern }}
+{% endfor -%}
+{% if not loop.last %}{{ "\n" }}{% endif -%}
+{% endfor -%}

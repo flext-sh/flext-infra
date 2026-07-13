@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
@@ -22,13 +21,11 @@ class FlextInfraRefactorLooseClassScanner:
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():
             out: p.Result[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
-                f"src not found: {src_root}",
+                f"src not found: {src_root}"
             )
             return out
         violations, targets_found, classes_scanned, files_scanned = (
-            self._scan_discovered_files(
-                project_root=project_root,
-            )
+            self._scan_discovered_files(project_root=project_root)
         )
         return r[t.Infra.ContainerDict].ok(
             self._build_report(
@@ -36,19 +33,16 @@ class FlextInfraRefactorLooseClassScanner:
                 violations=violations,
                 targets_found=targets_found,
                 classes_scanned=classes_scanned,
-            ),
+            )
         )
 
     def _scan_discovered_files(
-        self,
-        *,
-        project_root: Path,
+        self, *, project_root: Path
     ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
         """Scan discovered files."""
         violations: t.MutableSequenceOf[m.Infra.LooseClassViolation] = []
         targets_found: dict[str, bool] = dict.fromkeys(
-            c.Infra.REQUIRED_CLASS_TARGETS,
-            False,
+            c.Infra.REQUIRED_CLASS_TARGETS, False
         )
         classes_scanned = 0
         files_scanned = 0
@@ -69,9 +63,7 @@ class FlextInfraRefactorLooseClassScanner:
                 classes_scanned += len(class_info)
                 for occ in (
                     m.Infra.ClassOccurrence(
-                        name=ci.name,
-                        line=ci.line,
-                        is_top_level=True,
+                        name=ci.name, line=ci.line, is_top_level=True
                     )
                     for ci in class_info
                 ):
@@ -98,7 +90,7 @@ class FlextInfraRefactorLooseClassScanner:
         ]
         confidence_counts: t.MappingKV[str, t.Infra.InfraValue] = dict(counters)
         required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
-            targets_found,
+            targets_found
         )
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
@@ -111,9 +103,7 @@ class FlextInfraRefactorLooseClassScanner:
         })
 
     def _build_violation(
-        self,
-        rel_path: Path,
-        occ: m.Infra.ClassOccurrence,
+        self, rel_path: Path, occ: m.Infra.ClassOccurrence
     ) -> m.Infra.LooseClassViolation | None:
         """Build violation."""
         if not occ.is_top_level:

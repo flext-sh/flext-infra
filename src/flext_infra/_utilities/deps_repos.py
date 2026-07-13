@@ -7,14 +7,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, m, settings, t
 
 if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
+    from collections.abc import MutableMapping
 
     from flext_infra import p
 
@@ -31,10 +29,10 @@ class FlextInfraInternalSyncRepoMixin:
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
             return r[t.Infra.ContainerDict].fail(
-                plain_result.error or f"failed to read {path}",
+                plain_result.error or f"failed to read {path}"
             )
         return r[t.Infra.ContainerDict].ok(
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value),
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value)
         )
 
     @classmethod
@@ -57,8 +55,7 @@ class FlextInfraInternalSyncRepoMixin:
     def infer_owner_from_origin(self, project_root: Path) -> str | None:
         """Infer GitHub owner from remote origin URL."""
         remote = u.Cli.capture(
-            [c.Infra.GIT, "config", "--get", "remote.origin.url"],
-            cwd=project_root,
+            [c.Infra.GIT, "config", "--get", "remote.origin.url"], cwd=project_root
         )
         if remote.failure:
             return None
@@ -101,20 +98,18 @@ class FlextInfraInternalSyncRepoMixin:
             if not repo_url:
                 continue
             mapping[repo_name] = m.Infra.RepoUrls(
-                ssh_url=repo_url,
-                https_url=self.ssh_to_https(repo_url),
+                ssh_url=repo_url, https_url=self.ssh_to_https(repo_url)
             )
         return mapping
 
     def parse_repo_map(
-        self,
-        path: Path,
+        self, path: Path
     ) -> p.Result[t.MappingKV[str, m.Infra.RepoUrls]]:
         """Parse flext-repo-map TOML into repository URL entries."""
         data_result = self._read_plain(path)
         if data_result.failure:
             return r[t.MappingKV[str, m.Infra.RepoUrls]].fail(
-                data_result.error or "failed to read repository map",
+                data_result.error or "failed to read repository map"
             )
         data = data_result.value
         repos_obj = u.Cli.json_deep_mapping(data, "repo")
@@ -129,8 +124,7 @@ class FlextInfraInternalSyncRepoMixin:
             https_url = str(values_map.get("https_url", self.ssh_to_https(ssh_url)))
             if ssh_url:
                 result[repo_name] = m.Infra.RepoUrls(
-                    ssh_url=ssh_url,
-                    https_url=https_url,
+                    ssh_url=ssh_url, https_url=https_url
                 )
         return r[t.MappingKV[str, m.Infra.RepoUrls]].ok(result)
 
@@ -144,8 +138,7 @@ class FlextInfraInternalSyncRepoMixin:
                 if value:
                     return value
         branch = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=project_root,
+            [c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"], cwd=project_root
         )
         if branch.success:
             branch_val: str = branch.value
@@ -153,8 +146,7 @@ class FlextInfraInternalSyncRepoMixin:
             if current_branch and current_branch != c.Infra.GIT_HEAD:
                 return current_branch
         tag = u.Cli.capture(
-            [c.Infra.GIT, "describe", "--tags", "--exact-match"],
-            cwd=project_root,
+            [c.Infra.GIT, "describe", "--tags", "--exact-match"], cwd=project_root
         )
         if tag.success:
             tag_val: str = tag.value
@@ -164,17 +156,14 @@ class FlextInfraInternalSyncRepoMixin:
         return default_branch
 
     def synthesized_repo_map(
-        self,
-        owner: str,
-        repo_names: t.Infra.StrSet,
+        self, owner: str, repo_names: t.Infra.StrSet
     ) -> t.MappingKV[str, m.Infra.RepoUrls]:
         """Build default repository URL mapping from owner and repo set."""
         result: MutableMapping[str, m.Infra.RepoUrls] = {}
         for repo_name in sorted(repo_names):
             ssh_url = f"git@github.com:{owner}/{repo_name}.git"
             result[repo_name] = m.Infra.RepoUrls(
-                ssh_url=ssh_url,
-                https_url=self.ssh_to_https(ssh_url),
+                ssh_url=ssh_url, https_url=self.ssh_to_https(ssh_url)
             )
         return result
 

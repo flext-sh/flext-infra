@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import config, t
 from flext_infra._iteration_directory import FlextInfraUtilitiesIterationDirectory
 
@@ -23,8 +22,7 @@ class FlextInfraUtilitiesIterationWorkspace:
 
     @classmethod
     def iter_python_files(
-        cls,
-        request: p.Infra.SourceScanRequest,
+        cls, request: p.Infra.SourceScanRequest
     ) -> p.Result[t.SequenceOf[Path]]:
         """Return Python files from the exact production roots in ``request``.
 
@@ -46,7 +44,7 @@ class FlextInfraUtilitiesIterationWorkspace:
                 for directory_name in config.Infra.source_scan.roots
                 if (directory := project_root / directory_name).is_dir()
                 for file_path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                    directory,
+                    directory
                 )
             }
             return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))

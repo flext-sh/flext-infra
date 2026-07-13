@@ -15,9 +15,7 @@ from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
-    class MROImportRewrite(
-        m.ArbitraryTypesModel,
-    ):
+    class MROImportRewrite(m.ArbitraryTypesModel):
         """Unified import rewrite payload for MRO reference updates."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
@@ -26,10 +24,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             ""
         )
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
-        import_name: Annotated[
-            str,
-            m.Field(description="Imported symbol name"),
-        ]
+        import_name: Annotated[str, m.Field(description="Imported symbol name")]
         as_name: Annotated[str | None, m.Field(description="Optional alias")] = None
         symbol: Annotated[str, m.Field(description="Resolved symbol in facade")] = ""
 
@@ -39,12 +34,10 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
         moved_symbols: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Symbols moved to facade class",
+            default_factory=tuple, description="Symbols moved to facade class"
         )
         created_classes: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Facade classes created during migration",
+            default_factory=tuple, description="Facade classes created during migration"
         )
 
     class MRORewriteResult(m.ArbitraryTypesModel):
@@ -52,20 +45,13 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         replacements: Annotated[
-            int,
-            m.Field(description="Reference replacements applied"),
+            int, m.Field(description="Reference replacements applied")
         ]
 
-    class MROMigrationReport(
-        mm.CheckpointRefMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class MROMigrationReport(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
         """End-to-end report for migrate-to-mro command execution."""
 
-        workspace: Annotated[
-            str,
-            m.Field(description="Workspace root path"),
-        ]
+        workspace: Annotated[str, m.Field(description="Workspace root path")]
         target: Annotated[t.NonEmptyStr, m.Field(description="constants|typings|all")]
         selected_projects: t.VariadicTuple[str] = m.Field(
             default_factory=tuple,
@@ -75,19 +61,12 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         validation_mode: Annotated[
             str,
             m.Field(
-                description="Validation strategy used for remaining violation counts",
+                description="Validation strategy used for remaining violation counts"
             ),
         ] = "post-apply-rescan"
-        files_scanned: Annotated[
-            int,
-            m.Field(description="Total scanned Python files"),
-        ]
+        files_scanned: Annotated[int, m.Field(description="Total scanned Python files")]
         files_with_candidates: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                description="Files containing movable declarations",
-            ),
+            int, m.Field(ge=0, description="Files containing movable declarations")
         ]
         migrations: t.VariadicTuple[FlextInfraModelsRefactorGrep.MROFileMigration] = (
             m.Field(default_factory=tuple, description="File migration summaries")
@@ -96,45 +75,28 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(default_factory=tuple, description="Reference rewrite summaries")
         )
         remaining_violations: Annotated[
-            int,
-            m.Field(
-                ge=0,
-                description="Loose declarations remaining after run",
-            ),
+            int, m.Field(ge=0, description="Loose declarations remaining after run")
         ]
         mro_failures: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="MRO validation failures"),
+            t.NonNegativeInt, m.Field(description="MRO validation failures")
         ]
         scan_duration_seconds: Annotated[
-            float,
-            m.Field(ge=0.0, description="Scan phase duration in seconds"),
+            float, m.Field(ge=0.0, description="Scan phase duration in seconds")
         ] = 0.0
         rewrite_duration_seconds: Annotated[
-            float,
-            m.Field(
-                ge=0.0,
-                description="Rewrite phase duration in seconds",
-            ),
+            float, m.Field(ge=0.0, description="Rewrite phase duration in seconds")
         ] = 0.0
         validation_duration_seconds: Annotated[
-            float,
-            m.Field(
-                ge=0.0,
-                description="Validation phase duration in seconds",
-            ),
+            float, m.Field(ge=0.0, description="Validation phase duration in seconds")
         ] = 0.0
         total_duration_seconds: Annotated[
-            float,
-            m.Field(ge=0.0, description="Total run duration in seconds"),
+            float, m.Field(ge=0.0, description="Total run duration in seconds")
         ] = 0.0
         warnings: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Warnings",
+            default_factory=tuple, description="Warnings"
         )
         errors: t.VariadicTuple[str] = m.Field(
-            default_factory=tuple,
-            description="Errors",
+            default_factory=tuple, description="Errors"
         )
 
     class RefactorConfig(m.ContractModel):
@@ -152,8 +114,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             description="Relative directories scanned for candidate files",
         )
         ignore_patterns: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Glob/file patterns ignored during scan",
+            default_factory=tuple, description="Glob/file patterns ignored during scan"
         )
         file_extensions: t.StrSequence = m.Field(
             default_factory=tuple,
@@ -170,12 +131,9 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
 
         category: Annotated[str | None, m.Field(description="Method category")] = None
-        visibility: Annotated[
-            str | None,
-            m.Field(
-                description="Visibility filter",
-            ),
-        ] = None
+        visibility: Annotated[str | None, m.Field(description="Visibility filter")] = (
+            None
+        )
         exclude_decorators: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Decorators excluded from the ordering rule",
@@ -201,12 +159,9 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         """
 
         id: Annotated[str, m.Field(description="Migration ID")] = "signature-migration"
-        enabled: Annotated[
-            bool,
-            m.Field(
-                description="Whether migration is active",
-            ),
-        ] = True
+        enabled: Annotated[bool, m.Field(description="Whether migration is active")] = (
+            True
+        )
         target_qualified_names: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Qualified symbol names targeted by the migration",
@@ -224,8 +179,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             description="Keywords removed from matching callsites",
         )
         add_keywords: t.StrMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
-            description="Keywords to add",
+            default_factory=lambda: MappingProxyType({}), description="Keywords to add"
         )
 
     class ImportModernizerRuleConfig(m.ContractModel):
@@ -247,8 +201,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         source_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical symbol name to replace"),
+            t.NonEmptyStr, m.Field(description="Canonical symbol name to replace")
         ]
         replacement_name: Annotated[
             t.NonEmptyStr,
@@ -259,10 +212,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(description="Human-readable explanation for the rename"),
         ]
         origin: Annotated[
-            str,
-            m.Field(
-                description="Canonical API origin this rewrite is tied to",
-            ),
+            str, m.Field(description="Canonical API origin this rewrite is tied to")
         ] = ""
 
     class AccessorMigrationChange(m.ArbitraryTypesModel):
@@ -276,20 +226,17 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(description="1-based source line number when available"),
         ]
         original_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Original accessor or helper name"),
+            t.NonEmptyStr, m.Field(description="Original accessor or helper name")
         ]
         replacement_name: Annotated[
-            str,
-            m.Field(description="Suggested or applied replacement name"),
+            str, m.Field(description="Suggested or applied replacement name")
         ] = ""
         automated: Annotated[
             bool,
             m.Field(description="Whether the migration was performed automatically"),
         ]
         reason: Annotated[
-            str,
-            m.Field(description="Human-readable migration rationale"),
+            str, m.Field(description="Human-readable migration rationale")
         ]
 
     class AccessorMigrationFile(m.ArbitraryTypesModel):
@@ -315,12 +262,10 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         warnings: t.VariadicTuple[
             FlextInfraModelsRefactorGrep.AccessorMigrationChange
         ] = m.Field(
-            default_factory=tuple,
-            description="Manual follow-up warnings for this file",
+            default_factory=tuple, description="Manual follow-up warnings for this file"
         )
         diff: Annotated[
-            str,
-            m.Field(description="Unified diff preview for the file"),
+            str, m.Field(description="Unified diff preview for the file")
         ] = ""
         lint_before: Annotated[
             t.MappingKV[str, t.StrSequence],
@@ -347,16 +292,13 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]
         files_scanned: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total Python files scanned"),
+            t.NonNegativeInt, m.Field(description="Total Python files scanned")
         ]
         files_with_changes: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Files with automated rewrites"),
+            t.NonNegativeInt, m.Field(description="Files with automated rewrites")
         ]
         automated_change_count: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total automated rewrites detected"),
+            t.NonNegativeInt, m.Field(description="Total automated rewrites detected")
         ]
         warning_count: Annotated[
             t.NonNegativeInt,

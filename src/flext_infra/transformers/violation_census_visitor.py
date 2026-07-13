@@ -48,18 +48,12 @@ class FlextInfraViolationCensusVisitor:
     def _check_literal_usage(self, source: str) -> None:
         """Check literal usage."""
         for _ in c.Infra.CensusPatterns.LITERAL_RE.finditer(source):
-            self._add_record(
-                kind="literal_usage",
-                detail="Found Literal[...] usage.",
-            )
+            self._add_record(kind="literal_usage", detail="Found Literal[...] usage.")
 
     def _check_cast_calls(self, source: str) -> None:
         """Check cast calls."""
         for _ in c.Infra.CensusPatterns.CAST_RE.finditer(source):
-            self._add_record(
-                kind="redundant_cast",
-                detail="Found cast(...) call.",
-            )
+            self._add_record(kind="redundant_cast", detail="Found cast(...) call.")
 
     def _check_imports(self, source: str) -> None:
         """Check imports."""

@@ -10,12 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesRopeMroTransform:
@@ -23,8 +19,7 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def migrate_file(
-        *,
-        scan_result: m.Infra.MROScanReport,
+        *, scan_result: m.Infra.MROScanReport
     ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -67,9 +62,7 @@ class FlextInfraUtilitiesRopeMroTransform:
             if cand.symbol != target:
                 block_lines = (
                     FlextInfraUtilitiesRopeMroTransform._rename_symbol_in_block(
-                        block_lines=block_lines,
-                        symbol=cand.symbol,
-                        target=target,
+                        block_lines=block_lines, symbol=cand.symbol, target=target
                     )
                 )
 
@@ -95,27 +88,21 @@ class FlextInfraUtilitiesRopeMroTransform:
             lines = lines[:insert_idx] + moved_code + lines[insert_idx:]
             created_classes = ()
         else:
-            lines.extend(
-                [
-                    "",
-                    "",
-                    f"class {class_name}:",
-                    '    """Module constants."""',
-                    *moved_code,
-                ],
-            )
+            lines.extend([
+                "",
+                "",
+                f"class {class_name}:",
+                '    """Module constants."""',
+                *moved_code,
+            ])
             created_classes = (class_name,)
 
         lines = FlextInfraUtilitiesRopeMroTransform._drop_redundant_class_aliases(
-            lines=lines,
-            class_name=class_name,
-            symbol_map=symbol_map,
+            lines=lines, class_name=class_name, symbol_map=symbol_map
         )
         new_source = "\n".join(lines) + "\n"
         new_source = FlextInfraUtilitiesRopeMroTransform._qualify_local_references(
-            source=new_source,
-            facade_alias=facade_alias,
-            symbol_map=symbol_map,
+            source=new_source, facade_alias=facade_alias, symbol_map=symbol_map
         )
 
         migration = m.Infra.MROFileMigration(
@@ -128,16 +115,11 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def _rename_symbol_in_block(
-        *,
-        block_lines: t.StrSequence,
-        symbol: str,
-        target: str,
+        *, block_lines: t.StrSequence, symbol: str, target: str
     ) -> list[str]:
         """Rename symbol in block."""
         renamed_lines = list(block_lines)
-        line_start_pattern = c.Infra.compile(
-            rf"^\s*{c.Infra.escape(symbol)}\b",
-        )
+        line_start_pattern = c.Infra.compile(rf"^\s*{c.Infra.escape(symbol)}\b")
         word_pattern = c.Infra.compile_word(symbol)
         for index, line in enumerate(renamed_lines):
             if f"class {symbol}" not in line and not line_start_pattern.match(line):
@@ -153,10 +135,7 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def _drop_redundant_class_aliases(
-        *,
-        lines: t.StrSequence,
-        class_name: str,
-        symbol_map: t.StrMapping,
+        *, lines: t.StrSequence, class_name: str, symbol_map: t.StrMapping
     ) -> list[str]:
         """Drop redundant class aliases."""
         alias_lines = {
@@ -183,10 +162,7 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def _qualify_local_references(
-        *,
-        source: str,
-        facade_alias: str,
-        symbol_map: t.StrMapping,
+        *, source: str, facade_alias: str, symbol_map: t.StrMapping
     ) -> str:
         """Qualify local references."""
         updated_source = source
@@ -196,14 +172,8 @@ class FlextInfraUtilitiesRopeMroTransform:
             annotation_pattern = c.Infra.compile_mro_prefixed_annotation(":", symbol)
             return_pattern = c.Infra.compile_mro_prefixed_annotation("->", symbol)
             updated_source = bare_pattern.sub(qualified, updated_source)
-            updated_source = annotation_pattern.sub(
-                rf"\1{qualified}",
-                updated_source,
-            )
-            updated_source = return_pattern.sub(
-                rf"\1{qualified}",
-                updated_source,
-            )
+            updated_source = annotation_pattern.sub(rf"\1{qualified}", updated_source)
+            updated_source = return_pattern.sub(rf"\1{qualified}", updated_source)
         return updated_source
 
 

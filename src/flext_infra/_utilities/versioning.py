@@ -8,16 +8,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_core import r
-
-from flext_infra import c, t
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesVersioning:
@@ -81,8 +74,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def bump_version(
-        version: str,
-        bump_type: str | c.Infra.VersionBump,
+        version: str, bump_type: str | c.Infra.VersionBump
     ) -> p.Result[str]:
         """Bump a semantic version string.
 
@@ -130,7 +122,7 @@ class FlextInfraUtilitiesVersioning:
         except OSError as exc:
             return r[str].fail_op("read", exc)
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
-            content,
+            content
         )
         if version is None or not version.strip():
             return r[str].fail("version not found in pyproject.toml")
@@ -176,8 +168,7 @@ class FlextInfraUtilitiesVersioning:
         if not FlextInfraUtilitiesVersioning._has_project_table(content):
             return r[bool].fail(f"missing [project] table in {pyproject}")
         updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(
-            content,
-            version,
+            content, version
         )
         if updated is None:
             return r[bool].fail(f"missing [project] version in {pyproject}")

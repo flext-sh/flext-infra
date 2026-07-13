@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, ClassVar
+from collections.abc import MutableMapping
+from pathlib import Path
+from types import MappingProxyType
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -15,11 +18,8 @@ from flext_infra._utilities.namespace_common import (
 )
 from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 
-if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
-    from pathlib import Path
+# mro-j47u (codex): annotation-only stdlib types are safe runtime imports;
+# TYPE_CHECKING is reserved for real reverse-dependency cycle boundaries.
 
 
 class FlextInfraUtilitiesRefactorNamespaceFacades:
@@ -28,19 +28,16 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
     _base_chains_cache: ClassVar[MutableMapping[Path, t.StrSequenceMapping]] = {}
 
     @staticmethod
-    def build_expected_base_chains(
-        *,
-        project_root: Path,
-    ) -> t.StrSequenceMapping:
+    def build_expected_base_chains(*, project_root: Path) -> t.StrSequenceMapping:
         """Build expected base chains."""
         resolved = project_root.resolve()
         cached = FlextInfraUtilitiesRefactorNamespaceFacades._base_chains_cache.get(
-            resolved,
+            resolved
         )
         if cached is not None:
             return cached
         result = FlextInfraUtilitiesRefactorNamespaceFacades._compute_base_chains(
-            project_root=resolved,
+            project_root=resolved
         )
         FlextInfraUtilitiesRefactorNamespaceFacades._base_chains_cache[resolved] = (
             result
@@ -48,28 +45,27 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         return result
 
     @staticmethod
-    def _compute_base_chains(
-        *,
-        project_root: Path,
-    ) -> t.StrSequenceMapping:
+    def _compute_base_chains(*, project_root: Path) -> t.StrSequenceMapping:
         """Compute base chains."""
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject_path.exists():
-            return {}
+            return MappingProxyType(dict[str, tuple[str, ...]]())
         try:
             raw = pyproject_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError:
-            return {}
+            return MappingProxyType(dict[str, tuple[str, ...]]())
         payload = u.Cli.toml_mapping_from_text(raw)
         if payload is None:
-            return {}
-        dep_names = FlextInfraUtilitiesDependencies.local_dependency_names_from_payload(
-            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload),
+            return MappingProxyType(dict[str, tuple[str, ...]]())
+        dep_names = (
+            FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+            )
         )
         chains: t.MutableStrSequenceMapping = defaultdict(list)
         for dep_name in dep_names:
             if dep_name == c.Infra.PKG_CORE or not dep_name.startswith(
-                c.Infra.PKG_PREFIX_HYPHEN,
+                c.Infra.PKG_PREFIX_HYPHEN
             ):
                 continue
             stem = u.derive_class_stem(dep_name)
@@ -79,9 +75,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
 
     @staticmethod
     def _base_import_for_family(
-        *,
-        family: str,
-        base_chains: t.StrSequenceMapping | None = None,
+        *, family: str, base_chains: t.StrSequenceMapping | None = None
     ) -> str:
         """Return the base import for family."""
         if base_chains:
@@ -96,9 +90,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
 
     @staticmethod
     def _base_class_for_family(
-        *,
-        family: str,
-        base_chains: t.StrSequenceMapping | None = None,
+        *, family: str, base_chains: t.StrSequenceMapping | None = None
     ) -> str:
         """Return the base class for family."""
         if base_chains:
@@ -156,7 +148,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         stem = layout.class_stem
         base_chains = (
             FlextInfraUtilitiesRefactorNamespaceFacades.build_expected_base_chains(
-                project_root=project_root,
+                project_root=project_root
             )
             if workspace_root is not None
             else None
@@ -167,8 +159,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             suffix = c.Infra.FAMILY_SUFFIXES[status.family]
             class_name = f"{stem}{suffix}"
             file_name = c.Infra.FAMILY_FILES.get(
-                status.family,
-                c.Infra.UTILITIES_PY,
+                status.family, c.Infra.UTILITIES_PY
             ).lstrip("*")
             target_path = package_dir / file_name
             if target_path.exists():
@@ -219,22 +210,19 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         source = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(
-            family=family,
-            base_chains=base_chains,
+            family=family, base_chains=base_chains
         )
         base_import = (
             FlextInfraUtilitiesRefactorNamespaceFacades._base_import_for_family(
-                family=family,
-                base_chains=base_chains,
+                family=family, base_chains=base_chains
             )
         )
         canonical_header = f"class {class_name}({base_class}):"
         if base_import not in lines:
             lines = list(
                 FlextInfraUtilitiesRefactorNamespaceCommon.insert_import_lines(
-                    lines=lines,
-                    imports=[base_import, ""],
-                ),
+                    lines=lines, imports=[base_import, ""]
+                )
             )
         class_line_indices = [
             idx
@@ -243,8 +231,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         ]
         class_header_re = c.Infra.compile_class_header_match(class_name)
         existing_class_index = next(
-            (idx for idx in class_line_indices if class_header_re.match(lines[idx])),
-            -1,
+            (idx for idx in class_line_indices if class_header_re.match(lines[idx])), -1
         )
         if existing_class_index >= 0:
             if lines[existing_class_index] != canonical_header:
@@ -256,9 +243,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             lines.extend(["", canonical_header, "    pass"])
         updated_source = "\n".join(lines).rstrip() + "\n"
         updated_source = FlextInfraUtilitiesRopeModulePatch.ensure_runtime_alias(
-            updated_source,
-            alias=family,
-            target_name=class_name,
+            updated_source, alias=family, target_name=class_name
         )
         all_line = f'__all__: list[str] = ["{class_name}", "{family}"]'
         if all_line not in updated_source:
@@ -276,17 +261,13 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             else:
                 end_index = (
                     FlextInfraUtilitiesRefactorNamespaceFacades._all_block_end_index(
-                        lines=updated_lines,
-                        start_index=all_index,
+                        lines=updated_lines, start_index=all_index
                     )
                 )
                 updated_lines[all_index : end_index + 1] = [all_line]
             updated_source = "\n".join(updated_lines).rstrip() + "\n"
         if updated_source != source:
-            _ = target_path.write_text(
-                updated_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            _ = target_path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceFacades"]

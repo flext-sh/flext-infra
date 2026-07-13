@@ -15,17 +15,13 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-
 from flext_infra import c, m, p, u
 from flext_infra.base import s
-from flext_infra.workspace._sync_artifacts import (
-    FlextInfraWorkspaceSyncArtifactsMixin,
-)
+from flext_infra.workspace._sync_artifacts import FlextInfraWorkspaceSyncArtifactsMixin
 
 
 class FlextInfraSyncService(
-    s[m.Infra.SyncResult],
-    FlextInfraWorkspaceSyncArtifactsMixin,
+    s[m.Infra.SyncResult], FlextInfraWorkspaceSyncArtifactsMixin
 ):
     """Infrastructure service for workspace base.mk synchronization.
 
@@ -36,8 +32,7 @@ class FlextInfraSyncService(
     """
 
     canonical_root: Annotated[
-        Path | None,
-        m.Field(description="Optional canonical root path"),
+        Path | None, m.Field(description="Optional canonical root path")
     ] = None
 
     def _resolved_workspace_root(self) -> Path:
@@ -51,7 +46,7 @@ class FlextInfraSyncService(
         resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
-                f"workspace_root '{resolved}' does not exist",
+                f"workspace_root '{resolved}' does not exist"
             )
 
         lock_file = resolved / ".flext-sync.lock"
@@ -62,17 +57,13 @@ class FlextInfraSyncService(
             return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
 
     def _execute_with_lock(
-        self,
-        resolved: Path,
-        descriptor: int,
+        self, resolved: Path, descriptor: int
     ) -> p.Result[m.Infra.SyncResult]:
         """Run sync while holding the workspace sync lock."""
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return self._sync_locked_content(
-                resolved,
-                settings=None,
-                canonical_root=self.canonical_root,
+                resolved, settings=None, canonical_root=self.canonical_root
             )
         except OSError as exc:
             return r[m.Infra.SyncResult].fail_op("lock acquisition", exc)
@@ -93,83 +84,67 @@ class FlextInfraSyncService(
         is_workspace_root = self._is_workspace_root(resolved, effective_root)
         apply = not self.effective_dry_run
         basemk_result = self._sync_basemk(
-            resolved,
-            settings,
-            canonical_root=effective_root,
-            apply=apply,
+            resolved, settings, canonical_root=effective_root, apply=apply
         )
         if basemk_result.failure:
             return r[m.Infra.SyncResult].fail(
-                basemk_result.error or "base.mk sync failed",
+                basemk_result.error or "base.mk sync failed"
             )
         changed += 1 if basemk_result.value else 0
         gitignore_result = self._ensure_gitignore_entries(
             resolved,
-            (
-                *c.Infra.REQUIRED_GITIGNORE_ENTRIES,
-                "!.pre-commit-config.yaml",
-            )
+            (*c.Infra.REQUIRED_GITIGNORE_ENTRIES, "!.pre-commit-config.yaml")
             if is_workspace_root
             else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
             apply=apply,
         )
         if gitignore_result.failure:
             return r[m.Infra.SyncResult].fail(
-                gitignore_result.error or ".gitignore sync failed",
+                gitignore_result.error or ".gitignore sync failed"
             )
         changed += 1 if gitignore_result.value else 0
         env_result = self._sync_environment_files(resolved, apply=apply)
         if env_result.failure:
             return r[m.Infra.SyncResult].fail(
-                env_result.error or "workspace environment sync failed",
+                env_result.error or "workspace environment sync failed"
             )
         changed += env_result.value
         vscode_result = self._sync_vscode_settings(resolved, apply=apply)
         if vscode_result.failure:
             return r[m.Infra.SyncResult].fail(
-                vscode_result.error or "VS Code settings sync failed",
+                vscode_result.error or "VS Code settings sync failed"
             )
         changed += 1 if vscode_result.value else 0
         if is_workspace_root:
             pre_commit_result = self._sync_pre_commit_config(resolved, apply=apply)
             if pre_commit_result.failure:
                 return r[m.Infra.SyncResult].fail(
-                    pre_commit_result.error or ".pre-commit-config.yaml sync failed",
+                    pre_commit_result.error or ".pre-commit-config.yaml sync failed"
                 )
             changed += 1 if pre_commit_result.value else 0
         makefile_result = self._sync_makefile_if_needed(
-            resolved,
-            effective_root,
-            apply=apply,
+            resolved, effective_root, apply=apply
         )
         if makefile_result.failure:
             return r[m.Infra.SyncResult].fail(
-                makefile_result.error or "Makefile sync failed",
+                makefile_result.error or "Makefile sync failed"
             )
         changed += makefile_result.value
         if is_workspace_root:
             child_sync_result = self._sync_workspace_children(
-                resolved,
-                canonical_root=effective_root or resolved,
+                resolved, canonical_root=effective_root or resolved
             )
             if child_sync_result.failure:
                 return r[m.Infra.SyncResult].fail(
-                    child_sync_result.error or "workspace child sync failed",
+                    child_sync_result.error or "workspace child sync failed"
                 )
             changed += child_sync_result.value
         return r[m.Infra.SyncResult].ok(
-            m.Infra.SyncResult(
-                files_changed=changed,
-                source=resolved,
-                target=resolved,
-            ),
+            m.Infra.SyncResult(files_changed=changed, source=resolved, target=resolved)
         )
 
     def _sync_workspace_children(
-        self,
-        workspace_root: Path,
-        *,
-        canonical_root: Path,
+        self, workspace_root: Path, *, canonical_root: Path
     ) -> p.Result[int]:
         """Synchronize all discovered child projects under the workspace root."""
         discovered = u.Infra.discover_projects(workspace_root, include_attached=True)
@@ -182,9 +157,7 @@ class FlextInfraSyncService(
             if project_path == resolved_root:
                 continue
             sync_result = self._sync_locked_content(
-                project_path,
-                settings=None,
-                canonical_root=canonical_root,
+                project_path, settings=None, canonical_root=canonical_root
             )
             if sync_result.failure:
                 project_error = sync_result.error or "project sync failed"

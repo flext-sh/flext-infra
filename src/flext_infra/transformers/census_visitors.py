@@ -23,12 +23,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
     ``facade_class_prefix`` (e.g. ``"FlextUtilities"``).
     """
 
-    def __init__(
-        self,
-        *,
-        family_alias: str,
-        facade_class_prefix: str,
-    ) -> None:
+    def __init__(self, *, family_alias: str, facade_class_prefix: str) -> None:
         """Initialize with family alias and facade class prefix."""
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
@@ -132,10 +127,7 @@ class FlextInfraCensusUsageCollector:
                     self._record(actual, method_name, c.Infra.CensusMode.DIRECT)
 
     def _record(
-        self,
-        class_name: str,
-        method_name: str,
-        mode: c.Infra.CensusMode,
+        self, class_name: str, method_name: str, mode: c.Infra.CensusMode
     ) -> None:
         """Record."""
         self.records.append(
@@ -145,7 +137,7 @@ class FlextInfraCensusUsageCollector:
                 access_mode=mode,
                 file_path=str(self.file_path),
                 project=self.project_name,
-            ),
+            )
         )
 
 

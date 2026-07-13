@@ -32,9 +32,13 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
     _description = "migrate legacy CLI constructs to the flext_cli facade"
 
     _CLI_PKG: ClassVar[str] = "flext_cli"
-    _BANNED_MODULES: ClassVar[frozenset[str]] = frozenset(
-        {"typer", "click", "argparse", "rich", "tabulate"},
-    )
+    _BANNED_MODULES: ClassVar[frozenset[str]] = frozenset({
+        "typer",
+        "click",
+        "argparse",
+        "rich",
+        "tabulate",
+    })
     _MANUAL_ATTRS: ClassVar[dict[str, frozenset[str]]] = {
         "typer": frozenset({"Typer"}),
         "click": frozenset({"group", "command"}),
@@ -61,9 +65,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
 
         for module, attr in visitor.manual_conversions:
             if module in visitor.removed_modules:
-                self._record_change(
-                    f"Manual conversion required for {module}.{attr}()",
-                )
+                self._record_change(f"Manual conversion required for {module}.{attr}()")
 
         for change in visitor.changes:
             self._record_change(change)
@@ -140,10 +142,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
                 return
             call_text = self.node_text(node)
             new_call = re.sub(
-                r"\bprint\b",
-                f"{self._cli_symbol}.display_text",
-                call_text,
-                count=1,
+                r"\bprint\b", f"{self._cli_symbol}.display_text", call_text, count=1
             )
             self.append_rewrite(
                 node,
@@ -161,8 +160,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             if module not in banned:
                 return
             attrs = FlextInfraRefactorCliModernizer._manual_attrs().get(
-                module,
-                frozenset(),
+                module, frozenset()
             )
             if func.attr in attrs:
                 self.manual_conversions.append((module, func.attr))

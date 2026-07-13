@@ -12,12 +12,8 @@ from typing import Annotated
 from flext_cli import m
 
 from flext_infra import t
-from flext_infra._constants.codegen_project import (
-    FlextInfraConstantsCodegenProject,
-)
-from flext_infra._models.deps_tool_config import (
-    FlextInfraModelsDepsToolSettings,
-)
+from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
 class _ConfigContract(m.ContractModel):
@@ -26,10 +22,7 @@ class _ConfigContract(m.ContractModel):
     # NOTE (multi-agent, mro-wkii.17 / agent: codex): rendered file payloads are
     # byte contracts; Pydantic must never trim their final newline.
     model_config = m.ConfigDict(
-        strict=False,
-        frozen=True,
-        extra="forbid",
-        str_strip_whitespace=False,
+        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
     )
 
 
@@ -41,24 +34,24 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Exact Python and uv versions shared by generated projects."""
+        """Python selector and exact uv version shared by generated projects."""
 
         python_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact Python version"),
+            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
         ]
         python_minor_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Python major.minor tool configuration value"),
         ]
         python_required_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="PEP 440 project Python requirement"),
+            t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         uv_version: Annotated[t.NonEmptyStr, m.Field(description="Exact uv version")]
         uv_required_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="PEP 440 uv required-version expression"),
+            t.NonEmptyStr, m.Field(description="PEP 440 uv required-version expression")
+        ]
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
 
     class ProviderSpec(_ConfigContract):
@@ -66,13 +59,9 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Provider key")]
         organization: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="GitHub organization"),
+            t.NonEmptyStr, m.Field(description="GitHub organization")
         ]
-        base_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="GitHub HTTPS base URL"),
-        ]
+        base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
     class ProfileSpec(_ConfigContract):
@@ -83,20 +72,16 @@ class FlextInfraConfigModels:
             m.Field(description="Closed Make profile name"),
         ]
         environment_scope: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="uv environment ownership"),
+            t.NonEmptyStr, m.Field(description="uv environment ownership")
         ]
         setup_scope: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="setup orchestration scope"),
+            t.NonEmptyStr, m.Field(description="setup orchestration scope")
         ]
         execution_scope: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="check/test runtime scope"),
+            t.NonEmptyStr, m.Field(description="check/test runtime scope")
         ]
         discovery_scope: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="repository discovery policy"),
+            t.NonEmptyStr, m.Field(description="repository discovery policy")
         ]
 
     class MakeVerbSpec(_ConfigContract):
@@ -104,20 +89,17 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
         default_what: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Default WHAT selector"),
+            t.NonEmptyStr, m.Field(description="Default WHAT selector")
         ]
         apply_guarded: Annotated[
-            bool,
-            m.Field(description="Whether mutation requires APPLY=Y"),
+            bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
 
     class CustomHandlerPolicy(_ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
         filename: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Versioned custom handler filename"),
+            t.NonEmptyStr, m.Field(description="Versioned custom handler filename")
         ]
         target_pattern: Annotated[
             t.NonEmptyStr,
@@ -125,32 +107,27 @@ class FlextInfraConfigModels:
         ]
         allow_public_targets: bool = m.Field(description="Permit public targets")
         allow_generated_target_redefinition: bool = m.Field(
-            description="Permit generated target redefinition",
+            description="Permit generated target redefinition"
         )
         allow_toolchain_declarations: bool = m.Field(
-            description="Permit toolchain declarations",
+            description="Permit toolchain declarations"
         )
         allow_setup_declarations: bool = m.Field(
-            description="Permit setup declarations",
+            description="Permit setup declarations"
         )
-        allow_help_declarations: bool = m.Field(
-            description="Permit help declarations",
-        )
+        allow_help_declarations: bool = m.Field(description="Permit help declarations")
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
         selector: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Single selector variable name"),
+            t.NonEmptyStr, m.Field(description="Single selector variable name")
         ]
         apply_variable: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Write-enable variable name"),
+            t.NonEmptyStr, m.Field(description="Write-enable variable name")
         ]
         apply_value: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Only accepted write-enable value"),
+            t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -164,23 +141,16 @@ class FlextInfraConfigModels:
     class ManagedFileSpec(_ConfigContract):
         """One versioned file owned by codegen."""
 
-        path: Annotated[
-            Path,
-            m.Field(description="Repository-relative file path"),
-        ]
+        path: Annotated[Path, m.Field(description="Repository-relative file path")]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
         overwrite: Annotated[
-            bool,
-            m.Field(description="Whether clean committed content may be replaced"),
+            bool, m.Field(description="Whether clean committed content may be replaced")
         ]
 
     class TemplateEntrySpec(_ConfigContract):
-        """One template-to-destination mapping shared by new and conform."""
+        """One scaffold-only template mapping consumed by ``codegen new``."""
 
-        source: Annotated[
-            Path,
-            m.Field(description="Template-root-relative source"),
-        ]
+        source: Annotated[Path, m.Field(description="Template-root-relative source")]
         destination: Annotated[
             t.NonEmptyStr,
             m.Field(description="Tokenized repository-relative destination"),
@@ -190,24 +160,116 @@ class FlextInfraConfigModels:
             m.Field(description="Profiles that consume the template"),
         ]
         delegate: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical rendering delegate"),
+            t.NonEmptyStr, m.Field(description="Canonical rendering delegate")
         ]
         overwrite: Annotated[
-            bool,
-            m.Field(description="Whether the template owns existing content"),
+            bool, m.Field(description="Whether the template owns existing content")
         ] = False
 
     class TemplatesSpec(_ConfigContract):
-        """Universal template root and its complete ordered manifest."""
+        """New-project scaffold root and its complete ordered manifest."""
 
-        root: Annotated[
-            Path,
-            m.Field(description="Package-relative template root"),
-        ]
+        root: Annotated[Path, m.Field(description="Package-relative template root")]
         entries: Annotated[
             tuple[FlextInfraConfigModels.TemplateEntrySpec, ...],
             m.Field(description="Complete ordered template manifest"),
+        ]
+
+    class ScaffoldBuildSpec(_ConfigContract):
+        """Configured Python build backend for newly scaffolded projects."""
+
+        backend: Annotated[t.NonEmptyStr, m.Field(description="PEP 517 backend")]
+        requirements: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Build-system requirements"),
+        ]
+
+    class ScaffoldDependencyProfileSpec(_ConfigContract):
+        """Dependencies selected by the declared upstream FLEXT facade."""
+
+        upstream: Annotated[
+            t.NonEmptyStr, m.Field(description="Supported upstream facade package")
+        ]
+        runtime: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Runtime requirements"),
+        ]
+        codegen: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Code-generation requirements"),
+        ] = ()
+        dev: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Development and validation requirements"),
+        ] = ()
+
+    class ScaffoldProjectSpec(_ConfigContract):
+        """Project metadata policy for newly scaffolded distributions."""
+
+        readme: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 readme path")]
+        supported_licenses: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Licenses with complete templates"),
+        ]
+        classifiers: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Default PyPI classifiers"),
+        ]
+        keywords: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
+        ] = ()
+        dependency_profiles: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
+            m.Field(min_length=1, description="Upstream dependency profiles"),
+        ]
+
+    class ScaffoldPingExampleSpec(_ConfigContract):
+        """Values for the functional ping example created only by codegen new."""
+
+        command_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Public CLI command")
+        ]
+        help_text: Annotated[
+            t.NonEmptyStr, m.Field(description="Public CLI command help")
+        ]
+        success_message: Annotated[
+            t.NonEmptyStr, m.Field(description="CLI success message")
+        ]
+        enabled_default: Annotated[
+            bool, m.Field(description="Default runtime enablement")
+        ]
+        reply: Annotated[t.NonEmptyStr, m.Field(description="Enabled ping response")]
+        disabled_reply: Annotated[
+            t.NonEmptyStr, m.Field(description="Disabled ping response")
+        ]
+
+    class ScaffoldGitignoreSectionSpec(_ConfigContract):
+        """One configured section of the generated Git ignore policy."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Section heading")]
+        patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Ignored path patterns"),
+        ]
+
+    class ScaffoldSpec(_ConfigContract):
+        """Complete typed policy consumed only by new-project templates."""
+
+        build: Annotated[
+            FlextInfraConfigModels.ScaffoldBuildSpec,
+            m.Field(description="Build-system policy"),
+        ]
+        project: Annotated[
+            FlextInfraConfigModels.ScaffoldProjectSpec,
+            m.Field(description="Project metadata and dependency policy"),
+        ]
+        ping_example: Annotated[
+            FlextInfraConfigModels.ScaffoldPingExampleSpec,
+            m.Field(description="Functional scaffold example"),
+        ]
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(min_length=1, description="Generated Git ignore sections"),
         ]
 
     class RepositoryRef(_ConfigContract):
@@ -215,20 +277,15 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
         distribution: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Python distribution or repository name"),
+            t.NonEmptyStr, m.Field(description="Python distribution or repository name")
         ]
         url: Annotated[
             t.NonEmptyStr,
             m.Field(description="Canonical GitHub clone URL ending in .git"),
         ]
-        branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Required Git branch"),
-        ]
+        branch: Annotated[t.NonEmptyStr, m.Field(description="Required Git branch")]
         path: Annotated[
-            Path,
-            m.Field(description="POSIX path relative to its workspace root"),
+            Path, m.Field(description="POSIX path relative to its workspace root")
         ]
         role: Annotated[
             FlextInfraConstantsCodegenProject.RepositoryRole,
@@ -252,55 +309,42 @@ class FlextInfraConfigModels:
         """Deterministic project metadata required to materialize a new tree."""
 
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Import package name"),
+            t.NonEmptyStr, m.Field(description="Import package name")
         ]
         class_stem: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical public facade class stem"),
+            t.NonEmptyStr, m.Field(description="Canonical public facade class stem")
         ]
         namespace: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Nested c/t/p/m/u namespace"),
+            t.NonEmptyStr, m.Field(description="Nested c/t/p/m/u namespace")
         ]
         constant_name: Annotated[
             t.NonEmptyStr,
             m.Field(description="Configured project name exposed through constants"),
         ]
         namespace_attribute: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Private module namespace token"),
+            t.NonEmptyStr, m.Field(description="Private module namespace token")
         ]
         alias: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical public instance alias"),
+            t.NonEmptyStr, m.Field(description="Canonical public instance alias")
         ]
         environment_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project settings environment prefix"),
+            t.NonEmptyStr, m.Field(description="Project settings environment prefix")
         ]
         description: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project description"),
+            t.NonEmptyStr, m.Field(description="Project description")
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         author_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Author display name"),
+            t.NonEmptyStr, m.Field(description="Author display name")
         ]
-        author_email: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Author email"),
-        ]
+        author_email: Annotated[t.NonEmptyStr, m.Field(description="Author email")]
         upstream: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Upstream FLEXT facade module"),
+            t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project documentation URL"),
+            t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr,
@@ -311,88 +355,87 @@ class FlextInfraConfigModels:
     class ProjectRenderContext(_ConfigContract):
         """Complete typed input consumed by the universal project templates."""
 
+        scaffold: Annotated[
+            FlextInfraConfigModels.ScaffoldSpec,
+            m.Field(description="New-project scaffold policy"),
+        ]
+        dependency_profile: Annotated[
+            FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
+            m.Field(description="Resolved upstream dependency profile"),
+        ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
+        ]
         tooling: Annotated[
             FlextInfraModelsDepsToolSettings.ToolConfigDocument,
-            m.Field(description="Canonical generated tooling configuration"),
+            m.Field(description="Canonical validated tooling policy"),
+        ]
+        tooling_runtime: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
+            m.Field(description="Resolved project/workspace tooling values"),
         ]
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         const_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Configured constant project name"),
+            t.NonEmptyStr, m.Field(description="Configured constant project name")
         ]
         package_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Python import package name"),
+            t.NonEmptyStr, m.Field(description="Python import package name")
         ]
         class_stem: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Public facade class stem"),
+            t.NonEmptyStr, m.Field(description="Public facade class stem")
         ]
         ns: Annotated[t.NonEmptyStr, m.Field(description="Public model namespace")]
         ns_attr: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Private namespace module token"),
+            t.NonEmptyStr, m.Field(description="Private namespace module token")
         ]
         alias: Annotated[t.NonEmptyStr, m.Field(description="Public instance alias")]
         env_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Settings environment prefix"),
+            t.NonEmptyStr, m.Field(description="Settings environment prefix")
         ]
         upstream: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Upstream FLEXT facade module"),
+            t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
         description: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project description"),
+            t.NonEmptyStr, m.Field(description="Project description")
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         python_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Python major.minor tool value"),
+            t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
-        python_exact_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact Python toolchain version"),
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
         ]
         python_required_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="PEP 440 project Python requirement"),
+            t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact uv toolchain version"),
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
         ]
         uv_required_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="PEP 440 uv requirement"),
+            t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
+        ]
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
         author_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Author display name"),
+            t.NonEmptyStr, m.Field(description="Author display name")
         ]
-        author_email: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Author email"),
-        ]
+        author_email: Annotated[t.NonEmptyStr, m.Field(description="Author email")]
         repository: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project repository page URL"),
+            t.NonEmptyStr, m.Field(description="Project repository page URL")
         ]
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project documentation URL"),
+            t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
         flext_git_base_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="FLEXT Git provider base URL"),
+            t.NonEmptyStr, m.Field(description="FLEXT Git provider base URL")
         ]
         flext_git_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="FLEXT Git provider branch"),
+            t.NonEmptyStr, m.Field(description="FLEXT Git provider branch")
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -403,21 +446,17 @@ class FlextInfraConfigModels:
             m.Field(description="Relative path to the declared workspace root"),
         ]
         repository_provider: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Repository provider catalog key"),
+            t.NonEmptyStr, m.Field(description="Repository provider catalog key")
         ]
         repository_git_url: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical repository Git clone URL"),
+            t.NonEmptyStr, m.Field(description="Canonical repository Git clone URL")
         ]
         repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical repository Git branch"),
+            t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
         workspace_members: Annotated[
-            tuple[str, ...],
-            m.Field(description="Ordered workspace member paths"),
+            tuple[str, ...], m.Field(description="Ordered workspace member paths")
         ] = ()
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -435,10 +474,7 @@ class FlextInfraConfigModels:
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""
 
-        path: Annotated[
-            Path,
-            m.Field(description="Workspace-relative path"),
-        ]
+        path: Annotated[Path, m.Field(description="Workspace-relative path")]
         reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
 
     class WorkspaceSpec(_ConfigContract):
@@ -472,12 +508,10 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         repository: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Root repository catalog key"),
+            t.NonEmptyStr, m.Field(description="Root repository catalog key")
         ]
         manifest: Annotated[
-            Path,
-            m.Field(description="Repository-relative manifest path"),
+            Path, m.Field(description="Repository-relative manifest path")
         ]
 
     class CodegenConfigSpec(_ConfigContract):
@@ -504,9 +538,13 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
         ]
+        scaffold: Annotated[
+            FlextInfraConfigModels.ScaffoldSpec,
+            m.Field(description="Typed new-project scaffold policy"),
+        ]
         templates: Annotated[
             FlextInfraConfigModels.TemplatesSpec,
-            m.Field(description="Universal template manifest"),
+            m.Field(description="New-project-only scaffold template manifest"),
         ]
         repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -539,13 +577,9 @@ class FlextInfraConfigModels:
     class Infra(_ConfigContract):
         """Complete flext-infra configuration namespace."""
 
-        name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project distribution name"),
-        ]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
         version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Project release version"),
+            t.NonEmptyStr, m.Field(description="Project release version")
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
@@ -573,17 +607,14 @@ class FlextInfraConfigModels:
 
         project_root: Annotated[Path, m.Field(description="Selected project root")]
         environment_root: Annotated[
-            Path,
-            m.Field(description="Project supplying the active .venv"),
+            Path, m.Field(description="Project supplying the active .venv")
         ]
         lock_path: Annotated[Path, m.Field(description="Required versioned uv.lock")]
         python_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact Mise/Python pin"),
+            t.NonEmptyStr, m.Field(description="Mise/Python version selector")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact required uv version"),
+            t.NonEmptyStr, m.Field(description="Exact required uv version")
         ]
         groups: Annotated[
             tuple[str, ...],
@@ -597,10 +628,7 @@ class FlextInfraConfigModels:
     class CodegenConformRequest(_ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
-        root: Annotated[
-            Path,
-            m.Field(description="Repository or workspace root"),
-        ]
+        root: Annotated[Path, m.Field(description="Repository or workspace root")]
         scope: Annotated[
             FlextInfraConstantsCodegenProject.CodegenConformScope,
             m.Field(description="Repository selection scope"),
@@ -616,17 +644,14 @@ class FlextInfraConfigModels:
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         rendered: Annotated[str, m.Field(description="Fully rendered expected content")]
         expected_sha256: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SHA-256 of expected content"),
+            t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]
         current_sha256: Annotated[
-            str,
-            m.Field(description="SHA-256 of current content, empty when missing"),
+            str, m.Field(description="SHA-256 of current content, empty when missing")
         ] = ""
         changed: Annotated[bool, m.Field(description="Whether content differs")]
         blocked: Annotated[
-            bool,
-            m.Field(description="Whether unrecognized WIP blocks application"),
+            bool, m.Field(description="Whether unrecognized WIP blocks application")
         ] = False
         reason: Annotated[str, m.Field(description="Blocking explanation")] = ""
 
@@ -666,8 +691,7 @@ class FlextInfraConfigModels:
             m.Field(description="Plan that governed the operation"),
         ]
         written_files: Annotated[
-            tuple[Path, ...],
-            m.Field(description="Files atomically replaced by apply"),
+            tuple[Path, ...], m.Field(description="Files atomically replaced by apply")
         ] = ()
         errors: Annotated[
             tuple[str, ...],

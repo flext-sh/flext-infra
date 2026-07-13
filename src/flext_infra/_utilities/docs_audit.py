@@ -74,9 +74,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
 
     @staticmethod
     def docs_policy_list(
-        scope: m.Infra.DocScope,
-        section: str,
-        key: str,
+        scope: m.Infra.DocScope, section: str, key: str
     ) -> t.StrSequence:
         """Read one list of policy tokens from the minimal root docs settings."""
         workspace_root = (
@@ -95,7 +93,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     def docs_generated_api_reference_path(relative_docs_path: str) -> bool:
         """Return whether a docs path is owned by generated API reference."""
         return relative_docs_path.startswith(
-            "api-reference/generated/",
+            "api-reference/generated/"
         ) and relative_docs_path.endswith(".md")
 
     @staticmethod
@@ -104,8 +102,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
         if not scope.package_name:
             return set()
         contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path,
-            scope.package_name,
+            scope.path, scope.package_name
         )
         names: set[str] = set()
         for key in ("exports", "public_symbols"):
@@ -124,8 +121,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
-                errors=c.Infra.IGNORE,
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             in_fenced_code = False
             for number, line in enumerate(content.splitlines(), start=1):
@@ -137,7 +133,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                     continue
                 clean_line = FlextInfraUtilitiesDocsAudit.docs_strip_inline_code(line)
                 for raw in FlextInfraUtilitiesDocsAudit.docs_markdown_link_targets(
-                    clean_line,
+                    clean_line
                 ):
                     target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
                     if (
@@ -145,8 +141,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                         or target.startswith("#")
                         or FlextInfraUtilitiesDocsAudit.docs_is_external(target)
                         or FlextInfraUtilitiesDocsAudit.docs_should_skip_target(
-                            raw,
-                            target,
+                            raw, target
                         )
                     ):
                         continue
@@ -157,7 +152,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                                 issue_type="broken_link",
                                 severity="high",
                                 message=f"line {number}: target not found -> {raw}",
-                            ),
+                            )
                         )
         return issues
 
@@ -167,24 +162,18 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Collect stale-symbol issues outside the explicit migration docs."""
         tokens = FlextInfraUtilitiesDocsAudit.docs_policy_list(
-            scope,
-            section="audit",
-            key="stale_symbols",
+            scope, section="audit", key="stale_symbols"
         )
         exempt_paths = set(
             FlextInfraUtilitiesDocsAudit.docs_policy_list(
-                scope,
-                section="audit",
-                key="stale_symbol_exempt_paths",
-            ),
+                scope, section="audit", key="stale_symbol_exempt_paths"
+            )
         )
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         if not tokens:
             return issues
         live_public_symbols = (
-            FlextInfraUtilitiesDocsAudit.docs_live_public_symbol_names(
-                scope,
-            )
+            FlextInfraUtilitiesDocsAudit.docs_live_public_symbol_names(scope)
         )
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path / c.Infra.DIR_DOCS).as_posix()
@@ -194,8 +183,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                 FlextInfraUtilitiesDocsAudit.docs_generated_api_reference_path(rel)
             )
             text = md_file.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
-                errors=c.Infra.IGNORE,
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
             )
             for token in tokens:
                 if token not in text:
@@ -208,7 +196,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                         issue_type="stale_symbol",
                         severity="medium",
                         message=f"contains `{token}`",
-                    ),
+                    )
                 )
         return issues
 
@@ -224,7 +212,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
             metric_lines.append(
                 "Docstring coverage: "
                 f"{docstring_coverage.percent}% "
-                f"({docstring_coverage.documented}/{docstring_coverage.checked})",
+                f"({docstring_coverage.documented}/{docstring_coverage.checked})"
             )
         return [
             "# Docs Audit Report",

@@ -2,7 +2,7 @@
 
 {{ description }}
 
-Built on the [FLEXT](https://github.com/flext-sh/flext) typed platform: canonical
+Built on the [FLEXT]({{ flext_git_base_url }}/flext) typed platform: canonical
 facades (`c`/`m`/`p`/`t`/`u`/`r`), `r[T]` result contracts on every fallible path,
 and Pydantic v2 settings/config (ADR-005).
 
@@ -14,7 +14,7 @@ uv pip install -e ".[dev]"
 
 ## Layout
 
-```
+```text
 src/{{ package_name }}/
   api.py          # public facade ({{ class_stem }} / {{ alias }})
   base.py         # service base (s[TResult])
@@ -25,11 +25,10 @@ src/{{ package_name }}/
   utilities.py    # u.{{ ns }}.*
   _settings.py    # settings.{{ class_stem }} (env-override, prefix {{ env_prefix }})
   _config.py      # config.{{ class_stem }} (config/*.yaml, ADR-005)
-  config/{{ ns_attr }}.yaml
+config/{{ ns }}.yaml # validated runtime configuration
   services/       # domain services composed into the facade
-tests/            # flext_tests shim + smoke tests
+tests/            # public ping example verification
 ```
-{# mro-wkii.14 (agent: codegen) — README alinhado ao namespace PascalCase config.<Ns>/settings.<Ns> (AGENTS.md U2-U8). #}
 
 ## Develop
 
@@ -40,4 +39,4 @@ make test    # pytest
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+{{ license }} — see [LICENSE](LICENSE).

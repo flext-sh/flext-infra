@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
@@ -35,16 +35,14 @@ class FlextInfraModernizeOrchestrator:
         self._description = description
 
     def run(
-        self,
-        params: m.Infra.ModernizeInput,
+        self, params: m.Infra.ModernizeInput
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Run modernize across selected projects."""
         workspace_root = params.workspace_path
         project_roots = self._resolve_projects(workspace_root, params.projects)
         if not project_roots:
             return r[t.SequenceOf[m.Infra.Result]].fail(
-                "No projects selected",
-                error_code="MODERNIZE_NO_PROJECTS",
+                "No projects selected", error_code="MODERNIZE_NO_PROJECTS"
             )
 
         results: list[m.Infra.Result] = []
@@ -77,16 +75,13 @@ class FlextInfraModernizeOrchestrator:
         result = orchestrator.run(params)
         if result.failure:
             return r[t.SequenceOf[m.Infra.Result]].fail(
-                result.error,
-                error_code=result.error_code,
+                result.error, error_code=result.error_code
             )
         cls._display_results(result.value, dry_run=not params.apply)
         return r[t.SequenceOf[m.Infra.Result]].ok(result.value)
 
     def _resolve_projects(
-        self,
-        workspace_root: Path,
-        project_names: t.StrSequence | None,
+        self, workspace_root: Path, project_names: t.StrSequence | None
     ) -> t.SequenceOf[Path]:
         """Resolve project roots, optionally filtered by name."""
         project_roots = u.Infra.discover_project_roots(workspace_root=workspace_root)
@@ -96,11 +91,7 @@ class FlextInfraModernizeOrchestrator:
         return project_roots
 
     def _modernize_project(
-        self,
-        *,
-        rope_project: t.Infra.RopeProject,
-        project_root: Path,
-        apply: bool,
+        self, *, rope_project: t.Infra.RopeProject, project_root: Path, apply: bool
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Apply transformer to all Python files in a project."""
         results: list[m.Infra.Result] = []
@@ -112,10 +103,7 @@ class FlextInfraModernizeOrchestrator:
             file_path = Path(resource.real_path).resolve()
             if not file_path.is_relative_to(src_root.resolve()):
                 continue
-            file_result = self._modernize_file(
-                file_path=file_path,
-                apply=apply,
-            )
+            file_result = self._modernize_file(file_path=file_path, apply=apply)
             if file_result.failure:
                 return r[t.SequenceOf[m.Infra.Result]].fail(
                     f"Failed to modernize {file_path}: {file_result.error}",
@@ -126,10 +114,7 @@ class FlextInfraModernizeOrchestrator:
         return r[t.SequenceOf[m.Infra.Result]].ok(tuple(results))
 
     def _modernize_file(
-        self,
-        *,
-        file_path: Path,
-        apply: bool,
+        self, *, file_path: Path, apply: bool
     ) -> p.Result[m.Infra.Result]:
         """Apply transformer to a single file."""
         read_result = u.Cli.files_read_text(file_path)
@@ -165,21 +150,19 @@ class FlextInfraModernizeOrchestrator:
                 modified=modified,
                 changes=tuple(changes),
                 refactored_code=updated if not apply and modified else None,
-            ),
+            )
         )
 
     @staticmethod
     def _safe_transform(
-        transformer: p.Infra.ChangeTracker,
-        source: str,
+        transformer: p.Infra.ChangeTracker, source: str
     ) -> p.Result[t.Infra.TransformResult]:
         """Run transformer, catching syntax/runtime errors as failures."""
         try:
             return r[t.Infra.TransformResult].ok(transformer.apply_to_source(source))
         except SyntaxError as exc:
             return r[t.Infra.TransformResult].fail(
-                f"Syntax error: {exc}",
-                error_code="MODERNIZE_SYNTAX_ERROR",
+                f"Syntax error: {exc}", error_code="MODERNIZE_SYNTAX_ERROR"
             )
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[t.Infra.TransformResult].fail(
@@ -189,16 +172,14 @@ class FlextInfraModernizeOrchestrator:
 
     @staticmethod
     def _display_results(
-        results: t.SequenceOf[m.Infra.Result],
-        *,
-        dry_run: bool,
+        results: t.SequenceOf[m.Infra.Result], *, dry_run: bool
     ) -> None:
         """Render concise summary of modernize results."""
         modified = sum(1 for res in results if res.modified)
         failed = sum(1 for res in results if not res.success)
         mode = "dry-run" if dry_run else "applied"
         cli.display_text(
-            f"Modernize {mode}: {len(results)} files, {modified} modified, {failed} failed.",
+            f"Modernize {mode}: {len(results)} files, {modified} modified, {failed} failed."
         )
 
 

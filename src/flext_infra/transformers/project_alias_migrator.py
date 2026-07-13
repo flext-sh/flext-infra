@@ -33,9 +33,7 @@ _ALIAS_TO_LOCAL_MODULE: dict[str, str] = {
 # inside them risks creating import cycles during package initialization.
 # Note: projects that only re-export aliases (e.g. flext_cli) are NOT listed
 # here; per-file facade guards already protect their facade implementation files.
-_ALIAS_SOURCE_PACKAGES: frozenset[str] = frozenset({
-    c.Infra.PKG_CORE_UNDERSCORE,
-})
+_ALIAS_SOURCE_PACKAGES: frozenset[str] = frozenset({c.Infra.PKG_CORE_UNDERSCORE})
 
 
 def _dotted_name(module: cst.BaseExpression | None) -> str | None:
@@ -74,8 +72,7 @@ def _make_import_alias(display: str) -> cst.ImportAlias:
     if " as " in display:
         name, alias = display.split(" as ", maxsplit=1)
         return cst.ImportAlias(
-            name=cst.Name(name),
-            asname=cst.AsName(name=cst.Name(alias)),
+            name=cst.Name(name), asname=cst.AsName(name=cst.Name(alias))
         )
     return cst.ImportAlias(name=cst.Name(display))
 
@@ -155,20 +152,14 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
         return True
 
     @override
-    def leave_If(
-        self,
-        original_node: cst.If,
-        updated_node: cst.If,
-    ) -> cst.If:
+    def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
         _ = original_node
         self._leave_if()
         return updated_node
 
     @override
     def leave_ImportFrom(
-        self,
-        original_node: cst.ImportFrom,
-        updated_node: cst.ImportFrom,
+        self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         _ = original_node
         module = _dotted_name(updated_node.module)
@@ -207,13 +198,12 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
         return updated_node.with_changes(
             names=[
                 cst.ImportAlias(name=alias.name, asname=alias.asname) for alias in kept
-            ],
+            ]
         )
 
 
 def _insert_local_imports(
-    tree: cst.Module,
-    imports_to_add: dict[str, dict[str, str]],
+    tree: cst.Module, imports_to_add: dict[str, dict[str, str]]
 ) -> cst.Module:
     """Prepend newly required local alias imports after __future__/docstring."""
     if not imports_to_add:
@@ -227,8 +217,8 @@ def _insert_local_imports(
         ]
         new_stmts.append(
             cst.SimpleStatementLine(
-                body=[cst.ImportFrom(module=_module_expression(module), names=aliases)],
-            ),
+                body=[cst.ImportFrom(module=_module_expression(module), names=aliases)]
+            )
         )
 
     insert_pos = 0
@@ -243,8 +233,7 @@ def _insert_local_imports(
                     insert_pos = idx + 1
                     continue
             if isinstance(body_stmt, cst.Expr) and isinstance(
-                body_stmt.value,
-                cst.SimpleString,
+                body_stmt.value, cst.SimpleString
             ):
                 insert_pos = idx + 1
                 continue
@@ -297,8 +286,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         if self._file_path is not None and (
             self._is_private_facade_implementation(self._file_path)
             or FlextInfraUtilitiesRopeSource.looks_like_facade_file(
-                file_path=self._file_path,
-                source=source,
+                file_path=self._file_path, source=source
             )
         ):
             return source, []

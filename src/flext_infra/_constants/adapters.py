@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Final
 
 from flext_cli import t
+
 from flext_core import m
 
 
@@ -29,7 +30,7 @@ class FlextInfraConstantsAdapters:
     "Validates MutableMapping[str, InfraValue] for in-place mutation."
 
     STR_MAPPING_ADAPTER: Final[m.TypeAdapter[t.StrMapping]] = m.TypeAdapter(
-        t.StrMapping,
+        t.StrMapping
     )
     "Validates t.StrMapping."
 
@@ -46,9 +47,7 @@ class FlextInfraConstantsAdapters:
     )
     "Validates t.SequenceOf[ContainerDict]."
 
-    STR_SEQ_ADAPTER: Final[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(
-        t.StrSequence,
-    )
+    STR_SEQ_ADAPTER: Final[m.TypeAdapter[t.StrSequence]] = m.TypeAdapter(t.StrSequence)
     "Validates t.StrSequence."
 
     STR_MAPPING_SEQ_ADAPTER: Final[m.TypeAdapter[t.SequenceOf[t.StrMapping]]] = (

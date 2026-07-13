@@ -25,9 +25,7 @@ class FlextInfraRefactorMROMigrationValidator:
     ) -> t.IntPair:
         """Return count of remaining symbols and unsupported entries."""
         file_results, _ = u.Infra.scan_workspace(
-            workspace_root=workspace_root,
-            target=target,
-            project_names=project_names,
+            workspace_root=workspace_root, target=target, project_names=project_names
         )
         remaining = sum(len(item.candidates) for item in file_results)
         return (remaining, 0)

@@ -10,7 +10,6 @@ from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p, t
 
 
@@ -26,9 +25,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
 
         @classmethod
         def _lightweight_symbol_index(
-            cls,
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
+            cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
         ) -> dict[str, tuple[str, int]]: ...
         @staticmethod
         def _include_rule(
@@ -196,9 +193,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
 
         def selected(rule_name: str) -> bool:
             return self._include_rule(
-                rule_name,
-                rule_names=rule_names,
-                selected_rules=selected_rules,
+                rule_name, rule_names=rule_names, selected_rules=selected_rules
             )
 
         if selected("runtime_alias"):
@@ -357,9 +352,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         ctx = self._detector_context(rope, file_path, convention=convention)
         for rule in rules:
             if not self._include_rule(
-                rule.id,
-                rule_names=rule_names,
-                selected_rules=selected_rules,
+                rule.id, rule_names=rule_names, selected_rules=selected_rules
             ):
                 continue
             kind = FlextInfraEnforcementEngine.violation_kind(rule)
@@ -376,9 +369,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                     line = 0
                 object_name = FlextInfraEnforcementEngine.object_name(probe, kind)
                 description = FlextInfraEnforcementEngine.description(
-                    rule,
-                    probe,
-                    object_name,
+                    rule, probe, object_name
                 )
                 violations.append(
                     self._raw_violation(
@@ -391,7 +382,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                         description=description,
                         fixable=fixable,
                         fix_action=action,
-                    ),
+                    )
                 )
                 if action:
                     fixes.append(
@@ -402,7 +393,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
                             files_changed=1,
                             applied=self._fix_key(file_path, object_name, action)
                             in applied,
-                        ),
+                        )
                     )
         return violations, fixes
 

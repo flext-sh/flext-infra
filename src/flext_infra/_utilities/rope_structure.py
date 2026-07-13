@@ -13,23 +13,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from rope.base import codeanalyze
 
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesRopeStructure:
     """Emit ``m.Infra.LogicalStatement`` facts from rope-owned source segmentation."""
 
     @staticmethod
-    def logical_statements(
-        source: str,
-    ) -> t.SequenceOf[m.Infra.LogicalStatement]:
+    def logical_statements(source: str) -> t.SequenceOf[m.Infra.LogicalStatement]:
         """Return one ``LogicalStatement`` per rope logical-line region.
 
         A single forward pass over ``LogicalLineFinder.generate_regions`` with an
@@ -47,10 +40,7 @@ class FlextInfraUtilitiesRopeStructure:
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)
             kind, name = (
-                (
-                    enclosers[-1][1],
-                    enclosers[-1][2],
-                )
+                (enclosers[-1][1], enclosers[-1][2])
                 if enclosers
                 else (c.Infra.RopeScopeKind.MODULE, "")
             )
@@ -63,13 +53,10 @@ class FlextInfraUtilitiesRopeStructure:
                     enclosing_kind=kind,
                     enclosing_name=name,
                     text=text,
-                ),
+                )
             )
             FlextInfraUtilitiesRopeStructure._push_encloser(
-                enclosers=enclosers,
-                category=category,
-                indent=indent,
-                text=text,
+                enclosers=enclosers, category=category, indent=indent, text=text
             )
         return tuple(statements)
 
@@ -191,10 +178,7 @@ class FlextInfraUtilitiesRopeStructure:
         return name if name.isidentifier() else ""
 
     @staticmethod
-    def annotation_contains(
-        statement: m.Infra.LogicalStatement,
-        name: str,
-    ) -> bool:
+    def annotation_contains(statement: m.Infra.LogicalStatement, name: str) -> bool:
         """Return whether ``name`` appears in an annotated statement's annotation.
 
         Lexical: the slice between the top-level ``:`` and the ``=`` (or end).

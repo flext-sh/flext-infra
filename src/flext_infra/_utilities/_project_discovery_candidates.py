@@ -22,16 +22,13 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
-    FlextInfraUtilitiesProjectDiscoveryShapeMixin,
+    FlextInfraUtilitiesProjectDiscoveryShapeMixin
 ):
     """Private candidate enumeration for workspace project discovery."""
 
     @classmethod
     def discover_external_workspace_roots(
-        cls,
-        workspace_root: Path,
-        *,
-        scan_dirs: frozenset[str] | None = None,
+        cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
         """Return FLEXT-managed sibling workspace roots selected by policy."""
         resolved_workspace_root = workspace_root.resolve()
@@ -40,7 +37,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             return ()
         effective_scan_dirs = scan_dirs or frozenset()
         configured_member_set = frozenset(
-            FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root),
+            FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root)
         )
         roots: list[Path] = []
         seen: set[Path] = set()
@@ -73,13 +70,13 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()
         configured_members = FlextInfraUtilitiesPyproject.workspace_member_names(
-            workspace_root,
+            workspace_root
         )
         configured_member_set = frozenset(configured_members)
         resolved_workspace_root = workspace_root.resolve()
         tracked_child_dirs = (
             FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
-                resolved_workspace_root,
+                resolved_workspace_root
             )
         )
         attached_child_dirs = (
@@ -89,8 +86,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         )
         external_workspace_roots = (
             cls.discover_external_workspace_roots(
-                resolved_workspace_root,
-                scan_dirs=scan_dirs,
+                resolved_workspace_root, scan_dirs=scan_dirs
             )
             if include_attached
             else ()
@@ -101,42 +97,37 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             effective_scan_dirs=effective_scan_dirs,
             configured_member_set=configured_member_set,
         ) and FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
-            resolved_workspace_root,
-            resolved_workspace_root,
+            resolved_workspace_root, resolved_workspace_root
         ):
             roots.append(resolved_workspace_root)
         if tracked_child_dirs is None and not attached_child_dirs:
             candidate_entries: t.SequenceOf[Path] = sorted(
-                workspace_root.iterdir(),
-                key=lambda item: item.name,
+                workspace_root.iterdir(), key=lambda item: item.name
             )
         else:
             candidate_entries = [
                 resolved_workspace_root / dir_name
                 for dir_name in sorted(
-                    frozenset(tracked_child_dirs or ()) | attached_child_dirs,
+                    frozenset(tracked_child_dirs or ()) | attached_child_dirs
                 )
             ]
-        roots.extend(
-            [
-                entry.resolve()
-                for entry in candidate_entries
-                if entry.is_dir()
-                and not entry.name.startswith(".")
-                and (
-                    entry.name in attached_child_dirs
-                    or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
-                        resolved_workspace_root,
-                        entry.resolve(),
-                    )
+        roots.extend([
+            entry.resolve()
+            for entry in candidate_entries
+            if entry.is_dir()
+            and not entry.name.startswith(".")
+            and (
+                entry.name in attached_child_dirs
+                or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
+                    resolved_workspace_root, entry.resolve()
                 )
-                and cls._looks_like_project(
-                    entry.resolve(),
-                    effective_scan_dirs=effective_scan_dirs,
-                    configured_member_set=configured_member_set,
-                )
-            ],
-        )
+            )
+            and cls._looks_like_project(
+                entry.resolve(),
+                effective_scan_dirs=effective_scan_dirs,
+                configured_member_set=configured_member_set,
+            )
+        ])
         roots.extend(external_workspace_roots)
         if not roots and (resolved_workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
             return [resolved_workspace_root]

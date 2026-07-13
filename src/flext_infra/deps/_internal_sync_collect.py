@@ -5,13 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import (
-    c,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, p, r, t, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -44,8 +38,7 @@ class FlextInfraInternalSyncCollectMixin:
         return None
 
     def collect_internal_deps(
-        self,
-        project_root: Path,
+        self, project_root: Path
     ) -> p.Result[t.MappingKV[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
         pyproject = project_root / c.Infra.PYPROJECT_FILENAME
@@ -54,14 +47,11 @@ class FlextInfraInternalSyncCollectMixin:
         data_result = self._read_plain(pyproject)
         if data_result.failure:
             return r[t.MappingKV[str, Path]].fail(
-                data_result.error or f"failed to read {pyproject}",
+                data_result.error or f"failed to read {pyproject}"
             )
         data = data_result.value
         deps = u.Cli.json_deep_mapping(
-            data,
-            c.Infra.TOOL,
-            c.Infra.POETRY,
-            c.Infra.DEPENDENCIES,
+            data, c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES
         )
         result: MutableMapping[str, Path] = {}
         for dep_name, dep_value in deps.items():
@@ -114,8 +104,7 @@ class FlextInfraInternalSyncCollectMixin:
                 repo_name = self.resolve_internal_repo_name(source_path)
                 if repo_name is not None:
                     _ = result.setdefault(
-                        repo_name,
-                        project_root / ".flext-deps" / repo_name,
+                        repo_name, project_root / ".flext-deps" / repo_name
                     )
         return r[t.MappingKV[str, Path]].ok(result)
 

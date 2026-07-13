@@ -48,33 +48,23 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
             namespace = rename_parts[0]
             aliases = self._find_import_aliases(updated, old_name=old_name)
             updated = self._rewrite_import(
-                updated,
-                old_name=old_name,
-                namespace=namespace,
+                updated, old_name=old_name, namespace=namespace
             )
             if self._should_propagate(old_name, "propagate_name_references"):
                 updated = self._qualify_name_references(
-                    updated,
-                    old_name=old_name,
-                    qualified=rename_to,
+                    updated, old_name=old_name, qualified=rename_to
                 )
                 updated = self._qualify_return_annotations(
-                    updated,
-                    old_name=old_name,
-                    qualified=rename_to,
+                    updated, old_name=old_name, qualified=rename_to
                 )
                 nested_name = rename_parts[-1]
                 for alias_name in aliases:
                     qualified_alias = f"{alias_name}.{nested_name}"
                     updated = self._qualify_alias_references(
-                        updated,
-                        alias_name=alias_name,
-                        qualified=qualified_alias,
+                        updated, alias_name=alias_name, qualified=qualified_alias
                     )
                     updated = self._qualify_return_annotations(
-                        updated,
-                        old_name=alias_name,
-                        qualified=qualified_alias,
+                        updated, old_name=alias_name, qualified=qualified_alias
                     )
             if self._should_propagate(old_name, "propagate_attribute_references"):
                 updated = self._qualify_attribute_references(
@@ -94,11 +84,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         return new_source
 
     def _qualify_name_references(
-        self,
-        source: str,
-        *,
-        old_name: str,
-        qualified: str,
+        self, source: str, *, old_name: str, qualified: str
     ) -> str:
         """Replace bare ``OldName`` with ``Namespace.Nested`` in non-definition sites."""
         pattern = c.Infra.compile_bare_qualify_allowing_call(old_name)
@@ -115,11 +101,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         return [match.group(1) for match in pattern.finditer(source)]
 
     def _qualify_alias_references(
-        self,
-        source: str,
-        *,
-        alias_name: str,
-        qualified: str,
+        self, source: str, *, alias_name: str, qualified: str
     ) -> str:
         """Replace bare alias usage with ``Alias.Nested`` outside import lines."""
         pattern = c.Infra.compile_alias_qualify(alias_name)
@@ -136,16 +118,12 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         new_source = "".join(rewritten)
         if changed and new_source != source:
             self._record_change(
-                f"Qualified alias reference: {alias_name} -> {qualified}",
+                f"Qualified alias reference: {alias_name} -> {qualified}"
             )
         return new_source
 
     def _qualify_return_annotations(
-        self,
-        source: str,
-        *,
-        old_name: str,
-        qualified: str,
+        self, source: str, *, old_name: str, qualified: str
     ) -> str:
         """Replace ``-> OldName`` with ``-> Namespace.OldName`` in signatures."""
         pattern = c.Infra.compile_mro_prefixed_annotation("->", old_name)
@@ -154,7 +132,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         count = replacement_result[1]
         if count > 0 and new_source != source:
             self._record_change(
-                f"Qualified return annotation: {old_name} -> {qualified}",
+                f"Qualified return annotation: {old_name} -> {qualified}"
             )
         return new_source
 
@@ -181,7 +159,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         )
         if new_source != source:
             self._record_change(
-                f"Qualified attribute reference: .{old_name} -> .{suffix}",
+                f"Qualified attribute reference: .{old_name} -> .{suffix}"
             )
         return new_source
 

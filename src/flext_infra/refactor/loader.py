@@ -41,7 +41,7 @@ class FlextInfraRefactorRuleLoader:
         )
         if result.success:
             self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                dict(result.value),
+                dict(result.value)
             )
             u.Cli.info(f"Loaded settings from {self.config_path}")
         return result
@@ -50,15 +50,13 @@ class FlextInfraRefactorRuleLoader:
         self,
     ) -> p.Result[
         t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind,
-            c.Infra.RefactorFileRuleKind,
+            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
         ]
     ]:
         """Load enabled text/file rule selections from declarative YAML assets."""
         result: p.Result[
             t.Infra.LoadedRuleSelections[
-                c.Infra.RefactorRuleKind,
-                c.Infra.RefactorFileRuleKind,
+                c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
             ]
         ] = u.Cli.rules_load_local_definitions(
             self.config_path,
@@ -90,18 +88,17 @@ class FlextInfraRefactorRuleLoader:
         return [
             {
                 c.Infra.RK_ID: str(
-                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
+                    settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
                 ),
                 c.NAME: str(
                     settings.get(
-                        c.NAME,
-                        settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
-                    ),
+                        c.NAME, settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
+                    )
                 ),
                 c.Infra.RK_DESCRIPTION: str(settings.get(c.Infra.RK_DESCRIPTION, "")),
                 c.Infra.RK_ENABLED: bool(settings.get(c.Infra.RK_ENABLED, True)),
                 c.Infra.RK_SEVERITY: str(
-                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING),
+                    settings.get(c.Infra.RK_SEVERITY, c.Infra.SeverityLevel.WARNING)
                 ),
             }
             for _, settings in self.rules
@@ -115,7 +112,7 @@ class FlextInfraRefactorRuleLoader:
             u.Cli.error(data_result.error or "failed to normalize rules table")
             return
         settings_result = u.Cli.tables_resolve_config(
-            headers=list(c.Infra.RULE_TABLE_HEADERS),
+            headers=list(c.Infra.RULE_TABLE_HEADERS)
         )
         if settings_result.failure:
             u.Cli.error(settings_result.error or "failed to resolve table settings")

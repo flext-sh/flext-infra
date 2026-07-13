@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import u as cli_u
-from flext_core import FlextUtilitiesProjectMetadata
 
+from flext_core import FlextUtilitiesProjectMetadata
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
@@ -71,9 +71,7 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities.rope_pep695_patch import (
-    FlextInfraUtilitiesRopePep695Patch,
-)
+from flext_infra._utilities.rope_pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure

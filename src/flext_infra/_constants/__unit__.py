@@ -14,11 +14,7 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".census": ("FlextInfraConstantsCensus",),
     ".check": ("FlextInfraConstantsCheck",),
     ".cli": ("FlextInfraConstantsCli",),
-    ".cli_routes": (
-        "CODEGEN_ROUTES",
-        "VALIDATE_ROUTES",
-        "WORKSPACE_ROUTES",
-    ),
+    ".cli_routes": ("CODEGEN_ROUTES", "VALIDATE_ROUTES", "WORKSPACE_ROUTES"),
     ".cli_routes_validate_commands": ("VALIDATE_COMMAND_ROUTES",),
     ".codegen": ("FlextInfraConstantsCodegen",),
     ".codegen_detection": ("FlextInfraConstantsCodegenDetection",),

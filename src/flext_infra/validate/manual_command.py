@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-
 from flext_infra import c, u
 from flext_infra.base import s
 
@@ -146,14 +145,14 @@ class FlextInfraManualCommandValidator(s[bool]):
         config_path = self.workspace_root / ".pre-commit-config.yaml"
         if not config_path.exists():
             return r[bool].fail(
-                ".pre-commit-config.yaml missing — run `make gen` to generate it",
+                ".pre-commit-config.yaml missing — run `make gen` to generate it"
             )
         read = u.Cli.files_read_text(config_path)
         if read.failure:
             return r[bool].fail(read.error or "pre-commit config read failed")
         if read.value.strip() != self.render_pre_commit_config().strip():
             return r[bool].fail(
-                ".pre-commit-config.yaml drifted from canonical template — run `make gen`",
+                ".pre-commit-config.yaml drifted from canonical template — run `make gen`"
             )
         return r[bool].ok(True)
 

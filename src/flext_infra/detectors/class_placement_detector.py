@@ -28,10 +28,7 @@ class FlextInfraClassPlacementDetector:
         if u.Infra.matches_root_namespace_file(ctx.file_path.name):
             return []
         res = u.Infra.fetch_python_resource(
-            ctx.rope_project,
-            ctx.file_path,
-            skip_protected=True,
-            skip_settings=True,
+            ctx.rope_project, ctx.file_path, skip_protected=True, skip_settings=True
         )
         if res is None:
             return []
@@ -41,8 +38,7 @@ class FlextInfraClassPlacementDetector:
 
         governed_classes = (
             FlextInfraClassPlacementDetector._governed_classes_with_family(
-                ctx.rope_project,
-                res,
+                ctx.rope_project, res
             )
         )
         single_governed_class = len(governed_classes) == 1
@@ -50,32 +46,24 @@ class FlextInfraClassPlacementDetector:
         # 1. Misplaced governed classes → one_class_per_module action.
         for ci, family in governed_classes:
             if FlextInfraClassPlacementDetector._in_canonical_location(
-                family,
-                parts,
-                file_path.name,
+                family, parts, file_path.name
             ):
                 continue
             violations.append(
                 FlextInfraClassPlacementDetector._violation_for_class(
-                    ctx=ctx,
-                    ci=ci,
-                    family=family,
-                    fixable=single_governed_class,
-                ),
+                    ctx=ctx, ci=ci, family=family, fixable=single_governed_class
+                )
             )
 
         # 2. Class-level constants outside _constants → classvar_relocation action.
         #    Covers explicit ClassVar annotations AND implicit UPPER_CASE
         #    constant-like assignments (no ClassVar annotation).
         if not FlextInfraClassPlacementDetector._in_canonical_location(
-            "c",
-            parts,
-            file_path.name,
+            "c", parts, file_path.name
         ):
             classvar_violations: list[m.Infra.ClassPlacementViolation] = []
             for ci in FlextInfraClassPlacementDetector._public_classes(
-                ctx.rope_project,
-                res,
+                ctx.rope_project, res
             ):
                 classvar_violations.extend(
                     m.Infra.ClassPlacementViolation(
@@ -90,28 +78,22 @@ class FlextInfraClassPlacementDetector:
                         action="classvar_relocation",
                         fixable=True,
                         target_facade=FlextInfraClassPlacementDetector._target_facade(
-                            ctx,
-                            "c",
+                            ctx, "c"
                         ),
                         family="c",
                     )
                     for constant in FlextInfraClassPlacementDetector._class_constants(
-                        ctx.rope_project,
-                        res,
-                        class_name=ci.name,
+                        ctx.rope_project, res, class_name=ci.name
                     )
                 )
             violations.extend(classvar_violations)
 
         # 3. Misplaced type aliases → deep_namespace_refactor action.
         for alias_name, alias_line in FlextInfraClassPlacementDetector._type_aliases(
-            ctx.rope_project,
-            res,
+            ctx.rope_project, res
         ):
             if FlextInfraClassPlacementDetector._in_canonical_location(
-                "t",
-                parts,
-                file_path.name,
+                "t", parts, file_path.name
             ):
                 continue
             violations.append(
@@ -126,19 +108,17 @@ class FlextInfraClassPlacementDetector:
                     action="deep_namespace_refactor",
                     fixable=False,
                     target_facade=FlextInfraClassPlacementDetector._target_facade(
-                        ctx,
-                        "t",
+                        ctx, "t"
                     ),
                     family="t",
-                ),
+                )
             )
 
         return violations
 
     @staticmethod
     def _governed_classes_with_family(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> tuple[tuple[m.Infra.ClassInfo, str], ...]:
         """Return public governed classes with their family letters."""
         results: list[tuple[m.Infra.ClassInfo, str]] = []
@@ -173,9 +153,7 @@ class FlextInfraClassPlacementDetector:
         )
 
     @staticmethod
-    def _family_for_class(
-        ci: m.Infra.ClassInfo,
-    ) -> str | None:
+    def _family_for_class(ci: m.Infra.ClassInfo) -> str | None:
         """Return the canonical family letter for a class, or None if not governed."""
         terminal_bases = {
             base_name.rsplit(".", maxsplit=1)[-1] for base_name in ci.bases
@@ -195,9 +173,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _in_canonical_location(
-        family: str,
-        parts: tuple[str, ...],
-        file_name: str,
+        family: str, parts: tuple[str, ...], file_name: str
     ) -> bool:
         """Return True when the file already lives in the canonical family area."""
         dir_sets = {
@@ -230,10 +206,7 @@ class FlextInfraClassPlacementDetector:
         }.get(family, "Move class to canonical family location")
 
     @staticmethod
-    def _target_facade(
-        ctx: m.Infra.DetectorContext,
-        family: str,
-    ) -> str:
+    def _target_facade(ctx: m.Infra.DetectorContext, family: str) -> str:
         """Return the canonical facade class name for a family and project."""
         stem = u.derive_class_stem(ctx.project_name) if ctx.project_name else ""
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
@@ -241,8 +214,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _public_classes(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return all public top-level classes in a resource."""
         return tuple(
@@ -278,16 +250,12 @@ class FlextInfraClassPlacementDetector:
         UPPER_CASE assignments whose value looks like a canonical constant.
         """
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         tree = pymodule.get_ast()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
-            tree,
-            class_name=class_name,
+            tree, class_name=class_name
         )
         constants: list[m.Infra.ConstantInfo] = []
         for node in body:
@@ -306,7 +274,7 @@ class FlextInfraClassPlacementDetector:
     def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
         target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
-            getattr(node, "target", None),
+            getattr(node, "target", None)
         )
         if not target_name or target_name.startswith("_"):
             return None
@@ -316,21 +284,17 @@ class FlextInfraClassPlacementDetector:
             return None
         annotation = getattr(node, "annotation", None)
         has_classvar = FlextInfraClassPlacementDetector._annotation_contains(
-            annotation,
-            "ClassVar",
+            annotation, "ClassVar"
         )
         value = getattr(node, "value", None)
         if (
             not has_classvar
-            and not FlextInfraClassPlacementDetector._classvar_value_permitted(
-                value,
-            )
+            and not FlextInfraClassPlacementDetector._classvar_value_permitted(value)
         ):
             return None
         line = getattr(node, "lineno", 1)
         return m.Infra.ConstantInfo(
-            name=target_name,
-            line=line if isinstance(line, int) and line > 0 else 1,
+            name=target_name, line=line if isinstance(line, int) and line > 0 else 1
         )
 
     @staticmethod
@@ -351,21 +315,16 @@ class FlextInfraClassPlacementDetector:
             return None
         line = getattr(node, "lineno", 1)
         return m.Infra.ConstantInfo(
-            name=target_name,
-            line=line if isinstance(line, int) and line > 0 else 1,
+            name=target_name, line=line if isinstance(line, int) and line > 0 else 1
         )
 
     @staticmethod
     def _type_aliases(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[tuple[str, int]]:
         """Return module-level type aliases as (name, line) pairs."""
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return ()
         tree = pymodule.get_ast()
@@ -382,12 +341,11 @@ class FlextInfraClassPlacementDetector:
             if kind == "AnnAssign":
                 annotation = getattr(node, "annotation", None)
                 if not FlextInfraClassPlacementDetector._annotation_contains(
-                    annotation,
-                    "TypeAlias",
+                    annotation, "TypeAlias"
                 ):
                     continue
                 target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
-                    getattr(node, "target", None),
+                    getattr(node, "target", None)
                 )
                 line = getattr(node, "lineno", 1)
                 if target_name:

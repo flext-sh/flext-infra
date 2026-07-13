@@ -10,7 +10,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from flext_core import c
-
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
@@ -31,8 +30,7 @@ def _build_namespace_file_to_family(
 
 
 def _build_namespace_family_expected_alias(
-    mapping: Sequence[tuple[str, Sequence[str]]],
-    suffixes: t.StrMapping,
+    mapping: Sequence[tuple[str, Sequence[str]]], suffixes: t.StrMapping
 ) -> t.MappingKV[str, t.StrPair]:
     """Build file name → (alias, suffix) mapping from family specs."""
     result: dict[str, t.StrPair] = {}
@@ -247,7 +245,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     ] = MappingProxyType({
         RefactorFileRuleKind.CLASS_NESTING: (
             (frozenset({"nest_classes"}), frozenset(), frozenset(), frozenset()),
-        ),
+        )
     })
     RULE_TABLE_HEADERS: Final[t.StrSequence] = (
         cb.RK_ID,
@@ -291,9 +289,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         f"_{MRO_PROTOCOLS_DIRECTORY}",
     })
     "Sanctioned protocol package directory names (public and private)."
-    MRO_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({
-        "models.py",
-    })
+    MRO_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({"models.py"})
     "Canonical models module file names."
     MRO_MODELS_DIRECTORY: Final[str] = "models"
     "Canonical models package directory name."
@@ -491,7 +487,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     MIN_PATH_DEPTH: int = 2
     "Minimum relative path depth for module prefix detection."
     NAMESPACE_CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"^_?[A-Z][A-Z0-9_]+$",
+        r"^_?[A-Z][A-Z0-9_]+$"
     )
     "Regex: namespace constant candidate names."
     CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = c.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
@@ -511,8 +507,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Canonical factory calls allowed as ClassVar default values."
     NAMESPACE_MIN_ALIAS_LENGTH: Final[int] = 2
     FACADE_ALIAS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w)\b[^=]*=\s*(\w+)",
-        re.MULTILINE,
+        r"^(\w)\b[^=]*=\s*(\w+)", re.MULTILINE
     )
     "Matches ``m = FlextFooModels`` alias assignments in facade files."
 
@@ -535,10 +530,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Path fragments that disqualify a file from root-facade alias detection."
 
     # --- Detector regex constants ---
-    ASSIGN_RE: Final[t.RegexPattern] = re.compile(
-        r"^([A-Z_]\w*)\s*[:=]",
-        re.MULTILINE,
-    )
+    ASSIGN_RE: Final[t.RegexPattern] = re.compile(r"^([A-Z_]\w*)\s*[:=]", re.MULTILINE)
     "Matches top-level UPPER_CASE assignments for loose constant detection."
     LOGGER_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
         r"^([A-Za-z_]\w*)\s*[:=]\s*(?:(?:\w+\.)*)?"
@@ -546,14 +538,10 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         re.IGNORECASE | re.MULTILINE,
     )
     "Matches top-level logger assignments created outside namespace classes."
-    PEP695_RE: Final[t.RegexPattern] = re.compile(
-        r"^type\s+(\w+)\s*=",
-        re.MULTILINE,
-    )
+    PEP695_RE: Final[t.RegexPattern] = re.compile(r"^type\s+(\w+)\s*=", re.MULTILINE)
     "Matches PEP 695 type alias definitions."
     TYPEALIAS_ANNOT_RE: Final[t.RegexPattern] = re.compile(
-        r"^(\w+)\s*:\s*(?:\w+\.)*TypeAlias\s*=",
-        re.MULTILINE,
+        r"^(\w+)\s*:\s*(?:\w+\.)*TypeAlias\s*=", re.MULTILINE
     )
     "Matches TypeAlias annotation syntax for typing alias detection."
     TYPING_FACTORY_ASSIGN_RE: Final[t.RegexPattern] = re.compile(
@@ -563,8 +551,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     )
     "Matches TypeVar/ParamSpec/TypeVarTuple/NewType assignments."
     COMPAT_ALIAS_RE: Final[t.RegexPattern] = re.compile(
-        r"^([A-Z]\w+)\s*=\s*([A-Z]\w+)\s*$",
-        re.MULTILINE,
+        r"^([A-Z]\w+)\s*=\s*([A-Z]\w+)\s*$", re.MULTILINE
     )
     "Matches compatibility alias assignments (CapitalName = CapitalName)."
     COMPAT_SKIP_NAMES: Final[frozenset[str]] = frozenset({
@@ -585,12 +572,11 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     ENFORCEMENT_LIBRARY_OWNERS: Final[t.StrMapping] = c.ENFORCEMENT_LIBRARY_OWNERS
     "External library → project that owns its abstraction facade (SSOT: flext-core)."
     FUTURE_ANNOTATIONS_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+__future__\s+import\s+annotations\b",
-        re.MULTILINE,
+        r"^from\s+__future__\s+import\s+annotations\b", re.MULTILINE
     )
     "Matches 'from __future__ import annotations' import statement."
     ONLY_DOCSTRING_RE: Final[t.RegexPattern] = re.compile(
-        r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$',
+        r'^("""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')\s*$'
     )
     "Matches files that contain only a module docstring."
     MIN_METHODS_FOR_REORDER: Final[int] = 2
@@ -669,11 +655,11 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
 
     # --- MRO scan patterns ---
     MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"^_?[A-Za-z][A-Za-z0-9_]*$",
+        r"^_?[A-Za-z][A-Za-z0-9_]*$"
     )
     "Regex: valid Python identifier (used for MRO type/class name validation)."
     MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])",
+        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])"
     )
     "Regex: Protocol base in class definition (with optional namespace prefix)."
 
@@ -693,8 +679,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
 
     # --- Deprecated class pattern ---
     CLASS_BLOCK_RE: Final[t.RegexPattern] = re.compile(
-        r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)",
-        re.MULTILINE,
+        r"^(class\s+(\w+)\b[^\n]*:\n(?:(?:[ \t]+[^\n]*|[ \t]*)\n)*)", re.MULTILINE
     )
     "Regex: full class block including body lines."
     DEPRECATION_WARN_RE: Final[t.RegexPattern] = re.compile(r"\.warn\s*\(")
@@ -702,8 +687,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
 
     # --- Lazy import fixer ---
     DEF_ASYNC_CLASS_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:def |async def |class )",
-        re.MULTILINE,
+        r"^(?:def |async def |class )", re.MULTILINE
     )
     "Regex: top-level def/async def/class keyword (for lazy import detection)."
 

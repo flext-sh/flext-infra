@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
 
+from flext_core import r
 from flext_infra import c, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
@@ -28,8 +26,7 @@ class FlextInfraUtilitiesDocsValidate:
     def docs_has_adr_reference(skill_path: Path) -> bool:
         """Return whether a skill file contains an ADR reference."""
         text = skill_path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-            errors=c.Infra.IGNORE,
+            encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
         )
         return "adr" in text.lower()
 
@@ -47,22 +44,20 @@ class FlextInfraUtilitiesDocsValidate:
             case Mapping() as outer:
                 pass
             case _:
-                return r[t.Infra.InfraSequence].fail(
-                    "payload is not a mapping",
-                )
+                return r[t.Infra.InfraSequence].fail("payload is not a mapping")
         match outer.get("docs_validation"):
             case Mapping() as inner:
                 pass
             case _:
                 return r[t.Infra.InfraSequence].fail(
-                    "docs_validation block missing or not a mapping",
+                    "docs_validation block missing or not a mapping"
                 )
         match inner.get("required_skills"):
             case list() as configured:
                 return r[t.Infra.InfraSequence].ok(configured)
             case _:
                 return r[t.Infra.InfraSequence].fail(
-                    "required_skills missing or not a list",
+                    "required_skills missing or not a list"
                 )
 
     @staticmethod
@@ -137,23 +132,18 @@ class FlextInfraUtilitiesDocsValidate:
         if not init_path.exists():
             messages.append(
                 "missing public package init: "
-                f"{init_path.relative_to(scope.path).as_posix()}",
+                f"{init_path.relative_to(scope.path).as_posix()}"
             )
             return messages
         contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path,
-            scope.package_name,
+            scope.path, scope.package_name
         )
         if not contract.get("modules") and not contract.get("exports"):
             messages.append("empty public API contract from package exports")
         return messages
 
     @staticmethod
-    def docs_write_todo(
-        scope: m.Infra.DocScope,
-        *,
-        apply_mode: bool,
-    ) -> p.Result[bool]:
+    def docs_write_todo(scope: m.Infra.DocScope, *, apply_mode: bool) -> p.Result[bool]:
         """Write the standard ``TODOS.md`` helper file when requested.
 
         ``r.ok(True)`` when a TODO file was written, ``r.ok(False)`` when
@@ -176,8 +166,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_write_validate_reports(
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
+        scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
     ) -> None:
         """Persist the standard validate summary and markdown report."""
         _ = u.Cli.json_write(

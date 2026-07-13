@@ -7,17 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra.constants import c
-from flext_infra.models import m
-
-# mro-i6nq.10: Keep Ruff normalization behind one typed utilities owner.
-
-if TYPE_CHECKING:
-    from flext_core import p
-
-    from flext_infra.typings import t
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesCodegen:
@@ -30,10 +21,7 @@ class FlextInfraUtilitiesCodegen:
 
     @classmethod
     def normalize_python_source(
-        cls,
-        source: str,
-        *,
-        filename: t.Cli.TextPath,
+        cls, source: str, *, filename: t.Cli.TextPath
     ) -> p.Result[str]:
         """Return Ruff-fixed and formatted source without writing ``filename``."""
         resolved_path = Path(filename).resolve()
@@ -42,7 +30,7 @@ class FlextInfraUtilitiesCodegen:
         cwd = cls.project_root(resolved_path)
         if cwd is None:
             return r[str].fail(
-                f"project root not found for generated source: {resolved_path}",
+                f"project root not found for generated source: {resolved_path}"
             )
         # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
         # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
@@ -71,7 +59,7 @@ class FlextInfraUtilitiesCodegen:
             detail = checked_output.stderr.strip() or "no diagnostic output"
             return r[str].fail(
                 f"ruff check failed ({checked_output.exit_code}) for "
-                f"{resolved_path}: {detail}",
+                f"{resolved_path}: {detail}"
             )
         formatted = u.Cli.run_raw(
             [
@@ -92,14 +80,14 @@ class FlextInfraUtilitiesCodegen:
         )
         if formatted.failure:
             return r[str].fail(
-                formatted.error or f"ruff format failed: {resolved_path}",
+                formatted.error or f"ruff format failed: {resolved_path}"
             )
         formatted_output = formatted.value
         if formatted_output.exit_code != 0:
             detail = formatted_output.stderr.strip() or "no diagnostic output"
             return r[str].fail(
                 f"ruff format failed ({formatted_output.exit_code}) for "
-                f"{resolved_path}: {detail}",
+                f"{resolved_path}: {detail}"
             )
         normalized_source = formatted_output.stdout
         if normalized_source and not normalized_source.endswith("\n"):
@@ -108,10 +96,7 @@ class FlextInfraUtilitiesCodegen:
 
     @staticmethod
     def generate_module_skeleton(
-        *,
-        class_name: str,
-        base_class: str,
-        docstring: str,
+        *, class_name: str, base_class: str, docstring: str
     ) -> str:
         """Render one module skeleton through the cli template engine (ADR-005).
 
@@ -139,10 +124,7 @@ class FlextInfraUtilitiesCodegen:
             base_import_block=base_import_block,
             docstring=docstring,
         )
-        rendered: p.Result[str] = u.Cli.template_render(
-            template_path,
-            context,
-        )
+        rendered: p.Result[str] = u.Cli.template_render(template_path, context)
         return rendered.unwrap()
 
     @staticmethod
@@ -164,11 +146,7 @@ class FlextInfraUtilitiesCodegen:
         for line_number, line in enumerate(source_lines, 1):
             stripped = line.lstrip()
             indent = len(line) - len(stripped)
-            FlextInfraUtilitiesCodegen.update_class_stack(
-                class_stack,
-                stripped,
-                indent,
-            )
+            FlextInfraUtilitiesCodegen.update_class_stack(class_stack, stripped, indent)
             match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
             if match is None:
                 continue

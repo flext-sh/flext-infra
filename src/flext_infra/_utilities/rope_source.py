@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from operator import itemgetter
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import ClassVar
 
 from flext_cli import u
 
@@ -12,12 +14,6 @@ from flext_infra import c, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
-
-if TYPE_CHECKING:
-    from collections.abc import (
-        Iterable,
-    )
-    from pathlib import Path
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -55,9 +51,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def find_import_insert_position(
-        lines: t.StrSequence,
-        *,
-        past_existing: bool = True,
+        lines: t.StrSequence, *, past_existing: bool = True
     ) -> int:
         """Find a line index for inserting imports, never inside a docstring.
 
@@ -105,8 +99,7 @@ class FlextInfraUtilitiesRopeSource:
     def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
         """Return insertion index after module docstring and future imports."""
         return FlextInfraUtilitiesRopeSource.find_import_insert_position(
-            lines,
-            past_existing=False,
+            lines, past_existing=False
         )
 
     @staticmethod
@@ -161,9 +154,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_from_import_bound_names(
-        source: str,
-        *,
-        module_name: str,
+        source: str, *, module_name: str
     ) -> t.Infra.StrSet:
         """Collect bound names imported from a target module."""
         bound_names: t.Infra.StrSet = set()
@@ -173,7 +164,7 @@ class FlextInfraUtilitiesRopeSource:
             bound_names.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2),
+                    match.group(2)
                 )
             )
         for match in c.Infra.FROM_IMPORT_BLOCK_RE.finditer(source):
@@ -182,7 +173,7 @@ class FlextInfraUtilitiesRopeSource:
             bound_names.update(
                 bound
                 for _, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
-                    match.group(2),
+                    match.group(2)
                 )
             )
         return bound_names
@@ -203,9 +194,7 @@ class FlextInfraUtilitiesRopeSource:
             for item in raw_items
         ]
         try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                normalized,
-            )
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
             return [
                 m.Infra.ImportModernizerRuleConfig.model_validate(item)
                 for item in typed_items
@@ -215,8 +204,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_blocked_aliases(
-        source: str,
-        runtime_aliases: t.Infra.StrSet,
+        source: str, runtime_aliases: t.Infra.StrSet
     ) -> t.Infra.StrSet:
         """Collect aliases blocked by definitions, imports, and assignments."""
         parse = FlextInfraUtilitiesRopeSource.parse_import_names
@@ -243,8 +231,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_shadowed_aliases(
-        source: str,
-        runtime_aliases: t.Infra.StrSet,
+        source: str, runtime_aliases: t.Infra.StrSet
     ) -> t.Infra.StrSet:
         """Collect runtime-alias names shadowed inside function bodies."""
         shadowed: t.Infra.StrSet = set()
@@ -258,9 +245,7 @@ class FlextInfraUtilitiesRopeSource:
         return shadowed
 
     @staticmethod
-    def find_final_candidates(
-        source: str,
-    ) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
+    def find_final_candidates(source: str) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
         """Find module-level ``Final``-annotated constants via regex."""
         candidates: t.MutableSequenceOf[m.Infra.MROSymbolCandidate] = []
         for line_number, line in enumerate(source.splitlines(), start=1):
@@ -270,10 +255,7 @@ class FlextInfraUtilitiesRopeSource:
             match = c.Infra.FINAL_ASSIGN_RE.match(stripped)
             if match and c.Infra.CONSTANT_NAME_RE.match(match.group(1)) is not None:
                 candidates.append(
-                    m.Infra.MROSymbolCandidate(
-                        symbol=match.group(1),
-                        line=line_number,
-                    ),
+                    m.Infra.MROSymbolCandidate(symbol=match.group(1), line=line_number)
                 )
         return candidates
 
@@ -337,11 +319,7 @@ class FlextInfraUtilitiesRopeSource:
             if (
                 target != value
                 or target in allow_set
-                or target
-                in {
-                    c.Infra.DUNDER_VERSION,
-                    c.Infra.DUNDER_ALL,
-                }
+                or target in {c.Infra.DUNDER_VERSION, c.Infra.DUNDER_ALL}
             ):
                 kept.append(line)
             else:
@@ -399,11 +377,7 @@ class FlextInfraUtilitiesRopeSource:
         """Apply offset-based edits (start, end, replacement) to source."""
         _ = rope_project
         source: str = resource.read()
-        for start, end, replacement in sorted(
-            changes,
-            key=itemgetter(0),
-            reverse=True,
-        ):
+        for start, end, replacement in sorted(changes, key=itemgetter(0), reverse=True):
             source = source[:start] + replacement + source[end:]
         if apply and source != resource.read():
             resource.write(source)
@@ -425,10 +399,7 @@ class FlextInfraUtilitiesRopeSource:
         """
         source = resource.read()
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             tree = pymodule.get_ast()
         except c.EXC_BROAD_RUNTIME as exc:
             msg = f"silent failure sentinel AST collection failed for {resource.path}"
@@ -442,34 +413,25 @@ class FlextInfraUtilitiesRopeSource:
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(
-            rope_project,
-            resource,
-            changes,
-            apply=apply,
+            rope_project, resource, changes, apply=apply
         )
         return updated, [f"Replaced {len(changes)} silent failure sentinel return(s)"]
 
     @classmethod
     def apply_transformer_to_source(
-        cls,
-        source: str,
-        file_path: Path,
-        transformer_fn: t.Infra.RopeTransformFn,
+        cls, source: str, file_path: Path, transformer_fn: t.Infra.RopeTransformFn
     ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""
-        workspace_root = FlextInfraUtilitiesDiscovery.project_root(
-            file_path,
-        )
+        workspace_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if workspace_root is None:
             return (source, [])
         original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root,
+                workspace_root
             ) as rope_project:
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project,
-                    file_path,
+                    rope_project, file_path
                 )
                 if resource is None:
                     return (source, [])
@@ -483,8 +445,7 @@ class FlextInfraUtilitiesRopeSource:
                 != original_disk_source
             ):
                 file_path.write_text(
-                    original_disk_source,
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    original_disk_source, encoding=c.Cli.ENCODING_DEFAULT
                 )
 
 

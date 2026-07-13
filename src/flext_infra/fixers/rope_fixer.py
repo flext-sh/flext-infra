@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-
 from flext_infra import c, m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -20,9 +19,7 @@ from flext_infra.detectors.class_placement_detector import (
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
-from flext_infra.detectors.inline_import_detector import (
-    FlextInfraInlineImportDetector,
-)
+from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportDetector
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -36,7 +33,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from flext_core._models.enforcement import FlextModelsEnforcement as me
-
     from flext_infra import p, t
 
 
@@ -56,10 +52,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         super().__init__(workspace_root)
 
     @override
-    def can_fix(
-        self,
-        fix_action: me.EnforcementFixAction,
-    ) -> bool:
+    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return (
             fix_action.kind == self.kind
@@ -90,7 +83,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(project_dir),
                         error=f"rope target {target} not registered",
-                    ),
+                    )
                 )
                 continue
             result = handler(project_dir, target_violations, ctx)
@@ -155,8 +148,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
         """Return the import module for a Python file inside a project."""
         package_name = cls._package_name_for_dir(
-            file_path.parent,
-            project_root=project_root,
+            file_path.parent, project_root=project_root
         )
         if file_path.name == c.Infra.INIT_PY:
             return package_name
@@ -171,10 +163,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _constants_module_for_file(
-        file_path: Path,
-        *,
-        module_name: str,
-        project_root: Path,
+        file_path: Path, *, module_name: str, project_root: Path
     ) -> str:
         """Return the canonical project constants module for a source file."""
         module_parts = tuple(module_name.split("."))
@@ -187,8 +176,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             if file_path.stem in {"", "__init__", "__main__", "__version__"}:
                 return ""
             return FlextInfraRopeFixerAdapter._wrapper_constants_module_for_file(
-                module_parts=module_parts,
-                project_root=project_root,
+                module_parts=module_parts, project_root=project_root
             )
         package_root = project_root / c.Infra.DEFAULT_SRC_DIR / package_name
         try:
@@ -218,17 +206,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _wrapper_constants_module_for_file(
-        *,
-        module_parts: t.StrSequence,
-        project_root: Path,
+        *, module_parts: t.StrSequence, project_root: Path
     ) -> str:
         """Return nearest existing wrapper ``_constants`` module."""
         candidate_parts = tuple(module_parts[:-1])
         while candidate_parts:
             candidate_module = ".".join((*candidate_parts, "_constants"))
             if FlextInfraRopeFixerAdapter._constants_module_exists(
-                candidate_module,
-                project_root=project_root,
+                candidate_module, project_root=project_root
             ):
                 return candidate_module
             candidate_parts = candidate_parts[:-1]
@@ -291,7 +276,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"{detector_error_detail}: {exc}",
-                        ),
+                        )
                     )
                     continue
                 selected = filter_violations(file_violations)
@@ -301,7 +286,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason=empty_reason,
-                        ),
+                        )
                     )
                     continue
                 try:
@@ -312,7 +297,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"{rewrite_error_detail}: {exc}",
-                        ),
+                        )
                     )
                     continue
                 if ctx.apply:
@@ -321,18 +306,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     fixed.append(
                         fr.FixedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
                 else:
                     previewed.append(
                         fr.PreviewedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -365,14 +346,12 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="rope resource not found",
-                        ),
+                        )
                     )
                     continue
                 try:
                     _updated, changes = u.Infra.fix_silent_failure_sentinels(
-                        rope_project,
-                        resource,
-                        apply=ctx.apply,
+                        rope_project, resource, apply=ctx.apply
                     )
                 except c.EXC_BROAD_RUNTIME as exc:
                     failed.append(
@@ -380,7 +359,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"silent failure sentinel fix failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 if not changes:
@@ -389,7 +368,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no changes produced",
-                        ),
+                        )
                     )
                     continue
                 if ctx.apply:
@@ -401,18 +380,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     fixed.append(
                         fr.FixedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
                 else:
                     previewed.append(
                         fr.PreviewedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -436,8 +411,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         ) -> None:
             if ctx.apply:
                 u.Infra.rewrite_compatibility_alias_violations(
-                    violations=file_violations,
-                    parse_failures=[],
+                    violations=file_violations, parse_failures=[]
                 )
 
         return self._detect_and_rewrite_files(
@@ -489,7 +463,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(file_path),
                         reason="stub file not found",
-                    ),
+                    )
                 )
                 continue
             message = (
@@ -499,10 +473,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             if not ctx.apply:
                 previewed.append(
                     fr.PreviewedViolation(
-                        rule_id=rule_id,
-                        file_path=str(file_path),
-                        message=message,
-                    ),
+                        rule_id=rule_id, file_path=str(file_path), message=message
+                    )
                 )
                 continue
             try:
@@ -513,16 +485,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(file_path),
                         error=f"stub removal failed: {exc}",
-                    ),
+                    )
                 )
                 continue
             files_modified.add(str(file_path))
             fixed.append(
                 fr.FixedViolation(
-                    rule_id=rule_id,
-                    file_path=str(file_path),
-                    message=message,
-                ),
+                    rule_id=rule_id, file_path=str(file_path), message=message
+                )
             )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -568,7 +538,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 )
                 try:
                     file_violations = FlextInfraPrivateImportBypassDetector.detect_file(
-                        detect_ctx,
+                        detect_ctx
                     )
                 except c.EXC_BROAD_RUNTIME as exc:
                     failed.append(
@@ -576,7 +546,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"private import bypass detector failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 auto_fixable = tuple(v for v in file_violations if v.symbol_exported)
@@ -586,7 +556,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no auto-fixable private import bypass violations",
-                        ),
+                        )
                     )
                     continue
                 try:
@@ -602,7 +572,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"private import bypass rewrite failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 if ctx.apply:
@@ -614,18 +584,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     fixed.append(
                         fr.FixedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
                 else:
                     previewed.append(
                         fr.PreviewedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -698,7 +664,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"inline import detector failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 hoistable = tuple(
@@ -716,7 +682,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason=empty_reason,
-                        ),
+                        )
                     )
                     continue
                 resource = u.Infra.get_resource_from_path(rope_project, file_path)
@@ -726,14 +692,12 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="rope resource not found",
-                        ),
+                        )
                     )
                     continue
                 try:
                     updated, changes = self._hoist_inline_import_source(
-                        resource.read(),
-                        hoistable,
-                        file_path=file_path,
+                        resource.read(), hoistable, file_path=file_path
                     )
                 except c.EXC_BROAD_RUNTIME as exc:
                     failed.append(
@@ -741,7 +705,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"inline import hoist failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 if not changes:
@@ -750,7 +714,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no changes produced",
-                        ),
+                        )
                     )
                     continue
                 if ctx.apply:
@@ -763,18 +727,14 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     fixed.append(
                         fr.FixedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
                 else:
                     previewed.append(
                         fr.PreviewedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            message=message,
-                        ),
+                            rule_id=rule_id, file_path=str(file_path), message=message
+                        )
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -821,8 +781,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _find_inline_import_node(
-        tree: ast.Module,
-        line: int,
+        tree: ast.Module, line: int
     ) -> ast.Import | ast.ImportFrom | None:
         """Find the import statement at a detector-reported line."""
         for node in ast.walk(tree):
@@ -849,8 +808,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _unique_new_imports(
-        lines: t.StrSequence,
-        import_lines: t.StrSequence,
+        lines: t.StrSequence, import_lines: t.StrSequence
     ) -> list[str]:
         """Return import lines that are not already present."""
         existing = {line.strip() for line in lines if line.strip()}
@@ -886,7 +844,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=file_path_str,
                             reason="file not found",
-                        ),
+                        )
                     )
                     continue
                 detect_ctx = m.Infra.DetectorContext(
@@ -897,7 +855,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 )
                 try:
                     all_violations = FlextInfraClassPlacementDetector.detect_file(
-                        detect_ctx,
+                        detect_ctx
                     )
                 except c.EXC_BROAD_RUNTIME:
                     failed.append(
@@ -905,7 +863,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=file_path_str,
                             error="detector raised runtime error",
-                        ),
+                        )
                     )
                     continue
                 classvar_violations = [
@@ -914,8 +872,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if not classvar_violations:
                     continue
                 module_name = self._module_name_for_file(
-                    file_path,
-                    project_root=project_dir,
+                    file_path, project_root=project_dir
                 )
                 if not module_name:
                     skipped.append(
@@ -923,13 +880,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=file_path_str,
                             reason="could not resolve module name",
-                        ),
+                        )
                     )
                     continue
                 constants_module = self._constants_module_for_file(
-                    file_path,
-                    module_name=module_name,
-                    project_root=project_dir,
+                    file_path, module_name=module_name, project_root=project_dir
                 )
                 if not constants_module:
                     failed.append(
@@ -940,7 +895,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 "could not resolve canonical constants module "
                                 f"for {module_name}"
                             ),
-                        ),
+                        )
                     )
                     continue
                 for violation in classvar_violations:
@@ -959,7 +914,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=file_path_str,
                                 error=f"autofix failed: {exc}",
-                            ),
+                            )
                         )
                         continue
                     touched_raw = result.get("touched_files", ())
@@ -969,7 +924,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=file_path_str,
                                 error="autofix returned invalid touched_files",
-                            ),
+                            )
                         )
                         continue
                     touched = tuple(str(path) for path in touched_raw)
@@ -986,7 +941,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=file_path_str,
                                 message=message,
-                            ),
+                            )
                         )
                     else:
                         previewed.append(
@@ -994,7 +949,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=file_path_str,
                                 message=message,
-                            ),
+                            )
                         )
 
         return fr.ProjectFixResult(
@@ -1047,10 +1002,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         with u.Infra.open_project(self._workspace_root) as rope_project:
             for file_path in file_paths:
                 resource = u.Infra.fetch_python_resource(
-                    rope_project,
-                    file_path,
-                    skip_protected=True,
-                    skip_settings=True,
+                    rope_project, file_path, skip_protected=True, skip_settings=True
                 )
                 if resource is None:
                     skipped.append(
@@ -1058,7 +1010,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="rope resource not found",
-                        ),
+                        )
                     )
                     continue
                 detect_ctx = m.Infra.DetectorContext(
@@ -1069,7 +1021,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 )
                 try:
                     all_violations = FlextInfraClassPlacementDetector.detect_file(
-                        detect_ctx,
+                        detect_ctx
                     )
                 except c.EXC_BROAD_RUNTIME as exc:
                     failed.append(
@@ -1077,7 +1029,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             error=f"class placement detector failed: {exc}",
-                        ),
+                        )
                     )
                     continue
                 ocpm_violations = [
@@ -1089,7 +1041,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no one_class_per_module violations",
-                        ),
+                        )
                     )
                     continue
                 governed_classes = [
@@ -1104,7 +1056,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="only one governed class; no extras to move",
-                        ),
+                        )
                     )
                     continue
                 governed_classes.sort(key=lambda ci: ci.line)
@@ -1112,8 +1064,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 moved_any = False
                 for extra_ci in extras:
                     extra_violation = next(
-                        (v for v in ocpm_violations if v.name == extra_ci.name),
-                        None,
+                        (v for v in ocpm_violations if v.name == extra_ci.name), None
                     )
                     family = extra_violation.family if extra_violation else ""
                     target_file = self._target_file_for_extra_class(
@@ -1135,7 +1086,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=str(file_path),
                                 error=move_result.error or "failed to move class",
-                            ),
+                            )
                         )
                         continue
                     moved_any = True
@@ -1153,7 +1104,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=str(file_path),
                                 message=message,
-                            ),
+                            )
                         )
                     else:
                         previewed.append(
@@ -1161,7 +1112,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                                 rule_id=rule_id,
                                 file_path=str(file_path),
                                 message=message,
-                            ),
+                            )
                         )
                 if not moved_any:
                     skipped.append(
@@ -1169,7 +1120,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             rule_id=rule_id,
                             file_path=str(file_path),
                             reason="no classes could be moved",
-                        ),
+                        )
                     )
         return fr.ProjectFixResult(
             project=project_dir.name,
@@ -1181,12 +1132,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         )
 
     def _target_file_for_extra_class(
-        self,
-        *,
-        package_dir: Path,
-        file_path: Path,
-        class_name: str,
-        family: str,
+        self, *, package_dir: Path, file_path: Path, class_name: str, family: str
     ) -> Path:
         """Return the target module path for an extra governed class."""
         snake_name = self._to_snake_case(class_name)
@@ -1227,8 +1173,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         target_file.parent.mkdir(parents=True, exist_ok=True)
         if not target_file.exists():
             target_file.write_text(
-                f"{c.Infra.FUTURE_ANNOTATIONS}\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                f"{c.Infra.FUTURE_ANNOTATIONS}\n", encoding=c.Cli.ENCODING_DEFAULT
             )
             rope_project.validate()
 

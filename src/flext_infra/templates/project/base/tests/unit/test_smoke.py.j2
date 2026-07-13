@@ -2,9 +2,10 @@
 
 One thin nested class (``FlextTestsCase`` MRO gives ``c/t/p/m/u`` + runtime for
 free). Tests exercise the PUBLIC surface only — the ``{{ alias }}`` facade and
-the ``{{ ns }}`` domain models — and assert observable behavior (the ``ping``
-handler returns a pong result). No ``mock``/``fake``/``patch``, no reflection on
-private structure, no hint-ignores: only what a downstream consumer can call.
+the ``{{ ns }}`` domain models — and assert observable behavior (the configured
+example command returns its configured result). No ``mock``/``fake``/``patch``,
+no reflection on private structure, no hint-ignores: only what a downstream
+consumer can call.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,7 +16,7 @@ from __future__ import annotations
 import pytest
 from flext_tests import FlextTestsCase, tm
 
-from {{ package_name }} import config, {{ alias }} as facade, m, settings
+from {{ package_name }} import {{ alias }} as facade, config, m, settings
 
 pytestmark = [pytest.mark.smoke, pytest.mark.unit]
 

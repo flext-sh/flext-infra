@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, u
 
 if TYPE_CHECKING:
@@ -17,11 +16,7 @@ if TYPE_CHECKING:
 class FlextInfraRefactorSafetyManager:
     """Orchestrate pre-/post-transform safety: .bak backup, validate, rollback."""
 
-    def __init__(
-        self,
-        *,
-        test_command: t.StrSequence | None = None,
-    ) -> None:
+    def __init__(self, *, test_command: t.StrSequence | None = None) -> None:
         """Initialize safety manager with test command."""
         self._test_command = test_command or [
             c.Infra.PYTHON,
@@ -42,26 +37,20 @@ class FlextInfraRefactorSafetyManager:
         return bool(self._emergency_stop_reason)
 
     def create_pre_transformation_checkpoint(
-        self,
-        workspace_root: Path,
-        *,
-        label: str = "flext-refactor-pre-transform",
+        self, workspace_root: Path, *, label: str = "flext-refactor-pre-transform"
     ) -> p.Result[str]:
         """Back up files in workspace root and return label as reference."""
         _ = label
         py_files = list(
             u.Infra.iter_matching_files(
-                workspace_root,
-                includes=[c.Infra.EXT_PYTHON_GLOB],
-            ),
+                workspace_root, includes=[c.Infra.EXT_PYTHON_GLOB]
+            )
         )
         self._bak_paths = u.Infra.backup_files(py_files)
         return r[str].ok(str(workspace_root))
 
     def rollback(
-        self,
-        workspace_root: Path,
-        checkpoint_ref: str = "",
+        self, workspace_root: Path, checkpoint_ref: str = ""
     ) -> p.Result[bool]:
         """Restore previously backed up files."""
         _ = workspace_root, checkpoint_ref
@@ -99,9 +88,7 @@ class FlextInfraRefactorSafetyManager:
     def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
         """Run import checks and tests against the workspace root."""
         if self._emergency_stop_reason:
-            return r[bool].fail(
-                f"Emergency stop: {self._emergency_stop_reason}",
-            )
+            return r[bool].fail(f"Emergency stop: {self._emergency_stop_reason}")
         ic = u.Cli.run_checked(
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
             cwd=workspace_root,

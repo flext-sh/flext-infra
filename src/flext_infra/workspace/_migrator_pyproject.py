@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, u
 
 if TYPE_CHECKING:
@@ -30,11 +29,7 @@ class FlextInfraProjectMigratorPyprojectMixin:
         def _action_text(action: str, *, dry_run: bool) -> str: ...
 
     def _migrate_pyproject(
-        self,
-        project_root: Path,
-        *,
-        project_name: str,
-        dry_run: bool,
+        self, project_root: Path, *, project_name: str, dry_run: bool
     ) -> p.Result[str]:
         """Migrate pyproject."""
         pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
@@ -42,40 +37,30 @@ class FlextInfraProjectMigratorPyprojectMixin:
             return self._no_change_result("pyproject.toml not found", dry_run=dry_run)
         if project_name == c.Infra.PKG_CORE:
             return self._no_change_result(
-                "pyproject.toml dependency unchanged for flext-core",
-                dry_run=dry_run,
+                "pyproject.toml dependency unchanged for flext-core", dry_run=dry_run
             )
         document_result = u.Cli.toml_read_document(pyproject_path)
         if document_result.failure:
-            return r[str].fail(
-                document_result.error or "pyproject parse failed",
-            )
+            return r[str].fail(document_result.error or "pyproject parse failed")
         document: t.Cli.TomlDocument = document_result.value
         if c.Infra.PKG_CORE in u.Infra.declared_dependency_names(document):
             return self._no_change_result(
-                "pyproject.toml already includes flext-core dependency",
-                dry_run=dry_run,
+                "pyproject.toml already includes flext-core dependency", dry_run=dry_run
             )
         return self._apply_flext_core_dependency(
-            document,
-            pyproject_path,
-            dry_run=dry_run,
+            document, pyproject_path, dry_run=dry_run
         )
 
     def _apply_flext_core_dependency(
-        self,
-        document: t.Cli.TomlDocument,
-        pyproject_path: Path,
-        *,
-        dry_run: bool,
+        self, document: t.Cli.TomlDocument, pyproject_path: Path, *, dry_run: bool
     ) -> p.Result[str]:
         """Add flext-core dependency to the pyproject document and write if not dry-run."""
         project_table = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         dependencies_item = u.Cli.toml_item_child(project_table, c.Infra.DEPENDENCIES)
         dependencies = list(
             u.Cli.toml_as_string_list(
-                dependencies_item if dependencies_item is not None else [],
-            ),
+                dependencies_item if dependencies_item is not None else []
+            )
         )
         dependency_spec = c.Infra.PKG_CORE
         if dependency_spec not in dependencies:
@@ -84,14 +69,11 @@ class FlextInfraProjectMigratorPyprojectMixin:
         if not dry_run:
             write_result = u.Cli.toml_write_document(pyproject_path, document)
             if write_result.failure:
-                return r[str].fail(
-                    write_result.error or "pyproject update failed",
-                )
+                return r[str].fail(write_result.error or "pyproject update failed")
         return r[str].ok(
             self._action_text(
-                "pyproject.toml adds flext-core dependency",
-                dry_run=dry_run,
-            ),
+                "pyproject.toml adds flext-core dependency", dry_run=dry_run
+            )
         )
 
 

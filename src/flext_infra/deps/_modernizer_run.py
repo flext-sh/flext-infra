@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-
 from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
@@ -36,8 +35,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         def project_names(self) -> t.StrSequence | None: ...
 
         def _read_document_state(
-            self,
-            path: Path,
+            self, path: Path
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
         def _process_document_state(
@@ -91,7 +89,7 @@ class FlextInfraPyprojectModernizerRunMixin:
             selected_projects = u.Infra.resolve_projects(self.root, selected_names)
             if selected_projects.failure:
                 u.Cli.error(
-                    selected_projects.error or "failed to resolve selected projects",
+                    selected_projects.error or "failed to resolve selected projects"
                 )
                 return 2
             project_paths = [project.path for project in selected_projects.value]
@@ -110,14 +108,12 @@ class FlextInfraPyprojectModernizerRunMixin:
             and root_pyproject_path not in files
         ):
             files = sorted([root_pyproject_path, *files])
-        root_state_result = self._read_document_state(
-            root_pyproject_path,
-        )
+        root_state_result = self._read_document_state(root_pyproject_path)
         if root_state_result.failure:
             return 2
         root_state = root_state_result.value
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload),
+            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
         )
         locked_versions: t.MappingKV[str, str] = {}
         internal_names: t.StrSequence = ()
@@ -129,17 +125,15 @@ class FlextInfraPyprojectModernizerRunMixin:
                 return 2
             try:
                 root_project_name = u.Infra.project_name_from_payload(
-                    root_state.pyproject_path,
-                    root_state.payload,
+                    root_state.pyproject_path, root_state.payload
                 )
             except c.EXC_TYPE_VALIDATION as exc:
                 u.Cli.error(str(exc))
                 return 2
             internal_names = tuple(
                 sorted(
-                    set(u.Infra.workspace_member_names(self.root))
-                    | {root_project_name},
-                ),
+                    set(u.Infra.workspace_member_names(self.root)) | {root_project_name}
+                )
             )
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
@@ -183,18 +177,13 @@ class FlextInfraPyprojectModernizerRunMixin:
                 u.Cli.info(f"{rel_path}:")
                 for change in changes:
                     u.Cli.info(f"  - {change}")
-            u.Cli.info(
-                f"Total: {total} change(s) across {len(violations)} file(s)",
-            )
+            u.Cli.info(f"Total: {total} change(s) across {len(violations)} file(s)")
             if dry_run:
                 u.Cli.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
         if not dry_run and (not self.skip_check):
-            return self._run_build_check(
-                document_states,
-                invalid_paths=invalid_paths,
-            )
+            return self._run_build_check(document_states, invalid_paths=invalid_paths)
         return 0
 
     def _run_build_check(

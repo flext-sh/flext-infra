@@ -65,10 +65,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return final_score
 
     def _pick_preferred_target(
-        self,
-        name: str,
-        existing: t.StrPair,
-        target: t.StrPair,
+        self, name: str, existing: t.StrPair, target: t.StrPair
     ) -> t.StrPair:
         """Return the higher-scored of two competing export targets."""
         existing_score = self._target_score(name, existing)
@@ -79,12 +76,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return existing
         return min(existing, target)
 
-    def _add(
-        self,
-        index: t.MutableLazyAliasMap,
-        name: str,
-        target: t.StrPair,
-    ) -> None:
+    def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
         """Insert a name/target pair, resolving collisions via policy scoring."""
         existing = index.get(name)
         if existing is None or existing == target:
@@ -100,16 +92,12 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         self._collision_count += 1
         u.Cli.warning(
             f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}",
+            f"resolved by canonical policy scorer to {winner}"
         )
         index[name] = winner
 
     @classmethod
-    def _is_intentional_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_intentional_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
         if cls._is_mro_part_reexport(a, b):
             return True
@@ -146,11 +134,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return "_part_" in module_stem
 
     @classmethod
-    def _is_mro_part_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_mro_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether targets are the same logical MRO owner split into parts."""
         if a[1] != b[1]:
             return False
@@ -186,11 +170,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return facade_tuple == expected_facade_parts
 
     @classmethod
-    def _is_root_typing_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_root_typing_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether a generated root-typing module re-exports source owners."""
         if a[1] != b[1]:
             return False
@@ -203,11 +183,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return a_root_typing != b_root_typing
 
     @classmethod
-    def _is_private_facade_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_private_facade_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether a public facade re-exports a private implementation module."""
         if a[1] != b[1]:
             return False
@@ -236,11 +212,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         )
 
     @classmethod
-    def _is_test_collection_collision(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_test_collection_collision(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether duplicate generated test collection names are benign."""
         if a[1] != b[1] or not a[1].startswith("Tests"):
             return False

@@ -19,10 +19,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         _modified_files: t.Infra.StrSet
 
     def _cleanup_generated_support_files(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool = False,
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> int:
         """Remove generated files superseded by inline ``__init__.py`` maps."""
         try:
@@ -30,16 +27,13 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             self._remove_generated_typing_stub(plan, check_only=check_only)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(
-                f"cleaning generated sidecars for {plan.context.pkg_dir}: {exc}",
+                f"cleaning generated sidecars for {plan.context.pkg_dir}: {exc}"
             )
             return -1
         return 0
 
     def _remove_generated_typing_stub(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool = False,
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
         """Remove stale codegen-owned ``__init__.pyi`` files."""
         stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
@@ -53,10 +47,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         self._modified_files.add(str(stub_path))
 
     def _remove_generated_export_sidecars(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool = False,
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
         """Remove generated ``_exports*`` files no longer used by codegen."""
         search_dirs = {

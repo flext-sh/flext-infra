@@ -31,9 +31,11 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
 
     _description = "migrate Pydantic v1/legacy patterns to v2 canonical forms"
 
-    _PYDANTIC_BASES: ClassVar[frozenset[str]] = frozenset(
-        {"BaseModel", "BaseSettings", "RootModel"},
-    )
+    _PYDANTIC_BASES: ClassVar[frozenset[str]] = frozenset({
+        "BaseModel",
+        "BaseSettings",
+        "RootModel",
+    })
     _CONFIG_MIN_BODY_LINES: ClassVar[int] = 2
 
     @override
@@ -104,9 +106,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                 attr_text = self.node_text(node)
                 new_text = attr_text[: -len(node.attr)] + new_attr
                 self.append_rewrite(
-                    node,
-                    new_text,
-                    f"Replaced {node.attr} with {new_attr}",
+                    node, new_text, f"Replaced {node.attr} with {new_attr}"
                 )
             self.generic_visit(node)
 
@@ -179,14 +179,11 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
             call_text = self.node_text(node)
             new_call = call_text.replace(f".{attr}(", f".{mapping[attr]}(", 1)
             self.append_rewrite(
-                node,
-                new_call,
-                f"Replaced .{attr}() with .{mapping[attr]}()",
+                node, new_call, f"Replaced .{attr}() with .{mapping[attr]}()"
             )
 
         def _rewrite_validator_decorators(
-            self,
-            node: ast.FunctionDef | ast.AsyncFunctionDef,
+            self, node: ast.FunctionDef | ast.AsyncFunctionDef
         ) -> None:
             """Convert @validator / @root_validator decorators."""
             for decorator in node.decorator_list:
@@ -202,9 +199,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                     self._rewrite_root_validator_call(decorator, node)
 
         def _rewrite_validator_call(
-            self,
-            decorator: ast.Call,
-            _func: ast.FunctionDef | ast.AsyncFunctionDef,
+            self, decorator: ast.Call, _func: ast.FunctionDef | ast.AsyncFunctionDef
         ) -> None:
             """Convert ``@validator("field")`` to ``@field_validator("field")``."""
             dec_text = self.node_text(decorator)
@@ -217,16 +212,12 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                 new_text = new_text.replace(")", ', mode="after")', 1)
 
             self.append_rewrite(
-                decorator,
-                new_text,
-                "Replaced @validator with @field_validator",
+                decorator, new_text, "Replaced @validator with @field_validator"
             )
             self._needs_field_validator_import = True
 
         def _rewrite_root_validator_call(
-            self,
-            decorator: ast.Call,
-            _func: ast.FunctionDef | ast.AsyncFunctionDef,
+            self, decorator: ast.Call, _func: ast.FunctionDef | ast.AsyncFunctionDef
         ) -> None:
             """Convert ``@root_validator`` to ``@model_validator``."""
             dec_text = self.node_text(decorator)
@@ -238,9 +229,7 @@ class FlextInfraRefactorPydanticModernizer(FlextInfraRopeTransformer):
                 new_text = new_text.replace(")", ', mode="after")', 1)
 
             self.append_rewrite(
-                decorator,
-                new_text,
-                "Replaced @root_validator with @model_validator",
+                decorator, new_text, "Replaced @root_validator with @model_validator"
             )
             self._needs_model_validator_import = True
 

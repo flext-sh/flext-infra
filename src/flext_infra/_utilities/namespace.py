@@ -2,25 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Final
+from typing import ClassVar, Final
 
 from flext_cli import u
-from flext_core import r
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, r, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
-
-if TYPE_CHECKING:
-    from collections.abc import (
-        MutableMapping,
-    )
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -100,11 +93,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def ordered_namespace_exports(
-        cls,
-        *,
-        package_dir: Path,
-        package_name: str,
-        export_names: t.StrSequence,
+        cls, *, package_dir: Path, package_name: str, export_names: t.StrSequence
     ) -> t.StrSequence:
         """Order root-package exports with alias hierarchy preserved."""
         ordered_unique = tuple(dict.fromkeys(export_names))
@@ -118,14 +107,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         inherited_aliases = tuple(
             alias
             for alias in settings.inherited_exports.get(
-                cls.surface_name(package_name),
-                (),
+                cls.surface_name(package_name), ()
             )
             if alias in export_set and alias not in local_aliases
         )
-        configured_aliases = tuple(
-            dict.fromkeys((*local_aliases, *inherited_aliases)),
-        )
+        configured_aliases = tuple(dict.fromkeys((*local_aliases, *inherited_aliases)))
         preferred_aliases = tuple(
             alias for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER if alias in export_set
         )
@@ -137,7 +123,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                     for alias in configured_aliases
                     if alias not in preferred_aliases
                 ),
-            )),
+            ))
         )
         alias_set = set(ordered_aliases)
         other_exports = tuple(name for name in ordered_unique if name not in alias_set)
@@ -162,10 +148,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def layout(
-        cls,
-        project_root: Path,
-        *,
-        project: p.Infra.ProjectInfo | None = None,
+        cls, project_root: Path, *, project: p.Infra.ProjectInfo | None = None
     ) -> m.Infra.RopeProjectLayout | None:
         """Return the canonical project layout contract for one project root."""
         resolved_root = project_root.resolve()
@@ -207,9 +190,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_family(
-        cls,
-        file_path: Path,
-        settings: m.Infra.LazyInitConfig,
+        cls, file_path: Path, settings: m.Infra.LazyInitConfig
     ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
@@ -291,7 +272,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             and resolved_rel_path.name == c.Infra.API_PY
         ):
             resolved_alias = cls.package_alias(
-                package_name=".".join(package_parts) if package_parts else "",
+                package_name=".".join(package_parts) if package_parts else ""
             )
         return (
             is_fixture_module,
@@ -307,9 +288,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_project_prefix(
-        cls,
-        file_path: Path,
-        settings: m.Infra.LazyInitConfig,
+        cls, file_path: Path, settings: m.Infra.LazyInitConfig
     ) -> str:
         """Derive the class-stem prefix for one file inside a project."""
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
@@ -330,16 +309,12 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def policy(
-        cls,
-        file_path: Path,
-        *,
-        rel_path: Path | None = None,
-        current_pkg: str = "",
+        cls, file_path: Path, *, rel_path: Path | None = None, current_pkg: str = ""
     ) -> m.Infra.NamespaceModulePolicy:
         """Return the derived Pydantic policy for one governed module."""
         settings = cls._lazy_init_config()
         package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
-            file_path,
+            file_path
         )
         resolved_rel_path = rel_path or Path(file_path.name)
         package_parts = tuple(part for part in package_name.split(".") if part)
@@ -431,11 +406,11 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                workspace_root,
+                workspace_root
             )
             if not projects_result.success:
                 return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
-                    projects_result.error or "project discovery failed",
+                    projects_result.error or "project discovery failed"
                 )
             discovered = projects_result.unwrap()
         else:
@@ -449,13 +424,12 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def parse_namespace_validation(
-        cls,
-        validation: p.Result[m.Infra.ValidationReport],
+        cls, validation: p.Result[m.Infra.ValidationReport]
     ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
             return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed",
+                validation.error or "namespace validation failed"
             )
         report = validation.unwrap()
         parsed: list[m.Infra.CensusViolation] = []
@@ -471,20 +445,14 @@ class FlextInfraUtilitiesCodegenNamespace:
                     rule=rule,
                     line=int(match.group("line")),
                     message=match.group("message"),
-                    fixable=cls._is_rule_fixable(
-                        rule,
-                        module,
-                    ),
-                ),
+                    fixable=cls._is_rule_fixable(rule, module),
+                )
             )
         return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
     @classmethod
     def normalize_canonical_facades(
-        cls,
-        *,
-        pkg_dir: Path,
-        ctx: m.Infra.FixContext,
+        cls, *, pkg_dir: Path, ctx: m.Infra.FixContext
     ) -> None:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
@@ -493,11 +461,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 "from flext_core import FlextConstants as Constants",
                 "Constants",
             ),
-            (
-                c.Infra.TYPINGS_PY,
-                "from flext_core import FlextTypes as Types",
-                "Types",
-            ),
+            (c.Infra.TYPINGS_PY, "from flext_core import FlextTypes as Types", "Types"),
         ):
             cls._normalize_facade_base(
                 file_path=pkg_dir / file_name,
@@ -525,23 +489,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         """
         if not file_path.is_file():
             return
-        with FlextInfraUtilitiesRopeCore.open_project(
-            file_path.parent,
-        ) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(file_path.parent) as rope_project:
             resource: t.Infra.RopeResource | None = (
                 FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project,
-                    file_path,
+                    rope_project, file_path
                 )
             )
             if resource is None:
                 return
             source = resource.read()
             class_infos = sorted(
-                FlextInfraUtilitiesRopeAnalysis.get_class_info(
-                    rope_project,
-                    resource,
-                ),
+                FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource),
                 key=lambda item: item.line,
             )
             if not class_infos:
@@ -554,9 +512,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             if not 0 <= header_idx < len(lines):
                 return
             rewritten_header = cls._normalize_class_header(
-                line=lines[header_idx],
-                class_name=class_info.name,
-                base_name=base_name,
+                line=lines[header_idx], class_name=class_info.name, base_name=base_name
             )
             if rewritten_header == lines[header_idx]:
                 return
@@ -566,8 +522,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 updated += "\n"
             if base_import not in updated:
                 updated = cls._insert_import_line(
-                    source=updated,
-                    import_line=base_import,
+                    source=updated, import_line=base_import
                 )
             if updated == source:
                 return
@@ -603,7 +558,7 @@ class FlextInfraUtilitiesCodegenNamespace:
             return source
         insert_at = (
             FlextInfraUtilitiesRopeSource.index_after_docstring_and_future_imports(
-                lines,
+                lines
             )
         )
         before = lines[:insert_at]
@@ -625,8 +580,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         initial_violations: t.SequenceOf[m.Infra.CensusViolation],
         remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
     ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...],
-        tuple[m.Infra.CensusViolation, ...],
+        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
     ]:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:
@@ -673,12 +627,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         """Build violation key."""
         if violation.module not in source_cache:
             source_cache[violation.module] = cls._read_source_lines(
-                project_path,
-                violation.module,
+                project_path, violation.module
             )
         return m.Infra.ViolationKey.from_violation(
-            violation,
-            source_cache[violation.module],
+            violation, source_cache[violation.module]
         )
 
 

@@ -19,15 +19,12 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
 
     @staticmethod
     def get_resource_from_path(
-        rope_project: t.Infra.RopeProject,
-        file_path: Path,
+        rope_project: t.Infra.RopeProject, file_path: Path
     ) -> t.Infra.RopeResource | None:
         """Return rope File for a filesystem Path, or None if outside project."""
         try:
             root_real_path = getattr(
-                getattr(rope_project, "root", None),
-                "real_path",
-                None,
+                getattr(rope_project, "root", None), "real_path", None
             )
             if not isinstance(root_real_path, str):
                 return None
@@ -61,8 +58,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         ):
             return None
         return FlextInfraUtilitiesRopeCoreResourcesMixin.get_resource_from_path(
-            rope_project,
-            file_path,
+            rope_project, file_path
         )
 
     @staticmethod
@@ -111,16 +107,14 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                     if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
                 ),
                 key=lambda resource: resource.path,
-            ),
+            )
         )
 
     @staticmethod
-    def python_file_paths(
-        rope_project: t.Infra.RopeProject,
-    ) -> t.SequenceOf[Path]:
+    def python_file_paths(rope_project: t.Infra.RopeProject) -> t.SequenceOf[Path]:
         """Return stable Python file paths for one Rope project."""
         resources = FlextInfraUtilitiesRopeCoreResourcesMixin.python_resources(
-            rope_project,
+            rope_project
         )
         return tuple(
             sorted(
@@ -130,20 +124,18 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                     if (
                         file_path
                         := FlextInfraUtilitiesRopeCoreResourcesMixin.resource_file_path(
-                            rope_project,
-                            resource,
+                            rope_project, resource
                         )
                     )
                     is not None
                 ),
                 key=lambda file_path: file_path.as_posix(),
-            ),
+            )
         )
 
     @staticmethod
     def resource_file_path(
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> Path | None:
         """Resolve one Rope resource back to an absolute filesystem path."""
         root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)

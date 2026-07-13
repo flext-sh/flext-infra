@@ -14,10 +14,7 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsGithub:
     """Models for GitHub PR orchestration and repository management."""
 
-    class GithubWorkflowSyncRequest(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
+    class GithubWorkflowSyncRequest(mm.WriteMixin, m.ContractModel):
         """CLI/service request for workflow synchronization."""
 
         report: Annotated[str | None, m.Field(description="Output report file")] = None
@@ -28,18 +25,13 @@ class FlextInfraModelsGithub:
             """Resolved report path when provided."""
             return Path(self.report).resolve() if self.report else None
 
-    class GithubWorkflowLintRequest(
-        mm.ReadMixin,
-        m.ContractModel,
-    ):
+    class GithubWorkflowLintRequest(mm.ReadMixin, m.ContractModel):
         """CLI/service request for workflow lint."""
 
         strict: Annotated[bool, m.Field(description="Strict mode")] = False
 
     class GithubPullRequestRequest(
-        mm.GithubPullRequestFieldsMixin,
-        mm.WriteMixin,
-        m.ContractModel,
+        mm.GithubPullRequestFieldsMixin, mm.WriteMixin, m.ContractModel
     ):
         """CLI/service request for a single-repository PR action."""
 
@@ -62,13 +54,11 @@ class FlextInfraModelsGithub:
         """Outcome of a single pull-request command on one repository."""
 
         display: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Repository display name"),
+            t.NonEmptyStr, m.Field(description="Repository display name")
         ]
         status: Annotated[t.NonEmptyStr, m.Field(description="Execution status")]
         elapsed: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Elapsed time in seconds"),
+            t.NonNegativeInt, m.Field(description="Elapsed time in seconds")
         ]
         exit_code: Annotated[int, m.Field(description="Process exit code")]
         log_path: Annotated[str | None, m.Field(description="Log file path")] = None
@@ -82,12 +72,10 @@ class FlextInfraModelsGithub:
         """Aggregated report for workspace-wide pull-request execution."""
 
         total: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Total repositories processed"),
+            t.NonNegativeInt, m.Field(description="Total repositories processed")
         ]
         success: Annotated[
-            t.NonNegativeInt,
-            m.Field(description="Successful executions"),
+            t.NonNegativeInt, m.Field(description="Successful executions")
         ]
         fail: Annotated[t.NonNegativeInt, m.Field(description="Failed executions")]
         outcomes: t.VariadicTuple[FlextInfraModelsGithub.GithubPullRequestOutcome] = (
@@ -130,22 +118,14 @@ class FlextInfraModelsGithub:
                 return f"workflow lint failed: {self.reason}"
             return "workflow lint failed"
 
-    class GithubWorkflowSyncOperation(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class GithubWorkflowSyncOperation(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Describe one workflow synchronization operation."""
 
         path: Annotated[
-            str,
-            m.Field(..., description="File path relative to project root."),
+            str, m.Field(..., description="File path relative to project root.")
         ]
         action: Annotated[
-            str,
-            m.Field(
-                ...,
-                description="Sync action (create, update, noop, prune).",
-            ),
+            str, m.Field(..., description="Sync action (create, update, noop, prune).")
         ]
         reason: Annotated[str, m.Field(..., description="Reason for the action.")]
 
@@ -154,8 +134,7 @@ class FlextInfraModelsGithub:
 
         mode: Annotated[str, m.Field(description="Execution mode")]
         summary: Annotated[
-            t.JsonMapping,
-            m.Field(description="Count of operations by action"),
+            t.JsonMapping, m.Field(description="Count of operations by action")
         ]
         operations: t.VariadicTuple[
             FlextInfraModelsGithub.GithubWorkflowSyncOperation
@@ -185,10 +164,7 @@ class FlextInfraModelsGithub:
             """CLI-facing sync summary."""
             return f"github workflows {self.mode}: {len(self.operations)} operations"
 
-    class GithubWorkflowSyncContext(
-        mm.ProjectNameFieldMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class GithubWorkflowSyncContext(mm.ProjectNameFieldMixin, m.ArbitraryTypesModel):
         """Resolved context for syncing workflows in one project."""
 
         project_root: Annotated[Path, m.Field(description="Project root path")]
@@ -219,8 +195,7 @@ class FlextInfraModelsGithub:
             return self.request.prune
 
     class GithubPullRequestWorkspaceContext(
-        mm.WorkspaceRootPathMixin,
-        m.ArbitraryTypesModel,
+        mm.WorkspaceRootPathMixin, m.ArbitraryTypesModel
     ):
         """Resolved context for workspace-wide pull-request execution."""
 

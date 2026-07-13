@@ -6,17 +6,14 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraExtraPathsSourceMixin:
     """Mixin for pyrefly search paths backed by ``[tool.uv.sources]``."""
-
-    if TYPE_CHECKING:
-        _tool_config: m.Infra.ToolConfigDocument
 
     @staticmethod
     def _project_relative_path(*, project_dir: Path, target_dir: Path) -> str:
@@ -25,21 +22,20 @@ class FlextInfraExtraPathsSourceMixin:
 
     def _uv_source_search_roots(self, source_root: Path) -> t.SequenceOf[Path]:
         """Return import roots for one path dependency source."""
-        source_dir = source_root / self._tool_config.tools.pyrefly.path_rules.source_dir
+        source_dir = (
+            source_root / config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+        )
         if source_dir.is_dir() and any(source_dir.rglob(c.Infra.EXT_PYTHON_GLOB)):
             return (source_dir,)
         skip_dirs = c.Infra.COMMON_EXCLUDED_DIRS | frozenset({c.Infra.DIR_TESTS})
         if u.Infra.discover_python_dirs(source_root, skip_dirs=skip_dirs) or any(
-            source_root.glob(c.Infra.EXT_PYTHON_GLOB),
+            source_root.glob(c.Infra.EXT_PYTHON_GLOB)
         ):
             return (source_root,)
         return ()
 
     def _uv_source_paths(
-        self,
-        payload: t.Infra.ContainerDict,
-        *,
-        project_dir: Path,
+        self, payload: t.Infra.ContainerDict, *, project_dir: Path
     ) -> t.StrSequence:
         """Resolve ``[tool.uv.sources]`` path/editable dependencies to source roots."""
         declared = set(u.Infra.declared_dependency_names_from_payload(payload))
@@ -67,8 +63,7 @@ class FlextInfraExtraPathsSourceMixin:
                 continue
             for source_search_root in self._uv_source_search_roots(source_root):
                 search_path = self._project_relative_path(
-                    project_dir=project_dir,
-                    target_dir=source_search_root,
+                    project_dir=project_dir, target_dir=source_search_root
                 )
                 if search_path in seen:
                     continue

@@ -24,10 +24,7 @@ class FlextInfraGate(ABC):
     tool_url: ClassVar[str] = ""
 
     def __init__(
-        self,
-        workspace_root: Path,
-        *,
-        runner: p.Cli.CommandRunner | None = None,
+        self, workspace_root: Path, *, runner: p.Cli.CommandRunner | None = None
     ) -> None:
         """Bind workspace root and optional command runner override."""
         self._workspace_root = workspace_root
@@ -38,9 +35,7 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Template method: timing + dirs + skip + run + parse + result."""
         started = time.monotonic()
@@ -68,10 +63,7 @@ class FlextInfraGate(ABC):
         )
 
     def check_files(
-        self,
-        files: t.SequenceOf[Path],
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Check specific files instead of whole directory.
 
@@ -109,9 +101,7 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Return directories to check. Default: discover + filter for .py files."""
         _ = ctx
@@ -119,38 +109,26 @@ class FlextInfraGate(ABC):
 
     @abstractmethod
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build the tool CLI command."""
         ...
 
     @abstractmethod
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tool output into (passed, issues)."""
         ...
 
-    def _check_timeout(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Timeout for the check command. Override for long-running tools."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_DEFAULT
         return timeout
 
     def _check_env(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrMapping | None:
         """Return a custom environment for the check command. Default: None (inherit)."""
         _ = project_dir, ctx
@@ -160,11 +138,7 @@ class FlextInfraGate(ABC):
     # Template method: fix
     # ------------------------------------------------------------------
 
-    def fix(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Template method: timing + targets + skip + run fix + result."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -198,10 +172,7 @@ class FlextInfraGate(ABC):
             raw_output=self._fix_raw_output(result),
         )
 
-    def _check_only_fix_result(
-        self,
-        project_dir: Path,
-    ) -> m.Infra.GateExecution:
+    def _check_only_fix_result(self, project_dir: Path) -> m.Infra.GateExecution:
         """Return a non-mutating fix preview for check-only gate contexts."""
         return self._build_gate_result(
             result=m.Infra.GateResult(
@@ -220,18 +191,13 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def _get_fix_targets(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Targets for fix. Default: same as check dirs."""
         return self._get_check_dirs(project_dir, ctx)
 
     def _build_fix_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build the fix CLI command. Must override if can_fix is True."""
         _ = project_dir, ctx, targets
@@ -298,15 +264,13 @@ class FlextInfraGate(ABC):
                 raw_output=raw_output,
             )
         return m.Infra.GateExecution(
-            result=result,
-            issues=tuple(issues),
-            raw_output=raw_output,
+            result=result, issues=tuple(issues), raw_output=raw_output
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
         """Existing check dirs."""
         has_root_python = any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi"),
+            project_dir.glob("*.pyi")
         )
         discovered_dirs = u.Infra.discover_python_dirs(project_dir)
         if has_root_python or discovered_dirs:
@@ -322,17 +286,12 @@ class FlextInfraGate(ABC):
             if not path.is_dir():
                 continue
             if next(path.rglob(c.Infra.EXT_PYTHON_GLOB), None) or next(
-                path.rglob("*.pyi"),
-                None,
+                path.rglob("*.pyi"), None
             ):
                 out.append(directory)
         return out
 
-    def _skip_result(
-        self,
-        project_dir: Path,
-        started: float,
-    ) -> m.Infra.GateExecution:
+    def _skip_result(self, project_dir: Path, started: float) -> m.Infra.GateExecution:
         """Skip result."""
         return self._build_gate_result(
             result=m.Infra.GateResult(

@@ -31,12 +31,7 @@ class FlextInfraInlineImportDetector:
     _STDLIB_NAMES: ClassVar[frozenset[str]] = frozenset(sys.stdlib_module_names)
 
     @classmethod
-    def fix_action_for(
-        cls,
-        *,
-        module_name: str,
-        is_importlib: bool,
-    ) -> str:
+    def fix_action_for(cls, *, module_name: str, is_importlib: bool) -> str:
         """Return the catalog fix action for an inline import.
 
         - ``manual`` for dynamic importlib calls (needs human review).
@@ -56,17 +51,14 @@ class FlextInfraInlineImportDetector:
 
     @classmethod
     def detect_file(
-        cls,
-        ctx: m.Infra.DetectorContext,
+        cls, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[m.Infra.InlineImportViolation]:
         """Return inline-import violations for one file."""
         file_path = ctx.file_path
         if cls._exempt_file(file_path):
             return ()
         res = u.Infra.fetch_python_resource(
-            ctx.rope_project,
-            file_path,
-            skip_init_py=False,
+            ctx.rope_project, file_path, skip_init_py=False
         )
         if res is None:
             return ()
@@ -77,9 +69,7 @@ class FlextInfraInlineImportDetector:
             return ()
         if not isinstance(tree, ast.Module):
             return ()
-        visitor = _InlineImportVisitor(
-            file_path=file_path,
-        )
+        visitor = _InlineImportVisitor(file_path=file_path)
         visitor.visit(tree)
         return tuple(visitor.violations)
 
@@ -97,11 +87,7 @@ class FlextInfraInlineImportDetector:
 class _InlineImportVisitor(ast.NodeVisitor):
     """AST visitor collecting inline imports and importlib calls."""
 
-    def __init__(
-        self,
-        *,
-        file_path: Path,
-    ) -> None:
+    def __init__(self, *, file_path: Path) -> None:
         self.file_path = file_path
         self.violations: list[m.Infra.InlineImportViolation] = []
         self._type_checking_depth = 0
@@ -213,7 +199,7 @@ class _InlineImportVisitor(ast.NodeVisitor):
                 module_name=module_name,
                 imported_symbols=imported_symbols,
                 is_importlib=is_importlib,
-            ),
+            )
         )
 
 
@@ -223,10 +209,7 @@ def _is_type_checking_if(node: ast.If) -> bool:
     return isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"
 
 
-def _resolve_call_name(
-    node: ast.Call,
-    import_aliases: Mapping[str, str],
-) -> str:
+def _resolve_call_name(node: ast.Call, import_aliases: Mapping[str, str]) -> str:
     """Resolve a call expression to a dotted name using alias context."""
     func = node.func
     if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):

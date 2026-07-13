@@ -37,11 +37,7 @@ class FlextInfraSmellFixer:
         return issue_code == self.tag
 
     @abstractmethod
-    def fix(
-        self,
-        project_dir: Path,
-        issue: m.Infra.Issue,
-    ) -> tuple[bool, list[str]]:
+    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
         """Attempt to fix ``issue`` in ``project_dir / issue.file``.
 
         Returns ``(fixed, changes)``. ``fixed`` is True only when the source

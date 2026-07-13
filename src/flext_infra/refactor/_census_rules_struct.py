@@ -11,15 +11,11 @@ from flext_infra.detectors.class_placement_detector import (
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
-from flext_infra.detectors.inline_import_detector import (
-    FlextInfraInlineImportDetector,
-)
+from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportDetector
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
-from flext_infra.detectors.mro_shape_detector import (
-    FlextInfraMROShapeDetector,
-)
+from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -68,8 +64,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...],
-            name: str,
+            objects: tuple[m.Infra.Census.Object, ...], name: str
         ) -> m.Infra.Census.Object | None: ...
 
     def _rule_class_placement(
@@ -110,7 +105,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.suggestion,
                     fixable=detector_violation.fixable,
                     fix_action=action,
-                ),
+                )
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -118,13 +113,9 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     action=action,
                     source_file=str(file_path),
                     files_changed=1,
-                    applied=self._fix_key(
-                        file_path,
-                        detector_violation.name,
-                        action,
-                    )
+                    applied=self._fix_key(file_path, detector_violation.name, action)
                     in applied,
-                ),
+                )
             )
         return violations, fixes
 
@@ -146,7 +137,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraPrivateImportBypassDetector.detect_file(
-            ctx,
+            ctx
         ):
             object_kind = "import"
             if selected_kinds and object_kind not in selected_kinds:
@@ -164,7 +155,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                ),
+                )
             )
             if fixable:
                 fixes.append(
@@ -174,12 +165,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         source_file=str(file_path),
                         files_changed=1,
                         applied=self._fix_key(
-                            file_path,
-                            detector_violation.imported_symbol,
-                            action,
+                            file_path, detector_violation.imported_symbol, action
                         )
                         in applied,
-                    ),
+                    )
                 )
         return violations, fixes
 
@@ -216,8 +205,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             if selected_kinds and object_kind not in selected_kinds:
                 continue
             action = FlextInfraCompatibilityAliasDetector.fix_action_for(
-                detector_violation,
-                current_project=project_name,
+                detector_violation, current_project=project_name
             )
             violations.append(
                 self._raw_violation(
@@ -234,7 +222,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     ),
                     fixable=True,
                     fix_action=action,
-                ),
+                )
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -243,12 +231,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     source_file=str(file_path),
                     files_changed=1,
                     applied=self._fix_key(
-                        file_path,
-                        detector_violation.alias_name,
-                        action,
+                        file_path, detector_violation.alias_name, action
                     )
                     in applied,
-                ),
+                )
             )
         return violations, fixes
 
@@ -267,15 +253,12 @@ class FlextInfraRefactorCensusRulesStructMixin:
         """Detect + plan fixes for MRO-completeness violations."""
         parse_failures: list[m.Infra.ParseFailureViolation] = []
         mro_ctx = self._detector_context(
-            rope,
-            file_path,
-            parse_failures=parse_failures,
-            convention=convention,
+            rope, file_path, parse_failures=parse_failures, convention=convention
         )
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
-            mro_ctx,
+            mro_ctx
         ):
             matched = (
                 self._named_object(objects, detector_violation.facade_class)
@@ -304,7 +287,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.suggestion,
                     fixable=True,
                     fix_action=action,
-                ),
+                )
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -313,12 +296,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     source_file=str(file_path),
                     files_changed=1,
                     applied=self._fix_key(
-                        file_path,
-                        detector_violation.facade_class,
-                        action,
+                        file_path, detector_violation.facade_class, action
                     )
                     in applied,
-                ),
+                )
             )
         return violations, fixes
 
@@ -355,7 +336,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=detector_violation.fixable,
                     fix_action=action,
-                ),
+                )
             )
             fixes.append(
                 m.Infra.Census.Fix(
@@ -364,12 +345,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     source_file=str(file_path),
                     files_changed=1,
                     applied=self._fix_key(
-                        file_path,
-                        detector_violation.class_name,
-                        action,
+                        file_path, detector_violation.class_name, action
                     )
                     in applied,
-                ),
+                )
             )
         return violations, fixes
 
@@ -410,7 +389,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                ),
+                )
             )
             if fixable:
                 fixes.append(
@@ -420,12 +399,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         source_file=str(file_path),
                         files_changed=1,
                         applied=self._fix_key(
-                            file_path,
-                            detector_violation.current_import,
-                            action,
+                            file_path, detector_violation.current_import, action
                         )
                         in applied,
-                    ),
+                    )
                 )
         return violations, fixes
 
@@ -447,7 +424,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraSilentFailureDetector.detect_violations(
-            ctx,
+            ctx
         ):
             object_kind = "statement"
             if selected_kinds and object_kind not in selected_kinds:
@@ -465,7 +442,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                ),
+                )
             )
             if fixable:
                 fixes.append(
@@ -475,12 +452,10 @@ class FlextInfraRefactorCensusRulesStructMixin:
                         source_file=str(file_path),
                         files_changed=1,
                         applied=self._fix_key(
-                            file_path,
-                            detector_violation.kind,
-                            action,
+                            file_path, detector_violation.kind, action
                         )
                         in applied,
-                    ),
+                    )
                 )
         return violations, fixes
 

@@ -26,19 +26,14 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         output_format: Annotated[
             str,
-            m.Field(
-                alias="format",
-                description="Output format for dependency report",
-            ),
+            m.Field(alias="format", description="Output format for dependency report"),
         ] = "text"
         output: Annotated[
-            str | None,
-            m.Field(None, description="Optional output report path"),
+            str | None, m.Field(None, description="Optional output report path")
         ] = None
-        quiet: Annotated[
-            bool,
-            m.Field(False, description="Reduce command output"),
-        ] = False
+        quiet: Annotated[bool, m.Field(False, description="Reduce command output")] = (
+            False
+        )
         no_fail: Annotated[
             bool,
             m.Field(
@@ -47,8 +42,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             ),
         ] = False
         typings: Annotated[
-            bool,
-            m.Field(False, description="Detect required typing packages"),
+            bool, m.Field(False, description="Detect required typing packages")
         ] = False
         apply_typings: Annotated[
             bool,
@@ -58,15 +52,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             ),
         ] = False
         no_pip_check: Annotated[
-            bool,
-            m.Field(
-                alias="no-pip-check",
-                description="Skip workspace pip check",
-            ),
+            bool, m.Field(alias="no-pip-check", description="Skip workspace pip check")
         ] = False
         limits: Annotated[
-            str | None,
-            m.Field(None, description="Path to dependency limits TOML"),
+            str | None, m.Field(None, description="Path to dependency limits TOML")
         ] = None
 
         @property
@@ -83,35 +72,22 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
                 return None
             return Path(self.limits).expanduser().resolve()
 
-    class ExtraPathsCommand(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
+    class ExtraPathsCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
     class InternalSyncCommand(mm.ScopeMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps internal-sync``."""
 
-    class ModernizeCommand(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
+    class ModernizeCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 
-        check: Annotated[
-            bool,
-            m.Field(False, description="Run in check mode"),
-        ] = False
+        check: Annotated[bool, m.Field(False, description="Run in check mode")] = False
         audit: Annotated[
-            bool,
-            m.Field(description="Audit pyproject changes without writing"),
+            bool, m.Field(description="Audit pyproject changes without writing")
         ] = False
         skip_check: Annotated[
             bool,
-            m.Field(
-                alias="skip-check",
-                description="Skip post-write validation step",
-            ),
+            m.Field(alias="skip-check", description="Skip post-write validation step"),
         ] = False
         skip_comments: Annotated[
             bool,
@@ -138,7 +114,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
                     c.Infra.DependencyConstraintPolicy(v.strip().lower())
                     if isinstance(v, str)
                     else v
-                ),
+                )
             ),
         ] = c.Infra.DependencyConstraintPolicy.FLOOR
 
@@ -154,29 +130,22 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(validate_default=False)
 
-        pyproject_path: Annotated[
-            Path,
-            m.Field(description="Resolved pyproject path"),
-        ]
+        pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         original_rendered: Annotated[
-            str,
-            m.Field(description="Original TOML source text"),
+            str, m.Field(description="Original TOML source text")
         ] = ""
         rendered: Annotated[
-            str,
-            m.Field(description="Canonical rendered TOML source text"),
+            str, m.Field(description="Canonical rendered TOML source text")
         ] = ""
         payload: Annotated[
-            t.MutableJsonMapping,
-            m.Field(description="Validated plain TOML payload"),
+            t.MutableJsonMapping, m.Field(description="Validated plain TOML payload")
         ] = m.Field(default_factory=dict)
 
     class DependencyLimitsInfo(m.ArbitraryTypesModel):
         """Dependency limits configuration metadata."""
 
         python_version: Annotated[
-            str | None,
-            m.Field(None, description="Python version"),
+            str | None, m.Field(None, description="Python version")
         ] = None
         limits_path: Annotated[str, m.Field("", description="Path to limits file")] = ""
 
@@ -187,8 +156,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             True
         )
         lines: Annotated[
-            t.StrSequence,
-            m.Field(description="Pip check output lines"),
+            t.StrSequence, m.Field(description="Pip check output lines")
         ] = m.Field(default_factory=tuple)
 
     class DeptryIssueGroups(m.ArbitraryTypesModel):
@@ -197,55 +165,40 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
         dep001: Annotated[
             t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP001 issues"),
-        ] = m.Field(
-            default_factory=list[t.MappingKV[str, t.Primitives | None]],
-        )
+        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
         dep002: Annotated[
             t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP002 issues"),
-        ] = m.Field(
-            default_factory=list[t.MappingKV[str, t.Primitives | None]],
-        )
+        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
         dep003: Annotated[
             t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP003 issues"),
-        ] = m.Field(
-            default_factory=list[t.MappingKV[str, t.Primitives | None]],
-        )
+        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
         dep004: Annotated[
             t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]],
             m.Field(description="DEP004 issues"),
-        ] = m.Field(
-            default_factory=list[t.MappingKV[str, t.Primitives | None]],
-        )
+        ] = m.Field(default_factory=list[t.MappingKV[str, t.Primitives | None]])
 
     class DeptryReport(m.ArbitraryTypesModel):
         """Deptry analysis report with categorized issue modules."""
 
         missing: Annotated[
-            t.StrSequence,
-            m.Field(description="Missing dependencies"),
+            t.StrSequence, m.Field(description="Missing dependencies")
         ] = m.Field(default_factory=tuple)
         unused: Annotated[t.StrSequence, m.Field(description="Unused dependencies")] = (
             m.Field(default_factory=tuple)
         )
         transitive: Annotated[
-            t.StrSequence,
-            m.Field(description="Transitive dependencies"),
+            t.StrSequence, m.Field(description="Transitive dependencies")
         ] = m.Field(default_factory=tuple)
         dev_in_runtime: Annotated[
-            t.StrSequence,
-            m.Field(description="Dev dependencies in runtime"),
+            t.StrSequence, m.Field(description="Dev dependencies in runtime")
         ] = m.Field(default_factory=tuple)
         raw_count: Annotated[
-            t.NonNegativeInt,
-            m.Field(0, description="Raw issue count"),
+            t.NonNegativeInt, m.Field(0, description="Raw issue count")
         ] = 0
 
-    class ProjectDependencyReport(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class ProjectDependencyReport(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Project-level dependency report combining deptry results."""
 
         deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
@@ -254,15 +207,13 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
         """Typing stubs analysis report with required/current/delta packages."""
 
         required_packages: Annotated[
-            t.StrSequence,
-            m.Field(description="Required packages"),
+            t.StrSequence, m.Field(description="Required packages")
         ] = m.Field(default_factory=tuple)
         hinted: Annotated[t.StrSequence, m.Field(description="Hinted packages")] = (
             m.Field(default_factory=tuple)
         )
         missing_modules: Annotated[
-            t.StrSequence,
-            m.Field(description="Missing modules"),
+            t.StrSequence, m.Field(description="Missing modules")
         ] = m.Field(default_factory=tuple)
         current: Annotated[t.StrSequence, m.Field(description="Current typings")] = (
             m.Field(default_factory=tuple)
@@ -271,16 +222,13 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             m.Field(default_factory=tuple)
         )
         to_remove: Annotated[
-            t.StrSequence,
-            m.Field(description="Typings to remove"),
+            t.StrSequence, m.Field(description="Typings to remove")
         ] = m.Field(default_factory=tuple)
         limits_applied: Annotated[
-            bool,
-            m.Field(False, description="Whether limits were applied"),
+            bool, m.Field(False, description="Whether limits were applied")
         ] = False
         python_version: Annotated[
-            str | None,
-            m.Field(None, description="Python version"),
+            str | None, m.Field(None, description="Python version")
         ] = None
 
     class ProjectRuntimeReport(m.ArbitraryTypesModel):
@@ -288,9 +236,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         deptry: FlextInfraModelsDeps.DeptryReport = m.Field(description="Deptry report")
         typings: FlextInfraModelsDeps.TypingsReport | None = m.Field(
-            None,
-            description="Typings report",
-            validate_default=True,
+            None, description="Typings report", validate_default=True
         )
 
     class WorkspaceDependencyReport(m.ArbitraryTypesModel):
@@ -306,14 +252,10 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
             description="Per-project reports",
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
-            None,
-            description="Pip check report",
-            validate_default=True,
+            None, description="Pip check report", validate_default=True
         )
         dependency_limits: FlextInfraModelsDeps.DependencyLimitsInfo | None = m.Field(
-            None,
-            description="Dependency limits",
-            validate_default=True,
+            None, description="Dependency limits", validate_default=True
         )
 
 

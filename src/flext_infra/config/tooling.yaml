@@ -5,6 +5,14 @@ Infra:
       codespell:
         check-filenames: true
         ignore-words-list: crate,nd
+      # mro-j47u (codex): non-linter tool sections are config-owned as well.
+      deptry:
+        known-first-party:
+          - flext_core
+        pep621-dev-dependency-groups:
+          - dev
+      hatch:
+        allow-direct-references: true
       ruff:
         # NOTE (multi-agent, mro-wkii.17.25): legacy trees are not production roots.
         exclude:
@@ -44,6 +52,12 @@ Infra:
         lint:
           select:
             - ALL
+          # mro-j47u (codex): banned API messages are policy data, never template literals.
+          banned-api:
+            argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
+            click: "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
+            rich: "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
+            typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
           ignore:
             - B009
             - B010
@@ -214,6 +228,12 @@ Infra:
               - S105
             "**/output.py":
               - FBT001
+            # FLEXT config/settings namespaces are deliberately PascalCase
+            # (config.<Namespace> / settings.<Namespace>). Protocol properties
+            # must preserve that exact public member name; N802 models functions,
+            # not namespace-shaped protocol attributes.
+            "**/_protocols/*.py":
+              - N802
             "**/plugins/*.py":
               - FBT001
               - FBT002
@@ -554,7 +574,18 @@ Infra:
           project-shared-search-paths:
             - scripts
       pytest:
+        # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        min-version: "8.0"
+        python-classes:
+          - "Test*"
+        python-files:
+          - "*_test.py"
+          - "*_tests.py"
+          - "test_*.py"
+        filter-warnings:
+          - "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning"
         standard-markers:
+          - "smoke: public-interface smoke tests"
           - "unit: unit tests"
           - "integration: integration tests"
           - "performance: performance and benchmark tests"

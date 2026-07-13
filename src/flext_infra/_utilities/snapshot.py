@@ -12,13 +12,10 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_cli import cli
-from flext_core import e, r
+from flext_cli import cli, e, r
 
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import p
 
 
 class FlextInfraUtilitiesSnapshot:

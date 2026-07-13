@@ -15,10 +15,7 @@ class FlextInfraDocAuditorReportMixin:
 
     @staticmethod
     def _audit_passed(
-        *,
-        issue_count: int,
-        params: m.Infra.AuditScopeParams,
-        scope_budget: int | None,
+        *, issue_count: int, params: m.Infra.AuditScopeParams, scope_budget: int | None
     ) -> bool:
         """Return strict/non-strict audit pass decision."""
         if not params.strict:
@@ -45,9 +42,7 @@ class FlextInfraDocAuditorReportMixin:
         )
         passed = (
             self._audit_passed(
-                issue_count=issue_count,
-                params=params,
-                scope_budget=scope_budget,
+                issue_count=issue_count, params=params, scope_budget=scope_budget
             )
             and not coverage_breached
         )

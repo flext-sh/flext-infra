@@ -51,8 +51,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...],
-            name: str,
+            objects: tuple[m.Infra.Census.Object, ...], name: str
         ) -> m.Infra.Census.Object | None: ...
         @staticmethod
         def _runtime_alias_target(
@@ -117,7 +116,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                     description=detector_violation.detail,
                     fixable=fixable,
                     fix_action=action,
-                ),
+                )
             )
             if fixable:
                 fixes.append(
@@ -128,7 +127,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                         files_changed=1,
                         applied=self._fix_key(file_path, object_name, action)
                         in applied,
-                    ),
+                    )
                 )
         return violations, fixes
 
@@ -148,7 +147,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
-            manual_ctx,
+            manual_ctx
         ):
             matched = (
                 self._named_object(objects, detector_violation.name)
@@ -174,7 +173,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                     description=detector_violation.detail,
                     fixable=bool(action),
                     fix_action=action,
-                ),
+                )
             )
             if action:
                 fixes.append(
@@ -185,12 +184,10 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                         target_file=str(convention.package_dir / c.Infra.TYPINGS_PY),
                         files_changed=2,
                         applied=self._fix_key(
-                            file_path,
-                            detector_violation.name,
-                            action,
+                            file_path, detector_violation.name, action
                         )
                         in applied,
-                    ),
+                    )
                 )
         return violations, fixes
 

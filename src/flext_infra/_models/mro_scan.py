@@ -37,15 +37,11 @@ class FlextInfraModelsMroScan:
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
         constants_class: Annotated[
-            str,
-            m.Field(description="First constants/facade class name"),
+            str, m.Field(description="First constants/facade class name")
         ] = ""
         facade_alias: Annotated[str, m.Field(description="Facade alias letter")] = "c"
         candidates: t.VariadicTuple[FlextInfraModelsMroScan.MROSymbolCandidate] = (
-            m.Field(
-                default_factory=tuple,
-                description="Module-level symbol candidates",
-            )
+            m.Field(default_factory=tuple, description="Module-level symbol candidates")
         )
 
     class MROTargetSpec(m.ContractModel):
@@ -54,13 +50,11 @@ class FlextInfraModelsMroScan:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_alias: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Family alias letter"),
+            t.NonEmptyStr, m.Field(description="Family alias letter")
         ]
         file_names: Annotated[frozenset[str], m.Field(description="File name patterns")]
         package_directory: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Package directory name"),
+            t.NonEmptyStr, m.Field(description="Package directory name")
         ]
         class_suffix: Annotated[t.NonEmptyStr, m.Field(description="Class suffix")]
 

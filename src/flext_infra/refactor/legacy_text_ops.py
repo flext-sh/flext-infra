@@ -22,17 +22,13 @@ class FlextInfraRefactorLegacyTextOps:
     """Execute legacy-removal text operations directly from declarative settings."""
 
     def _apply_legacy_removal(
-        self,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
-        source: str,
+        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply legacy removal."""
         changes: t.MutableSequenceOf[str] = []
         rule_id = str(settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN))
         fix_action = u.Cli.json_get_str_key(
-            settings,
-            c.Infra.RK_FIX_ACTION,
-            case="lower",
+            settings, c.Infra.RK_FIX_ACTION, case="lower"
         )
         updated = source
         if "alias" in rule_id or fix_action == "remove":
@@ -51,15 +47,14 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_aliases(
-        settings: t.MappingKV[str, t.Infra.InfraValue],
-        source: str,
+        settings: t.MappingKV[str, t.Infra.InfraValue], source: str
     ) -> t.Infra.TransformResult:
         """Remove module-level ``X = Y`` aliases unless allow-listed."""
         allow_aliases = set(
-            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_ALIASES, [])),
+            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_ALIASES, []))
         )
         allow_target_suffixes = tuple(
-            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_TARGET_SUFFIXES, [])),
+            u.Infra.string_list(settings.get(c.Infra.RK_ALLOW_TARGET_SUFFIXES, []))
         )
         changes: t.MutableSequenceOf[str] = []
         kept: t.MutableSequenceOf[str] = []
@@ -164,14 +159,12 @@ class FlextInfraRefactorLegacyTextOps:
         pos_index = 0
         for name in param_names:
             if pos_index < len(call_args) and FlextInfraRefactorLegacyTextOps._is_name(
-                call_args[pos_index],
-                name,
+                call_args[pos_index], name
             ):
                 pos_index += 1
                 continue
             if name in named_keywords and FlextInfraRefactorLegacyTextOps._is_name(
-                named_keywords[name],
-                name,
+                named_keywords[name], name
             ):
                 continue
             return False
@@ -185,8 +178,7 @@ class FlextInfraRefactorLegacyTextOps:
                 and FlextInfraUtilitiesRopeAnalysis.node_kind(remaining_args[0])
                 == "Starred"
                 and FlextInfraRefactorLegacyTextOps._is_name(
-                    getattr(remaining_args[0], "value", None),
-                    vararg.arg,
+                    getattr(remaining_args[0], "value", None), vararg.arg
                 )
             )
         keywords_ok = all(
