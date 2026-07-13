@@ -107,9 +107,13 @@ pep621_dev_dependency_groups = [
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
 
 [tool.mypy]
+# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):
+{% for code, rationale in tooling.tools.mypy.disabled_error_codes | dictsort %}
+# FLEXT mypy[{{ code }}]: {{ rationale }}
+{% endfor %}
 disable_error_code = [
-{% for item in tooling.tools.mypy.disabled_error_codes | sort %}
-  {{ item | tojson }},
+{% for code, rationale in tooling.tools.mypy.disabled_error_codes | dictsort %}
+  {{ code | tojson }},
 {% endfor %}
 ]
 exclude = {{ tooling.tools.mypy.exclude | tojson }}

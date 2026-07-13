@@ -73,7 +73,6 @@ HAS_EXPLICIT_PROJECT_SELECTION := $(strip $(if $(PROJECT),1,$(if $(PROJECTS),1,)
 MAKE_SELECTION_ARGS := $(strip $(if $(PROJECT),PROJECT="$(PROJECT)") $(if $(PROJECTS),PROJECTS="$(PROJECTS)"))
 MODERNIZE_SELECTION_FLAGS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(SELECTED_PROJECT_FLAGS),))
 WORKSPACE_SELECTED_ROOTS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(SELECTED_PROJECTS),.))
-WORKSPACE_MODERNIZE_PYPROJECTS := $(strip $(if $(HAS_EXPLICIT_PROJECT_SELECTION),$(foreach proj,$(SELECTED_PROJECTS),$(proj)/pyproject.toml),pyproject.toml $(foreach proj,$(ALL_PROJECTS),$(proj)/pyproject.toml)))
 
 # Auto-detect PYTHONPATH from all project src/ directories (no hardcoded names)
 # Priority: flext-infra and flext-tests BEFORE flext-core (they split from flext-core
@@ -424,8 +423,6 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."
 	$(Q)$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS)
-	$(Q)echo "Formatting pyproject.toml files with taplo..."
-	$(Q)taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS)
 
 	if [ "$(DEPS_REPORT)" != "0" ]; then \
 		printf "Dependency report (deptry + pip check)... "; \
@@ -441,6 +438,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 	$(Q)echo "Syncing GitHub workflow templates..."
 	$(Q)$(WORKSPACE_INFRA_GITHUB) workflows --workspace "$(CURDIR)" --apply --prune --report .reports/workflows/sync.json
 
+# mro-j47u: modernizer owns rendering/formatting; extra-paths owns path sync.
 _mod: ## Modernize pyproject.toml files (standardize configs without lock/install)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
@@ -451,13 +449,8 @@ _mod: ## Modernize pyproject.toml files (standardize configs without lock/instal
 	$(WORKSPACE_INFRA_DEPS) modernize --apply $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
 	$(Q)echo "Syncing dependency paths to workspace mode..."; \
-	$(WORKSPACE_INFRA_DEPS) path-sync --mode auto --apply $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
+	$(WORKSPACE_INFRA_DEPS) extra-paths --apply $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
-	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
-	taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS) || exit 1; \
-	echo ""
-	$(Q)echo "Formatting Python files (ruff)..."
-	$(Q)ruff format $(WORKSPACE_SELECTED_ROOTS) --quiet
 	$(Q)echo "Modernization complete."
 
 _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use PROJECT= or PROJECTS= to scope.
@@ -468,9 +461,6 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."; \
 	$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS); \
-	echo ""
-	$(Q)echo "Formatting pyproject.toml files with taplo..."; \
-	taplo format --config "$(CURDIR)/.taplo.toml" $(WORKSPACE_MODERNIZE_PYPROJECTS); \
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 

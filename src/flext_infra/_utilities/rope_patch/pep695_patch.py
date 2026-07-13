@@ -1,11 +1,9 @@
 """Local rope patch adding Python 3.13 AST awareness to Rope.
 
-Rope 1.14 and its master branch do not implement handlers for part of the AST
-surface used by Python 3.13 in this workspace. In practice that currently
-includes the PEP 695 nodes (``ast.TypeAlias``, ``ast.TypeVar``,
-``ast.ParamSpec``, ``ast.TypeVarTuple``) plus several structural pattern
-matching nodes (``ast.MatchSequence``, ``ast.MatchSingleton``,
-``ast.MatchStar``, ``ast.MatchOr``). Modules that use this syntax trigger
+Rope 1.14 and its master branch do not implement handlers for part of the
+Python 3.13 parser surface used in this workspace. In practice that currently
+includes PEP 695 aliases/type parameters plus several structural pattern
+matching nodes. Modules that use this syntax trigger
 ``MismatchedTokenError`` or noisy ``Unknown node type`` warnings during rope
 analysis and abort census/codegen runs.
 
@@ -32,7 +30,6 @@ FLEXT typing law forbids the getattr-dispatch/Any workaround.
 
 from __future__ import annotations
 
-import ast
 from collections.abc import Callable
 from typing import ClassVar
 
@@ -60,7 +57,9 @@ class FlextInfraUtilitiesRopePep695Patch:
         )
         original_class_def: Callable[..., None] = getattr(walker, "_ClassDef")
 
-        def _type_params_children(node: ast.AST) -> list[p.AttributeProbe]:
+        def _type_params_children(
+            node: p.Infra.PatchingASTWalker.TypeParameterOwner,
+        ) -> list[p.AttributeProbe]:
             """Type params children."""
             type_params = getattr(node, "type_params", None) or ()
             if not type_params:
@@ -74,7 +73,8 @@ class FlextInfraUtilitiesRopePep695Patch:
             return children
 
         def _pattern_opening_token(
-            self: p.Infra.PatchingASTWalker, node: ast.AST
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.PositionedNode,
         ) -> str:
             """Pattern opening token."""
             lineno = getattr(node, "lineno", None)
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesRopePep695Patch:
 
         def _patched_function_def(
             self: p.Infra.PatchingASTWalker,
-            node: ast.FunctionDef | ast.AsyncFunctionDef,
+            node: p.Infra.PatchingASTWalker.FunctionDefinitionNode,
             *,
             is_async: bool,
         ) -> None:
@@ -109,7 +109,8 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children)
 
         def _patched_class_def(
-            self: p.Infra.PatchingASTWalker, node: ast.ClassDef
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.ClassDefinitionNode,
         ) -> None:
             """Patched class def."""
             if not getattr(node, "type_params", None):
@@ -128,32 +129,41 @@ class FlextInfraUtilitiesRopePep695Patch:
             children.extend(node.body)
             self._handle(node, children)
 
-        def _type_alias(self: p.Infra.PatchingASTWalker, node: ast.TypeAlias) -> None:
+        def _type_alias(
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.TypeAliasNode,
+        ) -> None:
             """Type alias."""
             children: list[p.AttributeProbe] = ["type", node.name]
             children.extend(_type_params_children(node))
             children.extend(["=", node.value])
             self._handle(node, children)
 
-        def _type_var(self: p.Infra.PatchingASTWalker, node: ast.TypeVar) -> None:
+        def _type_var(
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.TypeVariableNode,
+        ) -> None:
             """Type var."""
             children: list[p.AttributeProbe] = [node.name]
             if getattr(node, "bound", None) is not None:
                 children.extend([":", node.bound])
             self._handle(node, children)
 
-        def _param_spec(self: p.Infra.PatchingASTWalker, node: ast.ParamSpec) -> None:
+        def _param_spec(
+            self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
+        ) -> None:
             """Param spec."""
             self._handle(node, ["**", node.name])
 
         def _type_var_tuple(
-            self: p.Infra.PatchingASTWalker, node: ast.TypeVarTuple
+            self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.NamedNode
         ) -> None:
             """Type var tuple."""
             self._handle(node, ["*", node.name])
 
         def _match_sequence(
-            self: p.Infra.PatchingASTWalker, node: ast.MatchSequence
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.MatchSequenceNode,
         ) -> None:
             """Match sequence."""
             children = self._child_nodes(node.patterns, ",")
@@ -167,16 +177,22 @@ class FlextInfraUtilitiesRopePep695Patch:
             self._handle(node, children, eat_parens=opening == "(")
 
         def _match_singleton(
-            self: p.Infra.PatchingASTWalker, node: ast.MatchSingleton
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.MatchSingletonNode,
         ) -> None:
             """Match singleton."""
             self._handle(node, [str(node.value)])
 
-        def _match_star(self: p.Infra.PatchingASTWalker, node: ast.MatchStar) -> None:
+        def _match_star(
+            self: p.Infra.PatchingASTWalker,
+            node: p.Infra.PatchingASTWalker.MatchStarNode,
+        ) -> None:
             """Match star."""
             self._handle(node, ["*", node.name or "_"])
 
-        def _match_or(self: p.Infra.PatchingASTWalker, node: ast.MatchOr) -> None:
+        def _match_or(
+            self: p.Infra.PatchingASTWalker, node: p.Infra.PatchingASTWalker.MatchOrNode
+        ) -> None:
             """Match or."""
             self._handle(node, self._child_nodes(node.patterns, "|"))
 

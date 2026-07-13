@@ -39,7 +39,8 @@ help: ## Show commands
 {% endfor %}
 
 boot: ## Complete setup
-	$(Q)$(PROJECT_INFRA_DEPS) path-sync --mode auto --apply --workspace "$(CURDIR)"
+	# mro-j47u: generated boot consumes the sole public extra-paths route.
+	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
 	$(Q)uv lock
 	$(Q)uv sync --all-extras --all-groups

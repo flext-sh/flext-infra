@@ -1,3 +1,10 @@
+{%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "r", "s", "settings", "t", "u"] -%}
+{%- set public_export_rows = '    "' ~ (public_exports | sort(case_sensitive=true) | join('",\n    "')) ~ '",' -%}
+{%- macro facade_import(module_name, export_name, export_alias) -%}
+{%- set compact = "    from " ~ package_name ~ "." ~ module_name ~ " import " ~ export_name ~ " as " ~ export_name ~ ", " ~ export_alias ~ " as " ~ export_alias -%}
+{%- set expanded = "    from " ~ package_name ~ "." ~ module_name ~ " import (\n        " ~ export_name ~ " as " ~ export_name ~ ",\n        " ~ export_alias ~ " as " ~ export_alias ~ ",\n    )" -%}
+{{- compact if compact | length <= tooling.tools.ruff.line_length else expanded -}}
+{%- endmacro -%}
 """{{ class_stem }} package — canonical lazy public facade.
 
 The package root freezes this facade as the stable user entrypoint. Consumers
@@ -17,76 +24,33 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     # NOTE (multi-agent, mro-j47u): all public objects stay lazy at runtime.
     from {{ upstream }} import r as r
+
     from {{ package_name }}._config import config as config
     from {{ package_name }}._settings import settings as settings
-    from {{ package_name }}.api import (
-        {{ class_stem }} as {{ class_stem }},
-        {{ alias }} as {{ alias }},
-    )
-    from {{ package_name }}.base import (
-        {{ class_stem }}Service as {{ class_stem }}Service,
-        s as s,
-    )
-    from {{ package_name }}.constants import (
-        {{ class_stem }}Constants as {{ class_stem }}Constants,
-        c as c,
-    )
-    from {{ package_name }}.models import (
-        {{ class_stem }}Models as {{ class_stem }}Models,
-        m as m,
-    )
-    from {{ package_name }}.protocols import (
-        {{ class_stem }}Protocols as {{ class_stem }}Protocols,
-        p as p,
-    )
-    from {{ package_name }}.typings import (
-        {{ class_stem }}Types as {{ class_stem }}Types,
-        t as t,
-    )
-    from {{ package_name }}.utilities import (
-        {{ class_stem }}Utilities as {{ class_stem }}Utilities,
-        u as u,
-    )
+{{ facade_import("api", class_stem, alias) }}
+{{ facade_import("base", class_stem ~ "Service", "s") }}
+{{ facade_import("constants", class_stem ~ "Constants", "c") }}
+{{ facade_import("models", class_stem ~ "Models", "m") }}
+{{ facade_import("protocols", class_stem ~ "Protocols", "p") }}
+{{ facade_import("typings", class_stem ~ "Types", "t") }}
+{{ facade_import("utilities", class_stem ~ "Utilities", "u") }}
 
-_LAZY_IMPORTS = build_lazy_import_map(
-    {
-        ".api": ("{{ class_stem }}", "{{ alias }}"),
-        ".base": ("{{ class_stem }}Service", "s"),
-        ".constants": ("{{ class_stem }}Constants", "c"),
-        ".models": ("{{ class_stem }}Models", "m"),
-        ".protocols": ("{{ class_stem }}Protocols", "p"),
-        "._config": ("config",),
-        "._settings": ("settings",),
-        ".typings": ("{{ class_stem }}Types", "t"),
-        ".utilities": ("{{ class_stem }}Utilities", "u"),
-        "{{ upstream }}": ("r",),
-    },
-)
+_LAZY_IMPORTS = build_lazy_import_map({
+    ".api": ("{{ class_stem }}", "{{ alias }}"),
+    ".base": ("{{ class_stem }}Service", "s"),
+    ".constants": ("{{ class_stem }}Constants", "c"),
+    ".models": ("{{ class_stem }}Models", "m"),
+    ".protocols": ("{{ class_stem }}Protocols", "p"),
+    "._config": ("config",),
+    "._settings": ("settings",),
+    ".typings": ("{{ class_stem }}Types", "t"),
+    ".utilities": ("{{ class_stem }}Utilities", "u"),
+    "{{ upstream }}": ("r",),
+})
 
 __all__: tuple[str, ...] = (
-    "{{ class_stem }}",
-    "{{ class_stem }}Constants",
-    "{{ class_stem }}Models",
-    "{{ class_stem }}Protocols",
-    "{{ class_stem }}Service",
-    "{{ class_stem }}Types",
-    "{{ class_stem }}Utilities",
-    "c",
-    "config",
-    "m",
-    "p",
-    "{{ alias }}",
-    "r",
-    "s",
-    "settings",
-    "t",
-    "u",
+{{ public_export_rows }}
 )
 
 
-install_lazy_exports(
-    __name__,
-    globals(),
-    _LAZY_IMPORTS,
-    public_exports=__all__,
-)
+install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=__all__)

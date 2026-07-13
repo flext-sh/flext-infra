@@ -12,7 +12,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
-    import ast  # Why: TYPE_CHECKING-only — Protocol signatures reference ast.AST without runtime import.
     from pathlib import Path
     from types import TracebackType
 
@@ -166,6 +165,83 @@ class FlextInfraProtocolsRope(Protocol):
         type-parameter handlers without depending on rope's private class.
         """
 
+        # mro-j47u (codex): model Rope node capabilities structurally; the
+        # FLEXT static path never imports or traverses Python's AST directly.
+        @runtime_checkable
+        class PositionedNode(Protocol):
+            """Source position exposed by a Rope parser node."""
+
+            lineno: int
+            col_offset: int
+
+        @runtime_checkable
+        class TypeParameterOwner(Protocol):
+            """Rope node carrying PEP 695 type parameters."""
+
+            type_params: t.SequenceOf[p.AttributeProbe]
+
+        @runtime_checkable
+        class FunctionDefinitionNode(TypeParameterOwner, Protocol):
+            """Function-definition capabilities consumed by the Rope patch."""
+
+            decorator_list: t.SequenceOf[p.AttributeProbe]
+            name: str
+            args: p.AttributeProbe
+            body: t.SequenceOf[p.AttributeProbe]
+
+        @runtime_checkable
+        class ClassDefinitionNode(TypeParameterOwner, Protocol):
+            """Class-definition capabilities consumed by the Rope patch."""
+
+            decorator_list: t.SequenceOf[p.AttributeProbe]
+            name: str
+            bases: t.SequenceOf[p.AttributeProbe]
+            body: t.SequenceOf[p.AttributeProbe]
+
+        @runtime_checkable
+        class TypeAliasNode(TypeParameterOwner, Protocol):
+            """Type-alias capabilities consumed by the Rope patch."""
+
+            name: p.AttributeProbe
+            value: p.AttributeProbe
+
+        @runtime_checkable
+        class TypeVariableNode(Protocol):
+            """Bound type-variable capabilities consumed by the Rope patch."""
+
+            name: str
+            bound: p.AttributeProbe | None
+
+        @runtime_checkable
+        class NamedNode(Protocol):
+            """Rope node exposing a name."""
+
+            name: str
+
+        @runtime_checkable
+        class MatchSequenceNode(PositionedNode, Protocol):
+            """Sequence-pattern capabilities consumed by the Rope patch."""
+
+            patterns: t.SequenceOf[p.AttributeProbe]
+
+        @runtime_checkable
+        class MatchSingletonNode(Protocol):
+            """Singleton-pattern capabilities consumed by the Rope patch."""
+
+            value: p.AttributeProbe
+
+        @runtime_checkable
+        class MatchStarNode(Protocol):
+            """Star-pattern capabilities consumed by the Rope patch."""
+
+            name: str | None
+
+        @runtime_checkable
+        class MatchOrNode(Protocol):
+            """Alternative-pattern capabilities consumed by the Rope patch."""
+
+            patterns: t.SequenceOf[p.AttributeProbe]
+
         @runtime_checkable
         class SourceLines(Protocol):
             """Minimal line adapter contract exposed by rope patched AST walkers."""
@@ -184,7 +260,7 @@ class FlextInfraProtocolsRope(Protocol):
 
         def _handle(
             self,
-            node: ast.AST,
+            node: p.AttributeProbe,
             children: list[p.AttributeProbe],
             *,
             eat_parens: bool = False,
@@ -192,7 +268,7 @@ class FlextInfraProtocolsRope(Protocol):
         ) -> None: ...
 
         def _child_nodes(
-            self, nodes: t.SequenceOf[ast.AST], separator: str
+            self, nodes: t.SequenceOf[p.AttributeProbe], separator: str
         ) -> list[p.AttributeProbe]: ...
 
     @runtime_checkable

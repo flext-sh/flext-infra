@@ -195,8 +195,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             f"{local_module}.py"
         )
         if runtime_singleton_export is not None:
-            # mro-i6nq.10: publish the singleton, never its loader class.
-            return name == runtime_singleton_export
+            # mro-j47u: explicit module exports are public; consumers subclass the
+            # validated loader while sharing the exact singleton identity.
+            return True
         if "." in local_module or local_module.startswith("_"):
             return False
         return f"{local_module}.py" in root_namespace_files

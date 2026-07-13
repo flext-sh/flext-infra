@@ -82,9 +82,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if existing is None or existing == target:
             index[name] = target
             return
-        if not isinstance(existing, tuple):
-            index[name] = target
-            return
+        # mro-j47u (codex): MutableLazyAliasMap values are always StrPair.
         winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
             index[name] = winner

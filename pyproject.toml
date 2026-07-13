@@ -190,6 +190,19 @@ ignore-property-decorators = true
 
 # [MANAGED] mypy
 [tool.mypy]
+# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):
+# FLEXT mypy[arg-type]: Public p.Result values widen only in Mypy; Pyright and Pyrefly retain T.
+# FLEXT mypy[assignment]: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
+# FLEXT mypy[attr-defined]: PEP 562 facade members inherited through MRO are invisible to Mypy.
+# FLEXT mypy[call-arg]: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
+# FLEXT mypy[misc]: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
+# FLEXT mypy[name-defined]: Generated PEP 562 exports are installed at runtime but absent to Mypy.
+# FLEXT mypy[no-any-return]: Facade returns widen to Any only in Mypy; Pyright and Pyrefly resolve them.
+# FLEXT mypy[no-redef]: Canonical c-t-p-m-u facades intentionally rebind their inherited short alias.
+# FLEXT mypy[prop-decorator]: Mypy loses Pydantic computed-field descriptors across composed MRO.
+# FLEXT mypy[type-var]: Mypy 1.20 drops T from inherited p.ResultLike; the direct owner passes.
+# FLEXT mypy[unreachable]: Mypy over-narrows facade values and rejects live defensive guards.
+# FLEXT mypy[valid-type]: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
 check_untyped_defs = true
 disable_error_code = [
   "arg-type",
@@ -201,6 +214,7 @@ disable_error_code = [
   "no-any-return",
   "no-redef",
   "prop-decorator",
+  "type-var",
   "unreachable",
   "valid-type",
 ]
@@ -378,7 +392,7 @@ exclude = [
   "vendor",
 ]
 extraPaths = [ ".", "src" ]
-include = [ "scripts", "src" ]
+include = [ "src" ]
 pythonPlatform = "Linux"
 pythonVersion = "3.13"
 reportArgumentType = "none"
@@ -416,6 +430,20 @@ venvPath = ".."
 [[tool.pyright.executionEnvironments]]
 extraPaths = [ "src" ]
 reportAttributeAccessIssue = "none"
+reportInvalidTypeForm = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUnusedImport = "none"
+root = "src/flext_infra/_utilities/rope_patch"
+
+[[tool.pyright.executionEnvironments]]
+extraPaths = [ "src" ]
+reportAttributeAccessIssue = "none"
 reportGeneralTypeIssues = "none"
 reportInvalidTypeForm = "none"
 reportPrivateImportUsage = "none"
@@ -428,22 +456,6 @@ reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
 reportUnusedImport = "none"
 root = "src"
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = [ ".", "src" ]
-reportArgumentType = "none"
-reportAttributeAccessIssue = "none"
-reportInvalidTypeForm = "none"
-reportPrivateImportUsage = "none"
-reportPrivateUsage = "none"
-reportReturnType = "none"
-reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
-reportUnknownMemberType = "none"
-reportUnknownParameterType = "none"
-reportUnknownVariableType = "none"
-reportUnusedImport = "none"
-root = "scripts"
 
 # [MANAGED] pytest
 [tool.pytest.ini_options]
@@ -591,7 +603,7 @@ select = [ "ALL" ]
 msg = "Use cli.register_result_command + Pydantic model from flext_cli."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.click]
-msg = "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
+msg = "Use flext_cli.cli application, registration, execution, and invocation methods."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.colorama]
 msg = "Use cli.print with c.Cli.MessageStyles."
@@ -606,7 +618,7 @@ msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flex
 msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.rich]
-msg = "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
+msg = "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.simplejson]
 msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
@@ -688,7 +700,9 @@ split-on-trailing-comma = false
 "**/context.py" = [  ]
 "**/external_command*.py" = [ "S404", "S603" ]
 "**/file_tools.py" = [ "D102" ]
-"**/flext_cli/**/*.py" = [ "TID251" ]
+"**/flext_cli/_protocols/framework.py" = [ "A002" ]
+"**/flext_cli/_utilities/formatters.py" = [ "TID251" ]
+"**/flext_cli/_utilities/framework.py" = [ "A002", "TID251" ]
 "**/managers.py" = [ "S105" ]
 "**/models.py" = [ "PLC0415", "PLC2801", "S102", "S105" ]
 "**/orchestrator*.py" = [ "S404", "S603" ]
@@ -709,6 +723,12 @@ split-on-trailing-comma = false
 all = true
 in_place = true
 sort_first = [ "build-system", "dependency-groups", "project", "tool" ]
+
+[tool.vulture]
+exclude = [ "*/_protocols/*" ]
+min_confidence = 100
+paths = [ "src" ]
+verbose = false
 
 # [MANAGED] yamlfix
 [tool.yamlfix]

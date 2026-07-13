@@ -16,41 +16,25 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".fix_pyrefly_config": ("FlextInfraConfigFixer",),
     ".internal_sync": ("FlextInfraInternalDependencySyncService",),
     ".modernizer": ("FlextInfraPyprojectModernizer",),
-    ".phases.consolidate_groups": ("FlextInfraConsolidateGroupsPhase",),
-    ".phases.ensure_coverage": ("FlextInfraEnsureCoverageConfigPhase",),
-    ".phases.ensure_formatting": ("FlextInfraEnsureFormattingToolingPhase",),
-    ".phases.ensure_mypy": ("FlextInfraEnsureMypyConfigPhase",),
-    ".phases.ensure_namespace": ("FlextInfraEnsureNamespaceToolingPhase",),
-    ".phases.ensure_pydantic_mypy": ("FlextInfraEnsurePydanticMypyConfigPhase",),
-    ".phases.ensure_pyrefly": ("FlextInfraEnsurePyreflyConfigPhase",),
-    ".phases.ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
-    ".phases.ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
-    ".phases.ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
-    ".phases.inject_comments": ("FlextInfraInjectCommentsPhase",),
     ".toml_phase": ("FlextInfraTomlPhaseService",),
 }
 
+
 LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
+
+
 CHILD_MODULE_PATHS: tuple[str, ...] = (".phases",)
+
+
 EXCLUDED_LAZY_NAMES: tuple[str, ...] = ()
+
 
 PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraConfigFixer",
-    "FlextInfraConsolidateGroupsPhase",
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
-    "FlextInfraEnsureCoverageConfigPhase",
-    "FlextInfraEnsureFormattingToolingPhase",
-    "FlextInfraEnsureMypyConfigPhase",
-    "FlextInfraEnsureNamespaceToolingPhase",
-    "FlextInfraEnsurePydanticMypyConfigPhase",
-    "FlextInfraEnsurePyreflyConfigPhase",
-    "FlextInfraEnsurePyrightConfigPhase",
-    "FlextInfraEnsurePytestConfigPhase",
-    "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraExtraPathsManager",
-    "FlextInfraInjectCommentsPhase",
     "FlextInfraInternalDependencySyncService",
     "FlextInfraPyprojectModernizer",
     "FlextInfraRuntimeDevDependencyDetector",

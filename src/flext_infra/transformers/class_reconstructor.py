@@ -121,12 +121,11 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             method_obj = method_pyname.get_object()
             if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):
                 continue
+            # mro-j47u (codex): Rope returns a tuple; only its line is optional.
             location = method_pyname.get_definition_location()
-            if location is None or location[1] is None:
+            if location[1] is None:
                 continue
             raw_line = lines[location[1] - 1]
-            if not isinstance(raw_line, str):
-                continue
             definition_line = raw_line.lstrip()
             if not definition_line.startswith(("def ", "async def ", "@")):
                 continue

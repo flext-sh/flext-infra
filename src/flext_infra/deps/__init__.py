@@ -46,45 +46,13 @@ if TYPE_CHECKING:
     from flext_infra.deps.modernizer import (
         FlextInfraPyprojectModernizer as FlextInfraPyprojectModernizer,
     )
-    from flext_infra.deps.phases.consolidate_groups import (
-        FlextInfraConsolidateGroupsPhase as FlextInfraConsolidateGroupsPhase,
-    )
-    from flext_infra.deps.phases.ensure_coverage import (
-        FlextInfraEnsureCoverageConfigPhase as FlextInfraEnsureCoverageConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_formatting import (
-        FlextInfraEnsureFormattingToolingPhase as FlextInfraEnsureFormattingToolingPhase,
-    )
-    from flext_infra.deps.phases.ensure_mypy import (
-        FlextInfraEnsureMypyConfigPhase as FlextInfraEnsureMypyConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_namespace import (
-        FlextInfraEnsureNamespaceToolingPhase as FlextInfraEnsureNamespaceToolingPhase,
-    )
-    from flext_infra.deps.phases.ensure_pydantic_mypy import (
-        FlextInfraEnsurePydanticMypyConfigPhase as FlextInfraEnsurePydanticMypyConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_pyrefly import (
-        FlextInfraEnsurePyreflyConfigPhase as FlextInfraEnsurePyreflyConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_pyright import (
-        FlextInfraEnsurePyrightConfigPhase as FlextInfraEnsurePyrightConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_pytest import (
-        FlextInfraEnsurePytestConfigPhase as FlextInfraEnsurePytestConfigPhase,
-    )
-    from flext_infra.deps.phases.ensure_ruff import (
-        FlextInfraEnsureRuffConfigPhase as FlextInfraEnsureRuffConfigPhase,
-    )
-    from flext_infra.deps.phases.inject_comments import (
-        FlextInfraInjectCommentsPhase as FlextInfraInjectCommentsPhase,
-    )
     from flext_infra.deps.toml_phase import (
         FlextInfraTomlPhaseService as FlextInfraTomlPhaseService,
     )
 
     # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
     __all__: tuple[str, ...]
+
 
 _LAZY_IMPORTS = merge_lazy_imports(
     _CHILD_MODULE_PATHS,
@@ -94,6 +62,7 @@ _LAZY_IMPORTS = merge_lazy_imports(
     exclude_names=_EXCLUDED_LAZY_NAMES,
     module_name=__name__,
 )
+
 
 # mro-i6nq.10: The installer publishes __all__ from the manifest's literal ABI.
 install_lazy_exports(__name__, globals(), _LAZY_IMPORTS, public_exports=_PUBLIC_EXPORTS)

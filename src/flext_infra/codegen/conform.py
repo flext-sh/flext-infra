@@ -279,9 +279,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = c.Infra.MakeProfile(repository.profile)
         pyproject = root / c.Infra.PYPROJECT_FILENAME
-        tooling_result = FlextInfraPyprojectModernizer(
-            workspace_root=self.workspace_root, skip_check=True
-        ).resolve_tooling_context(
+        # mro-j47u (codex): new and existing repositories share the exact same
+        # root-scoped modernizer pipeline, so first generation is a fixed point.
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=root, skip_check=True)
+        tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             path=pyproject,
             declared_python_dirs=(
@@ -412,8 +413,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        pyproject_result = u.Infra.pyproject_conform(
+        tooling_conform = modernizer.conform_source(
             pyproject_render.value,
+            path=pyproject,
+            declared_python_dirs=(
+                config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            ),
+        )
+        if tooling_conform.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_conform.error or f"tooling conform failed: {pyproject}"
+            )
+        pyproject_result = u.Infra.pyproject_conform(
+            tooling_conform.value,
             repositories=codegen.repositories,
             workspace=workspace,
             toolchain=codegen.toolchain,

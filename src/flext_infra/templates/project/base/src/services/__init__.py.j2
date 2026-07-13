@@ -1,13 +1,11 @@
-"""Service layer for {{ package_name }}.
-
-Drop domain services here and compose them into ``{{ package_name }}.api`` through
-cooperative MRO. Keep this package import-light; heavy adapters live beside their
-service, not in the facade.
+"""Public service exports for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
+from __future__ import annotations{# NOTE (codex, mro-j47u): subpackage exports are eager and absolute. #}
 
-__all__: list[str] = []
+from {{ package_name }}.services.ping import {{ class_stem }}Ping
+
+__all__: tuple[str, ...] = ("{{ class_stem }}Ping",)

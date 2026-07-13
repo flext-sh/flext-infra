@@ -1,3 +1,8 @@
+{# NOTE (codex, mro-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
+{%- set typings_import_line = "from " ~ package_name ~ "._typings.base import " ~ class_stem ~ "TypingsBase" -%}
+{%- set typings_import = typings_import_line if typings_import_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._typings.base import (\n    " ~ class_stem ~ "TypingsBase,\n)" -%}
+{%- set typings_namespace_line = "    class " ~ ns ~ "(" ~ class_stem ~ "TypingsBase):" -%}
+{%- set typings_namespace_declaration = typings_namespace_line if typings_namespace_line | length <= tooling.tools.ruff.line_length else "    class " ~ ns ~ "(\n        " ~ class_stem ~ "TypingsBase,\n    ):" -%}
 """{{ class_stem }} typing facade.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -9,13 +14,13 @@ from __future__ import annotations
 
 from {{ upstream }} import t
 
-from {{ package_name }}._typings.base import {{ class_stem }}TypingsBase
+{{ typings_import }}
 
 
 class {{ class_stem }}Types(t):
     """{{ class_stem }} types extending the upstream facade."""
 
-    class {{ ns }}({{ class_stem }}TypingsBase):
+{{ typings_namespace_declaration }}
         """Complete {{ ns }} type-alias namespace."""
 
 

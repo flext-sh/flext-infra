@@ -201,10 +201,12 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ] = ""
         disabled_error_codes: Annotated[
-            t.StrSequence,
+            t.StrMapping,
             m.Field(
                 alias="disabled-error-codes",
-                description="Mypy error codes disabled by default.",
+                description=(
+                    "Mypy error codes mapped to their tested facade-MRO rationale."
+                ),
             ),
         ]
         boolean_settings: Annotated[

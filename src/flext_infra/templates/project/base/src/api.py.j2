@@ -8,12 +8,12 @@ Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-from __future__ import annotations
+from __future__ import annotations{# NOTE (codex, mro-j47u): the facade composes services, never base behavior. #}
 
-from {{ package_name }}.base import {{ class_stem }}Service
+from {{ package_name }}.services.ping import {{ class_stem }}Ping
 
 
-class {{ class_stem }}({{ class_stem }}Service):
+class {{ class_stem }}({{ class_stem }}Ping):
     """Public {{ class_stem }} facade composed through cooperative MRO."""
 
 

@@ -118,10 +118,7 @@ class FlextInfraManualCommandValidator(s[bool]):
         """Return the module name following ``-m`` (``python -m <module>``)."""
         for index, arg in enumerate(rest):
             if arg == "-m" and index + 1 < len(rest):
-                value = rest[index + 1]
-                if isinstance(value, str):
-                    return value
-                return ""
+                return rest[index + 1]
         return ""
 
     @staticmethod

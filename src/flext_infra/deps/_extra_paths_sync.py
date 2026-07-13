@@ -54,7 +54,10 @@ class FlextInfraExtraPathsSyncMixin:
         self, doc: t.Cli.TomlDocument, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
         """Apply computed extra paths to an in-memory TOMLDocument."""
-        expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
+        # mro-j47u: compare immutable sequences so equal paths stay idempotent.
+        expected = tuple(
+            self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
+        )
         tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
         if tool_table is None:
             return list[str]()

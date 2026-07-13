@@ -1,3 +1,13 @@
+{# NOTE (codex, mro-j47u): precompute exact compact/multiline source with zero render whitespace. -#}
+{%- set config_models_line = "from " ~ package_name ~ "._models.config import " ~ class_stem ~ "ConfigModels" -%}
+{%- set config_models_import = config_models_line if config_models_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.config import (\n    " ~ class_stem ~ "ConfigModels,\n)" -%}
+{%- set ping_models_line = "from " ~ package_name ~ "._models.ping import " ~ class_stem ~ "ModelsPing" -%}
+{%- set ping_models_import = ping_models_line if ping_models_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.ping import (\n    " ~ class_stem ~ "ModelsPing,\n)" -%}
+{%- set settings_models_line = "from " ~ package_name ~ "._models.settings import " ~ class_stem ~ "SettingsModels" -%}
+{%- set settings_models_import = settings_models_line if settings_models_line | length <= tooling.tools.ruff.line_length else "from " ~ package_name ~ "._models.settings import (\n    " ~ class_stem ~ "SettingsModels,\n)" -%}
+{%- set model_imports = (config_models_import, ping_models_import, settings_models_import) | join("\n") -%}
+{%- set models_namespace_line = "    class " ~ ns ~ "(" ~ class_stem ~ "ModelsPing, " ~ class_stem ~ "ConfigModels, " ~ class_stem ~ "SettingsModels):" -%}
+{%- set models_namespace_declaration = models_namespace_line if models_namespace_line | length <= tooling.tools.ruff.line_length else "    class " ~ ns ~ "(\n        " ~ class_stem ~ "ModelsPing,\n        " ~ class_stem ~ "ConfigModels,\n        " ~ class_stem ~ "SettingsModels,\n    ):" -%}
 """{{ class_stem }} Pydantic model facade.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
@@ -10,24 +20,14 @@ from __future__ import annotations
 
 from {{ upstream }} import m
 
-from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
-from {{ package_name }}._models.ping import {{ class_stem }}ModelsPing
-from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
+{{ model_imports }}
 
 
 class {{ class_stem }}Models(m):
     """{{ class_stem }} models extending the CLI model facade."""
 
-{% if 53 + (ns | length) + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}({{ class_stem }}ModelsPing, {{ class_stem }}ConfigModels, {{ class_stem }}SettingsModels):
-{% elif 48 + (3 * (class_stem | length)) <= tooling.tools.ruff.line_length %}    class {{ ns }}(
-        {{ class_stem }}ModelsPing, {{ class_stem }}ConfigModels, {{ class_stem }}SettingsModels
-    ):
-{% else %}    class {{ ns }}(
-        {{ class_stem }}ModelsPing,
-        {{ class_stem }}ConfigModels,
-        {{ class_stem }}SettingsModels,
-    ):
-{% endif %}        """Complete {{ ns }} model namespace."""
+{{ models_namespace_declaration }}
+        """Complete {{ ns }} model namespace."""
 
 
 m = {{ class_stem }}Models

@@ -84,6 +84,32 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in env_dirs
         ]
 
+    def _diagnostic_override_envs(
+        self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
+    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+        """Resolve configured overrides only when their project path exists."""
+        if project_dir is None:
+            return ()
+        rules = self._tool_config.tools.pyright.path_rules
+        environments: t.MutableSequenceOf[
+            m.Infra.PyrightConfig.ExecutionEnvironment
+        ] = []
+        for override in rules.diagnostic_path_overrides:
+            if not (project_dir / override.root).is_dir():
+                continue
+            resolved_root = (
+                root_prefix / override.root if root_prefix else Path(override.root)
+            ).as_posix()
+            environments.append(
+                m.Infra.PyrightConfig.ExecutionEnvironment(
+                    root=resolved_root,
+                    report_private_usage=override.report_private_usage,
+                    extra_paths=(source_path,),
+                    rationale=override.rationale,
+                )
+            )
+        return tuple(environments)
+
     def _project_source_path(self, *, prefix: str = "") -> str:
         """Project source path."""
         rules = self._tool_config.tools.pyright.path_rules
@@ -100,6 +126,14 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
+        # mro-j47u (codex): specific roots precede the broad source environment.
+        expected_envs.extend(
+            self._diagnostic_override_envs(
+                project_dir=workspace_root,
+                root_prefix=None,
+                source_path=root_source_path,
+            )
+        )
         for env_dir in u.Infra.discover_python_dirs(workspace_root):
             if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
@@ -136,6 +170,13 @@ class FlextInfraEnsurePyrightConfigPhase:
             relative_root = child_project.relative_to(workspace_root)
             relative_project_root = relative_root.as_posix()
             child_source_path = self._project_source_path(prefix=relative_project_root)
+            expected_envs.extend(
+                self._diagnostic_override_envs(
+                    project_dir=child_project,
+                    root_prefix=relative_root,
+                    source_path=child_source_path,
+                )
+            )
             for env_dir in u.Infra.discover_python_dirs(child_project):
                 expected_envs.append(
                     self._env_entry(
@@ -163,11 +204,17 @@ class FlextInfraEnsurePyrightConfigPhase:
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
         )
-        return self._envs_for_dirs(
-            env_dirs=env_dirs,
-            source_path=self._project_source_path(),
-            project_root=rules.project_root,
-            rules=rules,
+        source_path = self._project_source_path()
+        return (
+            *self._diagnostic_override_envs(
+                project_dir=project_dir, root_prefix=None, source_path=source_path
+            ),
+            *self._envs_for_dirs(
+                env_dirs=env_dirs,
+                source_path=source_path,
+                project_root=rules.project_root,
+                rules=rules,
+            ),
         )
 
     def environment_payloads_for_dirs(
@@ -302,6 +349,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
@@ -309,7 +357,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
-        expected_includes = self._expected_includes(
+        # mro-j47u (codex): pre-write manifests supply the same typed roots that
+        # filesystem discovery observes after the atomic scaffold is materialized.
+        expected_includes = declared_python_dirs or self._expected_includes(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
@@ -322,8 +372,17 @@ class FlextInfraEnsurePyrightConfigPhase:
                 else None
             )
         )
-        expected_envs = self._expected_envs(
-            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+        expected_envs = (
+            self._envs_for_dirs(
+                env_dirs=declared_python_dirs,
+                source_path=self._project_source_path(),
+                project_root=stub_rules.project_root,
+                rules=stub_rules,
+            )
+            if declared_python_dirs
+            else self._expected_envs(
+                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+            )
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT
@@ -391,6 +450,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply the managed pyright configuration for one TOML document."""
         return FlextInfraTomlPhaseService.apply_phases(
@@ -401,6 +461,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_dir=project_dir,
                 project_kind=project_kind,
                 paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
             ),
         )
 
@@ -413,6 +474,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_dir: Path | None = None,
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply managed pyright settings directly to one normalized payload."""
         return FlextInfraTomlPhaseService.apply_payload_phases(
@@ -423,6 +485,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_dir=project_dir,
                 project_kind=project_kind,
                 paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
             ),
         )
 

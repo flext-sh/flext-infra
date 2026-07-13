@@ -65,7 +65,9 @@ class FlextInfraPyprojectModernizer(
         ),
     ] = c.Infra.DependencyConstraintPolicy.FLOOR
 
-    def conform_source(self, source: str, *, path: Path) -> p.Result[str]:
+    def conform_source(
+        self, source: str, *, path: Path, declared_python_dirs: t.StrSequence = ()
+    ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply."""
         payload_source = u.Cli.toml_mapping_from_text(source)
         if payload_source is None:
@@ -82,8 +84,14 @@ class FlextInfraPyprojectModernizer(
         state = m.Infra.PyprojectDocumentState(
             pyproject_path=path, original_rendered=source, payload=payload
         )
+        # mro-j47u (codex): atomic scaffolds provide validated future roots;
+        # existing repositories keep filesystem discovery through the empty default.
         self._process_document_state(
-            state, canonical_dev=canonical_dev, dry_run=True, skip_comments=False
+            state,
+            canonical_dev=canonical_dev,
+            dry_run=True,
+            skip_comments=False,
+            declared_python_dirs=declared_python_dirs,
         )
         if not state.rendered:
             return r[str].fail(f"pyproject tooling render failed: {path}")
@@ -165,46 +173,28 @@ class FlextInfraPyprojectModernizer(
             "venv",
             "venvPath",
         })
-        try:
-            environments: t.MutableSequenceOf[t.JsonDict] = []
-            raw_environments = u.Cli.json_as_sequence(
-                pyright.get("executionEnvironments")
-            )
-            if declared_python_dirs:
-                raw_environments = FlextInfraEnsurePyrightConfigPhase(
-                    config.Infra.tooling
-                ).environment_payloads_for_dirs(declared_python_dirs)
-            declared_pyrefly_includes = (
-                FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
-                if declared_python_dirs
-                else ()
-            )
-            for raw_environment in raw_environments:
-                environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                    raw_environment
+        raw_environments = u.Cli.json_as_sequence(pyright.get("executionEnvironments"))
+        if declared_python_dirs:
+            raw_environments = FlextInfraEnsurePyrightConfigPhase(
+                config.Infra.tooling
+            ).environment_payloads_for_dirs(declared_python_dirs)
+        declared_pyrefly_includes = (
+            FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
+            if declared_python_dirs
+            else ()
+        )
+        project_kind = "core"
+        if path.parent.resolve() != self.root.resolve() or self._project_is_flext_child(
+            path.parent
+        ):
+            classified = self._classify_project(path.parent, payload=payload)
+            if classified.failure:
+                return r[m.Infra.ToolingRuntimeContext].fail(
+                    classified.error or f"project classification failed: {path}"
                 )
-                environments.append({
-                    "root": environment.get("root"),
-                    "extra_paths": u.Cli.json_as_sequence(
-                        environment.get(c.Infra.EXTRA_PATHS)
-                    ),
-                    "settings": [
-                        {"name": key, "value": value}
-                        for key, value in sorted(environment.items())
-                        if key not in {"root", c.Infra.EXTRA_PATHS}
-                    ],
-                })
-            project_kind = "core"
-            if (
-                path.parent.resolve() != self.root.resolve()
-                or self._project_is_flext_child(path.parent)
-            ):
-                classified = self._classify_project(path.parent, payload=payload)
-                if classified.failure:
-                    return r[m.Infra.ToolingRuntimeContext].fail(
-                        classified.error or f"project classification failed: {path}"
-                    )
-                project_kind = classified.value
+            project_kind = classified.value
+        try:
+            environments = self._tooling_pyright_environments(raw_environments)
             runtime = m.Infra.ToolingRuntimeContext.model_validate({
                 "project_kind": project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
@@ -236,6 +226,32 @@ class FlextInfraPyprojectModernizer(
                 "tooling runtime context validation", exc
             )
         return r[m.Infra.ToolingRuntimeContext].ok(runtime)
+
+    @staticmethod
+    def _tooling_pyright_environments(
+        raw_environments: t.SequenceOf[t.JsonValue],
+    ) -> t.SequenceOf[m.Infra.ToolingPyrightEnvironment]:
+        """Validate Pyright environments once into their canonical models."""
+        # mro-j47u: nested tooling data crosses the TOML boundary as models, not dicts.
+        environments: t.MutableSequenceOf[m.Infra.ToolingPyrightEnvironment] = []
+        excluded = frozenset({"root", c.Infra.EXTRA_PATHS})
+        for raw_environment in raw_environments:
+            environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_environment)
+            environments.append(
+                m.Infra.ToolingPyrightEnvironment.model_validate({
+                    "root": environment.get("root"),
+                    "extra_paths": environment.get(c.Infra.EXTRA_PATHS, ()),
+                    "settings": tuple(
+                        m.Infra.ToolingScalarSetting.model_validate({
+                            "name": key,
+                            "value": value,
+                        })
+                        for key, value in sorted(environment.items())
+                        if key not in excluded
+                    ),
+                })
+            )
+        return tuple(environments)
 
     @override
     def execute(self) -> p.Result[bool]:

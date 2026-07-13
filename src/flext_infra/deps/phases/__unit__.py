@@ -18,12 +18,19 @@ LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".ensure_pyright": ("FlextInfraEnsurePyrightConfigPhase",),
     ".ensure_pytest": ("FlextInfraEnsurePytestConfigPhase",),
     ".ensure_ruff": ("FlextInfraEnsureRuffConfigPhase",),
+    ".ensure_vulture": ("FlextInfraEnsureVultureConfigPhase",),
     ".inject_comments": ("FlextInfraInjectCommentsPhase",),
 }
 
+
 LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
+
+
 CHILD_MODULE_PATHS: tuple[str, ...] = ()
+
+
 EXCLUDED_LAZY_NAMES: tuple[str, ...] = ()
+
 
 PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraConsolidateGroupsPhase",
@@ -36,5 +43,6 @@ PUBLIC_EXPORTS: tuple[str, ...] = (
     "FlextInfraEnsurePyrightConfigPhase",
     "FlextInfraEnsurePytestConfigPhase",
     "FlextInfraEnsureRuffConfigPhase",
+    "FlextInfraEnsureVultureConfigPhase",
     "FlextInfraInjectCommentsPhase",
 )

@@ -306,6 +306,12 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
+        - source: base/src/services/ping.py.j2
+          destination: 'src/{package_name}/services/ping.py'
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
         # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
         # by FlextConfig from the project-root config directory.
         - source: base/src/config/ns.yaml.j2
@@ -337,11 +343,6 @@ Infra:
           overwrite: false
         - source: base/src/_constants/__init__.py.j2
           destination: 'src/{package_name}/_constants/__init__.py'
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/src/_constants/base.py.j2
-          destination: 'src/{package_name}/_constants/base.py'
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -387,68 +388,6 @@ Infra:
           overwrite: false
         - source: base/tests/__init__.py.j2
           destination: tests/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/conftest.py.j2
-          destination: tests/conftest.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/base.py.j2
-          destination: tests/base.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        # NOTE (multi-agent, mro-wkii.19.1): tests consume flext-tests and project
-        # public facades directly; no parallel test c/t/p/m/u/settings is generated.
-        - source: base/tests/py.typed.j2
-          destination: tests/py.typed
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/unit/__init__.py.j2
-          destination: tests/unit/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/unit/test_smoke.py.j2
-          destination: tests/unit/test_smoke.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/unit/py.typed.j2
-          destination: tests/unit/py.typed
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/integration/__init__.py.j2
-          destination: tests/integration/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/integration/base.py.j2
-          destination: tests/integration/base.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/fixtures/__init__.py.j2
-          destination: tests/fixtures/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/e2e/__init__.py.j2
-          destination: tests/e2e/__init__.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/e2e/base.py.j2
-          destination: tests/e2e/base.py
-          profiles: [workspace-root, workspace-member, standalone]
-          delegate: render
-          overwrite: false
-        - source: base/tests/e2e/py.typed.j2
-          destination: tests/e2e/py.typed
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

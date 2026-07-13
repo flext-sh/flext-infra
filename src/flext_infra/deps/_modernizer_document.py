@@ -23,6 +23,7 @@ from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfig
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
@@ -153,6 +154,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -166,6 +168,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 project_kind = kind_result.value
+        # mro-j47u (codex): declared roots are topology facts only during atomic
+        # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
         paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
         changes.extend(self._ensure_build_system_payload(payload))
@@ -197,6 +201,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_dir=path.parent,
                 project_kind=project_kind,
                 paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
             )
         )
         changes.extend(
@@ -205,6 +210,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 project_dir=path.parent,
                 paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
             )
         )
         changes.extend(
@@ -226,6 +232,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         changes.extend(
             FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
                 payload, path=path
+            )
+        )
+        # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
+        changes.extend(
+            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
+                payload
             )
         )
         changes.extend(

@@ -199,7 +199,7 @@ class FlextInfraModelsDepsToolSettings(
             m.Field(description="Production roots scanned for unreachable code."),
         ]
         verbose: bool = m.Field(
-            description="Print configuration and scanned modules as gate evidence."
+            description="Enable Vulture's internal scanner trace when requested."
         )
 
     class ToolConfigTools(m.ArbitraryTypesModel):

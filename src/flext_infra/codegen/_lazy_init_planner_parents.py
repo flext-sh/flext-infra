@@ -118,10 +118,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
             else None
         )
         if canonical_target is not None:
+            # mro-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
             canonical_package = canonical_target[0]
-            if not isinstance(canonical_package, str):
-                msg = f"Invalid runtime alias package for {alias_name}: {canonical_target!r}"
-                raise TypeError(msg)
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:

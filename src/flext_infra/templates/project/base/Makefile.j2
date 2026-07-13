@@ -120,7 +120,7 @@ $(PUBLIC_VERBS):
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
-{% for verb in make.verbs -%}
+{% for verb in make.verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
 {% endfor %}
 

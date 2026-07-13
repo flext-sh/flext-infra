@@ -185,8 +185,8 @@ class FlextInfraEnsureRuffConfigPhase:
                 payload,
                 self._phase(
                     path=path,
-                    workspace_namespaces=u.Infra.flext_dependency_namespaces_from_payload(
-                        payload
+                    workspace_namespaces=tuple(
+                        u.Infra.flext_dependency_namespaces_from_payload(payload)
                     )
                     + config.Infra.tooling.tools.deptry.known_first_party
                     + (

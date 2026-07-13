@@ -2,11 +2,28 @@
 
 from __future__ import annotations
 
-from flext_infra import c, t
+from flext_infra import c, config, t
 
 
 class FlextInfraInjectCommentsPhase:
     """Inject managed/custom markers into pyproject.toml."""
+
+    _MYPY_RATIONALE_HEADER = (
+        "# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):"
+    )
+
+    @classmethod
+    def _mypy_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Mypy exclusions from the tooling SSOT."""
+        return (
+            cls._MYPY_RATIONALE_HEADER,
+            *(
+                f"# FLEXT mypy[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.mypy.disabled_error_codes.items()
+                )
+            ),
+        )
 
     @staticmethod
     def _is_section_header(line: str) -> bool:
@@ -14,14 +31,15 @@ class FlextInfraInjectCommentsPhase:
         stripped = line.strip()
         return stripped.startswith("[") and stripped.endswith("]")
 
-    @staticmethod
-    def _managed_marker_lines() -> t.Infra.StrSet:
+    @classmethod
+    def _managed_marker_lines(cls) -> t.Infra.StrSet:
         """Return the managed marker lines."""
         markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
         markers.update(c.Infra.BANNER.splitlines())
+        markers.update(cls._mypy_rationale_lines())
         return markers
 
     @staticmethod
@@ -54,6 +72,8 @@ class FlextInfraInjectCommentsPhase:
             if stripped.startswith("# Sections with [MANAGED] are enforced"):
                 continue
             if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
+                continue
+            if stripped.startswith("# FLEXT mypy["):
                 continue
             if stripped == "[group.dev.dependencies]":
                 skip_broken_group_section = True
@@ -115,6 +135,9 @@ class FlextInfraInjectCommentsPhase:
             ):
                 self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)
+            if stripped == "[tool.mypy]":
+                out.extend(self._mypy_rationale_lines())
+                changes.append("Mypy suppression rationales injected")
         updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
         original = rendered.rstrip() + "\n"
         if updated == original:

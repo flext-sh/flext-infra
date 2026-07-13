@@ -90,8 +90,8 @@ venv: _bootstrap-venv ## Create standalone virtual environment
 setup: venv ## Full standalone setup (venv + dependencies + base.mk)
 	@echo "==> Installing project dependencies..."
 	@$(BOOTSTRAP_PIP) install -q flext-infra
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) path-sync \
-		--mode standalone \
+	# mro-j47u: generated bootstrap consumes the sole public extra-paths route.
+	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) extra-paths \
 		--apply \
 		--workspace "$(CURDIR)"
 	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) internal-sync \

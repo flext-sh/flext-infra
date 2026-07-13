@@ -26,6 +26,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
         stale_error_keys: t.StrSequence = (),
+        declared_python_dirs: t.StrSequence = (),
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
@@ -44,6 +45,13 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
+        # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
+        # post-write discovery without fabricating directories on disk.
+        if declared_python_dirs:
+            expected_search = sorted({*expected_search, *declared_python_dirs})
+            expected_includes = tuple(
+                f"{directory}/**/*.py*" for directory in declared_python_dirs
+            )
         error_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             *(
                 (error_rule, "error")
@@ -93,6 +101,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         is_root: bool,
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply canonical pyrefly table values, paths, and strict error toggles."""
         configured_error_keys = self._configured_error_keys()
@@ -111,6 +120,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 project_dir=project_dir,
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
+                declared_python_dirs=declared_python_dirs,
             ),
         )
 
@@ -121,6 +131,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         is_root: bool,
         project_dir: Path | None = None,
         paths_manager: FlextInfraExtraPathsManager | None = None,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Apply canonical pyrefly settings to one normalized payload."""
         configured_error_keys = self._configured_error_keys()
@@ -139,6 +150,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 project_dir=project_dir,
                 paths_manager=paths_manager,
                 stale_error_keys=stale_error_keys,
+                declared_python_dirs=declared_python_dirs,
             ),
         )
 
