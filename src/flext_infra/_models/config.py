@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
@@ -571,6 +571,92 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class StaticRule(_ConfigContract):
+        """Shared immutable metadata for one Rope static-analysis rule."""
+
+        kind: t.NonEmptyStr = m.Field(description="Violation kind")
+        detail: t.NonEmptyStr = m.Field(description="Root-cause explanation")
+
+    class StaticImportModuleRule(StaticRule):
+        """Reject one imported module outside its configured owning project."""
+
+        operator: Literal["import_module"] = m.Field(description="Operator")
+        module: t.NonEmptyStr = m.Field(description="Rejected module root")
+        owner_project: t.NonEmptyStr | None = m.Field(
+            default=None, description="Permitted owning project"
+        )
+
+    class StaticImportMemberRule(StaticRule):
+        """Reject one member imported from a configured module."""
+
+        operator: Literal["import_member"] = m.Field(description="Operator")
+        module: t.NonEmptyStr = m.Field(description="Import source module")
+        member: t.NonEmptyStr = m.Field(description="Rejected imported member")
+
+    class StaticAttributeRule(StaticRule):
+        """Reject one member accessed through a semantically imported module alias."""
+
+        operator: Literal["attribute"] = m.Field(description="Operator")
+        module: t.NonEmptyStr = m.Field(description="Imported module")
+        member: t.NonEmptyStr = m.Field(description="Rejected attribute")
+
+    class StaticCallRule(StaticRule):
+        """Reject calls to one bare callable name."""
+
+        operator: Literal["call"] = m.Field(description="Operator")
+        name: t.NonEmptyStr = m.Field(description="Rejected callable")
+
+    class StaticCallKeywordRule(StaticRule):
+        """Require one keyword in calls to a configured callable."""
+
+        operator: Literal["call_keyword"] = m.Field(description="Operator")
+        name: t.NonEmptyStr = m.Field(description="Callable")
+        keyword: t.NonEmptyStr = m.Field(description="Required keyword")
+
+    class StaticAnnotationRule(StaticRule):
+        """Reject one identifier anywhere in an annotation."""
+
+        operator: Literal["annotation"] = m.Field(description="Operator")
+        name: t.NonEmptyStr = m.Field(description="Rejected annotation identifier")
+
+    class StaticBareExceptRule(StaticRule):
+        """Reject an exception handler without an exception contract."""
+
+        operator: Literal["bare_except"] = m.Field(description="Operator")
+
+    class StaticAnnotatedStringRule(StaticRule):
+        """Reject an annotated target assigned directly to a string literal."""
+
+        operator: Literal["annotated_string"] = m.Field(description="Operator")
+        name: t.NonEmptyStr = m.Field(description="Rejected assignment target")
+
+    class StaticCommentRule(StaticRule):
+        """Reject one marker only when Rope classifies its region as a comment."""
+
+        operator: Literal["comment"] = m.Field(description="Operator")
+        marker: t.NonEmptyStr = m.Field(description="Rejected comment marker")
+
+    type StaticRuleSpec = Annotated[
+        StaticImportModuleRule
+        | StaticImportMemberRule
+        | StaticAttributeRule
+        | StaticCallRule
+        | StaticCallKeywordRule
+        | StaticAnnotationRule
+        | StaticBareExceptRule
+        | StaticAnnotatedStringRule
+        | StaticCommentRule,
+        m.Field(discriminator="operator"),
+    ]
+
+    class StaticEnforcementSpec(_ConfigContract):
+        """Complete validated static policy evaluated only through Rope facts."""
+
+        rules: Annotated[
+            tuple[FlextInfraConfigModels.StaticRuleSpec, ...],
+            m.Field(min_length=1, description="Ordered static-analysis rules"),
+        ]
+
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): this
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
@@ -591,6 +677,11 @@ class FlextInfraConfigModels:
         source_scan: Annotated[
             FlextInfraConfigModels.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
+        ]
+        # mro-j47u (codex): static policy is validated data, never detector code.
+        enforcement: Annotated[
+            FlextInfraConfigModels.StaticEnforcementSpec,
+            m.Field(description="Rope-only static enforcement policy"),
         ]
 
     class Root(_ConfigContract):

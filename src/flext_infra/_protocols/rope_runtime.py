@@ -9,6 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    # mro-j47u (codex): retained only until the remaining get_ast consumers are
+    # converted atomically; this import never enters the runtime dependency graph.
     import ast
 
     from flext_infra import p, t
@@ -184,12 +186,13 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Common Rope import-info shape."""
 
         names_and_aliases: t.SequenceOf[tuple[str, str | None]]
-        module_name: str
-        level: int
 
     @runtime_checkable
     class RopeFromImport(RopeImportInfo, Protocol):
         """Rope from-import marker shape."""
+
+        module_name: str
+        level: int
 
     @runtime_checkable
     class RopeNormalImport(RopeImportInfo, Protocol):
@@ -200,6 +203,20 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         """Rope import statement shape."""
 
         import_info: FlextInfraProtocolsRopeRuntime.RopeImportInfo
+        start_line: int
+        end_line: int
+
+    @runtime_checkable
+    class RopeWorder(Protocol):
+        """Rope word/call classifier consumed by the static fact engine."""
+
+        def get_primary_at(self, offset: int) -> str: ...
+
+        def is_a_function_being_called(self, offset: int) -> bool: ...
+
+        def get_word_parens_range(self, offset: int) -> tuple[int, int]: ...
+
+        def is_function_keyword_parameter(self, offset: int) -> bool: ...
 
     @runtime_checkable
     class RopeChangeSet(Protocol):

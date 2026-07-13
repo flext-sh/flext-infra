@@ -115,6 +115,23 @@ class FlextInfraModelsRope:
             str, m.Field(description="Rope-owned source slice for the statement")
         ] = ""
 
+    # mro-j47u (codex): normalize Rope payloads before enforcement consumes them.
+    class ImportFact(mm.PositiveLineMixin, m.ContractModel):
+        """One normalized binding emitted by Rope import-info semantics."""
+
+        module: t.NonEmptyStr = m.Field(description="Imported module path")
+        member: str = m.Field(default="", description="Imported member")
+        local_name: t.NonEmptyStr = m.Field(description="Bound local name")
+        is_from_import: bool = m.Field(description="From-import marker")
+
+    class IgnoredRegion(mm.PositiveLineMixin, m.ContractModel):
+        """One Rope-classified string or comment region in source text."""
+
+        start_offset: int = m.Field(ge=0, description="Inclusive offset")
+        end_offset: int = m.Field(ge=1, description="Exclusive offset")
+        text: t.NonEmptyStr = m.Field(description="Exact source region")
+        is_comment: bool = m.Field(description="Comment marker")
+
     class ConstantInfo(
         mm.NonNegativeLineMixin, mm.NestedClassPathMixin, m.ContractModel
     ):
