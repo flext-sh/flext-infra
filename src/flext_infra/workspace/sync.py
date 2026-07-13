@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, p, u
+from flext_infra import c, config, m, p, u
 from flext_infra.base import s
 from flext_infra.workspace._sync_artifacts import FlextInfraWorkspaceSyncArtifactsMixin
 
@@ -93,9 +93,7 @@ class FlextInfraSyncService(
         changed += 1 if basemk_result.value else 0
         gitignore_result = self._ensure_gitignore_entries(
             resolved,
-            (*c.Infra.REQUIRED_GITIGNORE_ENTRIES, "!.pre-commit-config.yaml")
-            if is_workspace_root
-            else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
+            self._gitignore_entries(is_workspace_root=is_workspace_root),
             apply=apply,
         )
         if gitignore_result.failure:
@@ -142,6 +140,20 @@ class FlextInfraSyncService(
         return r[m.Infra.SyncResult].ok(
             m.Infra.SyncResult(files_changed=changed, source=resolved, target=resolved)
         )
+
+    @staticmethod
+    def _gitignore_entries(*, is_workspace_root: bool) -> tuple[str, ...]:
+        """Return managed ignores and tracked resource-root declarations."""
+        entries = list(c.Infra.REQUIRED_GITIGNORE_ENTRIES)
+        if is_workspace_root:
+            entries.append("!.pre-commit-config.yaml")
+        for resource in config.Infra.codegen.scaffold.resources:
+            source = resource.source.as_posix().rstrip("/")
+            entries.extend((f"!/{source}/", f"!/{source}/**"))
+        entries.extend(
+            ("**/.env", "**/*.key", "**/*.pem", "**/credentials.json", "**/secrets.y*ml")
+        )
+        return tuple(entries)
 
     def _sync_workspace_children(
         self, workspace_root: Path, *, canonical_root: Path

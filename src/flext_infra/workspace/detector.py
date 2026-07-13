@@ -33,8 +33,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     def _schema_path() -> Path:
         """Return the packaged schema consumed by the public config facade."""
         return (
-            Path(__file__).resolve().parents[1]
-            / c.CONFIG_SCHEMAS_DIR_NAME
+            u.Infra.resource_root(c.CONFIG_SCHEMAS_DIR_NAME)
             / c.Infra.WORKSPACE_SCHEMA_FILENAME
         )
 

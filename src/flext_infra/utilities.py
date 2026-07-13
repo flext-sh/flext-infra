@@ -55,6 +55,7 @@ from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.resources import FlextInfraUtilitiesResources
 from flext_infra._utilities.rope import FlextInfraUtilitiesRope
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
@@ -117,6 +118,9 @@ class FlextInfraUtilities(cli_u, FlextUtilitiesProjectMetadata):
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
+        # NOTE (mro-wkii.17.26, agent codex): one resolver serves editable root
+        # resources and their installed wheel destinations without CWD coupling.
+        FlextInfraUtilitiesResources,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
         # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing

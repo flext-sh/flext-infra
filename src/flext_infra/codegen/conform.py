@@ -87,10 +87,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
         written: list[Path] = []
         for file in changed:
-            result = u.Cli.atomic_write_text_file(file.path, file.rendered)
+            result = self._apply_file_plan(file)
             if result.failure:
                 return r[m.Infra.CodegenResult].fail(
-                    result.error or f"atomic write failed: {file.path}"
+                    result.error or f"atomic codegen operation failed: {file.path}"
                 )
             written.append(file.path)
         verified = self.plan(request)
@@ -146,23 +146,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository checkout is missing: {repository_root}"
                 )
+            # NOTE (mro-wkii.17.26, agent codex): the root manifest is the only
+            # fleet topology owner. Members remain independently buildable while
+            # root-scoped conformance consumes their exact selected repository ref.
             repository_workspace = workspace
-            if repository.name != workspace.repository.name:
-                member_manifest = FlextInfraWorkspaceDetector.load_workspace_spec(
-                    repository_root
-                )
-                if member_manifest.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        member_manifest.error
-                        or f"member workspace manifest load failed: {repository_root}"
-                    )
-                repository_workspace = member_manifest.value
-                if repository_workspace.repository.model_dump(
-                    mode="json"
-                ) != repository.model_dump(mode="json"):
-                    return r[m.Infra.CodegenPlan].fail(
-                        f"member manifest differs from root topology: {repository.name}"
-                    )
             # mro-j47u (codex): existing repositories cannot reach the scaffold
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
@@ -178,6 +165,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else:
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
+                    repository=repository,
                     workspace=repository_workspace,
                     config=config_spec,
                 )
@@ -303,7 +291,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         context = context_result.value
         planned: list[m.Infra.CodegenFilePlan] = []
         templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
+            u.Infra.resource_root("templates") / codegen.templates.root
         ).resolve()
         seen_destinations: set[str] = set()
         for entry in codegen.templates.entries:
@@ -429,6 +417,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repositories=codegen.repositories,
             workspace=workspace,
             toolchain=codegen.toolchain,
+            build=codegen.scaffold.build,
+            resources=(*codegen.scaffold.resources, *context.project_resources),
+            project_root=root,
+            package_name=context.package_name,
+            allow_missing_required=True,
         )
         if pyproject_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -451,6 +444,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         *,
         root: Path,
+        repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         config: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -474,11 +468,30 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 tooling_result.error or f"tooling conform failed: {pyproject}"
             )
+        package_name = repository.distribution.replace("-", "_")
+        project_resources = (
+            workspace.project.resources
+            if workspace.project is not None
+            and repository.name == workspace.repository.name
+            else ()
+        )
+        resources = (*config.scaffold.resources, *project_resources)
+        resource_plans = self._resource_move_plans(
+            root, package_name=package_name, resources=resources
+        )
+        if resource_plans.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                resource_plans.error or f"resource layout planning failed: {root}"
+            )
         pyproject_result = u.Infra.pyproject_conform(
             tooling_result.value,
             repositories=config.repositories,
             workspace=workspace,
             toolchain=config.toolchain,
+            build=config.scaffold.build,
+            resources=resources,
+            project_root=root,
+            package_name=package_name,
         )
         if pyproject_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -491,7 +504,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
-        planned = [pyproject_plan.value]
+        planned = [*resource_plans.value, pyproject_plan.value]
         custom_result = self._plan_existing_custom(root, config)
         if custom_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -584,6 +597,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,
                 year=project.year,
+                project_resources=project.resources,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
@@ -601,7 +615,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         parsed = u.Cli.yaml_parse(rendered)
         if parsed.failure:
             return r[bool].fail(parsed.error or "workspace manifest YAML is invalid")
-        schema = cls._package_root() / "schemas" / c.Infra.WORKSPACE_SCHEMA_FILENAME
+        schema = (
+            u.Infra.resource_root("schemas") / c.Infra.WORKSPACE_SCHEMA_FILENAME
+        )
         schema_result = u.Cli.schema_validate(parsed.value, schema)
         if schema_result.failure:
             return r[bool].fail(
@@ -723,6 +739,66 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
             )
         )
+
+    @staticmethod
+    def _resource_move_plans(
+        root: Path,
+        *,
+        package_name: str,
+        resources: t.SequenceOf[m.Infra.ResourceSpec],
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Plan namespace-to-root resource cutovers from actual directory presence."""
+        package_root = root / "src" / package_name
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for resource in resources:
+            target = root / resource.source
+            source = package_root / resource.source
+            if target.exists() and not target.is_dir():
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    f"resource root is not a directory: {target}"
+                )
+            if source.exists() and not source.is_dir():
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    f"package resource is not a directory: {source}"
+                )
+            if target.is_dir() and source.is_dir():
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    f"resource collision requires one canonical owner: {target} and {source}"
+                )
+            if source.is_dir():
+                plans.append(
+                    m.Infra.CodegenFilePlan(
+                        path=target,
+                        operation="move",
+                        source_path=source,
+                        expected_sha256=u.Cli.sha256_content(
+                            f"{source.as_posix()}->{target.as_posix()}"
+                        ),
+                        changed=True,
+                    )
+                )
+                continue
+            if resource.required and not target.is_dir():
+                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                    f"required resource directory is missing: {target}"
+                )
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
+
+    @staticmethod
+    def _apply_file_plan(file: m.Infra.CodegenFilePlan) -> p.Result[bool]:
+        """Apply one prevalidated write or directory move without replacement."""
+        if file.operation == "write":
+            return u.Cli.atomic_write_text_file(file.path, file.rendered)
+        source = file.source_path
+        if source is None or not source.is_dir():
+            return r[bool].fail(f"planned move source is unavailable: {source}")
+        if file.path.exists():
+            return r[bool].fail(f"planned move destination already exists: {file.path}")
+        try:
+            _ = source.rename(file.path)
+        except OSError as exc:
+            return r[bool].fail_op(f"move {source} to {file.path}", exc)
+        return r[bool].ok(True)
 
     @staticmethod
     def _managed_path_wip(root: Path, path: Path) -> p.Result[bool]:

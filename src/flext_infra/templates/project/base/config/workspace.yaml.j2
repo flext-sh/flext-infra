@@ -32,6 +32,20 @@ project:
   documentation: {{ documentation | tojson }}
   workspace_root_rel: {{ workspace_root_rel | tojson }}
   year: {{ year }}
+  # NOTE (mro-wkii.17.26, agent codex): declare project-only roots such as
+  # ansible or docker here; common roots remain governed by codegen.yaml.
+{% if project_resources %}
+  resources:
+{% for resource in project_resources %}
+    - source: {{ resource.source | tojson }}
+      required: {{ resource.required | lower }}
+{% if resource.wheel_destination %}
+      wheel_destination: {{ resource.wheel_destination | tojson }}
+{% endif %}
+{% endfor %}
+{% else %}
+  resources: []
+{% endif %}
 # NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
 # the sole topology owner; every declared member/exclusion round-trips here.
 members:

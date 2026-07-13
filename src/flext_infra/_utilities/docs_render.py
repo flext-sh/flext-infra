@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import fnmatch
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m
+from flext_infra._utilities.resources import FlextInfraUtilitiesResources
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -418,8 +418,7 @@ class FlextInfraUtilitiesDocsRender:
             )),
         )
         template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
+            FlextInfraUtilitiesResources.resource_root("templates")
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
         return u.Cli.template_render(template_path, context).unwrap()
@@ -524,8 +523,7 @@ class FlextInfraUtilitiesDocsRender:
             ),
         )
         template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
+            FlextInfraUtilitiesResources.resource_root("templates")
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
         return u.Cli.template_render(template_path, context).unwrap()

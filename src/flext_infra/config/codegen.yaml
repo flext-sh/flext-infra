@@ -7,8 +7,8 @@ Infra:
       python_version: "3.13"
       python_minor_version: "3.13"
       python_required_version: ">=3.13,<3.14"
-      uv_version: "0.9.21"
-      uv_required_version: "==0.9.21"
+      uv_version: "0.11.28"
+      uv_required_version: "==0.11.28"
       uv_link_mode: copy
 
     providers:
@@ -147,6 +147,24 @@ Infra:
               - ruff>=0.15.12,<0.16
               - vulture>=2.16,<3
               - yamlfix>=1.19.1,<2
+      # NOTE (mro-wkii.17.26, agent codex): repository roots are the maintained
+      # SSOT; wheel destinations are generated package data, never source copies.
+      resources:
+        - source: config
+          required: true
+          wheel_destination: "{package_name}/config"
+        - source: tests
+          required: true
+        - source: templates
+          required: false
+          wheel_destination: "{package_name}/templates"
+        - source: schemas
+          required: false
+          wheel_destination: "{package_name}/schemas"
+        - source: examples
+          required: false
+        - source: scripts
+          required: false
       ping_example:
         command_name: ping
         help_text: Return the configured health response.

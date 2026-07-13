@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 # NOTE (codex, mro-j47u): measure rendered lines so every project is Ruff-native.
@@ -29,7 +28,9 @@ if TYPE_CHECKING:
 {{ config_class_declaration }}
     """Private source loader composed with the validated config root."""
 
-    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
+    # NOTE (mro-wkii.17.26, agent codex): flext-core resolves editable root
+    # config and the installed force-included package resource identically.
+    CONFIG_DIR: ClassVar[str] = "config"
 
 
 {{ config_singleton_declaration }}

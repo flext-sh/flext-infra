@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_cli import u
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -21,8 +23,13 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[m.Infra.RepositoryRef],
         workspace: m.Infra.WorkspaceSpec,
         toolchain: m.Infra.ToolchainSpec,
+        build: m.Infra.ScaffoldBuildSpec,
+        resources: t.SequenceOf[m.Infra.ResourceSpec],
+        project_root: Path,
+        package_name: str,
+        allow_missing_required: bool = False,
     ) -> p.Result[str]:
-        """Return canonical TOML with Git sources, PEP 735 groups, and uv pins."""
+        """Return canonical PEP 517/621 TOML with deterministic wheel resources."""
         source = u.Cli.toml_mapping_from_text(pyproject_content)
         if source is None:
             return r[str].fail("pyproject content is not valid TOML")
@@ -35,6 +42,20 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
 
+        metadata_result = cls._validate_project_metadata(project)
+        if metadata_result.failure:
+            return r[str].fail(metadata_result.error or "PEP 621 metadata is invalid")
+        layout_result = cls._sync_build_and_resources(
+            payload,
+            build=build,
+            resources=resources,
+            project_root=project_root,
+            package_name=package_name,
+            allow_missing_required=allow_missing_required,
+        )
+        if layout_result.failure:
+            return r[str].fail(layout_result.error or "package layout is invalid")
+
         normalized = cls._normalize_requirements(payload)
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
@@ -42,6 +63,7 @@ class FlextInfraUtilitiesPyprojectConform:
             payload, project_name=project_name, workspace=workspace
         )
         cls._remove_legacy_tooling(payload)
+        cls._sync_typecheck_paths(payload)
         sources_result = cls._sync_uv_sources(
             payload,
             project_name=project_name,
@@ -56,6 +78,88 @@ class FlextInfraUtilitiesPyprojectConform:
         if u.Cli.toml_mapping_from_text(rendered) is None:
             return r[str].fail("canonical pyproject rendering produced invalid TOML")
         return r[str].ok(rendered)
+
+    @staticmethod
+    def _validate_project_metadata(project: t.MutableJsonMapping) -> p.Result[bool]:
+        """Require the modern static PEP 621 fields shared by uv, pip, and Poetry."""
+        for key in ("name", "version", "description", "readme", "requires-python"):
+            value = project.get(key)
+            if not isinstance(value, str) or not value.strip():
+                return r[bool].fail(f"[project].{key} must be a non-empty string")
+        return r[bool].ok(True)
+
+    @classmethod
+    def _sync_build_and_resources(
+        cls,
+        payload: t.MutableJsonMapping,
+        *,
+        build: m.Infra.ScaffoldBuildSpec,
+        resources: t.SequenceOf[m.Infra.ResourceSpec],
+        project_root: Path,
+        package_name: str,
+        allow_missing_required: bool,
+    ) -> p.Result[bool]:
+        """Generate one Hatch wheel layout from repository-root resource SSOTs."""
+        package_root = project_root / "src" / package_name
+        if not package_root.is_dir() and not allow_missing_required:
+            return r[bool].fail(f"import package directory is missing: {package_root}")
+
+        sources: set[str] = set()
+        destinations: set[str] = set()
+        wheel_resources: list[tuple[str, str]] = []
+        for resource in resources:
+            source = resource.source.as_posix()
+            if resource.source.is_absolute() or ".." in resource.source.parts:
+                return r[bool].fail(f"resource source escapes project root: {source}")
+            if source in sources:
+                return r[bool].fail(f"duplicate resource source: {source}")
+            sources.add(source)
+            resource_root = project_root / resource.source
+            legacy_root = package_root / resource.source
+            if resource_root.is_dir() and legacy_root.is_dir():
+                return r[bool].fail(
+                    "resource exists at root and inside the package namespace: "
+                    f"{source}"
+                )
+            available = resource_root.is_dir() or legacy_root.is_dir()
+            if resource.required and not available and not allow_missing_required:
+                return r[bool].fail(f"required resource directory is missing: {resource_root}")
+            if resource.wheel_destination is None or not (
+                available or (resource.required and allow_missing_required)
+            ):
+                continue
+            destination = resource.wheel_destination.format(package_name=package_name)
+            destination_path = Path(destination)
+            if destination_path.is_absolute() or ".." in destination_path.parts:
+                return r[bool].fail(
+                    f"wheel resource destination escapes package: {destination}"
+                )
+            if destination in destinations:
+                return r[bool].fail(
+                    f"duplicate wheel resource destination: {destination}"
+                )
+            destinations.add(destination)
+            wheel_resources.append((source, destination))
+
+        build_system = u.Cli.toml_mapping_ensure_table(payload, "build-system")
+        u.Cli.toml_mapping_sync_value(build_system, "build-backend", build.backend)
+        u.Cli.toml_mapping_sync_string_list(
+            build_system, "requires", build.requirements
+        )
+        tool = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
+        hatch = u.Cli.toml_mapping_ensure_table(tool, "hatch")
+        hatch_build = u.Cli.toml_mapping_ensure_table(hatch, "build")
+        targets = u.Cli.toml_mapping_ensure_table(hatch_build, "targets")
+        wheel = u.Cli.toml_mapping_ensure_table(targets, "wheel")
+        u.Cli.toml_mapping_sync_string_list(
+            wheel, "packages", (f"src/{package_name}",)
+        )
+        force_include = u.Cli.toml_mapping_ensure_table(wheel, "force-include")
+        for key in tuple(force_include):
+            u.Cli.toml_mapping_remove_key_if_present(force_include, key)
+        for source, destination in wheel_resources:
+            u.Cli.toml_mapping_sync_value(force_include, source, destination)
+        return r[bool].ok(True)
 
     @classmethod
     def _normalize_requirements(cls, payload: t.MutableJsonMapping) -> p.Result[bool]:

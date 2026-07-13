@@ -166,7 +166,7 @@ python.default_packages_file = ".default-python-packages"
 
 [tools]
 python = "3.13"
-uv = "0.9.21"
+uv = "0.11.28"
 ruff = "0.15.17"
 """
 

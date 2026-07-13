@@ -217,6 +217,36 @@
         "year": {
           "type": "integer",
           "minimum": 2025
+        },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/resource"
+          }
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "wheel_destination": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(?:\\{package_name\\}|[A-Za-z0-9._-]+)(?:/(?:\\{package_name\\}|[A-Za-z0-9._-]+))*$"
         }
       }
     },

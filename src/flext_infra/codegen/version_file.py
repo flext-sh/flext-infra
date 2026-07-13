@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
@@ -44,9 +43,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the exact
         # source metadata model crosses the sole CLI rendering boundary.
         template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
-            / c.Infra.TEMPLATE_VERSION_FILE
+            u.Infra.resource_root("templates") / c.Infra.TEMPLATE_VERSION_FILE
         )
         discovered = u.Infra.discover_projects(self.workspace_root)
         if not discovered.success:

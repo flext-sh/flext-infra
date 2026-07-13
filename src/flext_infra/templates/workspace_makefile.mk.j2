@@ -37,9 +37,11 @@ PY := $(WORKSPACE_VENV)/bin/python
 PIPX_BIN := $(WORKSPACE_VENV)/bin/pipx
 UV_BIN := $(WORKSPACE_VENV)/bin/uv
 UV_CACHE_DIR ?= /tmp/uv-cache
-UV_PROJECT_ENVIRONMENT ?= $(WORKSPACE_VENV)
+override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)
+override VIRTUAL_ENV := $(WORKSPACE_VENV)
 export UV_CACHE_DIR
 export UV_PROJECT_ENVIRONMENT
+export VIRTUAL_ENV
 {% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
 {% if default_value -%}
 {{ variable_name }} ?= {{ default_value }}
@@ -232,7 +234,7 @@ endef
 
 define VERIFY_WORKSPACE_VENV
 echo "Verifying workspace package metadata and public imports..."; \
-$(PY) -c 'import importlib, importlib.metadata as metadata, pathlib, tomllib; root = pathlib.Path.cwd(); pyprojects = (root / "pyproject.toml", *sorted(root.glob("flext-*/pyproject.toml"))); projects = tuple((path.parent, tomllib.loads(path.read_text())["project"]) for path in pyprojects); installed = tuple((project, metadata.version(project["name"])) for _, project in projects); mismatches = tuple("{}: expected {}, installed {}".format(project["name"], project["version"], version) for project, version in installed if version != project["version"]); assert not mismatches, "; ".join(mismatches); modules = tuple(sorted({entry.name for project_dir, _ in projects for entry in (project_dir / "src").glob("flext_*") if entry.is_dir()})); tuple(importlib.import_module(module) for module in modules); print("Verified {} distributions and {} public imports".format(len(projects), len(modules)))' || exit 1; \
+$(PY) -c 'import importlib, importlib.metadata as metadata, pathlib, tomllib; from packaging.version import Version; root = pathlib.Path.cwd(); pyprojects = (root / "pyproject.toml", *sorted(root.glob("flext-*/pyproject.toml"))); projects = tuple((path.parent, tomllib.loads(path.read_text())["project"]) for path in pyprojects); installed = tuple((project, metadata.version(project["name"])) for _, project in projects); mismatches = tuple("{}: expected {}, installed {}".format(project["name"], project["version"], version) for project, version in installed if Version(version) != Version(project["version"])); assert not mismatches, "; ".join(mismatches); modules = tuple(sorted({entry.name for project_dir, _ in projects for entry in (project_dir / "src").glob("flext_*") if entry.is_dir()})); tuple(importlib.import_module(module) for module in modules); print("Verified {} distributions and {} public imports".format(len(projects), len(modules)))' || exit 1; \
 $(PYTHON_CMD) -c 'from hashlib import sha256; from pathlib import Path; print(sha256(Path("uv.lock").read_bytes()).hexdigest())' > "$(WORKSPACE_VENV_READY)"
 endef
 
@@ -295,10 +297,16 @@ _boot_default: ## Install all projects into workspace .venv
 		else \
 		echo "Initializing and updating submodules..."; \
 		git submodule sync --recursive -- $$submodule_paths; \
-		if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths; then \
-			echo "ERROR: failed to update declared submodules from .gitmodules"; \
-			echo "Fix the canonical .gitmodules URL or local Git credentials, then rerun make boot."; \
-			exit 1; \
+		missing_paths="$$(git submodule status --recursive | awk '/^-/ {print $$2}' | tr '\n' ' ')"; \
+		if [ -n "$$missing_paths" ]; then \
+			echo "Materializing missing submodules: $$missing_paths"; \
+			if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$missing_paths; then \
+				echo "ERROR: failed to initialize missing submodules from .gitmodules"; \
+				echo "Fix the canonical .gitmodules URL or local Git credentials, then rerun make boot."; \
+				exit 1; \
+			fi; \
+		else \
+			echo "All declared submodules are already materialized; preserving their current commits and WIP."; \
 		fi; \
 		echo "Submodules ready."; \
 		fi; \

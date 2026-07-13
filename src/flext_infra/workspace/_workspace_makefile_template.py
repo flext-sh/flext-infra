@@ -21,7 +21,7 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
     def template_path(self) -> Path:
         """Path to the Makefile Jinja2 template used for workspace generation."""
         template_name: str = c.Infra.MAKEFILE_TEMPLATE_NAME
-        return Path(__file__).parent.parent / "templates" / template_name
+        return u.Infra.resource_root("templates") / template_name
 
     @staticmethod
     def _build_template_lines(content: str) -> str:
@@ -90,7 +90,7 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         self, *, makefile: Path, pr_branch: str, template_content: str
     ) -> p.Result[bool]:
         """Persist the generated template and rendered workspace Makefile."""
-        _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
+        _ = u.Cli.ensure_dir(u.Infra.resource_root("templates"))
         template_write = u.Cli.atomic_write_text_file(
             self.template_path, template_content
         )
@@ -120,7 +120,7 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
     ) -> str:
         """Render the workspace Makefile template without exception wrapping."""
         environment = Environment(
-            loader=FileSystemLoader(str(Path(__file__).parent.parent / "templates")),
+            loader=FileSystemLoader(str(u.Infra.resource_root("templates"))),
             trim_blocks=False,
             lstrip_blocks=False,
             keep_trailing_newline=True,

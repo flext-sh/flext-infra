@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra import c, m, p, t
+from flext_infra._utilities.resources import FlextInfraUtilitiesResources
 
 
 class FlextInfraUtilitiesCodegen:
@@ -35,8 +36,7 @@ class FlextInfraUtilitiesCodegen:
         else:
             base_import_block = ""
         template_path = (
-            Path(__file__).resolve().parent.parent
-            / "templates"
+            FlextInfraUtilitiesResources.resource_root("templates")
             / c.Infra.TEMPLATE_MODULE_SKELETON
         )
         # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner): preserve

@@ -183,6 +183,24 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Build-system requirements"),
         ]
 
+    class ResourceSpec(_ConfigContract):
+        """One PEP-compliant repository resource root and wheel mapping."""
+
+        source: Annotated[
+            Path, m.Field(description="Repository-root-relative resource directory")
+        ]
+        required: Annotated[
+            bool, m.Field(description="Whether every Python project requires the root")
+        ] = False
+        wheel_destination: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Package-relative wheel destination with {package_name} support"
+                )
+            ),
+        ] = None
+
     class ScaffoldDependencyProfileSpec(_ConfigContract):
         """Dependencies selected by the declared upstream FLEXT facade."""
 
@@ -261,6 +279,10 @@ class FlextInfraConfigModels:
         project: Annotated[
             FlextInfraConfigModels.ScaffoldProjectSpec,
             m.Field(description="Project metadata and dependency policy"),
+        ]
+        resources: Annotated[
+            tuple[FlextInfraConfigModels.ResourceSpec, ...],
+            m.Field(min_length=1, description="Canonical repository resource roots"),
         ]
         ping_example: Annotated[
             FlextInfraConfigModels.ScaffoldPingExampleSpec,
@@ -350,6 +372,10 @@ class FlextInfraConfigModels:
             m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+        resources: Annotated[
+            tuple[FlextInfraConfigModels.ResourceSpec, ...],
+            m.Field(description="Additional project-specific resource roots"),
+        ] = ()
 
     class ProjectRenderContext(_ConfigContract):
         """Complete typed input consumed by the universal project templates."""
@@ -454,6 +480,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
+        project_resources: Annotated[
+            tuple[FlextInfraConfigModels.ResourceSpec, ...],
+            m.Field(description="Additional resources declared by this project"),
+        ] = ()
         workspace_members: Annotated[
             tuple[str, ...], m.Field(description="Ordered workspace member paths")
         ] = ()
@@ -732,7 +762,16 @@ class FlextInfraConfigModels:
         """Expected content and current state for one managed file."""
 
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
-        rendered: Annotated[str, m.Field(description="Fully rendered expected content")]
+        operation: Annotated[
+            Literal["write", "move"],
+            m.Field(description="Atomic filesystem operation selected by conformance"),
+        ] = "write"
+        source_path: Annotated[
+            Path | None, m.Field(description="Existing source for a move operation")
+        ] = None
+        rendered: Annotated[
+            str, m.Field(description="Fully rendered expected content for writes")
+        ] = ""
         expected_sha256: Annotated[
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]

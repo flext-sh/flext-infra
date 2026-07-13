@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import FlextCliConfig
@@ -18,7 +17,9 @@ class _FlextInfraConfig(FlextCliConfig):
 
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
     # config.Infra is the only codegen information surface; no accessor method.
-    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parent / "config")
+    # NOTE (mro-wkii.17.26, agent codex): flext-core resolves this canonical
+    # relative root in both installed-package and editable-project layouts.
+    CONFIG_DIR: ClassVar[str] = "config"
     Infra: FlextInfraConfigModels.Infra
 
 

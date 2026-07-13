@@ -15,8 +15,8 @@ from flext_infra import c, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
-    """Resolve templates directory relative to this package."""
-    return Path(__file__).resolve().parent.parent / "templates"
+    """Resolve the canonical templates resource in either package layout."""
+    return u.Infra.resource_root("templates")
 
 
 def _build_default_environment() -> t.Infra.JinjaEnvironment:
