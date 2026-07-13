@@ -71,19 +71,15 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             "output_dir": output_dir,
             "selected_projects": selected_projects,
             "all_projects": all_projects,
+            # NOTE (multi-agent): mro-i6nq.12 — FlextMixins bootstrap inputs are now
+            # native Pydantic fields validated with the rest of model_data.
+            "settings_type": settings_type,
+            "runtime_settings": runtime_settings,
+            "settings_overrides": settings_overrides,
+            "initial_context": initial_context,
         }
         self.__pydantic_validator__.validate_python(model_data, self_instance=self)
         self._runner = runner
-        runtime_state: _StubChainRuntimeState = {}
-        if settings_type is not None:
-            runtime_state["settings_type"] = settings_type
-        if runtime_settings is not None:
-            runtime_state["runtime_settings"] = runtime_settings
-        if settings_overrides is not None:
-            runtime_state["settings_overrides"] = settings_overrides
-        if initial_context is not None:
-            runtime_state["initial_context"] = initial_context
-        self._apply_runtime_bootstrap_state(runtime_state)
 
     @property
     def runner(self) -> p.Cli.CommandRunner | None:
