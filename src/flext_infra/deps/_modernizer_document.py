@@ -12,6 +12,7 @@ from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConf
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
 )
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
@@ -232,6 +233,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         changes.extend(
             FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
                 payload, path=path
+            )
+        )
+        changes.extend(
+            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+                payload, path=path, is_root=is_root
             )
         )
         # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
