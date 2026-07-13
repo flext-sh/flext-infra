@@ -172,6 +172,9 @@ pep621_dev_dependency_groups = [ "dev" ]
 project_class = "infra"
 site_title = "FLEXT Infra"
 
+[tool.hatch.build.targets.sdist]
+only-include = [ "src/flext_infra" ]
+
 [tool.hatch.build.targets.wheel]
 packages = [ "src/flext_infra" ]
 
@@ -271,9 +274,7 @@ project-excludes = [
 project-includes = [ "src/**/*.py*" ]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
-search-path = [ ".", "src" ]
-site-package-path = [ "../.venv/lib/python3.13/site-packages" ]
-skip-interpreter-query = true
+search-path = [ ".", "../flext-cli/src", "../flext-core/src", "../flext-tests/src", "src" ]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
