@@ -18,8 +18,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     if TYPE_CHECKING:
         lazy_init: m.Infra.LazyInitConfig
 
-        @staticmethod
-        def _root_public_contract_exports(pkg_dir: Path) -> frozenset[str]: ...
+        def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...
 
         def _public_root_child_packages(
             self,
