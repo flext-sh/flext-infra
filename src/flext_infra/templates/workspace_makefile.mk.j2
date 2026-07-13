@@ -153,7 +153,7 @@ done
 endef
 
 define AUTO_SYNC_ALL_PROJECTS
-# mro-wkii.17.26 (codex): surface transactional sync failures to the operator.
+# mro-wkii.17.26 (codex): sync root and discovered children once, surfacing failures.
 $(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply || exit 1
 endef
 
@@ -326,16 +326,6 @@ _boot_default: ## Install all projects into workspace .venv
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			if $(WORKSPACE_INFRA_DEPS) internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
-				:; \
-			else \
-				echo "     sync  ... failed"; \
-				cat "$$log_file"; \
-				failed=$$((failed + 1)); \
-				failed_projects="$$failed_projects $$proj"; \
-				step=$$((step + 1)); \
-				continue; \
-			fi; \
 			printf "     lock  ... "; \
 			if $(UV_BIN) lock --directory "$$proj" >"$$log_file" 2>&1; then \
 				echo "ok"; \
@@ -359,12 +349,6 @@ _boot_default: ## Install all projects into workspace .venv
 	start_ts=$$(date +%s); \
 	root_lock_ok=0; \
 	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	if ! $(WORKSPACE_INFRA_DEPS) internal-sync --workspace . >"$$log_file" 2>&1; then \
-		echo "     sync  ... failed"; \
-		cat "$$log_file"; \
-		failed=$$((failed + 1)); \
-		failed_projects="$$failed_projects root"; \
-	fi; \
 	printf "     lock  ... "; \
 	if $(UV_BIN) lock >"$$log_file" 2>&1; then \
 		echo "ok"; \
