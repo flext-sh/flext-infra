@@ -91,6 +91,32 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
+    def _typing_stub_context(
+        cls, plan: m.Infra.LazyInitPlan
+    ) -> m.Infra.StaticPackageInitRender:
+        """Build PEP 561 declarations for one public lazy package root."""
+        published = cls._build_published_exports(plan.exports, dict(plan.lazy_map))
+        published_names = frozenset(published)
+        source = dict(plan.type_checking_map or plan.lazy_map)
+        source.update(plan.eager_dunders)
+        public_imports = {
+            name: target for name, target in source.items() if name in published_names
+        }
+        type_checking = cls.generate_type_checking(
+            cls._group_imports(public_imports),
+            include_flext_types=False,
+            child_packages=(),
+            local_package_root=plan.context.current_pkg,
+        )
+        import_lines = tuple(line.removeprefix("    ") for line in type_checking[1:])
+        return m.Infra.StaticPackageInitRender(
+            autogen_header=c.Infra.AUTOGEN_HEADER,
+            docstring=cls._format_root_package_docstring(plan.context.current_pkg),
+            runtime_import_lines="\n".join(import_lines),
+            exports=published,
+        )
+
+    @classmethod
     def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Select explicit exports owned by direct sibling modules."""
         current_pkg = plan.context.current_pkg
@@ -139,6 +165,15 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render one inline lazy public-root initializer."""
         return cls._render_model(c.Infra.TEMPLATE_ROOT_INIT, cls._root_context(plan))
+
+    @classmethod
+    def render_typing_stub(cls, plan: m.Infra.LazyInitPlan) -> str | None:
+        """Render the PEP 561 stub for a public lazy package root."""
+        if not cls._is_public_api_root_namespace(plan.context.current_pkg):
+            return None
+        return cls._render_model(
+            c.Infra.TEMPLATE_ROOT_INIT_STUB, cls._typing_stub_context(plan)
+        )
 
     @classmethod
     def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:

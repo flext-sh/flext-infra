@@ -56,6 +56,47 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
             raise OSError(message)
         self._modified_files.add(str(path))
 
+    def _sync_typing_stub(
+        self,
+        plan: m.Infra.LazyInitPlan,
+        generated: str | None,
+        *,
+        check_only: bool = False,
+    ) -> None:
+        """Synchronize the generated public-root stub or remove a stale one."""
+        stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
+        previous = self._read_generated_file(stub_path)
+        generated_owned = previous is not None and previous.startswith(
+            c.Infra.AUTOGEN_HEADER
+        )
+        if generated is None:
+            if not generated_owned:
+                return
+            if check_only:
+                self._modified_files.add(str(stub_path))
+            else:
+                stub_path.unlink()
+                self._modified_files.add(str(stub_path))
+            return
+        if previous is not None and not generated_owned and previous != generated:
+            message = f"refusing to overwrite hand-written typing stub: {stub_path}"
+            raise OSError(message)
+        if check_only:
+            if previous != generated:
+                self._modified_files.add(str(stub_path))
+            return
+        self._write_generated_file(stub_path, generated, previous)
+
+    def _write_artifact_set(self, plan: m.Infra.LazyInitPlan) -> int:
+        """Render and write one initializer with its matching typing stub."""
+        generated = FlextInfraCodegenGeneration.render_init(plan)
+        generated_stub = FlextInfraCodegenGeneration.render_typing_stub(plan)
+        previous = self._read_previous_init(plan)
+        cleanup_exit = self._cleanup_generated_support_files(plan)
+        self._write_generated_file(plan.context.init_path, generated, previous)
+        self._sync_typing_stub(plan, generated_stub)
+        return cleanup_exit
+
     def _check_remove_init(
         self, plan: m.Infra.LazyInitPlan
     ) -> t.Infra.LazyInitWriteResult:
@@ -64,6 +105,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         if init_path.is_file():
             self._modified_files.add(str(init_path))
         self._cleanup_generated_support_files(plan, check_only=True)
+        self._sync_typing_stub(plan, None, check_only=True)
         return (0, dict(plan.lazy_map))
 
     def _remove_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
@@ -74,6 +116,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
                 init_path.unlink()
                 self._modified_files.add(str(init_path))
             cleanup_exit = self._cleanup_generated_support_files(plan)
+            self._sync_typing_stub(plan, None)
         except OSError as exc:
             u.Cli.error(f"removing generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
@@ -86,10 +129,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         init_path = plan.context.init_path
         try:
             # mro-j47u (codex): Jinja owns final Ruff shape; IO only compares/writes.
-            generated = FlextInfraCodegenGeneration.render_init(plan)
-            previous = self._read_previous_init(plan)
-            cleanup_exit = self._cleanup_generated_support_files(plan)
-            self._write_generated_file(init_path, generated, previous)
+            cleanup_exit = self._write_artifact_set(plan)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"generating {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))
@@ -104,8 +144,10 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         init_path = plan.context.init_path
         try:
             generated = FlextInfraCodegenGeneration.render_init(plan)
+            generated_stub = FlextInfraCodegenGeneration.render_typing_stub(plan)
             previous = self._read_previous_init(plan)
             cleanup_exit = self._cleanup_generated_support_files(plan, check_only=True)
+            self._sync_typing_stub(plan, generated_stub, check_only=True)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(f"checking generated init {init_path}: {exc}")
             return (-1, dict(plan.lazy_map))

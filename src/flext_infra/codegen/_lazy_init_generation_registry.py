@@ -26,7 +26,6 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
             self._remove_obsolete_generated_files(plan, check_only=check_only)
             self._remove_generated_export_sidecars(plan, check_only=check_only)
-            self._remove_generated_typing_stub(plan, check_only=check_only)
         except c.EXC_OS_VALUE as exc:
             u.Cli.error(
                 f"cleaning generated sidecars for {plan.context.pkg_dir}: {exc}"
@@ -48,20 +47,6 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 continue
             path.unlink()
             self._modified_files.add(str(path))
-
-    def _remove_generated_typing_stub(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
-    ) -> None:
-        """Remove stale codegen-owned ``__init__.pyi`` files."""
-        stub_path = plan.context.pkg_dir / c.Infra.INIT_PYI
-        previous = self._read_generated_file(stub_path)
-        if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
-            return
-        if check_only:
-            self._modified_files.add(str(stub_path))
-            return
-        stub_path.unlink()
-        self._modified_files.add(str(stub_path))
 
     def _remove_generated_export_sidecars(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
