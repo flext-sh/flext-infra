@@ -10,7 +10,6 @@ from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core import p as core_p
     from flext_infra import m, t
 
 
@@ -56,18 +55,6 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
             message = f"writing {path}: {write_result.error}"
             raise OSError(message)
         self._modified_files.add(str(path))
-
-    @staticmethod
-    def _normalize_generated_file(path: Path, generated: str) -> str:
-        """Normalize generated Python before both comparison and writing."""
-        # mro-i6nq.10: The artifact filename is Ruff's sole config-discovery key.
-        normalized: core_p.Result[str] = u.Infra.normalize_python_source(
-            generated, filename=path
-        )
-        if normalized.failure:
-            message = f"normalizing generated source {path}: {normalized.error}"
-            raise OSError(message)
-        return normalized.value
 
     def _sync_unit_manifest(
         self, plan: m.Infra.LazyInitPlan, generated: str | None, *, check_only: bool
@@ -115,16 +102,10 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
     def _write_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
         """Write the manifest first and its consuming initializer second."""
         init_path = plan.context.init_path
-        unit_path = plan.context.pkg_dir / c.Infra.UNIT_PY
         try:
-            generated, generated_unit = (
-                self._normalize_generated_file(
-                    init_path, FlextInfraCodegenGeneration.render_init(plan)
-                ),
-                self._normalize_generated_file(
-                    unit_path, FlextInfraCodegenGeneration.render_unit_manifest(plan)
-                ),
-            )
+            # mro-j47u (codex): Jinja owns final Ruff shape; IO only compares/writes.
+            generated = FlextInfraCodegenGeneration.render_init(plan)
+            generated_unit = FlextInfraCodegenGeneration.render_unit_manifest(plan)
             previous = self._read_previous_init(plan)
             cleanup_exit = self._cleanup_generated_support_files(plan)
             self._sync_unit_manifest(plan, generated_unit, check_only=False)
@@ -141,14 +122,9 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
     ) -> t.Infra.LazyInitWriteResult:
         """Compare both generated artifacts without mutating them."""
         init_path = plan.context.init_path
-        unit_path = plan.context.pkg_dir / c.Infra.UNIT_PY
         try:
-            generated = self._normalize_generated_file(
-                init_path, FlextInfraCodegenGeneration.render_init(plan)
-            )
-            generated_unit = self._normalize_generated_file(
-                unit_path, FlextInfraCodegenGeneration.render_unit_manifest(plan)
-            )
+            generated = FlextInfraCodegenGeneration.render_init(plan)
+            generated_unit = FlextInfraCodegenGeneration.render_unit_manifest(plan)
             previous = self._read_previous_init(plan)
             cleanup_exit = self._cleanup_generated_support_files(plan, check_only=True)
             self._sync_unit_manifest(plan, generated_unit, check_only=True)

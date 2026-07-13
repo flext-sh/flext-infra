@@ -112,31 +112,5 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
                 message=f"lazy propagation finished with {lazy_errors} errors",
             )
 
-    @staticmethod
-    def _normalize_modified_sources(ctx: m.Infra.FixContext) -> None:
-        """Normalize every touched Python file and propagate any failure."""
-        for modified_file in sorted(ctx.files_modified):
-            path = Path(modified_file)
-            if not path.is_file():
-                continue
-            read = u.Cli.files_read_text(path)
-            if read.failure:
-                message = f"reading fixer output {path}: {read.error}"
-                raise OSError(message)
-            normalized = u.Infra.normalize_python_source(
-                read.value,
-                # mro-i6nq.10: Preserve per-file Ruff config without mutating first.
-                filename=path,
-            )
-            if normalized.failure:
-                message = f"normalizing fixer output {path}: {normalized.error}"
-                raise OSError(message)
-            if normalized.value == read.value:
-                continue
-            written = u.Cli.atomic_write_text_file(path, normalized.value)
-            if written.failure:
-                message = f"writing fixer output {path}: {written.error}"
-                raise OSError(message)
-
 
 __all__: list[str] = ["FlextInfraCodegenFixerPassesMixin"]

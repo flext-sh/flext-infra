@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesCodegen:
@@ -17,81 +16,6 @@ class FlextInfraUtilitiesCodegen:
 
         @staticmethod
         def project_root(file_path: Path) -> Path | None: ...
-
-    @classmethod
-    def normalize_python_source(
-        cls, source: str, *, filename: t.Cli.TextPath
-    ) -> p.Result[str]:
-        """Return Ruff-fixed and formatted source without writing ``filename``."""
-        resolved_path = Path(filename).resolve()
-        # mro-j47u: tool subprocesses run from the project root so package files
-        # such as collections.py can never shadow Python's standard library.
-        cwd = cls.project_root(resolved_path)
-        if cwd is None:
-            return r[str].fail(
-                f"project root not found for generated source: {resolved_path}"
-            )
-        # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
-        # bare "ruff" breaks when .venv/bin is not on PATH (CI docs audit).
-        checked = u.Cli.run_raw(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.RUFF,
-                "check",
-                "--fix",
-                "--no-cache",
-                "--color",
-                "never",
-                "--stdin-filename",
-                str(resolved_path),
-                "-",
-            ],
-            cwd=cwd,
-            timeout=c.Infra.TIMEOUT_SHORT,
-            input_data=source.encode(c.Infra.ENCODING_DEFAULT),
-        )
-        if checked.failure:
-            return r[str].fail(checked.error or f"ruff check failed: {resolved_path}")
-        checked_output = checked.value
-        if checked_output.exit_code != 0:
-            detail = checked_output.stderr.strip() or "no diagnostic output"
-            return r[str].fail(
-                f"ruff check failed ({checked_output.exit_code}) for "
-                f"{resolved_path}: {detail}"
-            )
-        formatted = u.Cli.run_raw(
-            [
-                sys.executable,
-                "-m",
-                c.Infra.RUFF,
-                "format",
-                "--no-cache",
-                "--color",
-                "never",
-                "--stdin-filename",
-                str(resolved_path),
-                "-",
-            ],
-            cwd=cwd,
-            timeout=c.Infra.TIMEOUT_SHORT,
-            input_data=checked_output.stdout.encode(c.Infra.ENCODING_DEFAULT),
-        )
-        if formatted.failure:
-            return r[str].fail(
-                formatted.error or f"ruff format failed: {resolved_path}"
-            )
-        formatted_output = formatted.value
-        if formatted_output.exit_code != 0:
-            detail = formatted_output.stderr.strip() or "no diagnostic output"
-            return r[str].fail(
-                f"ruff format failed ({formatted_output.exit_code}) for "
-                f"{resolved_path}: {detail}"
-            )
-        normalized_source = formatted_output.stdout
-        if normalized_source and not normalized_source.endswith("\n"):
-            normalized_source = f"{normalized_source}\n"
-        return r[str].ok(normalized_source)
 
     @staticmethod
     def generate_module_skeleton(

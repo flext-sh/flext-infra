@@ -46,7 +46,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
         self._run_lazy_init_regeneration(ctx, project_path)
-        self._normalize_modified_sources(ctx)
+        # mro-j47u (codex): each fixer owns Ruff-native output; no post-hoc mutation.
         self._classify_remaining_violations(ctx, project_path, initial_violations)
         return self._build_result(project_path.name, ctx)
 
