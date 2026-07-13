@@ -51,8 +51,9 @@ class FlextInfraModelsWorktree:
             t.StrSequence, m.Field(description="Files changed by the isolated command")
         ] = ()
         patch: Annotated[
-            str, m.Field(description="Binary Git patch relative to the checkpoint")
-        ] = ""
+            bytes,
+            m.Field(b"", description="Binary Git patch relative to the checkpoint"),
+        ] = b""
 
     class RepositoryWorktree(m.ContractModel):
         """One source repository paired with its isolated worktree checkpoint."""

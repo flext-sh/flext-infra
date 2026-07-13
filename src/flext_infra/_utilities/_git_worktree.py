@@ -45,6 +45,18 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[str].fail(detail or f"git command exited {output.exit_code}")
         return r[str].ok(output.stdout)
 
+    @staticmethod
+    def git_capture_bytes(repo_root: Path, arguments: t.StrSequence) -> p.Result[bytes]:
+        """Capture byte-exact stdout from one successful Git command."""
+        result = u.Cli.run_bytes((c.Infra.GIT, *arguments), cwd=repo_root)
+        if result.failure:
+            return r[bytes].fail(result.error or "git command execution failed")
+        output = result.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).decode(errors="replace").strip()
+            return r[bytes].fail(detail or f"git command exited {output.exit_code}")
+        return r[bytes].ok(output.stdout)
+
     @classmethod
     def git_repository_head(cls, repo_root: Path) -> p.Result[str]:
         """Capture the current repository HEAD SHA."""
@@ -142,6 +154,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if cls._git_path_is_excluded(relative_path, excluded):
                 continue
             source_path = source_root / relative_path
+            if source_path.is_dir():
+                continue
             destination_path = worktree_root / relative_path
             ensure_parent = u.Cli.ensure_dir(destination_path.parent)
             if ensure_parent.failure:
@@ -173,16 +187,20 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     ) -> p.Result[bool]:
         """Reproduce tracked, staged, unstaged, and untracked source state."""
         pathspecs = tuple(f":(exclude){path.as_posix()}" for path in excluded)
-        diff_result = cls.git_capture(
+        diff_result = cls.git_capture_bytes(
             source_root, ("diff", "--binary", "HEAD", "--", ".", *pathspecs)
         )
         if diff_result.failure:
             return r[bool].fail(diff_result.error or "failed to capture dirty patch")
-        if diff_result.value:
+        patch_bytes = diff_result.value
+        if patch_bytes:
+            # git apply rejects a patch whose final line lacks the terminating
+            # newline ("corrupt patch"); `git diff --binary` can emit exactly
+            # that, so restore the single trailing newline the format requires.
+            if not patch_bytes.endswith(b"\n"):
+                patch_bytes += b"\n"
             apply_result = cls.git_run(
-                worktree_root,
-                ("apply", "--binary", "-"),
-                input_data=diff_result.value.encode(c.Cli.ENCODING_DEFAULT),
+                worktree_root, ("apply", "--binary", "-"), input_data=patch_bytes
             )
             if apply_result.failure:
                 return r[bool].fail(
@@ -256,7 +274,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             repository.worktree_root,
             ("diff", "--cached", "--name-only", "-z", repository.checkpoint_sha),
         )
-        patch_result = cls.git_capture(
+        patch_result = cls.git_capture_bytes(
             repository.worktree_root,
             ("diff", "--cached", "--binary", repository.checkpoint_sha, "--"),
         )
@@ -266,6 +284,13 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if names_result.failure
                 else patch_result.error or "failed to capture operation patch"
             )
+        # git apply rejects a patch whose final line has no terminating newline
+        # ("corrupt patch"). `git diff --binary` can emit exactly that when the
+        # last hunk ends on a context line, so restore the single trailing
+        # newline the patch format requires before the delta is applied.
+        patch_bytes = patch_result.value
+        if patch_bytes and not patch_bytes.endswith(b"\n"):
+            patch_bytes += b"\n"
         return r[m.Infra.RepositoryDelta].ok(
             m.Infra.RepositoryDelta(
                 relative_path=repository.relative_path,
@@ -275,7 +300,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 changed_files=tuple(
                     name for name in names_result.value.split("\0") if name
                 ),
-                patch=patch_result.value,
+                patch=patch_bytes,
             )
         )
 
@@ -287,7 +312,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         result = cls.git_run(
             delta.source_root,
             ("apply", "--check", "--binary", "-"),
-            input_data=delta.patch.encode(c.Cli.ENCODING_DEFAULT),
+            input_data=delta.patch,
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply --check failed")
@@ -304,9 +329,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if not delta.patch:
             return r[bool].ok(True)
         result = cls.git_run(
-            delta.source_root,
-            ("apply", "--binary", "-"),
-            input_data=delta.patch.encode(c.Cli.ENCODING_DEFAULT),
+            delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply failed")
