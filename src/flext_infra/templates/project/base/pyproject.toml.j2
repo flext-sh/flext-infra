@@ -333,6 +333,21 @@ sort_first = [
 {% endfor %}
 ]
 
+# NOTE (multi-agent, mro-j47u): render the tested reachability policy from config.
+[tool.vulture]
+exclude = [
+{% for item in tooling.tools.vulture.exclude %}
+  {{ item | tojson }},
+{% endfor %}
+]
+min_confidence = {{ tooling.tools.vulture.min_confidence }}
+paths = [
+{% for item in tooling.tools.vulture.paths %}
+  {{ item | tojson }},
+{% endfor %}
+]
+verbose = {{ tooling.tools.vulture.verbose | lower }}
+
 [tool.yamlfix]
 explicit_start = {{ tooling.tools.yamlfix.explicit_start | lower }}
 line_length = {{ tooling.tools.yamlfix.line_length }}

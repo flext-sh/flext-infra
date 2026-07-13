@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
-
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 

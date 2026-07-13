@@ -10,8 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u as cli_u
-
+from flext_cli import u
 from flext_infra import c, m, p, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -55,7 +54,7 @@ class FlextInfraProjectSelectionMixin:
         return FlextInfraUtilitiesDocs.run_scoped(
             workspace_root,
             projects=self.selected_projects if projects is None else projects,
-            output_dir=cli_u.Cli.resolve_optional_path(
+            output_dir=u.Cli.resolve_optional_path(
                 output_dir, default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
             ),
             handler=handler,

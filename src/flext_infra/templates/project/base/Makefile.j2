@@ -54,6 +54,9 @@ ALLOWED_PROJECTS := .
 endif
 
 UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
+# mro-j47u (codex): scaffold dev tools live in the validated optional dev
+# profile; a fresh project must create its lock before later check-mode locks.
+UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
 
 -include custom.mk
 
@@ -123,7 +126,7 @@ _builtin_help_usage:
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" --locked --all-groups
+	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
 	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
 		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
@@ -135,11 +138,11 @@ _builtin_setup_environment:
 	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" --locked --all-groups
+	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
 endif
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" --locked --all-groups
+	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
 endif
 
 _builtin_deps_check:
@@ -162,7 +165,8 @@ _builtin_check_all:
 	@$(UV_RUN) pyrefly check
 	@$(UV_RUN) mypy $(MYPY_PATHS)
 	@$(UV_RUN) pyright
-	@$(UV_RUN) vulture "$(PROJECT_ROOT)/src" --min-confidence 100
+	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
+	@$(UV_RUN) vulture
 
 _builtin_test_all:
 	@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests"

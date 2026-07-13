@@ -8,7 +8,6 @@ from io import StringIO
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import c, m, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery

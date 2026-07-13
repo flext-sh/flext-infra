@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from flext_cli import p as cli_p
-
 from flext_infra._protocols.base import FlextInfraProtocolsBase
 from flext_infra._protocols.check import FlextInfraProtocolsCheck
 from flext_infra._protocols.docs import FlextInfraProtocolsDocs

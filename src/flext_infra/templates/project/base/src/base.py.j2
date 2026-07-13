@@ -6,10 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations{# NOTE (multi-agent, mro-wkii.19.1): services consume the direct root singletons; no runtime settings accessor. #}
 
-from {{ package_name }} import config, settings
-from {{ package_name }}.models import {{ class_stem }}Models as m
-from {{ package_name }}.protocols import {{ class_stem }}Protocols as p
-from flext_core import r, s
+# NOTE (multi-agent, mro-j47u): inherit the configured upstream and local aliases.
+from {{ upstream }} import r, s
+from {{ package_name }} import config, m, p, settings
 
 
 class {{ class_stem }}Service(s):

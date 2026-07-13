@@ -6,7 +6,6 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-
 from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
@@ -178,6 +177,31 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
 
+    class VultureConfig(m.ArbitraryTypesModel):
+        """Vulture production-reachability policy loaded from YAML."""
+
+        # NOTE (multi-agent, mro-j47u): keep dead-code scope fully config-owned.
+        exclude: Annotated[
+            t.StrTuple,
+            m.Field(
+                description="Declaration-only path patterns excluded from Vulture."
+            ),
+        ]
+        min_confidence: Annotated[
+            int,
+            m.Field(
+                alias="min-confidence",
+                description="Minimum confidence reported as dead production code.",
+            ),
+        ]
+        paths: Annotated[
+            t.StrTuple,
+            m.Field(description="Production roots scanned for unreachable code."),
+        ]
+        verbose: bool = m.Field(
+            description="Print configuration and scanned modules as gate evidence."
+        )
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
@@ -210,6 +234,9 @@ class FlextInfraModelsDepsToolSettings(
         )
         tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = m.Field(
             description="Tomlsort settings"
+        )
+        vulture: FlextInfraModelsDepsToolSettings.VultureConfig = m.Field(
+            description="Vulture production-reachability settings"
         )
         yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = m.Field(
             description="Yamlfix settings"

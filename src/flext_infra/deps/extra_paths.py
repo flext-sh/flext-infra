@@ -117,12 +117,19 @@ class FlextInfraExtraPathsManager(
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool
     ) -> t.StrSequence:
-        """Build pyrefly project-includes from auto-discovered top-level Python dirs."""
-        pyright_includes = self._pyright_include_globs(project_dir)
-        if pyright_includes:
-            return pyright_includes
+        """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        includes: t.Infra.StrSet = set(self.pyrefly_include_globs(rules.env_dirs))
+        # mro-j47u (codex): never reread an on-disk Pyright table while its
+        # in-memory payload is being conformed; include only real production roots.
+        includes: t.Infra.StrSet = set(
+            self.pyrefly_include_globs(
+                tuple(
+                    directory
+                    for directory in rules.env_dirs
+                    if (project_dir / directory).is_dir()
+                )
+            )
+        )
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
@@ -138,35 +145,6 @@ class FlextInfraExtraPathsManager(
     def pyrefly_include_globs(env_dirs: t.StrSequence) -> t.StrSequence:
         """Render Pyrefly include globs for already validated Python roots."""
         return tuple(f"{directory}/**/*.py*" for directory in env_dirs)
-
-    @staticmethod
-    def _pyright_include_globs(project_dir: Path) -> t.StrSequence:
-        """Return pyrefly-compatible globs derived from [tool.pyright].include."""
-        pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.exists():
-            return ()
-        payload = u.Infra.pyproject_payload(pyproject)
-        tool_table = payload.get(c.Infra.TOOL)
-        if not isinstance(tool_table, Mapping):
-            return ()
-        pyright_table = tool_table.get(c.Infra.PYRIGHT)
-        if not isinstance(pyright_table, Mapping):
-            return ()
-        include_items = pyright_table.get(c.Infra.INCLUDE)
-        if not isinstance(include_items, list):
-            return ()
-        includes: t.Infra.StrSet = set()
-        for item in include_items:
-            if not isinstance(item, str):
-                continue
-            normalized = item.strip().rstrip("/")
-            if not normalized:
-                continue
-            if "*" in normalized or normalized.endswith((".py", ".pyi")):
-                includes.add(normalized)
-            else:
-                includes.add(f"{normalized}/**/*.py*")
-        return tuple(sorted(includes))
 
 
 __all__: list[str] = ["FlextInfraExtraPathsManager"]

@@ -95,8 +95,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         config_path = self.root / ".taplo.toml"
         if config_path.is_file():
             cmd.extend(["--config", str(config_path)])
+        # mro-j47u (codex): atomic scaffold planning precedes target-root creation.
+        format_cwd = next(
+            candidate
+            for candidate in (self.root, *self.root.parents)
+            if candidate.is_dir()
+        )
         format_result = u.Cli.run_raw(
-            cmd, cwd=self.root, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
+            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
         )
         if format_result.failure:
             return r[str].fail(format_result.error or "taplo format failed")

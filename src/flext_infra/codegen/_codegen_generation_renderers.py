@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-
 from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )

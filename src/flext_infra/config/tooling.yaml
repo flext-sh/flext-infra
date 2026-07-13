@@ -7,10 +7,8 @@ Infra:
         ignore-words-list: crate,nd
       # mro-j47u (codex): non-linter tool sections are config-owned as well.
       deptry:
-        known-first-party:
-          - flext_core
-        pep621-dev-dependency-groups:
-          - dev
+        known-first-party: [flext_core]
+        pep621-dev-dependency-groups: [dev]
       hatch:
         allow-direct-references: true
       ruff:
@@ -40,8 +38,7 @@ Infra:
         preview: true
         respect-gitignore: true
         show-fixes: true
-        src:
-          - src
+        src: [src]
         target-version: py313
         format:
           docstring-code-format: true
@@ -55,8 +52,9 @@ Infra:
           # mro-j47u (codex): banned API messages are policy data, never template literals.
           banned-api:
             argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
-            click: "Use flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)."
-            rich: "Use cli.print / cli.display_message / cli.render_panel / cli.create_tree."
+            click: "Use flext_cli.cli application, registration, execution, and invocation\
+              \ methods."
+            rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
             typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
           ignore:
             - B009
@@ -116,45 +114,18 @@ Infra:
             force-single-line: false
             split-on-trailing-comma: false
           per-file-ignores:
-            "**/.vulture_whitelist.py":
-              - ALL
-            "**/*_pb2*.py":
-              - ALL
+            "**/.vulture_whitelist.py": [ALL]
+            "**/*_pb2*.py": [ALL]
             "**/*dispatcher*": []
-            "**/*docs*":
-              - INP001
-              - S404
-              - S603
-              - T201
-            "**/*exceptions*":
-              - A001
-              - S105
-              - SLF001
+            "**/*docs*": [INP001, S404, S603, T201]
+            "**/*exceptions*": [A001, S105, SLF001]
             "**/*handlers*": []
-            "**/*instrumentation*":
-              - C901
-              - FBT001
-              - SLF001
-            "**/*loggings*":
-              - PLW0603
-              - PLR0904
-            "**/*middleware*":
-              - ANN401
-              - FBT001
-              - FBT002
-              - PLC2801
-              - S107
-            "**/*models*":
-              - ANN401
-              - FBT001
-              - PLC2701
-              - PLR0206
-              - PLW0603
-            "**/*oracle*":
-              - DTZ007
-            "**/*result*":
-              - PLC2701
-              - SLF001
+            "**/*instrumentation*": [C901, FBT001, SLF001]
+            "**/*loggings*": [PLW0603, PLR0904]
+            "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
+            "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
+            "**/*oracle*": [DTZ007]
+            "**/*result*": [PLC2701, SLF001]
             "**/*runtime*": []
             "**/*scripts*":
               - EXE001
@@ -171,24 +142,10 @@ Infra:
               - S603
               - T201
               - TID252
-            "**/*service*":
-              - N815
-              - S404
-              - S603
-              - SLF001
-              - PLC2801
-            "**/*subprocess_utils*":
-              - S404
-              - S603
-            "**/*typings*":
-              - ANN401
-            "**/*utilities*":
-              - C901
-              - E402
-              - PLC2801
-              - PLW1510
-              - S404
-              - S603
+            "**/*service*": [N815, S404, S603, SLF001, PLC2801]
+            "**/*subprocess_utils*": [S404, S603]
+            "**/*typings*": [ANN401]
+            "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
             "**/__init__.py":
               - A004
               - ANN401
@@ -202,91 +159,45 @@ Infra:
               - PLC2701
               - RUF067
               - TC004
-            "**/_utilities/parser.py":
-              - ARG004
-              - FBT001
-            "**/settings.py":
-              - ANN401
-              - FBT001
-              - SLF001
-            "**/_constants/*.py":
-              - S105
-            "**/constants.py":
-              - S105
-            "**/container.py":
-              - ANN401
-              - SLF001
+            "**/_utilities/parser.py": [ARG004, FBT001]
+            "**/settings.py": [ANN401, FBT001, SLF001]
+            "**/_constants/*.py": [S105]
+            "**/constants.py": [S105]
+            "**/container.py": [ANN401, SLF001]
             "**/context.py": []
-            "**/file_tools.py":
-              - D102
-            "**/managers.py":
-              - S105
-            "**/models.py":
-              - PLC0415
-              - PLC2801
-              - S102
-              - S105
+            "**/file_tools.py": [D102]
+            "**/managers.py": [S105]
+            "**/models.py": [PLC0415, PLC2801, S102, S105]
             "**/output.py":
               - FBT001
             # FLEXT config/settings namespaces are deliberately PascalCase
             # (config.<Namespace> / settings.<Namespace>). Protocol properties
             # must preserve that exact public member name; N802 models functions,
             # not namespace-shaped protocol attributes.
-            "**/_protocols/*.py":
+            "**/_config.py": [N802]
+            "**/_protocols/*.py": [N802]
+            "**/flext_cli/_protocols/framework.py": [A002]
+            "**/_settings.py":
               - N802
-            "**/plugins/*.py":
-              - FBT001
-              - FBT002
-              - S404
-              - S603
-              - S607
-              - TID252
-            "**/providers/*.py":
-              - S106
-              - S107
-            "**/services/prompts.py":
-              - D102
-              - D107
-            "**/singer/*.py":
-              - S404
-              - S603
-            "**/tools/*.py":
-              - FBT001
-              - FBT002
-              - N802
-              - S404
-              - S603
-              - S607
-              - T201
-            "**/tools/**/*.py":
-              - FBT001
-              - FBT002
-              - N802
-              - S404
-              - S603
-              - S607
-              - T201
-            "**/alert_manager*.py":
-              - S310
-            "**/external_command*.py":
-              - S404
-              - S603
-            "**/orchestrator*.py":
-              - S404
-              - S603
-            "**/protocol_impls/*.py":
-              - SLF001
-            "**/typings.py":
-              - RUF036
-            "**/workspace/*.py":
-              - PLC0415
-              - S404
-              - S603
-              - S607
+            # flext-cli is the single framework-adapter owner. Direct Click,
+            # Typer, and Rich imports stay banned in every consumer while the
+            # owning boundary must import those libraries to expose the facade.
+            "**/flext_cli/_utilities/formatters.py": [TID251]
+            "**/flext_cli/_utilities/framework.py": [A002, TID251]
+            "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
+            "**/providers/*.py": [S106, S107]
+            "**/services/prompts.py": [D102, D107]
+            "**/singer/*.py": [S404, S603]
+            "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+            "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+            "**/alert_manager*.py": [S310]
+            "**/external_command*.py": [S404, S603]
+            "**/orchestrator*.py": [S404, S603]
+            "**/protocol_impls/*.py": [SLF001]
+            "**/typings.py": [RUF036]
+            "**/workspace/*.py": [PLC0415, S404, S603, S607]
       mypy:
-        plugins:
-          - pydantic.mypy
-          - returns.contrib.mypy.returns_plugin
+        plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^(?:tests|examples|legado)(?:/|$)
         # The seven codes below are disabled globally based on empirical validation
         # against FLEXT's MRO composition + PEP 562 lazy __getattr__ in
@@ -298,20 +209,20 @@ Infra:
         # YAML comment documents the systemic rationale. Removal depends on a
         # future lazy-getattr resolver plugin or generated .pyi stubs.
         disabled-error-codes:
-          - assignment # dependency_injector binding chains misinterpreted by mypy
-          - attr-defined # MRO-composed narrow types resolved to `object`
-          - call-arg # Pydantic v2 plugin gap + lazy __getattr__
-          - misc # List[dict[str, Any]] inference noise in MRO factories
-          - name-defined # lazy __getattr__ in autogenerated __init__.py
+          - assignment  # dependency_injector binding chains misinterpreted by mypy
+          - attr-defined  # MRO-composed narrow types resolved to `object`
+          - call-arg  # Pydantic v2 plugin gap + lazy __getattr__
+          - misc  # List[dict[str, Any]] inference noise in MRO factories
+          - name-defined  # lazy __getattr__ in autogenerated __init__.py
           # Canonical facade modules import upstream p/m/c/t/u, subclass that exact
           # alias, then intentionally publish the local facade under the same alias.
           # Mypy no-redef cannot model this mandatory MRO rebinding contract.
           - no-redef
-          - prop-decorator # Pydantic v2 computed_field inside MRO mixins
-          - valid-type # namespace facades (m/t/c/p/u) used in PEP 695 aliases
-          - no-any-return # facade-MRO return (u/p/m/t/c) resolves to `Any` in mypy only; pyright+pyrefly type it correctly
-          - arg-type # p.Result[T].value widens through the facade MRO in mypy only; pyright+pyrefly resolve the narrow type
-          - unreachable # mypy over-narrows facade .value and flags defensive isinstance guards as dead; pyright+pyrefly keep them live
+          - prop-decorator  # Pydantic v2 computed_field inside MRO mixins
+          - valid-type  # namespace facades (m/t/c/p/u) used in PEP 695 aliases
+          - no-any-return  # facade-MRO return (u/p/m/t/c) resolves to `Any` in mypy only; pyright+pyrefly type it correctly
+          - arg-type  # p.Result[T].value widens through the facade MRO in mypy only; pyright+pyrefly resolve the narrow type
+          - unreachable  # mypy over-narrows facade .value and flags defensive isinstance guards as dead; pyright+pyrefly keep them live
         boolean-settings:
           # Discovery + namespace (retained)
           ignore_missing_imports: true
@@ -393,11 +304,8 @@ Infra:
           # NOTE (multi-agent, mro-wkii.17.25): only productive Python roots become environments.
           source-dir: src
           project-root: .
-          env-dirs:
-            - src
-            - scripts
-          test-like-dirs:
-            - scripts
+          env-dirs: [src, scripts]
+          test-like-dirs: [scripts]
           default-excludes:
             - "**/node_modules"
             - "**/__pycache__"
@@ -421,10 +329,7 @@ Infra:
             - "**/site-packages/**"
             - "**/dist-packages"
             - "**/dist-packages/**"
-          dynamic-exclude-dirs:
-            - .git
-            - .reports
-            - vendor
+          dynamic-exclude-dirs: [.git, .reports, vendor]
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []
@@ -448,8 +353,7 @@ Infra:
           - "if _t.TYPE_CHECKING:"
           - "if TYPE_CHECKING:"
           - "if typing.TYPE_CHECKING:"
-        omit:
-          - "*/dependency_injector/providers.pyx"
+        omit: ["*/dependency_injector/providers.pyx"]
       pyrefly:
         disable-project-excludes-heuristics: true
         ignore-errors-in-generated-code: true
@@ -561,9 +465,7 @@ Infra:
           - "typings/**"
           - "vendor/**"
         path-rules:
-          env-dirs:
-            - src
-            - scripts
+          env-dirs: [src, scripts]
           source-dir: src
           project-root: .
           root-typings-paths: []
@@ -571,17 +473,12 @@ Infra:
           workspace-include-children: false
           workspace-include-child-env-dirs: []
           include-path-dependencies-in-search-path: true
-          project-shared-search-paths:
-            - scripts
+          project-shared-search-paths: [scripts]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
         min-version: "8.0"
-        python-classes:
-          - "Test*"
-        python-files:
-          - "*_test.py"
-          - "*_tests.py"
-          - "test_*.py"
+        python-classes: ["Test*"]
+        python-files: ["*_test.py", "*_tests.py", "test_*.py"]
         filter-warnings:
           - "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning"
         standard-markers:
@@ -612,18 +509,23 @@ Infra:
       tomlsort:
         all: true
         in_place: true
-        sort_first:
-          - project
-          - build-system
-          - tool
-          - dependency-groups
+        sort_first: [project, build-system, tool, dependency-groups]
+      vulture:
+        # NOTE (multi-agent, mro-j47u): Vulture 2.16 reports keyword-bearing
+        # Protocol signature parameters as unused variables at 100% confidence,
+        # even with --ignore-decorators @runtime_checkable. The declaration-only
+        # protocol facet is excluded; production models and runtime code remain scanned.
+        exclude: ["*/_protocols/*"]
+        min-confidence: 100
+        paths: [src]
+        verbose: true
       yamlfix:
         line_length: 88
         preserve_quotes: true
         whitelines: 1
         section_whitelines: 1
         explicit_start: false
-    
+
     project-type-overrides:
       core:
         pyright: {}
@@ -638,7 +540,6 @@ Infra:
           reportMissingTypeStubs: "none"
       app:
         pyright: {}
-    
     lazy-init:
       root-namespace-files:
         - api.py
@@ -702,34 +603,17 @@ Infra:
         utilities.py: Utilities
         validator.py: Validator
       private-family-tokens:
-        c:
-          - Constants
-        m:
-          - Models
-        p:
-          - Protocols
-        t:
-          - Types
-          - Typing
-        u:
-          - Utilities
+        c: [Constants]
+        m: [Models]
+        p: [Protocols]
+        t: [Types, Typing]
+        u: [Utilities]
       surface-prefixes:
         tests: Tests
         examples: Examples
         scripts: Scripts
       inherited-exports:
-        src:
-          - c
-          - d
-          - e
-          - h
-          - m
-          - p
-          - r
-          - s
-          - t
-          - u
-          - x
+        src: [c, d, e, h, m, p, r, s, t, u, x]
         tests:
           - c
           - d
@@ -747,30 +631,6 @@ Infra:
           - tk
           - tm
           - tv
-        examples:
-          - c
-          - d
-          - e
-          - h
-          - m
-          - p
-          - r
-          - s
-          - t
-          - u
-          - x
-        scripts:
-          - c
-          - d
-          - e
-          - h
-          - m
-          - p
-          - r
-          - s
-          - t
-          - u
-          - x
-      main-export-files:
-        - cli.py
-        - main.py
+        examples: [c, d, e, h, m, p, r, s, t, u, x]
+        scripts: [c, d, e, h, m, p, r, s, t, u, x]
+      main-export-files: [cli.py, main.py]

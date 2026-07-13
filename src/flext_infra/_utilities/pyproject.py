@@ -9,9 +9,9 @@ from __future__ import annotations
 from functools import cache
 from pathlib import Path
 
-from flext_cli import u
 from tomlkit import TOMLDocument
 
+from flext_cli import u
 from flext_infra import c, t
 
 

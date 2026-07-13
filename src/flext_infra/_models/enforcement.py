@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import p
 from flext_infra.fixers.result import FlextInfraFixersResult as fr

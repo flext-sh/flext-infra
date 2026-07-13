@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import FlextCliConfig
-
 from flext_infra._models.config import FlextInfraConfigModels
 
 

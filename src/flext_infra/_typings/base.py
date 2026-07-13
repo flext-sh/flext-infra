@@ -10,11 +10,12 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
 from typing import Literal
 
-from flext_cli import m, t
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
+
+from flext_cli import m, t
 
 
 class FlextInfraTypesBase:

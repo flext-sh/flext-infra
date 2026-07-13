@@ -6,7 +6,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
-
 from flext_core import r, u
 from flext_infra import c, m
 from flext_infra._constants.rope import FlextInfraConstantsRope

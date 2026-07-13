@@ -14,7 +14,6 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import c, m, t
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration

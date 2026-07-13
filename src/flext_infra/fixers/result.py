@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Annotated
 
 from flext_cli import FlextCliModels as m
-
 from flext_infra import t
 
 

@@ -6,7 +6,6 @@ import sys
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
-
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra._constants.cli_routes import (
@@ -84,7 +83,7 @@ class FlextInfraCli(type(cli_facade)):
         )
         return reordered
 
-    def _register_group_commands(self, group: str, app: t.Cli.CliApp) -> None:
+    def _register_group_commands(self, group: str, app: p.Cli.Application) -> None:
         """Register group commands."""
         self.register_result_routes(app, self._GROUP_COMMANDS[group])
 

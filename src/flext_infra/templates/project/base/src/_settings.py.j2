@@ -12,9 +12,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_settings import SettingsConfigDict
 
+# NOTE (multi-agent, mro-j47u): emit Ruff-native upstream-before-local imports.
+from flext_core import FlextSettings
 from {{ package_name }}._constants.settings import {{ class_stem }}ConstantsSettings
 from {{ package_name }}._models.settings import {{ class_stem }}SettingsModels
-from flext_core import FlextSettings
 
 if TYPE_CHECKING:
 {% if 48 + (package_name | length) + (class_stem | length) <= tooling.tools.ruff.line_length %}    from {{ package_name }}._protocols.settings import {{ class_stem }}ProtocolsSettings

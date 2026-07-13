@@ -101,9 +101,9 @@ class FlextInfraConstantsCheck:
     })
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
-        "click": "flext_cli (cli, c.Cli.CliAbortError, c.Cli.CliCommandError)",
+        "click": "flext_cli.cli application, registration, execution, and invocation methods",
         "argparse": "cli.register_result_command + Pydantic model",
-        "rich": "cli.print / cli.display_message / cli.render_panel / cli.create_tree",
+        "rich": "cli.print / cli.display_message / cli.render_panel / cli.render_table",
         "tabulate": "cli.format_table / cli.show_table",
         "colorama": "cli.print with c.Cli.MessageStyles",
         "prompt_toolkit": "cli.prompt / cli.confirm / cli.prompt_password",

@@ -6,7 +6,6 @@ import time
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
-
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate

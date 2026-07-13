@@ -129,6 +129,7 @@ dev = [
   "types-tabulate>=0.10",
   "types-toml>=0.10.8.20240310",
   "vulture>=2.13",
+  "yamlfix>=1.19.1,<2",
 ]
 
 [project.scripts]
@@ -164,7 +165,7 @@ omit = [ "*/dependency_injector/providers.pyx" ]
 
 # [MANAGED] deptry
 [tool.deptry]
-known_first_party = [ "flext_core", "flext_infra" ]
+known_first_party = [ "flext_cli", "flext_core", "flext_infra" ]
 pep621_dev_dependency_groups = [ "dev" ]
 
 [tool.flext.docs]
@@ -253,7 +254,7 @@ project-excludes = [
   "typings/**",
   "vendor/**",
 ]
-project-includes = [ "scripts/**/*.py*", "src/**/*.py*" ]
+project-includes = [ "src/**/*.py*" ]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
 search-path = [ "../flext-cli/src", "../flext-core/src", "../flext-tests/src", "src" ]
@@ -625,7 +626,7 @@ msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
-known-first-party = [ "flext_core", "flext_infra" ]
+known-first-party = [ "flext_cli", "flext_core", "flext_infra" ]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
@@ -676,8 +677,10 @@ split-on-trailing-comma = false
   "RUF067",
   "TC004",
 ]
+"**/_config.py" = [ "N802" ]
 "**/_constants/*.py" = [ "S105" ]
 "**/_protocols/*.py" = [ "N802" ]
+"**/_settings.py" = [ "N802" ]
 "**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
 "**/alert_manager*.py" = [ "S310" ]
 "**/constants.py" = [ "S105" ]
@@ -685,6 +688,7 @@ split-on-trailing-comma = false
 "**/context.py" = [  ]
 "**/external_command*.py" = [ "S404", "S603" ]
 "**/file_tools.py" = [ "D102" ]
+"**/flext_cli/**/*.py" = [ "TID251" ]
 "**/managers.py" = [ "S105" ]
 "**/models.py" = [ "PLC0415", "PLC2801", "S102", "S105" ]
 "**/orchestrator*.py" = [ "S404", "S603" ]

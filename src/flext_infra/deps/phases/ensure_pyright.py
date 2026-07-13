@@ -90,11 +90,11 @@ class FlextInfraEnsurePyrightConfigPhase:
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
     def _expected_envs(
-        self, *, is_root: bool, workspace_root: Path | None
+        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
-            return self._expected_envs_for_project()
+            return self._expected_envs_for_project(project_dir=project_dir)
         rules = self._tool_config.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
             m.Infra.PyrightConfig.ExecutionEnvironment
@@ -153,11 +153,16 @@ class FlextInfraEnsurePyrightConfigPhase:
         return expected_envs
 
     def _expected_envs_for_project(
-        self,
+        self, *, project_dir: Path | None
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Build executionEnvironments from auto-discovered top-level Python dirs."""
+        """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
-        env_dirs = rules.env_dirs
+        # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
+        env_dirs = tuple(
+            env_dir
+            for env_dir in rules.env_dirs
+            if project_dir is None or (project_dir / env_dir).is_dir()
+        )
         return self._envs_for_dirs(
             env_dirs=env_dirs,
             source_path=self._project_source_path(),
@@ -254,15 +259,21 @@ class FlextInfraEnsurePyrightConfigPhase:
         return list(ignores)
 
     def _expected_includes(
-        self, *, is_root: bool, workspace_root: Path | None
+        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
     ) -> t.StrSequence:
         """Return the auto-discovered top-level Python roots that pyright should analyze."""
         rules = self._tool_config.tools.pyright.path_rules
         if not is_root:
-            return list(rules.env_dirs)
+            return [
+                env_dir
+                for env_dir in rules.env_dirs
+                if project_dir is None or (project_dir / env_dir).is_dir()
+            ]
         if workspace_root is None:
-            return list(rules.env_dirs)
-        includes: t.MutableSequenceOf[str] = list(rules.env_dirs)
+            return ()
+        includes: t.MutableSequenceOf[str] = [
+            env_dir for env_dir in rules.env_dirs if (workspace_root / env_dir).is_dir()
+        ]
         discovered = u.Infra.discover_projects(workspace_root)
         if discovered.failure:
             return includes
@@ -299,7 +310,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         expected_includes = self._expected_includes(
-            is_root=is_root, workspace_root=workspace_root
+            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         stub_rules = self._tool_config.tools.pyright.path_rules
         expected_stub_path: str | None = (
@@ -312,7 +323,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         )
         expected_envs = self._expected_envs(
-            is_root=is_root, workspace_root=workspace_root
+            is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(
             c.Infra.PYRIGHT

@@ -5,10 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
-from flext_cli import p as cli_p, u as cli_u
-
 from flext_core import s
-from flext_infra import c, m, p, settings, t
+from flext_infra import c, m, p, settings, t, u
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
@@ -28,7 +26,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
 
     @property
     @override
-    def settings(self) -> cli_p.Cli.Settings:
+    def settings(self) -> p.Cli.Settings:
         """Typed CLI settings via the canonical cli facade."""
         # mro-wkii.4.15: services share the exact exported settings identity.
         return settings
@@ -106,7 +104,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         """Preserve relative output dirs so callers can scope them under workspace roots."""
         if value is None:
             return None
-        path: Path = cli_u.Cli.resolve_optional_path(value, default=Path())
+        path: Path = u.Cli.resolve_optional_path(value, default=Path())
         return path.resolve() if path.is_absolute() else path
 
     @m.computed_field()

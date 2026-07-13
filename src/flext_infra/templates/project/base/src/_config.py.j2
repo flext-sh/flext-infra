@@ -10,8 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
+# NOTE (multi-agent, mro-j47u): emit Ruff-native upstream-before-local imports.
 from flext_core import FlextConfig
+from {{ package_name }}._models.config import {{ class_stem }}ConfigModels
 
 if TYPE_CHECKING:
     from {{ package_name }}._protocols.config import {{ class_stem }}ProtocolsConfig
