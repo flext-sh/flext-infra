@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -22,6 +23,23 @@ class FlextInfraMypyGate(FlextInfraGate):
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MYPY][1]
 
     @staticmethod
+    def _config_exclude(config_path: Path) -> re.Pattern[str] | None:
+        """Return the compiled [tool.mypy].exclude regex, if configured."""
+        doc = u.Cli.toml_read(config_path)
+        if doc is None:
+            return None
+        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        if tool_table is None:
+            return None
+        mypy_table = u.Cli.toml_table_child(tool_table, c.Infra.MYPY)
+        if mypy_table is None:
+            return None
+        exclude = mypy_table.get("exclude")
+        if not isinstance(exclude, str) or not exclude:
+            return None
+        return re.compile(exclude)
+
+    @staticmethod
     def _has_real_module(directory: Path) -> bool:
         """True when the dir holds a Python module other than __init__.py."""
         for py_file in directory.rglob(c.Infra.EXT_PYTHON_GLOB):
@@ -34,16 +52,19 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
-        _ = ctx
-        # NOTE (multi-agent): mypy rejects a package dir whose only module is
-        # __init__.py (the flext-law section-8 placeholder for tests archived to
-        # legado/). Keep only dirs with a real, non-__init__ module. (mro-i6nq.11)
+        # NOTE (multi-agent): mypy aborts the whole gate when a positional dir
+        # resolves to zero checkable modules — either the flext-law section-8
+        # placeholder (tests/ with only __init__.py) or a dir the mypy config
+        # exclude regex empties out (tests/examples/legado). Skip both so
+        # only real, non-excluded roots reach mypy. (mro-i6nq.11)
+        exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
                 project_dir, c.Infra.CHECK_DIRS_SUBPROJECT
             )
             if self._has_real_module(project_dir / directory)
+            and (exclude is None or not exclude.match(f"{directory}/"))
         ]
         root_files = [
             path.name
