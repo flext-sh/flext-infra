@@ -35,10 +35,13 @@ class FlextInfraUtilitiesRopeStructure:
         finder = codeanalyze.LogicalLineFinder(lines)
         statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
         enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
+        type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
             text = "".join(lines.get_line(n) for n in range(start, end + 1))
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)
+            while type_checking_guards and indent <= type_checking_guards[-1]:
+                type_checking_guards.pop()
             kind, name = (
                 (enclosers[-1][1], enclosers[-1][2])
                 if enclosers
@@ -52,13 +55,27 @@ class FlextInfraUtilitiesRopeStructure:
                     category=category,
                     enclosing_kind=kind,
                     enclosing_name=name,
+                    type_checking_guarded=bool(type_checking_guards),
                     text=text,
                 )
             )
             FlextInfraUtilitiesRopeStructure._push_encloser(
                 enclosers=enclosers, category=category, indent=indent, text=text
             )
+            # mro-j47u (codex): one Rope logical-line pass owns guard context for
+            # every detector; no consumer reconstructs control flow independently.
+            if (
+                category == c.Infra.StatementCategory.IF_GUARD
+                and FlextInfraUtilitiesRopeStructure._is_type_checking_guard(text)
+            ):
+                type_checking_guards.append(indent)
         return tuple(statements)
+
+    @staticmethod
+    def _is_type_checking_guard(text: str) -> bool:
+        """Return whether one logical-line region opens a TYPE_CHECKING branch."""
+        normalized = " ".join(text.split())
+        return normalized in {"if TYPE_CHECKING:", "if TYPE_CHECKING is True:"}
 
     @staticmethod
     def _pop_exited_enclosers(

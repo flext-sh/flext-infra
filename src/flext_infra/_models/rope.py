@@ -101,6 +101,11 @@ class FlextInfraModelsRope:
             str,
             m.Field(description="Name of the nearest enclosing def/class, or empty"),
         ] = ""
+        # mro-j47u (codex): consumers share this Rope-derived guard fact instead
+        # of rebuilding TYPE_CHECKING control flow with stdlib AST visitors.
+        type_checking_guarded: Annotated[
+            bool, m.Field(description="Whether the statement is inside TYPE_CHECKING")
+        ] = False
         text: Annotated[
             str, m.Field(description="Rope-owned source slice for the statement")
         ] = ""

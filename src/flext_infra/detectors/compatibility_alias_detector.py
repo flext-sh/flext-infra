@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
@@ -132,15 +131,17 @@ class FlextInfraCompatibilityAliasDetector:
                 )
 
         violations.extend(
-            cls._detect_foreign_canonical_aliases(source=source, file_path=file_path)
+            cls._detect_foreign_canonical_aliases(
+                ctx=ctx, source=source, file_path=file_path
+            )
         )
         return violations
 
-    @staticmethod
+    @classmethod
     def _detect_foreign_canonical_aliases(
-        *, source: str, file_path: Path
+        cls, *, ctx: m.Infra.DetectorContext, source: str, file_path: Path
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
-        """Detect canonical aliases imported from ``flext_core`` into local owners."""
+        """Detect runtime canonical aliases imported from ``flext_core``."""
         current_module = u.Infra.package_name(file_path)
         current_package = current_module.split(".", maxsplit=1)[0]
         local_aliases = (
@@ -156,34 +157,47 @@ class FlextInfraCompatibilityAliasDetector:
             return ()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return ()
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            return ()
 
         local_aliases_set = frozenset(local_aliases)
         violations: list[m.Infra.CompatibilityAliasViolation] = []
-        for node in FlextInfraCompatibilityAliasDetector._iter_runtime_from_imports(
-            tree
-        ):
-            module = node.module or ""
-            if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
-                f"{c.Infra.PKG_CORE_UNDERSCORE}."
+        # mro-j47u (codex): parse each Rope-owned runtime statement in place;
+        # the module-wide table intentionally excludes conditional imports.
+        for statement in u.Infra.logical_statements(source):
+            if (
+                statement.category != c.Infra.StatementCategory.FROM_IMPORT
+                or statement.type_checking_guarded
             ):
                 continue
-            for alias in node.names:
-                bound_name = alias.asname or alias.name
-                if bound_name not in local_aliases_set:
+            pymodule = u.Infra.get_string_module(
+                ctx.rope_project, statement.text.strip()
+            )
+            module_imports = u.Infra.module_imports_for_pymodule(
+                ctx.rope_project, pymodule
+            )
+            for import_statement in u.Infra.import_statements(module_imports):
+                from_import = import_statement.import_info
+                if not u.Infra.is_from_import(from_import):
                     continue
-                violations.append(
-                    m.Infra.CompatibilityAliasViolation(
-                        file=str(file_path),
-                        line=node.lineno,
-                        alias_name=bound_name,
-                        target_name=bound_name,
-                        module_name=current_package,
-                    )
+                module = cls._resolve_imported_module(
+                    current_module=current_module, from_import=from_import
                 )
+                if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
+                    f"{c.Infra.PKG_CORE_UNDERSCORE}."
+                ):
+                    continue
+                for imported_name, alias_name in from_import.names_and_aliases:
+                    bound_name = alias_name or imported_name
+                    if bound_name not in local_aliases_set:
+                        continue
+                    violations.append(
+                        m.Infra.CompatibilityAliasViolation(
+                            file=str(file_path),
+                            line=statement.line,
+                            alias_name=bound_name,
+                            target_name=bound_name,
+                            module_name=current_package,
+                        )
+                    )
         return violations
 
     @staticmethod
@@ -198,44 +212,6 @@ class FlextInfraCompatibilityAliasDetector:
             msg = "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS is invalid"
             raise TypeError(msg)
         return owners
-
-    @classmethod
-    def _iter_runtime_from_imports(cls, tree: ast.AST) -> t.SequenceOf[ast.ImportFrom]:
-        """Return ``from`` imports while skipping ``TYPE_CHECKING`` branches."""
-        imports: list[ast.ImportFrom] = []
-        cls._collect_runtime_from_imports(tree, imports)
-        return tuple(imports)
-
-    @classmethod
-    def _collect_runtime_from_imports(
-        cls, node: ast.AST, imports: list[ast.ImportFrom]
-    ) -> None:
-        """Collect runtime ``from`` imports recursively."""
-        if isinstance(node, ast.If) and cls._is_type_checking_if(node):
-            for stmt in node.orelse:
-                cls._collect_runtime_from_imports(stmt, imports)
-            return
-        if isinstance(node, ast.ImportFrom):
-            imports.append(node)
-        for child in ast.iter_child_nodes(node):
-            cls._collect_runtime_from_imports(child, imports)
-
-    @staticmethod
-    def _is_type_checking_if(node: ast.If) -> bool:
-        """Return True for ``if TYPE_CHECKING:`` and ``if TYPE_CHECKING is True:``."""
-        test = node.test
-        if isinstance(test, ast.Name):
-            return test.id == "TYPE_CHECKING"
-        return (
-            isinstance(test, ast.Compare)
-            and isinstance(test.left, ast.Name)
-            and test.left.id == "TYPE_CHECKING"
-            and len(test.ops) == 1
-            and isinstance(test.ops[0], ast.Is)
-            and len(test.comparators) == 1
-            and isinstance(test.comparators[0], ast.Constant)
-            and test.comparators[0].value is True
-        )
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:
