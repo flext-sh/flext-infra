@@ -397,6 +397,8 @@ _boot_default: ## Install all projects into workspace .venv
 		echo "FAIL: boot ($$failed projects)"; \
 		exit 1; \
 	fi
+	# mro-wkii.17.26 (codex): prove imports and mark the synced venv ready first.
+	$(Q)$(VERIFY_WORKSPACE_VENV)
 	# mro-wkii.17.26 (codex): isolate recursive Make so --dry-run cannot run setup.
 	$(Q)make_flags="$(firstword $(MAKEFLAGS))"; \
 	if [[ "$$make_flags" != --* && "$$make_flags" == *n* ]]; then \
@@ -413,7 +415,6 @@ _boot_default: ## Install all projects into workspace .venv
 	else \
 		echo "INFO: skipping pre-commit install (no git repository or config)"; \
 	fi
-	$(Q)$(VERIFY_WORKSPACE_VENV)
 
 _up: ## Refresh workspace lock/install + rewrite dependency constraints + dependency report
 	$(Q)$(REQUIRE_VENV)
