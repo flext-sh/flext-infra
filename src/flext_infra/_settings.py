@@ -12,11 +12,14 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import SettingsConfigDict
 
-from flext_cli import FlextCliSettings
+from flext_core import FlextSettings
 from flext_infra._models.settings import FlextInfraSettingsModels
 
 
-class _FlextInfraSettings(FlextCliSettings):
+# NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
+# complete the workspace settings migration (mro-d421); flext_cli dropped its
+# public FlextCliSettings export. Canonical pattern per flext-api/flext-auth.
+class _FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
     model_config = SettingsConfigDict(
