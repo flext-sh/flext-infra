@@ -109,6 +109,11 @@ Infra:
             - TRY301
             - UP040
             - W293
+          ignored-rule-rationales:
+            I001: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
+              semantic c-t-p-m-u dependency order in FLEXT facades.
+            PLC0415: Public facade models are imported lazily only at validation and
+              construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
           isort:
             combine-as-imports: true
             force-single-line: false
@@ -167,7 +172,7 @@ Infra:
             "**/context.py": []
             "**/file_tools.py": [D102]
             "**/managers.py": [S105]
-            "**/models.py": [PLC0415, PLC2801, S102, S105]
+            "**/models.py": [PLC2801, S102, S105]
             "**/output.py":
               - FBT001
             # FLEXT config/settings namespaces are deliberately PascalCase
@@ -195,7 +200,7 @@ Infra:
             "**/orchestrator*.py": [S404, S603]
             "**/protocol_impls/*.py": [SLF001]
             "**/typings.py": [RUF036]
-            "**/workspace/*.py": [PLC0415, S404, S603, S607]
+            "**/workspace/*.py": [S404, S603, S607]
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^(?:tests|examples|legado)(?:/|$)
@@ -279,7 +284,9 @@ Infra:
           reportUnusedImport: error
           reportUnusedVariable: error
         lazy-import-suppressions:
+          reportAssignmentType: none
           reportAttributeAccessIssue: "none"
+          reportGeneralTypeIssues: none
           reportInvalidTypeForm: none
           reportPrivateImportUsage: "none"
           reportUnknownArgumentType: "none"
@@ -288,8 +295,12 @@ Infra:
           reportUnknownParameterType: "none"
           reportUnknownVariableType: "none"
           reportUnusedImport: "none"
+        global-suppression-rationales:
+          reportAssignmentType: Pyright rejects the canonical class-alias rebind after
+            MRO facade composition although runtime and the other analyzers resolve it.
+          reportGeneralTypeIssues: Pyright groups the same valid MRO facade alias rebind
+            under its broad general diagnostic in every execution environment.
         source-env-suppressions:
-          reportGeneralTypeIssues: "none"
           reportReturnType: "none"
         test-like-env-suppressions:
           reportArgumentType: "none"
@@ -476,7 +487,7 @@ Infra:
           workspace-include-children: false
           workspace-include-child-env-dirs: []
           include-path-dependencies-in-search-path: true
-          project-shared-search-paths: [scripts]
+          project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
         min-version: "8.0"

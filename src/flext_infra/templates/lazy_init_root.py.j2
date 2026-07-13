@@ -1,0 +1,61 @@
+{{ autogen_header }}
+{{ docstring }}
+
+from __future__ import annotations
+{% if type_checking_lines %}
+from typing import TYPE_CHECKING
+{% endif %}
+from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+{% if runtime_import_lines %}
+{{ runtime_import_lines }}
+{% endif %}
+{% if type_checking_lines %}
+{{ type_checking_lines }}
+{% endif %}
+{% if lazy_module_groups %}
+_LAZY_MODULES: dict[str, tuple[str, ...]] = {
+{% for mod, names in lazy_module_groups %}
+    "{{ mod }}": (
+{% for name in names %}
+        "{{ name }}",
+{% endfor %}
+    ),
+{% endfor %}
+}
+{% else %}
+_LAZY_MODULES: dict[str, tuple[str, ...]] = {}
+{% endif %}
+
+{% if lazy_alias_groups %}
+_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {
+{% for mod, pairs in lazy_alias_groups %}
+    "{{ mod }}": (
+{% for export_name, attr_name in pairs %}
+        ("{{ export_name }}", "{{ attr_name }}"),
+{% endfor %}
+    ),
+{% endfor %}
+}
+{% else %}
+_LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
+{% endif %}
+
+_LAZY_IMPORTS = build_lazy_import_map(
+    _LAZY_MODULES,
+    alias_groups=_LAZY_ALIAS_GROUPS,
+    sort_keys=False,
+)
+
+__all__: tuple[str, ...] = (
+{% for export_name in exports %}
+    "{{ export_name }}",
+{% endfor %}
+)
+
+
+install_lazy_exports(
+    __name__,
+    globals(),
+    _LAZY_IMPORTS,
+    public_exports=__all__,
+)

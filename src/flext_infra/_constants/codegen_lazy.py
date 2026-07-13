@@ -30,9 +30,9 @@ class FlextInfraConstantsCodegenLazy:
     "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
-    UNIT_PY: Final[str] = "__unit__.py"
-    "Per-project-root lazy-import manifest consumed as the single source of truth "
-    "by the root ``__init__.py``; excluded from sibling discovery and sidecar cleanup."
+    # mro-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.
+    OBSOLETE_GENERATED_INIT_FILES: Final[t.StrSequence] = ("__unit__.py",)
+    "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: Final[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
@@ -135,20 +135,20 @@ class FlextInfraConstantsCodegenLazy:
     "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",
+        "t",
+        "p",
+        "m",
+        "u",
         "d",
         "e",
         "h",
-        "infra",
-        "m",
-        "main",
-        "p",
         "r",
         "s",
-        "t",
-        "u",
         "x",
+        "infra",
+        "main",
     )
-    "Canonical order for public root aliases and operational entry points."
+    "Canonical dependency order for public aliases and operational entry points."
     FLEXT_CORE_ROOT_TYPING_PARTS_MODULE: Final[str] = "flext_core._root_typing_parts"
     "Runtime package aggregating flext-core root typing exports lazily."
     FLEXT_CORE_ROOT_TYPING_FACADES_MODULE: Final[str] = (

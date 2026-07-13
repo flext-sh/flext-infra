@@ -103,6 +103,13 @@ class FlextInfraModelsDepsToolConfigLinters:
         ignore: Annotated[
             t.StrSequence, m.Field(description="Ruff lint rule ignore list.")
         ] = m.Field(default_factory=tuple)
+        ignored_rule_rationales: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="ignored-rule-rationales",
+                description="Global Ruff exclusions mapped to verified architecture rationales.",
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         banned_api: Annotated[
             t.StrMapping,
             m.Field(
@@ -120,6 +127,11 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Per-file ignore mapping from glob pattern to ruff rule IDs.",
             ),
         ]
+
+        @property
+        def effective_ignore(self) -> t.StrSequence:
+            """Return ordinary and evidence-backed global ignores as one SSOT view."""
+            return tuple(sorted({*self.ignore, *self.ignored_rule_rationales}))
 
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""

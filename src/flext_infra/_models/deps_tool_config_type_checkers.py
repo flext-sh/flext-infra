@@ -201,6 +201,13 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        global_suppression_rationales: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="global-suppression-rationales",
+                description="Global Pyright exclusions mapped to verified facade-MRO rationales.",
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
         source_env_suppressions: Annotated[
             t.StrMapping,
             m.Field(

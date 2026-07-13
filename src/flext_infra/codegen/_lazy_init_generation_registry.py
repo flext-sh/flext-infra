@@ -23,6 +23,8 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     ) -> int:
         """Remove generated files superseded by inline ``__init__.py`` maps."""
         try:
+            # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
+            self._remove_obsolete_generated_files(plan, check_only=check_only)
             self._remove_generated_export_sidecars(plan, check_only=check_only)
             self._remove_generated_typing_stub(plan, check_only=check_only)
         except c.EXC_OS_VALUE as exc:
@@ -31,6 +33,21 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             )
             return -1
         return 0
+
+    def _remove_obsolete_generated_files(
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+    ) -> None:
+        """Remove generated artifacts retired by the inline-root contract."""
+        for filename in c.Infra.OBSOLETE_GENERATED_INIT_FILES:
+            path = plan.context.pkg_dir / filename
+            previous = self._read_generated_file(path)
+            if previous is None or not previous.startswith(c.Infra.AUTOGEN_HEADER):
+                continue
+            if check_only:
+                self._modified_files.add(str(path))
+                continue
+            path.unlink()
+            self._modified_files.add(str(path))
 
     def _remove_generated_typing_stub(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False

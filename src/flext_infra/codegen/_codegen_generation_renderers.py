@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra import c
 from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
@@ -23,9 +24,25 @@ class FlextInfraCodegenGenerationRenderersMixin(
 
     @staticmethod
     def _render_model(template_name: str, context: p.Model) -> str:
-        """Render a typed template context."""
+        """Render and deterministically format a typed Python artifact."""
         template_root = Path(__file__).resolve().parent.parent / "templates"
-        return u.Cli.template_render(template_root / template_name, context).unwrap()
+        rendered = u.Cli.template_render(
+            template_root / template_name, context
+        ).unwrap()
+        # FLEXT: formatter owns layout; import order remains semantic, never isort-fixed.
+        format_result = u.Cli.run_raw(
+            [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", c.Infra.INIT_PY, "-"],
+            cwd=template_root,
+            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+        )
+        if format_result.failure:
+            raise ValueError(format_result.error or "ruff format failed")
+        output = format_result.unwrap()
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            msg = f"ruff format failed ({output.exit_code}): {detail}"
+            raise ValueError(msg)
+        return output.stdout.rstrip() + "\n"
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

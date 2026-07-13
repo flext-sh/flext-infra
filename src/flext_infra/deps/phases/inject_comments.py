@@ -11,6 +11,12 @@ class FlextInfraInjectCommentsPhase:
     _MYPY_RATIONALE_HEADER = (
         "# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):"
     )
+    _RUFF_RATIONALE_HEADER = (
+        "# FLEXT Ruff suppression rationale (validated against semantic facet order):"
+    )
+    _PYRIGHT_RATIONALE_HEADER = (
+        "# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):"
+    )
 
     @classmethod
     def _mypy_rationale_lines(cls) -> t.StrSequence:
@@ -21,6 +27,32 @@ class FlextInfraInjectCommentsPhase:
                 f"# FLEXT mypy[{code}]: {rationale}"
                 for code, rationale in sorted(
                     config.Infra.tooling.tools.mypy.disabled_error_codes.items()
+                )
+            ),
+        )
+
+    @classmethod
+    def _ruff_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Ruff exclusions from the tooling SSOT."""
+        return (
+            cls._RUFF_RATIONALE_HEADER,
+            *(
+                f"# FLEXT ruff[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.ruff.lint.ignored_rule_rationales.items()
+                )
+            ),
+        )
+
+    @classmethod
+    def _pyright_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Pyright exclusions from the tooling SSOT."""
+        return (
+            cls._PYRIGHT_RATIONALE_HEADER,
+            *(
+                f"# FLEXT pyright[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.pyright.global_suppression_rationales.items()
                 )
             ),
         )
@@ -40,6 +72,8 @@ class FlextInfraInjectCommentsPhase:
         markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
         markers.update(c.Infra.BANNER.splitlines())
         markers.update(cls._mypy_rationale_lines())
+        markers.update(cls._ruff_rationale_lines())
+        markers.update(cls._pyright_rationale_lines())
         return markers
 
     @staticmethod
@@ -74,6 +108,10 @@ class FlextInfraInjectCommentsPhase:
             if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
                 continue
             if stripped.startswith("# FLEXT mypy["):
+                continue
+            if stripped.startswith("# FLEXT ruff["):
+                continue
+            if stripped.startswith("# FLEXT pyright["):
                 continue
             if stripped == "[group.dev.dependencies]":
                 skip_broken_group_section = True
@@ -138,6 +176,12 @@ class FlextInfraInjectCommentsPhase:
             if stripped == "[tool.mypy]":
                 out.extend(self._mypy_rationale_lines())
                 changes.append("Mypy suppression rationales injected")
+            elif stripped == "[tool.ruff.lint]":
+                out.extend(self._ruff_rationale_lines())
+                changes.append("Ruff suppression rationales injected")
+            elif stripped == "[tool.pyright]":
+                out.extend(self._pyright_rationale_lines())
+                changes.append("Pyright suppression rationales injected")
         updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
         original = rendered.rstrip() + "\n"
         if updated == original:

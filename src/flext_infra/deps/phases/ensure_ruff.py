@@ -70,7 +70,7 @@ class FlextInfraEnsureRuffConfigPhase:
         })
         lint_nested_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),
-            (c.Infra.IGNORE, u.normalize_to_json_value(sorted(ruff_cfg.lint.ignore))),
+            (c.Infra.IGNORE, u.normalize_to_json_value(ruff_cfg.lint.effective_ignore)),
         )
         isort_values: list[tuple[str, t.JsonValue]] = [
             ("combine-as-imports", ruff_cfg.lint.isort.combine_as_imports),

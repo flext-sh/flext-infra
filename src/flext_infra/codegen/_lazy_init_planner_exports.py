@@ -50,9 +50,9 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         # mro-i6nq.10: Generated support modules are output, never public input.
         skip_names = {
             c.Infra.INIT_PY,
-            c.Infra.UNIT_PY,
             "__main__.py",
             self._version_module_name,
+            *c.Infra.OBSOLETE_GENERATED_INIT_FILES,
         }
         for module_entry in package_entry.modules:
             py_file = module_entry.file_path

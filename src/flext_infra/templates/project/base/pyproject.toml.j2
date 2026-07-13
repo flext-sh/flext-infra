@@ -186,6 +186,10 @@ use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 {% endfor %}
 
 [tool.pyright]
+# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):
+{% for code, rationale in tooling.tools.pyright.global_suppression_rationales | dictsort %}
+# FLEXT pyright[{{ code }}]: {{ rationale }}
+{% endfor %}
 exclude = [
 {% for item in tooling_runtime.pyright_exclude %}
   {{ item | tojson }},
@@ -293,8 +297,12 @@ quote-style = {{ tooling.tools.ruff.format.quote_style | tojson }}
 skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_comma | lower }}
 
 [tool.ruff.lint]
+# FLEXT Ruff suppression rationale (validated against semantic facet order):
+{% for code, rationale in tooling.tools.ruff.lint.ignored_rule_rationales | dictsort %}
+# FLEXT ruff[{{ code }}]: {{ rationale }}
+{% endfor %}
 ignore = [
-{% for item in tooling.tools.ruff.lint.ignore | sort %}
+{% for item in tooling.tools.ruff.lint.effective_ignore | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]

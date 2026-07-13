@@ -1,4 +1,4 @@
-"""Canonical manifest and thin-initializer rendering."""
+"""Canonical public-root and static-subpackage initializer rendering."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-# mro-i6nq.10: One renderer family replaces every removed legacy init strategy.
+# mro-wkii.17.26 (codex): Keep lazy loading only at the public package root.
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin
 ):
-    """Render the two canonical generated package artifacts."""
+    """Render the two canonical generated initializer forms."""
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
@@ -58,36 +58,16 @@ class FlextInfraCodegenGenerationStandardMixin(
         return "\n".join(lines)
 
     @classmethod
-    def _unit_manifest_context(
-        cls, plan: m.Infra.LazyInitPlan
-    ) -> m.Infra.LazyInitUnitManifestRender:
-        """Build a package lazy-manifest context."""
+    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+        """Build one inline lazy context for a public package root."""
         current_pkg = plan.context.current_pkg
+        lazy_map = dict(plan.lazy_map)
         lazy_entries = cls._build_lazy_entries(
             plan.exports,
-            dict(plan.lazy_map),
-            (current_pkg, frozenset(plan.child_packages_for_lazy), False),
+            lazy_map,
+            (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
-        return m.Infra.LazyInitUnitManifestRender(
-            autogen_header=c.Infra.AUTOGEN_HEADER,
-            current_pkg=current_pkg,
-            lazy_module_groups=lazy_module_groups,
-            lazy_alias_groups=lazy_alias_groups,
-            child_module_paths=tuple(
-                cls._compact_lazy_module_path(current_pkg, child)
-                for child in plan.child_packages_for_lazy
-            ),
-            excluded_lazy_names=tuple(sorted(plan.excluded_lazy_names)),
-            exports=tuple(sorted(plan.exports)),
-        )
-
-    @classmethod
-    def _root_thin_context(
-        cls, plan: m.Infra.LazyInitPlan
-    ) -> m.Infra.LazyInitRootThinRender:
-        """Build the thin project-root initializer context."""
-        current_pkg = plan.context.current_pkg
         type_checking = cls._type_checking_filtered(plan)
         type_checking_lines = (
             cls.generate_type_checking(
@@ -99,27 +79,72 @@ class FlextInfraCodegenGenerationStandardMixin(
             if type_checking
             else ()
         )
-        return m.Infra.LazyInitRootThinRender(
+        return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(current_pkg),
             current_pkg=current_pkg,
             runtime_import_lines=cls._runtime_import_lines(plan),
             type_checking_lines="\n".join(type_checking_lines),
-            has_child_paths=bool(plan.child_packages_for_lazy),
+            lazy_module_groups=lazy_module_groups,
+            lazy_alias_groups=lazy_alias_groups,
+            exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 
     @classmethod
-    def _render_unit_manifest(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render the root lazy manifest."""
-        return cls._render_model(
-            c.Infra.TEMPLATE_UNIT_MANIFEST, cls._unit_manifest_context(plan)
+    def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
+        """Select explicit exports owned by direct sibling modules."""
+        current_pkg = plan.context.current_pkg
+        prefix = f"{current_pkg}."
+        combined = dict(plan.lazy_map)
+        combined.update(plan.eager_dunders)
+        return {
+            name: target
+            for name, target in combined.items()
+            if name in plan.exports
+            and target[0].startswith(prefix)
+            and "." not in target[0].removeprefix(prefix)
+        }
+
+    @classmethod
+    def _static_import_lines(cls, imports: t.LazyAliasMap) -> t.StrSequence:
+        """Render explicit reexports for one non-root package."""
+        lines: t.MutableSequenceOf[str] = []
+        for module, entries in sorted(cls._group_imports(imports).items()):
+            for export_name, imported_name in sorted(entries):
+                if not imported_name:
+                    lines.append(
+                        cls._format_module_alias_import("", module, export_name)
+                    )
+                    continue
+                parts = (cls._format_reexport_import_part(imported_name, export_name),)
+                lines.extend(cls._format_import("", module, parts))
+        return tuple(lines)
+
+    @classmethod
+    def _static_context(
+        cls, plan: m.Infra.LazyInitPlan
+    ) -> m.Infra.StaticPackageInitRender:
+        """Build an explicit static or empty subpackage context."""
+        sibling_imports = cls._static_sibling_imports(plan)
+        return m.Infra.StaticPackageInitRender(
+            autogen_header=c.Infra.AUTOGEN_HEADER,
+            docstring=cls._format_root_package_docstring(
+                plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
+            ),
+            runtime_import_lines="\n".join(cls._static_import_lines(sibling_imports)),
+            exports=tuple(name for name in plan.exports if name in sibling_imports),
         )
 
     @classmethod
-    def _render_root_thin(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render the thin root initializer."""
+    def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
+        """Render one inline lazy public-root initializer."""
+        return cls._render_model(c.Infra.TEMPLATE_ROOT_INIT, cls._root_context(plan))
+
+    @classmethod
+    def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:
+        """Render one explicit static or empty subpackage initializer."""
         return cls._render_model(
-            c.Infra.TEMPLATE_ROOT_THIN, cls._root_thin_context(plan)
+            c.Infra.TEMPLATE_STATIC_INIT, cls._static_context(plan)
         )
 
 

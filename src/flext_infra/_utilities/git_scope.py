@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
 from flext_infra import c
+from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesGitScope:
+class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @staticmethod
