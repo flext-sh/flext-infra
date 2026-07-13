@@ -115,9 +115,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
         root = request.root.expanduser().resolve()
+        workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
+                root
+            )
+            if workspace_root_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    workspace_root_result.error or "workspace root resolution failed"
+                )
+            workspace_root = workspace_root_result.value
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+                workspace_root
+            )
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     workspace_result.error or "workspace manifest load failed"
@@ -128,7 +139,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenPlan].fail(
                 catalog_result.error or "workspace catalog validation failed"
             )
-        selected_result = self._select_repositories(request, workspace)
+        current_repository = workspace.repository
+        if root != workspace_root:
+            try:
+                current_path = root.relative_to(workspace_root).as_posix()
+            except ValueError as exc:
+                return r[m.Infra.CodegenPlan].fail_op(
+                    "repository workspace resolution", exc
+                )
+            current_matches = tuple(
+                repository
+                for repository in workspace.members
+                if repository.path.as_posix() == current_path
+            )
+            if len(current_matches) != 1:
+                return r[m.Infra.CodegenPlan].fail(
+                    f"repository is not one declared workspace member: {current_path}"
+                )
+            current_repository = current_matches[0]
+        selected_result = self._select_repositories(
+            request, workspace, current_repository
+        )
         if selected_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 selected_result.error or "repository selection failed"
@@ -137,7 +168,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
-            repository_root = self._repository_root(root, workspace, repository)
+            repository_root = self._repository_root(
+                workspace_root, workspace, repository
+            )
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository path is not a directory: {repository_root}"
@@ -146,23 +179,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository checkout is missing: {repository_root}"
                 )
-            repository_workspace = workspace
-            if repository.name != workspace.repository.name:
-                member_manifest = FlextInfraWorkspaceDetector.load_workspace_spec(
-                    repository_root
-                )
-                if member_manifest.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        member_manifest.error
-                        or f"member workspace manifest load failed: {repository_root}"
-                    )
-                repository_workspace = member_manifest.value
-                if repository_workspace.repository.model_dump(
-                    mode="json"
-                ) != repository.model_dump(mode="json"):
-                    return r[m.Infra.CodegenPlan].fail(
-                        f"member manifest differs from root topology: {repository.name}"
-                    )
+            # NOTE (multi-agent, mro-45r9): attached members consume the parent
+            # topology SSOT; a duplicate member-local manifest is never required.
             # mro-j47u (codex): existing repositories cannot reach the scaffold
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
@@ -172,13 +190,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_plan = self._plan_scaffold_repository(
                     root=repository_root,
                     repository=repository,
-                    workspace=repository_workspace,
+                    workspace=workspace,
                     codegen=config_spec,
                 )
             else:
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
-                    workspace=repository_workspace,
+                    workspace_root=workspace_root,
+                    workspace=workspace,
                     config=config_spec,
                 )
             if repository_plan.failure:
@@ -190,7 +209,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
-                    workspace_root=root,
+                    workspace_root=workspace_root,
                     repository=repository,
                     workspace=workspace,
                     config=config_spec,
@@ -238,12 +257,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _select_repositories(
-        request: m.Infra.CodegenConformRequest, workspace: m.Infra.WorkspaceSpec
+        request: m.Infra.CodegenConformRequest,
+        workspace: m.Infra.WorkspaceSpec,
+        current_repository: m.Infra.RepositoryRef,
     ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
-        """Resolve self/members/all from the local manifest only."""
+        """Resolve self/members/all from the governing topology manifest."""
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
-            return r[tuple[m.Infra.RepositoryRef, ...]].ok((workspace.repository,))
+            return r[tuple[m.Infra.RepositoryRef, ...]].ok((current_repository,))
         if scope is c.Infra.CodegenConformScope.MEMBERS:
             if not workspace.members:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
@@ -451,6 +472,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         *,
         root: Path,
+        workspace_root: Path,
         workspace: m.Infra.WorkspaceSpec,
         config: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -466,10 +488,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=self.workspace_root, skip_check=True
+        prepared_result = u.Infra.pyproject_conform(
+            pyproject_read.value,
+            repositories=config.repositories,
+            workspace=workspace,
+            toolchain=config.toolchain,
         )
-        tooling_result = modernizer.conform_source(pyproject_read.value, path=pyproject)
+        if prepared_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                prepared_result.error or f"pyproject preparation failed: {pyproject}"
+            )
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=workspace_root, skip_check=True
+        )
+        # NOTE (multi-agent, mro-45r9): dependency-derived tooling consumes the
+        # canonical groups first; the final pass restores the Git-source contract.
+        tooling_result = modernizer.conform_source(
+            prepared_result.value, path=pyproject
+        )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 tooling_result.error or f"tooling conform failed: {pyproject}"
