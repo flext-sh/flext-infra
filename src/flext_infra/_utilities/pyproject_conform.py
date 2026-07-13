@@ -123,7 +123,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
             available = resource_root.is_dir() or legacy_root.is_dir()
             if resource.required and not available and not allow_missing_required:
-                return r[bool].fail(f"required resource directory is missing: {resource_root}")
+                return r[bool].fail(
+                    f"required resource directory is missing: {resource_root}"
+                )
             if resource.wheel_destination is None or not (
                 available or (resource.required and allow_missing_required)
             ):
@@ -151,9 +153,7 @@ class FlextInfraUtilitiesPyprojectConform:
         hatch_build = u.Cli.toml_mapping_ensure_table(hatch, "build")
         targets = u.Cli.toml_mapping_ensure_table(hatch_build, "targets")
         wheel = u.Cli.toml_mapping_ensure_table(targets, "wheel")
-        u.Cli.toml_mapping_sync_string_list(
-            wheel, "packages", (f"src/{package_name}",)
-        )
+        u.Cli.toml_mapping_sync_string_list(wheel, "packages", (f"src/{package_name}",))
         force_include = u.Cli.toml_mapping_ensure_table(wheel, "force-include")
         for key in tuple(force_include):
             u.Cli.toml_mapping_remove_key_if_present(force_include, key)

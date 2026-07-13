@@ -150,9 +150,13 @@ class FlextInfraSyncService(
         for resource in config.Infra.codegen.scaffold.resources:
             source = resource.source.as_posix().rstrip("/")
             entries.extend((f"!/{source}/", f"!/{source}/**"))
-        entries.extend(
-            ("**/.env", "**/*.key", "**/*.pem", "**/credentials.json", "**/secrets.y*ml")
-        )
+        entries.extend((
+            "**/.env",
+            "**/*.key",
+            "**/*.pem",
+            "**/credentials.json",
+            "**/secrets.y*ml",
+        ))
         return tuple(entries)
 
     def _sync_workspace_children(

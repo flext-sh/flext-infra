@@ -305,9 +305,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if not delta.patch:
             return r[bool].ok(True)
         result = cls.git_run(
-            delta.source_root,
-            ("apply", "--binary", "-"),
-            input_data=delta.patch,
+            delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply failed")

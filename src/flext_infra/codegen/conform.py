@@ -615,9 +615,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         parsed = u.Cli.yaml_parse(rendered)
         if parsed.failure:
             return r[bool].fail(parsed.error or "workspace manifest YAML is invalid")
-        schema = (
-            u.Infra.resource_root("schemas") / c.Infra.WORKSPACE_SCHEMA_FILENAME
-        )
+        schema = u.Infra.resource_root("schemas") / c.Infra.WORKSPACE_SCHEMA_FILENAME
         schema_result = u.Cli.schema_validate(parsed.value, schema)
         if schema_result.failure:
             return r[bool].fail(
@@ -742,10 +740,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _resource_move_plans(
-        root: Path,
-        *,
-        package_name: str,
-        resources: t.SequenceOf[m.Infra.ResourceSpec],
+        root: Path, *, package_name: str, resources: t.SequenceOf[m.Infra.ResourceSpec]
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Plan namespace-to-root resource cutovers from actual directory presence."""
         package_root = root / "src" / package_name
