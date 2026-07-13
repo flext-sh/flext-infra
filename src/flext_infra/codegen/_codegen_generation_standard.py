@@ -120,6 +120,11 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Select explicit exports owned by direct sibling modules."""
         current_pkg = plan.context.current_pkg
+        # mro-wkii.17.26 (codex): private packages are implementation namespaces,
+        # never eager reexport boundaries that can close a runtime import cycle.
+        if any(segment.startswith("_") for segment in current_pkg.split(".")[1:]):
+            empty_imports: t.MutableLazyAliasMap = {}
+            return empty_imports
         prefix = f"{current_pkg}."
         combined = dict(plan.lazy_map)
         combined.update(plan.eager_dunders)
