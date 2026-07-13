@@ -275,7 +275,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 changed_files=tuple(
                     name for name in names_result.value.split("\0") if name
                 ),
-                patch=patch_result.value,
+                # mro-wkii.17.26 (codex): preserve the terminal newline and binaries.
+                patch=patch_result.value.encode(c.Cli.ENCODING_DEFAULT),
             )
         )
 
@@ -287,7 +288,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         result = cls.git_run(
             delta.source_root,
             ("apply", "--check", "--binary", "-"),
-            input_data=delta.patch.encode(c.Cli.ENCODING_DEFAULT),
+            input_data=delta.patch,
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply --check failed")
@@ -306,7 +307,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         result = cls.git_run(
             delta.source_root,
             ("apply", "--binary", "-"),
-            input_data=delta.patch.encode(c.Cli.ENCODING_DEFAULT),
+            input_data=delta.patch,
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply failed")

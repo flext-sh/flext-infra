@@ -50,9 +50,11 @@ class FlextInfraModelsWorktree:
         changed_files: Annotated[
             t.StrSequence, m.Field(description="Files changed by the isolated command")
         ] = ()
+        # mro-wkii.17.26 (codex): keep Git patches byte-exact across validation.
         patch: Annotated[
-            str, m.Field(description="Binary Git patch relative to the checkpoint")
-        ] = ""
+            t.StrictBytes,
+            m.Field(description="Binary Git patch relative to the checkpoint"),
+        ] = b""
 
     class RepositoryWorktree(m.ContractModel):
         """One source repository paired with its isolated worktree checkpoint."""

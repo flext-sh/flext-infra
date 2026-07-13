@@ -490,9 +490,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
         for repository in report.repositories:
             if not repository.patch:
                 continue
+            # mro-wkii.17.26 (codex): decode only at the human-report boundary.
             lines.extend((
                 f"diff -- repository {repository.relative_path}",
-                repository.patch,
+                repository.patch.decode(c.Cli.ENCODING_DEFAULT),
             ))
         return "\n".join(lines)
 

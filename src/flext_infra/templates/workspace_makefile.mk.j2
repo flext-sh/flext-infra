@@ -153,7 +153,8 @@ done
 endef
 
 define AUTO_SYNC_ALL_PROJECTS
-$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply >/dev/null || exit 1
+# mro-wkii.17.26 (codex): surface transactional sync failures to the operator.
+$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply || exit 1
 endef
 
 define PREPARE_SELECTED_PROJECTS
@@ -395,8 +396,12 @@ _boot_default: ## Install all projects into workspace .venv
 		echo "Failed projects:$$failed_projects"; \
 		echo "FAIL: boot ($$failed projects)"; \
 		exit 1; \
-	fi; \
-	if [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
+	fi
+	# mro-wkii.17.26 (codex): isolate recursive Make so --dry-run cannot run setup.
+	$(Q)make_flags="$(firstword $(MAKEFLAGS))"; \
+	if [[ "$$make_flags" != --* && "$$make_flags" == *n* ]]; then \
+		echo "Skipping recursive workspace validation during make dry-run."; \
+	elif [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
 		echo "Validating workspace selection (validate VALIDATE_SCOPE=workspace)..."; \
 		$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }; \
 	else \
