@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests import m, u
+from tests import m, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,7 +73,10 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         bin_dir / "uv",
         '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
         + str(log_path)
-        + '"\nexit 0\n',
+        + '"\nif [ "$1" = "sync" ]; then\n'
+        + "  mkdir -p .venv/bin\n"
+        + '  cp "$(dirname "$0")/python" .venv/bin/python\n'
+        + "fi\nexit 0\n",
     )
 
 
@@ -110,7 +113,7 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
 
 def _run_make(
     project_root: Path, *args: str, env: dict[str, str] | None = None
-) -> m.Cli.CommandOutput:
+) -> p.Cli.CommandOutput:
     active_env = os.environ.copy()
     for key in _MAKE_TEST_ENV_KEYS:
         active_env.pop(key, None)
@@ -133,6 +136,7 @@ class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
     def test_make_help_lists_supported_options(self, tmp_path: Path) -> None:
+        """Verify generated help advertises every supported option."""
         _write_project(tmp_path)
         result = _run_make(tmp_path, "help")
         tm.that(result.exit_code, eq=0)
@@ -152,13 +156,14 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.stdout, lacks="check-fast")
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
+        """Verify generated command roots use canonical CLI groups."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
             has=[
                 "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
                 "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
-                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
+                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
                 'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
                 'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
                 'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
@@ -169,6 +174,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_rendered_base_mk_sanitizes_workspace_sync_env(self) -> None:
+        """Verify workspace sync clears inherited Python import paths."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -178,6 +184,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight(
         self,
     ) -> None:
+        """Verify project preflight forwards the canonical workspace root."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -187,6 +194,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
         self,
     ) -> None:
+        """Verify filtered test runs disable global coverage addopts."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -194,6 +202,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
+        """Verify changed-only discovery includes live tracked and untracked files."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -204,6 +213,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:
+        """Verify file-scoped checks invoke Mypy for the selected file."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -224,6 +234,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
 
     def test_make_check_file_scope_unsets_python_path_env(self, tmp_path: Path) -> None:
+        """Verify file-scoped checks clear inherited Python path variables."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
@@ -251,8 +262,8 @@ class TestsFlextInfraBasemkMakeContract:
             "CHECK_GATES=mypy",
             env={
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                "PYTHONPATH": "/tmp/poison-pythonpath",
-                "MYPYPATH": "/tmp/poison-mypypath",
+                "PYTHONPATH": str(tmp_path / "poison-pythonpath"),
+                "MYPYPATH": str(tmp_path / "poison-mypypath"),
             },
         )
 
@@ -263,6 +274,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_full_run_unsets_python_path_env(self, tmp_path: Path) -> None:
+        """Verify full checks clear inherited Python path variables."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
@@ -289,8 +301,8 @@ class TestsFlextInfraBasemkMakeContract:
             "CHECK_GATES=mypy",
             env={
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                "PYTHONPATH": "/tmp/poison-pythonpath",
-                "MYPYPATH": "/tmp/poison-mypypath",
+                "PYTHONPATH": str(tmp_path / "poison-pythonpath"),
+                "MYPYPATH": str(tmp_path / "poison-mypypath"),
             },
         )
 
@@ -307,6 +319,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_full_run_forwards_fix_and_tool_args(
         self, tmp_path: Path
     ) -> None:
+        """Verify full checks forward fix and analyzer arguments."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -340,6 +353,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_fast_path_check_only_suppresses_fix_writes(
         self, tmp_path: Path
     ) -> None:
+        """Verify check-only fast paths never forward write-enabled fixes."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -365,6 +379,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_file_scope_rejects_unsupported_gates(
         self, tmp_path: Path
     ) -> None:
+        """Verify file-scoped checks reject gates without fast-path support."""
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, tmp_path / "tool.log")
         (tmp_path / "src").mkdir()
@@ -383,6 +398,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
         self, tmp_path: Path
     ) -> None:
+        """Verify boot materializes a venv before invoking the Python CLI."""
         workspace_root = tmp_path / "workspace"
         project_root = workspace_root / "demo-project"
         project_root.mkdir(parents=True)

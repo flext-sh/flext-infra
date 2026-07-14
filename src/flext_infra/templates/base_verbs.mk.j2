@@ -39,7 +39,9 @@ help: ## Show commands
 {% endfor %}
 
 boot: ## Complete setup
-	# mro-j47u: generated boot consumes the sole public extra-paths route.
+	# NOTE (multi-agent, mro-wkii.17 / agent: codex): bootstrap the active venv
+	# before invoking the Python CLI, then re-lock after canonical config sync.
+	$(Q)uv sync --all-extras --all-groups
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
 	$(Q)uv lock
