@@ -45,7 +45,7 @@ class TestsInfraGithub:
                 "jobs:\n"
                 "  ci:\n"
                 "    steps:\n"
-                "      - name: Boot (advisory)\n"
+                "      - name: Boot (blocking)\n"
                 "        run: make boot\n"
                 "      - name: Val (advisory)\n"
                 "        run: make val\n"
@@ -66,7 +66,7 @@ class TestsInfraGithub:
             content = destination.read_text(encoding="utf-8")
             tm.that(destination.is_file(), eq=True)
             tm.that(content, has="name: CI")
-            tm.that(content, has="- name: Setup (advisory)")
+            tm.that(content, has="- name: Setup (blocking)")
             tm.that(content, has="run: make setup")
             tm.that(content, has="run: make val")
             tm.that(content, lacks="run: make boot")
