@@ -2,6 +2,9 @@
 
 Provides static helpers for backing up files before transformation,
 validating post-transform quality via gates, and restoring on failure.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -23,6 +26,10 @@ class FlextInfraUtilitiesSafety:
         """Validate that a repository is clean before file-scoped protection.
 
         Returns an empty string for non-repositories or clean trees.
+
+
+        Returns:
+            A result containing the validated checkpoint identifier.
         """
         result: p.Result[str]
         checkpoint_label = label.strip() or "checkpoint"
@@ -51,6 +58,10 @@ class FlextInfraUtilitiesSafety:
         """Reject repository-wide rollback; callers must use file-scoped backups.
 
         Returns success for non-repositories or empty checkpoint strings.
+
+
+        Returns:
+            A result confirming a no-op or explaining why repository-wide rollback is rejected.
         """
         if not checkpoint:
             return r[bool].ok(True)
@@ -105,6 +116,10 @@ class FlextInfraUtilitiesSafety:
         """Pipeline: backup -> transform -> validate -> (cleanup | rollback).
 
         Fail fast: any step failure = immediate rollback + raise.
+
+
+        Returns:
+            The safe execution outcome, including gate results and rollback state.
         """
         file_strs = [str(f) for f in files]
 

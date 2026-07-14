@@ -1,4 +1,8 @@
-"""Source-level Rope rewrite helpers."""
+"""Source-level Rope rewrite helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -60,6 +64,10 @@ class FlextInfraUtilitiesRopeSource:
         otherwise it lands immediately after ``__future__`` and before the first
         regular import. A multi-line module docstring is tracked to its closing
         quote so an import can never be injected into the docstring body.
+
+
+        Returns:
+            The zero-based line index for import insertion.
         """
         idx = 0
         in_docstring = False
@@ -395,6 +403,10 @@ class FlextInfraUtilitiesRopeSource:
 
         Only deterministic replacements (guard / except-sentinel with an
         inferrable ``r[T]`` / ``Result[T]`` return type) are rewritten.
+
+
+        Returns:
+            The transformed source and descriptions of applied changes.
         """
         source = resource.read()
         try:

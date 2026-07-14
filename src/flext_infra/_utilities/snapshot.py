@@ -29,6 +29,10 @@ class FlextInfraUtilitiesSnapshot:
         Trailing slash on ``src`` is added so rsync copies the contents
         (not the directory itself) into ``dst``. Process execution flows
         through the canonical ``cli.run_raw`` helper.
+
+
+        Returns:
+            A result containing the resolved snapshot destination.
         """
         rsync_bin = shutil.which("rsync")
         if rsync_bin is None:

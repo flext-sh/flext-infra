@@ -1,4 +1,8 @@
-"""Gate execution methods for workspace checker."""
+"""Gate execution methods for workspace checker.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -252,13 +256,17 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         The handler writes GateExecution into *gates_sink* as a side-effect
         (same pattern as _CodegenPipelineState in the codegen pipeline).
+
+
+        Returns:
+            A pipeline handler for the selected gate.
         """
         gate_id = gate_instance.gate_id
         project_name = project_dir.name
 
         def _handler(
-            _pipeline_ctx: m.Cli.PipelineStageContext,
-        ) -> p.Result[m.Cli.PipelineStageResult]:
+            _pipeline_ctx: p.Cli.PipelineStageContext,
+        ) -> p.Result[p.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink."""
             gate_ctx = m.Infra.GateContext(
                 workspace=ctx.workspace_root,
@@ -291,7 +299,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 if execution.result.passed
                 else c.Cli.PipelineStageStatus.FAILED
             )
-            return r[m.Cli.PipelineStageResult].ok(
+            return r[p.Cli.PipelineStageResult].ok(
                 cli.stage_result(
                     gate_id, status=status, output={"errors": execution.error_count}
                 )

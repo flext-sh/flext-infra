@@ -1,4 +1,8 @@
-"""CLI entrypoint for the canonical flext-infra command surface."""
+"""CLI entrypoint for the canonical flext-infra command surface.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -253,6 +257,10 @@ class FlextInfraCli(type(cli_facade)):
         through the canonical ``run --gates`` path. ``validate --what <name>``
         selects the matching validator subcommand. Unknown phases yield a
         usage failure so the caller returns ``ScriptExitCode.USAGE``.
+
+
+        Returns:
+            A result containing translated command arguments or a selector error.
         """
         what, remaining = self._split_what(args)
         if what is None:
