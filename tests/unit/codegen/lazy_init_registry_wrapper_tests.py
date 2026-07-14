@@ -31,8 +31,8 @@ class TestsFlextInfraLazyInitCleanup:
             )
         return workspace_root, package_root, stale_paths
 
-    def test_apply_removes_sidecars_and_keeps_manifest(self, tmp_path: Path) -> None:
-        """Apply deletes superseded registries after producing the root manifest."""
+    def test_apply_removes_sidecars_and_keeps_initializer(self, tmp_path: Path) -> None:
+        """Apply deletes superseded registries after producing the initializer."""
         workspace_root, package_root, stale_paths = self._workspace_with_sidecars(
             tmp_path
         )
@@ -41,7 +41,7 @@ class TestsFlextInfraLazyInitCleanup:
 
         tm.that(result, eq=0)
         tm.that(all(not path.exists() for path in stale_paths), eq=True)
-        tm.that((package_root / c.Infra.UNIT_PY).is_file(), eq=True)
+        tm.that((package_root / c.Infra.INIT_PY).is_file(), eq=True)
 
     def test_check_reports_sidecars_without_removing(self, tmp_path: Path) -> None:
         """Check-only records every stale sidecar and preserves all bytes."""

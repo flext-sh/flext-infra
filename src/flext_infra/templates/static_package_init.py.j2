@@ -11,4 +11,6 @@ __all__: tuple[str, ...] = (
     "{{ export_name }}",
 {% endfor %}
 )
+{% else %}
+__all__: tuple[str, ...] = ()
 {% endif %}

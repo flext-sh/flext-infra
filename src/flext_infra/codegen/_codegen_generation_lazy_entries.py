@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from flext_infra import c
 from flext_infra.codegen._codegen_generation_type_checking import (
     FlextInfraCodegenGenerationTypeCheckingMixin,
 )
@@ -96,10 +97,18 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         )
 
     @staticmethod
-    def _public_export_order_key(export_name: str) -> tuple[int, str]:
-        """Classify one export using Ruff's SCREAMING, CamelCase, other order."""
+    def _public_export_order_key(export_name: str) -> tuple[int, int, str]:
+        """Classify exports while preserving the canonical facade dependency order."""
         category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
-        return (category, export_name.casefold())
+        # mro-wkii.17 (Codex): aliases follow c -> t -> p -> m -> u and the
+        # operational facade order; Ruff does not reorder tuple values for us.
+        alias_order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+        alias_rank = (
+            alias_order.index(export_name)
+            if export_name in alias_order
+            else len(alias_order)
+        )
+        return (category, alias_rank, export_name.casefold())
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationLazyEntriesMixin"]
