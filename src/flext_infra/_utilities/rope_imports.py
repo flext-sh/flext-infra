@@ -1,4 +1,8 @@
-"""Rope-backed import and rename operations."""
+"""Rope-backed import and rename operations.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -124,6 +128,10 @@ class FlextInfraUtilitiesRopeImports:
         files that contain ``name`` textually. This helper converts that cheap
         index into concrete Rope resources so callers can still rely on Rope's
         semantic identity checks without scanning the full project.
+
+
+        Returns:
+            The indexed Rope resources, or ``None`` when the search cannot be bounded.
         """
         name_index_getter = getattr(rope_workspace, "name_index", None)
         resource_getter = getattr(rope_workspace, "resource", None)
@@ -187,6 +195,10 @@ class FlextInfraUtilitiesRopeImports:
         change is applied when ``apply`` is set. ``r.ok(False)`` when
         rope produced no changes (already organised). ``r.fail(reason)``
         when rope raised a refactoring/resource/type error.
+
+
+        Returns:
+            A result indicating whether Rope changed the resource imports.
         """
         try:
             original_source = resource.read()
@@ -236,6 +248,10 @@ class FlextInfraUtilitiesRopeImports:
         ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
         are restored after Ruff only when still referenced semantically, including
         forward references that Ruff cannot see inside string annotations.
+
+
+        Returns:
+            A result indicating whether import normalization changed any file.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
@@ -538,6 +554,10 @@ class FlextInfraUtilitiesRopeImports:
         Returns ``(target_import_stmt_or_None, moved_aliases_set)``. Mutates
         the source-module statements in place via ``import_info`` reassignment;
         the caller still owns the merge into the target.
+
+
+        Returns:
+            The rewritten target import statement and the set of moved aliases.
         """
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         moved_aliases: t.Infra.StrSet = set()

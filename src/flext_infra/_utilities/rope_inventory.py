@@ -1,4 +1,8 @@
-"""Rope-only object inventory helpers for workspace-wide census."""
+"""Rope-only object inventory helpers for workspace-wide census.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -514,6 +518,10 @@ class FlextInfraUtilitiesRopeInventory:
         semantic import analysis already proves the dependent module imports the
         exact symbol. In that narrow case, synthesize reference sites from the
         name index restricted to the semantic dependents only.
+
+
+        Returns:
+            Runtime, example, and script reference sites.
         """
         name_index_getter = getattr(rope_workspace, "name_index", None)
         import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
@@ -598,6 +606,10 @@ class FlextInfraUtilitiesRopeInventory:
         with external references the caller falls back to rope's semantic
         ``find_occurrences`` to correctly handle intra-module ``__all__``
         literals, decorator references, and same-name collisions.
+
+
+        Returns:
+            Classified reference sites, or ``None`` when the fast path is unavailable.
         """
         name_index_getter = getattr(rope_workspace, "name_index", None)
         if name_index_getter is None:

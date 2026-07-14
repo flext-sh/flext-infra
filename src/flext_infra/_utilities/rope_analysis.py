@@ -1,4 +1,8 @@
-"""Semantic Rope analysis helpers."""
+"""Semantic Rope analysis helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -1354,6 +1358,10 @@ class FlextInfraUtilitiesRopeAnalysis:
 
         Uses rope's ``libutils.get_string_module`` so callers don't need to
         manage temporary files. Returns ``None`` on parse failure.
+
+
+        Returns:
+            The parsed Rope module, or ``None`` when parsing fails.
         """
         rope_project = FlextInfraUtilitiesRopeAnalysis._shared_parse_project()
         try:
@@ -1420,6 +1428,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         Equivalent to ``ast.walk`` but uses only public attribute access on
         rope-provided AST objects, so no ``import ast`` is needed at the
         consumer layer.
+
+
+        Returns:
+            All AST nodes reachable from the root.
         """
         collected: list[object] = []
         stack: list[object] = [root]
@@ -1809,6 +1821,10 @@ class FlextInfraUtilitiesRopeAnalysis:
 
         Uses ``get_module_semantic_state`` (PyObject-backed class info plus
         ``get_module_imports`` declared-imports table) — no ``ast`` walks.
+
+
+        Returns:
+            Resolved parent constants import targets.
         """
         opened = cls._open_pymodule(project_root, constants_file)
         if opened is None:

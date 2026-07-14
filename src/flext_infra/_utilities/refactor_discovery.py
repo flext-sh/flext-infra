@@ -67,6 +67,10 @@ class FlextInfraUtilitiesRefactorDiscovery:
         """Iterate and filter Python files under a project.
 
         Returns None on error.
+
+
+        Returns:
+            The filtered project files, or ``None`` when discovery fails.
         """
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
             settings

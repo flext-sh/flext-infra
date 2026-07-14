@@ -1,4 +1,8 @@
-"""Generic helper mixin for Rope-backed refactors."""
+"""Generic helper mixin for Rope-backed refactors.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -119,6 +123,10 @@ class FlextInfraUtilitiesRopeHelpers(
         signatures (``def foo() -> tuple[\n    A,\n]:``) are detected
         by a fallback bracket-balance scan that extends the regex match
         through any unclosed bracket groups.
+
+
+        Returns:
+            The complete definition source, or ``None`` when absent.
         """
         if kind == "function":
             pattern = c.Infra.compile_function_def_block(name)
