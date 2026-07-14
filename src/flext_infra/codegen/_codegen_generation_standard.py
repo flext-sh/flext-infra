@@ -148,17 +148,22 @@ class FlextInfraCodegenGenerationStandardMixin(
     ) -> t.StrSequence:
         """Render explicit sibling-relative reexports for one subpackage."""
         lines: t.MutableSequenceOf[str] = []
+        previous_relative: bool | None = None
         for module, entries in sorted(cls._group_imports(imports).items()):
             import_module = (
                 f".{module.removeprefix(f'{current_pkg}.')}"
                 if module.startswith(f"{current_pkg}.")
                 else module
             )
+            current_relative = import_module.startswith(".")
+            if lines and previous_relative is not current_relative:
+                lines.append("")
             parts = tuple(
                 cls._format_import_part(imported_name, export_name)
                 for export_name, imported_name in sorted(entries)
             )
             lines.extend(cls._format_import("", import_module, parts))
+            previous_relative = current_relative
         return tuple(lines)
 
     @classmethod

@@ -231,7 +231,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from .demo import TestsDemo")
-        tm.that(init_content, contains="from flext_tests import r")
+        tm.that(init_content, contains="from flext_tests import r\n\nfrom .demo")
         tm.that(init_content, lacks="TestsDemo as TestsDemo")
         tm.that(init_content, contains='    "TestsDemo",')
         tm.that(init_content, contains='    "r",')
