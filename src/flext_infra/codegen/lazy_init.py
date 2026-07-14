@@ -1,7 +1,7 @@
 """Canonical ``__init__.py`` generator for complete Python workspaces.
 
-Auto-discovers exports from sibling ``.py`` files. Public production roots use
-PEP 562; every other importable package uses explicit static reexports.
+Auto-discovers exports from sibling ``.py`` files. Every governed surface root
+uses PEP 562; descendant packages use explicit static reexports.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -33,7 +33,7 @@ class FlextInfraCodegenLazyInit(
 ):
     """Generate canonical root and subpackage ``__init__.py`` files.
 
-    Public package roots use PEP 562 lazy exports. Descendant packages use
+    Production and wrapper roots use PEP 562 lazy exports. Descendants use
     static sibling-relative reexports at every depth. Processing is bottom-up
     so each package plan receives complete child export information.
     """
@@ -149,24 +149,13 @@ class FlextInfraCodegenLazyInit(
                     )
                     return 1
                 target_package_dir = sorted_target_dirs[0]
-            if target_package_dir is None:
-                # mro-pulj (codex): default production generation leaves
-                # wrapper surfaces untouched; an explicit --module selects one.
-                package_dirs = tuple(
-                    package_dir
-                    for package_dir in indexed_package_dirs
-                    if not frozenset(
-                        package_dir.relative_to(resolved_workspace_root).parts
-                    )
-                    & c.Infra.NON_PUBLIC_LAZY_ROOTS
-                )
-            else:
+            if target_package_dir is not None:
                 target_parts = target_package_dir.relative_to(
                     resolved_workspace_root
                 ).parts
                 boundary_names = frozenset({
                     c.Infra.DEFAULT_SRC_DIR,
-                    *c.Infra.NON_PUBLIC_LAZY_ROOTS,
+                    *lazy_init.surface_prefixes,
                 })
                 boundary_index = next(
                     (
@@ -242,6 +231,10 @@ class FlextInfraCodegenLazyInit(
         """
         scoped_modules: defaultdict[t.StrPair, set[str]] = defaultdict(set)
         selected_package_dirs = frozenset(path.resolve() for path in package_dirs)
+        # mro-wkii.17.26 (codex): validated config is the sole wrapper inventory.
+        wrapper_surface_roots = frozenset(
+            config.Infra.tooling.lazy_init.surface_prefixes
+        )
         for entry in rope.workspace_index.modules_by_path.values():
             if (
                 entry.package_dir.resolve() not in selected_package_dirs
@@ -250,7 +243,7 @@ class FlextInfraCodegenLazyInit(
             ):
                 continue
             module_segments = frozenset(entry.module_name.split("."))
-            is_private_scope = bool(module_segments & c.Infra.NON_PUBLIC_LAZY_ROOTS)
+            is_private_scope = bool(module_segments & wrapper_surface_roots)
             scope_key = (
                 str(entry.project_root)
                 if is_private_scope and entry.project_root is not None

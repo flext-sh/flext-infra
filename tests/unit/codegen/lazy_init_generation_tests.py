@@ -216,26 +216,36 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
         tm.that(init_content, lacks="install_lazy_exports")
 
-    def test_non_public_surface_uses_static_initializer(self, tmp_path: Path) -> None:
-        """Tests, examples, and scripts use explicit static exports."""
-        plan = self._plan(
-            tmp_path,
-            "tests",
-            ("TestsDemo", "r"),
-            MappingProxyType({
-                "TestsDemo": ("tests.demo", "TestsDemo"),
-                "r": ("flext_tests", "r"),
-            }),
-        )
+    def test_wrapper_surface_roots_use_lazy_initializers(self, tmp_path: Path) -> None:
+        """Use one PEP 562 contract at tests, examples, and scripts roots."""
+        for surface, class_name in (
+            ("tests", "TestsDemo"),
+            ("examples", "ExamplesDemo"),
+            ("scripts", "ScriptsDemo"),
+        ):
+            plan = self._plan(
+                tmp_path,
+                surface,
+                (class_name, "r"),
+                MappingProxyType({
+                    class_name: (f"{surface}.demo", class_name),
+                    "r": ("flext_core", "r"),
+                }),
+            )
 
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
+            init_content = FlextInfraCodegenGeneration.render_init(plan)
 
-        compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import TestsDemo as TestsDemo")
-        tm.that(init_content, contains="from flext_tests import r as r\n\nfrom .demo")
-        tm.that(init_content, contains='    "TestsDemo",')
-        tm.that(init_content, contains='    "r",')
-        tm.that(init_content, lacks="install_lazy_exports")
+            compile(init_content, f"{surface}/__init__.py", "exec")
+            tm.that(init_content, contains=f'".demo": ("{class_name}",)')
+            tm.that(init_content, contains='"flext_core": ("r",)')
+            tm.that(init_content, contains=f'    "{class_name}",')
+            tm.that(init_content, contains='    "r",')
+            tm.that(init_content, contains="install_lazy_exports")
+            runtime_prelude, type_checking_contract = init_content.split(
+                "if TYPE_CHECKING:", maxsplit=1
+            )
+            tm.that(runtime_prelude, lacks=f"from .demo import {class_name}")
+            tm.that(type_checking_contract, contains=f"from .demo import {class_name}")
 
     def test_root_type_checking_alias_uses_named_local_facade(
         self, tmp_path: Path

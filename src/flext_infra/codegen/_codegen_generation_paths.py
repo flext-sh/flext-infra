@@ -25,13 +25,10 @@ class FlextInfraCodegenGenerationPathsMixin:
         return bool(current_pkg) and "." not in current_pkg
 
     @staticmethod
-    def _is_public_api_root_namespace(current_pkg: str) -> bool:
-        """Return whether ``current_pkg`` is a generated public package ABI root."""
-        return (
-            FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
-                current_pkg
-            )
-            and current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+    def _is_lazy_root_namespace(current_pkg: str) -> bool:
+        """Return whether ``current_pkg`` owns a root PEP 562 lazy contract."""
+        return FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
+            current_pkg
         )
 
     @staticmethod
