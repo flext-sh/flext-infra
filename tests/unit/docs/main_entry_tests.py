@@ -73,7 +73,7 @@ def test_docs_cli_audit_projects_filter_writes_only_selected_reports(
 def test_docs_cli_fix_generate_and_build_use_public_routes(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path, fixable=True)
 
-    assert infra_main(["docs", "fix", "--workspace", str(workspace), "--apply"]) == 0
+    tm.that(infra_main(["docs", "fix", "--workspace", str(workspace), "--apply"]), eq=0)
     tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
     assert (
         infra_main([
