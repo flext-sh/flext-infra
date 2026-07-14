@@ -35,7 +35,8 @@ class FlextInfraUtilitiesIterationWorkspace:
         )
         if invalid_root is not None:
             return r[t.SequenceOf[Path]].fail(
-                f"python file iteration failed: project root is not a directory: {invalid_root}"
+                "python file iteration failed: project root is not a directory: "
+                f"{invalid_root}"
             )
         try:
             # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): the scanner
@@ -46,8 +47,10 @@ class FlextInfraUtilitiesIterationWorkspace:
                 for project_root in request.project_roots
                 for directory_name in config.Infra.source_scan.roots
                 if (directory := project_root / directory_name).is_dir()
-                for file_path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                    directory
+                for file_path in (
+                    FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                        directory
+                    )
                 )
             }
             return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))

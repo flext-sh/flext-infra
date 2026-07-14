@@ -1,4 +1,8 @@
-"""Catalog selection helpers for enforcement flows."""
+"""Catalog selection helpers for enforcement flows.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -18,7 +22,6 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def canonical_catalog() -> m.EnforcementCatalog:
         """Return the canonical flext-core enforcement catalog."""
-        return u.build_canonical_catalog()
         return u.build_canonical_catalog()
 
     @classmethod
@@ -60,7 +63,9 @@ class FlextInfraEnforcementSelection:
         selected = frozenset(rule_names) if rule_names else None
         return tuple(
             rule
-            for rule in FlextInfraEnforcementSelection.canonical_catalog().enabled_rules()
+            for rule in (
+                FlextInfraEnforcementSelection.canonical_catalog().enabled_rules()
+            )
             if (selected is None or rule.id in selected)
             and FlextInfraRefactorDeclarativeEnforcement.supports(rule)
         )

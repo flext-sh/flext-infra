@@ -67,7 +67,8 @@ class FlextInfraConstantsSourceCode:
     ENCODING_DEFAULT: Final[str] = "utf-8"
     "Default text encoding for file operations."
 
-    # --- Source code template constants and parsing patterns (was: class SourceCode) ---
+    # --- Source code template constants and parsing patterns
+    # (was: class SourceCode) ---
     TOC_START: Final[str] = "<!-- TOC START -->"
     "Marker for table of contents start."
     TOC_END: Final[str] = "<!-- TOC END -->"
@@ -254,7 +255,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_helper_call_site(name: str) -> t.RegexPattern:
-        r"""Compile ``(?<!.)(?<!class )(?<!def )\b<name>\s*\(`` for free-call detection."""
+        """Compile a free-call detection regex."""
         return re.compile(rf"(?<!\.)(?<!class\s)(?<!def\s)\b{re.escape(name)}\s*\(")
 
     @staticmethod
@@ -264,7 +265,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_class_header_with_bases_for(name: str) -> t.RegexPattern:
-        r"""Compile ``^(\s*class\s+<name>)\s*\([^)]*\)\s*:`` (MULTILINE) header capture."""
+        """Compile a multiline class-header capture regex."""
         return re.compile(
             rf"^(\s*class\s+{re.escape(name)})\s*\([^)]*\)\s*:", re.MULTILINE
         )
@@ -272,7 +273,10 @@ class FlextInfraConstantsSourceCode:
     FLEXT_CORE_DIRECT_SUBMODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+(flext_core\.\S+)\s+import"
     )
-    "Regex: ``from flext_core.<sub> import`` direct-submodule import (captures full path)."
+    (
+        "Regex: ``from flext_core.<sub> import`` direct-submodule import "
+        "(captures full path)."
+    )
 
     @staticmethod
     def escape(literal: str) -> str:
@@ -281,12 +285,12 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_from_module_paren_open(module_name: str) -> t.RegexPattern:
-        """Compile ``^from <module_name> import (`` for parenthesized-import detection."""
+        """Compile a parenthesized-import detection regex."""
         return re.compile(rf"^from\s+{re.escape(module_name)}\s+import\s+\(")
 
     @staticmethod
     def compile_from_module_import_line(module_name: str) -> t.RegexPattern:
-        """Compile ``^from <module_name> import .+$`` (MULTILINE) for whole-line replace."""
+        """Compile a multiline whole-import replacement regex."""
         return re.compile(
             rf"^from\s+{re.escape(module_name)}\s+import\s+.+$", re.MULTILINE
         )
@@ -313,7 +317,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_from_import_paren_open(module_name: str) -> t.RegexPattern:
-        """Compile ``from <module_name> import (`` (no anchor) — used on stripped lines."""
+        """Compile an unanchored parenthesized-import regex."""
         return re.compile(rf"from\s+{re.escape(module_name)}\s+import\s*\(")
 
     FROM_IMPORT_CAPTURE_PAREN_OPEN_RE: Final[t.RegexPattern] = re.compile(
@@ -331,7 +335,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_mro_bare_qualify(old_symbol: str) -> t.RegexPattern:
-        """Compile bare-symbol qualification pattern for MRO propagator (excludes def/class/import/dot/assign/call)."""
+        """Compile the MRO propagator bare-symbol qualification regex."""
         escaped = re.escape(old_symbol)
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
@@ -341,13 +345,13 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_mro_prefixed_annotation(prefix: str, old_symbol: str) -> t.RegexPattern:
-        r"""Compile ``(<prefix>[ \t]*)\b<old>\b`` for annotation-prefixed qualification."""
+        """Compile an annotation-prefixed qualification regex."""
         escaped_prefix = re.escape(prefix)
         return re.compile(rf"({escaped_prefix}[ \t]*)\b{re.escape(old_symbol)}\b")
 
     @staticmethod
     def compile_import_namespace_rewrite(old_name: str) -> t.RegexPattern:
-        r"""Compile ``(from <mod> import (?:.*?,\s*)?)\b<old>\b((?:\s*,.*)?)`` for namespace import rewrite."""
+        """Compile a namespace-import rewrite regex."""
         return re.compile(
             rf"(from\s+\S+\s+import\s+(?:.*?,\s*)?)"
             rf"\b{re.escape(old_name)}\b"
@@ -356,7 +360,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_import_alias_finder(old_name: str) -> t.RegexPattern:
-        r"""Compile ``from <mod> import [^\n]*\b<old>\b\s+as\s+(\w+)`` to find alias bindings."""
+        """Compile an alias-binding finder regex."""
         return re.compile(
             rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
             rf"([A-Za-z_]\w*)"
@@ -364,7 +368,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_bare_qualify_allowing_call(old_name: str) -> t.RegexPattern:
-        r"""Compile bare-symbol qualification pattern allowing call sites (no ``(?!\s*\()``)."""
+        """Compile bare-symbol qualification while allowing call sites."""
         escaped = re.escape(old_name)
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
@@ -374,7 +378,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_alias_qualify(alias_name: str) -> t.RegexPattern:
-        """Compile bare-alias qualification pattern (excludes def/class/import/dot/assign and ``as``)."""
+        """Compile a bare-alias qualification regex."""
         escaped = re.escape(alias_name)
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)(?<!as\s)"
@@ -384,14 +388,14 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_assign_or_annotation_start(name: str) -> t.RegexPattern:
-        r"""Compile ``^<name>\s*(:|==?)\s*`` for line-start annotation/assignment match."""
+        """Compile a line-start annotation or assignment regex."""
         return re.compile(rf"^{re.escape(name)}\s*(:|==?)\s*")
 
     @staticmethod
     def compile_facade_alias_assignment(
         family_alias: str, class_suffix: str
     ) -> t.RegexPattern:
-        r"""Compile ``^<alias>\s*=\s*([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for facade-alias detection."""
+        """Compile a multiline facade-alias detection regex."""
         return re.compile(
             rf"^{re.escape(family_alias)}\s*=\s*([A-Za-z_]\w*{re.escape(class_suffix)})\b",
             re.MULTILINE,
@@ -399,14 +403,14 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_class_with_suffix(class_suffix: str) -> t.RegexPattern:
-        r"""Compile ``^class\s+([A-Za-z_]\w*<suffix>)\b`` (MULTILINE) for class-header detection."""
+        """Compile a multiline suffixed-class header regex."""
         return re.compile(
             rf"^class\s+([A-Za-z_]\w*{re.escape(class_suffix)})\b", re.MULTILINE
         )
 
     @staticmethod
     def compile_class_header_with_bases(name: str) -> t.RegexPattern:
-        r"""Compile ``^class\s+<name>(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:`` to capture bases."""
+        """Compile a class-bases capture regex."""
         return re.compile(
             rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:"
         )
@@ -428,7 +432,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_class_def_block(name: str) -> t.RegexPattern:
-        """Compile a regex matching the full class block of ``name`` (with decorators)."""
+        """Compile a regex matching a decorated class block for ``name``."""
         return re.compile(
             rf"^((?:@\w[\w.]*(?:\([^)]*\))?\n)*"
             rf"class\s+{re.escape(name)}\b[^\n]*\n"
@@ -438,7 +442,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_function_def_remove(name: str) -> t.RegexPattern:
-        """Compile a regex matching the def block of ``name`` for removal (no outer capture)."""
+        """Compile a function-block removal regex without an outer capture."""
         return re.compile(
             rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
             rf"def\s+{re.escape(name)}\s*\([^)]*\)[^\n]*\n"
@@ -448,7 +452,7 @@ class FlextInfraConstantsSourceCode:
 
     @staticmethod
     def compile_class_def_remove(name: str) -> t.RegexPattern:
-        """Compile a regex matching the class block of ``name`` for removal (no outer capture)."""
+        """Compile a class-block removal regex without an outer capture."""
         return re.compile(
             rf"^(?:@\w[\w.]*(?:\([^)]*\))?\n)*"
             rf"class\s+{re.escape(name)}\b[^\n]*\n"

@@ -51,7 +51,10 @@ class FlextInfraConstantsCodegen(
         ("models.py", "Models", "FlextTestsModels", "Test models"),
         ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
     )
-    "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
+    (
+        "Base module definitions for tests/: "
+        "(filename, class_suffix, base_class, docstring)."
+    )
     # mro-wkii.14 (agent: codegen) — par raiz config/settings (padrao cosmos-main:
     # modulo privado `_config.py`/`_settings.py` exportando o singleton). Consumido
     # pelo gerador de scaffold (mro-wkii.10); base flext-core em estabilizacao por
@@ -60,7 +63,10 @@ class FlextInfraConstantsCodegen(
         ("_config.py", "Config", "FlextConfig", "Runtime config"),
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
     )
-    "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
+    (
+        "Runtime singleton modules for src/: "
+        "(filename, class_suffix, base_class, docstring)."
+    )
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
         r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )

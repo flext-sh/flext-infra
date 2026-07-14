@@ -104,7 +104,9 @@ class FlextInfraConstantsCheck:
     })
     BOUNDARY_BANNED_LIBS: Final[t.MappingKV[str, str]] = MappingProxyType({
         "typer": "cli.create_app_with_common_params / cli.register_command",
-        "click": "flext_cli.cli application, registration, execution, and invocation methods",
+        "click": (
+            "flext_cli.cli application, registration, execution, and invocation methods"
+        ),
         "argparse": "cli.register_result_command + Pydantic model",
         "rich": "cli.print / cli.display_message / cli.render_panel / cli.render_table",
         "tabulate": "cli.format_table / cli.show_table",
@@ -201,7 +203,10 @@ class FlextInfraConstantsCheck:
         "return-statements": "smell_return_statements",
         "similar-code": "smell_similar_code",
     })
-    "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
+    (
+        "qlty ruleId suffix -> flext-core enforcement tag "
+        "(texts SSOT: core ENFORCEMENT_RULES_TEXT)."
+    )
 
     # --- Manual-command blocker (§5 Make Contract) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
@@ -293,14 +298,18 @@ repos:
         always_run: true
       - id: flext-abstraction-boundary
         name: Abstraction boundary (§2.7) — CLI-domain libs + concrete FlextCli imports
-        entry: uv run --all-packages python scripts/hooks/check_changed_projects.py boundary
+        entry: >-
+          uv run --all-packages python
+          scripts/hooks/check_changed_projects.py boundary
         language: system
         pass_filenames: true
         always_run: false
         types: [python]
       - id: flext-loc-cap
         name: 200-LOC SUPREME LAW (§3.1) — module cap via tokei
-        entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
+        entry: >-
+          uv run --all-packages python
+          scripts/hooks/check_changed_projects.py loc-cap
         language: system
         pass_filenames: true
         always_run: false
