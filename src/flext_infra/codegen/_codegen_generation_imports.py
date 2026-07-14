@@ -25,11 +25,6 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return f"{imported_name} as {export_name}"
 
     @staticmethod
-    def _format_reexport_import_part(imported_name: str, export_name: str) -> str:
-        """Format one static re-export so Pyright recognizes public ownership."""
-        return f"{imported_name} as {export_name}"
-
-    @staticmethod
     def _format_import(indent: str, mod: str, parts: t.StrSequence) -> t.StrSequence:
         """Emit one valid import statement for canonical normalization."""
         return (f"{indent}from {mod} import {', '.join(parts)}",)

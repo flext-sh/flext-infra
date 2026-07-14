@@ -15,7 +15,7 @@ import inspect
 import pkgutil
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import FlextUtilitiesEnforcement, r
+from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 
@@ -97,7 +97,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if not self._is_local_class(obj, module.__name__):
                 continue
             try:
-                report = FlextUtilitiesEnforcement.check(obj)
+                report = u.check(obj)
             except Exception as exc:
                 violations.append(
                     f"{module_name}:{obj.__qualname__}: check raised: {exc}"

@@ -142,6 +142,23 @@ Infra:
           - "Typing :: Typed"
         keywords: [clean-architecture, flext, integration, typed]
         dependency_profiles:
+          # NOTE (multi-agent, cosmos-main-iz7g.1): the workspace manifest
+          # declares flext_core as its upstream; conformance must model it.
+          - upstream: flext_core
+            runtime:
+              - flext-core
+              - pydantic>=2.13.3
+              - pydantic-settings>=2.14.0
+            codegen: [flext-infra]
+            dev:
+              - flext-tests
+              - mypy>=1.19.1
+              - pyrefly>=1.1.1,<1.2
+              - pyright>=1.1.411,<1.2
+              - pytest>=9.0.3,<10
+              - ruff>=0.15.12,<0.16
+              - vulture>=2.16,<3
+              - yamlfix>=1.19.1,<2
           - upstream: flext_cli
             runtime:
               - flext-cli

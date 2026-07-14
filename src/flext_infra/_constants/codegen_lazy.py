@@ -42,8 +42,6 @@ class FlextInfraConstantsCodegenLazy:
         "install_lazy_exports",
     })
     "Names bound eagerly by the canonical root initializer template."
-    ROOT_DIRECT_IMPORTS_CONTRACT: Final[str] = "_DIRECT_IMPORTS"
-    "Generated literal that freezes supported direct root imports outside __all__."
     TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
     )
@@ -73,6 +71,10 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root surfaces generated as explicit static packages, not public lazy ABIs."
+    # mro-wkii.17.26 (codex): pytest owns plugin import timing; codegen keeps
+    # the private fixture package initializer side-effect free.
+    PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
+    "Private pytest-plugin package whose generated initializer stays empty."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
@@ -156,8 +158,6 @@ class FlextInfraConstantsCodegenLazy:
     # mro-pulj (codex): these remain direct inline lazy imports without
     # widening the explicit wildcard contract or requiring root sidecars.
     "Public-module symbols withheld from generated root-facade __all__."
-    FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({"settings"})
-    "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",
         "t",

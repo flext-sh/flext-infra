@@ -29,12 +29,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             dir_exports: t.MappingKV[str, t.LazyAliasMap],
         ) -> t.StrSequence: ...
 
-        def _public_root_child_export_names(
-            self,
-            child_packages: t.StrSequence,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
-        ) -> frozenset[str]: ...
-
         def _child_packages_without_main_export(
             self,
             child_packages: t.StrSequence,
@@ -111,6 +105,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             name
             for name in export_names | (explicit_exports & lazy_export_names)
             if (name in explicit_exports or name not in internal_child_export_names)
+            # mro-pulj (codex): module-only child bindings are not wildcard
+            # exports unless the closed module-publication contract adds them.
+            and (name in eager_names or bool(lazy_map.get(name, ("", ""))[1]))
             and (
                 name in eager_names
                 or self._is_public_root_export(
@@ -147,23 +144,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         )
 
     @staticmethod
-    def _has_public_root_contract(
-        *,
-        root_namespace_files: t.StrSequence,
-        explicit_public_exports: frozenset[str],
-        present_files: frozenset[str],
-    ) -> bool:
-        """Return whether a root package uses the governed public facade contract."""
-        return (
-            bool(explicit_public_exports)
-            or bool(set(root_namespace_files) & present_files)
-            or any(
-                u.Infra.runtime_singleton_export(file_name) is not None
-                for file_name in present_files
-            )
-        )
-
-    @staticmethod
     def _is_public_root_export(
         name: str,
         lazy_map: t.LazyAliasMap,
@@ -183,12 +163,16 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if not module_path.startswith(prefix):
             return False
         local_module = module_path.removeprefix(prefix)
+        # mro-wkii.17.26 (Codex): descendants never widen the root ABI, even
+        # when their leaf filename matches a runtime singleton convention.
+        if "." in local_module:
+            return False
         runtime_singleton_export = u.Infra.runtime_singleton_export(
             f"{local_module}.py"
         )
         if runtime_singleton_export is not None:
             return name == runtime_singleton_export or name in explicit_public_exports
-        if "." in local_module or local_module.startswith("_"):
+        if local_module.startswith("_"):
             return False
         if explicit_public_exports:
             return name in explicit_public_exports

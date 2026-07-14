@@ -104,6 +104,56 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
+    def test_public_facade_owns_private_fixture_reexports(self, tmp_path: Path) -> None:
+        """Publish a fixture-backed symbol only through its public facade."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        fixtures_dir = package_root / "_fixtures"
+        fixtures_dir.mkdir()
+        fixtures_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        fixtures_dir.joinpath("enforcement.py").write_text(
+            "def load_report() -> str:\n"
+            '    """Load a report."""\n'
+            '    return "loaded"\n\n'
+            '__all__ = ["load_report"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath("enforcement.py").write_text(
+            "from ._fixtures.enforcement import load_report\n\n"
+            '__all__ = ["load_report"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+
+        # mro-wkii.17.26 (Codex): only the public facade may own the root ABI.
+        tm.that(generated, has='".enforcement": ("load_report",)')
+        tm.that(generated, lacks="flext_demo._fixtures.enforcement")
+
+    def test_nested_runtime_singleton_does_not_widen_root_api(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep a nested settings singleton owned by its child package."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        services_dir = package_root / "services"
+        services_dir.mkdir()
+        services_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        services_dir.joinpath("_settings.py").write_text(
+            'settings = "nested"\n\n__all__ = ["settings"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+
+        # mro-wkii.17.26 (Codex): singleton conventions apply only at root.
+        tm.that(generated, lacks='"settings"')
+        tm.that(generated, lacks="flext_demo.services._settings")
+
     def test_private_direct_imports_never_widen_the_root_contract(
         self, tmp_path: Path
     ) -> None:
@@ -139,6 +189,43 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         tm.that(self._generated_init(package_root), lacks="FlextDemoExtra")
+
+    def test_private_subdirectory_facade_never_becomes_root_public(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep private family facades and their parts out of the root API."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
+        )
+        models_dir = package_root / "_models"
+        parts_dir = models_dir / "_base_parts"
+        parts_dir.mkdir(parents=True)
+        for package_dir in (models_dir, parts_dir):
+            package_dir.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+        parts_dir.joinpath("flextdemomodelsbase_part_01.py").write_text(
+            "class FlextDemoModelsBase:\n"
+            '    """Private implementation part."""\n\n'
+            '__all__ = ["FlextDemoModelsBase"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        models_dir.joinpath("base.py").write_text(
+            "from ._base_parts.flextdemomodelsbase_part_01 import "
+            "FlextDemoModelsBase as FlextDemoModelsBasePart01\n\n"
+            "class FlextDemoModelsBase(FlextDemoModelsBasePart01):\n"
+            '    """Public facade."""\n\n'
+            '__all__ = ["FlextDemoModelsBase"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+
+        tm.that(generated, lacks="FlextDemoModelsBase")
+        tm.that(generated, lacks='"._models.base"')
+        tm.that(generated, lacks="._models._base_parts.flextdemomodelsbase_part_01")
 
     def test_explicit_all_exports_keep_public_aliases_only(
         self, tmp_path: Path
@@ -227,18 +314,26 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init(workspace_root, target_module=c.Infra.DIR_TESTS), eq=0
+        )
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(init_content, contains="from .constants import TestsFlextDemoConstants")
-        tm.that(init_content, contains="from .constants import c as c")
+        tm.that(
+            init_content, contains="from .constants import TestsFlextDemoConstants, c"
+        )
+        tm.that(init_content, lacks=" as ")
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=0)
-        tm.that(check_service.modified_files, empty=True)
+        tm.that(
+            u.Tests.run_lazy_init(
+                workspace_root, check_only=True, target_module=c.Infra.DIR_TESTS
+            ),
+            eq=0,
+        )
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
         self, tmp_path: Path
@@ -333,7 +428,12 @@ class TestsFlextInfraLazyInitHelpers:
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        tests_unit_root = workspace_root / c.Infra.DIR_TESTS / "unit"
+        tests_root = workspace_root / c.Infra.DIR_TESTS
+        tests_root.mkdir()
+        tests_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        tests_unit_root = tests_root / "unit"
         tests_unit_root.mkdir(parents=True)
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
@@ -351,7 +451,9 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        tm.that(
+            u.Tests.run_lazy_init(workspace_root, target_module=c.Infra.DIR_TESTS), eq=0
+        )
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )

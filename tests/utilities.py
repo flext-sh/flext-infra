@@ -944,11 +944,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
+        def run_lazy_init(
+            workspace_root: Path,
+            *,
+            check_only: bool = False,
+            target_module: str | None = None,
+        ) -> int:
             """Provide the typed test helper `run_lazy_init`."""
-            return FlextInfraCodegenLazyInit(
-                workspace_root=workspace_root
-            ).generate_inits(check_only=check_only)
+            service = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+            # mro-wkii.17.26 (Codex): wrapper generation is always explicit.
+            service.target_module = target_module
+            return service.generate_inits(check_only=check_only)
 
         @staticmethod
         def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:

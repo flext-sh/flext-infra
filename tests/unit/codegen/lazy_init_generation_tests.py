@@ -166,16 +166,40 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .demo import Demo as Demo")
+        tm.that(content, contains="from .demo import Demo")
+        tm.that(content, lacks="Demo as Demo")
         tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
         tm.that(content, lacks="Nested")
         tm.that(content, lacks="import nested")
         tm.that(content, lacks="install_lazy_exports")
 
-    def test_non_public_root_uses_explicit_static_reexports(
+    def test_private_fixture_package_initializer_is_side_effect_free(
         self, tmp_path: Path
     ) -> None:
-        """Tests, examples, and scripts use the static internal contract."""
+        """Keep pytest plugin siblings unloaded until pytest registers them."""
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg._fixtures",
+            ("DemoFixture",),
+            MappingProxyType({
+                "DemoFixture": (
+                    "demo_pkg._fixtures.settings",
+                    "DemoFixture",
+                )
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, lacks="from .settings import")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_non_public_surface_uses_static_initializer(
+        self, tmp_path: Path
+    ) -> None:
+        """Tests, examples, and scripts use explicit static exports."""
         plan = self._plan(
             tmp_path,
             "tests",
@@ -183,12 +207,33 @@ class TestsFlextInfraCodegenGeneration:
             MappingProxyType({"TestsDemo": ("tests.demo", "TestsDemo")}),
         )
 
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="from .demo import TestsDemo")
+        tm.that(init_content, lacks="TestsDemo as TestsDemo")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("TestsDemo",)')
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_root_type_checking_alias_uses_named_local_facade(
+        self, tmp_path: Path
+    ) -> None:
+        """Static analyzers receive the local facade class behind short aliases."""
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg",
+            ("FlextDemoProtocols", "p"),
+            MappingProxyType({
+                "FlextDemoProtocols": ("demo_pkg.protocols", "FlextDemoProtocols"),
+                "p": ("demo_pkg.protocols", "p"),
+            }),
+        )
+
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .demo import TestsDemo as TestsDemo")
-        tm.that(content, contains='__all__: tuple[str, ...] = ("TestsDemo",)')
-        tm.that(content, lacks="install_lazy_exports")
+        tm.that(content, contains="FlextDemoProtocols as p")
+        tm.that(content, lacks="p as p")
 
     def test_private_internal_package_is_not_empty(self, tmp_path: Path) -> None:
         """Private packages use the same explicit static contract."""
@@ -204,9 +249,8 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content, contains="from .models import FlextDemoModels as FlextDemoModels"
-        )
+        tm.that(content, contains="from .models import FlextDemoModels")
+        tm.that(content, lacks="FlextDemoModels as FlextDemoModels")
         tm.that(content, contains='__all__: tuple[str, ...] = ("FlextDemoModels",)')
         tm.that(content, lacks="install_lazy_exports")
 

@@ -59,6 +59,9 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 process=(
                     target_package_dir is None
                     or pkg_dir.resolve() == target_package_dir.resolve()
+                    # mro-wkii.17.26 (Codex): a selected facade owns every
+                    # descendant initializer in its recursive package scope.
+                    or target_package_dir.resolve() in pkg_dir.resolve().parents
                 ),
             )
             if exports:

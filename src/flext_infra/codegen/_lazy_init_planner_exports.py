@@ -78,7 +78,13 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
-            if not policy.include_in_lazy_init or not module_entry.module_name:
+            # mro-wkii.17.26 (codex): an internal package owns a static facade
+            # for direct implementation siblings. This never widens a public
+            # root ABI; root filtering happens after the bottom-up plan.
+            if (
+                not policy.include_in_lazy_init
+                and not context.pkg_dir.name.startswith("_")
+            ) or not module_entry.module_name:
                 continue
             require_explicit_all = (
                 u.Infra.matches_root_namespace_file(py_file.name)

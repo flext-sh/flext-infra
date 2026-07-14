@@ -218,7 +218,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """Capture every canonical transaction lint command."""
         return tuple(
             cls._lint_snapshot(
-                worktree_root, tool, command, environment, timeout_seconds
+                worktree_root,
+                tool,
+                # mro-wkii.17.26 (codex): the detached worktree deliberately has
+                # no copied .venv; Pyrefly must query the caller interpreter.
+                (*command, "--python-interpreter-path", sys.executable)
+                if tool == c.Infra.PYREFLY
+                else command,
+                environment,
+                timeout_seconds,
             )
             for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
         )

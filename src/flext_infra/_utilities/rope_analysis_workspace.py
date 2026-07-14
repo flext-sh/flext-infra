@@ -64,7 +64,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _python_and_stub_file_paths(
         rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[Path, ...]:
-        """Return indexed Python sources plus hand-written typing stubs."""
+        """Return Rope-indexed Python sources plus hand-written typing stubs."""
         python_paths = set(FlextInfraUtilitiesRopeCore.python_file_paths(rope_project))
         stub_paths = {
             path.resolve()

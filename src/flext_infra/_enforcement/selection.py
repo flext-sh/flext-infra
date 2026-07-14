@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core import FlextUtilitiesEnforcement
+from flext_infra import u
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
@@ -22,7 +22,7 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def canonical_catalog() -> me.EnforcementCatalog:
         """Return the canonical flext-core enforcement catalog."""
-        return FlextUtilitiesEnforcement.build_canonical_catalog()
+        return u.build_canonical_catalog()
 
     @classmethod
     def selected_rules(

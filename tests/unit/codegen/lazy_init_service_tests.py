@@ -53,10 +53,10 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
-    def test_target_plans_private_children_without_writing_them(
+    def test_target_generates_private_descendant_initializers(
         self, tmp_path: Path
     ) -> None:
-        """A selected root consumes child plans while writing only its own init."""
+        """Generate every initializer below an explicitly selected facade."""
         workspace_root, selected_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-test-selected",
@@ -71,7 +71,6 @@ class TestsFlextInfraCodegenLazyInitService:
         private_child.mkdir()
         child_init = private_child / c.Infra.INIT_PY
         child_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
-        child_init_before = child_init.read_bytes()
         private_child.joinpath("conversion.py").write_text(
             "class FlextTestsConversion:\n"
             '    """Established direct root import."""\n\n'
@@ -99,9 +98,45 @@ class TestsFlextInfraCodegenLazyInitService:
         )
 
         tm.that(result.success, eq=True)
-        tm.that(generated_root, contains="FlextTestsConversion")
-        tm.that(child_init.read_bytes(), eq=child_init_before)
-        tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
+        # mro-wkii.17.26 (Codex): descendants own their static exports.
+        tm.that(generated_root, lacks="FlextTestsConversion")
+        tm.that(
+            child_init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            contains="from .conversion import FlextTestsConversion",
+        )
+        tm.that(
+            service.modified_files,
+            eq=(str(selected_root / c.Infra.INIT_PY), str(child_init)),
+        )
+
+    def test_explicit_wrapper_target_generates_only_that_initializer(
+        self, tmp_path: Path
+    ) -> None:
+        """Generate a declared examples root without widening default scope."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        production_init = package_root / c.Infra.INIT_PY
+        production_before = production_init.read_bytes()
+        examples_root = workspace_root / c.Infra.DIR_EXAMPLES
+        examples_root.mkdir()
+        examples_init = examples_root / c.Infra.INIT_PY
+        examples_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        examples_root.joinpath("demo.py").write_text(
+            'class ExamplesDemo:\n    """Example boundary."""\n\n'
+            '__all__ = ["ExamplesDemo"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = c.Infra.DIR_EXAMPLES
+        service.apply_changes = True
+
+        result = service.execute()
+        generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        tm.that(result.success, eq=True)
+        tm.that(generated, contains="from .demo import ExamplesDemo")
+        tm.that(generated, lacks="ExamplesDemo as ExamplesDemo")
+        tm.that(production_init.read_bytes(), eq=production_before)
+        tm.that(service.modified_files, eq=(str(examples_init),))
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
@@ -221,6 +256,50 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((first_root / "__unit__.py").exists(), eq=False)
         tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
+
+    def test_project_filter_qualifies_repeated_wrapper_target(
+        self, tmp_path: Path
+    ) -> None:
+        """Select one project's wrapper without touching an identically named peer."""
+        first_project, _first_package = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-test-first", package_name="flext_test_first"
+        )
+        second_project, _second_package = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-second",
+            package_name="flext_test_second",
+        )
+        first_tests = first_project / c.Infra.DIR_TESTS
+        second_tests = second_project / c.Infra.DIR_TESTS
+        for tests_root, class_name in (
+            (first_tests, "TestsFlextFirstConstants"),
+            (second_tests, "TestsFlextSecondConstants"),
+        ):
+            tests_root.mkdir()
+            tests_root.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+            tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+                f"class {class_name}:\n    pass\n\n__all__ = [\"{class_name}\"]\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+        second_before = second_tests.joinpath(c.Infra.INIT_PY).read_bytes()
+        service = u.Tests.create_lazy_init_service(tmp_path)
+        service.target_module = c.Infra.DIR_TESTS
+        service.project_filter = "flext-test-first"
+        service.apply_changes = True
+
+        result = service.execute()
+
+        tm.that(result.success, eq=True)
+        tm.that(
+            first_tests.joinpath(c.Infra.INIT_PY).read_text(
+                encoding=c.Cli.ENCODING_DEFAULT
+            ),
+            contains="TestsFlextFirstConstants",
+        )
+        tm.that(second_tests.joinpath(c.Infra.INIT_PY).read_bytes(), eq=second_before)
+        tm.that(service.modified_files, eq=(str(first_tests / c.Infra.INIT_PY),))
 
 
 __all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]
