@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_infra import m, u
+from flext_infra import m, p, t, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
 
 
 class FlextInfraDocGenerator(FlextInfraDocServiceBase):

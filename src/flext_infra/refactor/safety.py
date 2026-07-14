@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
+from flext_infra import c, p, t, u
 
 
 class FlextInfraRefactorSafetyManager:

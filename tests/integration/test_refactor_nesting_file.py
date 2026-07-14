@@ -12,9 +12,9 @@ from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import m
-    from tests import t
+from tests import m
+from tests import t
+
 
 pytestmark = [pytest.mark.integration]
 

@@ -16,8 +16,8 @@ from flext_tests import tm
 
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _create_init_file(directory: Path, content: str) -> Path:

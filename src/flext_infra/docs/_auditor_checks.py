@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Callable
 
-from flext_infra import u
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from flext_infra import m, t
+from flext_infra import m, t, u
 
 
 class FlextInfraDocAuditorChecksMixin:

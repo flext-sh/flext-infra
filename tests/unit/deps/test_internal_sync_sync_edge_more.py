@@ -8,10 +8,10 @@ from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests import t
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import p
+from tests import p
+
 
 
 class _TomlStub:

@@ -1,15 +1,19 @@
-"""Census and introspection utilities for the refactor subpackage."""
+"""Census and introspection utilities for the refactor subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import shutil
 from collections import defaultdict
+from collections.abc import Callable as _CensusCallable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -17,11 +21,6 @@ from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-
-if TYPE_CHECKING:
-    from collections.abc import Callable as _CensusCallable
-
-    from flext_infra import p
 
 _log = u.fetch_logger(__name__)
 
@@ -405,6 +404,10 @@ class FlextInfraUtilitiesRefactorCensus:
         populated mapping with rewritten sources otherwise, or ``None`` when
         removing the base would leave a facade class with no bases at all
         (unsafe — candidate must be handled manually).
+
+
+        Returns:
+            Updated facade module sources keyed by path, or ``None`` when no cascade is needed.
         """
         target_name = candidate.object_name
         definition_path = Path(candidate.file_path).resolve()
@@ -562,6 +565,10 @@ class FlextInfraUtilitiesRefactorCensus:
         one line; otherwise each remaining entry stays on its own line. When
         the removed entry was the only element, the list is collapsed to
         ``[]``.
+
+
+        Returns:
+            Source text with the named ``__all__`` entry removed.
         """
         single_line = c.Infra.DUNDER_ALL_SINGLE_LINE_RE
         multi_line = c.Infra.DUNDER_ALL_MULTI_LINE_RE
@@ -666,6 +673,10 @@ class FlextInfraUtilitiesRefactorCensus:
         snapshot. ``r.ok(False)`` when the candidate is outside the
         simple-removal contract. ``r.fail(...)`` when planning or
         ``preview_source_writes`` failed — the message lists the reason.
+
+
+        Returns:
+            A result indicating whether the candidate passes preview validation.
         """
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
@@ -727,6 +738,10 @@ class FlextInfraUtilitiesRefactorCensus:
         routine here. This keeps ``flext_infra._utilities.census`` outside
         the ``flext_infra.codegen.lazy_init`` import cycle while still
         giving gates a chance to verify post-cascade correctness.
+
+
+        Returns:
+            A result indicating whether the candidate was applied successfully.
         """
         if not FlextInfraUtilitiesRefactorCensus._supports_simple_removal_candidate(
             candidate
@@ -799,6 +814,10 @@ class FlextInfraUtilitiesRefactorCensus:
         Skips cache and virtual-env directories so the clone is minimal and the
         downstream rope workspace opens on source-only state. Returns the
         resolved destination path.
+
+
+        Returns:
+            The resolved path to the validation clone.
         """
         resolved_source = source.resolve()
         resolved_destination = destination.resolve()

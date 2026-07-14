@@ -17,10 +17,10 @@ from flext_infra.refactor.declarative_enforcement import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from flext_infra.typings import t
+from flext_infra.typings import t
+
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:

@@ -15,9 +15,9 @@ from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import m
 from tests import u
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
+from collections.abc import Callable
+from pathlib import Path
+
 
 
 @pytest.fixture

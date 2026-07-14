@@ -18,8 +18,8 @@ from flext_tests import FlextTestsConstants
 
 from flext_infra import c
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import t
+
 
 
 class TestsFlextInfraConstants(FlextTestsConstants, c):

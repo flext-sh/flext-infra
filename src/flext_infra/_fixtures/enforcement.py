@@ -8,9 +8,10 @@ tracked during test sessions.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Iterable
 
-from flext_tests import p as tests_p
+import pytest
+from flext_tests import m as tests_m, p as tests_p
 from flext_tests.enforcement import (
     EnforcementCollector,
     EnforcementContribution,
@@ -19,12 +20,6 @@ from flext_tests.enforcement import (
 )
 
 from flext_infra import m, p
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-    import pytest
-    from flext_tests import m as tests_m
 
 
 class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):

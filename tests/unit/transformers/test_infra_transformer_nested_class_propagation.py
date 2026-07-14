@@ -10,8 +10,8 @@ from flext_infra.transformers.nested_class_propagation import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _transform_source(tmp_path: Path, source: str) -> str:

@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, u
+from flext_infra import c, m, p, t, u
 from flext_infra.deps._detector_runtime_steps import (
     FlextInfraDependencyDetectorRuntimeSteps,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, MutableMapping
-
-    from flext_infra import m, t
 
 
 class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSteps):

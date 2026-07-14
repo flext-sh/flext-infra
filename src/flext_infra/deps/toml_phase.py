@@ -10,15 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra.base import s
 from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):

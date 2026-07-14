@@ -13,8 +13,8 @@ from flext_tests import tm
 from tests import m
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestAuditorToMarkdown:

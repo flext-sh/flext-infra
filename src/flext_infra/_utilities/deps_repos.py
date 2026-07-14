@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import configparser
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, settings, t
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-
-    from flext_infra import p
+from flext_infra import c, m, p, settings, t
 
 
 class FlextInfraInternalSyncRepoMixin:

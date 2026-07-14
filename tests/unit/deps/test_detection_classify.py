@@ -6,8 +6,8 @@ from flext_tests import tm
 
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 
 class TestsFlextInfraDepsDetectionClassify:

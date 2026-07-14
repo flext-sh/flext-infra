@@ -12,10 +12,10 @@ from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import TestsFlextInfraUtilities as u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.base_gate import FlextInfraGate
+
 
 
 class TestTypeGates:

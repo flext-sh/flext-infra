@@ -13,15 +13,11 @@ in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t, p
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):

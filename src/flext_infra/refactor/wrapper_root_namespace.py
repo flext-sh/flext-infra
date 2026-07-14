@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import Annotated, ClassVar, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
@@ -11,9 +12,6 @@ from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
     _WrapperRewriteAccumulator,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
 
 
 class FlextInfraWrapperRootNamespaceRefactor(

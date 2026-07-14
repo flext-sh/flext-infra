@@ -8,8 +8,8 @@ from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests import c
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def make_command(

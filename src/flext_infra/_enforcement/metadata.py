@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_infra import m, p, t
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-
-if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import m, p, t
 
 
 class FlextInfraEnforcementMetadata:

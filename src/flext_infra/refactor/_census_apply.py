@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, p, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -32,9 +32,6 @@ from flext_infra.refactor._census_apply_formatting import (
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m, p, t
 
 _log = u.fetch_logger(__name__)
 
@@ -204,11 +201,11 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 changed = self._apply_one_class_per_module(
                     rope=rope, file_path=file_path, object_names=object_names
                 )
-            elif action == "fix_silent_failure_sentinels":
+            elif action == "rope_fix_silent_failure_sentinels":
                 resource = rope.resource(file_path)
                 if resource is None:
                     continue
-                _updated, changes = u.Infra.fix_silent_failure_sentinels(
+                _updated, changes = u.Infra.rope_fix_silent_failure_sentinels(
                     rope.rope_project,
                     resource,
                     apply=True,

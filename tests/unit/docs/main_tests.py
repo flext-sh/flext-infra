@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from flext_infra import main as infra_main
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:

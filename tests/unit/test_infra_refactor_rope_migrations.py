@@ -13,10 +13,10 @@ from flext_infra.transformers.symbol_propagator import (
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 def _apply_transformer(
@@ -25,7 +25,7 @@ def _apply_transformer(
     file_path = tmp_path / "src" / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    updated, changes = u.Infra.apply_transformer_to_source(source, file_path, transform)
+    updated, changes = u.Infra.rope_apply_transformer_to_source(source, file_path, transform)
     return updated, list(changes)
 
 
@@ -131,7 +131,7 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         tm.that(text_result, eq=rope_result)
         tm.that(text_changes, eq=rope_changes)
 
-    def test_apply_transformer_to_source_restores_disk_state(
+    def test_rope_apply_transformer_to_source_restores_disk_state(
         self, tmp_path: Path
     ) -> None:
         """Temporary rope sync must not leak source updates to the real file."""
@@ -146,7 +146,7 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
             import_symbol_renames={"OldName": "NewName"},
         )
 
-        updated, changes = u.Infra.apply_transformer_to_source(
+        updated, changes = u.Infra.rope_apply_transformer_to_source(
             staged_source, file_path, transformer.transform
         )
 

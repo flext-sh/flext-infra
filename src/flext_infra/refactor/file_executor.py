@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 from flext_infra.transformers.class_nesting import (
@@ -16,9 +16,6 @@ from flext_infra.transformers.helper_consolidation import (
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
 
 
 class FlextInfraClassNestingPostCheckGate:

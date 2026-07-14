@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraBanditGate(FlextInfraGate):

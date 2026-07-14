@@ -19,17 +19,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, p, t
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
 
 
 class FlextInfraValidateLazyMapFreshness(s[bool]):

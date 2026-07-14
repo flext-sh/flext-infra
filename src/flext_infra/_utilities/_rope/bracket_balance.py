@@ -1,4 +1,8 @@
-"""Scan bracket balance for multi-line Rope definition extraction."""
+"""Scan bracket balance for multi-line Rope definition extraction.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -23,6 +27,10 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
         multi-line signature like ``-> tuple[\n    A,\n]:`` therefore cuts
         off at the unindented ``]:`` line. When the captured block has
         unbalanced brackets, consume further lines until balance reaches 0.
+
+
+        Returns:
+            The original or extended source block with balanced brackets.
         """
         cls = FlextInfraUtilitiesRopeBracketBalanceMixin
         balance = cls._bracket_balance_total(block)

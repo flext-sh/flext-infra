@@ -1,8 +1,12 @@
-"""Tooling phase tests for deps modernizer."""
+"""Tooling phase tests for deps modernizer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import tomlkit
 from flext_tests import tm
@@ -14,12 +18,7 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from tests import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from tests import m
+from tests import m, u
 
 
 class TestsFlextInfraDepsModernizerTooling:
@@ -229,7 +228,22 @@ select = ["E501"]
         )
         tm.that(
             set(u.Tests.toml_strings(lint_section["ignore"])),
-            eq=set(tool_config_document.tools.ruff.lint.ignore),
+            # mro-wkii.17.26.2 (codex): prove that documented global policy
+            # exceptions propagate from tooling.yaml into generated projects.
+            eq={
+                *tool_config_document.tools.ruff.lint.ignore,
+                *tool_config_document.tools.ruff.lint.ignored_rule_rationales,
+            },
+        )
+        pydoclint = u.Tests.toml_mapping(lint_section["pydoclint"])
+        tm.that(
+            pydoclint["ignore-one-line-docstrings"],
+            eq=tool_config_document.tools.ruff.lint.pydoclint.ignore_one_line_docstrings,
+        )
+        pydocstyle = u.Tests.toml_mapping(lint_section["pydocstyle"])
+        tm.that(
+            pydocstyle["convention"],
+            eq=tool_config_document.tools.ruff.lint.pydocstyle.convention,
         )
         isort = u.Tests.toml_mapping(lint_section["isort"])
         tm.that(

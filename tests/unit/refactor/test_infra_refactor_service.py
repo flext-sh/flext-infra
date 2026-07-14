@@ -9,8 +9,8 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.refactor.service import FlextInfraRefactorService
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraRefactorInfraRefactorService:
@@ -52,7 +52,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
         config_path = tmp_path / "settings.yml"
         config_path.write_text("session: test\n", encoding="utf-8")
         (rules_dir / "rules.yml").write_text(
-            "\nrules:\n  - id: custom-pattern-rule\n    enabled: true\n    fix_action: remove_redundant_casts\n".strip()
+            "\nrules:\n  - id: custom-pattern-rule\n    enabled: true\n    fix_action: rope_remove_redundant_casts\n".strip()
             + "\n",
             encoding="utf-8",
         )

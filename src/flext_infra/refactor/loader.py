@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, t
-
-if TYPE_CHECKING:
-    from flext_infra import p
+from flext_infra import c, p, t
 
 
 class FlextInfraRefactorRuleLoader:
@@ -17,12 +13,10 @@ class FlextInfraRefactorRuleLoader:
 
     def __init__(self, config_path: Path) -> None:
         """Initialize loader state with one config path."""
-        self.config_path = config_path
         # NOTE (multi-agent): orchestrator dispatch/scope mixins pass this
         # mapping to u.Infra.collect_refactor_*_files; it is populated by
         # load_config() and must stay on the loader (commit 0d1e1b7d dropped
         # it and broke those call sites).
-        self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
@@ -34,15 +28,13 @@ class FlextInfraRefactorRuleLoader:
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Load YAML configuration for this refactor session."""
         result = u.Cli.rules_load_scoped_config(
-            self.config_path,
+            settings_path,
             scope_key=c.Infra.RK_REFACTOR,
             allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
         )
         if result.success:
-            self.settings = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                dict(result.value)
-            )
-            u.Cli.info(f"Loaded settings from {self.config_path}")
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(dict(result.value))
+            u.Cli.info(f"Loaded settings from {settings_path}")
         return result
 
     def load_rules(
@@ -58,7 +50,7 @@ class FlextInfraRefactorRuleLoader:
                 c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
             ]
         ] = u.Cli.rules_load_local_definitions(
-            self.config_path,
+            settings_path,
             package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
             rule_filters=self.rule_filters,
             rule_catalog=c.Infra.RULE_MATCHERS_BY_KIND,

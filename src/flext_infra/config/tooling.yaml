@@ -52,24 +52,22 @@ Infra:
           # mro-j47u (codex): banned API messages are policy data, never template literals.
           banned-api:
             argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
-            click: "Use flext_cli.cli application, registration, execution, and invocation\
+            click:
+              "Use flext_cli.cli application, registration, execution, and invocation\
               \ methods."
             rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
             typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
+          # mro-wkii.17.26.2 (codex): unreviewed exceptions stay disabled until
+          # the operator evaluates and explicitly authorizes each rule.
           ignore:
+            - ANN202
             - B009
             - B010
             - B017
             - BLE001
             - C901
-            - COM812
-            - CPY001
-            - D203
-            - D213
             - D401
             - D417
-            - ANN202
-            - DOC201
             - DOC202
             - DOC402
             - DOC501
@@ -78,10 +76,11 @@ Infra:
             - ERA001
             - FBT003
             - G004
+            - I001
             - N805
-            - N813
             - N816
             - PIE790
+            - PLC0415
             - PLR0904
             - PLR0911
             - PLR0912
@@ -91,132 +90,150 @@ Infra:
             - PLR0917
             - PLR1702
             - PLR6301
-            - PLW2901
             - PLW0108
+            - PLW2901
             - PLW3201
             - PYI042
             - Q000
-            - S608
             - RUF001
             - RUF002
             - RUF003
             - RUF005
-            - TC001
-            - TC002
-            - TC003
+            - S608
             - TRY003
             - TRY300
             - TRY301
             - UP040
             - W293
           ignored-rule-rationales:
-            I001: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory semantic
-              c-t-p-m-u dependency order in FLEXT facades.
-            PLC0415: Public facade models are imported lazily only at validation and construction
-              sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
+            COM812:
+              Ruff Formatter is the canonical owner of trailing-comma layout and Ruff warns
+              that enabling COM812 alongside the formatter creates conflicting fixes.
+            N813:
+              FLEXT namespace classes intentionally bind canonical lowercase facade and
+              focused namespace aliases; class-style local names would erase their namespace
+              semantics without improving runtime or type safety.
+            TC001:
+              Application imports remain runtime-visible unless a proven dependency cycle
+              requires TYPE_CHECKING; annotation-only use does not justify hiding them.
+            TC002:
+              Third-party imports remain runtime-visible unless a proven dependency cycle
+              requires TYPE_CHECKING; annotation-only use does not justify hiding them.
+            TC003:
+              Standard-library imports remain runtime-visible unless a proven dependency cycle
+              requires TYPE_CHECKING; annotation-only use does not justify hiding them.
+            TC004:
+              Runtime imports are never moved across TYPE_CHECKING by Ruff; only proven import
+              cycles or reverse dependencies determine that architectural boundary.
           isort:
             combine-as-imports: true
             force-single-line: false
             split-on-trailing-comma: false
+          # mro-wkii.17.26.2 (codex): keep DOC201 active for multiline
+          # docstrings while accepting complete PEP 257 one-line summaries.
+          pydoclint:
+            ignore-one-line-docstrings: true
+          # mro-wkii.17.26.2 (codex): Google style selects the PEP 257-aligned
+          # D211/D212 pair instead of the incompatible D203/D213 alternatives.
+          pydocstyle:
+            convention: google
           per-file-ignores:
             "**/.vulture_whitelist.py": [ALL]
-            "**/*dispatcher*": []
-            "**/*docs*": [INP001, S404, S603, T201]
-            "**/*exceptions*": [A001, S105, SLF001]
-            "**/*handlers*": []
-            "**/*instrumentation*": [C901, FBT001, SLF001]
-            "**/*loggings*": [PLW0603, PLR0904]
-            "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
-            "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
-            "**/*oracle*": [DTZ007]
-            "**/*result*": [PLC2701, SLF001]
-            "**/*runtime*": []
-            "**/*scripts*":
-              - EXE001
-              - FIX002
-              - INP001
-              - PLR0911
-              - PLR0912
-              - PLR0915
-              - PLR2004
-              - PLW2901
-              - S105
-              - S107
-              - S404
-              - S603
-              - T201
-              - TID252
-            "**/*service*": [N815, S404, S603, SLF001, PLC2801]
-            "**/*subprocess_utils*": [S404, S603]
-            "**/*typings*": [ANN401]
-            "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
-            "**/__init__.py":
-              - A004
-              - ANN401
-              - D107
-              - F401
-              - F403
-              - F405
-              - F822
-              - INP001
-              - N999
-              - PLC2701
-              - RUF067
-              - TC004
-            "**/_utilities/parser.py": [ARG004, FBT001]
-            "**/settings.py": [ANN401, FBT001, SLF001]
-            "**/_constants/*.py": [S105]
-            "**/constants.py": [S105]
-            "**/container.py": [ANN401, SLF001]
-            "**/context.py": []
-            "**/file_tools.py": [D102]
-            "**/managers.py": [S105]
-            "**/models.py": [PLC2801, S102, S105]
-            "**/output.py":
-              - FBT001
-            # FLEXT config/settings namespaces are deliberately PascalCase
-            # (config.<Namespace> / settings.<Namespace>). Protocol properties
-            # must preserve that exact public member name; N802 models functions,
-            # not namespace-shaped protocol attributes.
-            "**/_config.py": [N802]
-            "**/_protocols/*.py": [N802]
-            "**/flext_cli/_protocols/framework.py": [A002]
-            "**/_settings.py":
-              - N802
-            # flext-cli is the single framework-adapter owner. Direct Click,
-            # Typer, and Rich imports stay banned in every consumer while the
-            # owning boundary must import those libraries to expose the facade.
-            "**/flext_cli/_utilities/formatters.py": [TID251]
-            "**/flext_cli/_utilities/framework.py": [A002, TID251]
-            "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
-            "**/providers/*.py": [S106, S107]
-            "**/services/prompts.py": [D102, D107]
-            "**/singer/*.py": [S404, S603]
-            "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-            "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-            "**/alert_manager*.py": [S310]
-            "**/external_command*.py": [S404, S603]
-            "**/orchestrator*.py": [S404, S603]
-            "**/protocol_impls/*.py": [SLF001]
-            "**/typings.py": [RUF036]
-            "**/workspace/*.py": [S404, S603, S607]
+            "**/*_pb2*.py": [ALL]
+          #  "**/*dispatcher*": []
+          #  "**/*docs*": [INP001, S404, S603, T201]
+          #  "**/*exceptions*": [A001, S105, SLF001]
+          #  "**/*handlers*": []
+          #  "**/*instrumentation*": [C901, FBT001, SLF001]
+          #  "**/*loggings*": [PLW0603, PLR0904]
+          #  "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
+          #  "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
+          #  "**/*oracle*": [DTZ007]
+          #  "**/*result*": [PLC2701, SLF001]
+          #  "**/*runtime*": []
+          #  "**/*scripts*":
+          #    - EXE001
+          #    - FIX002
+          #    - INP001
+          #    - PLR0911
+          #    - PLR0912
+          #    - PLR0915
+          #    - PLR2004
+          #    - PLW2901
+          #    - S105
+          #    - S107
+          #    - S404
+          #    - S603
+          #    - T201
+          #    - TID252
+          #  "**/*service*": [N815, S404, S603, SLF001, PLC2801]
+          #  "**/*subprocess_utils*": [S404, S603]
+          #  "**/*typings*": [ANN401]
+          #  "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
+          #  "**/__init__.py":
+          #    - A004
+          #    - ANN401
+          #    - D107
+          #    - F401
+          #    - F403
+          #    - F405
+          #    - F822
+          #    - INP001
+          #    - N999
+          #    - PLC2701
+          #    - RUF067
+          #    - TC004
+          #  "**/_utilities/parser.py": [ARG004, FBT001]
+          #  "**/settings.py": [ANN401, FBT001, SLF001]
+          #  "**/_constants/*.py": [S105]
+          #  "**/constants.py": [S105]
+          #  "**/container.py": [ANN401, SLF001]
+          #  "**/context.py": []
+          #  "**/file_tools.py": [D102]
+          #  "**/managers.py": [S105]
+          #  "**/models.py": [PLC2801, S102, S105]
+          #  "**/output.py":
+          #    - FBT001
+          #  # FLEXT config/settings namespaces are deliberately PascalCase
+          #  # (config.<Namespace> / settings.<Namespace>). Protocol properties
+          #  # must preserve that exact public member name; N802 models functions,
+          #  # not namespace-shaped protocol attributes.
+          #  "**/_config.py": [N802]
+          #  "**/_protocols/*.py": [N802]
+          #  "**/flext_cli/_protocols/framework.py": [A002]
+          #  "**/_settings.py":
+          #    - N802
+          #  # flext-cli is the single framework-adapter owner. Direct Click,
+          #  # Typer, and Rich imports stay banned in every consumer while the
+          #  # owning boundary must import those libraries to expose the facade.
+          #  "**/flext_cli/_utilities/formatters.py": [TID251]
+          #  "**/flext_cli/_utilities/framework.py": [A002, TID251]
+          #  "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
+          #  "**/providers/*.py": [S106, S107]
+          #  "**/services/prompts.py": [D102, D107]
+          #  "**/singer/*.py": [S404, S603]
+          #  "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+          #  "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+          #  "**/alert_manager*.py": [S310]
+          #  "**/external_command*.py": [S404, S603]
+          #  "**/orchestrator*.py": [S404, S603]
+          #  "**/protocol_impls/*.py": [SLF001]
+          #  "**/typings.py": [RUF036]
+          #  "**/workspace/*.py": [S404, S603, S607]
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^legado(?:/|$)
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         disabled-error-codes:
-          arg-type: Public p.Result values widen only in Mypy; Pyright and Pyrefly retain
-            T.
+          arg-type: Public p.Result values widen only in Mypy; Pyright and Pyrefly retain T.
           assignment: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
           attr-defined: PEP 562 facade members inherited through MRO are invisible to Mypy.
           call-arg: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
           misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
           name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.
-          no-any-return: Facade returns widen to Any only in Mypy; Pyright and Pyrefly resolve
-            them.
-          no-redef: Canonical c-t-p-m-u facades intentionally rebind their inherited short
-            alias.
+          no-any-return: Facade returns widen to Any only in Mypy; Pyright and Pyrefly resolve them.
+          no-redef: Canonical c-t-p-m-u facades intentionally rebind their inherited short alias.
           prop-decorator: Mypy loses Pydantic computed-field descriptors across composed MRO.
           type-var: Mypy 1.20 drops T from inherited p.ResultLike; the direct owner passes.
           unreachable: Mypy over-narrows facade values and rejects live defensive guards.
@@ -295,9 +312,11 @@ Infra:
           reportUnknownVariableType: "none"
           reportUnusedImport: "none"
         global-suppression-rationales:
-          reportAssignmentType: Pyright rejects the canonical class-alias rebind after MRO
+          reportAssignmentType:
+            Pyright rejects the canonical class-alias rebind after MRO
             facade composition although runtime and the other analyzers resolve it.
-          reportGeneralTypeIssues: Pyright groups the same valid MRO facade alias rebind under
+          reportGeneralTypeIssues:
+            Pyright groups the same valid MRO facade alias rebind under
             its broad general diagnostic in every execution environment.
         source-env-suppressions:
           reportReturnType: "none"

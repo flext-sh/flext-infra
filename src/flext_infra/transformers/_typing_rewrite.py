@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import t
 
 
 class FlextInfraRefactorTypingUnifierRewriteMixin:

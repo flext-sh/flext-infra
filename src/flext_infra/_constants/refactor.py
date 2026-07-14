@@ -7,15 +7,13 @@ from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 from flext_core import c
+from flext_infra import t
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 def _build_namespace_file_to_family(
@@ -176,14 +174,14 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
             (
                 frozenset({
                     "convert_dict_to_mapping_annotations",
-                    "fix_silent_failure_sentinels",
+                    "rope_fix_silent_failure_sentinels",
                 }),
                 frozenset(),
                 frozenset(),
                 frozenset(),
             ),
             (
-                frozenset({"remove_redundant_casts"}),
+                frozenset({"rope_remove_redundant_casts"}),
                 frozenset(),
                 frozenset(),
                 frozenset({RK_REDUNDANT_TYPE_TARGETS}),

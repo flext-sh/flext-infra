@@ -9,8 +9,8 @@ from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraDepsInternalSyncResolve:

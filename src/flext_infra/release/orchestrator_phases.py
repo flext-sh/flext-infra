@@ -6,18 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.release._orchestrator_publish import (
     FlextInfraReleaseOrchestratorPublishMixin,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
 
 logger = u.fetch_logger(__name__)
 

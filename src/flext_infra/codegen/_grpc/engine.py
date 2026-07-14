@@ -5,13 +5,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, r, t, u
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._grpc.render import FlextInfraCodegenGrpcRenderMixin
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 # mro-wkii.17.26 (codex): protoc exclusively owns protobuf and gRPC semantics.

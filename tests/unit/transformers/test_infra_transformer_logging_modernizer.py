@@ -9,8 +9,8 @@ from flext_infra.transformers.logging_modernizer import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from collections.abc import Sequence
+
 
 
 def _transform(source: str) -> str:

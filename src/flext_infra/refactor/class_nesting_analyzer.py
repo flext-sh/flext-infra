@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import MutableMapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-
-    from flext_infra import p
 
 
 class FlextInfraRefactorClassNestingAnalyzer:

@@ -6,8 +6,8 @@ from tests import c
 from tests import m
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraUtilitiesscanning:

@@ -6,8 +6,8 @@ from tests import c
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _run_git(repo: Path, *args: str) -> None:

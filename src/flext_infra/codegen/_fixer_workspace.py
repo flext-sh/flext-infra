@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, t, u
 from flext_infra.codegen._fixer_passes import FlextInfraCodegenFixerPassesMixin
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
 
 
 class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):

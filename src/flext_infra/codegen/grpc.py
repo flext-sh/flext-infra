@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_infra import r, t, u
+from flext_infra import p, r, t, u
 from flext_infra.base import s
 from flext_infra.codegen._grpc.engine import FlextInfraCodegenGrpcEngineMixin
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 # mro-wkii.17.26 (codex): thin facade applies only validated compiler artifacts.

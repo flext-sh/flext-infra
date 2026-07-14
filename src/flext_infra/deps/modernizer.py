@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._modernizer_constraints import (
     FlextInfraPyprojectModernizerConstraintsMixin,
@@ -20,9 +20,6 @@ from flext_infra.deps._modernizer_payload import (
 from flext_infra.deps._modernizer_run import FlextInfraPyprojectModernizerRunMixin
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizer(

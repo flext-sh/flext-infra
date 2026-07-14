@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
 from flext_infra import c, m, t, u
 from flext_infra.refactor._project_classifier_deps import (
@@ -12,9 +13,6 @@ from flext_infra.refactor._project_classifier_deps import (
 from flext_infra.refactor._project_classifier_family import (
     FlextInfraProjectClassifierFamilyMixin,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraProjectClassifier(

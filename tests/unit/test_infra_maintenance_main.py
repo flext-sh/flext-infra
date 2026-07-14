@@ -17,8 +17,8 @@ from flext_tests import tm
 from flext_infra import main as infra_main
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -5,12 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c, u
-
-if TYPE_CHECKING:
-    from flext_infra import t, p
+from flext_infra import c, p, t, u
 
 
 class FlextInfraSkillRuleRunnerMixin:

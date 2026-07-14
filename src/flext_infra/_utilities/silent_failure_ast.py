@@ -268,7 +268,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
                     f"{result_name}.error or {failure_label!r})\n"
                 ),
             )
-            fix_action = "fix_silent_failure_sentinels"
+            fix_action = "rope_fix_silent_failure_sentinels"
         self._add_finding(
             line=return_node.lineno,
             column=return_node.col_offset,
@@ -301,7 +301,7 @@ class _SilentFailureAstVisitor(ast.NodeVisitor):
                     f"str({exception_name}), exception={exception_name})\n"
                 ),
             )
-            fix_action = "fix_silent_failure_sentinels"
+            fix_action = "rope_fix_silent_failure_sentinels"
         self._add_finding(
             line=return_node.lineno,
             column=return_node.col_offset,

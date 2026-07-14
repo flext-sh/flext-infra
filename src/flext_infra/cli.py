@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, p, t, u
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
@@ -16,9 +16,6 @@ from flext_infra._constants.cli_routes import (
 )
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
 
 
 class FlextInfraCli(type(cli_facade)):

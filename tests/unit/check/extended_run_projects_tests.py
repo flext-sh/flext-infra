@@ -15,8 +15,8 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestRunProjectsPublicBehavior:

@@ -13,16 +13,12 @@ import shutil
 import time
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_core import e
-from flext_infra import c, c as core_c, m, u
+from flext_infra import c, e, m, p, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.smells import smell_fixer_for
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
-
-if TYPE_CHECKING:
-    from flext_infra import t, p
 
 
 class FlextInfraSmellsGate(FlextInfraGate):

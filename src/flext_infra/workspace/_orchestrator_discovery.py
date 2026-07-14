@@ -6,23 +6,20 @@ main public orchestrator facade.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from pathlib import Path
+from typing import Protocol
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, m, p, t, u
 from flext_infra.workspace.sync import FlextInfraSyncService
 
-if TYPE_CHECKING:
-    from pathlib import Path
 
-    from flext_infra import m, p, t
+class _WorkspaceOrchestratorProtocol(Protocol):
+    @property
+    def root(self) -> Path: ...
 
-    class _WorkspaceOrchestratorProtocol(Protocol):
-        @property
-        def root(self) -> Path: ...
-
-        @property
-        def project_names(self) -> t.StrSequence | None: ...
+    @property
+    def project_names(self) -> t.StrSequence | None: ...
 
 
 class FlextInfraWorkspaceOrchestratorDiscoveryMixin:

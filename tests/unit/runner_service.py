@@ -9,8 +9,8 @@ from flext_tests import r
 from tests import t
 from tests import u
 
-if TYPE_CHECKING:
-    from tests import p
+from tests import p
+
 
 
 class RealSubprocessRunner:

@@ -20,10 +20,10 @@ from tests import c
 from tests import m
 from tests import t
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import p
+from tests import p
+
 
 
 @pytest.fixture

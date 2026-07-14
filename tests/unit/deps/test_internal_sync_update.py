@@ -9,9 +9,9 @@ from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncServi
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
-    from pathlib import Path
+from collections.abc import Generator
+from pathlib import Path
+
 
 _REPO_URL: Final[str] = "https://github.com/flext-sh/flext.git"
 

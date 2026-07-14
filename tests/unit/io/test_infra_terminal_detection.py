@@ -7,8 +7,8 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
+from collections.abc import Generator
+
 
 
 class _Stream:

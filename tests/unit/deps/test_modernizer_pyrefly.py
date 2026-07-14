@@ -14,10 +14,10 @@ from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfig
 from tests import t
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import m
+from tests import m
+
 
 
 class TestsFlextInfraModernizerPyrefly:

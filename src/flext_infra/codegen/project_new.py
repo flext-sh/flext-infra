@@ -10,15 +10,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra.base import s
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):

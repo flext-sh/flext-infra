@@ -10,8 +10,8 @@ from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests import c
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraDepsModernizerMain:

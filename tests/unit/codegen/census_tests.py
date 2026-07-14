@@ -18,10 +18,10 @@ from flext_infra.codegen.census import FlextInfraCodegenCensus
 from tests import m
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:

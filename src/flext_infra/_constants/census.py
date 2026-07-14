@@ -1,12 +1,15 @@
-"""Constants for the unified census pipeline — accessed via c.Infra.*."""
+"""Constants for the unified census pipeline — accessed via c.Infra.*.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import t
 
 
 class FlextInfraConstantsCensus:

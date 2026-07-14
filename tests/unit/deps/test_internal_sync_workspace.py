@@ -9,8 +9,8 @@ from flext_cli import cli
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def create_git_repo(tmp_path: Path, name: str) -> Path:

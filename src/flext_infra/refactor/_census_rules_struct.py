@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import m, p, t
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -22,11 +23,6 @@ from flext_infra.detectors.private_import_bypass_detector import (
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusRulesStructMixin:
@@ -430,7 +426,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             if selected_kinds and object_kind not in selected_kinds:
                 continue
             action = detector_violation.fix_action
-            fixable = action == "fix_silent_failure_sentinels"
+            fixable = action == "rope_fix_silent_failure_sentinels"
             violations.append(
                 self._raw_violation(
                     project=project_name,

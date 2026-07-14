@@ -10,8 +10,8 @@ from tests import m
 from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def publish_ctx(

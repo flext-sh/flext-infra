@@ -9,10 +9,10 @@ from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import p
+from tests import p
+
 
 
 class TestsFlextInfraWorkspaceSyncEnvironment:

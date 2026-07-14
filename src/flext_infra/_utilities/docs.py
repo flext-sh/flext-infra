@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._docs_scope_build import (
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):

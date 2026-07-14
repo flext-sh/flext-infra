@@ -16,8 +16,8 @@ from tests import m
 from tests import t
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _create_silent_failure_project(
@@ -73,7 +73,7 @@ class TestSilentFailureDetector:
         tm.that(codes, has="silent-failure-except")
         tm.that(codes, has="silent-failure-unwrap-or")
 
-    def test_fix_silent_failure_sentinels_rewrites_deterministic_cases(
+    def test_rope_fix_silent_failure_sentinels_rewrites_deterministic_cases(
         self, tmp_path: Path
     ) -> None:
         project = _create_silent_failure_project(tmp_path)
@@ -82,7 +82,7 @@ class TestSilentFailureDetector:
         try:
             resource = u.Infra.get_resource_from_path(rope_project, file_path)
             tm.that(resource, none=False)
-            updated, changes = u.Infra.fix_silent_failure_sentinels(
+            updated, changes = u.Infra.rope_fix_silent_failure_sentinels(
                 rope_project, resource, apply=False
             )
         finally:

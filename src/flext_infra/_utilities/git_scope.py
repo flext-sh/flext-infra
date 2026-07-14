@@ -8,15 +8,11 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):

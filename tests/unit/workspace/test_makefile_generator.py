@@ -10,10 +10,10 @@ from flext_infra.workspace.workspace_makefile import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from flext_core import FlextTypes as t
+from flext_core import FlextTypes as t
+
 
 
 class TestsFlextInfraWorkspaceMakefileGenerator:

@@ -14,8 +14,8 @@ from flext_infra.detectors.manual_protocol_detector import (
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from tests import m
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:

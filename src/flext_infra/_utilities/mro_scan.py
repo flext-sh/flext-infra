@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
+from flext_infra import t
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra._utilities.mro_scan_catalog import FlextInfraUtilitiesMroScanCatalog
 from flext_infra._utilities.mro_scan_source import FlextInfraUtilitiesMroScanSource
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesRefactorMroScan:

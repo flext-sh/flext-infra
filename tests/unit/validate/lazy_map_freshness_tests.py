@@ -20,10 +20,10 @@ from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFre
 from tests import m
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 @pytest.fixture

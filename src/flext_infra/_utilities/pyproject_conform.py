@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, r, t
+from flext_infra import c, p, r, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesPyprojectConform:

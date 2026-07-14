@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.workspace._orchestrator_discovery import (
     FlextInfraWorkspaceOrchestratorDiscoveryMixin,
@@ -13,9 +13,6 @@ from flext_infra.workspace._orchestrator_discovery import (
 from flext_infra.workspace._orchestrator_execution import (
     FlextInfraWorkspaceOrchestratorExecutionMixin,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraOrchestratorService(

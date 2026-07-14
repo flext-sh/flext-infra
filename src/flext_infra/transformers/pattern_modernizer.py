@@ -15,17 +15,14 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):

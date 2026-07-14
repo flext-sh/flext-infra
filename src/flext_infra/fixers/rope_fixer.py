@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_infra import c, m, p, t, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -28,12 +30,6 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import p, t
 
 
 class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
@@ -118,7 +114,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         return {
             "classvar_relocation": self._fix_classvar_relocation,
             "rewrite_compatibility_alias": self._fix_compatibility_alias,
-            "fix_silent_failure_sentinels": self._fix_silent_failure_sentinels,
+            "rope_fix_silent_failure_sentinels": self._rope_fix_silent_failure_sentinels,
             "hoist_inline_import": self._fix_hoist_inline_import,
             "rewrite_private_import_bypass": self._fix_private_import_bypass,
             "rewrite_library_abstraction": self._fix_library_abstraction,
@@ -324,7 +320,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             files_modified=tuple(files_modified),
         )
 
-    def _fix_silent_failure_sentinels(
+    def _rope_fix_silent_failure_sentinels(
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
@@ -350,7 +346,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     )
                     continue
                 try:
-                    _updated, changes = u.Infra.fix_silent_failure_sentinels(
+                    _updated, changes = u.Infra.rope_fix_silent_failure_sentinels(
                         rope_project, resource, apply=ctx.apply
                     )
                 except c.EXC_BROAD_RUNTIME as exc:

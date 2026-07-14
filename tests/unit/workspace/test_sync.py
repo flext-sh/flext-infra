@@ -16,8 +16,8 @@ from tests import t
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import p
+from tests import p
+
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:

@@ -9,8 +9,8 @@ from tests import m
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:

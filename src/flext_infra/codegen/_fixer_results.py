@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 _log = u.fetch_logger(__name__)
 

@@ -8,11 +8,11 @@ from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from tests import t
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
+from collections.abc import Callable
+from pathlib import Path
 
-    from tests import p
+from tests import p
+
 
 
 def _set_toml_sequence(

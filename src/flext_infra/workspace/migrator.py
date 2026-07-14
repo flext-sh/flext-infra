@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.workspace._migrator_artifacts import (
@@ -12,9 +13,6 @@ from flext_infra.workspace._migrator_pyproject import (
     FlextInfraProjectMigratorPyprojectMixin,
 )
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraProjectMigrator(

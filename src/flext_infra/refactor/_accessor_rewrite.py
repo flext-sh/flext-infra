@@ -4,15 +4,11 @@ from __future__ import annotations
 
 import io
 from operator import itemgetter
+from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import c, m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+from flext_infra import c, m, t, u
 
 
 class FlextInfraAccessorMigrationRewriteMixin:

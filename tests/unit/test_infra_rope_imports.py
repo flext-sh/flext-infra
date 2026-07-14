@@ -13,8 +13,8 @@ from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraRopeImports:

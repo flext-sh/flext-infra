@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
 from flext_core import r
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra.base import s
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfra(s[t.JsonDict]):

@@ -11,13 +11,10 @@ preventing caches and ignored workspace state from entering release artifacts.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_infra import c, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraEnsurePackagingPhase:

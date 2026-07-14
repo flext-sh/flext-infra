@@ -10,8 +10,8 @@ from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrche
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 
 class _ImportModernizerHarness:

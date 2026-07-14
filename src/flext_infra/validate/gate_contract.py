@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, m
+from flext_infra import c, m, p
 from flext_infra.base import s
 from flext_infra.validate.gate_contract_checks import FlextInfraGateContractChecksMixin
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
 from flext_infra.validate.gate_contract_report import FlextInfraGateContractReportMixin
 from flext_infra.validate.gate_contract_scan import FlextInfraGateContractScanMixin
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGateContractValidator(

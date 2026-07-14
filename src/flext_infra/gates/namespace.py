@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import c, m, p, t
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t, p
 
 
 class FlextInfraNamespaceGate(FlextInfraGate):

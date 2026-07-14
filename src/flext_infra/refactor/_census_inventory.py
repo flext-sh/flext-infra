@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import p, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, t
+from flext_infra import m, p, t, u
 
 
 class FlextInfraRefactorCensusInventoryMixin:

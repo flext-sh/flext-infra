@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
@@ -25,11 +25,6 @@ from flext_infra.transformers.tier0_import_fixer import (
     FlextInfraTransformerTier0ImportFixer,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
@@ -177,19 +172,21 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         fix_action = u.Cli.json_get_str_key(
             settings_mapping, c.Infra.RK_FIX_ACTION, case="lower"
         )
-        if fix_action == "fix_silent_failure_sentinels":
-            return u.Infra.apply_transformer_to_source(
+        if fix_action == "rope_fix_silent_failure_sentinels":
+            return u.Infra.rope_apply_transformer_to_source(
                 source,
                 file_path,
-                lambda rope_project, resource: u.Infra.fix_silent_failure_sentinels(
-                    rope_project, resource, apply=True
+                lambda rope_project, resource: (
+                    u.Infra.rope_fix_silent_failure_sentinels(
+                        rope_project, resource, apply=True
+                    )
                 ),
             )
-        if fix_action == "remove_redundant_casts":
-            return u.Infra.apply_transformer_to_source(
-                source, file_path, self._remove_redundant_casts
+        if fix_action == "rope_remove_redundant_casts":
+            return u.Infra.rope_apply_transformer_to_source(
+                source, file_path, self._rope_remove_redundant_casts
             )
-        return u.Infra.apply_transformer_to_source(
+        return u.Infra.rope_apply_transformer_to_source(
             source, file_path, self._replace_mapping_annotations
         )
 
@@ -218,7 +215,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
         if fix_action != "replace_object_annotations":
             return (source, list[str]())
-        return u.Infra.apply_transformer_to_source(
+        return u.Infra.rope_apply_transformer_to_source(
             source, file_path, self._replace_object_annotations
         )
 
@@ -235,11 +232,11 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return (updated_source, ["Replaced annotation: t.JsonValue -> t.JsonValue"])
 
     @staticmethod
-    def _remove_redundant_casts(
+    def _rope_remove_redundant_casts(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.Infra.TransformResult:
         """Remove redundant casts."""
-        updated_source, count = u.Infra.remove_redundant_cast(
+        updated_source, count = u.Infra.rope_remove_redundant_cast(
             rope_project, resource, apply=True
         )
         if count == 0:
@@ -307,7 +304,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 settings.get(c.Infra.RK_CORE_PACKAGE, c.Infra.PKG_CORE_UNDERSCORE)
             ),
         )
-        return u.Infra.apply_transformer_to_source(
+        return u.Infra.rope_apply_transformer_to_source(
             source, file_path, transformer.transform
         )
 

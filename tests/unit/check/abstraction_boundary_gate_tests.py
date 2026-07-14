@@ -14,10 +14,10 @@ from flext_tests import tm
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:

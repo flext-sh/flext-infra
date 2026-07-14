@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraRefactorRopeStubs:

@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
+import tokenize
 from io import StringIO
 from pathlib import Path
-import tokenize
-from typing import TYPE_CHECKING
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, t
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):

@@ -1,4 +1,8 @@
-"""Public contract tests for canonical lazy-init artifact rendering."""
+"""Public contract tests for canonical lazy-init artifact rendering.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -24,9 +28,12 @@ class TestsFlextInfraCodegenGeneration:
         *,
         eager_dunders: t.LazyAliasMap | None = None,
         child_packages: t.StrSequence = (),
+        production: bool = True,
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
-        package_dir = workspace_root / current_pkg.replace(".", "/")
+        package_dir = workspace_root.joinpath(
+            *((c.Infra.DEFAULT_SRC_DIR,) if production else ()), *current_pkg.split(".")
+        )
         return m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
                 pkg_dir=package_dir,
@@ -216,8 +223,10 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
         tm.that(init_content, lacks="install_lazy_exports")
 
-    def test_wrapper_surface_roots_use_lazy_initializers(self, tmp_path: Path) -> None:
-        """Use one PEP 562 contract at tests, examples, and scripts roots."""
+    def test_wrapper_surface_roots_use_static_initializers(
+        self, tmp_path: Path
+    ) -> None:
+        """Use direct sibling exports at tests, examples, and scripts roots."""
         for surface, class_name in (
             ("tests", "TestsDemo"),
             ("examples", "ExamplesDemo"),
@@ -231,21 +240,19 @@ class TestsFlextInfraCodegenGeneration:
                     class_name: (f"{surface}.demo", class_name),
                     "r": ("flext_core", "r"),
                 }),
+                production=False,
             )
 
             init_content = FlextInfraCodegenGeneration.render_init(plan)
 
             compile(init_content, f"{surface}/__init__.py", "exec")
-            tm.that(init_content, contains=f'".demo": ("{class_name}",)')
-            tm.that(init_content, contains='"flext_core": ("r",)')
+            tm.that(
+                init_content, contains=f"from .demo import {class_name} as {class_name}"
+            )
+            tm.that(init_content, contains="from flext_core import r as r")
             tm.that(init_content, contains=f'    "{class_name}",')
             tm.that(init_content, contains='    "r",')
-            tm.that(init_content, contains="install_lazy_exports")
-            runtime_prelude, type_checking_contract = init_content.split(
-                "if TYPE_CHECKING:", maxsplit=1
-            )
-            tm.that(runtime_prelude, lacks=f"from .demo import {class_name}")
-            tm.that(type_checking_contract, contains=f"from .demo import {class_name}")
+            tm.that(init_content, lacks="install_lazy_exports")
 
     def test_root_type_checking_alias_uses_named_local_facade(
         self, tmp_path: Path

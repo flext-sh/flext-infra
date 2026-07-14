@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import difflib
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import c, m, p, t, u
+from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import c, p, t
-    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 
 
 class FlextInfraRefactorOrchestratorDispatchMixin:

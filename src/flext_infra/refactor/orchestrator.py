@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.refactor._orchestrator_dispatch import (
     FlextInfraRefactorOrchestratorDispatchMixin,
 )
@@ -15,14 +16,9 @@ from flext_infra.refactor.file_executor import (
     FlextInfraClassNestingPostCheckGate,
     FlextInfraRefactorFileExecutor,
 )
+from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
-    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 
 _log = u.fetch_logger(__name__)
 

@@ -11,14 +11,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, m, p, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-
-if TYPE_CHECKING:
-    from flext_infra import m, p
 
 
 class FlextInfraProjectMakefileUpdater:

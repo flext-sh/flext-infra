@@ -8,8 +8,8 @@ from flext_infra import c, t
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _apply_rule(
@@ -106,7 +106,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
             source,
             {
                 "id": "remove-validated-redundant-casts",
-                "fix_action": "remove_redundant_casts",
+                "fix_action": "rope_remove_redundant_casts",
                 "redundant_type_targets": ["m.ConfigMap"],
             },
         )
@@ -121,7 +121,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
             source,
             {
                 "id": "remove-validated-redundant-casts",
-                "fix_action": "remove_redundant_casts",
+                "fix_action": "rope_remove_redundant_casts",
                 "redundant_type_targets": ["type"],
             },
         )
@@ -136,7 +136,7 @@ class TestsFlextInfraRefactorInfraRefactorPatternCorrections:
             source,
             {
                 "id": "remove-validated-redundant-casts",
-                "fix_action": "remove_redundant_casts",
+                "fix_action": "rope_remove_redundant_casts",
                 "redundant_type_targets": ["type"],
             },
         )

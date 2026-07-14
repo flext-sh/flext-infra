@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
-from flext_infra import c, u
+from flext_infra import c, m, p, t, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, p, t
 
 
 class FlextInfraDocBuilder(FlextInfraDocServiceBase):

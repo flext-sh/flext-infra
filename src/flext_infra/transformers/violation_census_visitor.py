@@ -6,14 +6,9 @@ Replaces CST visitor with regex-based detection for governance violations
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraViolationCensusVisitor:

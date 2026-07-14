@@ -13,8 +13,8 @@ from flext_tests import tm
 
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 _V = FlextInfraManualCommandValidator
 

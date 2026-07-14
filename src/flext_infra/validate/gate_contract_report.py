@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraGateContractReportMixin:

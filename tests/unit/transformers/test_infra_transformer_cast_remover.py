@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+from collections.abc import Sequence
+
 
 
 def _transform(source: str) -> tuple[str, Sequence[str]]:

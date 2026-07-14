@@ -9,14 +9,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraUtilitiesLogParser:

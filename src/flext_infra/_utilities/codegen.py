@@ -1,4 +1,8 @@
-"""Codegen utilities composition for the infrastructure namespace."""
+"""Codegen utilities composition for the infrastructure namespace.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -28,6 +32,10 @@ class FlextInfraUtilitiesCodegen:
         builds the context (base-import block) and renders fail-closed via
         ``u.Cli.template_render``. A render failure is a real incident and
         surfaces via ``unwrap`` (no silent fallback).
+
+
+        Returns:
+            The rendered module source.
         """
         if base_class.startswith("FlextTests"):
             base_import_block = f"from flext_tests import {base_class}\n\n"

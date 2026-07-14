@@ -13,8 +13,8 @@ import flext_infra as infra_pkg
 from tests.base import s
 from tests import c
 
-if TYPE_CHECKING:
-    from types import ModuleType
+from types import ModuleType
+
 
 
 class TestsFlextInfraPublicApi:

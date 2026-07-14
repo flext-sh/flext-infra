@@ -8,8 +8,8 @@ from tests import c
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:

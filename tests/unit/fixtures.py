@@ -17,9 +17,9 @@ from tests import c
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import m
-    from tests import t
+from tests import m
+from tests import t
+
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 

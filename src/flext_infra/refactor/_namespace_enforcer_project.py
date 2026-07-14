@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, m, u
+from flext_infra import config, m, t, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -36,12 +38,6 @@ from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraNamespaceEnforcerProjectMixin:

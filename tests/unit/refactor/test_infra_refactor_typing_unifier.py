@@ -7,8 +7,8 @@ from flext_infra import c
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 
 class FlextInfraRefactorTypingUnificationRule:

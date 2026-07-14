@@ -19,14 +19,11 @@ from __future__ import annotations
 
 import shlex
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, p, t, u
 from flext_infra.base import s
-
-if TYPE_CHECKING:
-    from flext_infra import p, t
 
 
 class FlextInfraManualCommandValidator(s[bool]):

@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, m, p, t
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-
-if TYPE_CHECKING:
-    from flext_infra import m, p, t
 
 
 class FlextInfraRefactorService:
@@ -19,8 +15,8 @@ class FlextInfraRefactorService:
 
     def __init__(self, config_path: Path | None = None) -> None:
         """Initialize the composed refactor services."""
-        self.config_path = config_path or Path(__file__).parent / "settings.yml"
-        self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
+        settings_path = config_path or Path(__file__).parent / "settings.yml"
+        self.rule_loader = FlextInfraRefactorRuleLoader(settings_path)
         self.orchestrator = FlextInfraRefactorOrchestrator(
             self.rule_loader, safety_manager=FlextInfraRefactorSafetyManager()
         )

@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
+from flext_infra import c, m, p
 
 
 class FlextInfraUtilitiesGithubPrSingleMixin:

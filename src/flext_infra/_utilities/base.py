@@ -7,14 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra.constants import c
+from flext_infra.protocols import p
 from flext_infra.typings import t
-
-if TYPE_CHECKING:
-    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesBase:
@@ -71,6 +68,10 @@ class FlextInfraUtilitiesBase:
         unknown phase is a usage failure listing the valid phases. Shared by the
         orchestrator, check and validate groups so WHAT resolution lives in one
         place.
+
+
+        Returns:
+            A result containing the resolved phase sequence or an invalid-phase error.
         """
         phases = c.Infra.WHAT_PHASES.get(verb, frozenset())
         if not phase:

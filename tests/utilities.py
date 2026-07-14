@@ -24,10 +24,10 @@ from tests import m
 from tests import p
 from tests import t
 
-if TYPE_CHECKING:
-    from tomlkit import TOMLDocument
+from tomlkit import TOMLDocument
 
-    from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.gates.base_gate import FlextInfraGate
+
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):

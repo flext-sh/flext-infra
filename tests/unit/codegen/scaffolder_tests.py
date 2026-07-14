@@ -17,9 +17,9 @@ from flext_tests import tm
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from tests import u
 
-if TYPE_CHECKING:
-    from tests import m
-    from tests import t
+from tests import m
+from tests import t
+
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:

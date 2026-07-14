@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _write_pyproject(project_root: Path, content: str) -> None:

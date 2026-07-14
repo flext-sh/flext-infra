@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    # mro-wkii.17.26.2 (codex): m is annotation-only here; importing the
+    # model facade at runtime closes the proven p -> m initialization cycle.
     from flext_infra import m
 
 

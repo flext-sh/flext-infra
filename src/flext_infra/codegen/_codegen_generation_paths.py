@@ -1,13 +1,12 @@
-"""Path and publication helpers for lazy-init generation."""
+"""Path and publication helpers for lazy-init generation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import c
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraCodegenGenerationPathsMixin:
@@ -125,7 +124,9 @@ class FlextInfraCodegenGenerationPathsMixin:
         """Format a generated package docstring."""
         label = current_pkg.replace("_", " ").replace("-", " ").strip()
         package_name = " ".join(word.capitalize() for word in label.split())
-        return f'"""{package_name} package."""'
+        # NOTE (multi-agent, mro-wkii.17.26.2): keep generated initializers
+        # CPY001-clean at the rendering origin instead of patching artifacts.
+        return f'"""{package_name} package.\n\n{c.Infra.PYTHON_COPYRIGHT_NOTICE}\n"""'
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationPathsMixin"]

@@ -8,8 +8,8 @@ from flext_infra import main as infra_main
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_main_returns_zero_on_help() -> None:

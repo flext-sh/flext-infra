@@ -9,12 +9,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    # mro-wkii.17.26.2 (codex): these names are annotation-only reverse
+    # edges; runtime imports create the proven p -> m/t facade cycle.
     from collections.abc import Iterator
     from pathlib import Path
 
-    from flext_infra import t
     from flext_cli import p
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 @runtime_checkable

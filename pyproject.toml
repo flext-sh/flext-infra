@@ -553,66 +553,78 @@ quote-style = "double"
 skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
-# FLEXT Ruff suppression rationale (validated against semantic facet order):
-# FLEXT ruff[I001]: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory semantic c-t-p-m-u dependency order in FLEXT facades.
-# FLEXT ruff[PLC0415]: Public facade models are imported lazily only at validation and construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
+# FLEXT ruff[COM812]: Ruff Formatter owns trailing-comma layout; the lint conflicts with it.
+# FLEXT ruff[N813]: Canonical lowercase facade and namespace aliases are intentional.
+# FLEXT ruff[TC001]: Application imports stay at runtime unless a proven cycle requires TYPE_CHECKING.
+# FLEXT ruff[TC002]: Third-party imports stay at runtime unless a proven cycle requires TYPE_CHECKING.
+# FLEXT ruff[TC003]: Standard-library imports stay at runtime unless a proven cycle requires TYPE_CHECKING.
+# FLEXT ruff[TC004]: Ruff never moves imports across an architecture-owned TYPE_CHECKING boundary.
 ignore = [
-  "ANN202",
-  "B009",
-  "B010",
-  "B017",
-  "BLE001",
-  "C901",
-  "COM812",
-  "CPY001",
-  "D203",
-  "D213",
-  "D401",
-  "D417",
-  "DOC201",
-  "DOC202",
-  "DOC402",
-  "DOC501",
-  "DOC502",
-  "E501",
-  "ERA001",
-  "FBT003",
-  "G004",
-  "I001",
-  "N805",
-  "N813",
-  "N816",
-  "PIE790",
-  "PLC0415",
-  "PLR0904",
-  "PLR0911",
-  "PLR0912",
-  "PLR0913",
-  "PLR0914",
-  "PLR0915",
-  "PLR0917",
-  "PLR1702",
-  "PLR6301",
-  "PLW0108",
-  "PLW2901",
-  "PLW3201",
-  "PYI042",
-  "Q000",
-  "RUF001",
-  "RUF002",
-  "RUF003",
-  "RUF005",
-  "S608",
-  "TC001",
-  "TC002",
-  "TC003",
-  "TRY003",
-  "TRY300",
-  "TRY301",
-  "UP040",
-  "W293",
+   "ANN202",
+   "B009",
+   "B010",
+   "B017",
+   "BLE001",
+   "C901",
+#   "CPY001",
+   "D401",
+   "D417",
+#   "DOC201",
+   "DOC202",
+   "DOC402",
+   "DOC501",
+   "DOC502",
+   "E501",
+   "ERA001",
+   "FBT003",
+   "G004",
+   "I001",
+   "N805",
+   "COM812",
+   "N813",
+   "N816",
+   "PIE790",
+   "PLC0415",
+   "PLR0904",
+   "PLR0911",
+   "PLR0912",
+   "PLR0913",
+   "PLR0914",
+   "PLR0915",
+   "PLR0917",
+   "PLR1702",
+   "PLR6301",
+   "PLW0108",
+   "PLW2901",
+   "PLW3201",
+   "PYI042",
+   "Q000",
+   "RUF001",
+   "RUF002",
+   "RUF003",
+   "RUF005",
+   "S608",
+   "TC001",
+   "TC002",
+   "TC003",
+   "TC004",
+   "TRY003",
+   "TRY300",
+   "TRY301",
+   "UP040",
+   "W293",
 ]
 select = [ "ALL" ]
+
+# mro-wkii.17.26.2 (codex): keep DOC201 active for multiline docstrings while
+# accepting complete PEP 257 one-line summaries.
+[tool.ruff.lint.pydoclint]
+ignore-one-line-docstrings = true
+
+# mro-wkii.17.26.2 (codex): Google style enforces the PEP 257-aligned
+# D211/D212 pair and excludes the incompatible D203/D213 alternatives.
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.argparse]
 msg = "Use cli.register_result_command + Pydantic model from flext_cli."
@@ -659,79 +671,79 @@ split-on-trailing-comma = false
 [tool.ruff.lint.per-file-ignores]
 "**/.vulture_whitelist.py" = [ "ALL" ]
 "**/*_pb2*.py" = [ "ALL" ]
-"**/*dispatcher*" = [  ]
-"**/*docs*" = [ "INP001", "S404", "S603", "T201" ]
-"**/*exceptions*" = [ "A001", "S105", "SLF001" ]
-"**/*handlers*" = [  ]
-"**/*instrumentation*" = [ "C901", "FBT001", "SLF001" ]
-"**/*loggings*" = [ "PLR0904", "PLW0603" ]
-"**/*middleware*" = [ "ANN401", "FBT001", "FBT002", "PLC2801", "S107" ]
-"**/*models*" = [ "ANN401", "FBT001", "PLC2701", "PLR0206", "PLW0603" ]
-"**/*oracle*" = [ "DTZ007" ]
-"**/*result*" = [ "PLC2701", "SLF001" ]
-"**/*runtime*" = [  ]
-"**/*scripts*" = [
-  "EXE001",
-  "FIX002",
-  "INP001",
-  "PLR0911",
-  "PLR0912",
-  "PLR0915",
-  "PLR2004",
-  "PLW2901",
-  "S105",
-  "S107",
-  "S404",
-  "S603",
-  "T201",
-  "TID252",
-]
-"**/*service*" = [ "N815", "PLC2801", "S404", "S603", "SLF001" ]
-"**/*subprocess_utils*" = [ "S404", "S603" ]
-"**/*typings*" = [ "ANN401" ]
-"**/*utilities*" = [ "C901", "E402", "PLC2801", "PLW1510", "S404", "S603" ]
-"**/__init__.py" = [
-  "A004",
-  "ANN401",
-  "D107",
-  "F401",
-  "F403",
-  "F405",
-  "F822",
-  "INP001",
-  "N999",
-  "PLC2701",
-  "RUF067",
-  "TC004",
-]
-"**/_config.py" = [ "N802" ]
-"**/_constants/*.py" = [ "S105" ]
-"**/_protocols/*.py" = [ "N802" ]
-"**/_settings.py" = [ "N802" ]
-"**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
-"**/alert_manager*.py" = [ "S310" ]
-"**/constants.py" = [ "S105" ]
-"**/container.py" = [ "ANN401", "SLF001" ]
-"**/context.py" = [  ]
-"**/external_command*.py" = [ "S404", "S603" ]
-"**/file_tools.py" = [ "D102" ]
-"**/flext_cli/_protocols/framework.py" = [ "A002" ]
-"**/flext_cli/_utilities/formatters.py" = [ "TID251" ]
-"**/flext_cli/_utilities/framework.py" = [ "A002", "TID251" ]
-"**/managers.py" = [ "S105" ]
-"**/models.py" = [ "PLC2801", "S102", "S105" ]
-"**/orchestrator*.py" = [ "S404", "S603" ]
-"**/output.py" = [ "FBT001" ]
-"**/plugins/*.py" = [ "FBT001", "FBT002", "S404", "S603", "S607", "TID252" ]
-"**/protocol_impls/*.py" = [ "SLF001" ]
-"**/providers/*.py" = [ "S106", "S107" ]
-"**/services/prompts.py" = [ "D102", "D107" ]
-"**/settings.py" = [ "ANN401", "FBT001", "SLF001" ]
-"**/singer/*.py" = [ "S404", "S603" ]
-"**/tools/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]
-"**/tools/**/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]
-"**/typings.py" = [ "RUF036" ]
-"**/workspace/*.py" = [ "S404", "S603", "S607" ]
+# "**/*dispatcher*" = [  ]
+# "**/*docs*" = [ "INP001", "S404", "S603", "T201" ]
+# "**/*exceptions*" = [ "A001", "S105", "SLF001" ]
+# "**/*handlers*" = [  ]
+# "**/*instrumentation*" = [ "C901", "FBT001", "SLF001" ]
+# "**/*loggings*" = [ "PLR0904", "PLW0603" ]
+# "**/*middleware*" = [ "ANN401", "FBT001", "FBT002", "PLC2801", "S107" ]
+# "**/*models*" = [ "ANN401", "FBT001", "PLC2701", "PLR0206", "PLW0603" ]
+# "**/*oracle*" = [ "DTZ007" ]
+# "**/*result*" = [ "PLC2701", "SLF001" ]
+# "**/*runtime*" = [  ]
+# "**/*scripts*" = [
+#   "EXE001",
+#   "FIX002",
+#   "INP001",
+#   "PLR0911",
+#   "PLR0912",
+#   "PLR0915",
+#   "PLR2004",
+#   "PLW2901",
+#   "S105",
+#   "S107",
+#   "S404",
+#   "S603",
+#   "T201",
+#   "TID252",
+# ]
+# "**/*service*" = [ "N815", "PLC2801", "S404", "S603", "SLF001" ]
+# "**/*subprocess_utils*" = [ "S404", "S603" ]
+# "**/*typings*" = [ "ANN401" ]
+# "**/*utilities*" = [ "C901", "E402", "PLC2801", "PLW1510", "S404", "S603" ]
+# "**/__init__.py" = [
+#   "A004",
+#   "ANN401",
+#   "D107",
+#   "F401",
+#   "F403",
+#   "F405",
+#   "F822",
+#   "INP001",
+#   "N999",
+#   "PLC2701",
+#   "RUF067",
+#   "TC004",
+# ]
+# "**/_config.py" = [ "N802" ]
+# "**/_constants/*.py" = [ "S105" ]
+# "**/_protocols/*.py" = [ "N802" ]
+# "**/_settings.py" = [ "N802" ]
+# "**/_utilities/parser.py" = [ "ARG004", "FBT001" ]
+# "**/alert_manager*.py" = [ "S310" ]
+# "**/constants.py" = [ "S105" ]
+# "**/container.py" = [ "ANN401", "SLF001" ]
+# "**/context.py" = [  ]
+# "**/external_command*.py" = [ "S404", "S603" ]
+# "**/file_tools.py" = [ "D102" ]
+# "**/flext_cli/_protocols/framework.py" = [ "A002" ]
+# "**/flext_cli/_utilities/formatters.py" = [ "TID251" ]
+# "**/flext_cli/_utilities/framework.py" = [ "A002", "TID251" ]
+# "**/managers.py" = [ "S105" ]
+# "**/models.py" = [ "PLC2801", "S102", "S105" ]
+# "**/orchestrator*.py" = [ "S404", "S603" ]
+# "**/output.py" = [ "FBT001" ]
+# "**/plugins/*.py" = [ "FBT001", "FBT002", "S404", "S603", "S607", "TID252" ]
+# "**/protocol_impls/*.py" = [ "SLF001" ]
+# "**/providers/*.py" = [ "S106", "S107" ]
+# "**/services/prompts.py" = [ "D102", "D107" ]
+# "**/settings.py" = [ "ANN401", "FBT001", "SLF001" ]
+# "**/singer/*.py" = [ "S404", "S603" ]
+# "**/tools/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]
+# "**/tools/**/*.py" = [ "FBT001", "FBT002", "N802", "S404", "S603", "S607", "T201" ]
+# "**/typings.py" = [ "RUF036" ]
+# "**/workspace/*.py" = [ "S404", "S603", "S607" ]
 
 # [MANAGED] tomlsort
 [tool.tomlsort]

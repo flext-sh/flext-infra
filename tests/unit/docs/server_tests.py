@@ -17,8 +17,8 @@ from tests import m
 from tests import u as tu
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _write_mkdocs_yml(scope_path: Path) -> None:

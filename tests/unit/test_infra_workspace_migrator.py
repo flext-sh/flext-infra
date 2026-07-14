@@ -8,11 +8,11 @@ from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import m
-    from tests import t
+from tests import m
+from tests import t
+
 
 
 class TestsFlextInfraInfraWorkspaceMigrator:

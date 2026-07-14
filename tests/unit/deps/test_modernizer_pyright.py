@@ -12,10 +12,10 @@ from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfig
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import m
+from tests import m
+
 
 
 class TestsFlextInfraDepsModernizerPyright:

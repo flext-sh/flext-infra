@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import ClassVar
 
-from flext_infra import c, m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraGate(ABC):

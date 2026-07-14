@@ -8,13 +8,9 @@ from __future__ import annotations
 
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraCyclicImportDetector:

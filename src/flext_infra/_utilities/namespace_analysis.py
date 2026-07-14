@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c
+from flext_infra import c, m, t
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import m, t
 
 
 class FlextInfraUtilitiesRefactorNamespaceMro(

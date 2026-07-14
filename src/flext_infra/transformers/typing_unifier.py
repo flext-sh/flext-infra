@@ -19,9 +19,10 @@ constants — no ``ast`` parsing or tree walking is required:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
@@ -29,11 +30,6 @@ from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraRefactorTypingUnifier(

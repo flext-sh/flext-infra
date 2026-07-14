@@ -8,17 +8,14 @@ it from the local facade instead of from flext_core.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 import libcst as cst
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class _CstImportHelpers:

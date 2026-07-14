@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+from flext_infra import t, u
 
 
 class FlextInfraRefactorMROMigrationValidator:

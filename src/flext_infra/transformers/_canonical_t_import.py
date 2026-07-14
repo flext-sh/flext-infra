@@ -6,13 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, u
 from flext_infra.transformers import _header
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraEnsureCanonicalTImportMixin:

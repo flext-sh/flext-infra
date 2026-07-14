@@ -14,8 +14,8 @@ from flext_tests import tm
 from flext_infra import m, u
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraLooseObjectCharacterization:

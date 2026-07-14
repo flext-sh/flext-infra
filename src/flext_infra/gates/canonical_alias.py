@@ -8,9 +8,10 @@ project's own facade modules.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, t, u
 from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
@@ -18,11 +19,6 @@ from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t, p
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):

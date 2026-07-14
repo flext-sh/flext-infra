@@ -351,7 +351,7 @@ class FlextInfraUtilitiesRopeSource:
         return source, total
 
     @staticmethod
-    def remove_redundant_cast(
+    def rope_remove_redundant_cast(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
@@ -366,7 +366,7 @@ class FlextInfraUtilitiesRopeSource:
         return new_source, count
 
     @staticmethod
-    def rewrite_source_at_offsets(
+    def rope_rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         changes: t.SequenceOf[tuple[int, int, str]],
@@ -383,7 +383,7 @@ class FlextInfraUtilitiesRopeSource:
         return source
 
     @classmethod
-    def fix_silent_failure_sentinels(
+    def rope_fix_silent_failure_sentinels(
         cls,
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
@@ -411,13 +411,13 @@ class FlextInfraUtilitiesRopeSource:
         changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
         if not changes:
             return source, []
-        updated = cls.rewrite_source_at_offsets(
+        updated = cls.rope_rewrite_source_at_offsets(
             rope_project, resource, changes, apply=apply
         )
         return updated, [f"Replaced {len(changes)} silent failure sentinel return(s)"]
 
     @classmethod
-    def apply_transformer_to_source(
+    def rope_apply_transformer_to_source(
         cls, source: str, file_path: Path, transformer_fn: t.Infra.RopeTransformFn
     ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""

@@ -10,8 +10,8 @@ from flext_infra.workspace.workspace_makefile import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:

@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    # mro-j47u (codex): retained only until the remaining get_ast consumers are
-    # converted atomically; this import never enters the runtime dependency graph.
+    # mro-wkii.17.26.2 (codex): Rope protocol annotations are reverse edges;
+    # importing p/t at runtime creates the proven t -> p -> t facade cycle.
     import ast
 
     from flext_infra import p, t

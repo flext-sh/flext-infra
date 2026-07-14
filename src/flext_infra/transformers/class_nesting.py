@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import textwrap
 from collections import defaultdict
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_infra import c, u
+from flext_infra import c, m, t, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-
-if TYPE_CHECKING:
-    from flext_infra import m, t
 
 
 class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):

@@ -12,8 +12,8 @@ from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from tests import TestsFlextInfraUtilities as u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestBanditAndMarkdownGates:

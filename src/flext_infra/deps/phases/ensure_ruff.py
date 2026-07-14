@@ -1,4 +1,8 @@
-"""Phase: Ensure standard Ruff configuration inline with known-first-party overlay."""
+"""Phase: Ensure standard Ruff configuration inline with known-first-party overlay.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -115,6 +119,25 @@ class FlextInfraEnsureRuffConfigPhase:
                 ),
             )
             .nested(c.Infra.LINT_SECTION, values=lint_nested_values)
+            # mro-wkii.17.26.2 (codex): emit the canonical DOC201 scope while
+            # preserving the rule for every multiline docstring.
+            .nested(
+                c.Infra.LINT_SECTION,
+                "pydoclint",
+                values=(
+                    (
+                        "ignore-one-line-docstrings",
+                        ruff_cfg.lint.pydoclint.ignore_one_line_docstrings,
+                    ),
+                ),
+            )
+            # mro-wkii.17.26.2 (codex): emit the operator-approved Google
+            # docstring convention from the validated tooling SSOT.
+            .nested(
+                c.Infra.LINT_SECTION,
+                "pydocstyle",
+                values=(("convention", ruff_cfg.lint.pydocstyle.convention),),
+            )
             .nested(
                 c.Infra.LINT_SECTION,
                 "flake8-tidy-imports",

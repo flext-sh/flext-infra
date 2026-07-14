@@ -14,12 +14,12 @@ from flext_infra import c, m, p, r, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    import pytest
+import pytest
 
-    from tests import t
+from tests import t
+
 
 
 class TestGateRegistry:

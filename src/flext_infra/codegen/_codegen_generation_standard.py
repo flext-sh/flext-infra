@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra.codegen._codegen_generation_renderers import (
     FlextInfraCodegenGenerationRenderersMixin,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 # mro-wkii.17.26 (codex): Keep lazy loading only at the public package root and
@@ -24,7 +19,6 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return public static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
-        public_names = frozenset(plan.exports)
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         public_exports = frozenset(plan.exports)
         filtered: dict[str, t.StrPair] = {

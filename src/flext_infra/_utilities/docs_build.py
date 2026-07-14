@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, MutableMapping
 from importlib import import_module
-from typing import TYPE_CHECKING
+from pathlib import Path
+from types import ModuleType
 
 from flext_cli import u
-from flext_infra import c, m
+from flext_infra import c, m, p
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-
-if TYPE_CHECKING:
-    from pathlib import Path
-    from types import ModuleType
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsBuild:

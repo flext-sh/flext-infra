@@ -16,10 +16,10 @@ from flext_infra.validate.metadata_discipline import (
 )
 from tests import m
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 @pytest.fixture

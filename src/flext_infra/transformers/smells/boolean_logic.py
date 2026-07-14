@@ -9,17 +9,14 @@ chain itself (``any``/``all`` short-circuit on iterables).
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING, ClassVar, override
+from pathlib import Path
+from typing import ClassVar, override
 
+from flext_infra import m
 from flext_infra.transformers.smells.base import (
     FlextInfraSmellFixer,
     register_smell_fixer,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m
 
 
 class _BooleanSimplifier(ast.NodeTransformer):

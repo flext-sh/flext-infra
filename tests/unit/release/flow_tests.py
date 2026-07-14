@@ -9,8 +9,8 @@ from tests import c
 from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def run_release_main(workspace: Path, *extra: str) -> int:

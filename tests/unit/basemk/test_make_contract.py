@@ -11,8 +11,8 @@ from flext_tests import tm
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests import m, p, u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",

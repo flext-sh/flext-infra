@@ -30,9 +30,9 @@ from flext_infra.transformers.typing_unifier import (
 )
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from pathlib import Path
+from collections.abc import Sequence
+from pathlib import Path
+
 
 
 def _transform(

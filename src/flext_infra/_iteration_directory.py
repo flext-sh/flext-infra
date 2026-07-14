@@ -6,15 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c, config
+from flext_infra import c, config, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesIterationDirectory:

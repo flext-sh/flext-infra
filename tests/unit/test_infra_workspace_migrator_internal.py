@@ -11,8 +11,8 @@ from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
 
-if TYPE_CHECKING:
-    from tests import m
+from tests import m
+
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from flext_infra import main as infra_main
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def basemk_main(argv: list[str]) -> int:

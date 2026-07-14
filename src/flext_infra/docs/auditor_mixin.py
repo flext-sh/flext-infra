@@ -9,14 +9,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c, r, t, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, m
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraDocAuditorMixin:

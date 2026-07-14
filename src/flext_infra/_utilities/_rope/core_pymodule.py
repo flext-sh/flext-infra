@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
+from flext_infra import t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeCorePyModuleMixin:

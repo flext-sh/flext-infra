@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 _DEADLINE_SECONDS = 90.0
 _POLL_INTERVAL_SECONDS = 0.5

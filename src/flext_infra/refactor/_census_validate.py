@@ -5,10 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import u
-
-if TYPE_CHECKING:
-    from flext_infra import m, p, t
+from flext_infra import m, p, t, u
 
 _log = u.fetch_logger(__name__)
 

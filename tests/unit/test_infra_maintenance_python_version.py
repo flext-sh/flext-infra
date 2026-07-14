@@ -17,8 +17,8 @@ from flext_tests import tm
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 _MINOR: int = sys.version_info.minor
 _BAD: int = _MINOR + 1

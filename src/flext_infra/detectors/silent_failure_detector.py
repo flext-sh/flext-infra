@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraSilentFailureDetector:
@@ -69,7 +65,7 @@ class FlextInfraSilentFailureDetector:
 
     @classmethod
     def fixable_kinds(cls) -> frozenset[str]:
-        """Kinds that ``fix_silent_failure_sentinels`` can auto-correct."""
+        """Kinds that ``rope_fix_silent_failure_sentinels`` can auto-correct."""
         return frozenset({"silent-failure-guard", "silent-failure-except"})
 
 

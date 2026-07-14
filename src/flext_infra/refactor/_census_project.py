@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
+from flext_infra import m, t, u
 
 _log = u.fetch_logger(__name__)
 

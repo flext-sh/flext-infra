@@ -12,6 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 if TYPE_CHECKING:
+    # mro-wkii.17.26.2 (codex): every imported facade/type below is used only
+    # by postponed protocol annotations; runtime loading closes p -> m/t.
     from pathlib import Path
     from types import TracebackType
 

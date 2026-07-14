@@ -16,8 +16,8 @@ from flext_tests import tm
 
 from tests import c, m
 
-if TYPE_CHECKING:
-    from tests import t
+from tests import t
+
 
 
 def _violation(

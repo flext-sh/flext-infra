@@ -1,0 +1,56 @@
+# AUTO-GENERATED FILE — Regenerate with: make codegen APPLY=Y
+"""Validate the public config and settings singleton contract.
+
+Copyright (c) {{ year }} {{ author_name }}. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
+
+from flext_tests import tm
+
+from {{ package_name }} import config, settings
+
+
+class Tests{{ class_stem }}ConfigSettingsContract:
+    """Validate canonical, namespaced, Pydantic v2 singleton definitions."""
+
+    def test_root_singletons_are_validated_models(self) -> None:
+        """Require direct public singletons backed by Pydantic models."""
+        tm.that(config, is_=BaseModel)
+        tm.that(settings, is_=BaseSettings)
+
+    def test_namespaces_are_declared_models(self) -> None:
+        """Require the project namespace on both public singletons."""
+        tm.that(type(config).model_fields, has="{{ ns }}")
+        tm.that(type(settings).model_fields, has="{{ ns }}")
+        tm.that(config.{{ ns }}, is_=BaseModel)
+        tm.that(settings.{{ ns }}, is_=BaseModel)
+
+    def test_validation_policies_are_strict(self) -> None:
+        """Require immutable roots and strict owned-domain namespaces."""
+        tm.that(config.model_config.get("extra"), eq="ignore")
+        tm.that(config.model_config.get("frozen"), eq=True)
+        tm.that(settings.model_config.get("extra"), eq="ignore")
+        tm.that(settings.model_config.get("frozen"), eq=True)
+        tm.that(config.{{ ns }}.model_config.get("extra"), eq="forbid")
+        tm.that(config.{{ ns }}.model_config.get("frozen"), eq=True)
+        tm.that(settings.{{ ns }}.model_config.get("extra"), eq="forbid")
+        tm.that(settings.{{ ns }}.model_config.get("frozen"), eq=True)
+
+    def test_legacy_global_loaders_are_absent(self) -> None:
+        """Reject inherited or locally declared singleton intermediaries."""
+        tm.that(
+            any("fetch_global" in base.__dict__ for base in type(config).__mro__),
+            eq=False,
+        )
+        tm.that(
+            any("fetch_global" in base.__dict__ for base in type(settings).__mro__),
+            eq=False,
+        )
+
+
+__all__: tuple[str, ...] = ("Tests{{ class_stem }}ConfigSettingsContract",)

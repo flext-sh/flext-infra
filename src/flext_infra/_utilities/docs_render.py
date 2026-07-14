@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import fnmatch
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra._utilities.resources import FlextInfraUtilitiesResources
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesDocsRender:

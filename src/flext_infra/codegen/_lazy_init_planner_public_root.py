@@ -2,53 +2,25 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import m, p
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
-    """Public root-facade export filtering helpers."""
+    """Publish only symbols owned by direct root modules."""
 
     if TYPE_CHECKING:
-        from pathlib import Path
-
         lazy_init: m.Infra.LazyInitConfig
+        rope_workspace: p.Infra.RopeWorkspaceDsl
 
-        # mro-pulj: this implementation is supplied by PublicApiMixin in the MRO.
-        def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...
-
-        def _public_root_child_packages(
-            self,
-            child_packages: t.StrSequence,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
-        ) -> t.StrSequence: ...
-
-        def _child_packages_without_main_export(
-            self,
-            child_packages: t.StrSequence,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
-        ) -> t.StrSequence: ...
-
-        def _excluded_child_lazy_names(
-            self,
-            child_packages: t.StrSequence,
-            allowed_export_names: frozenset[str],
-            runtime_lazy_names: frozenset[str],
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
-        ) -> t.StrSequence: ...
-
-        def _merged_child_export_names(
-            self, child_package: str, dir_exports: t.MappingKV[str, t.LazyAliasMap]
-        ) -> frozenset[str]: ...
-
-        @staticmethod
-        def _is_internal_root_child_package(child_package: str) -> bool: ...
+    def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:
+        """Return the package-root ABI declared by its existing ``__all__``."""
+        init_path = pkg_dir / c.Infra.INIT_PY
+        if self.rope_workspace.resource(init_path) is None:
+            return frozenset()
+        return frozenset(self.rope_workspace.exports(init_path))
 
     def _filter_public_root_exports(
         self,
@@ -58,90 +30,48 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
-        """Keep only direct public facades in one generated root contract."""
-        explicit_exports = self._root_public_contract_exports(context.pkg_dir)
-        public_children = self._public_root_child_packages(child_packages, dir_exports)
-        child_packages_for_lazy = self._child_packages_without_main_export(
-            public_children, dir_exports
+        """Keep direct public owners and reject stale root contracts."""
+        # mro-wkii.17.26 (codex): a generated root is output, never an input
+        # registry; only a manual root freezes a cutover contract.
+        explicit_exports = (
+            frozenset()
+            if context.generated_init
+            else self._root_public_contract_exports(context.pkg_dir)
         )
+        if explicit_exports:
+            missing_owners = explicit_exports.difference(export_names)
+            if missing_owners:
+                missing = ", ".join(sorted(missing_owners))
+                msg = f"public root contract has no source owner: {missing}"
+                raise ValueError(msg)
         module_export_names = {
             name
             for name, target in lazy_map.items()
-            if (
-                not target[1]
-                and not name.startswith("_")
-                and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
-            )
+            if not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         }
-        governed_root_export_names = {
-            name
-            for name in lazy_map
-            if self._is_public_root_export(
-                name,
-                lazy_map,
-                root_pkg=context.current_pkg,
-                root_namespace_files=self.lazy_init.root_namespace_files,
-                explicit_public_exports=explicit_exports,
-            )
-        }
-        internal_children = tuple(
-            child_package
-            for child_package in child_packages
-            if self._is_internal_root_child_package(child_package)
-        )
-        internal_child_export_names = {
-            child_package.rsplit(".", maxsplit=1)[-1]
-            for child_package in internal_children
-        } | {
-            name
-            for child_package in internal_children
-            for name in self._merged_child_export_names(child_package, dir_exports)
-            if name not in governed_root_export_names
-        }
-        lazy_export_names = frozenset(lazy_map)
         public_export_names = {
             name
-            for name in export_names | (explicit_exports & lazy_export_names)
-            if (name in explicit_exports or name not in internal_child_export_names)
-            # mro-pulj (codex): module-only child bindings are not wildcard
-            # exports unless the closed module-publication contract adds them.
-            and (name in eager_names or bool(lazy_map.get(name, ("", ""))[1]))
-            and (
-                name in eager_names
-                or self._is_public_root_export(
+            for name in export_names
+            if name in eager_names
+            or (
+                name in lazy_map
+                and self._is_public_root_export(
                     name,
                     lazy_map,
                     root_pkg=context.current_pkg,
                     root_namespace_files=self.lazy_init.root_namespace_files,
-                    explicit_public_exports=explicit_exports,
                 )
             )
         } | module_export_names
-        runtime_export_names = public_export_names | {
-            name
-            for name, target in lazy_map.items()
-            if not target[1] and target[0] in public_children
-        }
+        if explicit_exports:
+            public_export_names.intersection_update(explicit_exports)
         filtered_lazy_map = {
             name: target
             for name, target in lazy_map.items()
-            if name in runtime_export_names
+            if name in public_export_names
         }
-        runtime_lazy_names = frozenset(filtered_lazy_map)
-        excluded_lazy_names = self._excluded_child_lazy_names(
-            child_packages_for_lazy,
-            frozenset(public_export_names),
-            runtime_lazy_names,
-            dir_exports,
-        )
-        return (
-            public_export_names,
-            filtered_lazy_map,
-            child_packages_for_lazy,
-            excluded_lazy_names,
-        )
+        return public_export_names, filtered_lazy_map
 
-    @staticmethod
     def _is_public_root_export(
         self,
         name: str,
@@ -150,31 +80,37 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         root_pkg: str,
         root_namespace_files: t.StrSequence,
     ) -> bool:
-        """Return whether a root-facade export belongs in the external API."""
+        """Return whether a root export has one direct canonical owner."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
             return False
+        module_path, attr_name = lazy_map[name]
+        if not attr_name:
+            return name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         if name in c.Infra.ALIAS_NAMES:
             return True
-        module_path = lazy_map[name][0]
-        # NOTE (multi-agent): mro-i6nq.10 keeps private descendants out of root ABI.
         prefix = f"{root_pkg}."
         if not module_path.startswith(prefix):
             return False
         local_module = module_path.removeprefix(prefix)
-        # mro-wkii.17.26 (Codex): descendants never widen the root ABI, even
-        # when their leaf filename matches a runtime singleton convention.
         if "." in local_module:
             return False
         runtime_singleton_export = u.Infra.runtime_singleton_export(
             f"{local_module}.py"
         )
         if runtime_singleton_export is not None:
-            return name == runtime_singleton_export or name in explicit_public_exports
+            return name == runtime_singleton_export
         if local_module.startswith("_"):
             return False
-        if explicit_public_exports:
-            return name in explicit_public_exports
-        return f"{local_module}.py" in root_namespace_files
+        file_name = f"{local_module}.py"
+        if file_name not in root_namespace_files:
+            return False
+        expected_alias = self.lazy_init.public_file_aliases.get(file_name)
+        expected_suffix = self.lazy_init.public_file_suffixes.get(file_name)
+        if name == expected_alias:
+            return True
+        if expected_suffix is not None:
+            return name.endswith(expected_suffix)
+        return True
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerPublicRootMixin"]

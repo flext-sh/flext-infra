@@ -17,8 +17,8 @@ from flext_infra.utilities import u
 from tests import m
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 _PACKAGE_INIT = '''"""Demo package."""
 

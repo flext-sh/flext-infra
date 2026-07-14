@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from pathlib import Path
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraNamespaceEnforcerPhasesMixin:

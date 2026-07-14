@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra.codegen._codegen_generation_imports import (
     FlextInfraCodegenGenerationImportsMixin,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import t
 
 
 class FlextInfraCodegenGenerationTypeCheckingMixin(

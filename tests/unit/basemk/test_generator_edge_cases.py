@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, override
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class _FailingStream(io.StringIO):

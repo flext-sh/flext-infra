@@ -1,9 +1,13 @@
-"""Ruff and Mypy tool configuration models for the deps subpackage."""
+"""Ruff and Mypy tool configuration models for the deps subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
@@ -94,6 +98,29 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
 
+    class RuffPydoclintConfig(m.ArbitraryTypesModel):
+        """Ruff pydoclint settings loaded from YAML."""
+
+        # mro-wkii.17.26.2 (codex): model the operator-approved DOC201 scope
+        # at the canonical tooling boundary instead of suppressing the rule.
+        ignore_one_line_docstrings: Annotated[
+            bool,
+            m.Field(
+                alias="ignore-one-line-docstrings",
+                description="Skip DOC rules for complete one-line docstrings.",
+            ),
+        ]
+
+    class RuffPydocstyleConfig(m.ArbitraryTypesModel):
+        """Ruff pydocstyle settings loaded from YAML."""
+
+        # mro-wkii.17.26.2 (codex): validate the operator-approved docstring
+        # convention at the canonical tooling boundary.
+        convention: Annotated[
+            Literal["google", "numpy", "pep257"],
+            m.Field(description="Docstring convention enforced by Ruff."),
+        ]
+
     class RuffLintConfig(m.ArbitraryTypesModel):
         """Ruff lint settings loaded from YAML."""
 
@@ -119,6 +146,12 @@ class FlextInfraModelsDepsToolConfigLinters:
         ]
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration"
+        )
+        pydoclint: FlextInfraModelsDepsToolConfigLinters.RuffPydoclintConfig = m.Field(
+            description="Ruff pydoclint configuration"
+        )
+        pydocstyle: FlextInfraModelsDepsToolConfigLinters.RuffPydocstyleConfig = (
+            m.Field(description="Ruff pydocstyle configuration")
         )
         per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],

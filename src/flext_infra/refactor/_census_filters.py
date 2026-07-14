@@ -3,12 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
-from flext_infra import m, u
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import m, t, u
 
 
 class FlextInfraRefactorCensusFiltersMixin:

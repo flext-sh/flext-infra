@@ -8,8 +8,8 @@ from tests import m
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:

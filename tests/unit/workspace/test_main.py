@@ -16,8 +16,8 @@ from tests import m
 from tests import t
 from tests import u
 
-if TYPE_CHECKING:
-    from tests import p
+from tests import p
+
 
 
 def _write_project(project_root: Path, name: str) -> None:

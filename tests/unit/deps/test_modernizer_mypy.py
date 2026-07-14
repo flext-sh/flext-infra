@@ -13,8 +13,8 @@ from flext_infra.deps.phases.ensure_pydantic_mypy import (
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from tests import m
+from tests import m
+
 
 
 class TestsFlextInfraDepsModernizerMypy:

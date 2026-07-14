@@ -11,11 +11,11 @@ from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
 from tests import u
 
-if TYPE_CHECKING:
-    from collections.abc import MutableSequence
+from collections.abc import MutableSequence
 
-    from flext_infra import t
-    from tests import p
+from flext_infra import t
+from tests import p
+
 
 
 class RefactorSafetyStub(FlextInfraRefactorSafetyManager):

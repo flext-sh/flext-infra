@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from pathlib import Path
+from typing import ClassVar
 
 from flext_infra import c, m, p, r, t, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraCodegenConsolidatorStepsMixin:
@@ -151,7 +149,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                 workspace=workspace,
                 before_source=backup,
                 edit_fn=lambda: (
-                    u.Infra.rewrite_source_at_offsets(
+                    u.Infra.rope_rewrite_source_at_offsets(
                         rope_project, resource, edits, apply=True
                     ),
                     u.Infra.add_import(

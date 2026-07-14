@@ -5,16 +5,12 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesWorktreeTransaction:

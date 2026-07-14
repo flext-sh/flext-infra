@@ -6,10 +6,11 @@ Uses rope-based analysis and regex source scanning instead of CST visitors.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import MutableMapping
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.refactor._violation_helper_classifier import (
     FlextInfraRefactorViolationHelperClassifierMixin,
 )
@@ -19,12 +20,6 @@ from flext_infra.refactor.class_nesting_analyzer import (
 from flext_infra.transformers.violation_census_visitor import (
     FlextInfraViolationCensusVisitor,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraRefactorViolationAnalyzer(

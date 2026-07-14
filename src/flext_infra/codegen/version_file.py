@@ -14,15 +14,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_core import r
 from flext_core.__version__ import FlextVersion
-from flext_infra import c, u
+from flext_infra import c, p, u
 from flext_infra.base import s
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraCodegenVersionFile(s[bool]):

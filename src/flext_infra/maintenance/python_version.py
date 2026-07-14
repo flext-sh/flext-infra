@@ -17,14 +17,11 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.base import s
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 logger = u.fetch_logger(__name__)
 

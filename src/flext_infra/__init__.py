@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
-
 from flext_infra.__version__ import (
     __author__ as __author__,
     __author_email__ as __author_email__,
@@ -18,6 +17,8 @@ from flext_infra.__version__ import (
     __version_info__ as __version_info__,
 )
 
+# mro-wkii.17.26.2 (codex): root PEP 562 exports need static declarations,
+# while runtime resolution must remain lazy to prevent facade import cycles.
 if TYPE_CHECKING:
     from flext_cli import d as d, e as e, h as h, r as r, x as x
     from flext_infra import basemk as basemk

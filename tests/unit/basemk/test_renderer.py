@@ -9,8 +9,8 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from _pytest.capture import CaptureFixture
+from _pytest.capture import CaptureFixture
+
 
 _MIN_RENDERED_LINES = 400
 

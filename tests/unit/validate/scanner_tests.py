@@ -14,10 +14,10 @@ from flext_tests import tm
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from tests import c
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 def _scanner() -> FlextInfraTextPatternScanner:

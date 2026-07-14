@@ -13,8 +13,8 @@ from flext_tests import tm
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from tests import m
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestAuditorForbiddenTerms:

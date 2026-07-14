@@ -6,19 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._utilities._project_discovery_shape import (
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 )
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(

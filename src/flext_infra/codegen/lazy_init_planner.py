@@ -140,30 +140,20 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         export_names = {*lazy_map, *eager_dunders}
         if is_public_project_root:
-            # mro-wkii.17.26 (codex): one public-root contract owns runtime,
-            # type-checking, and wildcard exports; private descendants stay local.
-            export_names, lazy_map, child_lazy, excluded_lazy_names = (
-                self._filter_public_root_exports(
-                    context=context,
-                    export_names=export_names,
-                    lazy_map=lazy_map,
-                    eager_names=frozenset(eager_dunders),
-                    child_packages=child_lazy,
-                    dir_exports=dir_exports,
-                )
+            # mro-wkii.17.26 (codex): the public root publishes direct owners;
+            # child packages remain independently generated static contracts.
+            export_names, lazy_map = self._filter_public_root_exports(
+                context=context,
+                export_names=export_names,
+                lazy_map=lazy_map,
+                eager_names=frozenset(eager_dunders),
             )
-            excluded_lazy_names = self._excluded_child_lazy_names(
-                child_lazy, frozenset(export_names), frozenset(lazy_map), dir_exports
-            )
+            child_lazy = ()
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
-            action=(
-                c.Infra.LazyInitAction.SKIP
-                if preserve_manual_init
-                else c.Infra.LazyInitAction.WRITE
-            ),
+            action=c.Infra.LazyInitAction.WRITE,
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,

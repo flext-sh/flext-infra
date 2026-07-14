@@ -9,8 +9,8 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import m
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraDepsDetectionDiscover:

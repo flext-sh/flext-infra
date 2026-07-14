@@ -439,6 +439,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/tests/unit/config_settings_contract_tests.py.j2
+          destination: tests/unit/config_settings_contract_tests.py
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
 
     repositories:
       - name: flext

@@ -11,8 +11,8 @@ from tests import p
 from tests import t
 from tests import TestsFlextInfraUtilities as u
 
-if TYPE_CHECKING:
-    from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+
 
 
 class _ReportStub:

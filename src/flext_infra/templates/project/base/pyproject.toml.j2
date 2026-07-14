@@ -345,6 +345,16 @@ select = [
   {{ item | tojson }},
 {% endfor %}
 ]
+
+# mro-wkii.17.26.2 (codex): keep DOC201 active for multiline docstrings while
+# accepting complete PEP 257 one-line summaries across generated projects.
+[tool.ruff.lint.pydoclint]
+ignore-one-line-docstrings = {{ tooling.tools.ruff.lint.pydoclint.ignore_one_line_docstrings | lower }}
+
+# mro-wkii.17.26.2 (codex): render the canonical Google/PEP 257 policy.
+[tool.ruff.lint.pydocstyle]
+convention = {{ tooling.tools.ruff.lint.pydocstyle.convention | tojson }}
+
 {% for name, message in tooling.tools.ruff.lint.banned_api | dictsort %}
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.{{ name }}]

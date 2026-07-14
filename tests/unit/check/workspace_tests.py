@@ -15,8 +15,8 @@ from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u as test_u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestFlextInfraWorkspaceChecker:

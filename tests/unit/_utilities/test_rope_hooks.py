@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import m
+from tests import m
+
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:

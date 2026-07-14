@@ -10,12 +10,12 @@ from flext_tests import tm
 from tests import c
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tomlkit.toml_document import TOMLDocument
+from tomlkit.toml_document import TOMLDocument
 
-    from tests import t
+from tests import t
+
 
 
 @pytest.fixture

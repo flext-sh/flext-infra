@@ -8,10 +8,10 @@ from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 from tests import m
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 
 def _write_file(tmp_path: Path, rel_path: str, source: str) -> Path:

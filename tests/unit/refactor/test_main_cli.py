@@ -14,11 +14,11 @@ from tests import t
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import m
-    from tests import p
+from tests import m
+from tests import p
+
 
 
 def _parse_source_ast(source: str) -> object | None:

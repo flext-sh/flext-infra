@@ -5,12 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_infra import m, p, t
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
-
-if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusRulesDispatchMixin:

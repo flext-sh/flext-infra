@@ -6,8 +6,8 @@ from flext_tests import tm
 
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 class TestsFlextInfraExtraPathsUvSources:

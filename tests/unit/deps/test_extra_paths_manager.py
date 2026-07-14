@@ -8,11 +8,11 @@ from flext_tests import tm
 
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-    from tests import t
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from tests import t
+
 
 
 def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:

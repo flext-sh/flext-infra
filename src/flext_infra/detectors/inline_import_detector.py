@@ -7,12 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, m, t, u
 
 
 class FlextInfraInlineImportDetector:

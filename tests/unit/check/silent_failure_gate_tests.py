@@ -14,10 +14,10 @@ from flext_tests import tm
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
 from tests import u
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
-    from tests import t
+from tests import t
+
 
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"

@@ -12,8 +12,8 @@ from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import u
 from flext_tests import tm
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
+
 
 
 def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:

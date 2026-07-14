@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_infra import u
 
 if TYPE_CHECKING:
+    # mro-wkii.17.26.2 (codex): this back-reference and typing aliases are
+    # annotation-only; runtime loading creates a direct transformer cycle.
     from collections.abc import MutableMapping
 
     from flext_infra import t

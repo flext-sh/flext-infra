@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities._docs_scope_selection import (
     FlextInfraUtilitiesDocsScopeSelectionMixin,
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsScopeBuildMixin(

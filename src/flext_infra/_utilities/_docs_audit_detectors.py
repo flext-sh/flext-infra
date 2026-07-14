@@ -1,20 +1,19 @@
-"""Docs-audit per-issue-type detectors (token/scope/ownership/docstring/codeblock)."""
+"""Docs-audit per-issue-type detectors (token/scope/ownership/docstring/codeblock).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraUtilitiesDocsAuditDetectorsMixin:
@@ -147,6 +146,10 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         and gates each block through ``ruff check --stdin-filename`` (piped
         body bytes — no temp files). Failures land as ``m.Infra.AuditIssue``
         records flowing through the standard audit report pipeline.
+
+
+        Returns:
+            Audit issues found in embedded Python code blocks.
         """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
