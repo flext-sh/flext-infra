@@ -271,7 +271,6 @@ class TestsFlextInfraLazyInitHelpers:
         workspace_root, package_root = self._workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextDemoModels", alias="m"
-            package_root / "models.py", class_name="FlextDemoModels", alias="m"
         )
         utilities_dir = package_root / "_utilities"
         utilities_dir.mkdir()
