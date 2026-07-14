@@ -59,6 +59,7 @@ def _write_workspace(workspace_root: Path) -> tuple[Path, Path]:
             "[project]\n"
             'name = "workspace-root"\n'
             'version = "0.1.0"\n'
+            'requires-python = ">=3.13"\n'
             "\n"
             "[tool.flext.workspace]\n"
             'members = ["demo-a", "demo-b"]\n'
