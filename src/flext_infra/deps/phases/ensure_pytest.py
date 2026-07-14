@@ -32,6 +32,10 @@ class FlextInfraEnsurePytestConfigPhase:
                 pytest.python_files,
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )
+            # mro-wkii.17 (codex): replace stale collection roots and warning bypasses.
+            .list(
+                "testpaths", pytest.test_paths, strategy=c.Infra.TomlMergeMode.REPLACE
+            )
             .list(
                 c.Infra.ADDOPTS,
                 pytest.standard_addopts,
@@ -45,7 +49,7 @@ class FlextInfraEnsurePytestConfigPhase:
             .list(
                 "filterwarnings",
                 pytest.filter_warnings,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .build()
         )

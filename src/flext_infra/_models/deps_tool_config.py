@@ -82,6 +82,14 @@ class FlextInfraModelsDepsToolSettings(
                 description="Canonical pytest test module patterns.",
             ),
         ]
+        # mro-wkii.17 (codex): collection roots are validated config, not local state.
+        test_paths: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="test-paths",
+                description="Canonical tracked roots collected by pytest.",
+            ),
+        ]
         filter_warnings: Annotated[
             t.StrTuple,
             m.Field(

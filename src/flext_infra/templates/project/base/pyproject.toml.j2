@@ -272,6 +272,7 @@ addopts = [
   {{ item | tojson }},
 {% endfor %}
 ]
+{# mro-wkii.17 (codex): deterministic tracked-root collection, warning fail-closed. #}
 filterwarnings = [
 {% for item in tooling.tools.pytest.filter_warnings %}
   {{ item | tojson }},
@@ -290,6 +291,11 @@ python_classes = [
 ]
 python_files = [
 {% for item in tooling.tools.pytest.python_files %}
+  {{ item | tojson }},
+{% endfor %}
+]
+testpaths = [
+{% for item in tooling.tools.pytest.test_paths %}
   {{ item | tojson }},
 {% endfor %}
 ]
