@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import flext_infra
+import pytest
 from flext_infra import c, m, p, r, u as infra_u
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -15,8 +16,6 @@ from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
     from tests import t
 
@@ -140,10 +139,12 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             )
 
         tm.that(updates, none=False)
+        if updates is None:
+            pytest.fail("simple-removal planning returned no source mapping")
         updated_source = updates[module_path.resolve()]
         tm.that(updated_source, lacks="class Helper")
         tm.that(updated_source, has="def after")
-        tm.that(updated_source, lacks="\n\n\n\n")
+        tm.that("\n\n\n\n" in updated_source, eq=False)
 
     def test_build_simple_removal_sources_handle_multiline_class_base_references(
         self, tmp_path: Path
@@ -204,6 +205,8 @@ class TestsFlextInfraRefactorCensusPreviewCache:
             )
 
         tm.that(updates, none=False)
+        if updates is None:
+            pytest.fail("multiline-removal planning returned no source mapping")
         updated_consumer = updates[consumer_path.resolve()]
         tm.that(updated_consumer, lacks="from flext_demo.base import Shared")
         tm.that(updated_consumer, lacks="Shared,")
