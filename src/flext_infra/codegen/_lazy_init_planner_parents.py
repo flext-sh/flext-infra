@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 
-from pathlib import Path
+if TYPE_CHECKING:
+    from pathlib import Path
 
-from flext_infra import p, t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin:
     """Resolve inherited packages from Rope scopes and import names only."""
 
-    rope_workspace: p.Infra.RopeWorkspaceDsl
+    if TYPE_CHECKING:
+        rope_workspace: p.Infra.RopeWorkspaceDsl
 
-    def _module_file(self, module_path: str) -> Path | None: ...
+        def _module_file(self, module_path: str) -> Path | None: ...
 
-    def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
+        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
 
     def _parents_from_constants_module(
         self, module_path: Path, current_pkg: str, visited: set[str] | None = None
