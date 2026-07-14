@@ -70,9 +70,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
                 input_data: bytes | None = None,
-            ) -> p.Result[m.Cli.CommandOutput]:
+            ) -> p.Result[p.Cli.CommandOutput]:
                 del cmd, cwd, timeout, env, remove_env_keys, input_data
-                return self._result
+                if self._result.failure:
+                    return r[p.Cli.CommandOutput].fail(
+                        self._result.error or "Command failed"
+                    )
+                return r[p.Cli.CommandOutput].ok(self._result.value)
 
             @override
             def run(
@@ -82,16 +86,44 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-            ) -> p.Result[m.Cli.CommandOutput]:
+            ) -> p.Result[p.Cli.CommandOutput]:
                 del cmd, cwd, timeout, env, remove_env_keys
                 if self._result.failure:
-                    return self._result
+                    return r[p.Cli.CommandOutput].fail(
+                        self._result.error or "Command failed"
+                    )
                 output = self._result.value
                 if output.exit_code != 0:
-                    return r[m.Cli.CommandOutput].fail(
+                    return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
-                return self._result
+                return r[p.Cli.CommandOutput].ok(output)
+
+            @override
+            def run_bytes(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: bytes | None = None,
+            ) -> p.Result[p.Cli.CommandBytesOutput]:
+                """Return the configured command payload with byte-exact streams."""
+                del cmd, cwd, timeout, env, remove_env_keys, input_data
+                if self._result.failure:
+                    return r[p.Cli.CommandBytesOutput].fail(
+                        self._result.error or "Command failed"
+                    )
+                output = self._result.value
+                return r[p.Cli.CommandBytesOutput].ok(
+                    m.Cli.CommandBytesOutput(
+                        stdout=output.stdout.encode(),
+                        stderr=output.stderr.encode(),
+                        exit_code=output.exit_code,
+                        duration=output.duration,
+                    )
+                )
 
             @override
             def capture(
@@ -221,11 +253,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
                 input_data: bytes | None = None,
-            ) -> p.Result[m.Cli.CommandOutput]:
+            ) -> p.Result[p.Cli.CommandOutput]:
                 """Provide the typed test helper `run_raw`."""
                 self.commands.append(tuple(cmd))
                 del cmd, cwd, timeout, env, remove_env_keys, input_data
-                return self._next_result()
+                result = self._next_result()
+                if result.failure:
+                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
+                return r[p.Cli.CommandOutput].ok(result.value)
 
             @override
             def run(
@@ -235,19 +270,47 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-            ) -> p.Result[m.Cli.CommandOutput]:
+            ) -> p.Result[p.Cli.CommandOutput]:
                 """Provide the typed test helper `run`."""
                 self.commands.append(tuple(cmd))
                 del cmd, cwd, timeout, env, remove_env_keys
                 result = self._next_result()
                 if result.failure:
-                    return result
+                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
                 output = result.value
                 if output.exit_code != 0:
-                    return r[m.Cli.CommandOutput].fail(
+                    return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
-                return result
+                return r[p.Cli.CommandOutput].ok(output)
+
+            @override
+            def run_bytes(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: bytes | None = None,
+            ) -> p.Result[p.Cli.CommandBytesOutput]:
+                """Replay one command result while preserving byte-exact streams."""
+                self.commands.append(tuple(cmd))
+                del cmd, cwd, timeout, env, remove_env_keys, input_data
+                result = self._next_result()
+                if result.failure:
+                    return r[p.Cli.CommandBytesOutput].fail(
+                        result.error or "Command failed"
+                    )
+                output = result.value
+                return r[p.Cli.CommandBytesOutput].ok(
+                    m.Cli.CommandBytesOutput(
+                        stdout=output.stdout.encode(),
+                        stderr=output.stderr.encode(),
+                        exit_code=output.exit_code,
+                        duration=output.duration,
+                    )
+                )
 
         @staticmethod
         def infra_mapping(value: t.Infra.InfraMapping) -> t.Infra.ContainerDict:
