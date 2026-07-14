@@ -72,6 +72,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
+        original_pyrefly: t.Infra.ContainerDict = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root
@@ -102,7 +103,11 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             pyrefly_table = tool_table[c.Infra.PYREFLY]
             if not isinstance(pyrefly_table, MutableMapping):
                 return r[t.StrSequence].fail(f"invalid {path} [tool.pyrefly] table")
+            # mro-wkii.17 (codex): reassign only changed keys so an untouched
+            # nested table retains adjacent managed comments and TOML trivia.
             for key, value in pyrefly.items():
+                if key in original_pyrefly and original_pyrefly[key] == value:
+                    continue
                 pyrefly_table[key] = value
             write_result = u.Cli.toml_write_document(path, doc)
             if write_result.failure:
