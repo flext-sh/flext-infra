@@ -3,48 +3,16 @@ Infra:
     # NOTE(mro-wkii.17.26, agent codex): declarative SSOT targets the canonical 0.20 development branch.
     version: 1
 
-    # mro-wkii.17.26 (codex): compiler/render policy is descriptor-driven data.
+    # mro-wkii.17.26 (codex): normalize only official compiler-owned modules.
     grpc:
-      descriptor_include_imports: true
-      descriptor_hex_line_overhead: 8
-      message_template: grpc_pb2.py.j2
       ruff_safe_fixes: [I, F401, UP009]
-      service_template: grpc_pb2_grpc.py.j2
-      strict_ruff_selectors:
-        - E
-        - F
-        - I
-        - UP
-        - ANN
-        - ARG
-        - B
-        - D102
-        - D103
-        - D107
-        - D202
-        - D401
-        - D413
-        - DTZ
-        - EM
-        - ERA
-        - FBT
-        - N
-        - PERF
-        - PIE
-        - PL
-        - RET
-        - RUF
-        - S
-        - SIM
-        - SLF
-        - TCH
-        - TID
-        - TRY
 
     toolchain:
       python_version: "3.13"
       python_minor_version: "3.13"
       python_required_version: ">=3.13,<3.14"
+      # mro-wkii.17.26 (codex): generated mise pins come from validated config.
+      ruff_version: "0.15.17"
       uv_version: "0.11.28"
       uv_required_version: "==0.11.28"
       uv_link_mode: copy

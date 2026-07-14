@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 from flext_infra.codegen._fixer_passes import FlextInfraCodegenFixerPassesMixin
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,7 +26,9 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         def project_names(self) -> t.StrSequence | None:
             """Normalized selected project names."""
 
-    def _fix_project(self, project: p.Infra.ProjectInfo) -> m.Infra.AutoFixResult:
+    def _fix_project(
+        self, project: p.Infra.ProjectInfo, *, rope_workspace: p.Infra.RopeWorkspaceDsl
+    ) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
         project_layout = u.Infra.layout(project_path)
@@ -45,6 +48,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         self._run_mro_migration(ctx, project_path)
         self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
+        self._run_lint_remediation(ctx, project_path, rope_workspace)
         self._run_lazy_init_regeneration(ctx, project_path)
         # mro-j47u (codex): each fixer owns Ruff-native output; no post-hoc mutation.
         self._classify_remaining_violations(ctx, project_path, initial_violations)
@@ -67,7 +71,14 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
                 if scope
                 else discovered
             )
-        return [self._fix_project(project) for project in selected_projects]
+        # mro-wkii.17.26 (codex): one session indexes every FLEXT project when
+        # invoked from a workspace; standalone roots naturally index only self.
+        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+            _ = rope.workspace_index
+            return [
+                self._fix_project(project, rope_workspace=rope)
+                for project in selected_projects
+            ]
 
 
 __all__: list[str] = ["FlextInfraCodegenFixerWorkspaceMixin"]

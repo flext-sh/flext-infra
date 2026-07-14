@@ -115,9 +115,11 @@ class FlextInfraCodegenGenerationStandardMixin(
         lines: t.MutableSequenceOf[str] = []
         for module, entries in sorted(cls._group_imports(imports).items()):
             relative_module = f".{module.removeprefix(f'{current_pkg}.')}"
-            for export_name, imported_name in sorted(entries):
-                parts = (cls._format_reexport_import_part(imported_name, export_name),)
-                lines.extend(cls._format_import("", relative_module, parts))
+            parts = tuple(
+                cls._format_reexport_import_part(imported_name, export_name)
+                for export_name, imported_name in sorted(entries)
+            )
+            lines.extend(cls._format_import("", relative_module, parts))
         return tuple(lines)
 
     @classmethod
@@ -134,7 +136,7 @@ class FlextInfraCodegenGenerationStandardMixin(
             runtime_import_lines="\n".join(
                 cls._static_import_lines(plan.context.current_pkg, sibling_imports)
             ),
-            exports=tuple(sorted(sibling_imports, key=str.casefold)),
+            exports=tuple(sorted(sibling_imports)),
         )
 
     @classmethod

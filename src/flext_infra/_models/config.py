@@ -45,6 +45,10 @@ class FlextInfraConfigModels:
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
+        # mro-wkii.17.26 (codex): model every generated mise tool pin.
+        ruff_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Ruff version for mise")
+        ]
         uv_version: Annotated[t.NonEmptyStr, m.Field(description="Exact uv version")]
         uv_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 uv required-version expression")
@@ -547,32 +551,13 @@ class FlextInfraConfigModels:
             Path, m.Field(description="Repository-relative manifest path")
         ]
 
-    # mro-wkii.17.26 (codex): descriptor rendering policy is validated data.
+    # mro-wkii.17.26 (codex): official compiler normalization is validated data.
     class GrpcCodegenSpec(_ConfigContract):
-        """Canonical compiler and rendering policy for protobuf modules."""
+        """Canonical normalization policy for official compiler modules."""
 
         ruff_safe_fixes: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ordered safe Ruff fix selectors"),
-        ]
-        descriptor_include_imports: Annotated[
-            bool, m.Field(description="Include imported files in descriptor sets")
-        ]
-        descriptor_hex_line_overhead: Annotated[
-            int,
-            m.Field(
-                ge=0, description="Non-payload characters reserved on descriptor lines"
-            ),
-        ]
-        message_template: Annotated[
-            t.NonEmptyStr, m.Field(description="Typed protobuf message template")
-        ]
-        service_template: Annotated[
-            t.NonEmptyStr, m.Field(description="Typed gRPC service template")
-        ]
-        strict_ruff_selectors: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Positive generated-source lint profile"),
         ]
 
     class CodegenConfigSpec(_ConfigContract):
@@ -702,6 +687,36 @@ class FlextInfraConfigModels:
         operator: Literal["comment"] = m.Field(description="Operator")
         marker: t.NonEmptyStr = m.Field(description="Rejected comment marker")
 
+    # mro-wkii.17.26 (codex): lint remediation is validated rule data; Rope
+    # verifies the configured semantic scope before the closed operator writes.
+    class StaticRuffIssueRule(StaticRule):
+        """Remediate one Ruff diagnostic through a Rope-verified operator."""
+
+        operator: Literal["ruff_issue"] = m.Field(description="Operator")
+        code: t.NonEmptyStr = m.Field(description="Exact Ruff diagnostic code")
+        fix_operator: Literal["insert_test_docstring"] = m.Field(
+            alias="fix-operator", description="Closed remediation operator"
+        )
+        roots: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Allowed project-relative roots"),
+        ]
+        scope_kinds: Annotated[
+            tuple[Literal["function", "method"], ...],
+            m.Field(
+                alias="scope-kinds",
+                min_length=1,
+                description="Allowed Rope semantic object kinds",
+            ),
+        ]
+        name_prefix: t.NonEmptyStr = m.Field(
+            alias="name-prefix", description="Required semantic object-name prefix"
+        )
+        docstring_template: t.NonEmptyStr = m.Field(
+            alias="docstring-template",
+            description="Template rendered from the semantic object summary",
+        )
+
     type StaticRuleSpec = Annotated[
         StaticImportModuleRule
         | StaticImportMemberRule
@@ -711,7 +726,8 @@ class FlextInfraConfigModels:
         | StaticAnnotationRule
         | StaticBareExceptRule
         | StaticAnnotatedStringRule
-        | StaticCommentRule,
+        | StaticCommentRule
+        | StaticRuffIssueRule,
         m.Field(discriminator="operator"),
     ]
 

@@ -155,9 +155,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
         build_system = u.Cli.toml_ensure_table(document, "build-system")
         u.Cli.toml_sync_value(build_system, "build-backend", build.backend)
-        u.Cli.toml_sync_string_list(
-            build_system, "requires", build.requirements
-        )
+        u.Cli.toml_sync_string_list(build_system, "requires", build.requirements)
         tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         hatch = u.Cli.toml_ensure_table(tool, "hatch")
         hatch_build = u.Cli.toml_ensure_table(hatch, "build")
@@ -301,9 +299,7 @@ class FlextInfraUtilitiesPyprojectConform:
         tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
-            u.Cli.toml_sync_string_list(
-                pyrefly, c.Infra.SEARCH_PATH, (".", "src")
-            )
+            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
         mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
         if mypy is not None:
             u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
@@ -311,12 +307,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if pyright is None:
             return r[bool].ok(True)
         u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
-        interpreter_keys = (
-            "venv",
-            "venvPath",
-            "pythonPath",
-            "pythonInterpreterPath",
-        )
+        interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
         for key in interpreter_keys:
             u.Cli.toml_remove_key_if_present(pyright, key)
         raw_environments = u.Cli.json_as_sequence(
@@ -331,9 +322,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
-            normalized[c.Infra.EXTRA_PATHS] = [
-                "src"
-            ] if root == "src" else [".", "src"]
+            normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
             for key in interpreter_keys:
                 normalized.pop(key, None)
             normalized_environments.append(normalized)

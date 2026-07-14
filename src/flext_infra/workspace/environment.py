@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,8 +39,13 @@ class FlextInfraWorkspaceEnvironment:
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
         target_path = workspace_root / c.Infra.ENVRC_FILENAME
+        rendered = cls._render_environment_template(
+            c.Infra.WORKSPACE_ENVRC_TEMPLATE_NAME
+        )
+        if rendered.failure:
+            return r[bool].fail(rendered.error or ".envrc template render failed")
         return cls.write_generated_text(
-            target_path, c.Infra.WORKSPACE_ENVRC_CONTENT, apply=apply, force=force
+            target_path, rendered.value, apply=apply, force=force
         )
 
     @classmethod
@@ -67,14 +72,28 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
-        doc = u.Cli.toml_parse_text(c.Infra.WORKSPACE_MISE_TOML_CONTENT)
+        rendered = cls._render_environment_template(
+            c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
+        )
+        if rendered.failure:
+            return r[str].fail(rendered.error or ".mise.toml template render failed")
+        doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            tools = u.Cli.toml_ensure_table(doc, "tools")
-            tools["python"] = python_version
+        if python_version.failure:
+            return r[str].fail(
+                python_version.error or "workspace Python version resolution failed"
+            )
+        tools = u.Cli.toml_ensure_table(doc, "tools")
+        tools["python"] = python_version.value
         return r[str].ok(u.Cli.toml_dumps(doc))
+
+    @staticmethod
+    def _render_environment_template(template_name: str) -> p.Result[str]:
+        """Render one workspace environment template from validated toolchain data."""
+        template_path = u.Infra.resource_root("templates") / template_name
+        return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
 
     @classmethod
     def merge_custom_mise_toml(
@@ -119,7 +138,12 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
         """Return canonical mise tool pins for one workspace."""
-        mapping = u.Cli.toml_mapping_from_text(c.Infra.WORKSPACE_MISE_TOML_CONTENT)
+        rendered = cls.render_mise_toml(workspace_root)
+        if rendered.failure:
+            return r[dict[str, str]].fail(
+                rendered.error or "canonical .mise.toml render failed"
+            )
+        mapping = u.Cli.toml_mapping_from_text(rendered.value)
         if mapping is None:
             return r[dict[str, str]].fail("canonical .mise.toml template is invalid")
         tools = u.Cli.toml_mapping_child(mapping, "tools")
@@ -132,9 +156,6 @@ class FlextInfraWorkspaceEnvironment:
                     f"canonical .mise.toml [tools].{name} must be a string"
                 )
             pins[name] = value
-        python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            pins["python"] = python_version
         return r[dict[str, str]].ok(pins)
 
     @staticmethod
@@ -144,23 +165,29 @@ class FlextInfraWorkspaceEnvironment:
         return (workspace_root / pyproject_filename).is_file()
 
     @staticmethod
-    def workspace_python_version(workspace_root: Path) -> str | None:
-        """Return the Python minor version declared by ``pyproject.toml``."""
+    def workspace_python_version(workspace_root: Path) -> p.Result[str]:
+        """Resolve the required Python minor version or fail with source context."""
         pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
         pyproject = workspace_root / pyproject_filename
         if not pyproject.is_file():
-            return None
+            return r[str].fail(f"{pyproject}: missing project metadata")
         mapping_result = u.Cli.toml_read_json(pyproject)
         if mapping_result.failure:
-            return None
+            return r[str].fail(
+                mapping_result.error or f"{pyproject}: cannot parse project metadata"
+            )
         project = u.Cli.toml_mapping_child(mapping_result.value, c.Infra.PROJECT)
         if project is None:
-            return None
+            return r[str].fail(f"{pyproject}: missing [project] table")
         requires_python = project.get("requires-python")
         if not isinstance(requires_python, str):
-            return None
+            return r[str].fail(f"{pyproject}: missing project.requires-python")
         match = re.search(r">=\s*(3\.\d+)", requires_python)
-        return match.group(1) if match else None
+        if match is None:
+            return r[str].fail(
+                f"{pyproject}: project.requires-python lacks a >=3.x lower bound"
+            )
+        return r[str].ok(match.group(1))
 
     @classmethod
     def remove_generated_environment_files(
