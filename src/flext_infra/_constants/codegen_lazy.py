@@ -70,6 +70,10 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root import surfaces generated as private lazy plumbing, not public ABI."
+    # mro-pulj (codex): pytest must register fixture plugins before importing
+    # them, so their private package initializer is always side-effect free.
+    PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
+    "Private pytest-plugin package whose generated initializer stays empty."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
@@ -153,8 +157,6 @@ class FlextInfraConstantsCodegenLazy:
     # mro-pulj (codex): these remain direct inline lazy imports without
     # widening the explicit wildcard contract or requiring root sidecars.
     "Public-module symbols withheld from generated root-facade __all__."
-    FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({"settings"})
-    "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",
         "t",

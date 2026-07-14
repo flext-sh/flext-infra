@@ -40,9 +40,8 @@ class TestsFlextInfraLazyInitTransforms:
         )
         tm.that(result, eq=0)
         tm.that(init_content, has="from .mapper import")
-        tm.that(
-            init_content, has="FlextDemoUtilitiesMapper as FlextDemoUtilitiesMapper"
-        )
+        tm.that(init_content, has="from .mapper import FlextDemoUtilitiesMapper")
+        tm.that(init_content, lacks="FlextDemoUtilitiesMapper as FlextDemoUtilitiesMapper")
         tm.that(init_content, has='"FlextDemoUtilitiesMapper"')
         tm.that(init_content, lacks="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
@@ -109,9 +108,14 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(content, has="from flext_demo.__version__ import (")
-        tm.that(content, has="__version__ as __version__")
-        tm.that(content, has="__version_info__ as __version_info__")
+        tm.that(
+            content,
+            has="from flext_demo.__version__ import __version__, __version_info__",
+        )
+        tm.that(content, has="__version__")
+        tm.that(content, has="__version_info__")
+        tm.that(content, lacks="__version__ as __version__")
+        tm.that(content, lacks="__version_info__ as __version_info__")
         # mro-wkii.17 (Codex): version-only roots publish one static initializer.
         tm.that(content, has="__all__: tuple[str, ...]")
         tm.that(content, has='"__version__"')

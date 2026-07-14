@@ -53,6 +53,29 @@ class TestsFlextInfraInfraRopeService:
         finally:
             rope.close()
 
+    def test_open_workspace_indexes_declared_wrapper_packages(
+        self, tmp_path: Path
+    ) -> None:
+        """Expose examples modules for explicitly targeted semantic codegen."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        examples_root = workspace_root / c.Infra.DIR_EXAMPLES
+        examples_root.mkdir()
+        examples_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        module_path = examples_root / "demo.py"
+        module_path.write_text(
+            'class ExamplesDemo:\n    """Example boundary."""\n\n'
+            '__all__ = ["ExamplesDemo"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+            tm.that(rope.workspace_index.package_dirs, has=examples_root)
+            module = rope.module(module_path)
+            tm.that(module, none=False)
+            tm.that(module.module_name if module is not None else "", eq="examples.demo")
+
     def test_public_facade_opens_rope_workspace(self, tmp_path: Path) -> None:
         """Public facade returns the same ergonomic Rope workspace DSL."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)

@@ -53,30 +53,21 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             child_entry = self._package_entry(child_dir)
             is_fixture_child = self._is_fixture_package(child_dir)
             child_exports = dir_exports.get(str(resolved_child_dir), {})
-            if child_entry is None or (
-                not child_entry.package_name
-                and not (is_fixture_child and child_exports)
-            ):
+            if child_entry is None or not child_entry.package_name:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
-            if not is_fixture_child:
-                direct.append(child_entry.package_name)
-                self._add(
-                    lazy_map,
-                    child_entry.package_name.rsplit(".", maxsplit=1)[-1],
-                    (child_entry.package_name, ""),
-                )
+            # mro-pulj (codex): private fixture modules are pytest-owned plugin
+            # boundaries and never bubble into their production package root.
+            if is_fixture_child:
+                continue
+            direct.append(child_entry.package_name)
+            self._add(
+                lazy_map,
+                child_entry.package_name.rsplit(".", maxsplit=1)[-1],
+                (child_entry.package_name, ""),
+            )
             for name, (module_name, attr) in child_exports.items():
-                # NOTE (multi-agent): fixture modules may define a ``settings``
-                # fixture, but the name is owned by the canonical ``_settings``
-                # singleton; bubbling it into the parent map collides (F811)
-                # with the singleton re-export in generated root __init__ files.
-                if (
-                    is_fixture_child
-                    and name in c.Infra.FIXTURE_SINGLETON_COLLISION_EXPORTS
-                ):
-                    continue
                 if (
                     attr
                     and name not in c.Infra.ALIAS_NAMES

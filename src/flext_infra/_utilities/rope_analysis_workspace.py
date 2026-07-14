@@ -64,8 +64,21 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _python_and_stub_file_paths(
         rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[Path, ...]:
-        """Return indexed Python sources plus hand-written typing stubs."""
+        """Return indexed sources, declared wrapper modules, and typing stubs."""
         python_paths = set(FlextInfraUtilitiesRopeCore.python_file_paths(rope_project))
+        # mro-pulj (codex): Rope's source roots omit tests/examples/scripts;
+        # index those declared wrapper surfaces so explicitly targeted codegen
+        # can update their generated initializers without textual fallbacks.
+        wrapper_paths = {
+            path.resolve()
+            for wrapper_name in c.Infra.ROOT_WRAPPER_SEGMENTS
+            for wrapper_root in (resolved_root / wrapper_name,)
+            if wrapper_root.is_dir()
+            for path in wrapper_root.rglob("*.py")
+            if path.is_file()
+            and not set(path.relative_to(resolved_root).parts)
+            & c.Infra.ITERATION_EXCLUDED_PARTS
+        }
         stub_paths = {
             path.resolve()
             for path in resolved_root.rglob("*.pyi")
@@ -74,7 +87,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             & c.Infra.ITERATION_EXCLUDED_PARTS
         }
         return tuple(
-            sorted(python_paths | stub_paths, key=lambda path: path.as_posix())
+            sorted(
+                python_paths | wrapper_paths | stub_paths,
+                key=lambda path: path.as_posix(),
+            )
         )
 
     @classmethod

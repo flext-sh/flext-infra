@@ -112,10 +112,11 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(level_three_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(
             level_four_content,
-            contains="from .worker import FlextTestsWorker as FlextTestsWorker",
+            contains="from .worker import FlextTestsWorker, worker",
         )
         # mro-wkii.17 (Codex): explicit module __all__ owns direct exports.
-        tm.that(level_four_content, contains="from .worker import worker as worker")
+        tm.that(level_four_content, lacks="FlextTestsWorker as FlextTestsWorker")
+        tm.that(level_four_content, lacks="worker as worker")
         tm.that(level_four_content, contains='    "FlextTestsWorker",')
         tm.that(level_four_content, contains='    "worker",')
         tm.that(level_two_content, lacks="FlextTestsWorker")

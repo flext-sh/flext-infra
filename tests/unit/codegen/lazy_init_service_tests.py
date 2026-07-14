@@ -103,6 +103,35 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(child_init.read_bytes(), eq=child_init_before)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
+    def test_explicit_wrapper_target_generates_only_that_initializer(
+        self, tmp_path: Path
+    ) -> None:
+        """Generate a declared examples root without widening default scope."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        production_init = package_root / c.Infra.INIT_PY
+        production_before = production_init.read_bytes()
+        examples_root = workspace_root / c.Infra.DIR_EXAMPLES
+        examples_root.mkdir()
+        examples_init = examples_root / c.Infra.INIT_PY
+        examples_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        examples_root.joinpath("demo.py").write_text(
+            'class ExamplesDemo:\n    """Example boundary."""\n\n'
+            '__all__ = ["ExamplesDemo"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = c.Infra.DIR_EXAMPLES
+        service.apply_changes = True
+
+        result = service.execute()
+        generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        tm.that(result.success, eq=True)
+        tm.that(generated, contains="from .demo import ExamplesDemo")
+        tm.that(generated, lacks="ExamplesDemo as ExamplesDemo")
+        tm.that(production_init.read_bytes(), eq=production_before)
+        tm.that(service.modified_files, eq=(str(examples_init),))
+
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)

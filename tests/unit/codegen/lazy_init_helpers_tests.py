@@ -147,6 +147,39 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(check_service.generate_inits(check_only=True), eq=1)
         tm.that(self._generated_init(package_root), eq=frozen_content)
 
+    def test_direct_import_prefers_public_facade_over_mro_part(
+        self, tmp_path: Path
+    ) -> None:
+        """Bind root imports to the final facade that owns public identity."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        models_dir = package_root / "_models"
+        parts_dir = models_dir / "_base_parts"
+        parts_dir.mkdir(parents=True)
+        for package_dir in (models_dir, parts_dir):
+            package_dir.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+        parts_dir.joinpath("flextdemomodelsbase_part_01.py").write_text(
+            "class FlextDemoModelsBase:\n"
+            '    """Private implementation part."""\n\n'
+            '__all__ = ["FlextDemoModelsBase"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        models_dir.joinpath("base.py").write_text(
+            "from ._base_parts.flextdemomodelsbase_part_01 import "
+            "FlextDemoModelsBase as FlextDemoModelsBasePart01\n\n"
+            "class FlextDemoModelsBase(FlextDemoModelsBasePart01):\n"
+            '    """Public facade."""\n\n'
+            '__all__ = ["FlextDemoModelsBase"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+
+        tm.that(generated, contains='"._models.base": ("FlextDemoModelsBase",)')
+        tm.that(generated, lacks="._models._base_parts.flextdemomodelsbase_part_01")
+
     def test_explicit_all_exports_keep_public_aliases_only(
         self, tmp_path: Path
     ) -> None:

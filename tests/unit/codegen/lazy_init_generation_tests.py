@@ -152,9 +152,30 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import Demo as Demo")
+        tm.that(init_content, contains="from .demo import Demo")
+        tm.that(init_content, lacks="Demo as Demo")
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("Demo",)')
         tm.that(init_content, lacks="Nested")
+        tm.that(init_content, lacks="install_lazy_exports")
+
+    def test_private_fixture_package_initializer_is_side_effect_free(self) -> None:
+        """Keep pytest plugin siblings unloaded until pytest registers them."""
+        plan = self._plan(
+            "demo_pkg._fixtures",
+            ("DemoFixture",),
+            MappingProxyType({
+                "DemoFixture": (
+                    "demo_pkg._fixtures.settings",
+                    "DemoFixture",
+                )
+            }),
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, lacks="from .settings import")
+        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="install_lazy_exports")
 
     def test_non_public_surface_uses_static_initializer(self) -> None:
@@ -168,7 +189,8 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import TestsDemo as TestsDemo")
+        tm.that(init_content, contains="from .demo import TestsDemo")
+        tm.that(init_content, lacks="TestsDemo as TestsDemo")
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("TestsDemo",)')
         tm.that(init_content, lacks="install_lazy_exports")
 

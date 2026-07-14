@@ -115,6 +115,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             name
             for name in export_names | (explicit_exports & lazy_export_names)
             if (name in explicit_exports or name not in internal_child_export_names)
+            # mro-pulj (codex): module-only child bindings are not wildcard
+            # exports unless the closed module-publication contract adds them.
+            and (name in eager_names or bool(lazy_map.get(name, ("", ""))[1]))
             and (
                 name in eager_names
                 or (not explicit_exports and name in child_export_names)

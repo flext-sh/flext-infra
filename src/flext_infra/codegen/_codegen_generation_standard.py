@@ -66,7 +66,7 @@ class FlextInfraCodegenGenerationStandardMixin(
             if previous_top is not None and top != previous_top:
                 eager_lines.append("")
             parts = tuple(
-                cls._format_reexport_import_part(imported_name, export_name)
+                cls._format_import_part(imported_name, export_name)
                 for export_name, imported_name in sorted(eager_groups[module])
                 if imported_name
             )
@@ -123,6 +123,10 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Select explicit symbol exports owned by direct sibling modules."""
         current_pkg = plan.context.current_pkg
+        # mro-pulj (codex): keep the pytest registration boundary free of
+        # eager sibling imports; the public root still owns its lazy exports.
+        if current_pkg.rsplit(".", maxsplit=1)[-1] == c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME:
+            return {}
         prefix = f"{current_pkg}."
         combined = dict(plan.lazy_map)
         combined.update(plan.eager_dunders)
@@ -144,7 +148,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         for module, entries in sorted(cls._group_imports(imports).items()):
             relative_module = f".{module.removeprefix(f'{current_pkg}.')}"
             for export_name, imported_name in sorted(entries):
-                parts = (cls._format_reexport_import_part(imported_name, export_name),)
+                parts = (cls._format_import_part(imported_name, export_name),)
                 lines.extend(cls._format_import("", relative_module, parts))
         return tuple(lines)
 

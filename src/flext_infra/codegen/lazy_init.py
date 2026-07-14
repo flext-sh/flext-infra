@@ -78,12 +78,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         lazy_init = config.Infra.tooling.lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
-            package_dirs = tuple(
+            resolved_workspace_root = self.workspace_root.resolve()
+            indexed_package_dirs = tuple(
                 sorted(
                     (
                         package_dir.resolve()
                         for package_dir in workspace_index.package_dirs
-                        if package_dir.is_relative_to(self.workspace_root.resolve())
+                        if package_dir.is_relative_to(resolved_workspace_root)
                     ),
                     key=lambda path: len(path.parts),
                     reverse=True,
@@ -116,6 +117,52 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     )
                     return 1
                 target_package_dir = sorted_target_dirs[0]
+            if target_package_dir is None:
+                # mro-pulj (codex): default production generation leaves
+                # wrapper surfaces untouched; an explicit --module selects one.
+                package_dirs = tuple(
+                    package_dir
+                    for package_dir in indexed_package_dirs
+                    if not frozenset(
+                        package_dir.relative_to(resolved_workspace_root).parts
+                    )
+                    & c.Infra.NON_PUBLIC_LAZY_ROOTS
+                )
+            else:
+                target_parts = target_package_dir.relative_to(
+                    resolved_workspace_root
+                ).parts
+                boundary_names = frozenset({
+                    c.Infra.DEFAULT_SRC_DIR,
+                    *c.Infra.NON_PUBLIC_LAZY_ROOTS,
+                })
+                boundary_index = next(
+                    (
+                        index
+                        for index, part in enumerate(target_parts)
+                        if part in boundary_names
+                    ),
+                    len(target_parts) - 1,
+                )
+                scope_prefix = target_parts[: boundary_index + 1]
+                project_prefix = target_parts[:boundary_index]
+                production_prefix = (*project_prefix, c.Infra.DEFAULT_SRC_DIR)
+                package_dirs = tuple(
+                    package_dir
+                    for package_dir in indexed_package_dirs
+                    if (
+                        package_dir.relative_to(resolved_workspace_root).parts[
+                            : len(scope_prefix)
+                        ]
+                        == scope_prefix
+                        # mro-pulj (codex): wrapper aliases depend on the same
+                        # project's production plans, consumed read-only.
+                        or package_dir.relative_to(resolved_workspace_root).parts[
+                            : len(production_prefix)
+                        ]
+                        == production_prefix
+                    )
+                )
             duplicates = self._detect_duplicate_class_names(
                 rope, package_dirs=package_dirs
             )

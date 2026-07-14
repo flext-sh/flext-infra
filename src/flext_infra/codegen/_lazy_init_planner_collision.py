@@ -59,6 +59,10 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 3
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
+            # mro-pulj (codex): the final public facade owns the external
+            # class identity; numbered implementation parts only rank among
+            # themselves when no facade candidate exists.
+            score -= 50
             score += int(part_number)
         score -= module_path.count(".")
         final_score: int = score
