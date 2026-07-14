@@ -1,4 +1,4 @@
-"""Unit tests for the pattern smell detector.
+"""Unit tests for declarative Rope static-rule enforcement.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
+from flext_infra import config, u
 from tests import m
 from flext_tests import tm
 
@@ -19,18 +19,20 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraPatternSmellDetector:
-    """Behavior contract for FlextInfraPatternSmellDetector."""
+    """Behavior contract for the public declarative Rope rule engine."""
 
     @staticmethod
     def _kinds(file_path: Path, rope_project: t.Infra.RopeProject) -> set[str]:
-        violations = FlextInfraPatternSmellDetector.detect_file(
-            m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project)
+        violations = u.Infra.detect_static_rules(
+            m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project),
+            config.Infra.enforcement.rules,
         )
         return {v.kind for v in violations}
 
     def test_detects_typing_list_import(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a deprecated ``typing.List`` member import."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\n"
@@ -43,6 +45,7 @@ class TestsFlextInfraPatternSmellDetector:
     def test_detects_typing_list_attr(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a deprecated ``typing.List`` attribute reference."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\n"
@@ -55,6 +58,7 @@ class TestsFlextInfraPatternSmellDetector:
     def test_detects_direct_pydantic_import(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a direct Pydantic import outside its owning project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\nfrom pydantic import BaseModel\n",
@@ -65,6 +69,7 @@ class TestsFlextInfraPatternSmellDetector:
     def test_detects_direct_structlog_import(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a direct Structlog import outside its owning project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\n"
@@ -77,6 +82,7 @@ class TestsFlextInfraPatternSmellDetector:
     def test_detects_direct_oracledb_import(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a direct Oracle DB import outside its owning project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\nimport oracledb\n", encoding="utf-8"
@@ -86,6 +92,7 @@ class TestsFlextInfraPatternSmellDetector:
     def test_detects_direct_ldap3_import(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a direct LDAP import outside its owning project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\nfrom ldap3 import Server\n",
@@ -96,31 +103,35 @@ class TestsFlextInfraPatternSmellDetector:
     def test_exempts_owned_library_in_owning_project(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Exempt a governed dependency inside its declared owning project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\nfrom pydantic import BaseModel\n",
             encoding="utf-8",
         )
-        violations = FlextInfraPatternSmellDetector.detect_file(
+        violations = u.Infra.detect_static_rules(
             m.Infra.DetectorContext(
                 file_path=sample, rope_project=rope_project, project_name="flext-core"
-            )
+            ),
+            config.Infra.enforcement.rules,
         )
-        assert not any(v.kind == "direct_pydantic_import" for v in violations)
+        tm.that(any(v.kind == "direct_pydantic_import" for v in violations), eq=False)
 
     def test_detects_owned_library_in_consumer_project(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Reject a governed dependency inside a non-owning consumer project."""
         sample = tmp_path / "sample.py"
         sample.write_text(
             "from __future__ import annotations\nfrom pydantic import BaseModel\n",
             encoding="utf-8",
         )
-        violations = FlextInfraPatternSmellDetector.detect_file(
+        violations = u.Infra.detect_static_rules(
             m.Infra.DetectorContext(
                 file_path=sample,
                 rope_project=rope_project,
                 project_name="flext-target-ldap",
-            )
+            ),
+            config.Infra.enforcement.rules,
         )
-        assert any(v.kind == "direct_pydantic_import" for v in violations)
+        tm.that(any(v.kind == "direct_pydantic_import" for v in violations), eq=True)
