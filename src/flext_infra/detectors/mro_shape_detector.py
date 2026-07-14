@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core import u
 from flext_infra import m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 

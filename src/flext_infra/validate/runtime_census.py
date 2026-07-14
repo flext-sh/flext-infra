@@ -15,7 +15,7 @@ import inspect
 import pkgutil
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r, u
+from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
 
