@@ -227,6 +227,37 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='"._models.base"')
         tm.that(generated, lacks="._models._base_parts.flextdemomodelsbase_part_01")
 
+    def test_private_package_policy_rejects_numeric_module_names(
+        self, tmp_path: Path
+    ) -> None:
+        """Generate valid private siblings without rendering numeric imports."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        models_dir = package_root / "_models"
+        models_dir.mkdir()
+        models_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        models_dir.joinpath("_shared.py").write_text(
+            "class FlextDemoShared:\n"
+            '    """Private package export."""\n\n'
+            '__all__ = ["FlextDemoShared"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        models_dir.joinpath("01_bad.py").write_text(
+            "class FlextDemoBad:\n"
+            '    """Invalid numeric module export."""\n\n'
+            '__all__ = ["FlextDemoBad"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(models_dir)
+
+        # mro-wkii.17.26 (Codex): policy is authoritative at every depth.
+        tm.that(generated, has="from ._shared import FlextDemoShared")
+        tm.that(generated, lacks="01_bad")
+        tm.that(generated, lacks="FlextDemoBad")
+
     def test_explicit_all_exports_keep_public_aliases_only(
         self, tmp_path: Path
     ) -> None:

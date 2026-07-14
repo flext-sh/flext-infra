@@ -363,11 +363,15 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_root_namespace
         )
         is_private_module = file_path.stem.startswith("_")
+        is_private_package = file_path.parent.name.startswith("_")
         include_in_lazy_init = not file_path.stem[:1].isdigit() and (
             not is_private_module
             or is_fixture_module
             or is_family_package
             or is_root_namespace
+            # mro-wkii.17.26 (Codex): private packages own their valid direct
+            # implementation siblings; numeric module names remain forbidden.
+            or is_private_package
         )
         type_checking_imports = tuple(
             name

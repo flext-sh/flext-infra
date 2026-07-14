@@ -64,27 +64,25 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
                 is not None
             )
-            if (
+            generated_support_module = (
                 py_file.name in skip_names
-                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
-                # mro-pulj (codex): retired root registries are generated
-                # output, never semantic input for their replacement.
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name) is not None
                 or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
+            )
+            shadowed_by_package = child_entry is not None and bool(
+                child_entry.package_name
+            )
+            if (
+                generated_support_module
                 or test_only_source_module
-                or (child_entry is not None and child_entry.package_name)
+                or shadowed_by_package
             ):
                 continue
             convention = self.rope_workspace.convention(
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
-            # mro-wkii.17.26 (codex): an internal package owns a static facade
-            # for direct implementation siblings. This never widens a public
-            # root ABI; root filtering happens after the bottom-up plan.
-            if (
-                not policy.include_in_lazy_init
-                and not context.pkg_dir.name.startswith("_")
-            ) or not module_entry.module_name:
+            if not policy.include_in_lazy_init or not module_entry.module_name:
                 continue
             require_explicit_all = (
                 u.Infra.matches_root_namespace_file(py_file.name)
