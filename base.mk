@@ -127,7 +127,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_WORKSPACE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra workspace
+BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -141,12 +141,8 @@ define ENFORCE_WORKSPACE_VENV
 if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 	if [ -d "$(WORKSPACE_ROOT)/.venv" ]; then \
 		if [ -d ".venv" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-			echo "[preflight] Removing local .venv in $(CURDIR) (workspace venv enforced)"; \
-			rm -rf .venv; \
-			if [ -d ".venv" ]; then \
-				echo "ERROR: [preflight] Unable to remove local .venv in $(CURDIR)"; \
-				exit 1; \
-			fi; \
+			echo "ERROR: [preflight] Project-local .venv violates the workspace environment contract: $(CURDIR)/.venv"; \
+			exit 1; \
 		fi; \
 	elif [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		echo "ERROR: [preflight] Workspace venv not found. Run 'make boot' at workspace root."; \
@@ -165,17 +161,20 @@ elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]
 fi
 endef
 
-define AUTO_SYNC_BASE_AND_SCRIPTS
+# mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
+define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	$(BASE_INFRA_WORKSPACE) sync \
-		--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply; \
+	if ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)"; then \
+		echo "ERROR: [preflight] Canonical base.mk is stale. Run 'make -C $(WORKSPACE_ROOT) build WHAT=sync PROJECT=$(PROJECT_NAME)'."; \
+		exit 1; \
+	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
-	echo "INFO: [preflight] Standalone mode: skipping workspace dependency sync."; \
+	echo "INFO: [preflight] Standalone mode: skipping workspace base.mk validation."; \
 fi
 endef
 
-_preflight: ## Preflight: sync base.mk and enforce venv contract
-	$(Q)$(AUTO_SYNC_BASE_AND_SCRIPTS)
+_preflight: ## Preflight: validate base.mk and enforce venv contract
+	$(Q)$(VALIDATE_CANONICAL_BASE_MK)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 
 PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra
@@ -183,7 +182,8 @@ ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
 endif
 PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
-PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
+# mro-wkii.17.27 (codex): boot must provision the venv before consuming it.
+PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra
 PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check
 PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen

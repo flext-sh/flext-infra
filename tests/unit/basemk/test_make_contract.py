@@ -46,8 +46,8 @@ _MAKE_TEST_ENV_KEYS = (
 
 def _render_base_mk() -> str:
     result = FlextInfraBaseMkGenerator().generate_basemk()
-    rendered: str = tm.ok(result)
-    return rendered
+    tm.ok(result)
+    return result.unwrap()
 
 
 def _write_executable(path: Path, body: str) -> None:
@@ -133,6 +133,7 @@ class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
     def test_make_help_lists_supported_options(self, tmp_path: Path) -> None:
+        """Expose every supported generated Make option through help."""
         _write_project(tmp_path)
         result = _run_make(tmp_path, "help")
         tm.that(result.exit_code, eq=0)
@@ -152,6 +153,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.stdout, lacks="check-fast")
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
+        """Declare each canonical flext-infra CLI group command."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -168,25 +170,38 @@ class TestsFlextInfraBasemkMakeContract:
             ],
         )
 
-    def test_rendered_base_mk_sanitizes_workspace_sync_env(self) -> None:
+    def test_rendered_base_mk_sanitizes_workspace_validation_env(self) -> None:
+        """Sanitize inherited Python paths for workspace validation."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='BASE_INFRA_WORKSPACE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra workspace',
+            has='BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate',
         )
 
-    def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight(
-        self,
-    ) -> None:
+    def test_rendered_base_mk_keeps_workspace_preflight_read_only(self) -> None:
+        """Validate canonical state without applying or deleting files."""
         rendered = _render_base_mk()
+        preflight = rendered.split("define VALIDATE_CANONICAL_BASE_MK", 1)[1].split(
+            "endef", 1
+        )[0]
+        tm.that(
+            preflight,
+            has=[
+                'basemk-validate --workspace "$(WORKSPACE_ROOT)"',
+                "build WHAT=sync PROJECT=$(PROJECT_NAME)",
+            ],
+            lacks=["workspace sync", "--apply"],
+        )
         tm.that(
             rendered,
-            has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
+            has="Project-local .venv violates the workspace environment contract",
+            lacks="rm -rf .venv",
         )
 
     def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
         self,
     ) -> None:
+        """Avoid mixing filtered test selection with whole-suite coverage."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -194,6 +209,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
+        """Select only extant tracked or untracked Python files."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
@@ -204,6 +220,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:
+        """Dispatch a file-scoped Mypy check through the generated Makefile."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -224,6 +241,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
 
     def test_make_check_file_scope_unsets_python_path_env(self, tmp_path: Path) -> None:
+        """Remove inherited Python path variables from file-scoped checks."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
@@ -251,8 +269,8 @@ class TestsFlextInfraBasemkMakeContract:
             "CHECK_GATES=mypy",
             env={
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                "PYTHONPATH": "/tmp/poison-pythonpath",
-                "MYPYPATH": "/tmp/poison-mypypath",
+                "PYTHONPATH": str(tmp_path / "poison-pythonpath"),
+                "MYPYPATH": str(tmp_path / "poison-mypypath"),
             },
         )
 
@@ -263,6 +281,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
     def test_make_check_full_run_unsets_python_path_env(self, tmp_path: Path) -> None:
+        """Replace inherited Python paths with the canonical source root."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
@@ -289,8 +308,8 @@ class TestsFlextInfraBasemkMakeContract:
             "CHECK_GATES=mypy",
             env={
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                "PYTHONPATH": "/tmp/poison-pythonpath",
-                "MYPYPATH": "/tmp/poison-mypypath",
+                "PYTHONPATH": str(tmp_path / "poison-pythonpath"),
+                "MYPYPATH": str(tmp_path / "poison-mypypath"),
             },
         )
 
@@ -307,6 +326,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_full_run_forwards_fix_and_tool_args(
         self, tmp_path: Path
     ) -> None:
+        """Forward explicit fix and analyzer arguments to the check service."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -340,6 +360,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_fast_path_check_only_suppresses_fix_writes(
         self, tmp_path: Path
     ) -> None:
+        """Keep check-only file gates read-only even when fix is requested."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
@@ -365,6 +386,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_file_scope_rejects_unsupported_gates(
         self, tmp_path: Path
     ) -> None:
+        """Reject full-project gates from the file-scoped fast path."""
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, tmp_path / "tool.log")
         (tmp_path / "src").mkdir()
@@ -383,6 +405,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
         self, tmp_path: Path
     ) -> None:
+        """Bootstrap workspace mode before the canonical environment exists."""
         workspace_root = tmp_path / "workspace"
         project_root = workspace_root / "demo-project"
         project_root.mkdir(parents=True)
@@ -400,7 +423,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             log_content,
             has=[
-                "python -m flext_infra workspace sync --workspace",
+                f"python -m flext_infra validate basemk-validate --workspace {workspace_root}",
                 # NOTE (multi-agent, mro-wkii.17.9): path-sync is not part of
                 # the generated Make contract; conform owns pyproject output.
                 "python -m flext_infra deps internal-sync",
@@ -408,3 +431,4 @@ class TestsFlextInfraBasemkMakeContract:
                 "uv sync --all-extras --all-groups",
             ],
         )
+        tm.that(log_content, lacks="workspace sync")
