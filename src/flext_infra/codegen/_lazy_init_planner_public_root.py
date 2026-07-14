@@ -23,8 +23,6 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         # mro-pulj: this implementation is supplied by PublicApiMixin in the MRO.
         def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...
 
-        def _root_direct_import_contract(self, pkg_dir: Path) -> frozenset[str]: ...
-
         def _public_root_child_packages(
             self,
             child_packages: t.StrSequence,
@@ -70,22 +68,18 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     ) -> tuple[set[str], t.MutableLazyAliasMap, t.StrSequence, t.StrSequence]:
         """Filter a governed root facade while preserving safe child exports."""
         explicit_exports = self._root_public_contract_exports(context.pkg_dir)
-        root_contract = self._has_public_root_contract(
-            root_namespace_files=self.lazy_init.root_namespace_files,
-            explicit_public_exports=explicit_exports,
-            present_files=frozenset(path.name for path in context.pkg_dir.iterdir()),
-        )
         public_children = self._public_root_child_packages(child_packages, dir_exports)
-        child_export_names = self._public_root_child_export_names(
-            public_children, dir_exports
-        )
         child_packages_for_lazy = self._child_packages_without_main_export(
             public_children, dir_exports
         )
         module_export_names = {
             name
             for name, target in lazy_map.items()
-            if (not target[1] and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS)
+            if (
+                not target[1]
+                and not name.startswith("_")
+                and name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
+            )
         }
         governed_root_export_names = {
             name
@@ -119,23 +113,19 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             if (name in explicit_exports or name not in internal_child_export_names)
             and (
                 name in eager_names
-                or (not explicit_exports and name in child_export_names)
-                or (
-                    not root_contract
-                    or self._is_public_root_export(
-                        name,
-                        lazy_map,
-                        root_pkg=context.current_pkg,
-                        root_namespace_files=self.lazy_init.root_namespace_files,
-                        explicit_public_exports=explicit_exports,
-                    )
+                or self._is_public_root_export(
+                    name,
+                    lazy_map,
+                    root_pkg=context.current_pkg,
+                    root_namespace_files=self.lazy_init.root_namespace_files,
+                    explicit_public_exports=explicit_exports,
                 )
             )
         } | module_export_names
         runtime_export_names = public_export_names | {
             name
             for name, target in lazy_map.items()
-            if not target[1] and target[0] in child_packages
+            if not target[1] and target[0] in public_children
         }
         filtered_lazy_map = {
             name: target
@@ -185,11 +175,9 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         """Return whether a root-facade export belongs in the external API."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:
             return False
-        if explicit_public_exports:
-            return name in explicit_public_exports
-        module_path = lazy_map[name][0]
         if name in c.Infra.ALIAS_NAMES:
             return True
+        module_path = lazy_map[name][0]
         # NOTE (multi-agent): mro-i6nq.10 keeps private descendants out of root ABI.
         prefix = f"{root_pkg}."
         if not module_path.startswith(prefix):
@@ -199,11 +187,11 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
             f"{local_module}.py"
         )
         if runtime_singleton_export is not None:
-            # mro-j47u: explicit module exports are public; consumers subclass the
-            # validated loader while sharing the exact singleton identity.
-            return True
+            return name == runtime_singleton_export or name in explicit_public_exports
         if "." in local_module or local_module.startswith("_"):
             return False
+        if explicit_public_exports:
+            return name in explicit_public_exports
         return f"{local_module}.py" in root_namespace_files
 
 

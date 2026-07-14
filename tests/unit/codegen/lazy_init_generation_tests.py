@@ -72,9 +72,12 @@ class TestsFlextInfraCodegenGeneration:
             "_DIRECT_IMPORTS: tuple[str, ...] =", maxsplit=1
         )[1].split("__all__:", maxsplit=1)[0]
         tm.that(direct_imports, contains='"__version__"')
-        tm.that(
-            content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
-        )
+        public_exports = content.split("__all__: tuple[str, ...] =", maxsplit=1)[
+            1
+        ].split("install_lazy_exports", maxsplit=1)[0]
+        tm.that(public_exports, contains='"Demo"')
+        tm.that(public_exports, contains='"__version__"')
+        tm.that(public_exports, contains='"r"')
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
@@ -84,7 +87,10 @@ class TestsFlextInfraCodegenGeneration:
     ) -> None:
         """Internal packages publish direct sibling symbols statically."""
         plan = self._plan(
-            "demo_pkg", ("Demo",), MappingProxyType({"Demo": ("demo_pkg.api", "Demo")})
+            tmp_path,
+            "demo_pkg",
+            ("Demo",),
+            MappingProxyType({"Demo": ("demo_pkg.api", "Demo")}),
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
@@ -95,39 +101,38 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
-    def test_root_initializer_preserves_direct_imports_outside_all(self) -> None:
-        """Keep supported direct imports lazy without widening wildcard exports."""
+    def test_root_initializer_renders_the_filtered_public_plan(
+        self, tmp_path: Path
+    ) -> None:
+        """Render only the public map supplied by the planner."""
         plan = self._plan(
+            tmp_path,
             "demo_pkg",
             ("Demo",),
-            MappingProxyType({
-                "Demo": ("demo_pkg.api", "Demo"),
-                "DemoConversion": ("demo_pkg._utilities.conversion", "DemoConversion"),
-            }),
+            MappingProxyType({"Demo": ("demo_pkg.api", "Demo")}),
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
-        public_exports = content.split(
-            "__all__: tuple[str, ...] =", maxsplit=1
-        )[1].split("install_lazy_exports", maxsplit=1)[0]
+        public_exports = content.split("__all__: tuple[str, ...] =", maxsplit=1)[
+            1
+        ].split("install_lazy_exports", maxsplit=1)[0]
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from ._utilities.conversion import DemoConversion")
-        tm.that(content, lacks="DemoConversion as DemoConversion")
+        tm.that(content, contains="from .api import Demo")
         tm.that(content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
-        tm.that(content, contains='"DemoConversion"')
-        tm.that(public_exports, lacks="DemoConversion")
+        tm.that(content, lacks='"DemoConversion"')
+        tm.that(public_exports, contains='"Demo"')
 
-    def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
+    def test_root_type_checking_uses_compact_relative_local_imports(
+        self, tmp_path: Path
+    ) -> None:
         """Emit local declarations relatively without identity aliases."""
         plan = self._plan(
+            tmp_path,
             "flext_cli",
             ("FlextCliSettings", "settings"),
             MappingProxyType({
-                "FlextCliSettings": (
-                    "flext_cli._settings",
-                    "FlextCliSettings",
-                ),
+                "FlextCliSettings": ("flext_cli._settings", "FlextCliSettings"),
                 "settings": ("flext_cli._settings", "settings"),
             }),
         )
@@ -135,18 +140,20 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content,
-            contains="from ._settings import FlextCliSettings, settings",
-        )
+        tm.that(content, contains="from ._settings import FlextCliSettings, settings")
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="FlextCliSettings as FlextCliSettings")
         tm.that(content, lacks="settings as settings")
-        tm.that(content, contains="_ = (FlextCliSettings, settings)")
+        type_checking_block = content.split("if TYPE_CHECKING:", maxsplit=1)[1].split(
+            "_LAZY_MODULES", maxsplit=1
+        )[0]
+        tm.that(type_checking_block, contains="FlextCliSettings")
+        tm.that(type_checking_block, contains="settings")
 
-    def test_non_root_package_uses_static_initializer(self) -> None:
+    def test_non_root_package_uses_static_initializer(self, tmp_path: Path) -> None:
         """Subpackages publish direct siblings through explicit imports."""
         plan = self._plan(
+            tmp_path,
             "demo_pkg.services",
             ("Demo", "Nested", "nested"),
             MappingProxyType({

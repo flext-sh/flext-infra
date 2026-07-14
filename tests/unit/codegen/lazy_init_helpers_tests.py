@@ -104,15 +104,13 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
-    def test_direct_import_contract_is_stable_and_fails_on_missing_owner(
+    def test_private_direct_imports_never_widen_the_root_contract(
         self, tmp_path: Path
     ) -> None:
-        """Freeze direct imports and reject removal of their canonical owner."""
+        """Keep implementation-only symbols out of generated root imports."""
         workspace_root, package_root = self._workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextDemoModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
         )
         utilities_dir = package_root / "_utilities"
         utilities_dir.mkdir()
@@ -122,15 +120,15 @@ class TestsFlextInfraLazyInitHelpers:
         conversion_path = utilities_dir / "conversion.py"
         conversion_path.write_text(
             "class FlextDemoConversion:\n"
-            '    """Supported direct root import."""\n\n'
+            '    """Private conversion implementation."""\n\n'
             '__all__ = ["FlextDemoConversion"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        frozen_content = self._generated_init(package_root)
-        tm.that(frozen_content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
-        tm.that(frozen_content, contains='"FlextDemoConversion"')
+        generated_content = self._generated_init(package_root)
+        tm.that(generated_content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(generated_content, lacks='"FlextDemoConversion"')
 
         extra_path = utilities_dir / "extra.py"
         extra_path.write_text(
@@ -141,11 +139,6 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         tm.that(self._generated_init(package_root), lacks="FlextDemoExtra")
-
-        conversion_path.unlink()
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=1)
-        tm.that(self._generated_init(package_root), eq=frozen_content)
 
     def test_explicit_all_exports_keep_public_aliases_only(
         self, tmp_path: Path
@@ -169,8 +162,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"demo"')
         tm.that(exports_content, lacks="hidden")
 
-    def test_child_exports_bubble_public_symbols_only(self, tmp_path: Path) -> None:
-        """Bubble only governed public declarations from public child packages."""
+    def test_child_exports_stay_owned_by_their_subpackage(self, tmp_path: Path) -> None:
+        """Keep deep child declarations out of the thin root facade."""
         workspace_root, package_root = self._workspace(tmp_path)
         child_dir = package_root / "services"
         child_dir.mkdir()
@@ -200,15 +193,15 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoService")
-        tm.that(exports_content, has='"BLUE"')
+        tm.that(exports_content, lacks="FlextDemoService")
+        tm.that(exports_content, lacks='"BLUE"')
         tm.that(exports_content, lacks='"main"')
         tm.that(exports_content, lacks='"m": ("flext_demo.services.models", "m")')
 
     def test_tests_root_remains_outside_production_codegen(
         self, tmp_path: Path
     ) -> None:
-        """Leave test package initializers untouched by production codegen."""
+        """Generate static test package initializers without a lazy root."""
         workspace_root, _package_root = self._workspace(tmp_path)
         tests_root = workspace_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
@@ -238,9 +231,9 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): test code is validated by its own gates, not
-        # rewritten by the production-root generator.
-        tm.that(init_content, empty=True)
+        tm.that(init_content, contains="from .constants import TestsFlextDemoConstants")
+        tm.that(init_content, contains="from .constants import c as c")
+        tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
@@ -334,7 +327,7 @@ class TestsFlextInfraLazyInitHelpers:
     def test_nested_tests_namespace_exports_local_symbols_only(
         self, tmp_path: Path
     ) -> None:
-        """Leave nested test namespaces unchanged by production codegen."""
+        """Generate static nested test initializers with local exports only."""
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.RESULT_PY).write_text(
             "from __future__ import annotations\n\nclass FlextDemoResult:\n    pass\n",
@@ -362,14 +355,17 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        # mro-wkii.17 (Codex): nested tests remain explicit handwritten code.
-        tm.that(init_content, empty=True)
+        tm.that(
+            init_content, contains="from .constants import TestsFlextDemoUnitConstants"
+        )
+        tm.that(init_content, contains="from .models import TestsFlextDemoUnitModels")
+        tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
-    def test_root_exports_symbols_from_deep_descendant_packages(
+    def test_root_excludes_symbols_from_deep_descendant_packages(
         self, tmp_path: Path
     ) -> None:
-        """Bubble governed declarations from deeply nested public packages."""
+        """Keep deeply nested declarations owned by their subpackage facade."""
         workspace_root, package_root = self._workspace(tmp_path)
         deep_dir = package_root / "services" / "http"
         deep_dir.mkdir(parents=True)
@@ -390,12 +386,12 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoHttpTransport")
+        tm.that(exports_content, lacks="FlextDemoHttpTransport")
 
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
+    def test_undeclared_duplicate_symbols_do_not_widen_the_root_contract(
         self, tmp_path: Path
     ) -> None:
-        """Duplicate public exports are resolved deterministically (warn + generate)."""
+        """Keep undeclared root siblings outside the generated public contract."""
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "alpha.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n",
@@ -410,4 +406,4 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
         tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
-        tm.that(exports_content, has="Shared")
+        tm.that(exports_content, lacks="Shared")

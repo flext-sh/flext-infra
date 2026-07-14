@@ -102,10 +102,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             if package_name and package_name != current_pkg:
                 # mro-pulj (codex): the generated root TYPE_CHECKING contract
                 # makes the public package itself the single inherited owner.
-                lazy_map[alias_name] = (
-                    package_name,
-                    alias_name,
-                )
+                lazy_map[alias_name] = (package_name, alias_name)
 
     def _resolve_local_aliases(
         self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_dir: Path
