@@ -1,4 +1,8 @@
-"""Docs scope helpers for FLEXT-only discovery and project classification."""
+"""Docs scope helpers for FLEXT-only discovery and project classification.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -87,6 +91,10 @@ class FlextInfraUtilitiesDocsScope:
         ``pyproject.toml`` not registered in the workspace submodule index)
         are surfaced when explicitly requested. Discovery is structural and
         name-agnostic.
+
+
+        Returns:
+            A result containing resolved project descriptors or an unknown-project error.
         """
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root, include_attached=include_attached
@@ -266,6 +274,10 @@ class FlextInfraUtilitiesDocsScope:
         Project-prefix heuristics derive from ``c.Infra.INTEGRATION_CLASS_PREFIXES``
         (SSOT for integration project family) so adding a new family member
         requires editing only the canonical class-prefix tuple.
+
+
+        Returns:
+            The project documentation classification.
         """
         configured = docs_meta.get("project_class")
         if isinstance(configured, str) and configured.strip():
@@ -317,6 +329,10 @@ class FlextInfraUtilitiesDocsScope:
         :meth:`FlextInfraUtilitiesProjectDiscovery.discover_project_candidates`.
         When True, sub-repos opted in via ``[tool.flext.workspace] attached = true``
         are surfaced alongside the workspace's git-tracked projects.
+
+
+        Returns:
+            A result containing participating projects or an invalid-root error.
         """
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(

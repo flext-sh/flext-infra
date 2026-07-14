@@ -1,4 +1,8 @@
-"""Public API extraction helpers for code-driven documentation."""
+"""Public API extraction helpers for code-driven documentation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -544,6 +548,10 @@ class FlextInfraUtilitiesDocsApi:
         ``docstring_issues`` (undocumented targets) and
         ``docstring_coverage`` (aggregate metric) so the target set and the
         docstring predicates can never drift apart.
+
+
+        Returns:
+            The immutable sequence of docstring check results.
         """
         package_name = str(contract.get("package_name", ""))
         module_list = FlextInfraUtilitiesDocsApi._string_values(
@@ -628,6 +636,10 @@ class FlextInfraUtilitiesDocsApi:
 
         ``percent`` is computed here (behavior lives in ``u``); the model is a
         declaration-only payload.
+
+
+        Returns:
+            Aggregated coverage counts and percentage.
         """
         checks = FlextInfraUtilitiesDocsApi._iter_docstring_checks(
             project_root, contract

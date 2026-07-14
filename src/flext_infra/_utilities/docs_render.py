@@ -1,4 +1,8 @@
-"""Reusable docs rendering helpers exposed through ``u.Infra``."""
+"""Reusable docs rendering helpers exposed through ``u.Infra``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -86,6 +90,10 @@ class FlextInfraUtilitiesDocsRender:
         (producing nav 404s). The rooted ``/README.md`` excludes only the
         docs-dir root README (the project README mirror), preserving nested
         section READMEs. [mro-3o9s nav404 fix]
+
+
+        Returns:
+            MkDocs ``exclude_docs`` configuration lines.
         """
         patterns = list(
             dict.fromkeys([
@@ -368,6 +376,10 @@ class FlextInfraUtilitiesDocsRender:
         SSOT for the ``[GENERATED_HEADER, "", "# title", "", ...body, ""]``
         layout shared by every ``docs_*_page``/``docs_*_index``/``docs_*_readme``
         renderer. Body lines are passed verbatim — no further escaping.
+
+
+        Returns:
+            The complete generated Markdown page.
         """
         return "\n".join([c.Infra.GENERATED_HEADER, "", f"# {title}", "", *body, ""])
 
@@ -378,6 +390,10 @@ class FlextInfraUtilitiesDocsRender:
         Returns ``""`` when ``lines`` is empty so the template's substitution
         leaves no trailing artifacts. Otherwise joins with newlines and adds
         one trailing newline so the next macro sits on a fresh line.
+
+
+        Returns:
+            The newline-terminated rendered block, or an empty string.
         """
         return "\n".join([*lines, ""]) if lines else ""
 

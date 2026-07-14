@@ -1,4 +1,8 @@
-"""Fix helpers for docs services."""
+"""Fix helpers for docs services.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -40,6 +44,10 @@ class FlextInfraUtilitiesDocsFix:
         Only fixes issues that ``ruff`` can resolve automatically; blocks that
         still contain unfixable diagnostics are left untouched so the audit
         gate reports them.
+
+
+        Returns:
+            Generated files containing changed Python code blocks.
         """
         changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):

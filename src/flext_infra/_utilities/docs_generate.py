@@ -1,4 +1,8 @@
-"""Generation helpers for docs services."""
+"""Generation helpers for docs services.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -181,6 +185,10 @@ class FlextInfraUtilitiesDocsGenerate:
         discovery always enumerates all projects: honoring a ``projects``
         filter here would produce a partial aggregate whose prune step
         deletes the pages of every filtered-out project (mro-o6h5 incident).
+
+
+        Returns:
+            Generated root documentation files.
         """
         _ = projects
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
