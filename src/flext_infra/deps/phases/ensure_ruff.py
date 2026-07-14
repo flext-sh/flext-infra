@@ -62,6 +62,11 @@ class FlextInfraEnsureRuffConfigPhase:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)
+        # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
+        # Ruff phase owns the derived union consumed by emitted tool config.
+        effective_ignore = tuple(
+            sorted({*ruff_cfg.lint.ignore, *ruff_cfg.lint.ignored_rule_rationales})
+        )
         detected_packages = sorted({
             *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path.parent),
@@ -70,7 +75,7 @@ class FlextInfraEnsureRuffConfigPhase:
         })
         lint_nested_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),
-            (c.Infra.IGNORE, u.normalize_to_json_value(ruff_cfg.lint.effective_ignore)),
+            (c.Infra.IGNORE, u.normalize_to_json_value(effective_ignore)),
         )
         isort_values: list[tuple[str, t.JsonValue]] = [
             ("combine-as-imports", ruff_cfg.lint.isort.combine_as_imports),

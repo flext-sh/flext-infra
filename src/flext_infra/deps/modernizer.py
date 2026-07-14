@@ -101,6 +101,7 @@ class FlextInfraPyprojectModernizer(
         self,
         *,
         project_name: t.NonEmptyStr,
+        package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
@@ -110,7 +111,18 @@ class FlextInfraPyprojectModernizer(
         project = u.Cli.toml_table()
         project.add(c.Infra.NAME, project_name)
         seed.add(c.Infra.PROJECT, project)
-        conformed = self.conform_source(u.Cli.toml_dumps(seed), path=path)
+        tool = u.Cli.toml_table()
+        flext = u.Cli.toml_table()
+        docs = u.Cli.toml_table()
+        docs.add("package_name", package_name)
+        flext.add("docs", docs)
+        tool.add("flext", flext)
+        seed.add(c.Infra.TOOL, tool)
+        # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
+        # so first generation and post-write conformance are the same fixed point.
+        conformed = self.conform_source(
+            u.Cli.toml_dumps(seed), path=path, declared_python_dirs=declared_python_dirs
+        )
         if conformed.failure:
             return r[m.Infra.ToolingRuntimeContext].fail(
                 conformed.error or f"tooling resolution failed: {path}"
@@ -131,6 +143,11 @@ class FlextInfraPyprojectModernizer(
         pyrefly = u.Cli.toml_mapping_child(tooling, c.Infra.PYREFLY)
         pyright = u.Cli.toml_mapping_child(tooling, c.Infra.PYRIGHT)
         ruff = u.Cli.toml_mapping_child(tooling, c.Infra.RUFF)
+        ruff_lint = (
+            u.Cli.toml_mapping_child(ruff, c.Infra.LINT_SECTION)
+            if ruff is not None
+            else None
+        )
         ruff_isort = (
             u.Cli.toml_mapping_path(ruff, ("lint", "isort"))
             if ruff is not None
@@ -159,6 +176,10 @@ class FlextInfraPyprojectModernizer(
         if ruff is None:
             return r[m.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted ruff: {path}"
+            )
+        if ruff_lint is None:
+            return r[m.Infra.ToolingRuntimeContext].fail(
+                f"tooling resolution omitted ruff.lint: {path}"
             )
         if ruff_isort is None:
             return r[m.Infra.ToolingRuntimeContext].fail(
@@ -220,6 +241,7 @@ class FlextInfraPyprojectModernizer(
                 ],
                 "pyright_execution_environments": environments,
                 "ruff_src": ruff.get("src"),
+                "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:
             return r[m.Infra.ToolingRuntimeContext].fail_op(

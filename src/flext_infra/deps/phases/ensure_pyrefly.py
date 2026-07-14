@@ -48,7 +48,11 @@ class FlextInfraEnsurePyreflyConfigPhase:
         # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs:
-            expected_search = sorted({*expected_search, *declared_python_dirs})
+            expected_search = sorted({
+                *expected_search,
+                *declared_python_dirs,
+                *pyrefly_rules.path_rules.project_shared_search_paths,
+            })
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
