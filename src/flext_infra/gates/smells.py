@@ -21,7 +21,7 @@ from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.smells import smell_fixer_for
 
 if TYPE_CHECKING:
-    from flext_infra import t
+    from flext_infra import t, p
 
 
 class FlextInfraSmellsGate(FlextInfraGate):
@@ -39,7 +39,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
 
-    _scan_cache: ClassVar[dict[str, m.Cli.CommandOutput]] = {}
+    # mro-pulj: process results stay structural outside the Pydantic boundary.
+    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -124,7 +125,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
@@ -132,7 +133,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
         return passed, issues
 
-    def _workspace_scan(self) -> m.Cli.CommandOutput:
+    def _workspace_scan(self) -> p.Cli.CommandOutput:
         """Run the workspace scan once per process; a missing binary is VISIBLE."""
         key = str(self._workspace_root)
         cached = self._scan_cache.get(key)
@@ -160,13 +161,13 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @staticmethod
     def _resolve_binary() -> str | None:
         """Locate qlty on PATH, else the user-local install; None when absent."""
-        found: object = shutil.which(c.Infra.QLTY_BINARY)
+        found = shutil.which(c.Infra.QLTY_BINARY)
         if isinstance(found, str):
             return found
         fallback = Path.home() / c.Infra.QLTY_BINARY_FALLBACK_SUFFIX
         return str(fallback) if fallback.is_file() else None
 
-    def _tool_failure_issue(self, scan: m.Cli.CommandOutput) -> m.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
         return m.Infra.Issue(
             file=c.Infra.PYPROJECT_FILENAME,

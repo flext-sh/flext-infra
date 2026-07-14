@@ -78,14 +78,16 @@ class TestsFlextInfraPublicApi:
         self, infra_public_root: ModuleType
     ) -> None:
         root = infra_public_root
-        constants = root.u.read_project_constants(
-            root.__title__, root=self._project_root()
-        )
+        metadata_result = root.u.read_project_metadata(self._project_root())
+        tm.ok(metadata_result)
+        metadata = metadata_result.value
 
-        tm.that(root.__version__, eq=constants.PACKAGE_VERSION)
-        tm.that(root.__license__, eq=constants.PACKAGE_LICENSE)
-        tm.that(root.__url__, eq=constants.PACKAGE_URL)
-        tm.that(root.__author__, eq=constants.PACKAGE_AUTHORS[0])
+        tm.that(root.__title__, eq=metadata.project.name)
+        tm.that(root.__version__, eq=metadata.project.version)
+        tm.that(root.__description__, eq=metadata.project.description)
+        tm.that(root.__url__, eq=metadata.project.urls.homepage)
+        assert metadata.project.authors
+        tm.that(root.__author__, eq=metadata.project.authors[0].name)
 
     def test_test_service_settings_expose_tests_namespace(self) -> None:
         resolved = s.fetch_settings()

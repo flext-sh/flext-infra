@@ -2,27 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import tomlkit
 from flext_tests import tm
 from tomlkit import TOMLDocument
 
+from flext_infra import config
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from tests import t
 from tests import u
-
-if TYPE_CHECKING:
-    from tests import m
-
-
-def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.Infra.load_tool_config()
-    tm.that(not result.failure, eq=True)
-    if result.failure:
-        msg = "failed to load tool settings"
-        raise ValueError(msg)
-    return result.value
 
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
@@ -43,7 +30,7 @@ class TestsFlextInfraDepsModernizerCoverage:
     """Tests coverage settings phase behavior."""
 
     def test_apply_sets_report_and_run_state(self) -> None:
-        tool_config = _test_tool_config()
+        tool_config = config.Infra.tooling
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureCoverageConfigPhase(tool_config).apply(
@@ -69,7 +56,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         )
 
     def test_apply_is_idempotent(self) -> None:
-        tool_config = _test_tool_config()
+        tool_config = config.Infra.tooling
         phase = FlextInfraEnsureCoverageConfigPhase(tool_config)
         doc = tomlkit.document()
 

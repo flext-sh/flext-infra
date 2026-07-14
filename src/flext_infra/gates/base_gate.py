@@ -115,8 +115,9 @@ class FlextInfraGate(ABC):
         ...
 
     @abstractmethod
+    # mro-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
-        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tool output into (passed, issues)."""
         ...
@@ -204,7 +205,7 @@ class FlextInfraGate(ABC):
         msg = f"Gate {self.gate_id} set can_fix=True but did not implement _build_fix_command"
         raise NotImplementedError(msg)
 
-    def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
+    def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
         """Assemble raw output from fix result. Default: stderr only."""
         stderr: str = result.stderr
         return stderr
@@ -215,7 +216,7 @@ class FlextInfraGate(ABC):
         cwd: Path,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
-    ) -> m.Cli.CommandOutput:
+    ) -> p.Cli.CommandOutput:
         """Run."""
         runner = self._runner or u.Cli
         result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)

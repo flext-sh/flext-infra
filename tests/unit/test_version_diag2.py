@@ -7,6 +7,7 @@ from flext_tests import tm
 
 def test_version_full_import() -> None:
     project_root = Path(__file__).resolve().parents[2]
-    metadata = u.read_project_metadata(project_root)
+    metadata_result = u.read_project_metadata(project_root)
 
-    tm.that(infra_pkg.__title__, eq=metadata.name)
+    tm.ok(metadata_result)
+    tm.that(infra_pkg.__title__, eq=metadata_result.value.project.name)

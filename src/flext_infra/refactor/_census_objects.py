@@ -86,33 +86,13 @@ class FlextInfraRefactorCensusObjectsMixin:
             and not item.name.startswith("_")
         )
 
-    @staticmethod
-    def _is_test_only(item: m.Infra.Census.Object) -> bool:
-        """Is test only."""
-        return (
-            not item.is_facade_member
-            and item.references_count > 0
-            and item.runtime_references_count == 0
-            and item.test_references_count == item.references_count
-            and not item.name.startswith("_")
-        )
-
     @classmethod
     def _removal_candidate(
-        cls,
-        item: m.Infra.Census.Object,
-        *,
-        include_unused: bool,
-        include_test_only: bool,
+        cls, item: m.Infra.Census.Object, *, include_unused: bool
     ) -> m.Infra.Census.RemovalCandidate | None:
         """Build a removal candidate for an object."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
-        elif include_test_only and cls._is_test_only(item):
-            reason, suggested_action = (
-                "test_only",
-                "delete_object_and_test_references",
-            )
         else:
             return None
         return m.Infra.Census.RemovalCandidate(
@@ -125,7 +105,6 @@ class FlextInfraRefactorCensusObjectsMixin:
             reason=reason,
             suggested_action=suggested_action,
             runtime_reference_sites=item.runtime_reference_sites,
-            test_reference_sites=item.test_reference_sites,
             example_reference_sites=item.example_reference_sites,
             script_reference_sites=item.script_reference_sites,
         )
@@ -185,7 +164,6 @@ class FlextInfraRefactorCensusObjectsMixin:
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
         """Return all reference sites for a removal candidate."""
         return (
-            *candidate.test_reference_sites,
             *candidate.runtime_reference_sites,
             *candidate.example_reference_sites,
             *candidate.script_reference_sites,

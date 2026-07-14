@@ -835,11 +835,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
         """Supporting reference sites."""
-        return (
-            *candidate.test_reference_sites,
-            *candidate.example_reference_sites,
-            *candidate.script_reference_sites,
-        )
+        return (*candidate.example_reference_sites, *candidate.script_reference_sites)
 
     @staticmethod
     def _definition_line_range(

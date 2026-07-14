@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_cli import cli, m as cli_m
+from flext_cli import cli, p as cli_p
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
@@ -42,9 +42,8 @@ def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
 
 
 def _run_workspace_make_dry_run(
-    workspace_root: Path,
-    *args: str,
-) -> cli_m.Cli.CommandOutput:
+    workspace_root: Path, *args: str
+) -> cli_p.Cli.CommandOutput:
     outcome = cli.run_raw(
         ["make", "-C", str(workspace_root), "--dry-run", *args],
         remove_env_keys=(
@@ -77,27 +76,23 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
     """Behavior contract for test_makefile_dry_run."""
 
     def test_workspace_makefile_dry_run_mod_respects_project_selection(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify modernize and path sync honor one selected project."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_mod", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0)
         tm.that(output, has="--projects demo-a")
-        assert (
-            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
-            in output
-        )
-        tm.that(output, has="ruff format demo-a --quiet")
+        tm.that(output, has="extra-paths --apply --projects demo-a")
         tm.that(output, lacks="pyproject.toml */pyproject.toml")
-        tm.that(output, lacks="ruff format . --quiet")
+        tm.that(output, lacks=["taplo format", "ruff format"])
 
     def test_workspace_makefile_dry_run_mod_without_selection_uses_workspace_scope(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify unscoped modernization covers the workspace once."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_mod")
         output = process.stdout + process.stderr
@@ -106,18 +101,15 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="modernize --apply")
         # NOTE (multi-agent, mro-wkii.17.9): workspace rendering no longer
         # promises the removed deps path-sync command.
-        assert (
-            f'taplo format --config "{workspace_root}/.taplo.toml" pyproject.toml demo-a/pyproject.toml demo-b/pyproject.toml'
-            in output
-        )
-        tm.that(output, has="ruff format . --quiet")
+        tm.that(output, has="extra-paths --apply")
+        tm.that(output, lacks=["taplo format", "ruff format"])
         tm.that(output, lacks="--projects demo-a")
         tm.that(output, lacks="--projects demo-b")
 
     def test_workspace_makefile_dry_run_fmt_respects_project_selection(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify formatting targets only the selected project."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_fmt", "PROJECT=demo-b")
         output = process.stdout + process.stderr
@@ -130,72 +122,64 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, lacks='_fmt_target="."')
 
     def test_workspace_makefile_dry_run_up_forwards_selection_to_mod_and_constraints(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify upgrade forwards project scope to every dependency phase."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_up", "PROJECT=demo-a")
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0)
         tm.that(output, has='make _mod PROJECT="demo-a"')
-        assert (
-            "modernize --apply --rewrite-constraints --constraint-policy floor"
-            in output
+        tm.that(
+            output,
+            has="modernize --apply --rewrite-constraints --constraint-policy floor",
         )
-        assert (
-            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
-            in output
-        )
+        tm.that(output, lacks="taplo format")
         tm.that(output, has="detect --quiet --no-fail")
-        assert (
-            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
-            in output
+        tm.that(
+            output,
+            has=f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"',
         )
 
     def test_workspace_makefile_dry_run_types_writes_dependency_report(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify the types route writes the canonical dependency report."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_types")
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0)
         tm.that(output, has="detect --typings --quiet --no-fail")
-        assert (
-            f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"'
-            in output
+        tm.that(
+            output,
+            has=f'--output "{workspace_root}/.reports/dependencies/detect-runtime-dev-latest.json"',
         )
 
     def test_workspace_makefile_dry_run_constraints_rewrites_dependency_floors(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify constraint rewrites use the floor policy and project scope."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(
-            workspace_root,
-            "_constraints",
-            "PROJECT=demo-a",
+            workspace_root, "_constraints", "PROJECT=demo-a"
         )
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0)
-        assert (
-            "modernize --apply --rewrite-constraints --constraint-policy floor"
-            in output
+        tm.that(
+            output,
+            has="modernize --apply --rewrite-constraints --constraint-policy floor",
         )
         tm.that(output, has="--projects demo-a")
         tm.that(output, lacks="path-sync --mode auto --apply")
-        assert (
-            f'taplo format --config "{workspace_root}/.taplo.toml" demo-a/pyproject.toml'
-            in output
-        )
+        tm.that(output, lacks="taplo format")
 
     def test_workspace_makefile_dry_run_gen_forwards_selection(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify generation forwards selection to modernization and sync."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_gen", "PROJECT=demo-b")
         output = process.stdout + process.stderr
@@ -205,9 +189,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has='--no-print-directory _sync PROJECT="demo-b"')
 
     def test_workspace_makefile_dry_run_sync_respects_project_selection(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify workspace sync iterates only the selected project."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "_sync", "PROJECT=demo-a")
         output = process.stdout + process.stderr
@@ -221,9 +205,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, lacks=f'workspace sync --workspace "{workspace_root}" --apply')
 
     def test_workspace_makefile_dry_run_ship_save_dispatches_to_registry(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify ship-save dispatches through the command registry."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "ship", "WHAT=save")
         output = process.stdout + process.stderr
@@ -234,9 +218,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch ship")
 
     def test_workspace_makefile_dry_run_build_what_mod_dispatches_to_registry(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify build-mod dispatches through the command registry."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "build", "WHAT=mod")
         output = process.stdout + process.stderr
@@ -246,9 +230,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch build")
 
     def test_workspace_makefile_dry_run_build_default_runs_orchestrator(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify default build dispatches the build orchestrator."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "build")
         output = process.stdout + process.stderr
@@ -258,9 +242,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch build")
 
     def test_workspace_makefile_dry_run_check_what_pol_dispatches_to_registry(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify the policy check dispatches through the command registry."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=pol")
         output = process.stdout + process.stderr
@@ -270,9 +254,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch check")
 
     def test_workspace_makefile_dry_run_check_what_gate_forwards_check_gates(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify named check gates are forwarded through dispatch."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "check", "WHAT=loc-cap")
         output = process.stdout + process.stderr
@@ -282,9 +266,9 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch check")
 
     def test_workspace_makefile_dry_run_boot_what_stat_dispatches_to_registry(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify boot status dispatches through the command registry."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(workspace_root, "boot", "WHAT=stat")
         output = process.stdout + process.stderr
@@ -294,14 +278,12 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         tm.that(output, has="uv run --all-packages python -m scripts.dispatch boot")
 
     def test_workspace_makefile_dry_run_docs_dispatches_to_registry(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify documentation phases dispatch through the registry."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(
-            workspace_root,
-            "docs",
-            "DOCS_PHASE=validate",
+            workspace_root, "docs", "DOCS_PHASE=validate"
         )
         output = process.stdout + process.stderr
 

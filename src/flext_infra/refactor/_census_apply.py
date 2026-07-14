@@ -250,7 +250,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 touched_paths.update(
                     Path(site.file_path).resolve()
                     for site in (
-                        *candidate.test_reference_sites,
                         *candidate.example_reference_sites,
                         *candidate.script_reference_sites,
                     )

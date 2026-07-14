@@ -28,21 +28,9 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         @staticmethod
         def _read_generated_file(path: Path) -> str | None: ...
 
-    @staticmethod
-    def _read_previous_init(plan: m.Infra.LazyInitPlan) -> str | None:
+    def _read_previous_init(self, plan: m.Infra.LazyInitPlan) -> str | None:
         """Read existing initializer content when present."""
-        init_path = plan.context.init_path
-        if not init_path.exists():
-            return None
-        read = u.Cli.files_read_text(init_path)
-        if read.failure:
-            message = f"reading {init_path}: {read.error}"
-            raise OSError(message)
-        content = read.value
-        if isinstance(content, str):
-            return content
-        message = f"reading {init_path}: expected text content"
-        raise TypeError(message)
+        return self._read_generated_file(plan.context.init_path)
 
     def _write_generated_file(
         self, path: Path, generated: str, previous: str | None

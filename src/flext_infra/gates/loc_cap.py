@@ -16,7 +16,7 @@ from flext_infra.gates.base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra import t, p
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -38,7 +38,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx

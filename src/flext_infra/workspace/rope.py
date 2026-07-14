@@ -231,7 +231,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         Built once per workspace session via a single regex scan of every
         indexed ``.py`` module. Short-circuits rope's ``find_occurrences``
         when a symbol's surface distribution alone answers the
-        unused/test_only classification question.
+        unused classification question.
         """
         if self._name_index is not None:
             return self._name_index

@@ -14,29 +14,13 @@ from tests import c
 class TestsFlextInfraInfraConstantsExtra:
     """Tests for Check namespace constants."""
 
-    def test_default_check_dirs_is_list(self) -> None:
-        tm.that(c.Infra.DEFAULT_CHECK_DIRS, is_=tuple)
-
-    def test_default_check_dirs_contains_standard_dirs(self) -> None:
-        dirs = c.Infra.DEFAULT_CHECK_DIRS
-        tm.that(dirs, contains="src")
-        tm.that(dirs, contains="tests")
-        tm.that(dirs, contains="examples")
-        tm.that(dirs, contains="scripts")
-
     def test_check_dirs_subproject_is_list(self) -> None:
         tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, is_=tuple)
 
-    def test_check_dirs_subproject_excludes_scripts(self) -> None:
-        dirs = c.Infra.CHECK_DIRS_SUBPROJECT
-        tm.that(dirs, contains="src")
-        tm.that(dirs, contains="tests")
-        tm.that(dirs, contains="examples")
-        tm.that(dirs, lacks="scripts")
+    def test_check_dirs_subproject_is_productive_src_only(self) -> None:
+        tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, eq=("src",))
 
     def test_check_dirs_are_strings(self) -> None:
-        for d in c.Infra.DEFAULT_CHECK_DIRS:
-            tm.that(d, is_=str)
         for d in c.Infra.CHECK_DIRS_SUBPROJECT:
             tm.that(d, is_=str)
 
@@ -67,10 +51,6 @@ class TestsFlextInfraInfraConstantsExtra:
     def test_excluded_dirs_are_immutable(self) -> None:
         excluded = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(excluded, is_=frozenset)
-
-    def test_check_dirs_are_immutable(self) -> None:
-        dirs = c.Infra.DEFAULT_CHECK_DIRS
-        tm.that(dirs, is_=tuple)
 
     def test_all_status_values_are_uppercase(self) -> None:
         tm.that(c.Infra.ResultStatus.PASSED.isupper(), eq=True)

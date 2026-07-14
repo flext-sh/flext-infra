@@ -49,6 +49,44 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.that(roots, eq=[project])
 
+    def test_discover_project_roots_includes_attached_project(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname="workspace"\nversion="0.1.0"\n', encoding="utf-8"
+        )
+        attached = tmp_path / "attached-project"
+        (attached / c.Infra.DEFAULT_SRC_DIR / "attached_project").mkdir(parents=True)
+        (attached / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname="attached-project"\nversion="0.1.0"\n'
+            "[tool.flext.workspace]\nattached=true\n",
+            encoding="utf-8",
+        )
+
+        roots = u.Infra.discover_project_roots(tmp_path)
+
+        tm.that(roots, has=attached.resolve())
+
+    def test_discover_project_roots_includes_external_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname="flext"\nversion="0.1.0"\n', encoding="utf-8"
+        )
+        external = tmp_path / ".ai-hub"
+        (external / c.Infra.DEFAULT_SRC_DIR / "ai_hub").mkdir(parents=True)
+        (external / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname="ai-hub"\nversion="0.1.0"\n'
+            'dependencies=["flext-core"]\n',
+            encoding="utf-8",
+        )
+
+        roots = u.Infra.discover_project_roots(workspace)
+
+        tm.that(roots, has=external.resolve())
+
     def test_discover_project_roots_prefers_tool_flext_workspace_members(
         self, tmp_path: Path
     ) -> None:
@@ -103,28 +141,37 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         project = tmp_path / "pkg"
         src_dir = project / c.Infra.DEFAULT_SRC_DIR
         test_dir = project / c.Infra.DIR_TESTS
+        script_dir = project / "scripts"
+        example_dir = project / "examples"
         src_dir.mkdir(parents=True)
         test_dir.mkdir(parents=True)
+        script_dir.mkdir(parents=True)
+        example_dir.mkdir(parents=True)
         module_file = src_dir / "mod.py"
         test_file = test_dir / "test_mod.py"
+        script_file = script_dir / "sync.py"
+        example_file = example_dir / "demo.py"
         module_file.write_text("x = 1\n", encoding="utf-8")
         test_file.write_text("def test_x():\n    assert True\n", encoding="utf-8")
+        script_file.write_text("x = 2\n", encoding="utf-8")
+        example_file.write_text("x = 3\n", encoding="utf-8")
 
         result = u.Infra.iter_python_files(
-            workspace_root=tmp_path,
-            project_roots=[project],
-            include_examples=False,
-            include_scripts=False,
+            m.Infra.SourceScanRequest(project_roots=(project,))
         )
 
         tm.ok(result)
         tm.that(result.value, has=module_file)
-        tm.that(result.value, has=test_file)
+        tm.that(result.value, has=script_file)
+        tm.that(result.value, lacks=test_file)
+        tm.that(result.value, lacks=example_file)
 
     def test_iter_python_files_returns_failure_on_oserror(self, tmp_path: Path) -> None:
         broken_root = tmp_path / "not-a-directory"
         broken_root.write_text("x", encoding="utf-8")
-        result = u.Infra.iter_python_files(workspace_root=broken_root)
+        result = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=(broken_root,))
+        )
 
         tm.fail(result)
         error_text = result.error or ""
@@ -156,7 +203,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         nested_venv_file.write_text("x = 2\n", encoding="utf-8")
 
         result = u.Infra.iter_python_files(
-            workspace_root=tmp_path, project_roots=[project]
+            m.Infra.SourceScanRequest(project_roots=(project,))
         )
 
         tm.ok(result)

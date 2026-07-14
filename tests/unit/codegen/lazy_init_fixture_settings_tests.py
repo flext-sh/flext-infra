@@ -41,41 +41,35 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (package_root / "_config.py").write_text(
-            "class FlextSampleConfig:\n"
+            "class _FlextSampleConfig:\n"
             '    """Private loader class."""\n\n'
-            "config = FlextSampleConfig()\n"
-            '__all__ = ["FlextSampleConfig", "config"]\n',
+            "config = _FlextSampleConfig()\n"
+            '__all__ = ["config"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (package_root / "_settings.py").write_text(
-            "class FlextSampleSettings:\n"
+            "class _FlextSampleSettings:\n"
             '    """Private loader class."""\n\n'
-            "settings = FlextSampleSettings()\n"
-            '__all__ = ["FlextSampleSettings", "settings"]\n',
+            "settings = _FlextSampleSettings()\n"
+            '__all__ = ["settings"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
-        unit_content = (package_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
         init_content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(unit_content, contains='"._config": ("config",)')
-        tm.that(unit_content, contains='"._settings": ("settings",)')
-        # NOTE (multi-agent): mro-i6nq.10 blocks private pytest edges at root.
-        tm.that(unit_content, lacks='"._fixtures.settings": (')
-        tm.that(unit_content, lacks='"reset_settings"')
-        tm.that(unit_content, lacks="FlextSampleConfig")
-        tm.that(unit_content, lacks="FlextSampleSettings")
+        tm.that(init_content, contains='"._config": (')
+        tm.that(init_content, contains='"._settings": (')
+        # mro-wkii.17 (Codex): the inline root excludes private pytest edges.
+        tm.that(init_content, lacks='"._fixtures.settings": (')
+        tm.that(init_content, lacks='"reset_settings"')
         tm.that(init_content, contains="config as config")
         tm.that(init_content, contains="settings as settings")
         tm.that(init_content, lacks="_fixtures.settings")
         tm.that(init_content, lacks="reset_settings as reset_settings")
         tm.that(init_content, lacks="FlextSampleConfig")
         tm.that(init_content, lacks="FlextSampleSettings")
-        compile(unit_content, "__unit__.py", "exec")
         compile(init_content, "__init__.py", "exec")

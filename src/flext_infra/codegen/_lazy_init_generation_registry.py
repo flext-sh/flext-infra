@@ -82,11 +82,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if read.failure:
             message = f"reading {path}: {read.error}"
             raise OSError(message)
-        content = read.value
-        if isinstance(content, str):
-            return content
-        message = f"reading {path}: expected text content"
-        raise TypeError(message)
+        return read.value
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitGenerationRegistryMixin"]

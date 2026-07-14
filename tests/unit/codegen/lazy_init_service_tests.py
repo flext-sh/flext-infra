@@ -17,7 +17,7 @@ class TestsFlextInfraCodegenLazyInitService:
     def test_execute_applies_only_selected_root_artifact_set(
         self, tmp_path: Path
     ) -> None:
-        """Apply writes the generated pair for exactly the selected package root."""
+        """Apply writes one initializer for exactly the selected package root."""
         _, selected_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name="flext-test-selected",
@@ -48,18 +48,10 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(result.success, eq=True)
         tm.that((selected_root / c.Infra.INIT_PY).read_bytes(), ne=b"")
-        tm.that((selected_root / c.Infra.UNIT_PY).is_file(), eq=True)
+        tm.that((selected_root / "__unit__.py").exists(), eq=False)
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
-        tm.that((unrelated_root / c.Infra.UNIT_PY).exists(), eq=False)
-        tm.that(
-            service.modified_files,
-            eq=tuple(
-                sorted((
-                    str(selected_root / c.Infra.INIT_PY),
-                    str(selected_root / c.Infra.UNIT_PY),
-                ))
-            ),
-        )
+        tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
+        tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
@@ -77,8 +69,8 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / c.Infra.UNIT_PY).exists(), eq=False)
-        tm.that(len(service.modified_files), eq=2)
+        tm.that((package_root / "__unit__.py").exists(), eq=False)
+        tm.that(service.modified_files, eq=(str(init_path),))
 
     def test_dry_run_is_read_only_even_when_apply_is_requested(
         self, tmp_path: Path
@@ -99,24 +91,22 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / c.Infra.UNIT_PY).exists(), eq=False)
-        tm.that(len(service.modified_files), eq=2)
+        tm.that((package_root / "__unit__.py").exists(), eq=False)
+        tm.that(service.modified_files, eq=(str(init_path),))
 
     def test_second_check_is_byte_idempotent(self, tmp_path: Path) -> None:
-        """A check after apply succeeds and preserves both generated artifacts."""
+        """A check after apply succeeds and preserves the generated initializer."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
-        unit_path = package_root / c.Infra.UNIT_PY
         apply_service = u.Tests.create_lazy_init_service(workspace_root)
         apply_service.target_module = "flext_test_project"
         apply_service.apply_changes = True
 
         apply_result = apply_service.execute()
         generated_init = init_path.read_bytes()
-        generated_unit = unit_path.read_bytes()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_service.target_module = "flext_test_project"
         check_service.check_only = True
@@ -126,7 +116,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(check_result.success, eq=True)
         tm.that(check_service.modified_files, eq=())
         tm.that(init_path.read_bytes(), eq=generated_init)
-        tm.that(unit_path.read_bytes(), eq=generated_unit)
+        tm.that((package_root / "__unit__.py").exists(), eq=False)
 
     def test_unknown_target_fails_without_workspace_fallback(
         self, tmp_path: Path
@@ -146,7 +136,7 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that((package_root / c.Infra.UNIT_PY).exists(), eq=False)
+        tm.that((package_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
 
     def test_ambiguous_target_fails_without_writing_either_project(
@@ -178,8 +168,8 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(result.success, eq=False)
         tm.that(first_init.read_bytes(), eq=first_before)
         tm.that(second_init.read_bytes(), eq=second_before)
-        tm.that((first_root / c.Infra.UNIT_PY).exists(), eq=False)
-        tm.that((second_root / c.Infra.UNIT_PY).exists(), eq=False)
+        tm.that((first_root / "__unit__.py").exists(), eq=False)
+        tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
 
 

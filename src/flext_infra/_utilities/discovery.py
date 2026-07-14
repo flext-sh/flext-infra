@@ -282,9 +282,20 @@ class FlextInfraUtilitiesDiscovery:
                 ),
             ]
         )
-        try:
-            all_files: list[Path] = []
-            for scan_root in scan_roots:
+        all_files: list[Path] = []
+        for scan_root in scan_roots:
+            if scan_root.is_file():
+                if scan_root.name != c.Infra.PYPROJECT_FILENAME:
+                    return r[t.SequenceOf[Path]].fail(
+                        f"explicit project file must be {c.Infra.PYPROJECT_FILENAME}: {scan_root}"
+                    )
+                all_files.append(scan_root)
+                continue
+            if not scan_root.is_dir():
+                return r[t.SequenceOf[Path]].fail(
+                    f"explicit project path is not accessible: {scan_root}"
+                )
+            try:
                 all_files.extend(
                     sorted(
                         path
@@ -295,8 +306,8 @@ class FlextInfraUtilitiesDiscovery:
                         )
                     )
                 )
-        except OSError as exc:
-            return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
+            except OSError as exc:
+                return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
         if project_paths is not None:
             all_files = [
                 path

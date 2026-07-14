@@ -224,7 +224,6 @@ class FlextInfraUtilitiesRopeInventory:
         ):
             (
                 runtime_reference_sites,
-                test_reference_sites,
                 example_reference_sites,
                 script_reference_sites,
             ) = cls._reference_sites(
@@ -238,14 +237,12 @@ class FlextInfraUtilitiesRopeInventory:
             )
         else:
             runtime_reference_sites = ()
-            test_reference_sites = ()
             example_reference_sites = ()
             script_reference_sites = ()
         references_count = sum(
             len(reference_sites)
             for reference_sites in (
                 runtime_reference_sites,
-                test_reference_sites,
                 example_reference_sites,
                 script_reference_sites,
             )
@@ -270,11 +267,9 @@ class FlextInfraUtilitiesRopeInventory:
             is_facade_member=is_facade_member,
             references_count=references_count,
             runtime_references_count=len(runtime_reference_sites),
-            test_references_count=len(test_reference_sites),
             example_references_count=len(example_reference_sites),
             script_references_count=len(script_reference_sites),
             runtime_reference_sites=runtime_reference_sites,
-            test_reference_sites=test_reference_sites,
             example_reference_sites=example_reference_sites,
             script_reference_sites=script_reference_sites,
             fingerprint=cls._fingerprint(
@@ -380,7 +375,6 @@ class FlextInfraUtilitiesRopeInventory:
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
     ]:
         """Collect the reference sites for a symbol."""
         lines = source.splitlines(keepends=True)
@@ -388,7 +382,7 @@ class FlextInfraUtilitiesRopeInventory:
             lines, line=line, symbol=name
         )
         if offset is None:
-            return ((), (), (), ())
+            return ((), (), ())
         definition_path = FlextInfraUtilitiesRopeCore.resource_file_path(
             rope_project, resource
         )
@@ -422,7 +416,6 @@ class FlextInfraUtilitiesRopeInventory:
             rope_project, resource, offset, resources=search_resources
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         example_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         seen_sites: set[tuple[str, int, str]] = set()
@@ -449,8 +442,8 @@ class FlextInfraUtilitiesRopeInventory:
             if site_key in seen_sites:
                 continue
             seen_sites.add(site_key)
+            # Tests are deliberately outside production reachability.
             if reference_site.surface == c.Infra.DIR_TESTS:
-                test_reference_sites.append(reference_site)
                 continue
             if reference_site.surface == c.Infra.DIR_EXAMPLES:
                 example_reference_sites.append(reference_site)
@@ -463,11 +456,7 @@ class FlextInfraUtilitiesRopeInventory:
             surface = FlextInfraUtilitiesRopeInventory._reference_surface(
                 definition_path
             )
-            if surface == c.Infra.DIR_TESTS:
-                FlextInfraUtilitiesRopeInventory._discard_definition_site(
-                    test_reference_sites, definition_path=definition_path, line=line
-                )
-            elif surface == c.Infra.DIR_EXAMPLES:
+            if surface == c.Infra.DIR_EXAMPLES:
                 FlextInfraUtilitiesRopeInventory._discard_definition_site(
                     example_reference_sites, definition_path=definition_path, line=line
                 )
@@ -480,10 +469,7 @@ class FlextInfraUtilitiesRopeInventory:
                     runtime_reference_sites, definition_path=definition_path, line=line
                 )
         has_reference_sites = bool(
-            runtime_reference_sites
-            or test_reference_sites
-            or example_reference_sites
-            or script_reference_sites
+            runtime_reference_sites or example_reference_sites or script_reference_sites
         )
         if (
             not has_reference_sites
@@ -493,7 +479,6 @@ class FlextInfraUtilitiesRopeInventory:
         ):
             (
                 fallback_runtime_reference_sites,
-                fallback_test_reference_sites,
                 fallback_example_reference_sites,
                 fallback_script_reference_sites,
             ) = FlextInfraUtilitiesRopeInventory._fallback_reference_sites_from_index(
@@ -503,12 +488,10 @@ class FlextInfraUtilitiesRopeInventory:
                 name=name,
             )
             runtime_reference_sites.extend(fallback_runtime_reference_sites)
-            test_reference_sites.extend(fallback_test_reference_sites)
             example_reference_sites.extend(fallback_example_reference_sites)
             script_reference_sites.extend(fallback_script_reference_sites)
         return (
             tuple(runtime_reference_sites),
-            tuple(test_reference_sites),
             tuple(example_reference_sites),
             tuple(script_reference_sites),
         )
@@ -524,7 +507,6 @@ class FlextInfraUtilitiesRopeInventory:
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
         tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
     ]:
         """Fallback reference sites from indexed dependent modules.
 
@@ -536,7 +518,7 @@ class FlextInfraUtilitiesRopeInventory:
         name_index_getter = getattr(rope_workspace, "name_index", None)
         import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
         if name_index_getter is None or not callable(import_dependents_getter):
-            return ((), (), (), ())
+            return ((), (), ())
         dependent_paths: set[str] = set()
         for import_target in (module_name, f"{module_name}.{name}"):
             dependent_paths_raw = import_dependents_getter(import_target)
@@ -559,12 +541,11 @@ class FlextInfraUtilitiesRopeInventory:
                     )
                 )
         if not dependent_paths:
-            return ((), (), (), ())
+            return ((), (), ())
         normalized_definition = FlextInfraUtilitiesRopeInventory._normalize_file_path(
             definition_path.resolve()
         )
         runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        test_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         example_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
         seen_sites: set[tuple[str, int, str]] = set()
@@ -585,7 +566,6 @@ class FlextInfraUtilitiesRopeInventory:
                     file_path=normalized_path, line=line, surface=surface
                 )
                 if surface == c.Infra.DIR_TESTS:
-                    test_reference_sites.append(reference_site)
                     continue
                 if surface == c.Infra.DIR_EXAMPLES:
                     example_reference_sites.append(reference_site)
@@ -596,7 +576,6 @@ class FlextInfraUtilitiesRopeInventory:
                 runtime_reference_sites.append(reference_site)
         return (
             tuple(runtime_reference_sites),
-            tuple(test_reference_sites),
             tuple(example_reference_sites),
             tuple(script_reference_sites),
         )
@@ -606,7 +585,6 @@ class FlextInfraUtilitiesRopeInventory:
         rope_workspace: p.AttributeProbe, *, name: str, definition_path: Path, line: int
     ) -> (
         tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
             tuple[m.Infra.Census.ReferenceSite, ...],
             tuple[m.Infra.Census.ReferenceSite, ...],
             tuple[m.Infra.Census.ReferenceSite, ...],
@@ -626,7 +604,7 @@ class FlextInfraUtilitiesRopeInventory:
             return None
         occurrences = name_index_getter().get(name, ())
         if not occurrences:
-            return ((), (), (), ())
+            return ((), (), ())
         resolved_definition = definition_path.resolve()
         has_same_file_non_definition = any(
             path.resolve() == resolved_definition
@@ -641,7 +619,7 @@ class FlextInfraUtilitiesRopeInventory:
         )
         if has_external:
             return None
-        return ((), (), (), ())
+        return ((), (), ())
 
     @staticmethod
     def _location_file_path(location: t.Infra.RopeLocation) -> Path | None:

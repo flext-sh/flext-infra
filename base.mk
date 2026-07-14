@@ -182,7 +182,7 @@ ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
 endif
 PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
-# mro-wkii.17.27 (codex): boot must provision the venv before consuming it.
+# mro-wkii.17.27 (codex): boot provisions the venv before normal commands use it.
 PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra
 PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check

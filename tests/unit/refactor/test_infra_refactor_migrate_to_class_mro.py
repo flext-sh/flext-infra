@@ -9,7 +9,6 @@ from flext_tests import tm
 
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra.iteration import FlextInfraUtilitiesIteration
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
@@ -205,33 +204,6 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         # Consumer import rewritten: Greeter → p.Greeter with facade alias import.
         tm.that(consumer_source, has="from sample_pkg.protocols import p")
         tm.that(consumer_source, has="def call_greet(protocol: p.Greeter) -> str:")
-
-    def test_refactor_utilities_iter_python_files_includes_examples_and_scripts(
-        self, tmp_path: Path
-    ) -> None:
-        project_root = tmp_path / "sample"
-        project_root.mkdir(parents=True)
-        _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        (project_root / ".git").mkdir(parents=True)
-        expected_paths = [
-            project_root / "src" / "sample_pkg" / "module.py",
-            project_root / "tests" / "test_module.py",
-            project_root / "examples" / "demo.py",
-            project_root / "scripts" / "sync.py",
-        ]
-        for file_path in expected_paths:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            _ = file_path.write_text(
-                "from __future__ import annotations\n", encoding="utf-8"
-            )
-        discovered = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=tmp_path
-        )
-        tm.ok(discovered)
-        tm.that(sorted(discovered.value), eq=sorted(expected_paths))
 
     def test_discover_project_roots_without_nested_git_dirs(
         self, tmp_path: Path

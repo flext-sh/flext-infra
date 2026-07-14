@@ -11,54 +11,52 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from tests import t
 from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from tests import m
-    from tests import t
-
-
-def _test_tool_config() -> m.Infra.ToolConfigDocument:
-    result = u.Infra.load_tool_config()
-    tm.that(not result.failure, eq=True)
-    if result.failure:
-        msg = "failed to load tool settings"
-        raise ValueError(msg)
-    return result.value
 
 
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
-    def test_ensure_pyrefly_config_sets_fields_root(self) -> None:
+    def test_ensure_pyrefly_config_sets_fields_root(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify root projects receive the canonical Pyrefly fields."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
-        phase = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config())
+        phase = FlextInfraEnsurePyreflyConfigPhase(tool_config_document)
         _ = phase.apply(doc, is_root=True)
 
-    def test_ensure_pyrefly_config_non_root(self) -> None:
+    def test_ensure_pyrefly_config_non_root(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify child projects receive Pyrefly configuration changes."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
-        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=False
         )
         tm.that(changes, empty=False)
 
-    def test_ensure_pyrefly_config_removes_fallback_interpreter_name(self) -> None:
+    def test_ensure_pyrefly_config_removes_fallback_interpreter_name(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify the obsolete fallback interpreter setting is removed."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(pyrefly, is_=MutableMapping)
         pyrefly["fallback-python-interpreter-name"] = "python"
 
-        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
 
@@ -72,58 +70,60 @@ class TestsFlextInfraModernizerPyrefly:
             eq=True,
         )
 
-    """Behavior contract for test_modernizer_pyrefly."""
-
-    def test_ensure_pyrefly_config_phase_apply_python_version(self) -> None:
+    def test_ensure_pyrefly_config_phase_apply_python_version(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify the canonical Python version is written."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
         pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
         tm.that(pyrefly, is_=MutableMapping)
         tm.that(u.Cli.toml_unwrap_item(pyrefly["python-version"]), eq="3.13")
 
-    def test_ensure_pyrefly_config_phase_apply_ignore_errors(self) -> None:
+    def test_ensure_pyrefly_config_phase_apply_ignore_errors(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify generated-code error handling follows canonical policy."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(pyrefly, is_=MutableMapping)
-        assert (
-            u.Cli.toml_unwrap_item(pyrefly["ignore-errors-in-generated-code"]) is True
+        tm.that(
+            u.Cli.toml_unwrap_item(pyrefly["ignore-errors-in-generated-code"]), eq=True
         )
 
-    def test_ensure_pyrefly_config_phase_apply_search_path(self) -> None:
+    def test_ensure_pyrefly_config_phase_apply_search_path(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify the default Pyrefly search path is written."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
         pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
         tm.that(pyrefly, is_=MutableMapping)
         tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
-        self, tmp_path: Path
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Verify project context contributes existing source directories."""
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         for directory in ("src", "tests", "examples", "scripts"):
@@ -136,10 +136,9 @@ class TestsFlextInfraModernizerPyrefly:
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
 
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
             is_root=False,
             project_dir=project_dir,
@@ -148,13 +147,13 @@ class TestsFlextInfraModernizerPyrefly:
 
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
-        tm.that(search_path, eq=[".", "scripts", "src"])
+        tm.that(search_path, eq=[".", "src"])
 
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
-        self, tmp_path: Path
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Verify Pyright include paths feed project-scoped Pyrefly config."""
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
         for directory in ("src", "tests"):
@@ -167,10 +166,9 @@ class TestsFlextInfraModernizerPyrefly:
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
 
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
             is_root=False,
             project_dir=project_dir,
@@ -179,13 +177,13 @@ class TestsFlextInfraModernizerPyrefly:
 
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(pyrefly, is_=MutableMapping)
         project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
-        tm.that(project_includes, eq=["src/**/*.py*"])
+        tm.that(project_includes, eq=["src/**/*.py*", "tests/**/*.py*"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
-        self, tmp_path: Path
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Verify root context includes workspace dependency source paths."""
         for directory in ("src", "tests"):
             (tmp_path / directory).mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
@@ -215,10 +213,9 @@ class TestsFlextInfraModernizerPyrefly:
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
 
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
             is_root=True,
             project_dir=tmp_path,
@@ -227,44 +224,44 @@ class TestsFlextInfraModernizerPyrefly:
 
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
-        tm.that(pyrefly, is_=MutableMapping)
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
         tm.that(search_path, eq=[".", "flext-core/src", "src"])
 
-    def test_ensure_pyrefly_config_phase_apply_errors(self) -> None:
+    def test_ensure_pyrefly_config_phase_apply_errors(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify the canonical Pyrefly error table is populated."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
-        _ = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
         errors = pyrefly["errors"]
         tm.that(errors, is_=MutableMapping)
-        tm.that(errors, is_=MutableMapping)
         tm.that(len(errors), gt=0)
 
-    def test_ensure_pyrefly_config_phase_removes_stale_error_keys(self) -> None:
+    def test_ensure_pyrefly_config_phase_removes_stale_error_keys(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify stale error keys are removed from TOML documents."""
         doc = tomlkit.document()
         doc["tool"] = tomlkit.table()
         tool = doc["tool"]
         tm.that(tool, is_=MutableMapping)
-        tm.that(tool, is_=MutableMapping)
         tool["pyrefly"] = tomlkit.table()
         pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
         tm.that(pyrefly, is_=MutableMapping)
         pyrefly["errors"] = tomlkit.table()
         errors = pyrefly["errors"]
         tm.that(errors, is_=MutableMapping)
-        tm.that(errors, is_=MutableMapping)
         errors["annotation-mismatch"] = "error"
 
-        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply(
+        changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
 
@@ -277,20 +274,22 @@ class TestsFlextInfraModernizerPyrefly:
             eq=True,
         )
 
-    def test_ensure_pyrefly_config_payload_removes_stale_error_keys(self) -> None:
+    def test_ensure_pyrefly_config_payload_removes_stale_error_keys(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify stale error keys are removed from plain payloads."""
         errors: t.JsonDict = {"annotation-mismatch": "error"}
         pyrefly: t.JsonDict = {"errors": errors}
         tool: t.JsonDict = {"pyrefly": pyrefly}
         payload: t.MutableJsonMapping = {"tool": tool}
 
-        changes = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config()).apply_payload(
-            payload, is_root=True
-        )
+        changes = FlextInfraEnsurePyreflyConfigPhase(
+            tool_config_document
+        ).apply_payload(payload, is_root=True)
 
-        errors_after = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, c.Infra.PYREFLY, "errors")
+        errors_after = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_path(payload, (c.Infra.TOOL, c.Infra.PYREFLY, "errors"))
         )
-        tm.that(errors_after, none=False)
         tm.that("annotation-mismatch" in errors_after, eq=False)
         tm.that("bad-argument-count" in errors_after, eq=True)
         tm.that(
@@ -300,9 +299,12 @@ class TestsFlextInfraModernizerPyrefly:
             eq=True,
         )
 
-    def test_ensure_pyrefly_config_phase_is_idempotent(self) -> None:
+    def test_ensure_pyrefly_config_phase_is_idempotent(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Verify a second Pyrefly phase run produces no changes."""
         doc = tomlkit.document()
-        phase = FlextInfraEnsurePyreflyConfigPhase(_test_tool_config())
+        phase = FlextInfraEnsurePyreflyConfigPhase(tool_config_document)
 
         _ = phase.apply(doc, is_root=True)
         second_changes = phase.apply(doc, is_root=True)

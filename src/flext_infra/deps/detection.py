@@ -44,7 +44,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run raw."""
         if self.runner is not None:
             return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)

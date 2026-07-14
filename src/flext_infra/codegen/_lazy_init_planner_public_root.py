@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
-from flext_infra import m, t
+from flext_infra import c, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
@@ -16,6 +20,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
 
         lazy_init: m.Infra.LazyInitConfig
 
+        # mro-pulj: this implementation is supplied by PublicApiMixin in the MRO.
         def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...
 
         def _public_root_child_packages(

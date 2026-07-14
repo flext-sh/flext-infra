@@ -73,10 +73,6 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Number of references from runtime/source modules"),
             ] = 0
-            test_references_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Number of references from test modules"),
-            ] = 0
             example_references_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(description="Number of references from example modules"),
@@ -90,9 +86,6 @@ class FlextInfraModelsCensus:
             ] = m.Field(
                 default_factory=tuple, description="Runtime/source reference sites"
             )
-            test_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
-            ] = m.Field(default_factory=tuple, description="Test reference sites")
             example_reference_sites: tuple[
                 FlextInfraModelsCensus.Census.ReferenceSite, ...
             ] = m.Field(default_factory=tuple, description="Example reference sites")
@@ -120,9 +113,7 @@ class FlextInfraModelsCensus:
             scope_path: Annotated[
                 str, m.Field(description="Canonical owner/scope path for the candidate")
             ] = ""
-            reason: Annotated[
-                str, m.Field(description="Candidate reason (unused or test_only)")
-            ]
+            reason: Annotated[str, m.Field(description="Candidate reason (unused)")]
             suggested_action: Annotated[
                 str, m.Field(description="Suggested removal action for this candidate")
             ]
@@ -131,12 +122,6 @@ class FlextInfraModelsCensus:
             ] = m.Field(
                 default_factory=tuple,
                 description="Runtime/source references blocking full deletion",
-            )
-            test_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
-            ] = m.Field(
-                default_factory=tuple,
-                description="Test references supporting this candidate",
             )
             example_reference_sites: tuple[
                 FlextInfraModelsCensus.Census.ReferenceSite, ...
@@ -298,10 +283,6 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Objects with no non-definition references"),
             ] = 0
-            test_only_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Objects referenced only from tests"),
-            ] = 0
             removal_candidate_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(description="Objects eligible for aggressive removal review"),
@@ -339,10 +320,6 @@ class FlextInfraModelsCensus:
             )
             unused_count: Annotated[
                 t.NonNegativeInt, m.Field(description="Total unused objects")
-            ] = 0
-            test_only_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Total objects referenced only from tests"),
             ] = 0
             removal_candidate_count: Annotated[
                 t.NonNegativeInt,

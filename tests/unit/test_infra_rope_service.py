@@ -479,10 +479,10 @@ class TestsFlextInfraInfraRopeService:
                     dependent_import_targets=("demo", "demo.helper"),
                 )
 
-    def test_workspace_dsl_classifies_test_only_references(
+    def test_workspace_dsl_ignores_test_references(
         self, tmp_path: Path
     ) -> None:
-        """Public census objects keep runtime and test reference counts separate."""
+        """Tests remain outside production reachability."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -514,21 +514,10 @@ class TestsFlextInfraInfraRopeService:
             }
 
         candidate = objects["only_for_tests"]
-        tm.that(candidate.references_count, eq=2)
+        tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.test_references_count, eq=2)
         tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
-        tm.that(len(candidate.test_reference_sites), eq=2)
-        tm.that(sorted(site.line for site in candidate.test_reference_sites), eq=[3, 6])
-        tm.that(
-            {site.file_path for site in candidate.test_reference_sites},
-            eq={str(test_path)},
-        )
-        tm.that(
-            {site.surface for site in candidate.test_reference_sites},
-            eq={c.Infra.DIR_TESTS},
-        )
 
     def test_workspace_dsl_skips_reference_scan_for_facade_members(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -629,10 +618,10 @@ class TestsFlextInfraInfraRopeService:
         tm.that(seen_names, lacks="__all__")
         tm.that(seen_names, has="public")
 
-    def test_workspace_dsl_tracks_example_importers_for_generic_names(
+    def test_workspace_dsl_ignores_example_importers_for_generic_names(
         self, tmp_path: Path
     ) -> None:
-        """Generic example names keep example references after resource narrowing."""
+        """Examples remain outside production reachability."""
         workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -663,23 +652,15 @@ class TestsFlextInfraInfraRopeService:
             }
 
         candidate = objects["run"]
-        tm.that(candidate.references_count, eq=2)
+        tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.test_references_count, eq=0)
-        tm.that(candidate.example_references_count, eq=2)
+        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
-        tm.that(
-            {site.file_path for site in candidate.example_reference_sites},
-            eq={str(consumer_path)},
-        )
-        tm.that(
-            sorted(site.line for site in candidate.example_reference_sites), eq=[3, 5]
-        )
 
-    def test_workspace_dsl_tracks_example_base_class_references(
+    def test_workspace_dsl_ignores_example_base_class_references(
         self, tmp_path: Path
     ) -> None:
-        """Example facade subclassing keeps shared base classes out of unused candidates."""
+        """Example inheritance remains outside production reachability."""
         workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -720,18 +701,10 @@ class TestsFlextInfraInfraRopeService:
             }
 
         candidate = objects["ExampleSharedPerson"]
-        tm.that(candidate.references_count, eq=2)
+        tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.test_references_count, eq=0)
-        tm.that(candidate.example_references_count, eq=2)
+        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
-        tm.that(
-            {site.file_path for site in candidate.example_reference_sites},
-            eq={str(facade_path)},
-        )
-        tm.that(
-            sorted(site.line for site in candidate.example_reference_sites), eq=[3, 6]
-        )
 
     def test_workspace_dsl_tracks_same_file_references(self, tmp_path: Path) -> None:
         """Same-file uses must block the unused fast-path shortcut."""
@@ -758,7 +731,6 @@ class TestsFlextInfraInfraRopeService:
         candidate = objects["ExampleService"]
         tm.that(candidate.references_count, eq=1)
         tm.that(candidate.runtime_references_count, eq=1)
-        tm.that(candidate.test_references_count, eq=0)
         tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
         tm.that(

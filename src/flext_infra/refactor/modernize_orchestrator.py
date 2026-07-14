@@ -68,16 +68,15 @@ class FlextInfraModernizeOrchestrator:
         *,
         transformer_factory: Callable[[], p.Infra.ChangeTracker],
         description: str,
-    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
+    ) -> p.Result[t.Cli.ResultValue]:
         """Execute a modernization as a convenience entrypoint for CLI route handlers."""
+        # mro-r3r8: keep detailed results in run(); CLI routes expose one scalar contract.
         orchestrator = cls(transformer_factory, description=description)
         result = orchestrator.run(params)
         if result.failure:
-            return r[t.SequenceOf[m.Infra.Result]].fail(
-                result.error, error_code=result.error_code
-            )
+            return r[t.Cli.ResultValue].fail(result.error, error_code=result.error_code)
         cls._display_results(result.value, dry_run=not params.apply)
-        return r[t.SequenceOf[m.Infra.Result]].ok(result.value)
+        return r[t.Cli.ResultValue].ok(True)
 
     def _resolve_projects(
         self, workspace_root: Path, project_names: t.StrSequence | None

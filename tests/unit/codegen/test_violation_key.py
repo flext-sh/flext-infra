@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from tests import m
+from tests import c, m
 
 if TYPE_CHECKING:
     from tests import t
@@ -79,7 +79,7 @@ class TestsFlextInfraCodegenViolationKey:
         """ViolationKey is immutable (frozen=True)."""
         v = _violation()
         key = m.Infra.ViolationKey.from_violation(v, _SOURCE_10)
-        with pytest.raises(Exception):
+        with pytest.raises(c.ValidationError, match="frozen_instance"):
             setattr(key, "module", "changed")
 
     def test_frozenset_reconciliation(self) -> None:

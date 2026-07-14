@@ -97,9 +97,12 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
 
     @staticmethod
     def _public_export_order_key(export_name: str) -> tuple[int, str]:
-        """Classify one export using Ruff's SCREAMING, CamelCase, other order."""
+        """Classify one export using Ruff's canonical ``RUF022`` order."""
         category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
-        return (category, export_name.casefold())
+        # mro-wkii.17 (Codex): dependency order belongs to facade imports;
+        # published __all__ values follow Ruff RUF022 (case-sensitive ASCII
+        # secondary sort) so the two contracts never fight.
+        return (category, export_name)
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationLazyEntriesMixin"]

@@ -156,8 +156,30 @@ class FlextInfraExtraPathsManager(
                 payload = u.Infra.pyproject_payload(pyproject)
                 paths.update(self._dep_paths(payload, project_dir=project_dir))
                 paths.update(self._uv_source_paths(payload, project_dir=project_dir))
+            paths.update(self._workspace_member_source_paths(project_dir=project_dir))
         paths.add(source_root)
         return sorted(paths)
+
+    def _workspace_member_source_paths(self, *, project_dir: Path) -> t.StrSequence:
+        """Return `<member>/<source_dir>` search paths for uv workspace members.
+
+        ``[tool.uv.workspace] members`` lists path entries (e.g.
+        ``../flext/flext-cli``) for consumers that depend on flext via workspace
+        membership rather than ``[tool.uv.sources] path=``. Those members are the
+        real import roots but were previously absent from the pyrefly search path,
+        leaving stale/wrong entries. Emit each existing ``<member>/<source_dir>``.
+        """
+        source_dir = config.Infra.tooling.tools.pyrefly.path_rules.source_dir
+        resolved: t.MutableSequenceOf[str] = []
+        for member in u.Infra.workspace_member_names(project_dir):
+            member_source = project_dir / member / source_dir
+            if not member_source.is_dir():
+                continue
+            relative = self._project_relative_path(
+                project_dir=project_dir, target_dir=member_source
+            )
+            resolved.append(relative)
+        return tuple(resolved)
 
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool

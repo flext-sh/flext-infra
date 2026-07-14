@@ -168,6 +168,7 @@ class TestsFlextInfraRefactorMainCli:
         TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["only_for_tests"]\n\n'
             "def only_for_tests(value: int) -> int:\n"
             "    return value + 1\n",
         )
@@ -213,14 +214,8 @@ class TestsFlextInfraRefactorMainCli:
             "def helper_used(value: int) -> int:\n"
             "    return value * 2\n\n"
             "def only_for_tests(value: int) -> int:\n"
-            "    return value + 1\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "runtime.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.operations import helper_used\n\n"
-            "def compute(value: int) -> int:\n"
-            "    return helper_used(value)\n",
+            "    return value + 1\n\n"
+            "OBSERVED = helper_used(2)\n",
         )
         TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_operations.py",
@@ -246,6 +241,7 @@ class TestsFlextInfraRefactorMainCli:
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
+            '__all__: list[str] = ["only_for_tests"]\n\n'
             "def only_for_tests(values: t.SequenceOf[int]) -> int:\n"
             "    return len(values)\n",
         )
@@ -269,6 +265,7 @@ class TestsFlextInfraRefactorMainCli:
         TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["Service"]\n\n'
             "class Service:\n"
             "    def only_for_tests(self, value: int) -> int:\n"
             "        return value + 1\n",
@@ -293,10 +290,12 @@ class TestsFlextInfraRefactorMainCli:
         TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "service.py",
             "from __future__ import annotations\n\n"
+            '__all__: list[str] = ["outer"]\n\n'
             "def outer(value: int) -> int:\n"
             "    def only_for_cleanup(inner: int) -> int:\n"
             "        return inner + 1\n\n"
-            "    return value\n",
+            "    return value\n\n"
+            "OBSERVED_VALUE = outer(1)\n",
         )
         TestsFlextInfraRefactorMainCli._write(
             workspace / "tests" / "test_service.py",
@@ -322,6 +321,7 @@ class TestsFlextInfraRefactorMainCli:
             service_file,
             "from __future__ import annotations\n"
             "from collections.abc import Sequence\n\n"
+            '__all__: list[str] = ["only_for_cleanup"]\n\n'
             "def only_for_cleanup(values: t.SequenceOf[int]) -> int:\n"
             "    return len(values)\n",
         )
@@ -718,14 +718,16 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(source, has="from flext_demo import FlextDemoModelsDomain")
         tm.that(source, has="class FlextDemoModels(FlextDemoModelsDomain):")
 
-    def test_refactor_census_flags_test_only_candidates(self, tmp_path: Path) -> None:
+    def test_refactor_census_flags_unused_when_only_tests_reference_source(
+        self, tmp_path: Path
+    ) -> None:
         workspace = self._build_test_only_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
@@ -734,21 +736,19 @@ class TestsFlextInfraRefactorMainCli:
             violation for project in report.projects for violation in project.violations
         ]
 
-        tm.that(report.unused_count, eq=0)
-        tm.that(report.test_only_count, eq=1)
+        tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(len(report.removal_candidates), eq=1)
         tm.that(len(violations), eq=1)
-        tm.that(violations[0].kind, eq="test_only")
+        tm.that(violations[0].kind, eq="unused")
         tm.that(violations[0].object_name, eq="only_for_tests")
         candidate = report.removal_candidates[0]
-        tm.that(candidate.reason, eq="test_only")
-        tm.that(candidate.suggested_action, eq="delete_object_and_test_references")
-        tm.that(len(candidate.test_reference_sites), eq=2)
-        tm.that(sorted(site.line for site in candidate.test_reference_sites), eq=[3, 6])
+        tm.that(candidate.reason, eq="unused")
+        tm.that(candidate.suggested_action, eq="delete_object_definition")
+        tm.that(candidate.runtime_reference_sites, eq=())
 
         rendered = FlextInfraRefactorCensus.render_text(report)
-        tm.that(rendered, has="Test-only: 1")
+        tm.that(rendered, has="Unused: 1")
         tm.that(rendered, has="Removal candidates:")
         tm.that(rendered, has="Candidate preview:")
 
@@ -761,17 +761,16 @@ class TestsFlextInfraRefactorMainCli:
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class", "assignment"),
-            rules=("unused", "test_only"),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
         tm.that(report.unused_count, eq=0)
-        tm.that(report.test_only_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
         tm.that(report.removal_candidates, eq=())
 
-    def test_refactor_census_apply_removes_simple_test_only_candidate(
+    def test_refactor_census_apply_removes_unused_source_without_touching_tests(
         self, tmp_path: Path
     ) -> None:
         workspace = self._build_test_only_workspace(tmp_path)
@@ -784,7 +783,7 @@ class TestsFlextInfraRefactorMainCli:
             "census",
             "--apply",
             "--rules",
-            "test_only",
+            "unused",
             "--kinds",
             "function",
         )
@@ -793,7 +792,7 @@ class TestsFlextInfraRefactorMainCli:
         service_source = service_file.read_text(encoding="utf-8")
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
-        tm.that(test_source, lacks="only_for_tests")
+        tm.that(test_source, has="only_for_tests")
         tm.that(_parse_source_ast(service_source), none=False)
         tm.that(_parse_source_ast(test_source), none=False)
 
@@ -801,12 +800,12 @@ class TestsFlextInfraRefactorMainCli:
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
-        tm.that(report.test_only_count, eq=0)
+        tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
 
     def test_refactor_census_apply_cascades_through_init_lazy_map_and_all(
@@ -823,7 +822,7 @@ class TestsFlextInfraRefactorMainCli:
             "census",
             "--apply",
             "--rules",
-            "test_only",
+            "unused",
             "--kinds",
             "function",
         )
@@ -835,7 +834,7 @@ class TestsFlextInfraRefactorMainCli:
 
         tm.that(init_source, lacks="only_for_tests")
         tm.that(helpers_source, lacks="only_for_tests")
-        tm.that(test_source, lacks="only_for_tests")
+        tm.that(test_source, has="only_for_tests")
         tm.that(init_source, has="helper_used")
         tm.that(helpers_source, has="helper_used")
         tm.that(_parse_source_ast(init_source), none=False)
@@ -846,12 +845,12 @@ class TestsFlextInfraRefactorMainCli:
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
-        tm.that(report.test_only_count, eq=0)
+        tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
 
     def test_refactor_census_strip_class_base_rewrites_facade(self) -> None:
@@ -874,7 +873,7 @@ class TestsFlextInfraRefactorMainCli:
         _rewritten, disqualified = u.Infra._strip_class_base(source, "RetiredMixin")
         tm.that(disqualified, eq=True)
 
-    def test_refactor_census_apply_removes_decorated_test_only_function(
+    def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
@@ -888,6 +887,7 @@ class TestsFlextInfraRefactorMainCli:
             service_file,
             "from __future__ import annotations\n\n"
             "import functools\n\n"
+            '__all__: list[str] = ["only_for_tests"]\n\n'
             "def log_entry(fn):\n"
             "    @functools.wraps(fn)\n"
             "    def wrapper(*args, **kwargs):\n"
@@ -911,7 +911,7 @@ class TestsFlextInfraRefactorMainCli:
             "census",
             "--apply",
             "--rules",
-            "test_only",
+            "unused",
             "--kinds",
             "function",
         )
@@ -956,7 +956,7 @@ class TestsFlextInfraRefactorMainCli:
             "census",
             "--apply",
             "--rules",
-            "test_only",
+            "unused",
             "--kinds",
             "function",
         )
@@ -966,17 +966,17 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(origin_init.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(clone_helpers.read_text(encoding="utf-8"), lacks="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), lacks="only_for_tests")
-        tm.that(clone_test.read_text(encoding="utf-8"), lacks="only_for_tests")
+        tm.that(clone_test.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(clone_init.read_text(encoding="utf-8"), has="helper_used")
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=clone,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
         tm.ok(report_result)
-        tm.that(report_result.unwrap().test_only_count, eq=0)
+        tm.that(report_result.unwrap().unused_count, eq=0)
 
     def test_refactor_census_apply_removes_unused_top_level_and_cleans_imports(
         self, tmp_path: Path
@@ -1025,12 +1025,12 @@ class TestsFlextInfraRefactorMainCli:
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
-        tm.that(report.test_only_count, eq=1)
+        tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(report.removal_candidates[0].object_name, eq="only_for_tests")
         service_source = service_file.read_text(encoding="utf-8")
@@ -1050,12 +1050,12 @@ class TestsFlextInfraRefactorMainCli:
             dry_run=True,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
-        tm.that(report.test_only_count, eq=1)
+        tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(service_file.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(test_file.read_text(encoding="utf-8"), has="only_for_tests")
@@ -1088,7 +1088,7 @@ class TestsFlextInfraRefactorMainCli:
             dry_run=True,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
         tm.ok(report_result)
         report = report_result.unwrap()
@@ -1131,7 +1131,7 @@ class TestsFlextInfraRefactorMainCli:
             apply_changes=True,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
         tm.ok(report_result)
         report = report_result.unwrap()
@@ -1186,8 +1186,8 @@ class TestsFlextInfraRefactorMainCli:
             self._build_test_only_method_workspace(tmp_path),
             impact_map_path=tmp_path / "method-impact-map.json",
             kind="method",
-            rule="test_only",
-            count_attr="test_only_count",
+            rule="unused",
+            count_attr="unused_count",
             expected_object_name="only_for_tests",
         )
 
@@ -1269,7 +1269,7 @@ class TestsFlextInfraRefactorMainCli:
             impact_map_output=str(impact_map_path),
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
@@ -1279,26 +1279,15 @@ class TestsFlextInfraRefactorMainCli:
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         entries = [_mapping(item) for item in files]
 
-        tm.that(len(entries), eq=2)
+        tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
-        test_path = str((workspace / "tests" / "test_service.py").resolve())
         service_entry = next(item for item in entries if item["path"] == service_path)
-        test_entry = next(item for item in entries if item["path"] == test_path)
 
         tm.that(service_entry["modified"], eq=True)
         tm.that(service_entry["success"], eq=True)
         tm.that(
             list(_strings(service_entry["changes"])),
-            eq=["delete_object_and_test_references: only_for_tests (test_only)"],
-        )
-        tm.that(test_entry["modified"], eq=True)
-        tm.that(test_entry["success"], eq=True)
-        tm.that(
-            list(_strings(test_entry["changes"])),
-            eq=[
-                "remove reference to only_for_tests at line 3 (tests)",
-                "remove reference to only_for_tests at line 6 (tests)",
-            ],
+            eq=["delete_object_definition: only_for_tests (unused)"],
         )
 
     def test_refactor_census_cli_writes_impact_map_for_removal_candidates(
@@ -1312,7 +1301,7 @@ class TestsFlextInfraRefactorMainCli:
             str(workspace),
             "census",
             "--rules",
-            "test_only",
+            "unused",
             "--kinds",
             "function",
             "--impact-map-output",
@@ -1326,7 +1315,7 @@ class TestsFlextInfraRefactorMainCli:
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         entries = [_mapping(item) for item in files]
 
-        tm.that(len(entries), eq=2)
+        tm.that(len(entries), eq=1)
 
     def test_refactor_census_apply_preserves_impact_map_plan(
         self, tmp_path: Path
@@ -1340,12 +1329,12 @@ class TestsFlextInfraRefactorMainCli:
             apply_changes=True,
             include_local_scopes=False,
             kinds=("function",),
-            rules=("test_only",),
+            rules=("unused",),
         ).execute()
 
         tm.ok(report_result)
         report = report_result.unwrap()
-        tm.that(report.test_only_count, eq=0)
+        tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
 
         payload_result = u.Cli.json_read(impact_map_path)
@@ -1354,4 +1343,4 @@ class TestsFlextInfraRefactorMainCli:
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         entries = [_mapping(item) for item in files]
 
-        tm.that(len(entries), eq=2)
+        tm.that(len(entries), eq=1)

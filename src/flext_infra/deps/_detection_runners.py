@@ -12,7 +12,7 @@ from flext_infra import c, t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraDependencyDetectionRunnersMixin:
@@ -38,7 +38,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run raw command; concrete analyzer supplies the real runner."""
         _ = cmd, cwd, timeout, env
         msg = "_run_raw must be implemented by the concrete analyzer"
@@ -102,7 +102,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
                     return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}"
                     )
-        cmd_result: m.Cli.CommandOutput = result.value
+        cmd_result: p.Cli.CommandOutput = result.value
         return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok((
             issues,
             cmd_result.exit_code,
@@ -126,7 +126,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
                 result.error or "mypy execution failed"
             )
-        command_output: m.Cli.CommandOutput = result.value
+        command_output: p.Cli.CommandOutput = result.value
         output = f"{command_output.stdout}\n{command_output.stderr}"
         hinted = {
             match.group(1).strip()
@@ -161,7 +161,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             return r[t.Pair[t.StrSequence, int]].fail(
                 result.error or "pip check failed"
             )
-        cmd_result: m.Cli.CommandOutput = result.value
+        cmd_result: p.Cli.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
         return r[t.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))

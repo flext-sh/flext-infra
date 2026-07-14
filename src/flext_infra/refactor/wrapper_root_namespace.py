@@ -1,4 +1,4 @@
-"""Wrapper-root namespace refactor command for tests/examples/scripts aliases."""
+"""Wrapper-root namespace refactor command for production script aliases."""
 
 from __future__ import annotations
 

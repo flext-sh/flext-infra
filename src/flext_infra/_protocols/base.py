@@ -12,8 +12,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from flext_core import p
-    from flext_infra import m, t
+    from flext_infra import t
+    from flext_cli import p
+    from flext_infra import m
 
 
 @runtime_checkable
@@ -132,6 +133,13 @@ class FlextInfraProtocolsBase(Protocol):
     @runtime_checkable
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance."""
+
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
+        # complete with the validated config model used by codegen consumers.
+        @property
+        def uv_link_mode(self) -> str:
+            """Portable uv installation link mode."""
+            ...
 
         @property
         def uv_required_version(self) -> str:
@@ -369,7 +377,7 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> p.Result[m.Cli.CommandOutput]:
+        ) -> p.Result[p.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
@@ -412,7 +420,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 

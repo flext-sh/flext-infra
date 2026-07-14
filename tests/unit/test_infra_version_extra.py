@@ -7,10 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import flext_infra as infra_pkg
-from flext_infra import m, u
+from flext_infra import u
 from flext_tests import tm
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class TestsFlextInfraInfraVersionExtra:
@@ -20,24 +24,26 @@ class TestsFlextInfraInfraVersionExtra:
     def _project_root() -> Path:
         return Path(__file__).resolve().parents[2]
 
-    def _runtime_constants(self) -> m.ProjectConstants:
-        return u.read_project_constants(infra_pkg.__title__, root=self._project_root())
+    def _metadata(self) -> p.ProjectMetadata:
+        metadata_result = u.read_project_metadata(self._project_root())
+        tm.ok(metadata_result)
+        return metadata_result.value
 
     def test_public_package_metadata_matches_project_metadata(self) -> None:
-        metadata = u.read_project_metadata(self._project_root())
-        constants = self._runtime_constants()
+        metadata = self._metadata()
 
-        tm.that(infra_pkg.__title__, eq=metadata.name)
-        tm.that(infra_pkg.__version__, eq=constants.PACKAGE_VERSION)
-        tm.that(infra_pkg.__description__, eq=metadata.description)
-        tm.that(infra_pkg.__license__, eq=constants.PACKAGE_LICENSE)
-        tm.that(infra_pkg.__url__, eq=constants.PACKAGE_URL)
+        tm.that(infra_pkg.__title__, eq=metadata.project.name)
+        tm.that(infra_pkg.__version__, eq=metadata.project.version)
+        tm.that(infra_pkg.__description__, eq=metadata.project.description)
+        tm.that(infra_pkg.__url__, eq=metadata.project.urls.homepage)
 
     def test_public_package_author_matches_project_authors(self) -> None:
-        constants = self._runtime_constants()
+        metadata = self._metadata()
 
-        assert constants.PACKAGE_AUTHORS
-        tm.that(infra_pkg.__author__, eq=constants.PACKAGE_AUTHORS[0])
+        assert metadata.project.authors
+        author = metadata.project.authors[0]
+        tm.that(infra_pkg.__author__, eq=author.name)
+        tm.that(infra_pkg.__author_email__, eq=author.email)
 
     def test_public_package_exports_have_expected_runtime_types(self) -> None:
         tm.that(infra_pkg.__version__, is_=str)

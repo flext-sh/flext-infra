@@ -46,7 +46,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
 
     def _execute_project(
         self, project: str, verb: str, idx: int, *, make_args: t.StrSequence
-    ) -> t.Pair[m.Cli.CommandOutput, bool]:
+    ) -> t.Pair[p.Cli.CommandOutput, bool]:
         """Run one project and return ``(output, succeeded)``."""
         output_result = self._run_project(project, verb, idx, make_args=make_args)
         if output_result.failure:
@@ -59,12 +59,12 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 ),
                 False,
             )
-        cmd_output: m.Cli.CommandOutput = output_result.value
+        cmd_output: p.Cli.CommandOutput = output_result.value
         return (cmd_output, cmd_output.exit_code == 0)
 
     @staticmethod
     def _collect_failures(
-        projects: t.StrSequence, results: t.SequenceOf[m.Cli.CommandOutput]
+        projects: t.StrSequence, results: t.SequenceOf[p.Cli.CommandOutput]
     ) -> t.SequenceOf[t.Triple[str, int, Path]]:
         """Collect failing projects with parsed error counters."""
         failures: t.MutableSequenceOf[t.Triple[str, int, Path]] = []
@@ -96,7 +96,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         *,
         fail_fast: bool = False,
         make_args: t.StrSequence = (),
-    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+    ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute ``make <verb>`` across projects and return collected outputs."""
         u.Cli.header("Workspace Orchestration")
         try:
@@ -104,7 +104,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 projects, verb, fail_fast=fail_fast, make_args=make_args
             )
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail_op("Orchestration", exc)
+            # mro-wkii.17 (Codex): keep type-only protocols out of runtime factories.
+            return r.fail_op("Orchestration", exc)
 
     @staticmethod
     def _failure_summary(
@@ -124,18 +125,16 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         *,
         fail_fast: bool,
         make_args: t.StrSequence,
-    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+    ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute a validated orchestration run with progress accounting."""
         allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
         if verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
-                f"unsupported orchestrate verb '{verb}' (allowed: {allowed})"
-            )
+            return r.fail(f"unsupported orchestrate verb '{verb}' (allowed: {allowed})")
         effective_make_args = self._normalize_fail_fast_make_args(
             make_args, fail_fast=fail_fast
         )
-        results: t.MutableSequenceOf[m.Cli.CommandOutput] = []
+        results: t.MutableSequenceOf[p.Cli.CommandOutput] = []
         total = len(projects)
         success = 0
         failed = 0
@@ -168,14 +167,12 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
-                f"orchestration completed with failures: {failed}"
-            )
-        return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
+            return r.fail(f"orchestration completed with failures: {failed}")
+        return r.ok(results)
 
     def _run_project(
         self, project: str, verb: str, _index: int, *, make_args: t.StrSequence
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Execute make verb for one project and capture output path/metrics."""
         log_path = u.Cli.resolve_report_path(
             Path.cwd(), c.Infra.RK_WORKSPACE, verb, self._project_log_filename(project)

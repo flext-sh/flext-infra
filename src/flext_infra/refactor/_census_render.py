@@ -25,7 +25,6 @@ class FlextInfraRefactorCensusRenderMixin:
             f"Fixable: {report.total_fixable}",
             f"Fixes: {report.fixes_total}",
             f"Unused: {report.unused_count}",
-            f"Test-only: {report.test_only_count}",
             f"Removal candidates: {report.removal_candidate_count}",
             f"Duplicate groups: {len(report.duplicates)}",
             f"Duration: {report.scan_duration_seconds:.2f}s",
@@ -37,7 +36,6 @@ class FlextInfraRefactorCensusRenderMixin:
             f"objects={project.objects_total} "
             f"violations={project.violations_total} "
             f"unused={project.unused_count} "
-            f"test-only={project.test_only_count} "
             f"candidates={project.removal_candidate_count}"
             for project in report.projects
         )
@@ -45,7 +43,6 @@ class FlextInfraRefactorCensusRenderMixin:
             lines.extend(("", "Candidate preview:"))
             for candidate in report.removal_candidates[:10]:
                 reference_groups = (
-                    candidate.test_reference_sites,
                     candidate.runtime_reference_sites,
                     candidate.example_reference_sites,
                     candidate.script_reference_sites,

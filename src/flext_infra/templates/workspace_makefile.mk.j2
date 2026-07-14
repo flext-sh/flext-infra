@@ -162,6 +162,11 @@ define CHECK_SYNC_ALL_PROJECTS
 $(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --dry-run || exit 1
 endef
 
+# mro-wkii.17.27 (codex): validation detects generated drift without writes.
+define CHECK_SYNC_ALL_PROJECTS
+$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --dry-run || exit 1
+endef
+
 define PREPARE_SELECTED_PROJECTS
 $(ENSURE_NO_PROJECT_CONFLICT)
 $(ENSURE_SELECTED_PROJECTS)
@@ -656,7 +661,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
-	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
+	$(Q)$(CHECK_SYNC_ALL_PROJECTS)
 	$(Q)mkdir -p .reports
 	$(Q)echo "Running workspace validation (inventory + strict anti-drift gates)..."
 	$(Q)$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1

@@ -28,6 +28,10 @@ class FlextInfraConstantsCodegenLazy:
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
     "``_lazy_exports.py``); these reserved names are superseded by the inline "
     "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
+    TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
+    )
+    "Test-module filenames forbidden from installable package export maps."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
     # mro-wkii.17.26 (codex): cleanup owns every retired generated init artifact.
@@ -152,6 +156,17 @@ class FlextInfraConstantsCodegenLazy:
         "main",
     )
     "Canonical dependency order for public aliases and operational entry points."
+    # mro-wkii.17 (Codex): static analyzers bind local facade classes, not rebinds.
+    PUBLIC_ROOT_TYPING_FACADE_SUFFIXES: Final[t.MappingKV[str, str]] = (
+        MappingProxyType({
+            "c": "Constants",
+            "t": "Types",
+            "p": "Protocols",
+            "m": "Models",
+            "u": "Utilities",
+        })
+    )
+    "Named local facade suffixes used by generated TYPE_CHECKING aliases."
     FLEXT_CORE_ROOT_TYPING_PARTS_MODULE: Final[str] = "flext_core._root_typing_parts"
     "Runtime package aggregating flext-core root typing exports lazily."
     FLEXT_CORE_ROOT_TYPING_FACADES_MODULE: Final[str] = (

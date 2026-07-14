@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class TestLoadAuditBudgets:
     def test_no_config(self, tmp_path: Path) -> None:
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=None)
         tm.that(by_scope, empty=True)
 
@@ -37,7 +37,7 @@ class TestLoadAuditBudgets:
             }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
 
@@ -45,9 +45,9 @@ class TestLoadAuditBudgets:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
         (arch_dir / "architecture_config.json").write_text("{invalid json}")
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
-        tm.that(default, eq=None)
-        tm.that(by_scope, empty=True)
+        result = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        tm.fail(result)
+        tm.that(result.error, contains="json_read")
 
     def test_float_values(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
@@ -61,7 +61,7 @@ class TestLoadAuditBudgets:
             }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
 
@@ -74,6 +74,6 @@ class TestLoadAuditBudgets:
             }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=None)
         tm.that(by_scope.get("test-project"), eq=3)
