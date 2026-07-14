@@ -116,10 +116,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
-        """Select explicit symbol exports owned by direct sibling modules."""
+    def _static_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
+        """Select direct siblings plus declared aliases at a wrapper root."""
         current_pkg = plan.context.current_pkg
         prefix = f"{current_pkg}."
+        is_wrapper_root = (
+            current_pkg == plan.context.surface
+            and current_pkg in c.Infra.ROOT_WRAPPER_SEGMENTS
+        )
         combined = dict(plan.lazy_map)
         combined.update(plan.eager_dunders)
         return {
@@ -127,8 +131,15 @@ class FlextInfraCodegenGenerationStandardMixin(
             for name, target in combined.items()
             if name in plan.exports
             and bool(target[1])
-            and target[0].startswith(prefix)
-            and "." not in target[0].removeprefix(prefix)
+            and (
+                (
+                    target[0].startswith(prefix)
+                    and "." not in target[0].removeprefix(prefix)
+                )
+                # mro-wkii.17.26 (codex): wrapper roots retain the inherited
+                # runtime facade aliases already approved by the planner.
+                or (is_wrapper_root and not target[0].startswith(prefix))
+            )
         }
 
     @classmethod
@@ -138,12 +149,16 @@ class FlextInfraCodegenGenerationStandardMixin(
         """Render explicit sibling-relative reexports for one subpackage."""
         lines: t.MutableSequenceOf[str] = []
         for module, entries in sorted(cls._group_imports(imports).items()):
-            relative_module = f".{module.removeprefix(f'{current_pkg}.')}"
+            import_module = (
+                f".{module.removeprefix(f'{current_pkg}.')}"
+                if module.startswith(f"{current_pkg}.")
+                else module
+            )
             parts = tuple(
                 cls._format_import_part(imported_name, export_name)
                 for export_name, imported_name in sorted(entries)
             )
-            lines.extend(cls._format_import("", relative_module, parts))
+            lines.extend(cls._format_import("", import_module, parts))
         return tuple(lines)
 
     @classmethod
@@ -151,16 +166,16 @@ class FlextInfraCodegenGenerationStandardMixin(
         cls, plan: m.Infra.LazyInitPlan
     ) -> m.Infra.StaticPackageInitRender:
         """Build an explicit static subpackage context."""
-        sibling_imports = cls._static_sibling_imports(plan)
+        static_imports = cls._static_imports(plan)
         return m.Infra.StaticPackageInitRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(
                 plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
             ),
             runtime_import_lines="\n".join(
-                cls._static_import_lines(plan.context.current_pkg, sibling_imports)
+                cls._static_import_lines(plan.context.current_pkg, static_imports)
             ),
-            exports=cls._build_published_exports(tuple(sibling_imports), {}),
+            exports=cls._build_published_exports(tuple(static_imports), {}),
         )
 
     @classmethod

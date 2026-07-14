@@ -220,16 +220,21 @@ class TestsFlextInfraCodegenGeneration:
         plan = self._plan(
             tmp_path,
             "tests",
-            ("TestsDemo",),
-            MappingProxyType({"TestsDemo": ("tests.demo", "TestsDemo")}),
+            ("TestsDemo", "r"),
+            MappingProxyType({
+                "TestsDemo": ("tests.demo", "TestsDemo"),
+                "r": ("flext_tests", "r"),
+            }),
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from .demo import TestsDemo")
+        tm.that(init_content, contains="from flext_tests import r")
         tm.that(init_content, lacks="TestsDemo as TestsDemo")
-        tm.that(init_content, contains='__all__: tuple[str, ...] = ("TestsDemo",)')
+        tm.that(init_content, contains='    "TestsDemo",')
+        tm.that(init_content, contains='    "r",')
         tm.that(init_content, lacks="install_lazy_exports")
 
     def test_root_type_checking_alias_uses_named_local_facade(
