@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_core import FlextModelsEnforcement, FlextUtilitiesEnforcement
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_core import m as core_m, u as core_u
+from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
-from flext_infra.models import m
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
@@ -28,8 +27,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
 
     @staticmethod
-    def _rule(rule_id: str) -> FlextModelsEnforcement.EnforcementRuleSpec:
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+    def _rule(rule_id: str) -> core_m.EnforcementRuleSpec:
+        catalog = core_u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
     @staticmethod
@@ -48,7 +47,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         """ENFORCE-090 probe is emitted for ``.pyi`` files."""
         stub = tmp_path / "demo.pyi"
         stub.write_text("x: int\n", encoding="utf-8")
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-090"),
                 self._ctx(rope_project, stub),
@@ -62,18 +61,18 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         tmp_path: Path,
     ) -> None:
         """Declarative support is source-driven, not tied to catalog IDs."""
-        rule = FlextModelsEnforcement.EnforcementRuleSpec(
+        rule = core_m.EnforcementRuleSpec(
             id="ENFORCE-999",
             description="Synthetic stub-file rule",
-            severity=FlextModelsEnforcement.EnforcementRuleSeverity.HIGH,
-            source=FlextModelsEnforcement.EnforcementInfraDetectorSource(
+            severity=core_m.EnforcementRuleSeverity.HIGH,
+            source=core_m.EnforcementInfraDetectorSource(
                 violation_field="stub_file_violations",
             ),
         )
         stub = tmp_path / "demo.pyi"
         stub.write_text("x: int\n", encoding="utf-8")
-        assert FlextInfraRefactorDeclarativeEnforcement.supports(rule)
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        tm.that(FlextInfraRefactorDeclarativeEnforcement.supports(rule), eq=True)
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 rule,
                 self._ctx(rope_project, stub),
@@ -88,7 +87,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "from __future__ import annotations\n\ndef f() -> int:\n    return 42\n",
             encoding="utf-8",
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
@@ -104,7 +103,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "from __future__ import annotations\n\ndef f(x: int = 42) -> int:\n    return x\n",
             encoding="utf-8",
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
@@ -118,7 +117,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "from __future__ import annotations\n\nLITERAL: str = 'ok'\n",
             encoding="utf-8",
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
@@ -132,7 +131,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "from __future__ import annotations\n\nMAGIC = 42\n",
             encoding="utf-8",
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-097"),
                 self._ctx(rope_project, source),
@@ -148,7 +147,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "    GROUPS: ClassVar[frozenset[str]] = frozenset({'a'})\n",
             encoding="utf-8",
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-079"),
                 self._ctx(rope_project, source),
@@ -160,12 +159,14 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     def test_missing_rope_resource_fails_loud(self, tmp_path: Path) -> None:
         """Missing source resources are detector failures, not clean scans."""
         missing = tmp_path / "missing.py"
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
-            with pytest.raises(RuntimeError, match="unable to resolve rope resource"):
-                FlextInfraRefactorDeclarativeEnforcement.detect(
-                    self._rule("ENFORCE-097"),
-                    self._ctx(rope_project, missing),
-                )
+        with (
+            u.Infra.open_project(tmp_path) as rope_project,
+            pytest.raises(RuntimeError, match="unable to resolve rope resource"),
+        ):
+            FlextInfraRefactorDeclarativeEnforcement.detect(
+                self._rule("ENFORCE-097"),
+                self._ctx(rope_project, missing),
+            )
 
     def test_classvar_detector_failure_fails_loud(
         self,
@@ -184,12 +185,14 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             raise RuntimeError(msg)
 
         monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_file", _fail)
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
-            with pytest.raises(RuntimeError, match="class placement detector failed"):
-                FlextInfraRefactorDeclarativeEnforcement.detect(
-                    self._rule("ENFORCE-079"),
-                    self._ctx(rope_project, source),
-                )
+        with (
+            u.Infra.open_project(tmp_path) as rope_project,
+            pytest.raises(RuntimeError, match="class placement detector failed"),
+        ):
+            FlextInfraRefactorDeclarativeEnforcement.detect(
+                self._rule("ENFORCE-079"),
+                self._ctx(rope_project, source),
+            )
 
     def test_foreign_canonical_alias_detection(
         self,
@@ -211,7 +214,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
             {"demo_pkg": ("c", "m", "p", "t", "u")},
         )
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
+        with u.Infra.open_project(tmp_path) as rope_project:
             ctx = self._ctx(rope_project, source)
             ctx.project_name = "demo_pkg"
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
@@ -223,23 +226,26 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         tm.that(getattr(probes[0], "rule_id", ""), eq="080")
 
     def test_unsupported_source_fails_loud(self, tmp_path: Path) -> None:
-        rule = FlextModelsEnforcement.EnforcementRuleSpec(
+        """Unsupported source kinds fail explicitly instead of yielding no probes."""
+        rule = core_m.EnforcementRuleSpec(
             id="ENFORCE-999",
             description="Unsupported declarative source",
-            severity=FlextModelsEnforcement.EnforcementRuleSeverity.HIGH,
-            source=FlextModelsEnforcement.EnforcementRuntimeWarningSource(
+            severity=core_m.EnforcementRuleSeverity.HIGH,
+            source=core_m.EnforcementRuntimeWarningSource(
                 category="UserWarning",
             ),
         )
         source = tmp_path / "consumer.py"
         source.write_text("", encoding="utf-8")
-        assert not FlextInfraRefactorDeclarativeEnforcement.supports(rule)
-        with FlextInfraUtilitiesRopeCore.open_project(tmp_path) as rope_project:
-            with pytest.raises(ValueError, match="unsupported declarative"):
-                FlextInfraRefactorDeclarativeEnforcement.detect(
-                    rule,
-                    self._ctx(rope_project, source),
-                )
+        tm.that(FlextInfraRefactorDeclarativeEnforcement.supports(rule), eq=False)
+        with (
+            u.Infra.open_project(tmp_path) as rope_project,
+            pytest.raises(ValueError, match="unsupported declarative"),
+        ):
+            FlextInfraRefactorDeclarativeEnforcement.detect(
+                rule,
+                self._ctx(rope_project, source),
+            )
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
@@ -290,7 +296,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(violations[0].kind, eq="classvar_constant")
         tm.that(violations[0].object_name, eq="GROUPS")
         tm.that(violations[0].fix_action, eq="classvar_relocation")
-        assert violations[0].fixable
+        tm.that(violations[0].fixable, eq=True)
 
     def test_census_reports_enforce_090_stub_file(
         self,
@@ -315,7 +321,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(len(violations), eq=1)
         tm.that(violations[0].kind, eq="stub_file")
         tm.that(violations[0].fix_action, eq="remove_stub_file")
-        assert violations[0].fixable
+        tm.that(violations[0].fixable, eq=True)
 
     def test_census_apply_enforce_090_removes_stub_file(
         self,
@@ -335,7 +341,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         ).execute()
 
         tm.ok(dry_run_result)
-        assert stub.exists()
+        tm.that(stub.exists(), eq=True)
 
         apply_result = FlextInfraRefactorCensus(
             workspace_root=workspace,
@@ -345,7 +351,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         ).execute()
 
         tm.ok(apply_result)
-        assert not stub.exists()
+        tm.that(stub.exists(), eq=False)
 
     def test_census_reports_enforce_097_magic_literal(
         self,
@@ -375,7 +381,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(len(violations), eq=1)
         tm.that(violations[0].kind, eq="magic_literal")
         tm.that(violations[0].fix_action, eq="extract_magic_literal")
-        assert not violations[0].fixable
+        tm.that(violations[0].fixable, eq=False)
 
     def test_census_reports_enforce_080_foreign_canonical_alias(
         self,
@@ -409,4 +415,4 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(violations[0].kind, eq="foreign_canonical_alias")
         tm.that(violations[0].object_name, eq="c")
         tm.that(violations[0].fix_action, eq="rewrite_foreign_canonical_alias")
-        assert violations[0].fixable
+        tm.that(violations[0].fixable, eq=True)

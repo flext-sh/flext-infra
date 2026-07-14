@@ -81,6 +81,65 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         tm.that(self._generated_init(package_root), lacks="FlextDemoInternal")
 
+    def test_root_regeneration_preserves_declared_abi_only(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep module-local public helpers outside the package-root ABI."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: tuple[str, ...] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "class FlextDemoConstants:\n"
+            '    """Canonical constants facade."""\n\n'
+            "class FlextDemoConstantsEnforcement:\n"
+            '    """Module-local composition class."""\n\n'
+            "c = FlextDemoConstants\n\n"
+            '__all__ = ("FlextDemoConstants", '
+            '"FlextDemoConstantsEnforcement", "c")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath("lazy.py").write_text(
+            "class FlextDemoLazy:\n"
+            '    """Canonical lazy facade."""\n\n'
+            "class FlextDemoLazyAttribute:\n"
+            '    """Module-local implementation type."""\n\n'
+            "def lazy_attribute() -> None:\n"
+            '    """Module-local helper."""\n\n'
+            '__all__ = ("FlextDemoLazy", "FlextDemoLazyAttribute", '
+            '"lazy_attribute")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+        has_all, exports = u.Tests.extract_lazy_init_exports(generated)
+
+        tm.that(has_all, eq=True)
+        tm.that(exports, eq=("FlextDemoConstants", "FlextDemoLazy", "c"))
+        tm.that(generated, lacks="FlextDemoConstantsEnforcement")
+        tm.that(generated, lacks="FlextDemoLazyAttribute")
+        tm.that(generated, lacks="lazy_attribute")
+
+    def test_root_regeneration_fails_for_contract_without_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject silent removal when an existing public name loses its owner."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        declared_contract = (
+            '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        )
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            declared_contract, encoding=c.Cli.ENCODING_DEFAULT
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=1)
+        tm.that(self._generated_init(package_root), eq=declared_contract)
+
     def test_private_child_packages_do_not_widen_root_api(self, tmp_path: Path) -> None:
         """Keep private child declarations outside the public root contract."""
         workspace_root, package_root = self._workspace(tmp_path)
@@ -101,18 +160,17 @@ class TestsFlextInfraLazyInitHelpers:
         )[1]
 
         # mro-i6nq.10: private child classes never become root ABI.
+        tm.that(exports_content, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
-    def test_direct_import_contract_is_stable_and_fails_on_missing_owner(
+    def test_regeneration_prunes_stale_private_direct_imports(
         self, tmp_path: Path
     ) -> None:
-        """Freeze direct imports and reject removal of their canonical owner."""
+        """Derive root attributes from public facades, never a stale init literal."""
         workspace_root, package_root = self._workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextDemoModels",
-            alias="m",
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
         )
         utilities_dir = package_root / "_utilities"
         utilities_dir.mkdir()
@@ -128,9 +186,9 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        frozen_content = self._generated_init(package_root)
-        tm.that(frozen_content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
-        tm.that(frozen_content, contains='"FlextDemoConversion"')
+        generated = self._generated_init(package_root)
+        tm.that(generated, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(generated, lacks="FlextDemoConversion")
 
         extra_path = utilities_dir / "extra.py"
         extra_path.write_text(
@@ -144,13 +202,13 @@ class TestsFlextInfraLazyInitHelpers:
 
         conversion_path.unlink()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=1)
-        tm.that(self._generated_init(package_root), eq=frozen_content)
+        tm.that(check_service.generate_inits(check_only=True), eq=0)
+        tm.that(self._generated_init(package_root), eq=generated)
 
-    def test_direct_import_prefers_public_facade_over_mro_part(
+    def test_private_subpackage_facade_never_becomes_root_public(
         self, tmp_path: Path
     ) -> None:
-        """Bind root imports to the final facade that owns public identity."""
+        """Keep even a final implementation facade private below the root."""
         workspace_root, package_root = self._workspace(tmp_path)
         models_dir = package_root / "_models"
         parts_dir = models_dir / "_base_parts"
@@ -177,7 +235,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
 
-        tm.that(generated, contains='"._models.base": ("FlextDemoModelsBase",)')
+        tm.that(generated, lacks="FlextDemoModelsBase")
+        tm.that(generated, lacks="._models.base")
         tm.that(generated, lacks="._models._base_parts.flextdemomodelsbase_part_01")
 
     def test_explicit_all_exports_keep_public_aliases_only(
@@ -202,8 +261,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"demo"')
         tm.that(exports_content, lacks="hidden")
 
-    def test_child_exports_bubble_public_symbols_only(self, tmp_path: Path) -> None:
-        """Bubble only governed public declarations from public child packages."""
+    def test_child_packages_never_widen_the_public_root(self, tmp_path: Path) -> None:
+        """Keep every child-package declaration behind its owning facade."""
         workspace_root, package_root = self._workspace(tmp_path)
         child_dir = package_root / "services"
         child_dir.mkdir()
@@ -233,8 +292,9 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoService")
-        tm.that(exports_content, has='"BLUE"')
+        tm.that(exports_content, lacks="FlextDemoService")
+        tm.that(exports_content, lacks='"BLUE"')
+        tm.that(exports_content, lacks="FlextDemoServicesModels")
         tm.that(exports_content, lacks='"main"')
         tm.that(exports_content, lacks='"m": ("flext_demo.services.models", "m")')
 
@@ -399,10 +459,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(init_content, empty=True)
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
-    def test_root_exports_symbols_from_deep_descendant_packages(
+    def test_root_rejects_symbols_from_deep_descendant_packages(
         self, tmp_path: Path
     ) -> None:
-        """Bubble governed declarations from deeply nested public packages."""
+        """Keep deeply nested declarations behind their package facade."""
         workspace_root, package_root = self._workspace(tmp_path)
         deep_dir = package_root / "services" / "http"
         deep_dir.mkdir(parents=True)
@@ -423,19 +483,22 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoHttpTransport")
+        tm.that(exports_content, lacks="FlextDemoHttpTransport")
+        tm.that(exports_content, lacks='"services"')
 
     def test_duplicate_public_export_resolved_by_canonical_scorer(
         self, tmp_path: Path
     ) -> None:
         """Duplicate public exports are resolved deterministically (warn + generate)."""
         workspace_root, package_root = self._workspace(tmp_path)
-        (package_root / "alpha.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+        (package_root / "api.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
+            '__all__: list[str] = ["Shared"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        (package_root / "beta.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+        (package_root / "service.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
+            '__all__: list[str] = ["Shared"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 

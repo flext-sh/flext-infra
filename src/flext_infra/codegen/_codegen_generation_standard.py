@@ -24,13 +24,15 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return supported static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
+        public_names = frozenset(plan.exports)
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         # mro-pulj (codex): direct imports outside __all__ remain statically
         # declared because they are part of the established root interface.
         filtered: dict[str, t.StrPair] = {
             name: target
             for name, target in source.items()
-            if target[0] not in wildcard_modules
+            if name in public_names
+            and target[0] not in wildcard_modules
             and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
         }
         for (
@@ -81,7 +83,15 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
         """Build one inline lazy context for a public package root."""
         current_pkg = plan.context.current_pkg
-        lazy_map = dict(plan.lazy_map)
+        # mro-pulj (codex): rendering is fail-closed even if a caller constructs
+        # a plan with implementation-only entries. Only the planner-approved
+        # public exports can become package attributes.
+        public_names = frozenset(plan.exports)
+        lazy_map = {
+            name: target
+            for name, target in plan.lazy_map.items()
+            if name in public_names
+        }
         lazy_entries = cls._build_lazy_entries(
             tuple(lazy_map),
             lazy_map,
@@ -107,8 +117,8 @@ class FlextInfraCodegenGenerationStandardMixin(
             type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
-            # mro-pulj (codex): freeze the complete direct-import surface while
-            # __all__ remains the smaller wildcard contract.
+            # mro-pulj (codex): direct import and wildcard publication share the
+            # same public symbol set; template helpers are eager plumbing only.
             direct_imports=tuple(
                 sorted({
                     *lazy_map,
@@ -120,53 +130,17 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
-        """Select explicit symbol exports owned by direct sibling modules."""
-        current_pkg = plan.context.current_pkg
-        # mro-pulj (codex): keep the pytest registration boundary free of
-        # eager sibling imports; the public root still owns its lazy exports.
-        if current_pkg.rsplit(".", maxsplit=1)[-1] == c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME:
-            return {}
-        prefix = f"{current_pkg}."
-        combined = dict(plan.lazy_map)
-        combined.update(plan.eager_dunders)
-        return {
-            name: target
-            for name, target in combined.items()
-            if name in plan.exports
-            and bool(target[1])
-            and target[0].startswith(prefix)
-            and "." not in target[0].removeprefix(prefix)
-        }
-
-    @classmethod
-    def _static_import_lines(
-        cls, current_pkg: str, imports: t.LazyAliasMap
-    ) -> t.StrSequence:
-        """Render explicit sibling-relative reexports for one subpackage."""
-        lines: t.MutableSequenceOf[str] = []
-        for module, entries in sorted(cls._group_imports(imports).items()):
-            relative_module = f".{module.removeprefix(f'{current_pkg}.')}"
-            for export_name, imported_name in sorted(entries):
-                parts = (cls._format_import_part(imported_name, export_name),)
-                lines.extend(cls._format_import("", relative_module, parts))
-        return tuple(lines)
-
-    @classmethod
     def _static_context(
         cls, plan: m.Infra.LazyInitPlan
     ) -> m.Infra.StaticPackageInitRender:
-        """Build an explicit static subpackage context."""
-        sibling_imports = cls._static_sibling_imports(plan)
+        """Build a side-effect-free private or non-production initializer."""
         return m.Infra.StaticPackageInitRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(
                 plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
             ),
-            runtime_import_lines="\n".join(
-                cls._static_import_lines(plan.context.current_pkg, sibling_imports)
-            ),
-            exports=cls._build_published_exports(tuple(sibling_imports), {}),
+            runtime_import_lines="",
+            exports=(),
         )
 
     @classmethod

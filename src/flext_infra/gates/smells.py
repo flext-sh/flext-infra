@@ -15,10 +15,11 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import FlextSmellViolation
+from flext_core import e as core_e
 from flext_infra import c, c as core_c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.smells import smell_fixer_for
+from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 
 if TYPE_CHECKING:
     from flext_infra import t, p
@@ -61,14 +62,18 @@ class FlextInfraSmellsGate(FlextInfraGate):
         changes: list[str] = []
         for issue in auto_issues:
             tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
-            fixer = smell_fixer_for(tag)
+            fixer = (
+                FlextInfraBooleanLogicFixer()
+                if tag == FlextInfraBooleanLogicFixer.tag
+                else smell_fixer_for(tag)
+            )
             if fixer is None:
                 continue
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
         for issue in issues:
-            warnings.warn(issue.formatted, FlextSmellViolation, stacklevel=2)
+            warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -100,7 +105,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
         for issue in issues:
-            warnings.warn(issue.formatted, FlextSmellViolation, stacklevel=2)
+            warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
         passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
         return self._build_gate_result(
             result=m.Infra.GateResult(

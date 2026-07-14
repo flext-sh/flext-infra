@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenLazyInitService:
         )
 
         tm.that(result.success, eq=True)
-        tm.that(generated_root, contains="FlextTestsConversion")
+        tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(child_init.read_bytes(), eq=child_init_before)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
@@ -127,8 +127,9 @@ class TestsFlextInfraCodegenLazyInitService:
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
-        tm.that(generated, contains="from .demo import ExamplesDemo")
-        tm.that(generated, lacks="ExamplesDemo as ExamplesDemo")
+        tm.that(generated, lacks="from .demo import ExamplesDemo")
+        tm.that(generated, lacks="ExamplesDemo")
+        tm.that(generated, contains="__all__: tuple[str, ...] = ()")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
 

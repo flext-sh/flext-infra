@@ -24,8 +24,8 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.codegen._lazy_init_planner_public_api import (
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+from flext_infra.codegen._lazy_init_planner_public_root import (
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
 
@@ -76,7 +76,7 @@ class FlextInfraCodegenLazyInitPlanner(
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
     FlextInfraCodegenLazyInitPlannerParentsMixin,
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 ):
     """Resolve lazy-init plans using one shared Rope workspace index."""
 
@@ -130,73 +130,40 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         export_names = {*lazy_map, *eager_dunders}
         if is_public_project_root:
-            # mro-pulj (codex): inline every supported direct root import while
-            # keeping the explicit __all__ contract independently governed.
-            direct_root_lazy_map = {
-                name: target
-                for name, target in lazy_map.items()
-                if target[1]
-                and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
-                and self._publish(name, allow_main=False)
-            }
-            direct_import_contract = self._root_direct_import_contract(
-                context.pkg_dir
+            # mro-pulj (codex) + ulw follow-up: __all__ is the one public
+            # contract (dir()/star-import/docs already respect it). Do NOT
+            # narrow lazy_map/_LAZY_MODULES to match -- internal fragments across
+            # the package rely on lazy __getattr__ resolving the root facade
+            # (`from flext_core import c`) during their own eager import chain;
+            # pruning the lazy map to the public subset breaks that resolution
+            # with a circular ImportError the moment any pruned name is touched
+            # before __init__ finishes executing. Only export_names (-> __all__)
+            # is filtered; lazy_map stays the full discovered set.
+            export_names, _unused_filtered_lazy_map = self._filter_public_root_exports(
+                context=context,
+                export_names=export_names,
+                lazy_map=lazy_map,
+                eager_names=frozenset(eager_dunders),
             )
-            if direct_import_contract:
-                available_direct_imports = frozenset({
-                    *direct_root_lazy_map,
-                    *eager_dunders,
-                    *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS,
-                })
-                missing_direct_imports = (
-                    direct_import_contract - available_direct_imports
-                )
-                if missing_direct_imports:
-                    missing = ", ".join(sorted(missing_direct_imports))
-                    msg = f"root direct-import contract has no source owner: {missing}"
-                    raise ValueError(msg)
-                direct_root_lazy_map = {
-                    name: target
-                    for name, target in direct_root_lazy_map.items()
-                    if name in direct_import_contract
-                }
-                eager_dunders = {
-                    name: target
-                    for name, target in eager_dunders.items()
-                    if name in direct_import_contract
-                }
-                export_names = {*lazy_map, *eager_dunders}
-            export_names, _public_lazy_map, child_lazy, excluded_lazy_names = (
-                self._filter_public_root_exports(
-                    context=context,
-                    export_names=export_names,
-                    lazy_map=lazy_map,
-                    eager_names=frozenset(eager_dunders),
-                    child_packages=child_lazy,
-                    dir_exports=dir_exports,
-                )
+            child_lazy = ()
+            excluded_lazy_names = ()
+        preserve_manual_init = (
+            not is_public_project_root
+            and context.init_path.is_file()
+            and not context.generated_init
+            and bool(
+                context.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
             )
-            lazy_map = direct_root_lazy_map
-            if direct_import_contract:
-                missing_public_owners = frozenset(export_names) - frozenset({
-                    *lazy_map,
-                    *eager_dunders,
-                })
-                if missing_public_owners:
-                    missing = ", ".join(sorted(missing_public_owners))
-                    msg = f"root public contract is absent from direct imports: {missing}"
-                    raise ValueError(msg)
-            excluded_lazy_names = self._excluded_child_lazy_names(
-                child_lazy,
-                frozenset(export_names),
-                frozenset(lazy_map),
-                dir_exports,
-            )
+        )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
-            action=c.Infra.LazyInitAction.WRITE,
+            action=(
+                c.Infra.LazyInitAction.SKIP
+                if preserve_manual_init
+                else c.Infra.LazyInitAction.WRITE
+            ),
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,

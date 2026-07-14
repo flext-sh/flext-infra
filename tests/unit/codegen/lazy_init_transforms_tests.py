@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 class TestsFlextInfraLazyInitTransforms:
     """Behavior tests for generated lazy-init transform output."""
 
-    def test_subpackage_lazy_map_uses_symbol_names(self, tmp_path: Path) -> None:
-        """Render private subpackage exports as explicit static imports."""
+    def test_private_subpackage_initializer_is_empty(self, tmp_path: Path) -> None:
+        """Never publish private subpackage implementation classes."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -34,15 +34,13 @@ class TestsFlextInfraLazyInitTransforms:
 
         result = u.Tests.run_lazy_init(workspace_root)
 
-        # mro-wkii.17 (Codex): private packages use explicit static re-exports.
         init_content = (utilities_dir / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(init_content, has="from .mapper import")
-        tm.that(init_content, has="from .mapper import FlextDemoUtilitiesMapper")
-        tm.that(init_content, lacks="FlextDemoUtilitiesMapper as FlextDemoUtilitiesMapper")
-        tm.that(init_content, has='"FlextDemoUtilitiesMapper"')
+        tm.that(init_content, lacks="from .mapper import")
+        tm.that(init_content, lacks="FlextDemoUtilitiesMapper")
+        tm.that(init_content, has="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
 
@@ -53,13 +51,9 @@ class TestsFlextInfraLazyInitTransforms:
         )
         models_dir = package_root / "_models"
         models_dir.mkdir()
-        (models_dir / c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (models_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         (models_dir / "model.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoModel:\n"
-            "    pass\n",
+            "from __future__ import annotations\n\nclass FlextDemoModel:\n    pass\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         test_modules = (
@@ -81,7 +75,8 @@ class TestsFlextInfraLazyInitTransforms:
         )
 
         tm.that(result, eq=0)
-        tm.that(init_content, has="FlextDemoModel")
+        tm.that(init_content, has="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, lacks="FlextDemoModel")
         for _filename, class_name in test_modules:
             tm.that(init_content, lacks=class_name)
         tm.that(init_content, lacks="_test_tmp")

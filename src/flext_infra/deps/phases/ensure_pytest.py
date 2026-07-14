@@ -1,4 +1,4 @@
-"""Phase: Ensure standard pytest configuration without removing project-specific entries."""
+"""Phase: Ensure canonical fail-closed pytest configuration."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsurePytestConfigPhase:
-    """Ensure standard pytest configuration without removing project-specific entries."""
+    """Ensure canonical pytest policy while preserving extension declarations."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to compose canonical pytest defaults."""
@@ -39,7 +39,8 @@ class FlextInfraEnsurePytestConfigPhase:
             .list(
                 c.Infra.ADDOPTS,
                 pytest.standard_addopts,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .list(
                 c.Infra.MARKERS,
@@ -55,7 +56,7 @@ class FlextInfraEnsurePytestConfigPhase:
         )
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Apply pytest defaults while preserving project-specific ini options."""
+        """Apply canonical pytest policy while preserving extension declarations."""
         return FlextInfraTomlPhaseService.apply_phases(doc, self._phase())
 
     def apply_payload(self, payload: t.MutableJsonMapping) -> t.StrSequence:

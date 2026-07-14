@@ -55,10 +55,10 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(init_path.read_bytes(), eq=original)
         tm.that(str(init_path) in service.modified_files, eq=True)
 
-    def test_every_nested_level_is_static_formatted_and_idempotent(
+    def test_every_nested_level_is_empty_formatted_and_idempotent(
         self, tmp_path: Path
     ) -> None:
-        """Generate canonical initializers at levels two, three, and four."""
+        """Generate empty initializers at levels two, three, and four."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         level_two = package_root / "services"
         level_three = level_two / "_parts"
@@ -110,15 +110,10 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(apply_result, eq=0)
         tm.that(level_two_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(level_three_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(
-            level_four_content,
-            contains="from .worker import FlextTestsWorker, worker",
-        )
-        # mro-wkii.17 (Codex): explicit module __all__ owns direct exports.
-        tm.that(level_four_content, lacks="FlextTestsWorker as FlextTestsWorker")
-        tm.that(level_four_content, lacks="worker as worker")
-        tm.that(level_four_content, contains='    "FlextTestsWorker",')
-        tm.that(level_four_content, contains='    "worker",')
+        tm.that(level_four_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(level_four_content, lacks="from .worker import")
+        tm.that(level_four_content, lacks="FlextTestsWorker")
+        tm.that(level_four_content, lacks='"worker"')
         tm.that(level_two_content, lacks="FlextTestsWorker")
         tm.that(level_three_content, lacks="FlextTestsWorker")
         tm.that(format_result.exit_code, eq=0)
@@ -126,6 +121,29 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(check_result, eq=0)
         tm.that(check_service.modified_files, empty=True)
         tm.that(after, eq=before)
+
+    def test_manual_private_initializer_is_preserved(self, tmp_path: Path) -> None:
+        """Keep an authored static private facade byte-identical."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        private_dir = package_root / "_facade"
+        private_dir.mkdir()
+        private_dir.joinpath("runtime.py").write_text(
+            'class FlextTestsRuntime:\n    """Private runtime owner."""\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        init_path = private_dir / c.Infra.INIT_PY
+        init_path.write_text(
+            '"""Authored static private facade."""\n\n'
+            "from .runtime import FlextTestsRuntime\n\n"
+            '__all__ = ["FlextTestsRuntime"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        before = init_path.read_bytes()
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        tm.that(result, eq=0)
+        tm.that(init_path.read_bytes(), eq=before)
 
     def test_apply_removes_obsolete_generated_sidecars(self, tmp_path: Path) -> None:
         """Remove retired generated manifests while writing the initializer."""

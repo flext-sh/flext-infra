@@ -42,8 +42,6 @@ class FlextInfraConstantsCodegenLazy:
         "install_lazy_exports",
     })
     "Names bound eagerly by the canonical root initializer template."
-    ROOT_DIRECT_IMPORTS_CONTRACT: Final[str] = "_DIRECT_IMPORTS"
-    "Generated literal that freezes supported direct root imports outside __all__."
     TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
     )
@@ -105,28 +103,6 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES: Final[frozenset[str]] = frozenset({
-        "_constants",
-        "_models",
-        "_protocols",
-        "_typings",
-        "_utilities",
-        "basemk",
-        "check",
-        "codegen",
-        "deps",
-        "detectors",
-        "docs",
-        "fixers",
-        "gates",
-        "maintenance",
-        "refactor",
-        "release",
-        "transformers",
-        "validate",
-        "workspace",
-    })
-    "Child packages whose implementation exports do not bubble into root APIs."
     PUBLIC_ROOT_MODULE_EXPORTS: Final[frozenset[str]] = frozenset({"basemk"})
     "Internal child packages exported at the root as module objects only."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({

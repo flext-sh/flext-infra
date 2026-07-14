@@ -61,9 +61,11 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
             return []
 
         grouped = self.group_violations(rule, infra_report)
-        collector = EnforcementCollector(name="flext-enforcement", parent=session)
+        collector = EnforcementCollector.from_parent(
+            parent=session, name="flext-enforcement"
+        )
         return [
-            EnforcementItem(
+            EnforcementItem.from_parent(
                 name=f"{rule.id}[{project}]",
                 parent=collector,
                 rule=rule,

@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
-
-from flext_core import FlextUtilitiesEnforcement
+from typing import ClassVar
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-
-if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
-    from flext_infra import t
+from flext_infra import u, m, t
 
 
 class FlextInfraEnforcementSelection:
@@ -20,19 +15,19 @@ class FlextInfraEnforcementSelection:
     _STUB_VIOLATION_FIELD: ClassVar[str] = "stub_file_violations"
 
     @staticmethod
-    def canonical_catalog() -> me.EnforcementCatalog:
+    def canonical_catalog() -> m.EnforcementCatalog:
         """Return the canonical flext-core enforcement catalog."""
-        return FlextUtilitiesEnforcement.build_canonical_catalog()
+        return u.build_canonical_catalog()
 
     @classmethod
     def selected_rules(
         cls,
         *,
-        catalog: me.EnforcementCatalog | None = None,
+        catalog: m.EnforcementCatalog | None = None,
         wanted: t.StrSequence = (),
         safe_only: bool = True,
         adapterless: t.StrSequence = (),
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[m.EnforcementRuleSpec, ...]:
         """Return enabled fixable rules selected for fixer execution."""
         wanted_ids = frozenset(wanted)
         adapterless_ids = frozenset(adapterless)
@@ -58,7 +53,7 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def declarative_rules(
         rule_names: t.StrSequence | None = None,
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[m.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative detector."""
         selected = frozenset(rule_names) if rule_names else None
         return tuple(
@@ -69,12 +64,12 @@ class FlextInfraEnforcementSelection:
         )
 
     @staticmethod
-    def supports_declarative(rule: me.EnforcementRuleSpec) -> bool:
+    def supports_declarative(rule: m.EnforcementRuleSpec) -> bool:
         """Return whether the declarative detector supports ``rule``."""
         return FlextInfraRefactorDeclarativeEnforcement.supports(rule)
 
     @classmethod
-    def rule_requires_stub_file(cls, rule: me.EnforcementRuleSpec) -> bool:
+    def rule_requires_stub_file(cls, rule: m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` needs explicit ``.pyi`` file discovery."""
         source = rule.source
         return (
@@ -84,7 +79,7 @@ class FlextInfraEnforcementSelection:
 
     @staticmethod
     def _validate_requested_rules(
-        candidates: tuple[me.EnforcementRuleSpec, ...],
+        candidates: tuple[m.EnforcementRuleSpec, ...],
         *,
         wanted_ids: frozenset[str],
         adapterless_ids: frozenset[str],
