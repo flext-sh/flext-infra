@@ -141,12 +141,20 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         project = tmp_path / "pkg"
         src_dir = project / c.Infra.DEFAULT_SRC_DIR
         test_dir = project / c.Infra.DIR_TESTS
+        script_dir = project / "scripts"
+        example_dir = project / "examples"
         src_dir.mkdir(parents=True)
         test_dir.mkdir(parents=True)
+        script_dir.mkdir(parents=True)
+        example_dir.mkdir(parents=True)
         module_file = src_dir / "mod.py"
         test_file = test_dir / "test_mod.py"
+        script_file = script_dir / "sync.py"
+        example_file = example_dir / "demo.py"
         module_file.write_text("x = 1\n", encoding="utf-8")
         test_file.write_text("def test_x():\n    assert True\n", encoding="utf-8")
+        script_file.write_text("x = 2\n", encoding="utf-8")
+        example_file.write_text("x = 3\n", encoding="utf-8")
 
         result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(project,))
@@ -154,7 +162,9 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.ok(result)
         tm.that(result.value, has=module_file)
+        tm.that(result.value, has=script_file)
         tm.that(result.value, lacks=test_file)
+        tm.that(result.value, lacks=example_file)
 
     def test_iter_python_files_returns_failure_on_oserror(self, tmp_path: Path) -> None:
         broken_root = tmp_path / "not-a-directory"
