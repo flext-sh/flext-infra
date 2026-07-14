@@ -151,7 +151,7 @@ class FlextInfraCodegenGenerationStandardMixin(
             runtime_import_lines="\n".join(
                 cls._static_import_lines(plan.context.current_pkg, sibling_imports)
             ),
-            exports=tuple(sorted(sibling_imports, key=str.casefold)),
+            exports=cls._build_published_exports(tuple(sibling_imports), {}),
         )
 
     @classmethod
