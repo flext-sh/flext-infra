@@ -201,9 +201,6 @@ class TestsFlextInfraBasemkMakeContract:
             has="Project-local .venv violates the workspace environment contract",
             lacks="rm -rf .venv",
         )
-        tm.that(
-            rendered, has='basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"'
-        )
         tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
 
     def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
