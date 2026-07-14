@@ -190,8 +190,7 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .demo import Demo")
-        tm.that(content, lacks="Demo as Demo")
+        tm.that(content, contains="from .demo import Demo as Demo")
         tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
         tm.that(content, lacks="Nested")
         tm.that(content, lacks="import nested")
@@ -211,7 +210,9 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .settings import DemoFixture")
+        tm.that(
+            init_content, contains="from .settings import DemoFixture as DemoFixture"
+        )
         tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
         tm.that(init_content, lacks="install_lazy_exports")
 
@@ -230,9 +231,8 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from .demo import TestsDemo")
-        tm.that(init_content, contains="from flext_tests import r\n\nfrom .demo")
-        tm.that(init_content, lacks="TestsDemo as TestsDemo")
+        tm.that(init_content, contains="from .demo import TestsDemo as TestsDemo")
+        tm.that(init_content, contains="from flext_tests import r as r\n\nfrom .demo")
         tm.that(init_content, contains='    "TestsDemo",')
         tm.that(init_content, contains='    "r",')
         tm.that(init_content, lacks="install_lazy_exports")
@@ -271,8 +271,9 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .models import FlextDemoModels")
-        tm.that(content, lacks="FlextDemoModels as FlextDemoModels")
+        tm.that(
+            content, contains="from .models import FlextDemoModels as FlextDemoModels"
+        )
         tm.that(content, contains='__all__: tuple[str, ...] = ("FlextDemoModels",)')
         tm.that(content, lacks="install_lazy_exports")
 

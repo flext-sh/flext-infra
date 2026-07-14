@@ -102,7 +102,9 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(
             child_init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            contains="from .conversion import FlextTestsConversion",
+            contains=(
+                "from .conversion import FlextTestsConversion as FlextTestsConversion"
+            ),
         )
         tm.that(
             service.modified_files,
@@ -133,8 +135,7 @@ class TestsFlextInfraCodegenLazyInitService:
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
-        tm.that(generated, contains="from .demo import ExamplesDemo")
-        tm.that(generated, lacks="ExamplesDemo as ExamplesDemo")
+        tm.that(generated, contains="from .demo import ExamplesDemo as ExamplesDemo")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
 

@@ -158,8 +158,10 @@ class FlextInfraCodegenGenerationStandardMixin(
             current_relative = import_module.startswith(".")
             if lines and previous_relative is not current_relative:
                 lines.append("")
+            # mro-wkii.17.26 (codex): internal generated reexports bind every
+            # public name explicitly so static ABI ownership remains visible.
             parts = tuple(
-                cls._format_import_part(imported_name, export_name)
+                f"{imported_name} as {export_name}"
                 for export_name, imported_name in sorted(entries)
             )
             lines.extend(cls._format_import("", import_module, parts))

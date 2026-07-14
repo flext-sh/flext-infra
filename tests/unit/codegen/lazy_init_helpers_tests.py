@@ -304,7 +304,9 @@ class TestsFlextInfraLazyInitHelpers:
         generated = self._generated_init(models_dir)
 
         # mro-wkii.17.26 (Codex): policy is authoritative at every depth.
-        tm.that(generated, has="from ._shared import FlextDemoShared")
+        tm.that(
+            generated, has="from ._shared import FlextDemoShared as FlextDemoShared"
+        )
         tm.that(generated, lacks="01_bad")
         tm.that(generated, lacks="FlextDemoBad")
 
@@ -401,11 +403,13 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        tm.that(init_content, contains="from .constants import TestsFlextDemoConstants")
         tm.that(
-            init_content, contains="from .constants import TestsFlextDemoConstants, c"
+            init_content,
+            contains=(
+                "from .constants import TestsFlextDemoConstants "
+                "as TestsFlextDemoConstants, c as c"
+            ),
         )
-        tm.that(init_content, lacks=" as ")
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
@@ -539,9 +543,19 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(
-            init_content, contains="from .constants import TestsFlextDemoUnitConstants"
+            init_content,
+            contains=(
+                "from .constants import TestsFlextDemoUnitConstants "
+                "as TestsFlextDemoUnitConstants"
+            ),
         )
-        tm.that(init_content, contains="from .models import TestsFlextDemoUnitModels")
+        tm.that(
+            init_content,
+            contains=(
+                "from .models import TestsFlextDemoUnitModels "
+                "as TestsFlextDemoUnitModels"
+            ),
+        )
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 

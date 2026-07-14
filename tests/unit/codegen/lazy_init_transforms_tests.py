@@ -40,8 +40,13 @@ class TestsFlextInfraLazyInitTransforms:
         )
         tm.that(result, eq=0)
         tm.that(init_content, has="from .mapper import")
-        tm.that(init_content, has="from .mapper import FlextDemoUtilitiesMapper")
-        tm.that(init_content, lacks="FlextDemoUtilitiesMapper as FlextDemoUtilitiesMapper")
+        tm.that(
+            init_content,
+            has=(
+                "from .mapper import FlextDemoUtilitiesMapper "
+                "as FlextDemoUtilitiesMapper"
+            ),
+        )
         tm.that(init_content, has='"FlextDemoUtilitiesMapper"')
         tm.that(init_content, lacks="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
@@ -53,13 +58,9 @@ class TestsFlextInfraLazyInitTransforms:
         )
         models_dir = package_root / "_models"
         models_dir.mkdir()
-        (models_dir / c.Infra.INIT_PY).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (models_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         (models_dir / "model.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoModel:\n"
-            "    pass\n",
+            "from __future__ import annotations\n\nclass FlextDemoModel:\n    pass\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         test_modules = (
