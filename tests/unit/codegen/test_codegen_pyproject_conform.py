@@ -13,6 +13,7 @@ class TestsFlextInfraCodegenPyprojectConform:
     """Exercise only the public u.Infra conformance contract."""
 
     def test_git_first_render_is_complete_and_idempotent(self) -> None:
+        """Render a complete Git-first toolchain twice without byte drift."""
         # NOTE (multi-agent, mro-wkii.17.9): one real public round-trip proves
         # migration and a byte-identical second render without mocks or writes.
         root = m.Infra.RepositoryRef(
@@ -64,6 +65,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             python_required_version=">=3.13.11,<3.14",
             uv_version="0.11.28",
             uv_required_version="==0.11.28",
+            uv_link_mode="copy",
         )
         source = """[project]
 name = "flext"
@@ -119,9 +121,13 @@ mypy_path = [".", "src", "../flext-core/src"]
         tm.that(second.success, eq=True)
         tm.that(second.value, eq=rendered)
         tm.that(rendered, has='required-version = "==0.11.28"')
+        tm.that(rendered, has='link-mode = "copy"')
         tm.that(rendered, has='git = "https://github.com/flext-sh/flext-core.git"')
         tm.that(rendered, has='branch = "0.12.0-dev"')
-        tm.that(rendered, has='workspace = ["flext-core"]')
+        tm.that(rendered, has='workspace = [\n    "flext-core",\n]')
+        tm.that(rendered, has='search-path = [\n    ".",\n    "src",\n]')
+        tm.that(rendered, has='extraPaths = [\n    ".",\n    "src",\n]')
+        tm.that(rendered, has='mypy_path = [\n    ".",\n    "src",\n]')
         for forbidden in (
             "[tool.poetry]",
             "[tool.uv.workspace]",
@@ -131,5 +137,6 @@ mypy_path = [".", "src", "../flext-core/src"]
             "marker =",
             "\npath =",
             "workspace = true",
+            "venvPath",
         ):
             tm.that(forbidden not in rendered, eq=True, msg=forbidden)

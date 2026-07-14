@@ -133,6 +133,13 @@ class FlextInfraProtocolsBase(Protocol):
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance."""
 
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
+        # complete with the validated config model used by codegen consumers.
+        @property
+        def uv_link_mode(self) -> str:
+            """Portable uv installation link mode."""
+            ...
+
         @property
         def uv_required_version(self) -> str:
             """Required uv version expression."""

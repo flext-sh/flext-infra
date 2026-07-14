@@ -46,12 +46,18 @@ class FlextInfraUtilitiesPyprojectConform:
             source, project_name=project_name, workspace=workspace
         )
         cls._remove_legacy_tooling(source)
+        typecheck_paths = cls._sync_typecheck_paths(source)
+        if typecheck_paths.failure:
+            return r[str].fail(
+                typecheck_paths.error or "type checker path conformance failed"
+            )
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
             repositories=repositories,
             workspace=workspace,
             required_version=toolchain.uv_required_version,
+            link_mode=toolchain.uv_link_mode,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -174,7 +180,9 @@ class FlextInfraUtilitiesPyprojectConform:
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete topology and packaging owners superseded by config/workspace.yaml."""
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is not None:
@@ -185,6 +193,49 @@ class FlextInfraUtilitiesPyprojectConform:
             if not tuple(flext):
                 u.Cli.toml_remove_key_if_present(tool, "flext")
 
+    @staticmethod
+    def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
+        """Remove checkout- and interpreter-specific type checker paths."""
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): port the 0.20
+        # canonical path policy so all generated 0.12 projects are portable.
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return r[bool].ok(True)
+        pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
+        if pyrefly is not None:
+            u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
+        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
+        if mypy is not None:
+            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+        pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
+        if pyright is None:
+            return r[bool].ok(True)
+        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
+        interpreter_keys = ("venv", "venvPath", "pythonPath", "pythonInterpreterPath")
+        for key in interpreter_keys:
+            u.Cli.toml_remove_key_if_present(pyright, key)
+        raw_environments = u.Cli.json_as_sequence(
+            u.Cli.toml_value(pyright, "executionEnvironments")
+        )
+        normalized_environments: t.JsonValueList = []
+        for index, environment in enumerate(raw_environments):
+            mapping = u.Cli.json_as_mapping(environment)
+            if mapping is None:
+                return r[bool].fail(
+                    f"tool.pyright.executionEnvironments[{index}] must be a mapping"
+                )
+            normalized: t.JsonDict = dict(mapping)
+            root = normalized.get("root")
+            normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]
+            for key in interpreter_keys:
+                normalized.pop(key, None)
+            normalized_environments.append(normalized)
+        if raw_environments:
+            u.Cli.toml_sync_value(
+                pyright, "executionEnvironments", normalized_environments
+            )
+        return r[bool].ok(True)
+
     @classmethod
     def _sync_uv_sources(
         cls,
@@ -194,6 +245,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         required_version: str,
+        link_mode: str,
     ) -> p.Result[bool]:
         """Replace managed sources with exact Git URL and branch pairs."""
         payload = u.Cli.toml_as_mapping(document)
@@ -234,19 +286,31 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
             resolved.append(reference)
 
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
-        uv = u.Cli.toml_ensure_table(tool, "uv")
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        uv = u.Cli.toml_table_child(tool, "uv")
+        if uv is None:
+            uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_sync_value(uv, "required-version", required_version)
+        u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         u.Cli.toml_remove_key_if_present(uv, "workspace")
-        sources = u.Cli.toml_ensure_table(uv, "sources")
+        sources = u.Cli.toml_table_child(uv, "sources")
+        if sources is None:
+            sources = u.Cli.toml_ensure_table(uv, "sources")
         managed_names = {
             repository.distribution
             for repository in available
             if repository.distribution.startswith("flext-")
             or repository in workspace.members
         }
+        resolved_names = {repository.distribution for repository in resolved}
         for source_name in tuple(sources):
-            if source_name.startswith("flext-") or source_name in managed_names:
+            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
+            # TOML tables in place so conformance cannot accumulate blank trivia.
+            if (
+                source_name.startswith("flext-") or source_name in managed_names
+            ) and source_name not in resolved_names:
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         for repository in resolved:
             u.Cli.toml_sync_mapping_table(

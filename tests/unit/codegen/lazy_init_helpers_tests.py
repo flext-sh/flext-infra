@@ -268,18 +268,16 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
-        for alias_name in ("d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
+        ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
+        for alias_name in ruff_ordered_aliases:
             tm.that(exports_content, has=f'    "{alias_name}",')
         public_exports = exports_content.split(
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
-        present_aliases = tuple(
-            alias
-            for alias in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
-            if f'"{alias}"' in public_exports
-        )
+        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
+        # exclusively in the static facade imports.
         alias_positions = tuple(
-            public_exports.index(f'"{alias}"') for alias in present_aliases
+            public_exports.index(f'"{alias}"') for alias in ruff_ordered_aliases
         )
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(
