@@ -90,7 +90,7 @@ Infra:
           apply_guarded: true
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: '^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$'
+        target_pattern: "^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$"
         allow_public_targets: false
         allow_generated_target_redefinition: false
         allow_toolchain_declarations: false
@@ -205,10 +205,10 @@ Infra:
         - name: Python
           # mro-wkii.17.26 (codex): match the recursive workspace-sync bytecode rules.
           patterns:
-            - '**/__pycache__/'
-            - '**/*.py[cod]'
-            - '*$py.class'
-            - '*.egg-info/'
+            - "**/__pycache__/"
+            - "**/*.py[cod]"
+            - "*$py.class"
+            - "*.egg-info/"
             - .eggs/
             - build/
             - dist/
@@ -218,11 +218,11 @@ Infra:
             - .coverage
             - htmlcov/
         - name: FLEXT
-          patterns: [.venv/, .reports/, '*.tpl.rej']
+          patterns: [.venv/, .reports/, "*.tpl.rej"]
         - name: Environment and secrets
           patterns: [.env, .env.*]
         - name: Editors
-          patterns: [.vscode/, .idea/, '*.swp', .DS_Store]
+          patterns: [.vscode/, .idea/, "*.swp", .DS_Store]
 
     templates:
       root: project
@@ -285,152 +285,152 @@ Infra:
           delegate: manifest
           overwrite: false
         - source: base/src/__init__.py.j2
-          destination: 'src/{package_name}/__init__.py'
+          destination: "src/{package_name}/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/api.py.j2
-          destination: 'src/{package_name}/api.py'
+          destination: "src/{package_name}/api.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/cli.py.j2
-          destination: 'src/{package_name}/cli.py'
+          destination: "src/{package_name}/cli.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/__main__.py.j2
-          destination: 'src/{package_name}/__main__.py'
+          destination: "src/{package_name}/__main__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/base.py.j2
-          destination: 'src/{package_name}/base.py'
+          destination: "src/{package_name}/base.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/models.py.j2
-          destination: 'src/{package_name}/models.py'
+          destination: "src/{package_name}/models.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/typings.py.j2
-          destination: 'src/{package_name}/typings.py'
+          destination: "src/{package_name}/typings.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/protocols.py.j2
-          destination: 'src/{package_name}/protocols.py'
+          destination: "src/{package_name}/protocols.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/constants.py.j2
-          destination: 'src/{package_name}/constants.py'
+          destination: "src/{package_name}/constants.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/utilities.py.j2
-          destination: 'src/{package_name}/utilities.py'
+          destination: "src/{package_name}/utilities.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_config.py.j2
-          destination: 'src/{package_name}/_config.py'
+          destination: "src/{package_name}/_config.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_settings.py.j2
-          destination: 'src/{package_name}/_settings.py'
+          destination: "src/{package_name}/_settings.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/py.typed.j2
-          destination: 'src/{package_name}/py.typed'
+          destination: "src/{package_name}/py.typed"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/services/__init__.py.j2
-          destination: 'src/{package_name}/services/__init__.py'
+          destination: "src/{package_name}/services/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
         - source: base/src/services/ping.py.j2
-          destination: 'src/{package_name}/services/ping.py'
+          destination: "src/{package_name}/services/ping.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
         # by FlextConfig from the project-root config directory.
         - source: base/src/config/ns.yaml.j2
-          destination: 'config/{ns}.yaml'
+          destination: "config/{ns}.yaml"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         - source: base/src/_models/__init__.py.j2
-          destination: 'src/{package_name}/_models/__init__.py'
+          destination: "src/{package_name}/_models/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_models/ping.py.j2
-          destination: 'src/{package_name}/_models/ping.py'
+          destination: "src/{package_name}/_models/ping.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_models/config.py.j2
-          destination: 'src/{package_name}/_models/config.py'
+          destination: "src/{package_name}/_models/config.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_models/settings.py.j2
-          destination: 'src/{package_name}/_models/settings.py'
+          destination: "src/{package_name}/_models/settings.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_constants/__init__.py.j2
-          destination: 'src/{package_name}/_constants/__init__.py'
+          destination: "src/{package_name}/_constants/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_constants/config.py.j2
-          destination: 'src/{package_name}/_constants/config.py'
+          destination: "src/{package_name}/_constants/config.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_constants/settings.py.j2
-          destination: 'src/{package_name}/_constants/settings.py'
+          destination: "src/{package_name}/_constants/settings.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_protocols/__init__.py.j2
-          destination: 'src/{package_name}/_protocols/__init__.py'
+          destination: "src/{package_name}/_protocols/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_protocols/config.py.j2
-          destination: 'src/{package_name}/_protocols/config.py'
+          destination: "src/{package_name}/_protocols/config.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_protocols/ping.py.j2
-          destination: 'src/{package_name}/_protocols/ping.py'
+          destination: "src/{package_name}/_protocols/ping.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_protocols/settings.py.j2
-          destination: 'src/{package_name}/_protocols/settings.py'
+          destination: "src/{package_name}/_protocols/settings.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_typings/__init__.py.j2
-          destination: 'src/{package_name}/_typings/__init__.py'
+          destination: "src/{package_name}/_typings/__init__.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/src/_typings/base.py.j2
-          destination: 'src/{package_name}/_typings/base.py'
+          destination: "src/{package_name}/_typings/base.py"
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -778,19 +778,19 @@ Infra:
         role: standalone
         state: active
         profile: standalone
-      - name: algar-oud-mig
-        distribution: algar-oud-mig
+      - name: projeto_a
+        distribution: projeto_a
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/algar-oud-mig.git
+        url: https://github.com/datacosmos-br/projeto_a.git
         branch: 0.20.0-dev
         path: .
         role: standalone
         state: active
         profile: standalone
-      - name: gruponos-meltano-native
-        distribution: gruponos-meltano-native
+      - name: projeto_b
+        distribution: projeto_b
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/gruponos-meltano-native.git
+        url: https://github.com/datacosmos-br/projeto_b.git
         branch: 0.20.0-dev
         path: .
         role: standalone

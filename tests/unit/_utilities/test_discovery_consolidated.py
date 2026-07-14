@@ -288,11 +288,11 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext'\n", encoding="utf-8"
         )
-        external = tmp_path / "gruponos-data"
-        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external = tmp_path / "projeto_b-data"
+        (external / "src" / "projeto_b_data").mkdir(parents=True)
         external_pyproject = external / c.Infra.PYPROJECT_FILENAME
         external_pyproject.write_text(
-            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            "[project]\nname='projeto_b-data'\ndependencies=['flext-core']\n",
             encoding="utf-8",
         )
 

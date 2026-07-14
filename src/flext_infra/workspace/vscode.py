@@ -66,6 +66,7 @@ class FlextInfraWorkspaceVscode:
     def apply_required_settings(cls, settings: t.MutableJsonMapping) -> bool:
         """Mutate one settings mapping with the canonical FLEXT VS Code keys."""
         changed = cls.apply_scalar_settings(settings)
+        changed = cls.apply_watcher_excludes(settings) or changed
         return cls.apply_diagnostic_overrides(settings) or changed
 
     @staticmethod
@@ -94,6 +95,27 @@ class FlextInfraWorkspaceVscode:
             return False
         overrides[rule_name] = "none"
         settings[key] = overrides
+        return True
+
+    @staticmethod
+    def apply_watcher_excludes(settings: t.MutableJsonMapping) -> bool:
+        """Exclude nested worktrees from the parent VS Code file watcher."""
+        key = c.Infra.VSCODE_FILES_WATCHER_EXCLUDE_KEY
+        current = settings.get(key)
+        excludes: t.MutableJsonMapping = (
+            {name: u.normalize_to_json_value(value) for name, value in current.items()}
+            if isinstance(current, Mapping)
+            else {}
+        )
+        changed = False
+        for pattern, expected in c.Infra.VSCODE_REQUIRED_WATCHER_EXCLUDES.items():
+            if excludes.get(pattern) == expected:
+                continue
+            excludes[pattern] = expected
+            changed = True
+        if not changed and settings.get(key) == excludes:
+            return False
+        settings[key] = excludes
         return True
 
     @classmethod

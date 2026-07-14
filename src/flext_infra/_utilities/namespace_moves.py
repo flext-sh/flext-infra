@@ -1,4 +1,8 @@
-"""Move and compatibility rewrites for namespace refactors."""
+"""Move and compatibility rewrites for namespace refactors.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -767,6 +771,10 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         ``from <pkg> import t`` there is a self-package import that shadows the
         binding and raises F811. Keep only the names the target does not already
         own; return ``""`` when nothing remains so the whole line is dropped.
+
+
+        Returns:
+            The filtered import statement, or an empty string when no aliases remain.
         """
         prefix, separator, names_part = import_line.partition(" import ")
         if not separator:

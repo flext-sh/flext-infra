@@ -69,6 +69,10 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
         ``exit_code`` still has to be inspected to know if it succeeded.
         ``r.fail(reason)`` when the underlying ``_run_github_pull_request_for_repo``
         could not produce an outcome at all.
+
+
+        Returns:
+            A result containing the repository pull-request outcome.
         """
         if context.request.branch:
             _ = u.Cli.run_checked(

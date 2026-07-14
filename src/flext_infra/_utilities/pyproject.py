@@ -20,6 +20,10 @@ def _validate_infra_payload(payload: object) -> t.Infra.ContainerDict | None:
 
     Centralizes the repeated try/except so callers only decide what sentinel
     to surface on failure.
+
+
+    Returns:
+        The validated infra mapping, or ``None`` for invalid input.
     """
     try:
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)

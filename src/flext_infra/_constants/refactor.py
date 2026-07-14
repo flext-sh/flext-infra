@@ -1,4 +1,8 @@
-"""Constants namespace for flext_infra.refactor."""
+"""Constants namespace for flext_infra.refactor.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -497,7 +501,10 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     )
     "Regex: namespace constant candidate names."
     CLASSVAR_EXEMPT_NAMES: Final[frozenset[str]] = c.ENFORCEMENT_CLASSVAR_EXEMPT_NAMES
-    "ClassVar attribute names that are framework idioms and stay in place (SSOT: flext-core)."
+    (
+        "ClassVar attribute names that are framework idioms and stay in place "
+        "(SSOT: flext-core)."
+    )
     CLASSVAR_ALLOWED_CALLS: Final[frozenset[str]] = frozenset({
         "Path",
         "PurePath",
@@ -657,7 +664,10 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "set_",
         "is_",
     })
-    "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
+    (
+        "Public accessor name prefixes that should be renamed (drop the prefix or "
+        "use a canonical verb)."
+    )
 
     # --- MRO scan patterns ---
     MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(

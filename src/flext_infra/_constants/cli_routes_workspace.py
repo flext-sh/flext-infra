@@ -83,7 +83,9 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
         ),
         m.Cli.ResultCommandRoute(
             name="modernize-patterns",
-            help_text="Fix print(), pdb, bare except and open() encoding in library code",
+            help_text=(
+                "Fix print(), pdb, bare except and open() encoding in library code"
+            ),
             model_cls=m.Infra.ModernizeInput,
             handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
                 params,

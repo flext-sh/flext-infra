@@ -16,7 +16,10 @@ class FlextInfraConstantsDetectors:
     "Dotted name for the dynamic import helper flagged by the inline-import detector."
 
     CONTEXTLIB_SUPPRESS: Final[str] = "contextlib.suppress"
-    "Dotted name for the failure-swallowing context manager flagged by the silent-failure detector."
+    (
+        "Dotted name for the failure-swallowing context manager flagged by the "
+        "silent-failure detector."
+    )
 
     INLINE_IMPORT_EXEMPT_PATH_PARTS: Final[frozenset[str]] = frozenset({"beartype"})
     "Path parts that exempt a file from inline-import detection (SSOT: detector-local)."

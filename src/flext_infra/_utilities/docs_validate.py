@@ -1,4 +1,8 @@
-"""Validation helpers for docs services."""
+"""Validation helpers for docs services.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -33,6 +37,10 @@ class FlextInfraUtilitiesDocsValidate:
         ``r.ok(list)`` when the configuration block is present and well
         shaped, ``r.fail(reason)`` otherwise. Callers that want to treat
         absence as "no override" can collapse with ``unwrap_or(())``.
+
+
+        Returns:
+            A result containing configured required skills or a validation error.
         """
         match payload:
             case Mapping() as outer:
@@ -63,6 +71,10 @@ class FlextInfraUtilitiesDocsValidate:
         ``docs_validation`` block, invalid ``required_skills`` payload)
         propagates as ``r.fail(...)`` so callers see the config defect
         instead of a silent empty list — fail-fast over fail-quiet.
+
+
+        Returns:
+            A result containing normalized required skill names.
         """
         settings = workspace_root / "docs/architecture/architecture_config.json"
         if not settings.exists():
@@ -143,6 +155,10 @@ class FlextInfraUtilitiesDocsValidate:
         ``r.ok(True)`` when a TODO file was written, ``r.ok(False)`` when
         the call is a no-op (root scope or non-apply mode), ``r.fail(...)``
         when the underlying ``write_text`` raises.
+
+
+        Returns:
+            A result indicating whether the helper file was written.
         """
         if scope.name == c.Infra.RK_ROOT or not apply_mode:
             return r[bool].ok(False)

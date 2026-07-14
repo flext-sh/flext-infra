@@ -1,4 +1,8 @@
-"""Canonical codegen namespace utilities shared by census and auto-fix."""
+"""Canonical codegen namespace utilities shared by census and auto-fix.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -553,6 +557,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         Uses the docstring-aware position helper so the import can never land
         inside a multi-line module docstring (the cause of the F821/"unexpected
         indent" corruption).
+
+
+        Returns:
+            Source text with the import inserted at the canonical position.
         """
         lines = source.splitlines()
         if import_line in lines:

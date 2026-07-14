@@ -1,4 +1,8 @@
-"""Centralized constants for the deps subpackage."""
+"""Centralized constants for the deps subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -54,7 +58,11 @@ class FlextInfraConstantsDeps:
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
     BANNER: Final[str] = (
-        "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
+        "# [MANAGED] FLEXT pyproject standardization\n"
+        "# Sections with [MANAGED] are enforced by "
+        "flext_infra.deps.modernizer.\n"
+        "# Run `make mod` to regenerate all managed pyproject sections.\n"
+        "# Sections with [CUSTOM] are project-specific extension points.\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
         "# [MANAGED] consolidated development dependencies"

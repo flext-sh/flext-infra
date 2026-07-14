@@ -28,8 +28,8 @@ class FlextInfraConstantsWorkspace:
 
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
         ".ai-hub",
-        "algar-*",
-        "gruponos-*",
+        "projeto_a-*",
+        "projeto_b-*",
     )
     "Sibling directory patterns for FLEXT-managed external workspaces."
 
@@ -111,10 +111,20 @@ class FlextInfraConstantsWorkspace:
     VSCODE_DIAGNOSTIC_SEVERITY_OVERRIDES_KEY: Final[str] = (
         "python.analysis.diagnosticSeverityOverrides"
     )
+    VSCODE_FILES_WATCHER_EXCLUDE_KEY: Final[str] = "files.watcherExclude"
     VSCODE_REPORT_UNTYPED_BASE_CLASS: Final[str] = "reportUntypedBaseClass"
-    VSCODE_REQUIRED_SCALAR_SETTINGS: Final[t.StrMapping] = MappingProxyType({
+    # mro-wkii.17.26.2 (codex): keep workspace diagnostics while preventing
+    # duplicate dependency indexing and nested-worktree refresh loops.
+    VSCODE_REQUIRED_SCALAR_SETTINGS: Final[t.JsonMapping] = MappingProxyType({
+        "python.analysis.autoImportCompletions": False,
+        "python.analysis.diagnosticMode": "workspace",
+        "python.analysis.indexing": False,
         "python.analysis.typeCheckingMode": "strict",
+        "python.analysis.userFileIndexFollowSymlinkedFolders": False,
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    })
+    VSCODE_REQUIRED_WATCHER_EXCLUDES: Final[t.JsonMapping] = MappingProxyType({
+        "**/.worktrees/**": True
     })
     MAKEFILE_INCLUDE_OLD: Final[str] = (
         'ifneq ("$(wildcard ../base.mk)", "")\n'

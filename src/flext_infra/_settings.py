@@ -37,6 +37,9 @@ class _FlextInfraSettings(FlextSettings):
 
 
 settings: _FlextInfraSettings = _FlextInfraSettings()
-"""Pre-instantiated project settings singleton — ``from flext_infra import settings``."""
+(
+    """Pre-instantiated project settings singleton — ``from flext_infra import """
+    """settings``."""
+)
 
 __all__: list[str] = ["settings"]

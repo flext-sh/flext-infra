@@ -121,11 +121,21 @@ class TestsFlextInfraWorkspaceSync:
         tm.that((project_root / ".gitignore").exists(), eq=True)
         tm.that((project_root / "Makefile").exists(), eq=True)
         settings = u.Cli.json_read(project_root / ".vscode" / "settings.json").unwrap()
+        tm.that(settings["python.analysis.autoImportCompletions"], eq=False)
+        tm.that(settings["python.analysis.diagnosticMode"], eq="workspace")
+        tm.that(settings["python.analysis.indexing"], eq=False)
         tm.that(settings["python.analysis.typeCheckingMode"], eq="strict")
+        tm.that(
+            settings["python.analysis.userFileIndexFollowSymlinkedFolders"], eq=False
+        )
         overrides = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             settings["python.analysis.diagnosticSeverityOverrides"]
         )
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
+        watcher_excludes = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["files.watcherExclude"]
+        )
+        tm.that(watcher_excludes["**/.worktrees/**"], eq=True)
 
     def test_sync_dry_run_reports_changes_without_writing(self, tmp_path: Path) -> None:
         """Report pending changes without writing project files in dry-run mode."""
