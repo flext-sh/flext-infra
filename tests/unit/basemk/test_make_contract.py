@@ -163,9 +163,10 @@ class TestsFlextInfraBasemkMakeContract:
             has=[
                 "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
                 "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
-                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
+                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
                 'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
                 'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
+                'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen',
                 'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
                 'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs',
                 'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
@@ -173,23 +174,21 @@ class TestsFlextInfraBasemkMakeContract:
             ],
         )
 
-    def test_rendered_base_mk_sanitizes_workspace_sync_env(self) -> None:
-        """Verify workspace sync clears inherited Python import paths."""
+    def test_rendered_base_mk_sanitizes_validation_env(self) -> None:
+        """Verify base validation clears inherited Python import paths."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='BASE_INFRA_WORKSPACE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra workspace',
+            has='BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate',
         )
 
-    def test_rendered_base_mk_forwards_canonical_root_in_workspace_preflight(
+    def test_rendered_base_mk_validates_canonical_root_in_workspace_preflight(
         self,
     ) -> None:
-        """Verify project preflight forwards the canonical workspace root."""
+        """Verify project preflight validates the canonical workspace root."""
         rendered = _render_base_mk()
-        tm.that(
-            rendered,
-            has='--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply',
-        )
+        tm.that(rendered, has='basemk-validate --workspace "$(WORKSPACE_ROOT)"')
+        tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
 
     def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
         self,
@@ -398,7 +397,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
         self, tmp_path: Path
     ) -> None:
-        """Verify boot materializes a venv before invoking the Python CLI."""
+        """Verify boot invokes dependency setup without requiring an existing venv."""
         workspace_root = tmp_path / "workspace"
         project_root = workspace_root / "demo-project"
         project_root.mkdir(parents=True)
@@ -416,10 +415,8 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             log_content,
             has=[
-                "python -m flext_infra workspace sync --workspace",
-                # NOTE (multi-agent, mro-wkii.17.9): path-sync is not part of
-                # the generated Make contract; conform owns pyproject output.
-                "python -m flext_infra deps internal-sync",
+                "run python -m flext_infra deps extra-paths",
+                "run python -m flext_infra deps internal-sync",
                 "uv lock",
                 "uv sync --all-extras --all-groups",
             ],
