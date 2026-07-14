@@ -29,6 +29,8 @@ class FlextInfraCodegenGenerationRenderersMixin(
         rendered = u.Cli.template_render(
             template_root / template_name, context
         ).unwrap()
+        # mro-wkii.17.27 (codex): formatting is explicit; lint never mutates output.
+        compile(rendered, target_filename, "exec")
         format_result = u.Cli.run_raw(
             [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", target_filename, "-"],
             cwd=template_root,

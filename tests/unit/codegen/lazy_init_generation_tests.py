@@ -65,9 +65,9 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="_LAZY_MODULES")
         tm.that(content, contains="_LAZY_ALIAS_GROUPS")
-        tm.that(content, contains='".services"')
-        tm.that(content, contains='".api": (')
-        tm.that(content, contains='        "Demo",')
+        # mro-wkii.17.26 (codex): child metadata never invents a root ABI binding.
+        tm.that(content, lacks='".services"')
+        tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="__all__: tuple[str, ...] =")
         tm.that(content, contains='    "__version__",')
         tm.that(content, contains="install_lazy_exports(")
@@ -92,7 +92,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="from .demo import Demo as Demo")
-        tm.that(content, contains='    "Demo",')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
         tm.that(content, lacks="Nested")
         tm.that(content, lacks="import nested")
         tm.that(content, lacks="install_lazy_exports")
@@ -112,7 +112,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="from .demo import TestsDemo as TestsDemo")
-        tm.that(content, contains='    "TestsDemo",')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("TestsDemo",)')
         tm.that(content, lacks="install_lazy_exports")
 
     def test_private_internal_package_is_not_empty(self, tmp_path: Path) -> None:
@@ -132,7 +132,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             content, contains="from .models import FlextDemoModels as FlextDemoModels"
         )
-        tm.that(content, contains='    "FlextDemoModels",')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("FlextDemoModels",)')
         tm.that(content, lacks="install_lazy_exports")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
