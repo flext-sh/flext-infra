@@ -28,11 +28,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
-    """Generates ``__init__.py`` with PEP 562 lazy imports.
+    """Generate canonical root and subpackage ``__init__.py`` files.
 
-    Scans sibling ``.py`` files in each package directory, discovers their
-    exports, and generates clean lazy-loading ``__init__.py`` files.
-    Processes bottom-up so child packages are generated before parents.
+    Public package roots use PEP 562 lazy exports. Descendant packages use
+    static sibling-relative reexports or remain empty. Processing is bottom-up
+    so the root plan receives complete child export information.
     """
 
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
@@ -64,7 +64,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return r[bool].ok(True)
 
     def generate_inits(self, *, check_only: bool = False) -> int:
-        """Process all package directories bottom-up and generate PEP 562 inits."""
+        """Generate each selected public root and its subpackages bottom-up."""
         self._modified_files.clear()
         self._duplicate_class_names = 0
         if not self.workspace_root.exists():
@@ -89,7 +89,18 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             )
             package_dirs = tuple(
                 sorted(
-                    public_package_dirs, key=lambda path: len(path.parts), reverse=True
+                    (
+                        package_dir.resolve()
+                        for package_dir in workspace_index.package_dirs
+                        if package_dir.is_relative_to(resolved_workspace_root)
+                        and any(
+                            package_dir.resolve() == public_root
+                            or public_root in package_dir.resolve().parents
+                            for public_root in public_package_dirs
+                        )
+                    ),
+                    key=lambda path: len(path.parts),
+                    reverse=True,
                 )
             )
             if self.target_module:
@@ -123,7 +134,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         f"{self.target_module}"
                     )
                     return 1
-                package_dirs = (sorted_target_dirs[0],)
+                selected_root = sorted_target_dirs[0]
+                package_dirs = tuple(
+                    package_dir
+                    for package_dir in package_dirs
+                    if package_dir == selected_root or selected_root in package_dir.parents
+                )
             duplicates = self._detect_duplicate_class_names(
                 rope, package_dirs=package_dirs
             )
