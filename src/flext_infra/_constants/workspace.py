@@ -1,4 +1,8 @@
-"""Centralized constants for the workspace subpackage."""
+"""Centralized constants for the workspace subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -124,7 +128,8 @@ class FlextInfraConstantsWorkspace:
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     })
     VSCODE_REQUIRED_WATCHER_EXCLUDES: Final[t.JsonMapping] = MappingProxyType({
-        "**/.worktrees/**": True
+        "**/.worktrees/**": True,
+        "**/.claude/worktrees/**": True,
     })
     MAKEFILE_INCLUDE_OLD: Final[str] = (
         'ifneq ("$(wildcard ../base.mk)", "")\n'

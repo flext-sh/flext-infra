@@ -1,10 +1,14 @@
-"""Public sync service tests for workspace synchronization."""
+"""Public sync service tests for workspace synchronization.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -17,7 +21,6 @@ from tests import u
 from flext_tests import tm
 
 from tests import p
-
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
@@ -136,6 +139,7 @@ class TestsFlextInfraWorkspaceSync:
             settings["files.watcherExclude"]
         )
         tm.that(watcher_excludes["**/.worktrees/**"], eq=True)
+        tm.that(watcher_excludes["**/.claude/worktrees/**"], eq=True)
 
     def test_sync_dry_run_reports_changes_without_writing(self, tmp_path: Path) -> None:
         """Report pending changes without writing project files in dry-run mode."""

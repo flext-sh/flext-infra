@@ -1,4 +1,8 @@
-"""Canonical VS Code settings synchronization for FLEXT workspaces."""
+"""Canonical VS Code settings synchronization for FLEXT workspaces.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -102,7 +106,7 @@ class FlextInfraWorkspaceVscode:
         """Exclude nested worktrees from the parent VS Code file watcher."""
         key = c.Infra.VSCODE_FILES_WATCHER_EXCLUDE_KEY
         current = settings.get(key)
-        excludes: t.MutableJsonMapping = (
+        excludes: t.JsonDict = (
             {name: u.normalize_to_json_value(value) for name, value in current.items()}
             if isinstance(current, Mapping)
             else {}
