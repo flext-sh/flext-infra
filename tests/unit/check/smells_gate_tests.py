@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_core import c as core_c, e as core_e
+from flext_core import c as c, e as core_e
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
@@ -195,7 +195,7 @@ class TestSmellsGate:
         missing = [
             enforcement_tag
             for enforcement_tag in c.Infra.SMELLS_RULE_TAGS.values()
-            if enforcement_tag not in core_c.ENFORCEMENT_RULES_TEXT
+            if enforcement_tag not in c.ENFORCEMENT_RULES_TEXT
         ]
         tm.that(missing, eq=[])
 

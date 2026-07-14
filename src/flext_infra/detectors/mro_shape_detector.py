@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core import u as core_u
+from flext_core import u
 from flext_infra import m, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 
@@ -132,7 +132,7 @@ class FlextInfraMROShapeDetector:
     def _project_prefix(project_name: str) -> str:
         """Return the public class prefix for an installed or staged project."""
         try:
-            return core_u.derive_class_stem(project_name)
+            return u.derive_class_stem(project_name)
         except RuntimeError:
             normalized_name = project_name.replace("-", "_").replace(".", "_")
             return "".join(
@@ -144,9 +144,7 @@ class FlextInfraMROShapeDetector:
     @classmethod
     def _valid_alias_suffixes(cls, package_name: str) -> tuple[str, ...]:
         """Return metadata suffixes, or canonical FLEXT suffixes, plus ``*Base``."""
-        suffixes = tuple(
-            suffix for _, _, suffix in core_u.lazy_alias_suffixes(package_name)
-        )
+        suffixes = tuple(suffix for _, _, suffix in u.lazy_alias_suffixes(package_name))
         if not suffixes:
             suffixes = cls._CANONICAL_ALIAS_SUFFIXES
         return suffixes + tuple(f"{suffix}Base" for suffix in suffixes)

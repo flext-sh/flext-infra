@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import e as core_e
-from flext_infra import c, c as core_c, m, u
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.smells import smell_fixer_for
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
@@ -90,7 +90,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     def _is_auto_fixable(issue: m.Infra.Issue) -> bool:
         """Return True when flext-core marks this smell tag as auto-fixable."""
         tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
-        strategy = core_c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
+        strategy = c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
         return bool(strategy and strategy.get("auto"))
 
     @override
@@ -250,7 +250,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     def _enriched_message(code: str, sarif_text: str) -> str:
         """Append the flext-core (problem, fix) law text when the tag exists."""
         tag = c.Infra.SMELLS_RULE_TAGS.get(code, "")
-        text = core_c.ENFORCEMENT_RULES_TEXT.get(tag) if tag else None
+        text = c.ENFORCEMENT_RULES_TEXT.get(tag) if tag else None
         if text is None:
             return sarif_text
         problem, fix = text

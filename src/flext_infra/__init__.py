@@ -44,10 +44,10 @@ if TYPE_CHECKING:
     from flext_infra.protocols import (
         FlextInfraProtocols as FlextInfraProtocols,
         FlextInfraProtocolsBase as FlextInfraProtocolsBase,
-        p as p,
+        p,
     )
     from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
-    from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
+    from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u
 
     # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
     __all__: tuple[str, ...]

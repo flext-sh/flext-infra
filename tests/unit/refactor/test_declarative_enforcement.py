@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_core import m as core_m, u as core_u
+from flext_core import m as m, u
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -27,8 +27,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
 
     @staticmethod
-    def _rule(rule_id: str) -> core_m.EnforcementRuleSpec:
-        catalog = core_u.build_canonical_catalog()
+    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
+        catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
     @staticmethod
@@ -61,11 +61,11 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         tmp_path: Path,
     ) -> None:
         """Declarative support is source-driven, not tied to catalog IDs."""
-        rule = core_m.EnforcementRuleSpec(
+        rule = m.EnforcementRuleSpec(
             id="ENFORCE-999",
             description="Synthetic stub-file rule",
-            severity=core_m.EnforcementRuleSeverity.HIGH,
-            source=core_m.EnforcementInfraDetectorSource(
+            severity=m.EnforcementRuleSeverity.HIGH,
+            source=m.EnforcementInfraDetectorSource(
                 violation_field="stub_file_violations",
             ),
         )
@@ -227,11 +227,11 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
 
     def test_unsupported_source_fails_loud(self, tmp_path: Path) -> None:
         """Unsupported source kinds fail explicitly instead of yielding no probes."""
-        rule = core_m.EnforcementRuleSpec(
+        rule = m.EnforcementRuleSpec(
             id="ENFORCE-999",
             description="Unsupported declarative source",
-            severity=core_m.EnforcementRuleSeverity.HIGH,
-            source=core_m.EnforcementRuntimeWarningSource(
+            severity=m.EnforcementRuleSeverity.HIGH,
+            source=m.EnforcementRuntimeWarningSource(
                 category="UserWarning",
             ),
         )

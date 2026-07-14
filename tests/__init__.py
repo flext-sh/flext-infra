@@ -79,7 +79,7 @@ if TYPE_CHECKING:
     from tests.models import TestsFlextInfraModels as TestsFlextInfraModels, m as m
     from tests.protocols import (
         TestsFlextInfraProtocols as TestsFlextInfraProtocols,
-        p as p,
+        p,
     )
     from tests.refactor.test_rope_semantic import (
         TestsFlextInfraRefactorRopeSemantic as TestsFlextInfraRefactorRopeSemantic,
@@ -636,7 +636,7 @@ if TYPE_CHECKING:
     )
     from tests.utilities import (
         TestsFlextInfraUtilities as TestsFlextInfraUtilities,
-        u as u,
+        u,
     )
 
     # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.

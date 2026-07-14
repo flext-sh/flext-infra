@@ -195,7 +195,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="FlextDemoProtocols as p")
-        tm.that(content, lacks="p as p")
+        tm.that(content, lacks="p")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports preserve facade aliases explicitly."""

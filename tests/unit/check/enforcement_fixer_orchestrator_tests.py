@@ -10,7 +10,7 @@ from typing import ClassVar
 import pytest
 
 from flext_cli import cli
-from flext_core import m as core_m, r, u as core_u
+from flext_core import m as m, r, u
 from flext_infra import m, p, t, u
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
@@ -24,8 +24,8 @@ class TestsEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
-    def _rule(rule_id: str) -> core_m.EnforcementRuleSpec:
-        catalog = core_u.build_canonical_catalog()
+    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
+        catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
     @staticmethod
