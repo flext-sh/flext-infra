@@ -265,9 +265,7 @@ class TestsFlextInfraCodegenLazyInitService:
             tmp_path, project_name="flext-test-first", package_name="flext_test_first"
         )
         second_project, _second_package = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-test-second",
-            package_name="flext_test_second",
+            tmp_path, project_name="flext-test-second", package_name="flext_test_second"
         )
         first_tests = first_project / c.Infra.DIR_TESTS
         second_tests = second_project / c.Infra.DIR_TESTS
@@ -280,7 +278,7 @@ class TestsFlextInfraCodegenLazyInitService:
                 "", encoding=c.Cli.ENCODING_DEFAULT
             )
             tests_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
-                f"class {class_name}:\n    pass\n\n__all__ = [\"{class_name}\"]\n",
+                f'class {class_name}:\n    pass\n\n__all__ = ["{class_name}"]\n',
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
         second_before = second_tests.joinpath(c.Infra.INIT_PY).read_bytes()
