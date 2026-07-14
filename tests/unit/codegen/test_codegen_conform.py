@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -55,7 +54,7 @@ class TestCodegenConform:
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
-            upstream="flext_core",
+            upstream="flext_cli",
             year=2026,
             apply_changes=True,
         )
@@ -75,23 +74,20 @@ class TestCodegenConform:
             for part in (str(root / "src"), os.environ.get("PYTHONPATH", ""))
             if part
         )
-        process = subprocess.run(
+        process = u.Cli.capture(
             [sys.executable, "-m", package_name, "ping"],
-            capture_output=True,
-            text=True,
             cwd=root,
             env={**os.environ, "PYTHONPATH": pythonpath},
             timeout=60,
-            check=False,
         )
-        tm.that(process.returncode, eq=0)
-        tm.that(process.stderr.strip(), eq="")
+        tm.ok(process)
+        tm.that(process.value, eq="✅ pong")
 
     def test_existing_manifest_converges_to_identical_tree(
-        self, tmp_path: Path
+        self, tmp_path: Path, infra_git_repo: Path
     ) -> None:
         new_root = tmp_path / "new" / "flext-demo"
-        existing_root = tmp_path / "existing" / "flext-demo"
+        existing_root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.EXTERNAL,
@@ -100,17 +96,29 @@ class TestCodegenConform:
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
-            upstream="flext_core",
+            upstream="flext_cli",
             year=2026,
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        manifest = u.Cli.files_read_text(new_root / "config" / "workspace.yaml")
-        tm.ok(manifest)
-        written = u.Cli.atomic_write_text_file(
-            existing_root / "config" / "workspace.yaml", manifest.value
+        copied = u.Cli.files_copy_directory(new_root, existing_root, dirs_exist_ok=True)
+        tm.ok(copied)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                existing_root / ".gitignore", "# committed managed drift\n"
+            )
         )
-        tm.ok(written)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                existing_root / "Makefile", "# committed managed drift\n"
+            )
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=existing_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed committed drift"], cwd=existing_root
+            )
+        )
         migrated = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=existing_root,
@@ -131,6 +139,7 @@ class TestCodegenConform:
                 (path.relative_to(existing_root).as_posix(), path.read_bytes())
                 for path in existing_root.rglob("*")
                 if path.is_file()
+                and ".git" not in path.relative_to(existing_root).parts
             )
         )
         tm.that(existing_tree, eq=new_tree)
@@ -164,7 +173,7 @@ class TestCodegenConform:
                 license="MIT",
                 author_name="FLEXT Team",
                 author_email="team@flext.dev",
-                upstream="flext_core",
+                upstream="flext_cli",
                 homepage="https://github.com/flext-sh/flext",
                 documentation="https://github.com/flext-sh/flext",
                 workspace_root_rel=".",
@@ -192,10 +201,10 @@ class TestCodegenConform:
         )
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, tmp_path: Path
+        self, infra_git_repo: Path
     ) -> None:
         """Execute both public modes without changing an already conform tree."""
-        root = tmp_path / "flext-demo"
+        root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.EXTERNAL,
@@ -204,22 +213,28 @@ class TestCodegenConform:
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
-            upstream="flext_core",
+            upstream="flext_cli",
             year=2026,
             apply_changes=True,
         ).execute()
         tm.ok(created)
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+            )
+        )
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
-                if path.is_file()
+                if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
         for mode in ("check", "apply"):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
             # module entrypoint; the route and emitted tree are the assertions.
-            process = subprocess.run(
+            process = u.Cli.capture(
                 [
                     sys.executable,
                     "-m",
@@ -233,18 +248,14 @@ class TestCodegenConform:
                     "--mode",
                     mode,
                 ],
-                capture_output=True,
-                text=True,
                 timeout=60,
-                check=False,
             )
-            tm.that(process.returncode, eq=0)
-            tm.that(process.stderr.strip(), eq="")
+            tm.ok(process)
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
-                if path.is_file()
+                if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
         tm.that(after, eq=before)
