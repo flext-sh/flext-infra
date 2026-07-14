@@ -45,7 +45,14 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(msg)
         formatted = output.stdout.rstrip() + "\n"
         check_result = u.Cli.run_raw(
-            [c.Infra.RUFF, c.Infra.CHECK, "--stdin-filename", target_filename, "-"],
+            [
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--no-fix",
+                "--stdin-filename",
+                target_filename,
+                "-",
+            ],
             cwd=template_root,
             input_data=formatted.encode(c.Cli.ENCODING_DEFAULT),
         )

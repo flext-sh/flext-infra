@@ -11,7 +11,7 @@ from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
-# mro-i6nq.10: Tests assert the single manifest-backed thin-init contract.
+# mro-wkii.17 (Codex): tests assert the inline lazy-root/static-child contract.
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 

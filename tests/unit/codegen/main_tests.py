@@ -79,7 +79,9 @@ class TestMainCommandDispatch:
 
     def test_init_with_custom_root(self, real_git_repo: Path) -> None:
         """main() init with custom root directory."""
-        result = infra_main(["codegen", "init", "--workspace", str(real_git_repo)])
+        custom_root = real_git_repo / "custom"
+        custom_root.mkdir()
+        result = infra_main(["codegen", "init", "--workspace", str(custom_root)])
         tm.that(result, eq=0)
 
     # mro-wkii.17.26 (codex): every gRPC apply route is transaction-owned.

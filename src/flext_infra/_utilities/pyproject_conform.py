@@ -67,6 +67,7 @@ class FlextInfraUtilitiesPyprojectConform:
             repositories=repositories,
             workspace=workspace,
             required_version=toolchain.uv_required_version,
+            link_mode=toolchain.uv_link_mode,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -282,7 +283,9 @@ class FlextInfraUtilitiesPyprojectConform:
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete topology and packaging owners superseded by config/workspace.yaml."""
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is not None:
@@ -341,6 +344,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         required_version: str,
+        link_mode: str,
     ) -> p.Result[bool]:
         """Replace managed sources with exact Git URL and branch pairs."""
         payload = u.Cli.toml_as_mapping(document)
@@ -381,11 +385,18 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
             resolved.append(reference)
 
-        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
-        uv = u.Cli.toml_ensure_table(tool, "uv")
+        tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
+        if tool is None:
+            tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        uv = u.Cli.toml_table_child(tool, "uv")
+        if uv is None:
+            uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_sync_value(uv, "required-version", required_version)
+        u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         u.Cli.toml_remove_key_if_present(uv, "workspace")
-        sources = u.Cli.toml_ensure_table(uv, "sources")
+        sources = u.Cli.toml_table_child(uv, "sources")
+        if sources is None:
+            sources = u.Cli.toml_ensure_table(uv, "sources")
         managed_names = {
             repository.distribution
             for repository in available

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from tests import m, u
+from tests import m, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,7 +73,10 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         bin_dir / "uv",
         '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
         + str(log_path)
-        + '"\nexit 0\n',
+        + '"\nif [ "$1" = "sync" ]; then\n'
+        + "  mkdir -p .venv/bin\n"
+        + '  cp "$(dirname "$0")/python" .venv/bin/python\n'
+        + "fi\nexit 0\n",
     )
 
 
@@ -110,7 +113,7 @@ def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
 
 def _run_make(
     project_root: Path, *args: str, env: dict[str, str] | None = None
-) -> m.Cli.CommandOutput:
+) -> p.Cli.CommandOutput:
     active_env = os.environ.copy()
     for key in _MAKE_TEST_ENV_KEYS:
         active_env.pop(key, None)
@@ -163,6 +166,7 @@ class TestsFlextInfraBasemkMakeContract:
                 'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
                 'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
                 'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
+                'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen',
                 'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
                 'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs',
                 'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
@@ -197,6 +201,10 @@ class TestsFlextInfraBasemkMakeContract:
             has="Project-local .venv violates the workspace environment contract",
             lacks="rm -rf .venv",
         )
+        tm.that(
+            rendered, has='basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"'
+        )
+        tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
 
     def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
         self,
