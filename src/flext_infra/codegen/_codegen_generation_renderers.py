@@ -45,6 +45,31 @@ class FlextInfraCodegenGenerationRenderersMixin(
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
         formatted = output.stdout.rstrip() + "\n"
+        # Canonicalize import grouping/sorting (isort / I001) deterministically
+        # before the strict --no-fix gate below. Import ordering is purely
+        # mechanical and ``ruff format`` does not reorder import blocks; running
+        # an I001-only fix here makes the generated block canonical regardless of
+        # ruff config discovery inside the ephemeral transaction worktree, so the
+        # generator stays idempotent. Semantics are never touched.
+        isort_result = u.Cli.run_raw(
+            [
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--fix",
+                "--select",
+                "I001",
+                "--stdin-filename",
+                target_filename,
+                "-",
+            ],
+            cwd=template_root,
+            input_data=formatted.encode(c.Cli.ENCODING_DEFAULT),
+        )
+        if isort_result.failure:
+            raise ValueError(isort_result.error or "ruff isort fix failed")
+        isort_output = isort_result.unwrap()
+        if isort_output.stdout.strip():
+            formatted = isort_output.stdout.rstrip() + "\n"
         check_result = u.Cli.run_raw(
             [
                 c.Infra.RUFF,
