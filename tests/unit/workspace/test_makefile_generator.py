@@ -20,8 +20,7 @@ def _write_workspace_root(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
     (workspace_root / "pyproject.toml").write_text(
-        "[project]\nname='workspace-root'\nversion='0.1.0'\n",
-        encoding="utf-8",
+        "[project]\nname='workspace-root'\nversion='0.1.0'\n", encoding="utf-8"
     )
     return workspace_root
 
@@ -35,9 +34,9 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
     """Behavior contract for test_makefile_generator."""
 
     def test_workspace_makefile_generator_sanitizes_orchestrator_env(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Sanitize inherited type-checker paths before orchestration."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -57,9 +56,9 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         )
 
     def test_workspace_makefile_generator_declares_canonical_workspace_variables(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Declare the canonical workspace command variables."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -82,9 +81,9 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         )
 
     def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Reuse the canonical modernization and boot guidance."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -102,9 +101,9 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         )
 
     def test_workspace_makefile_generator_declares_workspace_boot_separation(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Separate declared Git projects from workspace boot selection."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -125,9 +124,9 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         )
 
     def test_workspace_makefile_generator_does_not_persist_external_project_names(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Exclude external documentation roots from generated project state."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -138,23 +137,22 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         tm.that(makefile_text, lacks="sample-external-beta")
 
     def test_workspace_makefile_generator_emits_parseable_discovery_commands(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Emit discovery commands accepted by GNU Make."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
-        outcome = cli.run_raw(
-            ["make", "-C", str(workspace_root), "--dry-run", "help"],
-        )
+        outcome = cli.run_raw(["make", "-C", str(workspace_root), "--dry-run", "help"])
 
-        assert outcome.success and outcome.value.exit_code == 0
+        output = tm.ok(outcome)
+        tm.that(output.exit_code, eq=0)
 
     def test_workspace_makefile_generator_ignores_projects_outside_workspace_scope(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Ignore projects excluded from the declared workspace scope."""
         workspace_root = _write_workspace_root(tmp_path)
         (workspace_root / "pyproject.toml").write_text(
             """
@@ -172,16 +170,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         docs_dir.mkdir()
         docs_config: dict[str, t.JsonValue] = {
             "scope": {
-                "exclude_roots": [
-                    "sample-external-alpha",
-                    "sample-external-beta",
-                ],
-            },
+                "exclude_roots": ["sample-external-alpha", "sample-external-beta"]
+            }
         }
-        cli.write_json_file(
-            docs_dir / "docs_config.json",
-            docs_config,
-        ).unwrap()
+        cli.write_json_file(docs_dir / "docs_config.json", docs_config).unwrap()
         project_names = ("flext-core", "sample-external-alpha", "sample-external-beta")
         for project_name in project_names:
             project_dir = workspace_root / project_name
@@ -199,21 +191,20 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
-        outcome = cli.run_raw(
-            ["make", "-C", str(workspace_root), "-pn"],
-        )
+        outcome = cli.run_raw(["make", "-C", str(workspace_root), "-pn"])
 
-        assert outcome.success and outcome.value.exit_code == 0
-        stdout = outcome.value.stdout
+        output = tm.ok(outcome)
+        tm.that(output.exit_code, eq=0)
+        stdout = output.stdout
         tm.that(stdout, lacks="sample-external-alpha")
         tm.that(stdout, lacks="sample-external-beta")
         tm.that(stdout, lacks="INDEPENDENT_PROJECTS :=")
         tm.that(stdout, lacks="ATTACHABLE_PROJECTS :=")
 
     def test_workspace_makefile_generator_uses_check_only_for_maintenance_validation(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Use read-only maintenance validation in generated Makefiles."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -221,14 +212,13 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         _assert_contains_all(
-            makefile_text,
-            ["$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1"],
+            makefile_text, ["$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1"]
         )
 
-    def test_workspace_makefile_generator_limits_absolute_path_scan_to_sources(
-        self,
-        tmp_path: Path,
+    def test_workspace_validation_is_read_only_and_venv_guard_is_fail_closed(
+        self, tmp_path: Path
     ) -> None:
+        """Detect generated drift and local environments without mutating either."""
         workspace_root = _write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
@@ -238,6 +228,27 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         _assert_contains_all(
             makefile_text,
             [
-                "git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.reports/**' ':!**/*.bak' ':!docs/**'",
+                "define CHECK_SYNC_ALL_PROJECTS",
+                'sync --workspace "$(CURDIR)" --dry-run || exit 1',
+                "project-local .venv directories violate",
+                "$(Q)$(CHECK_SYNC_ALL_PROJECTS)",
+            ],
+        )
+        tm.that(makefile_text, lacks="for venv_path in $$local_venvs; do rm -rf")
+
+    def test_workspace_makefile_generator_limits_absolute_path_scan_to_sources(
+        self, tmp_path: Path
+    ) -> None:
+        """Limit absolute-path scans to declared source artifacts."""
+        workspace_root = _write_workspace_root(tmp_path)
+
+        result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+        tm.ok(result)
+        makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
+
+        _assert_contains_all(
+            makefile_text,
+            [
+                "git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.reports/**' ':!**/*.bak' ':!docs/**'"
             ],
         )

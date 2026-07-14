@@ -152,6 +152,11 @@ define AUTO_SYNC_ALL_PROJECTS
 $(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply >/dev/null || exit 1
 endef
 
+# mro-wkii.17.27 (codex): validation detects generated drift without writes.
+define CHECK_SYNC_ALL_PROJECTS
+$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --dry-run || exit 1
+endef
+
 define PREPARE_SELECTED_PROJECTS
 $(ENSURE_NO_PROJECT_CONFLICT)
 $(ENSURE_SELECTED_PROJECTS)
@@ -167,17 +172,9 @@ local_venvs=$$(for proj in $(ALL_PROJECTS); do \
 	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
 done); \
 if [ -n "$$local_venvs" ]; then \
-	echo "Enforcing workspace venv by removing project-local .venv directories:"; \
+	echo "ERROR: project-local .venv directories violate the workspace environment contract:"; \
 	printf '%s\n' "$$local_venvs"; \
-	for venv_path in $$local_venvs; do rm -rf "$$venv_path"; done; \
-	echo "Project-local .venv directories removed."; \
-fi; \
-residual_venvs=$$(for proj in $(ALL_PROJECTS); do \
-	if [ -d "$$proj/.venv" ]; then echo "$$proj/.venv"; fi; \
-done); \
-if [ -n "$$residual_venvs" ]; then \
-	echo "ERROR: unable to remove some project-local .venv directories:"; \
-	printf '%s\n' "$$residual_venvs"; \
+	echo "Move those generated environments outside the workspace, then rerun 'make boot'."; \
 	exit 1; \
 fi
 endef
@@ -639,7 +636,7 @@ ifeq ($(VALIDATE_SCOPE),workspace)
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
-	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
+	$(Q)$(CHECK_SYNC_ALL_PROJECTS)
 	$(Q)mkdir -p .reports
 	$(Q)echo "Running workspace validation (inventory + strict anti-drift gates)..."
 	$(Q)$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1
