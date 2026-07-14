@@ -9,11 +9,14 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, p, t
+from flext_infra._models.codegen_grpc import FlextInfraModelsCodegenGrpc
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
-class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
+class FlextInfraModelsCodegen(
+    FlextInfraModelsCodegenGrpc, FlextInfraModelsCodegenRender
+):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class CensusViolation(mm.RequiredNonNegativeLineMixin, m.ArbitraryTypesModel):

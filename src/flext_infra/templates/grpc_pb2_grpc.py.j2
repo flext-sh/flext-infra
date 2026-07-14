@@ -1,0 +1,139 @@
+# AUTO-GENERATED FILE — Regenerate with: make gen
+"""Generated typed gRPC services for ``{{ source }}``."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable, Sequence
+from typing import Never, Protocol
+
+import grpc
+
+import {{ pb2_module }} as _pb2
+
+type Metadata = Sequence[tuple[str, str | bytes]]
+type Serializer[MessageT] = Callable[[MessageT], bytes]
+type Deserializer[MessageT] = Callable[[bytes], MessageT]
+
+
+class UnaryUnaryCallable[RequestT, ResponseT](Protocol):
+    """Call one unary request and return one unary response."""
+
+    def __call__(
+        self,
+        request: RequestT,
+        timeout: float | None = None,
+        metadata: Metadata | None = None,
+        *,
+        wait_for_ready: bool | None = None,
+        compression: grpc.Compression | None = None,
+    ) -> ResponseT:
+        """Execute the unary RPC."""
+        ...
+
+
+class Channel(Protocol):
+    """Create typed client-side RPC callables."""
+
+    def unary_unary[RequestT, ResponseT](
+        self,
+        method: str,
+        request_serializer: Serializer[RequestT],
+        response_deserializer: Deserializer[ResponseT],
+    ) -> UnaryUnaryCallable[RequestT, ResponseT]:
+        """Create a unary request and unary response callable."""
+        ...
+
+
+class ServicerContext(Protocol):
+    """Expose the terminal gRPC failure boundary to service implementations."""
+
+    def abort(self, code: grpc.StatusCode, details: str) -> Never:
+        """Abort the active RPC with a status and details."""
+        ...
+
+
+class _RpcMethodHandler(Protocol):
+    """Identify one runtime gRPC method handler."""
+
+    request_streaming: bool
+    response_streaming: bool
+
+
+class _GenericRpcHandler(Protocol):
+    """Identify one runtime generic gRPC handler."""
+
+    def service(self, handler_call_details: grpc.HandlerCallDetails) -> _RpcMethodHandler | None:
+        """Resolve a method handler for one incoming call."""
+        ...
+
+
+class Server(Protocol):
+    """Register typed generic and named gRPC method handlers."""
+
+    def add_generic_rpc_handlers(
+        self, generic_rpc_handlers: Iterable[_GenericRpcHandler]
+    ) -> None:
+        """Register generic RPC handlers."""
+        ...
+
+{% for service in services %}
+
+
+class {{ service.name }}Stub:
+    """Expose typed client methods for ``{{ service.full_name }}``."""
+{% for method in service.methods %}
+
+    {{ method.python_name }}: UnaryUnaryCallable[
+        _pb2.{{ method.request_name }}, _pb2.{{ method.response_name }}
+    ]
+{% endfor %}
+
+    def __init__(self, channel: Channel) -> None:
+        """Bind every RPC method to ``channel``."""
+{% for method in service.methods -%}
+{{ "        " }}self.{{ method.python_name }} = channel.{{ method.cardinality }}(
+            "{{ method.wire_path }}",
+            request_serializer=_pb2.{{ method.request_name }}.SerializeToString,
+            response_deserializer=_pb2.{{ method.response_name }}.FromString,
+        )
+{% endfor %}
+
+
+class {{ service.name }}Servicer(Protocol):
+    """Implement typed server methods for ``{{ service.full_name }}``."""
+{% for method in service.methods %}
+
+    def {{ method.python_name }}(
+        self,
+        request: _pb2.{{ method.request_name }},
+        context: ServicerContext,
+    ) -> _pb2.{{ method.response_name }}:
+        """Handle the ``{{ method.wire_name }}`` RPC."""
+        ...
+{% endfor %}
+
+
+def {{ service.registration_name }}(
+    servicer: {{ service.name }}Servicer, server: Server
+) -> None:
+    """Register ``{{ service.full_name }}`` on ``server``."""
+    rpc_method_handlers: dict[str, _RpcMethodHandler] = {
+{% for method in service.methods %}
+        "{{ method.wire_name }}": grpc.{{ method.cardinality }}_rpc_method_handler(
+            servicer.{{ method.python_name }},
+            request_deserializer=_pb2.{{ method.request_name }}.FromString,
+            response_serializer=_pb2.{{ method.response_name }}.SerializeToString,
+        ),
+{% endfor %}
+    }
+    generic_handler: _GenericRpcHandler = grpc.method_handlers_generic_handler(
+        "{{ service.full_name }}", rpc_method_handlers
+    )
+    server.add_generic_rpc_handlers((generic_handler,))
+{% endfor %}
+
+__all__: tuple[str, ...] = (
+{% for export in exports %}
+    "{{ export }}",
+{% endfor %}
+)
