@@ -547,13 +547,32 @@ class FlextInfraConfigModels:
             Path, m.Field(description="Repository-relative manifest path")
         ]
 
-    # mro-wkii.17.26 (codex): generated-source normalization is validated data.
+    # mro-wkii.17.26 (codex): descriptor rendering policy is validated data.
     class GrpcCodegenSpec(_ConfigContract):
-        """Canonical normalization policy for protoc-owned Python modules."""
+        """Canonical compiler and rendering policy for protobuf modules."""
 
         ruff_safe_fixes: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ordered safe Ruff fix selectors"),
+        ]
+        descriptor_include_imports: Annotated[
+            bool, m.Field(description="Include imported files in descriptor sets")
+        ]
+        descriptor_hex_line_overhead: Annotated[
+            int,
+            m.Field(
+                ge=0, description="Non-payload characters reserved on descriptor lines"
+            ),
+        ]
+        message_template: Annotated[
+            t.NonEmptyStr, m.Field(description="Typed protobuf message template")
+        ]
+        service_template: Annotated[
+            t.NonEmptyStr, m.Field(description="Typed gRPC service template")
+        ]
+        strict_ruff_selectors: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Positive generated-source lint profile"),
         ]
 
     class CodegenConfigSpec(_ConfigContract):
