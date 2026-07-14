@@ -86,28 +86,6 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES: Final[frozenset[str]] = frozenset({
-        "_constants",
-        "_models",
-        "_protocols",
-        "_typings",
-        "_utilities",
-        "basemk",
-        "check",
-        "codegen",
-        "deps",
-        "detectors",
-        "docs",
-        "fixers",
-        "gates",
-        "maintenance",
-        "refactor",
-        "release",
-        "transformers",
-        "validate",
-        "workspace",
-    })
-    "Child packages whose implementation exports do not bubble into root APIs."
     PUBLIC_ROOT_MODULE_EXPORTS: Final[frozenset[str]] = frozenset({"basemk"})
     "Internal child packages exported at the root as module objects only."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({

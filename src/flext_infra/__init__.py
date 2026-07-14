@@ -38,10 +38,10 @@ if TYPE_CHECKING:
     from flext_infra.protocols import (
         FlextInfraProtocols as FlextInfraProtocols,
         FlextInfraProtocolsBase as FlextInfraProtocolsBase,
-        p as p,
+        p,
     )
     from flext_infra.typings import FlextInfraTypes as FlextInfraTypes, t as t
-    from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u as u
+    from flext_infra.utilities import FlextInfraUtilities as FlextInfraUtilities, u
 
 # mro-wkii.17.26 (codex): the public root owns its complete inline lazy ABI.
 _LAZY_MODULES: dict[str, tuple[str, ...]] = {

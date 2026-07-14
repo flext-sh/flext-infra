@@ -11,7 +11,7 @@ from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
-# mro-wkii.17 (Codex): tests assert the inline lazy-root/static-child contract.
+# mro-pulj (Codex): tests assert the lazy-root/empty-child contract.
 class TestsFlextInfraCodegenGeneration:
     """Validate observable generated Python artifacts without legacy internals."""
 
@@ -157,6 +157,7 @@ class TestsFlextInfraCodegenGeneration:
             ("FlextCliSettings", "settings"),
             MappingProxyType({
                 "FlextCliSettings": ("flext_cli._settings", "FlextCliSettings"),
+                "FlextCliSettings": ("flext_cli._settings", "FlextCliSettings"),
                 "settings": ("flext_cli._settings", "settings"),
             }),
         )
@@ -164,6 +165,7 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
+        tm.that(content, contains="from ._settings import FlextCliSettings, settings")
         tm.that(content, contains="from ._settings import FlextCliSettings, settings")
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="FlextCliSettings as FlextCliSettings")
@@ -203,6 +205,7 @@ class TestsFlextInfraCodegenGeneration:
             "demo_pkg._fixtures",
             ("DemoFixture",),
             MappingProxyType({
+                "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
                 "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
             }),
         )

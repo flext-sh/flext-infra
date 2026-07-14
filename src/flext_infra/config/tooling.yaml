@@ -487,8 +487,8 @@ Infra:
         min-version: "8.0"
         python-classes: ["Test*"]
         python-files: ["*_test.py", "*_tests.py", "test_*.py"]
-        # mro-wkii.17 (codex): tracked test/doc roots only; warnings fail closed.
-        test-paths: [README.md, docs, examples, tests]
+        # mro-pulj (codex): collect executable tests only; docs/examples are consumers.
+        test-paths: [tests]
         filter-warnings: [error]
         standard-markers:
           - "smoke: public-interface smoke tests"
@@ -503,7 +503,6 @@ Infra:
           - "resilience: resilience tests"
         standard-addopts:
           - --strict-markers
-          - --markdown-docs
           - --durations=10
       tomlsort:
         all: true
@@ -595,6 +594,7 @@ Infra:
         domains.py: Domains
         files.py: Files
         helpers.py: Helpers
+        lazy.py: Lazy
         tmatchers.py: MatchersUtilities
         models.py: Models
         protocols.py: Protocols

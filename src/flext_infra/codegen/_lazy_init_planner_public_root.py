@@ -9,7 +9,7 @@ from flext_infra import c, t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m
+    from flext_infra import m, p
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
@@ -57,10 +57,8 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         export_names: set[str],
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
-        child_packages: t.StrSequence,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
-    ) -> tuple[set[str], t.MutableLazyAliasMap, t.StrSequence, t.StrSequence]:
-        """Filter a governed root facade while preserving safe child exports."""
+    ) -> tuple[set[str], t.MutableLazyAliasMap]:
+        """Keep only direct public facades in one generated root contract."""
         explicit_exports = self._root_public_contract_exports(context.pkg_dir)
         public_children = self._public_root_child_packages(child_packages, dir_exports)
         child_packages_for_lazy = self._child_packages_without_main_export(
@@ -145,12 +143,12 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
 
     @staticmethod
     def _is_public_root_export(
+        self,
         name: str,
         lazy_map: t.LazyAliasMap,
         *,
         root_pkg: str,
         root_namespace_files: t.StrSequence,
-        explicit_public_exports: frozenset[str] = frozenset(),
     ) -> bool:
         """Return whether a root-facade export belongs in the external API."""
         if name in c.Infra.PUBLISHED_ALL_EXCLUDE:

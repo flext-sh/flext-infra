@@ -24,6 +24,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return public static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
+        public_names = frozenset(plan.exports)
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         public_exports = frozenset(plan.exports)
         filtered: dict[str, t.StrPair] = {

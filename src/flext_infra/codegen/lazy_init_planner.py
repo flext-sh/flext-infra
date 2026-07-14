@@ -24,8 +24,8 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.codegen._lazy_init_planner_public_api import (
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+from flext_infra.codegen._lazy_init_planner_public_root import (
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
 
@@ -76,7 +76,7 @@ class FlextInfraCodegenLazyInitPlanner(
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
     FlextInfraCodegenLazyInitPlannerParentsMixin,
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 ):
     """Resolve lazy-init plans using one shared Rope workspace index."""
 
@@ -159,7 +159,11 @@ class FlextInfraCodegenLazyInitPlanner(
         all_export_names = tuple(sorted(export_names))
         plan = m.Infra.LazyInitPlan(
             context=context,
-            action=c.Infra.LazyInitAction.WRITE,
+            action=(
+                c.Infra.LazyInitAction.SKIP
+                if preserve_manual_init
+                else c.Infra.LazyInitAction.WRITE
+            ),
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,

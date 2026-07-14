@@ -30,6 +30,7 @@ class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
     def test_apply_sets_expected_ini_options(self) -> None:
+        """Populate every canonical pytest option in an empty document."""
         tool_config = config.Infra.tooling
         doc = tomlkit.document()
 
@@ -53,7 +54,8 @@ class TestsFlextInfraDepsModernizerPytest:
             eq=set(tool_config.tools.pytest.standard_markers),
         )
 
-    def test_apply_merges_existing_project_specific_entries(self) -> None:
+    def test_apply_replaces_policy_and_merges_extension_entries(self) -> None:
+        """Replace policy flags while retaining declared discovery extensions."""
         tool_config = config.Infra.tooling
         doc = tomlkit.parse(
             """
@@ -79,7 +81,7 @@ markers = ["custom: custom marker"]
         )
         tm.that(
             set(_strings(ini["addopts"])),
-            eq={"--maxfail=1", *tool_config.tools.pytest.standard_addopts},
+            eq=set(tool_config.tools.pytest.standard_addopts),
         )
         tm.that(
             set(_strings(ini["markers"])),
@@ -87,6 +89,7 @@ markers = ["custom: custom marker"]
         )
 
     def test_apply_is_idempotent(self) -> None:
+        """Leave a document unchanged after the canonical policy is present."""
         tool_config = config.Infra.tooling
         phase = FlextInfraEnsurePytestConfigPhase(tool_config)
         doc = tomlkit.document()

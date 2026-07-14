@@ -29,12 +29,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
-        def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
-
     def _merge_children(
-        self,
-        pkg_dir: Path,
-        lazy_map: t.MutableLazyAliasMap,
+        self, pkg_dir: Path, lazy_map: t.MutableLazyAliasMap
     ) -> t.StrSequence:
         """Register direct child packages without flattening their exports."""
         package_entry = self._package_entry(pkg_dir)

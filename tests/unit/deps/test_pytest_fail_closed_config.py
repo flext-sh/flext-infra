@@ -17,7 +17,7 @@ class TestsFlextInfraPytestFailClosedConfig:
         document = tomlkit.parse(
             """
 [tool.pytest.ini_options]
-addopts = ["--maxfail=1"]
+addopts = ["--maxfail=1", "--cov=.", "--markdown-docs"]
 filterwarnings = ["ignore:legacy warning suppression"]
 markers = ["custom: stale local marker"]
 python_classes = ["Spec*"]
@@ -36,24 +36,16 @@ testpaths = ["architecture", "guides", "tests"]
         tm.that(second_change_summary, lacks="filterwarnings")
         tm.that(second_change_summary, lacks="testpaths")
         tm.that(rendered, has='filterwarnings = [\n    "error",\n]')
-        tm.that(
-            rendered,
-            has=(
-                'testpaths = [\n    "README.md",\n    "docs",\n'
-                '    "examples",\n    "tests",\n]'
-            ),
-        )
-        for preserved_value in (
-            "--maxfail=1",
-            "custom: stale local marker",
-            "Spec*",
-            "spec_*.py",
-        ):
+        tm.that(rendered, has='testpaths = [\n    "tests",\n]')
+        for preserved_value in ("custom: stale local marker", "Spec*", "spec_*.py"):
             tm.that(rendered, has=preserved_value)
         for stale_value in (
             "--ignore-glob",
             "architecture",
             "guides",
             "ignore:legacy warning suppression",
+            "--maxfail=1",
+            "--cov=.",
+            "--markdown-docs",
         ):
             tm.that(rendered, lacks=stale_value)

@@ -124,6 +124,65 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         tm.that(self._generated_init(package_root), lacks="FlextDemoInternal")
 
+    def test_root_regeneration_preserves_declared_abi_only(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep module-local public helpers outside the package-root ABI."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__: tuple[str, ...] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
+            "class FlextDemoConstants:\n"
+            '    """Canonical constants facade."""\n\n'
+            "class FlextDemoConstantsEnforcement:\n"
+            '    """Module-local composition class."""\n\n'
+            "c = FlextDemoConstants\n\n"
+            '__all__ = ("FlextDemoConstants", '
+            '"FlextDemoConstantsEnforcement", "c")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        package_root.joinpath("lazy.py").write_text(
+            "class FlextDemoLazy:\n"
+            '    """Canonical lazy facade."""\n\n'
+            "class FlextDemoLazyAttribute:\n"
+            '    """Module-local implementation type."""\n\n'
+            "def lazy_attribute() -> None:\n"
+            '    """Module-local helper."""\n\n'
+            '__all__ = ("FlextDemoLazy", "FlextDemoLazyAttribute", '
+            '"lazy_attribute")\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        generated = self._generated_init(package_root)
+        has_all, exports = u.Tests.extract_lazy_init_exports(generated)
+
+        tm.that(has_all, eq=True)
+        tm.that(exports, eq=("FlextDemoConstants", "FlextDemoLazy", "c"))
+        tm.that(generated, lacks="FlextDemoConstantsEnforcement")
+        tm.that(generated, lacks="FlextDemoLazyAttribute")
+        tm.that(generated, lacks="lazy_attribute")
+
+    def test_root_regeneration_fails_for_contract_without_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject silent removal when an existing public name loses its owner."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        declared_contract = (
+            '__all__: tuple[str, ...] = ("FlextDemoModels", "FlextDemoMissing", "m")\n'
+        )
+        package_root.joinpath(c.Infra.INIT_PY).write_text(
+            declared_contract, encoding=c.Cli.ENCODING_DEFAULT
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=1)
+        tm.that(self._generated_init(package_root), eq=declared_contract)
+
     def test_private_child_packages_do_not_widen_root_api(self, tmp_path: Path) -> None:
         """Keep private child declarations outside the public root contract."""
         workspace_root, package_root = self._workspace(tmp_path)
@@ -144,6 +203,7 @@ class TestsFlextInfraLazyInitHelpers:
         )[1]
 
         # mro-i6nq.10: private child classes never become root ABI.
+        tm.that(exports_content, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
@@ -210,6 +270,7 @@ class TestsFlextInfraLazyInitHelpers:
         """Keep implementation-only symbols out of generated root imports."""
         workspace_root, package_root = self._workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
             package_root / "models.py", class_name="FlextDemoModels", alias="m"
         )
         utilities_dir = package_root / "_utilities"
@@ -597,12 +658,14 @@ class TestsFlextInfraLazyInitHelpers:
     ) -> None:
         """Keep undeclared root siblings outside the generated public contract."""
         workspace_root, package_root = self._workspace(tmp_path)
-        (package_root / "alpha.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+        (package_root / "api.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
+            '__all__: list[str] = ["Shared"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        (package_root / "beta.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n",
+        (package_root / "service.py").write_text(
+            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
+            '__all__: list[str] = ["Shared"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
