@@ -85,6 +85,11 @@ show_missing = {{ tooling.tools.coverage.show_missing | lower }}
 skip_covered = {{ tooling.tools.coverage.skip_covered | lower }}
 
 [tool.coverage.run]
+source = [
+{% for item in tooling.tools.coverage.source %}
+  {{ item | tojson }},
+{% endfor %}
+]
 omit = [
 {% for item in tooling.tools.coverage.omit %}
   {{ item | tojson }},

@@ -42,6 +42,8 @@ class FlextInfraEnsureCoverageConfigPhase:
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("coverage-run")
             .table("coverage", "run")
+            # mro-p68a.5 (codex): measure only declared production roots.
+            .list("source", sorted(set(cov_config.source)))
             .list("omit", sorted(set(cov_config.omit)))
             .build()
         )

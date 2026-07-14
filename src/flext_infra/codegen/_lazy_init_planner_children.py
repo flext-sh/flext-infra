@@ -35,9 +35,8 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         self,
         pkg_dir: Path,
         lazy_map: t.MutableLazyAliasMap,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
     ) -> t.StrSequence:
-        """Merge direct child packages into the parent lazy map."""
+        """Register direct child packages without flattening their exports."""
         package_entry = self._package_entry(pkg_dir)
         if package_entry is None:
             return ()
@@ -53,7 +52,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if not child_init.is_file():
                 continue
             child_entry = self._package_entry(child_dir)
-            child_exports = dir_exports.get(str(resolved_child_dir), {})
             if child_entry is None or not child_entry.package_name:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
@@ -68,14 +66,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 child_entry.package_name.rsplit(".", maxsplit=1)[-1],
                 (child_entry.package_name, ""),
             )
-            for name, (module_name, attr) in child_exports.items():
-                if (
-                    attr
-                    and name not in c.Infra.ALIAS_NAMES
-                    and name != "main"
-                    and self._publish(name, allow_main=False)
-                ):
-                    self._add(lazy_map, name, (module_name, attr))
         return tuple(sorted(direct))
 
     def _excluded_child_lazy_names(

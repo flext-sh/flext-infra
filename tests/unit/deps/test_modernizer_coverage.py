@@ -30,6 +30,7 @@ class TestsFlextInfraDepsModernizerCoverage:
     """Tests coverage settings phase behavior."""
 
     def test_apply_sets_report_and_run_state(self) -> None:
+        """Emit the configured report and production-source run policy."""
         tool_config = config.Infra.tooling
         doc = tomlkit.document()
 
@@ -54,8 +55,13 @@ class TestsFlextInfraDepsModernizerCoverage:
         tm.that(
             list(_strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
         )
+        tm.that(
+            list(_strings(run["source"])),
+            eq=sorted(set(tool_config.tools.coverage.source)),
+        )
 
     def test_apply_is_idempotent(self) -> None:
+        """Leave an already-conformed coverage document unchanged."""
         tool_config = config.Infra.tooling
         phase = FlextInfraEnsureCoverageConfigPhase(tool_config)
         doc = tomlkit.document()

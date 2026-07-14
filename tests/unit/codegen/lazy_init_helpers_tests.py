@@ -389,7 +389,7 @@ class TestsFlextInfraLazyInitHelpers:
         child_dir = tests_root / "unit"
         child_dir.mkdir()
         (child_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
-        (child_dir / "child.py").write_text(
+        (child_dir / "test_child.py").write_text(
             "from __future__ import annotations\n\n"
             "class Child:\n"
             "    pass\n\n"
@@ -412,6 +412,13 @@ class TestsFlextInfraLazyInitHelpers:
         )
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
+        child_init_content = child_dir.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        # mro-wkii.17.26 (codex): collected test classes remain module-local;
+        # importing one test package must not pull every sibling test module.
+        tm.that(child_init_content, lacks="Child")
+        tm.that(child_init_content, contains="__all__: tuple[str, ...] = ()")
         compile(init_content, "tests/__init__.py", "exec")
         tm.that(
             u.Tests.run_lazy_init(

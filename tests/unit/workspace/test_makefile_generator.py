@@ -16,34 +16,54 @@ if TYPE_CHECKING:
     from flext_core import FlextTypes as t
 
 
-def _write_workspace_root(tmp_path: Path) -> Path:
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir()
-    (workspace_root / "pyproject.toml").write_text(
-        "[project]\nname='workspace-root'\nversion='0.1.0'\n", encoding="utf-8"
-    )
-    return workspace_root
-
-
-def _assert_contains_all(text: str, parts: list[str]) -> None:
-    for part in parts:
-        tm.that(text, has=part)
-
-
 class TestsFlextInfraWorkspaceMakefileGenerator:
     """Behavior contract for test_makefile_generator."""
+
+    @staticmethod
+    def _write_workspace_root(tmp_path: Path) -> Path:
+        """Create a committed workspace fixture on the canonical dev branch."""
+        workspace_root = tmp_path / "workspace"
+        workspace_root.mkdir()
+        (workspace_root / "pyproject.toml").write_text(
+            "[project]\nname='workspace-root'\nversion='0.1.0'\n", encoding="utf-8"
+        )
+        commands = (
+            ("git", "init", "-q", "-b", "0.20.0-dev"),
+            ("git", "add", "pyproject.toml"),
+            (
+                "git",
+                "-c",
+                "user.name=Flext Tests",
+                "-c",
+                "user.email=tests@flext.local",
+                "commit",
+                "-q",
+                "-m",
+                "Initialize workspace fixture",
+            ),
+        )
+        for command in commands:
+            success = cli.run_checked(command, cwd=workspace_root).unwrap()
+            tm.that(success, eq=True)
+        return workspace_root
+
+    @staticmethod
+    def _assert_contains_all(text: str, parts: t.StrSequence) -> None:
+        """Assert that generated text contains every required fragment."""
+        for part in parts:
+            tm.that(text, has=part)
 
     def test_workspace_makefile_generator_sanitizes_orchestrator_env(
         self, tmp_path: Path
     ) -> None:
         """Sanitize inherited type-checker paths before orchestration."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 'WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)',
@@ -59,19 +79,19 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Declare the canonical workspace command variables."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 "PROJECT ?=",
                 "PROJECTS ?=",
                 "DEPS_REPORT ?= 1",
-                "PR_BRANCH ?= 0.1.0",
+                "PR_BRANCH ?= 0.20.0-dev",
                 "WORKSPACE_INFRA_DEPS := $(WORKSPACE_FLEXT_INFRA) deps",
                 "WORKSPACE_INFRA_MAINTENANCE := $(WORKSPACE_FLEXT_INFRA) maintenance run",
                 "WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) release run",
@@ -84,14 +104,14 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Reuse the canonical modernization and boot guidance."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
         tm.that(makefile_text.count("$(MAKE) _mod"), eq=1)
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 "Run 'make boot'.",
@@ -100,26 +120,26 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             ],
         )
 
-    def test_workspace_makefile_generator_declares_workspace_boot_separation(
+    def test_workspace_makefile_generator_separates_boot_from_validation(
         self, tmp_path: Path
     ) -> None:
-        """Separate declared Git projects from workspace boot selection."""
-        workspace_root = _write_workspace_root(tmp_path)
+        """Keep workspace validation explicit instead of running it during boot."""
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 "FLEXT_PROJECTS :=",
                 "WORKSPACE_PROJECTS :=",
-                "BOOT_VALIDATE_PROJECTS := $(strip $(filter $(WORKSPACE_PROJECTS),$(SELECTED_PROJECTS)))",
                 "tool.flext.workspace or tool.uv.workspace",
                 'gitmodules = root / ".gitmodules"',
-                '$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)"',
-                "Skipping workspace validation (no managed workspace projects selected).",
+                "_val_workspace: ## Run workspace validation gates",
+                "$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=workspace $(MAKE_SELECTION_ARGS)",
+                "Running workspace validation (inventory + strict anti-drift gates)...",
             ],
         )
 
@@ -127,7 +147,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Exclude external documentation roots from generated project state."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
@@ -140,20 +160,20 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Emit discovery commands accepted by GNU Make."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         outcome = cli.run_raw(["make", "-C", str(workspace_root), "--dry-run", "help"])
 
-        output = tm.ok(outcome)
+        output = outcome.unwrap()
         tm.that(output.exit_code, eq=0)
 
     def test_workspace_makefile_generator_ignores_projects_outside_workspace_scope(
         self, tmp_path: Path
     ) -> None:
         """Ignore projects excluded from the declared workspace scope."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
         (workspace_root / "pyproject.toml").write_text(
             """
     [project]
@@ -193,7 +213,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         tm.ok(result)
         outcome = cli.run_raw(["make", "-C", str(workspace_root), "-pn"])
 
-        output = tm.ok(outcome)
+        output = outcome.unwrap()
         tm.that(output.exit_code, eq=0)
         stdout = output.stdout
         tm.that(stdout, lacks="sample-external-alpha")
@@ -205,13 +225,13 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Use read-only maintenance validation in generated Makefiles."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text, ["$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1"]
         )
 
@@ -219,13 +239,13 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Detect generated drift and local environments without mutating either."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 "define CHECK_SYNC_ALL_PROJECTS",
@@ -240,13 +260,13 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         self, tmp_path: Path
     ) -> None:
         """Limit absolute-path scans to declared source artifacts."""
-        workspace_root = _write_workspace_root(tmp_path)
+        workspace_root = self._write_workspace_root(tmp_path)
 
         result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
         tm.ok(result)
         makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
 
-        _assert_contains_all(
+        self._assert_contains_all(
             makefile_text,
             [
                 "git grep -nE '/home/.*/flext|file:///home/.*/flext' -- '*.py' '**/*.py' '*.toml' '**/*.toml' '*.yml' '**/*.yml' '*.yaml' '**/*.yaml' '*.json' '**/*.json' '.gitignore' 'base.mk' '**/base.mk' ':!.reports/**' ':!**/*.bak' ':!docs/**'"

@@ -350,6 +350,8 @@ Infra:
           project-venv-path: ..
           venv-name: .venv
       coverage:
+        # mro-p68a.5 (codex): examples are consumers, never production coverage.
+        source: [src]
         fail-under:
           core: 45
           domain: 30

@@ -105,7 +105,9 @@ class FlextInfraCodegenLazyInitPlanner(
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
             export_options=m.Infra.ExportOptions(include_dunder=True),
         )
-        child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
+        # mro-wkii.17.26 (codex): child packages are direct markers; each
+        # descendant plan remains the sole owner of its symbols.
+        child_lazy = self._merge_children(context.pkg_dir, lazy_map)
         # Version-submodule dunders are emitted as eager imports rather than
         # lazy. The submodule shares its name (``__version__``) with the dunder
         # string it exports; lazy resolution would let Python's import

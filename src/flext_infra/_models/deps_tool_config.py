@@ -160,6 +160,14 @@ class FlextInfraModelsDepsToolSettings(
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
+        # mro-p68a.5 (codex): production coverage is limited to declared sources.
+        source: Annotated[
+            t.StrSequence,
+            m.Field(
+                default_factory=tuple,
+                description="Production source roots measured by coverage.",
+            ),
+        ]
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under", description="Coverage fail-under thresholds by layer."
         )
