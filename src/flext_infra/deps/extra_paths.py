@@ -111,9 +111,7 @@ class FlextInfraExtraPathsManager(
                 payload = u.Infra.pyproject_payload(pyproject)
                 paths.update(self._dep_paths(payload, project_dir=project_dir))
                 paths.update(self._uv_source_paths(payload, project_dir=project_dir))
-            paths.update(
-                self._workspace_member_source_paths(project_dir=project_dir)
-            )
+            paths.update(self._workspace_member_source_paths(project_dir=project_dir))
         paths.add(source_root)
         return sorted(paths)
 

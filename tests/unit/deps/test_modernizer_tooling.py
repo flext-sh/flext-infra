@@ -25,9 +25,28 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for formatting, namespace, and Ruff phases."""
 
+    def test_typecheck_policy_keeps_tracked_surfaces_visible(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Keep every tracked Python surface visible to all four analyzers."""
+        tools = tool_config_document.tools
+        tracked_surfaces = {"examples", "scripts", "src", "tests"}
+        hidden_globs = {"**/examples", "**/examples/**", "**/tests", "**/tests/**"}
+
+        tm.that(set(tools.ruff.src), eq=tracked_surfaces)
+        tm.that(tracked_surfaces.isdisjoint(tools.ruff.exclude), eq=True)
+        tm.that(tools.mypy.exclude, eq=r"^legado(?:/|$)")
+        tm.that(set(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(
+            hidden_globs.isdisjoint(tools.pyright.path_rules.default_excludes), eq=True
+        )
+        tm.that(set(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(hidden_globs.isdisjoint(tools.pyrefly.project_exclude_globs), eq=True)
+
     def test_formatting_phase_sets_expected_state(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Render every managed formatting tool from typed policy."""
         doc = tomlkit.document()
 
         _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
@@ -36,13 +55,13 @@ class TestsFlextInfraDepsModernizerTooling:
         codespell = u.Tests.toml_mapping(tool["codespell"])
         tomlsort = u.Tests.toml_mapping(tool["tomlsort"])
         yamlfix = u.Tests.toml_mapping(tool["yamlfix"])
-        assert (
-            codespell["check-filenames"]
-            == tool_config_document.tools.codespell.check_filenames
+        tm.that(
+            codespell["check-filenames"],
+            eq=tool_config_document.tools.codespell.check_filenames,
         )
-        assert (
-            codespell["ignore-words-list"]
-            == tool_config_document.tools.codespell.ignore_words_list
+        tm.that(
+            codespell["ignore-words-list"],
+            eq=tool_config_document.tools.codespell.ignore_words_list,
         )
         tm.that(tomlsort["all"], eq=tool_config_document.tools.tomlsort.all)
         tm.that(tomlsort["in_place"], eq=tool_config_document.tools.tomlsort.in_place)
@@ -53,23 +72,24 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(
             yamlfix["line_length"], eq=tool_config_document.tools.yamlfix.line_length
         )
-        assert (
-            yamlfix["preserve_quotes"]
-            == tool_config_document.tools.yamlfix.preserve_quotes
+        tm.that(
+            yamlfix["preserve_quotes"],
+            eq=tool_config_document.tools.yamlfix.preserve_quotes,
         )
         tm.that(yamlfix["whitelines"], eq=tool_config_document.tools.yamlfix.whitelines)
-        assert (
-            yamlfix["section_whitelines"]
-            == tool_config_document.tools.yamlfix.section_whitelines
+        tm.that(
+            yamlfix["section_whitelines"],
+            eq=tool_config_document.tools.yamlfix.section_whitelines,
         )
-        assert (
-            yamlfix["explicit_start"]
-            == tool_config_document.tools.yamlfix.explicit_start
+        tm.that(
+            yamlfix["explicit_start"],
+            eq=tool_config_document.tools.yamlfix.explicit_start,
         )
 
     def test_formatting_phase_is_idempotent(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Keep formatting output stable after the first application."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
         doc = tomlkit.document()
 
@@ -81,6 +101,7 @@ class TestsFlextInfraDepsModernizerTooling:
     def test_formatting_phase_removes_codespell_skip(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Remove the obsolete codespell skip setting."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
         doc = tomlkit.parse(
             """
@@ -99,6 +120,7 @@ skip = ".git,poetry.lock"
         tm.that(changes, has="removed codespell.skip hardcode")
 
     def test_namespace_phase_sets_detected_first_party(self, tmp_path: Path) -> None:
+        """Detect the project package as first-party code."""
         project_dir = tmp_path / "flext-sample"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
@@ -113,12 +135,14 @@ skip = ".git,poetry.lock"
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
         )
         tm.that(
-            list(u.Tests.toml_strings(deptry["known_first_party"])), eq=["flext_sample"]
+            list(u.Tests.toml_strings(deptry["known_first_party"])),
+            eq=["flext_core", "flext_sample"],
         )
 
     def test_namespace_phase_includes_workspace_source_packages(
         self, tmp_path: Path
     ) -> None:
+        """Include declared workspace dependencies in first-party packages."""
         project_dir = tmp_path / "flext-sample"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
@@ -148,6 +172,7 @@ workspace = true
     def test_ruff_phase_sets_expected_state(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Render Ruff policy while retaining tracked test roots."""
         project_dir = tmp_path / "flext-sample"
         package_dir = project_dir / "src" / "flext_sample"
         test_dir = project_dir / "tests"
@@ -183,9 +208,9 @@ select = ["E501"]
         tm.that(ruff["fix"], eq=tool_config_document.tools.ruff.fix)
         tm.that(ruff["line-length"], eq=tool_config_document.tools.ruff.line_length)
         tm.that(ruff["preview"], eq=tool_config_document.tools.ruff.preview)
-        assert (
-            ruff["respect-gitignore"]
-            == tool_config_document.tools.ruff.respect_gitignore
+        tm.that(
+            ruff["respect-gitignore"],
+            eq=tool_config_document.tools.ruff.respect_gitignore,
         )
         tm.that(ruff["show-fixes"], eq=tool_config_document.tools.ruff.show_fixes)
         tm.that(
@@ -193,9 +218,9 @@ select = ["E501"]
         )
         tm.that(set(u.Tests.toml_strings(ruff["src"])), eq={"src", "tests"})
         format_section = u.Tests.toml_mapping(ruff["format"])
-        assert (
-            format_section["docstring-code-format"]
-            == tool_config_document.tools.ruff.format.docstring_code_format
+        tm.that(
+            format_section["docstring-code-format"],
+            eq=tool_config_document.tools.ruff.format.docstring_code_format,
         )
         lint_section = u.Tests.toml_mapping(ruff["lint"])
         tm.that(
@@ -207,12 +232,13 @@ select = ["E501"]
             eq=set(tool_config_document.tools.ruff.lint.ignore),
         )
         isort = u.Tests.toml_mapping(lint_section["isort"])
-        assert (
-            isort["combine-as-imports"]
-            == tool_config_document.tools.ruff.lint.isort.combine_as_imports
+        tm.that(
+            isort["combine-as-imports"],
+            eq=tool_config_document.tools.ruff.lint.isort.combine_as_imports,
         )
         tm.that(
-            list(u.Tests.toml_strings(isort["known-first-party"])), eq=["flext_sample"]
+            list(u.Tests.toml_strings(isort["known-first-party"])),
+            eq=["flext_core", "flext_sample"],
         )
         tm.that(
             u.Tests.toml_mapping(lint_section["per-file-ignores"]),
@@ -225,6 +251,7 @@ select = ["E501"]
     def test_ruff_phase_is_idempotent(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Keep the Ruff phase stable after the first application."""
         project_dir = tmp_path / "flext-sample"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
@@ -240,6 +267,7 @@ select = ["E501"]
     def test_ruff_phase_skips_attached_workspace_namespaces(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Exclude attached consumer namespaces from FLEXT first-party names."""
         workspace_root = tmp_path / "workspace"
         project_dir = workspace_root / "demo-migration-tool"
         internal_project = workspace_root / "flext-core"

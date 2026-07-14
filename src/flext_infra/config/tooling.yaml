@@ -13,7 +13,8 @@ Infra:
         allow-direct-references: true
         packaged-data-dirs: [config, templates]
       ruff:
-        # NOTE (multi-agent, mro-wkii.17.25): legacy trees are not production roots.
+        # mro-wkii.17 (codex): every tracked Python surface remains visible;
+        # only the explicitly archived legado tree is outside quality gates.
         exclude:
           - .git
           - .mypy_cache
@@ -28,9 +29,7 @@ Infra:
           - dist
           - htmlcov
           - temp-backup
-          - examples
           - legado
-          - tests
           - typings
           - vendor
           - venv
@@ -39,7 +38,7 @@ Infra:
         preview: true
         respect-gitignore: true
         show-fixes: true
-        src: [src]
+        src: [src, tests, examples, scripts]
         target-version: py313
         format:
           docstring-code-format: true
@@ -204,7 +203,7 @@ Infra:
             "**/workspace/*.py": [S404, S603, S607]
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
-        exclude: ^(?:tests|examples|legado)(?:/|$)
+        exclude: ^legado(?:/|$)
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         disabled-error-codes:
@@ -307,11 +306,12 @@ Infra:
           reportArgumentType: "none"
           reportReturnType: "none"
         path-rules:
-          # NOTE (multi-agent, mro-wkii.17.25): only productive Python roots become environments.
+          # mro-wkii.17 (codex): source and tracked consumer surfaces are all
+          # first-class environments so no analyzer can hide their diagnostics.
           source-dir: src
           project-root: .
-          env-dirs: [src, scripts]
-          test-like-dirs: [scripts]
+          env-dirs: [src, tests, examples, scripts]
+          test-like-dirs: [tests, examples, scripts]
           default-excludes:
             - "**/node_modules"
             - "**/__pycache__"
@@ -320,12 +320,8 @@ Infra:
             - "**/.ruff_cache"
             - "**/.pytest_cache"
             - "**/.*"
-            - "**/examples"
-            - "**/examples/**"
             - "**/legado"
             - "**/legado/**"
-            - "**/tests"
-            - "**/tests/**"
             - .venv
             - "**/.venv"
             - "**/.venv/**"
@@ -472,15 +468,13 @@ Infra:
           - "**/typings/**"
           - "**/venv/**"
           - "**/vendor/**"
-          - "**/examples/**"
           - "**/legado/**"
-          - "**/tests/**"
           - ".flext-deps/**"
           - ".venv/**"
           - "typings/**"
           - "vendor/**"
         path-rules:
-          env-dirs: [src, scripts]
+          env-dirs: [src, tests, examples, scripts]
           source-dir: src
           project-root: .
           root-typings-paths: []

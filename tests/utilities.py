@@ -5,12 +5,12 @@ from __future__ import annotations
 import shutil
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, override
 
 from flext_tests import FlextTestsUtilities, r, tm
 
 from flext_cli import cli as cli_facade
-from flext_infra import u
+from flext_infra import config, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -39,31 +39,26 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         class DeptrySelector(u.Infra):
             """Protocol-compatible selector backed by a real Result."""
 
-            _result: ClassVar[p.Result[Sequence[m.Infra.ProjectInfo]] | None] = None
-
             def __init__(self, result: p.Result[Sequence[m.Infra.ProjectInfo]]) -> None:
-                type(self)._result = result
+                """Store the typed project-selection result."""
+                self._result = result
 
-            @staticmethod
             @override
             def resolve_projects(
+                self,
                 workspace_root: Path,
                 names: t.StrSequence,
                 *,
                 include_attached: bool = False,
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 del workspace_root, names, include_attached
-                result = TestsFlextInfraUtilities.Tests.DeptrySelector._result
-                if result is None:
-                    return r[Sequence[m.Infra.ProjectInfo]].fail(
-                        "selector result not configured"
-                    )
-                return result
+                return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
             """Protocol-compatible runner backed by a real Result."""
 
             def __init__(self, result: p.Result[m.Cli.CommandOutput]) -> None:
+                """Store the typed command result."""
                 self._result = result
 
             @override
@@ -107,6 +102,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
             ) -> p.Result[str]:
+                """Provide the typed test helper `capture`."""
                 result = self.run(
                     cmd,
                     cwd=cwd,
@@ -127,6 +123,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
             ) -> p.Result[bool]:
+                """Provide the typed test helper `run_checked`."""
                 result = self.run(
                     cmd,
                     cwd=cwd,
@@ -148,6 +145,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
             ) -> p.Result[int]:
+                """Provide the typed test helper `run_to_file`."""
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -171,6 +169,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def __init__(
                 self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]
             ) -> None:
+                """Store the ordered TOML results for replay."""
                 self._values = list(values)
                 self._index = 0
 
@@ -195,6 +194,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def __init__(
                 self, results: t.SequenceOf[p.Result[m.Cli.CommandOutput]]
             ) -> None:
+                """Store ordered command results for replay."""
                 self._results = list(results)
                 self._index = 0
                 self.commands: MutableSequence[t.StrSequence] = []
@@ -222,6 +222,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 remove_env_keys: t.StrSequence = (),
                 input_data: bytes | None = None,
             ) -> p.Result[m.Cli.CommandOutput]:
+                """Provide the typed test helper `run_raw`."""
                 self.commands.append(tuple(cmd))
                 del cmd, cwd, timeout, env, remove_env_keys, input_data
                 return self._next_result()
@@ -235,6 +236,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
             ) -> p.Result[m.Cli.CommandOutput]:
+                """Provide the typed test helper `run`."""
                 self.commands.append(tuple(cmd))
                 del cmd, cwd, timeout, env, remove_env_keys
                 result = self._next_result()
@@ -249,24 +251,28 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def infra_mapping(value: t.Infra.InfraMapping) -> t.Infra.ContainerDict:
+            """Provide the typed test helper `infra_mapping`."""
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
         @staticmethod
         def infra_mapping_result(
             value: t.Infra.InfraMapping,
         ) -> p.Result[t.Infra.ContainerDict]:
+            """Provide the typed test helper `infra_mapping_result`."""
             return r[t.Infra.ContainerDict].ok(
                 TestsFlextInfraUtilities.Tests.infra_mapping(value)
             )
 
         @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
-            result = u.Infra.load_tool_config()
-            tm.ok(result)
-            return result.value
+            # mro-wkii.17 (codex): tests consume the validated config singleton;
+            # the removed utility loader must not survive as a hidden test path.
+            """Provide the typed test helper `tool_config_document`."""
+            return config.Infra.tooling
 
         @staticmethod
         def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
+            """Provide the typed test helper `toml_doc_mapping`."""
             normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
             tm.that(normalized, is_=Mapping)
             if not isinstance(normalized, Mapping):
@@ -277,6 +283,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
+            """Provide the typed test helper `toml_mapping`."""
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=Mapping)
             if not isinstance(normalized, Mapping):
@@ -287,6 +294,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def toml_list(value: t.JsonPayload | None) -> t.JsonList:
+            """Provide the typed test helper `toml_list`."""
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=list)
             if not isinstance(normalized, list):
@@ -298,6 +306,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
+            """Provide the typed test helper `toml_strings`."""
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=list)
             if not isinstance(normalized, list):
@@ -309,6 +318,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def command_runner(
             *, stdout: str = "", stderr: str = "", returncode: int = 0
         ) -> p.Cli.CommandRunner:
+            """Provide the typed test helper `command_runner`."""
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
                     TestsFlextInfraUtilities.Tests.stub_run(
@@ -326,12 +336,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 *,
                 error: str = "",
             ) -> None:
+                """Store projects and an optional discovery failure."""
                 self._projects = projects or []
                 self._error = error
 
             def discover_projects(
                 self, workspace_root: Path
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+                """Provide the typed test helper `discover_projects`."""
                 _ = workspace_root
                 if self._error:
                     return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
@@ -341,6 +353,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Typed base.mk generator stub for migrator behavior tests."""
 
             def __init__(self, content: str = "", *, fail: str = "") -> None:
+                """Store generated content and an optional failure."""
                 self._content = content
                 self._fail = fail
 
@@ -355,10 +368,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def is_docker_available() -> bool:
+            """Return whether Docker is available to integration tests."""
             return shutil.which("docker") is not None
 
         @staticmethod
         def is_project_valid(project_name: str) -> bool:
+            """Validate the lightweight project-name fixture contract."""
             return (
                 bool(project_name)
                 and project_name.replace("-", "").replace("_", "").isalnum()
@@ -368,6 +383,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def stub_run(
             *, stdout: str = "", stderr: str = "", returncode: int = 0
         ) -> m.Cli.CommandOutput:
+            """Provide the typed test helper `stub_run`."""
             return m.Cli.CommandOutput(
                 stdout=stdout, stderr=stderr, exit_code=returncode
             )
@@ -381,6 +397,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             with_src: bool = False,
             with_git: bool = False,
         ) -> Path:
+            """Provide the typed test helper `mk_project`."""
             project_dir = root / name
             project_dir.mkdir(parents=True, exist_ok=True)
             (project_dir / "pyproject.toml").write_text(pyproject, encoding="utf-8")
@@ -397,6 +414,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_names: t.StrSequence = (),
             include_fixable_link: bool = False,
         ) -> Path:
+            """Create a documentation workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
 
@@ -447,6 +465,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             source_workflow: str = "name: CI\n",
             pr_exit_codes: t.StrMapping | None = None,
         ) -> Path:
+            """Create a GitHub workflow workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
             workflow_dir = workspace / ".github/workflows"
@@ -486,6 +505,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             initialize_root_git: bool = False,
             initialize_project_git: bool = False,
         ) -> Path:
+            """Create a release workflow workspace fixture."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
             (workspace / "pyproject.toml").write_text(
@@ -552,6 +572,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             gitmodules_members: t.StrSequence = (),
             extra_dirs: t.StrSequence = (),
         ) -> Path:
+            """Create a dependency-path synchronization workspace."""
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
             (workspace / "pyproject.toml").write_text(root_pyproject, encoding="utf-8")
@@ -585,6 +606,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             dependency_path: str = "",
             workspace_members: t.StrSequence = (),
         ) -> str:
+            """Render a pyproject fixture for dependency-path tests."""
             lines = ["[project]", f'name = "{name}"']
             if dependency_path:
                 lines.append(
@@ -602,6 +624,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def initialize_git_repo(repo_root: Path) -> None:
+            """Initialize and commit a deterministic Git fixture."""
             commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
@@ -614,10 +637,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def to_pascal(snake: str) -> str:
+            """Convert a snake-case fixture name to PascalCase."""
             return "".join(part.title() for part in snake.split("_"))
 
         @staticmethod
         def src_module_files() -> t.StrSequence:
+            """Return canonical FLEXT source-facade filenames."""
             return (
                 "constants.py",
                 "typings.py",
@@ -630,6 +655,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_codegen_project(
             *, tmp_path: Path, name: str, pkg_name: str, files: t.StrMapping
         ) -> Path:
+            """Provide the typed test helper `create_codegen_project`."""
             project = tmp_path / name
             project.mkdir()
             (project / "Makefile").touch()
@@ -666,6 +692,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_scaffolder_test_project(
             *, tmp_path: Path, with_all_modules: bool
         ) -> Path:
+            """Create a project fixture for scaffolder tests."""
             project = tmp_path / "test-project"
             project.mkdir()
             (project / "Makefile").touch()
@@ -692,6 +719,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_migrator_project(
             project_root: Path, name: str = "project-a"
         ) -> m.Infra.ProjectInfo:
+            """Create a typed project fixture for migration tests."""
             return m.Infra.ProjectInfo.model_validate(
                 obj={
                     "name": name,
@@ -746,6 +774,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 c.Infra.WorkspaceProjectRole.ATTACHED
             ),
         ) -> m.Infra.ProjectInfo:
+            """Provide the typed test helper `create_project_info`."""
             return m.Infra.ProjectInfo(
                 name=name,
                 path=project_root,
@@ -765,6 +794,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             exit_code: int = 0,
             duration: float = 0.0,
         ) -> m.Cli.CommandOutput:
+            """Provide the typed test helper `create_command_output`."""
             return m.Cli.CommandOutput(
                 stdout=stdout, stderr=stderr, exit_code=exit_code, duration=duration
             )
@@ -777,22 +807,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             command_output: m.Cli.CommandOutput | None = None,
             run_error: str | None = None,
         ) -> FlextInfraDependencyDetectionService:
+            """Provide the typed test helper `create_deptry_service`."""
             service = FlextInfraDependencyDetectionService()
             service.selector = TestsFlextInfraUtilities.Tests.DeptrySelector(
-                (
-                    r[Sequence[m.Infra.ProjectInfo]].fail(selection_error)
-                    if selection_error is not None
-                    else r[Sequence[m.Infra.ProjectInfo]].ok(list(projects or []))
-                )
+                r[Sequence[m.Infra.ProjectInfo]].fail(selection_error)
+                if selection_error is not None
+                else r[Sequence[m.Infra.ProjectInfo]].ok(list(projects or []))
             )
             service.runner = TestsFlextInfraUtilities.Tests.DeptryRunner(
-                (
-                    r[m.Cli.CommandOutput].fail(run_error)
-                    if run_error is not None
-                    else r[m.Cli.CommandOutput].ok(
-                        command_output
-                        or TestsFlextInfraUtilities.Tests.create_command_output()
-                    )
+                r[m.Cli.CommandOutput].fail(run_error)
+                if run_error is not None
+                else r[m.Cli.CommandOutput].ok(
+                    command_output
+                    or TestsFlextInfraUtilities.Tests.create_command_output()
                 )
             )
             return service
@@ -804,6 +831,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_name: str = "flext-test-project",
             package_name: str = "flext_test_project",
         ) -> tuple[Path, Path]:
+            """Provide the typed test helper `create_lazy_init_workspace`."""
             workspace_root = tmp_path / project_name
             package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
             package_root.mkdir(parents=True)
@@ -827,6 +855,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             alias: str,
             docstring: str = "Test namespace.",
         ) -> None:
+            """Write a namespace module fixture for lazy-export tests."""
             export_list = f'"{class_name}", "{alias}"'
             module_path.write_text(
                 (
@@ -842,6 +871,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_lazy_init_version_module(package_root: Path) -> None:
+            """Write a version module fixture for lazy-export tests."""
             (package_root / "__version__.py").write_text(
                 ('__version__ = "0.1.0"\n__version_info__ = (0, 1, 0)\n'),
                 encoding=c.Infra.ENCODING_DEFAULT,
@@ -849,16 +879,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
+            """Provide the typed test helper `run_lazy_init`."""
             return FlextInfraCodegenLazyInit(
                 workspace_root=workspace_root
             ).generate_inits(check_only=check_only)
 
         @staticmethod
         def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
+            """Provide the typed test helper `create_lazy_init_service`."""
             return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
+            """Provide the typed test helper `extract_lazy_init_exports`."""
             for name, value_str in u.Infra.get_module_level_assignments(source):
                 if name == c.Infra.DUNDER_ALL:
                     return (
@@ -871,6 +904,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def consolidate_codegen(
             *, workspace_root: Path, project: str | None = None, dry_run: bool = True
         ) -> p.Result[str]:
+            """Provide the typed test helper `consolidate_codegen`."""
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
                 workspace_root=workspace_root, dry_run=dry_run, project_name=project
             )
@@ -879,6 +913,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def build_mro_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
+            """Provide the typed test helper `build_mro_import_workspace`."""
             workspace_root = tmp_path
             project_root = workspace_root / "flext-demo"
             package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
@@ -914,6 +949,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_mro_scan_report(constants_path: Path) -> m.Infra.MROScanReport:
+            """Create a typed MRO scan report fixture."""
             return m.Infra.MROScanReport(
                 file=str(constants_path),
                 module="demo_pkg.constants",
@@ -938,6 +974,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             t.SequenceOf[m.Infra.MRORewriteResult],
             t.StrSequence,
         ]:
+            """Provide the typed test helper `migrate_workspace_mro_imports`."""
             result: tuple[
                 t.SequenceOf[m.Infra.MROFileMigration],
                 t.SequenceOf[m.Infra.MRORewriteResult],
@@ -959,6 +996,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             error: str = "",
         ) -> p.Infra.Discovery:
+            """Provide the typed test helper `create_migrator_discovery`."""
             return TestsFlextInfraUtilities.Tests.MigratorDiscovery(
                 projects, error=error
             )
@@ -967,6 +1005,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_migrator_generator(
             content: str = "", *, fail: str = ""
         ) -> FlextInfraBaseMkGenerator:
+            """Provide the typed test helper `create_migrator_generator`."""
             return TestsFlextInfraUtilities.Tests.MigratorGenerator(content, fail=fail)
 
         @staticmethod
@@ -977,6 +1016,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path | None = None,
             dry_run: bool = False,
         ) -> FlextInfraProjectMigrator:
+            """Compose a project migrator with typed test dependencies."""
             migrator = FlextInfraProjectMigrator(
                 workspace_root=workspace_root or Path("/dummy"),
                 apply_changes=not dry_run,
@@ -994,6 +1034,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def detect_command(
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
+            """Create a validated dependency-detection command."""
             return m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
@@ -1003,6 +1044,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_detector_deps_stub(
             project_paths: t.SequenceOf[Path],
         ) -> TestsFlextInfraUtilities.Tests.DetectorDepsStub:
+            """Provide the typed test helper `create_detector_deps_stub`."""
             return TestsFlextInfraUtilities.Tests.DetectorDepsStub(project_paths)
 
         @staticmethod
@@ -1013,6 +1055,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             deptry_exists: bool = True,
             runner: p.Infra.RunnerService | None = None,
         ) -> FlextInfraRuntimeDevDependencyDetector:
+            """Provide the typed test helper `setup_detector_runtime`."""
             deptry_path = tmp_path / c.Infra.VENV_BIN_REL / c.Infra.DEPTRY
             deptry_path.parent.mkdir(parents=True, exist_ok=True)
             if deptry_exists:
@@ -1027,6 +1070,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_migrator_project(project_root: Path) -> None:
+            """Provide the typed test helper `write_migrator_project`."""
             project_root.mkdir(parents=True, exist_ok=True)
             (project_root / ".git").mkdir(parents=True, exist_ok=True)
             (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
@@ -1047,6 +1091,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             passed: bool = True,
             issues: t.SequenceOf[m.Infra.Issue] | None = None,
         ) -> m.Infra.GateExecution:
+            """Create a typed quality-gate execution fixture."""
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
                     gate=gate, project=project, passed=passed, errors=(), duration=0.0
@@ -1064,6 +1109,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             code: str = "E1",
             message: str = "Error",
         ) -> m.Infra.Issue:
+            """Create a typed quality issue fixture."""
             return m.Infra.Issue(
                 file=file,
                 line=line,
@@ -1078,6 +1124,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             name: str = "p",
             gates: MutableMapping[str, m.Infra.GateExecution] | None = None,
         ) -> m.Infra.ProjectResult:
+            """Create a typed project-result fixture."""
             resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (
                 gates
                 if gates is not None
@@ -1092,6 +1139,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_checker_project(
             tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
         ) -> tuple[FlextInfraWorkspaceChecker, Path]:
+            """Provide the typed test helper `create_checker_project`."""
             checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
             project_dir = TestsFlextInfraUtilities.Tests.mk_project(
                 tmp_path, project_name
@@ -1104,6 +1152,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def create_gate_context(
             workspace_root: Path, *, reports_dir: Path | None = None
         ) -> m.Infra.GateContext:
+            """Provide the typed test helper `create_gate_context`."""
             return m.Infra.GateContext(
                 workspace=workspace_root, reports_dir=reports_dir or workspace_root
             )
@@ -1118,6 +1167,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             reports_dir: Path | None = None,
             runner: p.Cli.CommandRunner | None = None,
         ) -> m.Infra.GateExecution:
+            """Provide the typed test helper `run_gate_check`."""
             gate = gate_class(workspace_root, runner=runner)
             return gate.check(
                 project_dir,
@@ -1131,15 +1181,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Minimal report stub for dependency detector tests."""
 
             def __init__(self, raw_count: int) -> None:
+                """Store the raw dependency count."""
                 self._raw_count = raw_count
 
             def model_dump(self) -> MutableMapping[str, t.IntMapping]:
+                """Return the dependency-report payload."""
                 return {"deptry": {"raw_count": self._raw_count}}
 
         class DetectorDepsStub(p.Infra.DepsService, p.Infra.TypingsDepsService):
             """Typed dependency service stub for detector tests."""
 
             def __init__(self, project_paths: t.SequenceOf[Path]) -> None:
+                """Store project paths and injectable failure states."""
                 self.project_paths = project_paths
                 self.discovery_failure: str | None = None
                 self.deptry_failure: str | None = None
