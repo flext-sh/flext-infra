@@ -29,7 +29,7 @@ def _parse_class_names(source: str) -> t.StrSequence:
 
     Single Responsibility: detect class definitions only.
     """
-    return c.Infra.DETECTION_CLASS_DECL_RE.findall(source)
+    return tuple(map(str, c.Infra.DETECTION_CLASS_DECL_RE.findall(source)))
 
 
 def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
@@ -69,7 +69,10 @@ def _project_info(
 
 
 class TestGeneratedFilesAreValidPython:
+    """Verify that scaffolded source and test modules compile."""
+
     def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every scaffolded production module."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
@@ -79,6 +82,7 @@ class TestGeneratedFilesAreValidPython:
         _validate_modules_parse(pkg, u.Tests.src_module_files())
 
     def test_generated_tests_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every scaffolded test module."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=True
         )
@@ -90,7 +94,10 @@ class TestGeneratedFilesAreValidPython:
 
 
 class TestGeneratedClassNamingConvention:
+    """Verify canonical class names emitted by the scaffolder."""
+
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
+        """Preserve the project prefix and facade suffix in source classes."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
@@ -109,6 +116,7 @@ class TestGeneratedClassNamingConvention:
         )
 
     def test_tests_class_names_use_tests_prefix_suffix(self, tmp_path: Path) -> None:
+        """Prefix scaffolded test facade classes with Tests."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=True
         )
@@ -128,6 +136,7 @@ class TestGeneratedClassNamingConvention:
         )
 
     def test_no_prefix_returns_empty_result(self, tmp_path: Path) -> None:
+        """Return an empty result when no package prefix exists."""
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()

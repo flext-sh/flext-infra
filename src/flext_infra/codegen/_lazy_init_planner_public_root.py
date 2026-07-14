@@ -12,6 +12,8 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     """Public root-facade export filtering helpers."""
 
     if TYPE_CHECKING:
+        from pathlib import Path
+
         lazy_init: m.Infra.LazyInitConfig
 
         def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...

@@ -1,7 +1,7 @@
-"""Lazy-init ``__init__.py`` generator (PEP 562).
+"""Canonical ``__init__.py`` generator for complete Python workspaces.
 
-Auto-discovers exports from sibling ``.py`` files and generates clean
-lazy-loading ``__init__.py`` files using ``flext_core``.
+Auto-discovers exports from sibling ``.py`` files. Public production roots use
+PEP 562; every other importable package uses explicit static reexports.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -31,8 +31,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     """Generate canonical root and subpackage ``__init__.py`` files.
 
     Public package roots use PEP 562 lazy exports. Descendant packages use
-    static sibling-relative reexports or remain empty. Processing is bottom-up
-    so the root plan receives complete child export information.
+    static sibling-relative reexports at every depth. Processing is bottom-up
+    so each package plan receives complete child export information.
     """
 
     _modified_files: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
@@ -79,26 +79,16 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
             resolved_workspace_root = self.workspace_root.resolve()
-            # NOTE(mro-wkii.17.26, agent codex): lazy exports exist only at public src roots.
-            public_package_dirs = frozenset(
+            # NOTE(mro-wkii.17.26, agent codex): index every package depth once;
+            # rendering alone decides whether a package is the public lazy root.
+            workspace_package_dirs = frozenset(
                 package_dir.resolve()
                 for package_dir in workspace_index.package_dirs
                 if package_dir.is_relative_to(resolved_workspace_root)
-                and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
-                and (package_dir.parent.parent / c.Infra.PYPROJECT_FILENAME).is_file()
             )
             package_dirs = tuple(
                 sorted(
-                    (
-                        package_dir.resolve()
-                        for package_dir in workspace_index.package_dirs
-                        if package_dir.is_relative_to(resolved_workspace_root)
-                        and any(
-                            package_dir.resolve() == public_root
-                            or public_root in package_dir.resolve().parents
-                            for public_root in public_package_dirs
-                        )
-                    ),
+                    workspace_package_dirs,
                     key=lambda path: len(path.parts),
                     reverse=True,
                 )
@@ -128,9 +118,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         f"lazy-init target module is ambiguous: {self.target_module}"
                     )
                     return 1
-                if sorted_target_dirs[0] not in public_package_dirs:
+                if sorted_target_dirs[0] not in workspace_package_dirs:
                     u.Cli.error(
-                        "lazy-init target must be a public src package root: "
+                        "lazy-init target must be an indexed package: "
                         f"{self.target_module}"
                     )
                     return 1
@@ -138,7 +128,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 package_dirs = tuple(
                     package_dir
                     for package_dir in package_dirs
-                    if package_dir == selected_root or selected_root in package_dir.parents
+                    if package_dir == selected_root
+                    or selected_root in package_dir.parents
                 )
             duplicates = self._detect_duplicate_class_names(
                 rope, package_dirs=package_dirs

@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c
 from flext_infra.codegen._lazy_init_planner_public_root import (
     FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
-from pathlib import Path
+if TYPE_CHECKING:
+    from pathlib import Path
 
-from flext_infra import p
-
-from flext_infra import p
+    from flext_infra import p
 
 
 class FlextInfraCodegenLazyInitPlannerPublicApiMixin(

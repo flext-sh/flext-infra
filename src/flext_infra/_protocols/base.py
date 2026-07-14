@@ -138,6 +138,39 @@ class FlextInfraProtocolsBase(Protocol):
             """Required uv version expression."""
             ...
 
+    @runtime_checkable
+    class ScaffoldBuildSpec(Protocol):
+        """Build backend fields consumed by pyproject conformance."""
+
+        @property
+        def backend(self) -> str:
+            """PEP 517 backend import path."""
+            ...
+
+        @property
+        def requirements(self) -> t.StrSequence:
+            """Build-system requirements."""
+            ...
+
+    @runtime_checkable
+    class ResourceSpec(Protocol):
+        """Repository resource fields consumed by wheel conformance."""
+
+        @property
+        def source(self) -> Path:
+            """Repository-relative resource directory."""
+            ...
+
+        @property
+        def required(self) -> bool:
+            """Whether the resource directory is mandatory."""
+            ...
+
+        @property
+        def wheel_destination(self) -> str | None:
+            """Package-relative wheel destination template."""
+            ...
+
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether a file belongs to the governed root namespace."""

@@ -1,25 +1,26 @@
-"""End-to-end tests for canonical lazy-init artifact processing."""
+"""End-to-end tests for canonical package initializer generation."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
-
-if TYPE_CHECKING:
-    from _pytest.capture import CaptureFixture
+from tests import c, u
 
 
-# mro-i6nq.10: Tests exercise real apply/check behavior through the public service.
 class TestsFlextInfraLazyInitProcessing:
-    """Validate manifest-backed packages and generation idempotence."""
+    """Validate recursive generation through the public service surface."""
 
-    def test_apply_generates_manifest_and_thin_root(self, tmp_path: Path) -> None:
-        """Apply writes the root manifest before its thin consumer."""
+    @staticmethod
+    def _read(package_dir: Path) -> str:
+        """Read one generated package initializer."""
+        return package_dir.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+    def test_apply_generates_inline_lazy_public_root(self, tmp_path: Path) -> None:
+        """Generate the sole PEP 562 initializer at the production root."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
@@ -29,157 +30,105 @@ class TestsFlextInfraLazyInitProcessing:
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
+        content = self._read(package_root)
 
-        init_content = (package_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
-        unit_content = (package_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
         tm.that(result, eq=0)
-        tm.that(unit_content, contains='".models": (')
-        tm.that(unit_content, contains='    "FlextTestsModels",')
-        tm.that(unit_content, contains='    "m",')
-        # mro-i6nq.10: Assert manifest ownership, independent of import formatting.
-        tm.that(init_content, contains="from flext_test_project.__unit__ import (")
-        tm.that(init_content, contains="PUBLIC_EXPORTS as _PUBLIC_EXPORTS,")
-        tm.that(init_content, contains="public_exports=_PUBLIC_EXPORTS")
-        tm.that(init_content, contains="__all__: tuple[str, ...]")
-        tm.that(init_content, contains="install_lazy_exports(")
-        tm.that(init_content, lacks="LAZY_MODULES: dict")
-        compile(unit_content, "__unit__.py", "exec")
-        compile(init_content, "__init__.py", "exec")
+        tm.that(content, contains="_LAZY_MODULES")
+        tm.that(content, contains="install_lazy_exports(")
+        tm.that(content, contains="__all__: tuple[str, ...]")
+        tm.that(content, lacks="__unit__")
+        compile(content, "__init__.py", "exec")
 
-    def test_check_only_reports_both_root_artifacts_without_writing(
-        self, tmp_path: Path
-    ) -> None:
-        """Check-only reports expected drift and preserves every byte."""
+    def test_check_only_reports_drift_without_writing(self, tmp_path: Path) -> None:
+        """Report initializer drift while preserving every source byte."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
-        unit_path = package_root / c.Infra.UNIT_PY
-        original_init = init_path.read_bytes()
+        original = init_path.read_bytes()
         service = u.Tests.create_lazy_init_service(workspace_root)
 
         result = service.generate_inits(check_only=True)
 
         tm.that(result, eq=0)
-        tm.that(init_path.read_bytes(), eq=original_init)
-        tm.that(unit_path.exists(), eq=False)
+        tm.that(init_path.read_bytes(), eq=original)
         tm.that(str(init_path) in service.modified_files, eq=True)
-        tm.that(str(unit_path) in service.modified_files, eq=True)
 
-    def test_apply_then_check_is_idempotent(self, tmp_path: Path) -> None:
-        """A completed apply leaves no drift for the next check-only run."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        package_root.joinpath("service.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextTestsService:\n"
-            "    pass\n\n"
-            '__all__: list[str] = ["FlextTestsService"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        apply_service = u.Tests.create_lazy_init_service(workspace_root)
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
-
-        apply_result = apply_service.generate_inits(check_only=False)
-        check_result = check_service.generate_inits(check_only=True)
-
-        tm.that(apply_result, eq=0)
-        tm.that(check_result, eq=0)
-        tm.that(check_service.modified_files, empty=True)
-
-    def test_generated_manifests_are_not_rediscovered_as_public_exports(
-        self, tmp_path: Path, capsys: CaptureFixture[str]
+    def test_every_nested_level_is_static_formatted_and_idempotent(
+        self, tmp_path: Path
     ) -> None:
-        """A second generation pass ignores its own support modules."""
+        """Generate canonical initializers at levels two, three, and four."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        for child_name, class_name, alias in (
-            ("_constants", "FlextTestsConstants", "c"),
-            ("_models", "FlextTestsModels", "m"),
-        ):
-            child_root = package_root / child_name
-            child_root.mkdir()
-            child_root.joinpath(c.Infra.INIT_PY).write_text(
+        level_two = package_root / "services"
+        level_three = level_two / "_parts"
+        level_four = level_three / "runtime"
+        for package_dir in (level_two, level_three, level_four):
+            package_dir.mkdir()
+            package_dir.joinpath(c.Infra.INIT_PY).write_text(
                 "", encoding=c.Cli.ENCODING_DEFAULT
             )
-            u.Tests.write_lazy_init_namespace_module(
-                child_root / "declarations.py", class_name=class_name, alias=alias
-            )
-
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        _ = capsys.readouterr()
-        tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
-        captured = capsys.readouterr()
-        output = f"{captured.out}\n{captured.err}"
-
-        tm.that(output, contains="0 warnings")
-        tm.that(output, lacks="export collision")
-
-    def test_child_package_uses_manifest_and_thin_initializer(
-        self, tmp_path: Path
-    ) -> None:
-        """Non-root packages use the same cycle-safe generated artifacts."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        child_root = package_root / "services"
-        child_root.mkdir()
-        (child_root / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         u.Tests.write_lazy_init_namespace_module(
-            child_root / "demo.py", class_name="FlextTestsService", alias="service"
+            level_four / "worker.py",
+            class_name="FlextTestsWorker",
+            alias="worker",
+            docstring="Worker.",
         )
+        apply_service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        apply_result = apply_service.generate_inits(check_only=False)
+        generated_paths = tuple(
+            package_dir / c.Infra.INIT_PY
+            for package_dir in (level_two, level_three, level_four)
+        )
+        before = tuple(path.read_bytes() for path in generated_paths)
+        level_two_content, level_three_content, level_four_content = (
+            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
+        )
+        format_result = u.Cli.run_raw(
+            [
+                c.Infra.RUFF,
+                c.Infra.FORMAT,
+                "--check",
+                *(str(path) for path in generated_paths),
+            ],
+            cwd=workspace_root,
+        ).unwrap()
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_result = check_service.generate_inits(check_only=True)
+        after = tuple(path.read_bytes() for path in generated_paths)
 
-        child_content = (child_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
-        child_unit_content = (child_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
-        tm.that(result, eq=0)
+        tm.that(apply_result, eq=0)
+        tm.that(level_two_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(level_three_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(
-            child_content, contains="from flext_test_project.services.__unit__ import ("
+            level_four_content,
+            contains="from .worker import FlextTestsWorker as FlextTestsWorker",
         )
-        tm.that(child_content, contains="install_lazy_exports(")
-        runtime_content = child_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(runtime_content, lacks="from flext_test_project.services.demo import")
-        tm.that(child_unit_content, contains='".demo": (')
-        tm.that(child_unit_content, contains='    "FlextTestsService",')
-        tm.that(child_unit_content, contains='    "service",')
-        compile(child_unit_content, "services/__unit__.py", "exec")
-        compile(child_content, "services/__init__.py", "exec")
+        tm.that(level_four_content, contains='    "FlextTestsWorker",')
+        tm.that(level_four_content, lacks='    "worker",')
+        tm.that(level_two_content, lacks="FlextTestsWorker")
+        tm.that(level_three_content, lacks="FlextTestsWorker")
+        tm.that(format_result.exit_code, eq=0)
+        tm.that(check_result, eq=0)
+        tm.that(check_service.modified_files, empty=True)
+        tm.that(after, eq=before)
 
-    def test_private_foundation_package_uses_lazy_manifest(
-        self, tmp_path: Path
-    ) -> None:
-        """Private foundations keep cycle-safe manifests instead of eager imports."""
+    def test_apply_removes_obsolete_generated_sidecars(self, tmp_path: Path) -> None:
+        """Remove retired generated manifests while writing the initializer."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        private_root = package_root / "_models"
-        private_root.mkdir()
-        (private_root / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         u.Tests.write_lazy_init_namespace_module(
-            private_root / "demo.py", class_name="FlextTestsPrivateModels", alias="m"
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        unit_path = package_root / "__unit__.py"
+        unit_path.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
-        init_content = (private_root / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
-        unit_content = (private_root / c.Infra.UNIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
         tm.that(result, eq=0)
-        # NOTE (multi-agent): mro-i6nq.10 proves the cycle-safe private route.
-        tm.that(unit_content, contains='".demo": (')
-        tm.that(init_content, contains="flext_test_project._models.__unit__")
-        tm.that(init_content, contains="install_lazy_exports(")
-        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(runtime_content, lacks="from flext_test_project._models.demo import")
-        compile(unit_content, "_models/__unit__.py", "exec")
-        compile(init_content, "_models/__init__.py", "exec")
+        tm.that(unit_path.exists(), eq=False)
 
 
 __all__: list[str] = ["TestsFlextInfraLazyInitProcessing"]

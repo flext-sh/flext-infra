@@ -198,7 +198,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     root=repository_root,
                     repository=repository,
                     workspace_root=workspace_root,
-                    repository=repository,
                     workspace=workspace,
                     codegen=config_spec,
                 )
@@ -465,6 +464,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repositories=codegen.repositories,
             workspace=workspace,
             toolchain=codegen.toolchain,
+            build=codegen.scaffold.build,
+            resources=(*codegen.scaffold.resources, *context.project_resources),
+            project_root=root,
+            package_name=context.package_name,
+            allow_missing_required=True,
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -515,7 +519,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         repository: m.Infra.RepositoryRef,
         workspace_root: Path,
-        repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -538,13 +541,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             and repository.name == workspace.repository.name
             else ()
         )
-        resources = (*config.scaffold.resources, *project_resources)
+        resources = (*codegen.scaffold.resources, *project_resources)
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
             workspace=workspace,
-            toolchain=config.toolchain,
-            build=config.scaffold.build,
+            toolchain=codegen.toolchain,
+            build=codegen.scaffold.build,
             resources=resources,
             project_root=root,
             package_name=package_name,
@@ -588,8 +591,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_result.value,
             repositories=codegen.repositories,
             workspace=workspace,
-            toolchain=config.toolchain,
-            build=config.scaffold.build,
+            toolchain=codegen.toolchain,
+            build=codegen.scaffold.build,
             resources=resources,
             project_root=root,
             package_name=package_name,
@@ -606,7 +609,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
         planned = [*resource_plans.value, pyproject_plan.value]
-        custom_result = self._plan_existing_custom(root, config)
+        # NOTE(mro-wkii.17.26, agent codex): retain the 0.12 managed-file
+        # contract alongside the 0.20 resource/wheel conformance pipeline.
+        managed_result = self._plan_existing_templates(
+            root=root,
+            repository=repository,
+            workspace=workspace,
+            codegen=codegen,
+            tooling_runtime=tooling_context.value,
+        )
+        if managed_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                managed_result.error or f"managed template planning failed: {root}"
+            )
+        planned.extend(managed_result.value)
+        custom_result = self._plan_existing_custom(root, codegen)
         if custom_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 custom_result.error or f"custom Make validation failed: {root}"

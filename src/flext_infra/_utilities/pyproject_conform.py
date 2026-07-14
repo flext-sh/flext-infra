@@ -24,17 +24,17 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         pyproject_content: str,
         *,
-        repositories: t.SequenceOf[m.Infra.RepositoryRef],
-        workspace: m.Infra.WorkspaceSpec,
-        toolchain: m.Infra.ToolchainSpec,
-        build: m.Infra.ScaffoldBuildSpec,
-        resources: t.SequenceOf[m.Infra.ResourceSpec],
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        workspace: p.Infra.WorkspaceSpec,
+        toolchain: p.Infra.ToolchainSpec,
+        build: p.Infra.ScaffoldBuildSpec,
+        resources: t.SequenceOf[p.Infra.ResourceSpec],
         project_root: Path,
         package_name: str,
         allow_missing_required: bool = False,
     ) -> p.Result[str]:
         """Return canonical PEP 517/621 TOML with deterministic wheel resources."""
-        source = u.Cli.toml_mapping_from_text(pyproject_content)
+        source = u.Cli.toml_parse_text(pyproject_content)
         if source is None:
             return r[str].fail("pyproject content is not valid TOML")
         project = u.Cli.toml_table_child(source, c.Infra.PROJECT)
@@ -48,25 +48,19 @@ class FlextInfraUtilitiesPyprojectConform:
         metadata_result = cls._validate_project_metadata(project)
         if metadata_result.failure:
             return r[str].fail(metadata_result.error or "PEP 621 metadata is invalid")
-        layout_result = cls._sync_build_and_resources(
-            payload,
-            build=build,
-            resources=resources,
-            project_root=project_root,
-            package_name=package_name,
-            allow_missing_required=allow_missing_required,
-        )
-        if layout_result.failure:
-            return r[str].fail(layout_result.error or "package layout is invalid")
 
-        normalized = cls._normalize_requirements(payload)
+        normalized = cls._normalize_requirements(source)
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
         cls._sync_dependency_groups(
             source, project_name=project_name, workspace=workspace
         )
-        cls._remove_legacy_tooling(payload)
-        cls._sync_typecheck_paths(payload)
+        cls._remove_legacy_tooling(source)
+        typecheck_paths = cls._sync_typecheck_paths(source)
+        if typecheck_paths.failure:
+            return r[str].fail(
+                typecheck_paths.error or "type checker path conformance failed"
+            )
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -76,6 +70,18 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
+        # NOTE(mro-wkii.17.26, agent codex): create ``tool.uv`` before
+        # ``tool.hatch`` so TOMLKit promotion preserves one stable table order.
+        layout_result = cls._sync_build_and_resources(
+            source,
+            build=build,
+            resources=resources,
+            project_root=project_root,
+            package_name=package_name,
+            allow_missing_required=allow_missing_required,
+        )
+        if layout_result.failure:
+            return r[str].fail(layout_result.error or "package layout is invalid")
 
         rendered = u.Cli.toml_dumps(source)
         if u.Cli.toml_parse_text(rendered) is None:
@@ -83,11 +89,11 @@ class FlextInfraUtilitiesPyprojectConform:
         return r[str].ok(rendered)
 
     @staticmethod
-    def _validate_project_metadata(project: t.JsonMapping) -> p.Result[bool]:
+    def _validate_project_metadata(project: t.Cli.TomlTable) -> p.Result[bool]:
         """Require the modern static PEP 621 fields shared by uv, pip, and Poetry."""
         # mro-wkii.17.26 (codex): metadata validation is read-only by contract.
         for key in ("name", "version", "description", "readme", "requires-python"):
-            value = project.get(key)
+            value = u.Cli.toml_value(project, key)
             if not isinstance(value, str) or not value.strip():
                 return r[bool].fail(f"[project].{key} must be a non-empty string")
         return r[bool].ok(True)
@@ -95,10 +101,10 @@ class FlextInfraUtilitiesPyprojectConform:
     @classmethod
     def _sync_build_and_resources(
         cls,
-        payload: t.MutableJsonMapping,
+        document: t.Cli.TomlDocument,
         *,
-        build: m.Infra.ScaffoldBuildSpec,
-        resources: t.SequenceOf[m.Infra.ResourceSpec],
+        build: p.Infra.ScaffoldBuildSpec,
+        resources: t.SequenceOf[p.Infra.ResourceSpec],
         project_root: Path,
         package_name: str,
         allow_missing_required: bool,
@@ -147,22 +153,22 @@ class FlextInfraUtilitiesPyprojectConform:
             destinations.add(destination)
             wheel_resources.append((source, destination))
 
-        build_system = u.Cli.toml_mapping_ensure_table(payload, "build-system")
-        u.Cli.toml_mapping_sync_value(build_system, "build-backend", build.backend)
-        u.Cli.toml_mapping_sync_string_list(
+        build_system = u.Cli.toml_ensure_table(document, "build-system")
+        u.Cli.toml_sync_value(build_system, "build-backend", build.backend)
+        u.Cli.toml_sync_string_list(
             build_system, "requires", build.requirements
         )
-        tool = u.Cli.toml_mapping_ensure_table(payload, c.Infra.TOOL)
-        hatch = u.Cli.toml_mapping_ensure_table(tool, "hatch")
-        hatch_build = u.Cli.toml_mapping_ensure_table(hatch, "build")
-        targets = u.Cli.toml_mapping_ensure_table(hatch_build, "targets")
-        wheel = u.Cli.toml_mapping_ensure_table(targets, "wheel")
-        u.Cli.toml_mapping_sync_string_list(wheel, "packages", (f"src/{package_name}",))
-        force_include = u.Cli.toml_mapping_ensure_table(wheel, "force-include")
+        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        hatch = u.Cli.toml_ensure_table(tool, "hatch")
+        hatch_build = u.Cli.toml_ensure_table(hatch, "build")
+        targets = u.Cli.toml_ensure_table(hatch_build, "targets")
+        wheel = u.Cli.toml_ensure_table(targets, "wheel")
+        u.Cli.toml_sync_string_list(wheel, "packages", (f"src/{package_name}",))
+        force_include = u.Cli.toml_ensure_table(wheel, "force-include")
         for key in tuple(force_include):
-            u.Cli.toml_mapping_remove_key_if_present(force_include, key)
+            u.Cli.toml_remove_key_if_present(force_include, key)
         for source, destination in wheel_resources:
-            u.Cli.toml_mapping_sync_value(force_include, source, destination)
+            u.Cli.toml_sync_value(force_include, source, destination)
         return r[bool].ok(True)
 
     @classmethod
@@ -289,6 +295,54 @@ class FlextInfraUtilitiesPyprojectConform:
             if not tuple(flext):
                 u.Cli.toml_remove_key_if_present(tool, "flext")
 
+    @staticmethod
+    def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:
+        """Remove checkout- and interpreter-specific type checker paths."""
+        tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
+        pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
+        if pyrefly is not None:
+            u.Cli.toml_sync_string_list(
+                pyrefly, c.Infra.SEARCH_PATH, (".", "src")
+            )
+        mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
+        if mypy is not None:
+            u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))
+        pyright = u.Cli.toml_table_child(tool, c.Infra.PYRIGHT)
+        if pyright is None:
+            return r[bool].ok(True)
+        u.Cli.toml_sync_string_list(pyright, c.Infra.EXTRA_PATHS, (".", "src"))
+        interpreter_keys = (
+            "venv",
+            "venvPath",
+            "pythonPath",
+            "pythonInterpreterPath",
+        )
+        for key in interpreter_keys:
+            u.Cli.toml_remove_key_if_present(pyright, key)
+        raw_environments = u.Cli.json_as_sequence(
+            u.Cli.toml_value(pyright, "executionEnvironments")
+        )
+        normalized_environments: t.JsonValueList = []
+        for index, environment in enumerate(raw_environments):
+            mapping = u.Cli.json_as_mapping(environment)
+            if mapping is None:
+                return r[bool].fail(
+                    f"tool.pyright.executionEnvironments[{index}] must be a mapping"
+                )
+            normalized: t.JsonDict = dict(mapping)
+            root = normalized.get("root")
+            normalized[c.Infra.EXTRA_PATHS] = [
+                "src"
+            ] if root == "src" else [".", "src"]
+            for key in interpreter_keys:
+                normalized.pop(key, None)
+            normalized_environments.append(normalized)
+        if raw_environments:
+            u.Cli.toml_sync_value(
+                pyright, "executionEnvironments", normalized_environments
+            )
+        return r[bool].ok(True)
+
     @classmethod
     def _sync_uv_sources(
         cls,
@@ -349,8 +403,11 @@ class FlextInfraUtilitiesPyprojectConform:
             if repository.distribution.startswith("flext-")
             or repository in workspace.members
         }
+        resolved_names = {repository.distribution for repository in resolved}
         for source_name in tuple(sources):
-            if source_name.startswith("flext-") or source_name in managed_names:
+            if (
+                source_name.startswith("flext-") or source_name in managed_names
+            ) and source_name not in resolved_names:
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         for repository in resolved:
             u.Cli.toml_sync_mapping_table(

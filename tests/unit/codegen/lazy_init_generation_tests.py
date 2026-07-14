@@ -17,6 +17,7 @@ class TestsFlextInfraCodegenGeneration:
 
     @staticmethod
     def _plan(
+        workspace_root: Path,
         current_pkg: str,
         exports: t.StrSequence,
         lazy_map: t.LazyAliasMap,
@@ -25,7 +26,7 @@ class TestsFlextInfraCodegenGeneration:
         child_packages: t.StrSequence = (),
     ) -> m.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
-        package_dir = Path("/tmp") / current_pkg.replace(".", "/")
+        package_dir = workspace_root / current_pkg.replace(".", "/")
         return m.Infra.LazyInitPlan(
             context=m.Infra.LazyInitPackageContext(
                 pkg_dir=package_dir,
@@ -43,9 +44,10 @@ class TestsFlextInfraCodegenGeneration:
             excluded_lazy_names=("internal_only",),
         )
 
-    def test_root_manifest_is_the_lazy_ssot(self) -> None:
-        """Public roots render one importable manifest with a literal ABI."""
+    def test_public_root_initializer_is_the_lazy_ssot(self, tmp_path: Path) -> None:
+        """Public roots render one inline lazy map with a literal ABI."""
         plan = self._plan(
+            tmp_path,
             "demo_pkg",
             ("Demo", "r", "__version__"),
             MappingProxyType({
@@ -58,79 +60,80 @@ class TestsFlextInfraCodegenGeneration:
             child_packages=("demo_pkg.services",),
         )
 
-        content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
+        content = FlextInfraCodegenGeneration.render_init(plan)
 
-        compile(content, "__unit__.py", "exec")
-        tm.that(content, contains="LAZY_MODULES")
-        tm.that(content, contains="LAZY_ALIAS_GROUPS")
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains="_LAZY_MODULES")
+        tm.that(content, contains="_LAZY_ALIAS_GROUPS")
         tm.that(content, contains='".services"')
         tm.that(content, contains='".api": (')
         tm.that(content, contains='        "Demo",')
-        tm.that(content, contains="PUBLIC_EXPORTS: tuple[str, ...] =")
-        tm.that(content, lacks="TYPE_CHECKING")
+        tm.that(content, contains="__all__: tuple[str, ...] =")
         tm.that(content, contains='    "__version__",')
-        tm.that(content, lacks="install_lazy_exports")
+        tm.that(content, contains="install_lazy_exports(")
+        tm.that(content, lacks="__unit__")
 
-    def test_root_initializer_consumes_only_manifest_data(self) -> None:
-        """Public root initializer imports manifest data and installs lazy access."""
+    def test_internal_package_uses_explicit_sibling_reexports(
+        self, tmp_path: Path
+    ) -> None:
+        """Internal packages publish direct sibling symbols statically."""
         plan = self._plan(
-            "demo_pkg", ("Demo",), MappingProxyType({"Demo": ("demo_pkg.api", "Demo")})
+            tmp_path,
+            "demo_pkg.services",
+            ("Demo", "Nested", "nested"),
+            MappingProxyType({
+                "Demo": ("demo_pkg.services.demo", "Demo"),
+                "Nested": ("demo_pkg.services.nested.item", "Nested"),
+                "nested": ("demo_pkg.services.nested", ""),
+            }),
         )
 
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from demo_pkg.__unit__ import (")
-        tm.that(content, contains="PUBLIC_EXPORTS as _PUBLIC_EXPORTS,")
-        tm.that(content, contains="__all__: tuple[str, ...]")
-        tm.that(content, contains="public_exports=_PUBLIC_EXPORTS")
-        tm.that(content, contains="install_lazy_exports(")
-        tm.that(content, lacks="LAZY_MODULES: dict")
+        tm.that(content, contains="from .demo import Demo as Demo")
+        tm.that(content, contains='    "Demo",')
+        tm.that(content, lacks="Nested")
+        tm.that(content, lacks="import nested")
+        tm.that(content, lacks="install_lazy_exports")
 
-    def test_non_root_package_uses_manifest_and_thin_initializer(self) -> None:
-        """Subpackages publish all symbols through a cycle-safe manifest."""
+    def test_non_public_root_uses_explicit_static_reexports(
+        self, tmp_path: Path
+    ) -> None:
+        """Tests, examples, and scripts use the static internal contract."""
         plan = self._plan(
-            "demo_pkg.services",
-            ("Demo", "Nested"),
-            MappingProxyType({
-                "Demo": ("demo_pkg.services.demo", "Demo"),
-                "Nested": ("demo_pkg.services.nested.item", "Nested"),
-            }),
-        )
-
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-        unit_content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
-
-        compile(init_content, "__init__.py", "exec")
-        compile(unit_content, "__unit__.py", "exec")
-        tm.that(init_content, contains="from demo_pkg.services.__unit__ import (")
-        tm.that(init_content, contains="install_lazy_exports(")
-        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(runtime_content, lacks="from demo_pkg.services.demo import Demo")
-        tm.that(unit_content, contains='".demo": (')
-        tm.that(unit_content, contains='        "Demo",')
-        tm.that(unit_content, contains='".nested.item": (')
-        tm.that(unit_content, contains='        "Nested",')
-
-    def test_non_public_surface_uses_manifest_and_thin_initializer(self) -> None:
-        """Tests, examples, and scripts use the same cycle-safe contract."""
-        plan = self._plan(
+            tmp_path,
             "tests",
             ("TestsDemo",),
             MappingProxyType({"TestsDemo": ("tests.demo", "TestsDemo")}),
         )
 
-        init_content = FlextInfraCodegenGeneration.render_init(plan)
-        unit_content = FlextInfraCodegenGeneration.render_unit_manifest(plan)
+        content = FlextInfraCodegenGeneration.render_init(plan)
 
-        compile(init_content, "__init__.py", "exec")
-        compile(unit_content, "__unit__.py", "exec")
-        tm.that(init_content, contains="from tests.__unit__ import (")
-        tm.that(init_content, contains="install_lazy_exports(")
-        runtime_content = init_content.partition("if TYPE_CHECKING:")[0]
-        tm.that(runtime_content, lacks="from tests.demo import TestsDemo")
-        tm.that(unit_content, contains='".demo": (')
-        tm.that(unit_content, contains='        "TestsDemo",')
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains="from .demo import TestsDemo as TestsDemo")
+        tm.that(content, contains='    "TestsDemo",')
+        tm.that(content, lacks="install_lazy_exports")
+
+    def test_private_internal_package_is_not_empty(self, tmp_path: Path) -> None:
+        """Private packages use the same explicit static contract."""
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg._models",
+            ("FlextDemoModels",),
+            MappingProxyType({
+                "FlextDemoModels": ("demo_pkg._models.models", "FlextDemoModels")
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(
+            content, contains="from .models import FlextDemoModels as FlextDemoModels"
+        )
+        tm.that(content, contains='    "FlextDemoModels",')
+        tm.that(content, lacks="install_lazy_exports")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports preserve facade aliases explicitly."""

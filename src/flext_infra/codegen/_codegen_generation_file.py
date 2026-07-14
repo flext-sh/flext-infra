@@ -8,7 +8,7 @@ from flext_infra.codegen._codegen_generation_standard import (
 )
 
 
-# mro-wkii.17.26 (codex): Root packages are lazy; subpackages are static or empty.
+# mro-wkii.17.26 (codex): Public roots are lazy; every internal package is static.
 class FlextInfraCodegenGenerationFileMixin(FlextInfraCodegenGenerationStandardMixin):
     """Render canonical initializer artifacts from one validated plan."""
 

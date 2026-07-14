@@ -52,7 +52,7 @@ class FlextInfraConstantsCodegenLazy:
         "scripts",
         "tests",
     })
-    "Root import surfaces generated as private lazy plumbing, not public ABI."
+    "Root surfaces generated as explicit static packages, not public lazy ABIs."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE

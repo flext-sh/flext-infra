@@ -119,7 +119,9 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return m.Infra.LazyInitPlan(
+                context=context, action=c.Infra.LazyInitAction.WRITE, exports=()
+            )
         excluded_lazy_names: t.StrSequence = ()
         is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
