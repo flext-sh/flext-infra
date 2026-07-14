@@ -109,14 +109,18 @@ class FlextInfraCodegenGenerationPathsMixin:
     def _normalize_type_checking_module_path(
         mod: str, local_package_root: str | None
     ) -> str:
-        """Normalize a TYPE_CHECKING module path to its canonical absolute form."""
+        """Normalize local TYPE_CHECKING owners to package-relative imports."""
         if not local_package_root:
             return mod
+        if mod.startswith("."):
+            return mod
+        if mod == local_package_root:
+            return "."
+        if mod.startswith(f"{local_package_root}."):
+            return f".{mod.removeprefix(f'{local_package_root}.')}"
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         internal_segments = frozenset(local_package_root.split(".")[1:])
-        if first_segment == root_pkg:
-            return mod
         if (
             mod.startswith("_")
             or first_segment in internal_segments
@@ -126,34 +130,31 @@ class FlextInfraCodegenGenerationPathsMixin:
                 and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
             )
         ):
-            return f"{root_pkg}.{mod}"
+            return f".{mod}"
         return mod
 
     @staticmethod
-    def _reject_non_absolute_import(
+    def _reject_noncanonical_type_checking_import(
         mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
-        """Reject generated TYPE_CHECKING imports that are not absolute."""
-        if mod.startswith("."):
+        """Reject relative imports without a package and unnormalized local owners."""
+        if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (
-                f"relative import {mod!r} in TYPE_CHECKING block "
-                f"(package {local_package_root!r}, exports: {exports}). "
-                "FLEXT forbids relative imports in source."
+                f"relative TYPE_CHECKING import {mod!r} has no local package "
+                f"(exports: {exports})"
             )
             raise ValueError(msg)
-        if not local_package_root:
+        if not local_package_root or mod.startswith("."):
             return
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
-        internal_segments = frozenset(local_package_root.split(".")[1:])
-        if first_segment not in internal_segments or first_segment == root_pkg:
+        if first_segment != root_pkg:
             return
         exports = ", ".join(name for name, _ in items)
         msg = (
-            f"non-absolute import {mod!r} in TYPE_CHECKING block "
-            f"(package {local_package_root!r}, root {root_pkg!r}, "
-            f"exports: {exports}). Expected: {root_pkg}.{mod!s}"
+            f"absolute local TYPE_CHECKING import {mod!r} in package "
+            f"{local_package_root!r} (exports: {exports}); expected a relative owner"
         )
         raise ValueError(msg)
 

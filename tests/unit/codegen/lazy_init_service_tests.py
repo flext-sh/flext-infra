@@ -53,6 +53,56 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
+    def test_target_plans_private_children_without_writing_them(
+        self, tmp_path: Path
+    ) -> None:
+        """A selected root consumes child plans while writing only its own init."""
+        workspace_root, selected_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-selected",
+            package_name="flext_test_selected",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            selected_root / "models.py",
+            class_name="FlextTestsSelectedModels",
+            alias="m",
+        )
+        private_child = selected_root / "_utilities"
+        private_child.mkdir()
+        child_init = private_child / c.Infra.INIT_PY
+        child_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        child_init_before = child_init.read_bytes()
+        private_child.joinpath("conversion.py").write_text(
+            "class FlextTestsConversion:\n"
+            '    """Established direct root import."""\n\n'
+            '__all__ = ["FlextTestsConversion"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        selected_root.joinpath(c.Infra.INIT_PY).write_text(
+            "_DIRECT_IMPORTS = (\n"
+            '    "FlextTestsConversion",\n'
+            '    "FlextTestsSelectedModels",\n'
+            '    "build_lazy_import_map",\n'
+            '    "install_lazy_exports",\n'
+            '    "m",\n'
+            ")\n"
+            '__all__ = ["FlextTestsSelectedModels", "m"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = "flext_test_selected"
+        service.apply_changes = True
+
+        result = service.execute()
+        generated_root = selected_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        tm.that(result.success, eq=True)
+        tm.that(generated_root, contains="FlextTestsConversion")
+        tm.that(child_init.read_bytes(), eq=child_init_before)
+        tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
+
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)

@@ -58,5 +58,63 @@ class TestsFlextInfraLazyInitCleanup:
             set(map(str, stale_paths)).issubset(set(service.modified_files)), eq=True
         )
 
+    def test_apply_removes_closed_obsolete_root_support(self, tmp_path: Path) -> None:
+        """Apply removes only the retired root module/package names."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        obsolete_module = package_root / "_root_typing.py"
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_package = package_root / "_root_typing_parts"
+        obsolete_package.mkdir()
+        obsolete_part = obsolete_package / "facades.py"
+        obsolete_part.write_text("FACADES = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        tm.that(result, eq=0)
+        tm.that(obsolete_module.exists(), eq=False)
+        tm.that(obsolete_package.exists(), eq=False)
+
+    def test_check_reports_obsolete_root_support_without_removing(
+        self, tmp_path: Path
+    ) -> None:
+        """Check-only records retired files and preserves their bytes."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        obsolete_module = package_root / "_root_exports.py"
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        service = u.Tests.create_lazy_init_service(workspace_root)
+
+        result = service.generate_inits(check_only=True)
+
+        tm.that(result, eq=0)
+        tm.that(obsolete_module.is_file(), eq=True)
+        tm.that(str(obsolete_module) in service.modified_files, eq=True)
+
+    def test_obsolete_root_support_cleanup_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject unexpected content before deleting any retired registry."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        obsolete_module = package_root / "_root_typing.py"
+        obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
+        obsolete_package = package_root / "_root_typing_parts"
+        obsolete_package.mkdir()
+        unexpected = obsolete_package / "KEEP.txt"
+        unexpected.write_text("operator data\n", encoding=c.Cli.ENCODING_DEFAULT)
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        tm.that(result, eq=1)
+        tm.that(obsolete_module.is_file(), eq=True)
+        tm.that(unexpected.is_file(), eq=True)
+
 
 __all__: list[str] = ["TestsFlextInfraLazyInitCleanup"]

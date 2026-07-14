@@ -25,6 +25,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         try:
             # mro-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
             self._remove_obsolete_generated_files(plan, check_only=check_only)
+            self._remove_obsolete_root_support(plan, check_only=check_only)
             self._remove_generated_export_sidecars(plan, check_only=check_only)
             self._remove_generated_typing_stub(plan, check_only=check_only)
         except c.EXC_OS_VALUE as exc:
@@ -33,6 +34,72 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             )
             return -1
         return 0
+
+    def _remove_obsolete_root_support(
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+    ) -> None:
+        """Remove closed, preflighted root registries superseded by inline maps."""
+        context = plan.context
+        if (
+            context.pkg_dir.parent.name != c.Infra.DEFAULT_SRC_DIR
+            or "." in context.current_pkg
+        ):
+            return
+        module_paths = tuple(
+            context.pkg_dir / f"{name}.py"
+            for name in sorted(c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES)
+        )
+        package_paths = tuple(
+            context.pkg_dir / name
+            for name in sorted(c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES)
+        )
+        stale_files: t.MutableSequenceOf[Path] = []
+        stale_dirs: t.MutableSequenceOf[Path] = []
+        for path in (*module_paths, *package_paths):
+            if path.is_symlink():
+                msg = f"refusing to remove obsolete root-support symlink: {path}"
+                raise OSError(msg)
+            if path.is_file():
+                stale_files.append(path)
+                continue
+            if not path.exists():
+                continue
+            if not path.is_dir():
+                msg = f"unexpected obsolete root-support path type: {path}"
+                raise OSError(msg)
+            stale_dirs.append(path)
+            for child in sorted(path.rglob("*")):
+                if child.is_symlink():
+                    msg = f"refusing to remove obsolete root-support symlink: {child}"
+                    raise OSError(msg)
+                if child.is_dir():
+                    if child.name != "__pycache__":
+                        msg = f"unexpected directory in obsolete root support: {child}"
+                        raise OSError(msg)
+                    continue
+                if not child.is_file() or child.suffix not in {".py", ".pyi", ".pyc"}:
+                    msg = f"unexpected file in obsolete root support: {child}"
+                    raise OSError(msg)
+                stale_files.append(child)
+        for path in stale_files:
+            self._modified_files.add(str(path))
+        if check_only:
+            return
+        for path in stale_files:
+            path.unlink()
+        for path in sorted(
+            (
+                child
+                for stale_dir in stale_dirs
+                for child in stale_dir.rglob("*")
+                if child.is_dir()
+            ),
+            key=lambda child: len(child.parts),
+            reverse=True,
+        ):
+            path.rmdir()
+        for path in stale_dirs:
+            path.rmdir()
 
     def _remove_obsolete_generated_files(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False

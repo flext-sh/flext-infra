@@ -37,6 +37,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         *,
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
+        target_package_dir: Path | None = None,
     ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
@@ -51,7 +52,14 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             result, exports = self._process_directory(
-                pkg_dir, check_only=check_only, dir_exports=dir_exports, planner=planner
+                pkg_dir,
+                check_only=check_only,
+                dir_exports=dir_exports,
+                planner=planner,
+                process=(
+                    target_package_dir is None
+                    or pkg_dir.resolve() == target_package_dir.resolve()
+                ),
             )
             if exports:
                 dir_exports[str(pkg_dir.resolve())] = exports
@@ -61,6 +69,11 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 errors += 1
             else:
                 ok += 1
+            if (
+                target_package_dir is not None
+                and pkg_dir.resolve() == target_package_dir.resolve()
+            ):
+                break
         return total, ok, errors, dir_exports
 
     def _process_directory(
@@ -70,6 +83,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         check_only: bool,
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
         planner: FlextInfraCodegenLazyInitPlanner,
+        process: bool = True,
     ) -> t.Infra.LazyInitProcessResult:
         """Process directory."""
         result: t.Infra.LazyInitProcessResult
@@ -88,7 +102,11 @@ class FlextInfraCodegenLazyInitGenerationMixin(
             failed_lazy_map = {}
             result = (-1, failed_lazy_map)
         else:
-            result = self._process_plan(plan, check_only=check_only)
+            result = (
+                self._process_plan(plan, check_only=check_only)
+                if process
+                else (None, dict(plan.lazy_map))
+            )
         return result
 
     def _process_plan(

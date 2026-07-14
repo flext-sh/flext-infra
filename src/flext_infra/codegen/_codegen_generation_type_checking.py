@@ -115,9 +115,10 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         root_name: str,
         lines: t.MutableSequenceOf[str],
-    ) -> None:
-        """Emit one TYPE_CHECKING module import group."""
+    ) -> t.StrSequence:
+        """Emit one TYPE_CHECKING module import group and return bound names."""
         alias_exports: t.MutableSequenceOf[str] = []
+        bound_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
         for export_name, attr_name in sorted(
@@ -139,16 +140,18 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     alias_exports.append(export_name)
                 else:
                     parts.append(
-                        FlextInfraCodegenGenerationTypeCheckingMixin._format_reexport_import_part(
+                        FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
                             export_name, export_name
                         )
                     )
+                bound_exports.append(export_name)
                 continue
             parts.append(
-                FlextInfraCodegenGenerationTypeCheckingMixin._format_reexport_import_part(
+                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
                     attr_name, export_name
                 )
             )
+            bound_exports.append(export_name)
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
@@ -162,6 +165,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     "    ", mod, deduped_parts
                 )
             )
+        return tuple(dict.fromkeys(bound_exports))
 
     @staticmethod
     def generate_type_checking(
@@ -181,7 +185,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             resolved = FlextInfraCodegenGenerationTypeCheckingMixin._normalize_type_checking_module_path(
                 mod, local_package_root
             )
-            FlextInfraCodegenGenerationTypeCheckingMixin._reject_non_absolute_import(
+            FlextInfraCodegenGenerationTypeCheckingMixin._reject_noncanonical_type_checking_import(
                 resolved, local_package_root, items
             )
             normalized_groups[resolved] = (*normalized_groups.get(resolved, ()), *items)
@@ -206,10 +210,20 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 )
             ),
         )
+        bound_exports: t.MutableSequenceOf[str] = []
         for mod in sorted_mods:
-            FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
-                mod, collapsed[mod], root_name, lines
+            bound_exports.extend(
+                FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
+                    mod, collapsed[mod], root_name, lines
+                )
             )
+        if bound_exports:
+            lines.append("    _ = (")
+            lines.extend(
+                f"        {export_name},"
+                for export_name in tuple(dict.fromkeys(bound_exports))
+            )
+            lines.append("    )")
         return () if len(lines) == 1 else lines
 
 

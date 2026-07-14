@@ -46,6 +46,12 @@ _LAZY_IMPORTS = build_lazy_import_map(
     sort_keys=False,
 )
 
+_DIRECT_IMPORTS: tuple[str, ...] = (
+{% for export_name in direct_imports %}
+    "{{ export_name }}",
+{% endfor %}
+)
+
 __all__: tuple[str, ...] = (
 {% for export_name in exports %}
     "{{ export_name }}",

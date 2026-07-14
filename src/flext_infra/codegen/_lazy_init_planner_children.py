@@ -42,6 +42,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
         resolved_pkg_dir = pkg_dir.resolve()
         direct: list[str] = []
         for child_dir in package_entry.descendant_child_dirs:
+            # mro-pulj (codex): do not merge retired root registries into the
+            # inline map that replaces them.
+            if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
+                continue
             resolved_child_dir = child_dir.resolve()
             child_init = child_dir / c.Infra.INIT_PY
             if not child_init.is_file():

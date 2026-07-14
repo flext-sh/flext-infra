@@ -67,6 +67,9 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             if (
                 py_file.name in skip_names
                 or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
+                # mro-pulj (codex): retired root registries are generated
+                # output, never semantic input for their replacement.
+                or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
                 or test_only_source_module
                 or (child_entry is not None and child_entry.package_name)
             ):

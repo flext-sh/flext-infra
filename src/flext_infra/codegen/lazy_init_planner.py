@@ -130,7 +130,43 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         export_names = {*lazy_map, *eager_dunders}
         if is_public_project_root:
-            export_names, lazy_map, child_lazy, excluded_lazy_names = (
+            # mro-pulj (codex): inline every supported direct root import while
+            # keeping the explicit __all__ contract independently governed.
+            direct_root_lazy_map = {
+                name: target
+                for name, target in lazy_map.items()
+                if target[1]
+                and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
+                and self._publish(name, allow_main=False)
+            }
+            direct_import_contract = self._root_direct_import_contract(
+                context.pkg_dir
+            )
+            if direct_import_contract:
+                available_direct_imports = frozenset({
+                    *direct_root_lazy_map,
+                    *eager_dunders,
+                    *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS,
+                })
+                missing_direct_imports = (
+                    direct_import_contract - available_direct_imports
+                )
+                if missing_direct_imports:
+                    missing = ", ".join(sorted(missing_direct_imports))
+                    msg = f"root direct-import contract has no source owner: {missing}"
+                    raise ValueError(msg)
+                direct_root_lazy_map = {
+                    name: target
+                    for name, target in direct_root_lazy_map.items()
+                    if name in direct_import_contract
+                }
+                eager_dunders = {
+                    name: target
+                    for name, target in eager_dunders.items()
+                    if name in direct_import_contract
+                }
+                export_names = {*lazy_map, *eager_dunders}
+            export_names, _public_lazy_map, child_lazy, excluded_lazy_names = (
                 self._filter_public_root_exports(
                     context=context,
                     export_names=export_names,
@@ -140,9 +176,25 @@ class FlextInfraCodegenLazyInitPlanner(
                     dir_exports=dir_exports,
                 )
             )
+            lazy_map = direct_root_lazy_map
+            if direct_import_contract:
+                missing_public_owners = frozenset(export_names) - frozenset({
+                    *lazy_map,
+                    *eager_dunders,
+                })
+                if missing_public_owners:
+                    missing = ", ".join(sorted(missing_public_owners))
+                    msg = f"root public contract is absent from direct imports: {missing}"
+                    raise ValueError(msg)
+            excluded_lazy_names = self._excluded_child_lazy_names(
+                child_lazy,
+                frozenset(export_names),
+                frozenset(lazy_map),
+                dir_exports,
+            )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
-        return m.Infra.LazyInitPlan(
+        plan = m.Infra.LazyInitPlan(
             context=context,
             action=c.Infra.LazyInitAction.WRITE,
             exports=u.Infra.ordered_namespace_exports(
@@ -157,6 +209,11 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
+        # mro-pulj (codex): publish the dependency-complete bottom-up plan so
+        # later alias resolution never rebuilds this package without children.
+        self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
+        self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
+        return plan
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""

@@ -22,14 +22,16 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
-        """Return public static imports with local facade classes as aliases."""
+        """Return supported static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
-        public_exports = frozenset(plan.exports)
+        # mro-pulj (codex): direct imports outside __all__ remain statically
+        # declared because they are part of the established root interface.
         filtered: dict[str, t.StrPair] = {
             name: target
             for name, target in source.items()
-            if target[0] not in wildcard_modules and name in public_exports
+            if target[0] not in wildcard_modules
+            and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
         }
         for (
             alias_name,
@@ -81,7 +83,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         current_pkg = plan.context.current_pkg
         lazy_map = dict(plan.lazy_map)
         lazy_entries = cls._build_lazy_entries(
-            plan.exports,
+            tuple(lazy_map),
             lazy_map,
             (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
@@ -105,6 +107,15 @@ class FlextInfraCodegenGenerationStandardMixin(
             type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
+            # mro-pulj (codex): freeze the complete direct-import surface while
+            # __all__ remains the smaller wildcard contract.
+            direct_imports=tuple(
+                sorted({
+                    *lazy_map,
+                    *plan.eager_dunders,
+                    *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS,
+                })
+            ),
             exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 

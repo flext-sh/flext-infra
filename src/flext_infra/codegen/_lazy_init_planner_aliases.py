@@ -100,34 +100,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 use_test_runtime_aliases=is_test_runtime_alias_surface,
             )
             if package_name and package_name != current_pkg:
+                # mro-pulj (codex): the generated root TYPE_CHECKING contract
+                # makes the public package itself the single inherited owner.
                 lazy_map[alias_name] = (
-                    self._canonical_inherited_alias_source(package_name, alias_name),
+                    package_name,
                     alias_name,
                 )
-
-    @staticmethod
-    def _canonical_inherited_alias_source(package_name: str, alias_name: str) -> str:
-        """Return the static module that owns an inherited alias.
-
-        flext-core's root aliases (``c``/``d``/.../``x``) are re-exported both
-        from the bare ``flext_core`` package and from the lazy
-        ``_root_typing_parts`` aggregator; neither resolves statically for a
-        type checker. When the resolved owner is flext-core in either form,
-        redirect to the static ``_root_typing_parts.facades`` module that
-        declares the aliases with an explicit ``__all__``. Intermediate project
-        facades (``flext_web``, ``flext_cli``, ...) own the aliases in their own
-        right and are returned untouched.
-        """
-        flext_core_owner_forms: frozenset[str] = frozenset({
-            c.Infra.PKG_CORE_UNDERSCORE,
-            c.Infra.FLEXT_CORE_ROOT_TYPING_PARTS_MODULE,
-        })
-        if (
-            package_name in flext_core_owner_forms
-            and alias_name in c.Infra.FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES
-        ):
-            return c.Infra.FLEXT_CORE_ROOT_TYPING_FACADES_MODULE
-        return package_name
 
     def _resolve_local_aliases(
         self, lazy_map: t.MutableLazyAliasMap, *, current_pkg: str, pkg_dir: Path

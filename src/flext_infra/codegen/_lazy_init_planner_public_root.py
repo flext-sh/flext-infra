@@ -21,6 +21,8 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         # mro-pulj: this implementation is supplied by PublicApiMixin in the MRO.
         def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]: ...
 
+        def _root_direct_import_contract(self, pkg_dir: Path) -> frozenset[str]: ...
+
         def _public_root_child_packages(
             self,
             child_packages: t.StrSequence,

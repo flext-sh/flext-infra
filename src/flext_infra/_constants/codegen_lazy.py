@@ -28,6 +28,22 @@ class FlextInfraConstantsCodegenLazy:
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
     "``_lazy_exports.py``); these reserved names are superseded by the inline "
     "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
+    # mro-pulj (codex): these parallel root registries are superseded atomically
+    # by the inline map and must never participate in source discovery.
+    OBSOLETE_ROOT_SUPPORT_NAMES: Final[frozenset[str]] = frozenset({
+        "_root_exports",
+        "_root_exports_parts",
+        "_root_typing",
+        "_root_typing_parts",
+    })
+    "Closed set of retired root registry module and package names."
+    ROOT_TEMPLATE_RUNTIME_IMPORTS: Final[frozenset[str]] = frozenset({
+        "build_lazy_import_map",
+        "install_lazy_exports",
+    })
+    "Names bound eagerly by the canonical root initializer template."
+    ROOT_DIRECT_IMPORTS_CONTRACT: Final[str] = "_DIRECT_IMPORTS"
+    "Generated literal that freezes supported direct root imports outside __all__."
     TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
     )
@@ -134,6 +150,8 @@ class FlextInfraConstantsCodegenLazy:
         "lazy",
         "normalize_lazy_imports",
     })
+    # mro-pulj (codex): these remain direct inline lazy imports without
+    # widening the explicit wildcard contract or requiring root sidecars.
     "Public-module symbols withheld from generated root-facade __all__."
     FIXTURE_SINGLETON_COLLISION_EXPORTS: Final[frozenset[str]] = frozenset({"settings"})
     "Fixture export names owned by canonical singletons (``_settings.settings``); never bubble from ``_fixtures`` into parent lazy maps (F811)."
@@ -164,26 +182,6 @@ class FlextInfraConstantsCodegenLazy:
         })
     )
     "Named local facade suffixes used by generated TYPE_CHECKING aliases."
-    FLEXT_CORE_ROOT_TYPING_PARTS_MODULE: Final[str] = "flext_core._root_typing_parts"
-    "Runtime package aggregating flext-core root typing exports lazily."
-    FLEXT_CORE_ROOT_TYPING_FACADES_MODULE: Final[str] = (
-        "flext_core._root_typing_parts.facades"
-    )
-    "Static module owning flext-core root typing facade aliases."
-    FLEXT_CORE_ROOT_TYPING_FACADE_ALIASES: Final[frozenset[str]] = frozenset({
-        "c",
-        "d",
-        "e",
-        "h",
-        "m",
-        "p",
-        "r",
-        "s",
-        "t",
-        "u",
-        "x",
-    })
-    "Root aliases exported by flext-core root typing facades."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",
