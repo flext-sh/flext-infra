@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 def make_config(
     workspace_root: Path, *, project_names: list[str] | None = None
 ) -> m.Infra.ReleaseOrchestratorConfig:
+    """Build the validated release configuration used by public probes."""
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version=c.Tests.RELEASE_VERSION_TARGET,
@@ -45,10 +46,12 @@ def make_config(
     ],
 )
 def test_resolve_phase_names(phase: str, expected: t.StrSequence) -> None:
+    """Resolve aliases and explicit release phases through the public utility."""
     tm.that(tuple(u.Infra.resolve_phase_names(phase)), eq=expected)
 
 
 def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
+    """Generate a release note document with projects and verification lines."""
     notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
     project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
 
@@ -71,6 +74,7 @@ def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
 
 
 def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
+    """Return a typed failure when the release note path is not writable."""
     notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
     notes_path.mkdir(parents=True, exist_ok=True)
 
@@ -83,6 +87,7 @@ def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
 
 
 def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None:
+    """Create the changelog, latest release and versioned release files."""
     workspace = tmp_path / "workspace"
     notes_path = workspace / "notes.md"
     notes_path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,16 +101,20 @@ def test_update_changelog_creates_expected_release_files(tmp_path: Path) -> None
     )
 
     tm.ok(result)
-    assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert (workspace / "docs" / "releases" / "latest.md").is_file()
-    assert (
-        workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
-    ).is_file()
+    tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+    tm.that((workspace / "docs" / "releases" / "latest.md").is_file(), eq=True)
+    tm.that(
+        (
+            workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
+        ).is_file(),
+        eq=True,
+    )
 
 
 def test_update_changelog_is_idempotent_for_existing_release_heading(
     tmp_path: Path,
 ) -> None:
+    """Keep one release heading when changelog generation is repeated."""
     workspace = tmp_path / "workspace"
     notes_path = workspace / "notes.md"
     notes_path.parent.mkdir(parents=True, exist_ok=True)
@@ -133,6 +142,7 @@ def test_update_changelog_is_idempotent_for_existing_release_heading(
 def test_update_changelog_adds_default_header_when_marker_is_missing(
     tmp_path: Path,
 ) -> None:
+    """Add the canonical changelog header when an existing file lacks it."""
     workspace = tmp_path / "workspace"
     docs_dir = workspace / "docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
@@ -149,10 +159,11 @@ def test_update_changelog_adds_default_header_when_marker_is_missing(
 
     changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
     tm.ok(result)
-    assert changelog.startswith(c.Tests.RELEASE_CHANGELOG_HEADER)
+    tm.that(changelog.startswith(c.Tests.RELEASE_CHANGELOG_HEADER), eq=True)
 
 
 def test_update_changelog_missing_notes_file_returns_failure(tmp_path: Path) -> None:
+    """Return a typed failure when the source release notes are absent."""
     workspace = tmp_path / "workspace"
 
     result = u.Infra.update_changelog(
@@ -169,6 +180,7 @@ def test_update_changelog_missing_notes_file_returns_failure(tmp_path: Path) -> 
 def test_run_release_build_deduplicates_duplicate_project_selectors(
     tmp_path: Path,
 ) -> None:
+    """Build each selected project once and validate the emitted report model."""
     workspace = u.Tests.create_release_workspace(tmp_path, project_names=("flext-a",))
 
     result = FlextInfraReleaseOrchestrator().run_release(
@@ -182,14 +194,10 @@ def test_run_release_build_deduplicates_duplicate_project_selectors(
         / c.Tests.RELEASE_TAG_TARGET
         / "build-report.json"
     )
-    report = cli_u.Cli.json_loads(report_path.read_text(encoding="utf-8")).unwrap()
+    report = m.Infra.BuildReport.model_validate(
+        cli_u.Cli.json_loads(report_path.read_text(encoding="utf-8")).unwrap()
+    )
 
     tm.ok(result)
-    tm.that(report, is_=dict)
-    tm.that(report["total"], eq=2)
-    records = report["records"]
-    tm.that(records, is_=list)
-    tm.that(
-        [record["project"] for record in records if isinstance(record, dict)],
-        eq=["root", "flext-a"],
-    )
+    tm.that(report.total, eq=2)
+    tm.that([record.project for record in report.records], eq=["root", "flext-a"])
