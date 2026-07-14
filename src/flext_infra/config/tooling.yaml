@@ -631,3 +631,6 @@ Infra:
         examples: [c, d, e, h, m, p, r, s, t, u, x]
         scripts: [c, d, e, h, m, p, r, s, t, u, x]
       main-export-files: [cli.py, main.py]
+      # mro-wkii.17.26 (Codex): pytest registers fixture modules explicitly;
+      # importing sibling plugins from the package initializer is forbidden.
+      side-effect-free-packages: [_fixtures]

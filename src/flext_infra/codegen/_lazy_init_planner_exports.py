@@ -21,11 +21,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         ]
         _version_module_name: str
 
-        @classmethod
-        def _is_private_test_fixture_package(
-            cls, pkg_dir: Path, surface: str
-        ) -> bool: ...
-
         def _package_entry(
             self, pkg_dir: Path
         ) -> m.Infra.RopePackageIndexEntry | None: ...
@@ -41,8 +36,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
-        if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
-            return {}
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}

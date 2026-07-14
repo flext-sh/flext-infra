@@ -37,11 +37,6 @@ class FlextInfraConstantsCodegenLazy:
         "_root_typing_parts",
     })
     "Closed set of retired root registry module and package names."
-    ROOT_TEMPLATE_RUNTIME_IMPORTS: Final[frozenset[str]] = frozenset({
-        "build_lazy_import_map",
-        "install_lazy_exports",
-    })
-    "Names bound eagerly by the canonical root initializer template."
     TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
     )
@@ -71,11 +66,6 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root surfaces generated as explicit static packages, not public lazy ABIs."
-    # mro-wkii.17.26 (codex): pytest owns plugin import timing; codegen keeps
-    # the private fixture package initializer side-effect free.
-    PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
-    "Private pytest-plugin package whose generated initializer stays empty."
-
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
     )

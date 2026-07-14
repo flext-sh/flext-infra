@@ -5,7 +5,10 @@ from __future__ import annotations
 {% if type_checking_lines %}
 from typing import TYPE_CHECKING
 {% endif %}
-from flext_core.lazy import build_lazy_import_map, install_lazy_exports
+from flext_core.lazy import (
+    build_lazy_import_map as _build_lazy_import_map,
+    install_lazy_exports as _install_lazy_exports,
+)
 {% if runtime_import_lines %}
 {{ runtime_import_lines }}
 {% endif %}
@@ -40,16 +43,10 @@ _LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {
 _LAZY_ALIAS_GROUPS: dict[str, tuple[tuple[str, str], ...]] = {}
 {% endif %}
 
-_LAZY_IMPORTS = build_lazy_import_map(
+_LAZY_IMPORTS = _build_lazy_import_map(
     _LAZY_MODULES,
     alias_groups=_LAZY_ALIAS_GROUPS,
     sort_keys=False,
-)
-
-_DIRECT_IMPORTS: tuple[str, ...] = (
-{% for export_name in direct_imports %}
-    "{{ export_name }}",
-{% endfor %}
 )
 
 __all__: tuple[str, ...] = (
@@ -59,7 +56,7 @@ __all__: tuple[str, ...] = (
 )
 
 
-install_lazy_exports(
+_install_lazy_exports(
     __name__,
     globals(),
     _LAZY_IMPORTS,

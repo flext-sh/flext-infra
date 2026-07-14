@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 
 from tests import c
@@ -62,13 +64,54 @@ class TestsFlextInfraLazyInitHelpers:
         exports_content = self._generated_exports(package_root)
 
         # mro-i6nq.10: Assert runtime installation through observable exports.
-        tm.that(
-            init_content,
-            has="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
-        )
+        tm.that(init_content, has="build_lazy_import_map as _build_lazy_import_map")
+        tm.that(init_content, has="install_lazy_exports as _install_lazy_exports")
         tm.that(init_content, has="_LAZY_IMPORTS")
         tm.that(exports_content, has='"FlextDemoModels"')
         tm.that(exports_content, has='"m"')
+
+    def test_generated_root_resolves_only_its_declared_runtime_abi(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolve a generated lazy export without publishing runtime helpers."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        pythonpath = os.pathsep.join(
+            part
+            for part in (
+                str(workspace_root / c.Infra.DEFAULT_SRC_DIR),
+                os.environ.get("PYTHONPATH", ""),
+            )
+            if part
+        )
+        probe = u.Cli.run_raw(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import flext_demo as package\n"
+                    "assert package.m is package.FlextDemoModels\n"
+                    "assert tuple(package.__all__) == "
+                    "('FlextDemoModels', 'm')\n"
+                    "assert not hasattr(package, 'build_lazy_import_map')\n"
+                    "assert not hasattr(package, 'install_lazy_exports')\n"
+                    "print(package.m.__name__, package.__all__)\n"
+                ),
+            ],
+            cwd=workspace_root,
+            env={**os.environ, "PYTHONPATH": pythonpath},
+        )
+
+        tm.ok(probe)
+        tm.that(probe.value.exit_code, eq=0)
+        tm.that(probe.value.stdout, has="FlextDemoModels")
 
     def test_private_modules_do_not_export_from_root(self, tmp_path: Path) -> None:
         """Keep private sibling modules outside the public package contract."""
@@ -112,6 +155,9 @@ class TestsFlextInfraLazyInitHelpers:
         fixtures_dir.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
+        fixtures_dir.joinpath("__version__.py").write_text(
+            '__version__ = "0.1.0"\n', encoding=c.Cli.ENCODING_DEFAULT
+        )
         fixtures_dir.joinpath("enforcement.py").write_text(
             "def load_report() -> str:\n"
             '    """Load a report."""\n'
@@ -127,10 +173,14 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
+        fixture_init = self._generated_init(fixtures_dir)
 
         # mro-wkii.17.26 (Codex): only the public facade may own the root ABI.
         tm.that(generated, has='".enforcement": ("load_report",)')
         tm.that(generated, lacks="flext_demo._fixtures.enforcement")
+        tm.that(fixture_init, contains="__all__: tuple[str, ...] = ()")
+        tm.that(fixture_init, lacks="load_report")
+        tm.that(fixture_init, lacks="__version__")
 
     def test_nested_runtime_singleton_does_not_widen_root_api(
         self, tmp_path: Path
@@ -177,7 +227,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated_content = self._generated_init(package_root)
-        tm.that(generated_content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(generated_content, lacks="_DIRECT_IMPORTS")
         tm.that(generated_content, lacks='"FlextDemoConversion"')
 
         extra_path = utilities_dir / "extra.py"

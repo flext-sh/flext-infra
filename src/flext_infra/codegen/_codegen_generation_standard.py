@@ -29,9 +29,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         filtered: dict[str, t.StrPair] = {
             name: target
             for name, target in source.items()
-            if target[0] not in wildcard_modules
-            and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
-            and name in public_exports
+            if target[0] not in wildcard_modules and name in public_exports
         }
         for (
             alias_name,
@@ -114,11 +112,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
-            # mro-wkii.17.26 (codex): direct and wildcard publication share one
-            # closed public contract; implementation symbols stay private.
-            direct_imports=tuple(
-                sorted({*plan.exports, *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS})
-            ),
             exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 
@@ -126,13 +119,6 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _static_sibling_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Select explicit symbol exports owned by direct sibling modules."""
         current_pkg = plan.context.current_pkg
-        # mro-pulj (codex): keep the pytest registration boundary free of
-        # eager sibling imports; the public root still owns its lazy exports.
-        if (
-            current_pkg.rsplit(".", maxsplit=1)[-1]
-            == c.Infra.PRIVATE_FIXTURE_PACKAGE_NAME
-        ):
-            return {}
         prefix = f"{current_pkg}."
         combined = dict(plan.lazy_map)
         combined.update(plan.eager_dunders)

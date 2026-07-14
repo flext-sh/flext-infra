@@ -93,6 +93,12 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
+        # mro-wkii.17.26 (codex): one planner boundary owns the complete
+        # side-effect-free contract, including versions and child packages.
+        if self._is_side_effect_free_package(context.pkg_dir):
+            return m.Infra.LazyInitPlan(
+                context=context, action=c.Infra.LazyInitAction.WRITE, exports=()
+            )
         lazy_map = self._package_exports(context)
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,

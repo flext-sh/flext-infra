@@ -68,18 +68,16 @@ class TestsFlextInfraCodegenGeneration:
         # mro-wkii.17.26 (codex): child metadata never invents a root ABI binding.
         tm.that(content, lacks='".services"')
         tm.that(content, contains='".api": ("Demo",)')
-        direct_imports = content.split(
-            "_DIRECT_IMPORTS: tuple[str, ...] =", maxsplit=1
-        )[1].split("__all__:", maxsplit=1)[0]
-        tm.that(direct_imports, contains='"__version__"')
         public_exports = content.split("__all__: tuple[str, ...] =", maxsplit=1)[
             1
-        ].split("install_lazy_exports", maxsplit=1)[0]
+        ].split("_install_lazy_exports", maxsplit=1)[0]
         tm.that(public_exports, contains='"Demo"')
         tm.that(public_exports, contains='"__version__"')
         tm.that(public_exports, contains='"r"')
         tm.that(content, contains="if TYPE_CHECKING:")
-        tm.that(content, contains="install_lazy_exports(")
+        tm.that(content, contains="install_lazy_exports as _install_lazy_exports")
+        tm.that(content, contains="_install_lazy_exports(")
+        tm.that(content, lacks="_DIRECT_IMPORTS")
         tm.that(content, lacks="__unit__")
 
     def test_internal_package_uses_explicit_sibling_reexports(
@@ -115,13 +113,39 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
         public_exports = content.split("__all__: tuple[str, ...] =", maxsplit=1)[
             1
-        ].split("install_lazy_exports", maxsplit=1)[0]
+        ].split("_install_lazy_exports", maxsplit=1)[0]
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="from .api import Demo")
-        tm.that(content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(content, lacks="_DIRECT_IMPORTS")
         tm.that(content, lacks='"DemoConversion"')
         tm.that(public_exports, contains='"Demo"')
+
+    def test_root_renderer_preserves_runtime_and_typing_plan_parity(
+        self, tmp_path: Path
+    ) -> None:
+        """Render every planner-owned public name in both ABI projections."""
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg",
+            ("build_lazy_import_map",),
+            MappingProxyType({
+                "build_lazy_import_map": ("demo_pkg.api", "build_lazy_import_map")
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+        public_exports = content.split("__all__: tuple[str, ...] =", maxsplit=1)[
+            1
+        ].split("_install_lazy_exports", maxsplit=1)[0]
+        type_checking_block = content.split("if TYPE_CHECKING:", maxsplit=1)[1].split(
+            "_LAZY_MODULES", maxsplit=1
+        )[0]
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains='".api": ("build_lazy_import_map",)')
+        tm.that(public_exports, contains='"build_lazy_import_map"')
+        tm.that(type_checking_block, contains="from .api import build_lazy_import_map")
 
     def test_root_type_checking_uses_compact_relative_local_imports(
         self, tmp_path: Path
@@ -173,32 +197,25 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="import nested")
         tm.that(content, lacks="install_lazy_exports")
 
-    def test_private_fixture_package_initializer_is_side_effect_free(
-        self, tmp_path: Path
-    ) -> None:
-        """Keep pytest plugin siblings unloaded until pytest registers them."""
+    def test_static_renderer_honors_explicit_plan_exports(self, tmp_path: Path) -> None:
+        """Render the typed plan without re-deriving package-name policy."""
         plan = self._plan(
             tmp_path,
             "demo_pkg._fixtures",
             ("DemoFixture",),
             MappingProxyType({
-                "DemoFixture": (
-                    "demo_pkg._fixtures.settings",
-                    "DemoFixture",
-                )
+                "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
             }),
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, lacks="from .settings import")
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(init_content, contains="from .settings import DemoFixture")
+        tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
         tm.that(init_content, lacks="install_lazy_exports")
 
-    def test_non_public_surface_uses_static_initializer(
-        self, tmp_path: Path
-    ) -> None:
+    def test_non_public_surface_uses_static_initializer(self, tmp_path: Path) -> None:
         """Tests, examples, and scripts use explicit static exports."""
         plan = self._plan(
             tmp_path,

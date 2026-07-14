@@ -343,6 +343,16 @@ class FlextInfraModelsDepsToolSettings(
                 description="Root files allowed to export module-level main().",
             ),
         ]
+        side_effect_free_packages: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="side-effect-free-packages",
+                description=(
+                    "Package basenames whose generated initializer must not import "
+                    "siblings eagerly."
+                ),
+            ),
+        ]
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""

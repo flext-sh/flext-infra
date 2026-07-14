@@ -73,10 +73,6 @@ class FlextInfraModelsCodegenRender:
         lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
             default_factory=tuple, description="Public lazy aliases grouped by module."
         )
-        direct_imports: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Frozen root names supported through direct imports.",
-        )
         exports: t.StrSequence = m.Field(
             default_factory=tuple, description="Published root ``__all__`` names."
         )

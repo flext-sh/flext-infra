@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenLazyInitPlannerChildrenMixin:
     if TYPE_CHECKING:
+        # mro-wkii.17.26 (codex): declare the validated policy supplied by the MRO base.
+        lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
         def _package_entry(
@@ -51,15 +53,14 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if not child_init.is_file():
                 continue
             child_entry = self._package_entry(child_dir)
-            is_fixture_child = self._is_fixture_package(child_dir)
             child_exports = dir_exports.get(str(resolved_child_dir), {})
             if child_entry is None or not child_entry.package_name:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
                 continue
-            # mro-pulj (codex): private fixture modules are pytest-owned plugin
-            # boundaries and never bubble into their production package root.
-            if is_fixture_child:
+            # mro-wkii.17.26 (codex): privacy controls parent publication;
+            # side-effect policy controls only the child's own initializer.
+            if child_dir.name.startswith("_"):
                 continue
             direct.append(child_entry.package_name)
             self._add(
@@ -185,12 +186,6 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             return True
         return name[:1].isupper() and not name.isupper()
 
-    @staticmethod
-    def _is_fixture_package(pkg_dir: Path) -> bool:
-        """Return True when the directory is the ``_fixtures`` convention package."""
-        return pkg_dir.name == "_fixtures"
-
-    @classmethod
-    def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool:
-        """Return True when the package is a private fixture under the tests surface."""
-        return surface == "tests" and cls._is_fixture_package(pkg_dir)
+    def _is_side_effect_free_package(self, pkg_dir: Path) -> bool:
+        """Return whether config forbids eager sibling imports for this package."""
+        return pkg_dir.name in self.lazy_init.side_effect_free_packages

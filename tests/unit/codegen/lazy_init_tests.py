@@ -163,7 +163,11 @@ class TestEdgeCases:
     def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
         """Expose execution status through the public result contract."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        # mro-wkii.17.26 (codex): success requires an explicit apply request;
+        # the default check mode must continue to fail loudly on drift.
+        generator = FlextInfraCodegenLazyInit(
+            workspace_root=tmp_path, apply_changes=True
+        )
         result = generator.execute()
         tm.that(result.success, eq=True)
         tm.that(type(result.value).__name__, eq="bool")
