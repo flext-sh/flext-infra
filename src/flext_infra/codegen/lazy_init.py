@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, u
-from flext_infra.base import s
+from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
 )
@@ -27,7 +27,10 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixin):
+class FlextInfraCodegenLazyInit(
+    FlextInfraProjectSelectionServiceBase[bool],
+    FlextInfraCodegenLazyInitGenerationMixin,
+):
     """Generate canonical root and subpackage ``__init__.py`` files.
 
     Public package roots use PEP 562 lazy exports. Descendant packages use
@@ -95,11 +98,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             package_dirs = indexed_package_dirs
             target_package_dir: Path | None = None
             if self.target_module:
-                selected_project_names = frozenset(
-                    name
-                    for value in (self.project_filter or "").split(",")
-                    if (name := value.strip())
-                )
+                # mro-wkii.17.26 (codex): reuse the canonical workspace project
+                # selector instead of exposing the legacy internal filter field.
+                selected_project_names = frozenset(self.project_names or ())
                 mapped_package_dir = workspace_index.package_dir_by_name.get(
                     self.target_module
                 )

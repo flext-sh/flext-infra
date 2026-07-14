@@ -257,7 +257,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
 
-    def test_project_filter_qualifies_repeated_wrapper_target(
+    def test_project_selection_qualifies_repeated_wrapper_target(
         self, tmp_path: Path
     ) -> None:
         """Select one project's wrapper without touching an identically named peer."""
@@ -284,7 +284,7 @@ class TestsFlextInfraCodegenLazyInitService:
         second_before = second_tests.joinpath(c.Infra.INIT_PY).read_bytes()
         service = u.Tests.create_lazy_init_service(tmp_path)
         service.target_module = c.Infra.DIR_TESTS
-        service.project_filter = "flext-test-first"
+        service.selected_projects = ("flext-test-first",)
         service.apply_changes = True
 
         result = service.execute()

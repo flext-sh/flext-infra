@@ -137,6 +137,7 @@ class TestMainEntryPoint:
         tm.ok(result)
         tm.that(result.value.exit_code, eq=0)
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
+        tm.that(result.value.stdout, contains="--projects")
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""
