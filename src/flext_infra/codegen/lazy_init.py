@@ -93,6 +93,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     reverse=True,
                 )
             )
+            target_package_dir: Path | None = None
             if self.target_module:
                 mapped_package_dir = workspace_index.package_dir_by_name.get(
                     self.target_module
@@ -118,19 +119,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         f"lazy-init target module is ambiguous: {self.target_module}"
                     )
                     return 1
-                if sorted_target_dirs[0] not in workspace_package_dirs:
-                    u.Cli.error(
-                        "lazy-init target must be an indexed package: "
-                        f"{self.target_module}"
-                    )
-                    return 1
-                selected_root = sorted_target_dirs[0]
-                package_dirs = tuple(
-                    package_dir
-                    for package_dir in package_dirs
-                    if package_dir == selected_root
-                    or selected_root in package_dir.parents
-                )
+                target_package_dir = sorted_target_dirs[0]
             duplicates = self._detect_duplicate_class_names(
                 rope, package_dirs=package_dirs
             )
@@ -153,7 +142,10 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             )
             u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
             total, ok, errors, _dir_exports = self._generate_all_inits(
-                package_dirs, check_only=check_only, planner=planner
+                package_dirs,
+                check_only=check_only,
+                planner=planner,
+                target_package_dir=target_package_dir,
             )
         warnings = planner.collision_count
         u.Cli.info(

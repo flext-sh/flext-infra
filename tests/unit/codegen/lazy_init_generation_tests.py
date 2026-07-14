@@ -68,8 +68,14 @@ class TestsFlextInfraCodegenGeneration:
         # mro-wkii.17.26 (codex): child metadata never invents a root ABI binding.
         tm.that(content, lacks='".services"')
         tm.that(content, contains='".api": ("Demo",)')
-        tm.that(content, contains="__all__: tuple[str, ...] =")
-        tm.that(content, contains='    "__version__",')
+        direct_imports = content.split(
+            "_DIRECT_IMPORTS: tuple[str, ...] =", maxsplit=1
+        )[1].split("__all__:", maxsplit=1)[0]
+        tm.that(direct_imports, contains='"__version__"')
+        tm.that(
+            content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
+        )
+        tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
 
@@ -78,7 +84,69 @@ class TestsFlextInfraCodegenGeneration:
     ) -> None:
         """Internal packages publish direct sibling symbols statically."""
         plan = self._plan(
-            tmp_path,
+            "demo_pkg", ("Demo",), MappingProxyType({"Demo": ("demo_pkg.api", "Demo")})
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains="from .api import Demo")
+        tm.that(content, contains='".api": ("Demo",)')
+        tm.that(content, contains="install_lazy_exports(")
+        tm.that(content, lacks="__unit__")
+
+    def test_root_initializer_preserves_direct_imports_outside_all(self) -> None:
+        """Keep supported direct imports lazy without widening wildcard exports."""
+        plan = self._plan(
+            "demo_pkg",
+            ("Demo",),
+            MappingProxyType({
+                "Demo": ("demo_pkg.api", "Demo"),
+                "DemoConversion": ("demo_pkg._utilities.conversion", "DemoConversion"),
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+        public_exports = content.split(
+            "__all__: tuple[str, ...] =", maxsplit=1
+        )[1].split("install_lazy_exports", maxsplit=1)[0]
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains="from ._utilities.conversion import DemoConversion")
+        tm.that(content, lacks="DemoConversion as DemoConversion")
+        tm.that(content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(content, contains='"DemoConversion"')
+        tm.that(public_exports, lacks="DemoConversion")
+
+    def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
+        """Emit local declarations relatively without identity aliases."""
+        plan = self._plan(
+            "flext_cli",
+            ("FlextCliSettings", "settings"),
+            MappingProxyType({
+                "FlextCliSettings": (
+                    "flext_cli._settings",
+                    "FlextCliSettings",
+                ),
+                "settings": ("flext_cli._settings", "settings"),
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(
+            content,
+            contains="from ._settings import FlextCliSettings, settings",
+        )
+        tm.that(content, lacks="from flext_cli._settings import")
+        tm.that(content, lacks="FlextCliSettings as FlextCliSettings")
+        tm.that(content, lacks="settings as settings")
+        tm.that(content, contains="_ = (FlextCliSettings, settings)")
+
+    def test_non_root_package_uses_static_initializer(self) -> None:
+        """Subpackages publish direct siblings through explicit imports."""
+        plan = self._plan(
             "demo_pkg.services",
             ("Demo", "Nested", "nested"),
             MappingProxyType({

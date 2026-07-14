@@ -99,8 +99,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
         if cls._is_mro_part_reexport(a, b):
             return True
-        if cls._is_root_typing_reexport(a, b):
-            return True
+        # mro-pulj (codex): root typing sidecars are removed; real source
+        # owners now participate in the normal collision policy.
         if cls._is_private_facade_reexport(a, b):
             return True
         if cls._is_test_collection_collision(a, b):
@@ -166,19 +166,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         )
         facade_tuple: tuple[str, ...] = tuple(facade_parts)
         return facade_tuple == expected_facade_parts
-
-    @classmethod
-    def _is_root_typing_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether a generated root-typing module re-exports source owners."""
-        if a[1] != b[1]:
-            return False
-        a_parts = cls._module_parts(a[0])
-        b_parts = cls._module_parts(b[0])
-        if not a_parts or not b_parts or a_parts[0] != b_parts[0]:
-            return False
-        a_root_typing = "_root_typing_parts" in a_parts
-        b_root_typing = "_root_typing_parts" in b_parts
-        return a_root_typing != b_root_typing
 
     @classmethod
     def _is_private_facade_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:

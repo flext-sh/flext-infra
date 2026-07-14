@@ -104,6 +104,49 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
+    def test_direct_import_contract_is_stable_and_fails_on_missing_owner(
+        self, tmp_path: Path
+    ) -> None:
+        """Freeze direct imports and reject removal of their canonical owner."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py",
+            class_name="FlextDemoModels",
+            alias="m",
+        )
+        utilities_dir = package_root / "_utilities"
+        utilities_dir.mkdir()
+        utilities_dir.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        conversion_path = utilities_dir / "conversion.py"
+        conversion_path.write_text(
+            "class FlextDemoConversion:\n"
+            '    """Supported direct root import."""\n\n'
+            '__all__ = ["FlextDemoConversion"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        frozen_content = self._generated_init(package_root)
+        tm.that(frozen_content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(frozen_content, contains='"FlextDemoConversion"')
+
+        extra_path = utilities_dir / "extra.py"
+        extra_path.write_text(
+            "class FlextDemoExtra:\n"
+            '    """New internal name outside the frozen contract."""\n\n'
+            '__all__ = ["FlextDemoExtra"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        tm.that(self._generated_init(package_root), lacks="FlextDemoExtra")
+
+        conversion_path.unlink()
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        tm.that(check_service.generate_inits(check_only=True), eq=1)
+        tm.that(self._generated_init(package_root), eq=frozen_content)
+
     def test_explicit_all_exports_keep_public_aliases_only(
         self, tmp_path: Path
     ) -> None:
@@ -268,6 +311,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
+        tm.that(init_content, lacks="_root_typing_parts")
         ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
         for alias_name in ruff_ordered_aliases:
             tm.that(exports_content, has=f'    "{alias_name}",')

@@ -51,8 +51,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         """Format one TYPE_CHECKING module alias import."""
         parent_mod, separator, module_name = mod.rpartition(".")
         if separator and module_name == export_name:
-            # mro-i6nq.10: Redundant from-alias is Ruff's explicit re-export form.
-            return (f"{indent}from {parent_mod} import {module_name} as {export_name}",)
+            # mro-pulj (codex): typing declarations are not runtime reexports;
+            # preserve aliases only when the public and owned names differ.
+            return (f"{indent}from {parent_mod or '.'} import {module_name}",)
         return (
             FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
                 indent, mod, export_name

@@ -115,10 +115,7 @@ class TestsFlextInfraLazyInitProcessing:
             contains="from .worker import FlextTestsWorker as FlextTestsWorker",
         )
         # mro-wkii.17.26 (codex): explicit module __all__ owns every direct export.
-        tm.that(
-            level_four_content,
-            contains="from .worker import FlextTestsWorker as FlextTestsWorker, worker as worker",
-        )
+        tm.that(level_four_content, contains="from .worker import worker as worker")
         tm.that(level_four_content, contains='    "FlextTestsWorker",')
         tm.that(level_four_content, contains='    "worker",')
         tm.that(level_two_content, lacks="FlextTestsWorker")
