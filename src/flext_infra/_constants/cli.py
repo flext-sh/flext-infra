@@ -78,6 +78,7 @@ class FlextInfraConstantsCli:
         "check:fix-pyrefly-settings",
         "codegen:auto-fix",
         "codegen:consolidate",
+        "codegen:grpc",
         "codegen:init",
         "codegen:new",
         "codegen:pipeline",

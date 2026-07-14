@@ -547,10 +547,23 @@ class FlextInfraConfigModels:
             Path, m.Field(description="Repository-relative manifest path")
         ]
 
+    # mro-wkii.17.26 (codex): generated-source normalization is validated data.
+    class GrpcCodegenSpec(_ConfigContract):
+        """Canonical normalization policy for protoc-owned Python modules."""
+
+        ruff_safe_fixes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Ordered safe Ruff fix selectors"),
+        ]
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
+        grpc: Annotated[
+            FlextInfraConfigModels.GrpcCodegenSpec,
+            m.Field(description="gRPC generated-source normalization policy"),
+        ]
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),

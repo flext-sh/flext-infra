@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, r, t, u
+from flext_infra import c, config, r, t, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -85,6 +85,16 @@ class FlextInfraCodegenGrpc(s[bool]):
                 return r[t.Pair[int, int]].fail(
                     generated.error or f"grpc_tools.protoc failed in {project_root}"
                 )
+            normalized = self._normalize_generated_modules(
+                source_root=source_root,
+                generated_root=generated_root,
+                proto_files=proto_files,
+            )
+            if normalized.failure:
+                return r[t.Pair[int, int]].fail(
+                    normalized.error
+                    or f"cannot normalize generated modules for {project_root}"
+                )
             synchronized = self._sync_generated_modules(
                 source_root=source_root,
                 generated_root=generated_root,
@@ -96,6 +106,94 @@ class FlextInfraCodegenGrpc(s[bool]):
                 )
             return r[t.Pair[int, int]].ok((synchronized.value, len(proto_files)))
 
+    @staticmethod
+    def _generated_module_paths(
+        *, source_root: Path, generated_root: Path, proto_files: t.SequenceOf[Path]
+    ) -> tuple[Path, ...]:
+        """Return every compiler-owned Python module in stable schema order."""
+        return tuple(
+            generated_root
+            / proto_file.relative_to(source_root).parent
+            / f"{proto_file.stem}{suffix}"
+            for proto_file in proto_files
+            for suffix in c.Infra.GRPC_GENERATED_MODULE_SUFFIXES
+        )
+
+    def _normalize_generated_modules(
+        self,
+        *,
+        source_root: Path,
+        generated_root: Path,
+        proto_files: t.SequenceOf[Path],
+    ) -> p.Result[bool]:
+        """Canonicalize raw protoc output and prove the normalized modules clean."""
+        module_paths = self._generated_module_paths(
+            source_root=source_root,
+            generated_root=generated_root,
+            proto_files=proto_files,
+        )
+        missing = tuple(path for path in module_paths if not path.is_file())
+        if missing:
+            return r[bool].fail(
+                "grpc_tools.protoc omitted generated modules: "
+                + ", ".join(str(path) for path in missing)
+            )
+        path_args = tuple(str(path) for path in module_paths)
+        commands: tuple[t.StrSequence, ...] = (
+            (
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--isolated",
+                "--no-cache",
+                "--fix",
+                "--select",
+                ",".join(config.Infra.codegen.grpc.ruff_safe_fixes),
+                *path_args,
+            ),
+            (c.Infra.RUFF, c.Infra.FORMAT, "--isolated", "--no-cache", *path_args),
+            (
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--isolated",
+                "--no-cache",
+                "--no-fix",
+                "--select",
+                ",".join(config.Infra.codegen.grpc.ruff_safe_fixes),
+                *path_args,
+            ),
+            (
+                c.Infra.RUFF,
+                c.Infra.FORMAT,
+                "--isolated",
+                "--no-cache",
+                "--check",
+                *path_args,
+            ),
+        )
+        for command in commands:
+            normalized = u.Cli.run(
+                command,
+                cwd=generated_root,
+                timeout=c.Infra.GRPC_CODEGEN_TIMEOUT_SECONDS,
+            )
+            if normalized.failure:
+                return r[bool].fail(
+                    normalized.error or "generated gRPC module normalization failed"
+                )
+        for module_path in module_paths:
+            source = u.Cli.files_read_text(module_path)
+            if source.failure:
+                return r[bool].fail(
+                    source.error or f"cannot read normalized module {module_path}"
+                )
+            try:
+                compile(source.value, str(module_path), "exec")
+            except SyntaxError as exc:
+                return r[bool].fail(
+                    f"normalized gRPC module is invalid: {module_path}: {exc}"
+                )
+        return r[bool].ok(True)
+
     def _sync_generated_modules(
         self,
         *,
@@ -105,33 +203,33 @@ class FlextInfraCodegenGrpc(s[bool]):
     ) -> p.Result[int]:
         """Compare temporary compiler output and atomically update stale modules."""
         changed = 0
-        for proto_file in proto_files:
-            relative = proto_file.relative_to(source_root).with_suffix("")
-            for suffix in c.Infra.GRPC_GENERATED_MODULE_SUFFIXES:
-                relative_module = relative.parent / f"{relative.name}{suffix}"
-                generated_path = generated_root / relative_module
-                generated_read = u.Cli.files_read_text(generated_path)
-                if generated_read.failure:
-                    return r[int].fail(
-                        generated_read.error
-                        or f"compiler did not emit {generated_path}"
-                    )
-                target = source_root / relative_module
-                current = u.Cli.files_read_text(target) if target.is_file() else None
-                if current is not None and current.failure:
-                    return r[int].fail(current.error or f"cannot read {target}")
-                if current is not None and current.value == generated_read.value:
-                    continue
-                changed += 1
-                relative_target = target.relative_to(source_root.parent)
-                if self.effective_dry_run:
-                    u.Cli.info(f"  stale: {relative_target}")
-                    continue
-                target.parent.mkdir(parents=True, exist_ok=True)
-                write = u.Cli.atomic_write_text_file(target, generated_read.value)
-                if write.failure:
-                    return r[int].fail(write.error or f"cannot write {target}")
-                u.Cli.info(f"  generated: {relative_target}")
+        for generated_path in self._generated_module_paths(
+            source_root=source_root,
+            generated_root=generated_root,
+            proto_files=proto_files,
+        ):
+            generated_read = u.Cli.files_read_text(generated_path)
+            if generated_read.failure:
+                return r[int].fail(
+                    generated_read.error or f"compiler did not emit {generated_path}"
+                )
+            relative_module = generated_path.relative_to(generated_root)
+            target = source_root / relative_module
+            current = u.Cli.files_read_text(target) if target.is_file() else None
+            if current is not None and current.failure:
+                return r[int].fail(current.error or f"cannot read {target}")
+            if current is not None and current.value == generated_read.value:
+                continue
+            changed += 1
+            relative_target = target.relative_to(source_root.parent)
+            if self.effective_dry_run:
+                u.Cli.info(f"  stale: {relative_target}")
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            write = u.Cli.atomic_write_text_file(target, generated_read.value)
+            if write.failure:
+                return r[int].fail(write.error or f"cannot write {target}")
+            u.Cli.info(f"  generated: {relative_target}")
         return r[int].ok(changed)
 
 

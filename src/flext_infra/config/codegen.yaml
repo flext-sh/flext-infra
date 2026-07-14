@@ -3,6 +3,10 @@ Infra:
     # NOTE(mro-wkii.17.26, agent codex): declarative SSOT targets the canonical 0.20 development branch.
     version: 1
 
+    # mro-wkii.17.26 (codex): protoc normalization selectors are policy data.
+    grpc:
+      ruff_safe_fixes: [I, F401, UP009]
+
     toolchain:
       python_version: "3.13"
       python_minor_version: "3.13"
