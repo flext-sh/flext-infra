@@ -68,35 +68,65 @@ class TestsFlextInfraInfraRopeService:
                 for class_info in state.class_infos
             )
 
-    def test_open_workspace_keeps_project_scope_with_sibling_projects(
+    def test_open_workspace_indexes_parent_workspace_from_each_member(
         self, tmp_path: Path
     ) -> None:
-        """Project-root and package-root calls stay scoped to the containing project."""
+        """Member invocations share the complete enclosing workspace index."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        (monorepo_root / ".gitmodules").write_text(
+            (
+                '[submodule "flext-infra"]\n'
+                "\tpath = flext-infra\n"
+                "\turl = ../flext-infra.git\n"
+                '[submodule "flext-demo"]\n'
+                "\tpath = flext-demo\n"
+                "\turl = ../flext-demo.git\n"
+            ),
+            encoding=c.Infra.ENCODING_DEFAULT,
+        )
+        infra_root, package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-infra", package_name="flext_infra"
         )
-        u.Tests.create_lazy_init_workspace(
+        demo_root, _demo_package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-demo", package_name="flext_demo"
         )
+        indexed_paths: set[Path] = set()
+        for project_root in (infra_root, demo_root):
+            test_path = project_root / "tests" / "test_public.py"
+            example_path = project_root / "examples" / "public_usage.py"
+            test_path.parent.mkdir()
+            example_path.parent.mkdir()
+            test_path.write_text(
+                "def test_public() -> None:\n    pass\n",
+                encoding=c.Infra.ENCODING_DEFAULT,
+            )
+            example_path.write_text(
+                "def public_usage() -> None:\n    pass\n",
+                encoding=c.Infra.ENCODING_DEFAULT,
+            )
+            indexed_paths.update({test_path.resolve(), example_path.resolve()})
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
         )
 
-        with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
+        with flext_infra.infra.rope_workspace(infra_root) as rope:
+            tm.that(rope.rope_workspace_root, eq=monorepo_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
+                eq={infra_root.resolve(), demo_root.resolve()},
+            )
+            tm.that(
+                indexed_paths.issubset({entry.file_path for entry in rope.modules()}),
+                eq=True,
             )
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
+            tm.that(rope.rope_workspace_root, eq=monorepo_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
+                eq={infra_root.resolve(), demo_root.resolve()},
             )
 
     def test_workspace_exports_fixture_functions_when_requested(
@@ -187,18 +217,24 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            assert any(entry.file_path == module_path for entry in rope.modules())
+            tm.that(
+                any(entry.file_path == module_path for entry in rope.modules()),
+                eq=True,
+            )
             tm.that(rope.source(module_path), has="class FlextDemoModels")
             objects = {
                 (item.scope_path, item.kind): item for item in rope.objects(module_path)
             }
-            tm.that(objects, has=("VALUE", "constant"))
-            tm.that(objects, has=("FlextDemoModels", "class"))
-            tm.that(objects, has=("FlextDemoModels.build", "method"))
-            tm.that(objects, has=("FlextDemoModels.build.payload", "parameter"))
-            tm.that(objects, has=("FlextDemoModels.build.local", "local"))
-            tm.that(objects, has=("FlextDemoModels.build.nested", "function"))
-            assert objects["FlextDemoModels", "class"].is_facade_member
+            expected_objects = {
+                ("VALUE", "constant"),
+                ("FlextDemoModels", "class"),
+                ("FlextDemoModels.build", "method"),
+                ("FlextDemoModels.build.payload", "parameter"),
+                ("FlextDemoModels.build.local", "local"),
+                ("FlextDemoModels.build.nested", "function"),
+            }
+            tm.that(expected_objects.issubset(objects), eq=True)
+            tm.that(objects["FlextDemoModels", "class"].is_facade_member, eq=True)
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
         self, tmp_path: Path

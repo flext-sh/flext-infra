@@ -606,7 +606,7 @@ class FlextInfraConfigModels:
         ]
 
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
-    # selection is modeled once so iteration, Rope, and census share one SSOT.
+    # selection is modeled once for iteration and census.
     class SourceScanSpec(_ConfigContract):
         """Canonical production roots and recursively ignored directories."""
 
@@ -621,6 +621,11 @@ class FlextInfraConfigModels:
                 description="File or directory names excluded from every source scan",
             ),
         ]
+
+    # mro-wkii.17.26 (codex): Rope indexes all workspace consumer surfaces;
+    # production-only analysis remains independently governed above.
+    class RopeIndexSpec(SourceScanSpec):
+        """Canonical roots and exclusions for the full Rope semantic universe."""
 
     class StaticRule(_ConfigContract):
         """Shared immutable metadata for one Rope static-analysis rule."""
@@ -759,6 +764,10 @@ class FlextInfraConfigModels:
         source_scan: Annotated[
             FlextInfraConfigModels.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
+        ]
+        rope_index: Annotated[
+            FlextInfraConfigModels.RopeIndexSpec,
+            m.Field(description="Workspace-wide Rope semantic index contract"),
         ]
         # mro-j47u (codex): static policy is validated data, never detector code.
         enforcement: Annotated[

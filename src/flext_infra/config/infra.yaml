@@ -31,6 +31,30 @@ Infra:
       - tests
       - vendor
       - venv
+  # mro-wkii.17.26 (codex): Rope owns one semantic universe for every FLEXT
+  # project and consumer surface in the enclosing workspace.
+  rope_index:
+    roots: [src, tests, examples, scripts]
+    ignored_resources:
+      - .cache
+      - .claude
+      - .git
+      - .mypy_cache
+      - .pyrefly_cache
+      - .pytest_cache
+      - .reports
+      - .ruff_cache
+      - .tox
+      - .venv
+      - __pycache__
+      - build
+      - dist
+      - dist-packages
+      - legado
+      - node_modules
+      - site-packages
+      - vendor
+      - venv
   # mro-j47u (codex): every static rule is validated data; the detector owns no policy.
   enforcement:
     rules:

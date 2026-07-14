@@ -232,6 +232,14 @@ class FlextInfraUtilitiesDiscovery:
     def rope_workspace_root(workspace_root: Path) -> Path:
         """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
+        candidate_root = (
+            resolved_root.parent if resolved_root.is_file() else resolved_root
+        )
+        # mro-wkii.17.26 (codex): invocation anywhere inside a declared Git
+        # workspace shares the nearest complete workspace semantic index.
+        for candidate in (candidate_root, *candidate_root.parents):
+            if (candidate / ".gitmodules").is_file():
+                return candidate
         has_project_marker = any(
             candidate.is_file()
             for candidate in (

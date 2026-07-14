@@ -41,12 +41,12 @@ class FlextInfraUtilitiesRopeCore(
             for project_root in discovered_roots
             if project_root.resolve().is_relative_to(resolved_root)
         )
-        # NOTE (multi-agent, mro-wkii.17.24): Rope consumes the same validated
-        # production roots and exclusions as every source scanner.
+        # mro-wkii.17.26 (codex): one Rope project indexes every declared
+        # consumer surface across the enclosing workspace.
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
             for project_root in project_roots
-            for dir_name in config.Infra.source_scan.roots
+            for dir_name in config.Infra.rope_index.roots
             if (scan_path := project_root / dir_name).is_dir()
             and scan_path.resolve().is_relative_to(resolved_root)
         })
@@ -63,7 +63,7 @@ class FlextInfraUtilitiesRopeCore(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
-                ignored_resources=sorted(config.Infra.source_scan.ignored_resources),
+                ignored_resources=sorted(config.Infra.rope_index.ignored_resources),
                 source_folders=source_folders,
             )
 
