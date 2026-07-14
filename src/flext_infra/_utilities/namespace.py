@@ -229,12 +229,12 @@ class FlextInfraUtilitiesCodegenNamespace:
         expected_alias: str | None,
         expected_family: str | None,
         settings: m.Infra.LazyInitConfig,
-    ) -> tuple[bool, bool, bool, bool, bool, bool, bool, bool, str | None]:
+    ) -> tuple[bool, bool, bool, bool, bool, bool, str | None]:
         """Return all is_* booleans and resolved surface_name.
 
         Returns: (is_fixture_module, is_family_module, is_family_package,
-                  is_services_module, is_services_package, is_namespace_file,
-                  is_root_namespace, is_governed_namespace, resolved expected_alias)
+                  is_services_module, is_root_namespace, is_governed_namespace,
+                  resolved expected_alias)
         """
         package_depth = len(package_parts)
         is_fixture_module = file_path.parent.name == "_fixtures"
@@ -246,7 +246,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             part in family_dir_values for part in package_parts
         )
         is_services_module = "services" in resolved_rel_path.parts
-        is_services_package = "services" in package_parts
         runtime_singleton_export = (
             cls.runtime_singleton_export(resolved_rel_path.name)
             if len(resolved_rel_path.parts) == 1 and package_depth <= 1
@@ -278,8 +277,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             is_family_module,
             is_family_package,
             is_services_module,
-            is_services_package,
-            is_namespace_file,
             is_root_namespace,
             is_governed_namespace,
             resolved_alias,
@@ -326,8 +323,6 @@ class FlextInfraUtilitiesCodegenNamespace:
             is_family_module,
             is_family_package,
             is_services_module,
-            is_services_package,
-            is_namespace_file,
             is_root_namespace,
             is_governed_namespace,
             expected_alias,
@@ -344,6 +339,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         surface_name = package_parts[0] if package_parts else ""
         if surface_name not in settings.surface_prefixes:
             surface_name = "src"
+        # mro-wkii.17.26 (codex): pytest's validated collection patterns define
+        # implementation modules; their module-local __all__ is not package ABI.
+        normalized_test_path = resolved_rel_path.with_name(
+            resolved_rel_path.name.removeprefix("_")
+        )
+        is_pytest_module = any(
+            normalized_test_path.match(pattern)
+            for pattern in config.Infra.tooling.tools.pytest.python_files
+        )
 
         enforce_contract = (
             is_fixture_module
@@ -352,26 +356,20 @@ class FlextInfraUtilitiesCodegenNamespace:
             or is_governed_namespace
             or is_root_namespace
         )
-        export_symbols = (
-            surface_name == "src"
-            or is_fixture_module
-            or is_family_module
-            or is_family_package
-            or is_services_module
-            or is_services_package
-            or is_namespace_file
-            or is_root_namespace
-        )
+        export_symbols = not is_pytest_module
         is_private_module = file_path.stem.startswith("_")
         is_private_package = file_path.parent.name.startswith("_")
-        include_in_lazy_init = not file_path.stem[:1].isdigit() and (
-            not is_private_module
-            or is_fixture_module
-            or is_family_package
-            or is_root_namespace
-            # mro-wkii.17.26 (Codex): private packages own their valid direct
-            # implementation siblings; numeric module names remain forbidden.
-            or is_private_package
+        include_in_lazy_init = not is_pytest_module and (
+            not file_path.stem[:1].isdigit()
+            and (
+                not is_private_module
+                or is_fixture_module
+                or is_family_package
+                or is_root_namespace
+                # mro-wkii.17.26 (Codex): private packages own their valid direct
+                # implementation siblings; numeric module names remain forbidden.
+                or is_private_package
+            )
         )
         type_checking_imports = tuple(
             name

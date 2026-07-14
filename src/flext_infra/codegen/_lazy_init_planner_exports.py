@@ -51,12 +51,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            # mro-pulj: test artifacts never enter an installable package ABI.
-            test_only_source_module = (
-                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
-                is not None
-            )
             generated_support_module = (
                 py_file.name in skip_names
                 or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name) is not None
@@ -65,17 +59,17 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             shadowed_by_package = child_entry is not None and bool(
                 child_entry.package_name
             )
-            if (
-                generated_support_module
-                or test_only_source_module
-                or shadowed_by_package
-            ):
+            if generated_support_module or shadowed_by_package:
                 continue
             convention = self.rope_workspace.convention(
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
             if not policy.include_in_lazy_init or not module_entry.module_name:
+                continue
+            # mro-wkii.17.26 (codex): the declarative namespace policy owns
+            # package ABI; do not rediscover symbols it classified as private.
+            if not policy.export_symbols:
                 continue
             require_explicit_all = (
                 u.Infra.matches_root_namespace_file(py_file.name)
@@ -111,12 +105,6 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     policy.expected_alias,
                     (module_entry.module_name, policy.expected_alias),
                 )
-            if not targets and (
-                not policy.export_symbols
-                or (not policy.enforce_contract and "." in context.current_pkg)
-            ):
-                self._add(index, py_file.stem, (module_entry.module_name, ""))
-                continue
             for name, target in targets.items():
                 self._add(index, name, target)
         return index

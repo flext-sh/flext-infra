@@ -37,10 +37,6 @@ class FlextInfraConstantsCodegenLazy:
         "_root_typing_parts",
     })
     "Closed set of retired root registry module and package names."
-    TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
-    )
-    "Test-module filenames forbidden from installable package export maps."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
     # mro-wkii.17.26 (codex): cleanup owns every retired generated init artifact.
