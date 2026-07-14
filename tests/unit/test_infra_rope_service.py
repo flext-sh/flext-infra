@@ -218,8 +218,7 @@ class TestsFlextInfraInfraRopeService:
         )
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             tm.that(
-                any(entry.file_path == module_path for entry in rope.modules()),
-                eq=True,
+                any(entry.file_path == module_path for entry in rope.modules()), eq=True
             )
             tm.that(rope.source(module_path), has="class FlextDemoModels")
             objects = {
