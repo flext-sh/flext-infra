@@ -88,7 +88,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="constants.py")
     tm.that(modified_str, contains="typings.py")
-    tm.that(len(result.files_modified) >= 2, eq=True)
+    tm.that(result.files_modified, length_gte=2)
 
 
 __all__: t.StrSequence = []

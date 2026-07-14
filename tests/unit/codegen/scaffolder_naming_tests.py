@@ -69,7 +69,10 @@ def _project_info(
 
 
 class TestGeneratedFilesAreValidPython:
+    """Generated source and test modules compile as Python."""
+
     def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every generated source facade module."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
@@ -79,6 +82,7 @@ class TestGeneratedFilesAreValidPython:
         _validate_modules_parse(pkg, u.Tests.src_module_files())
 
     def test_generated_tests_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every generated test facade module."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=True
         )
@@ -90,7 +94,10 @@ class TestGeneratedFilesAreValidPython:
 
 
 class TestGeneratedClassNamingConvention:
+    """Generated class names follow the canonical prefix and suffix contract."""
+
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
+        """Use the project prefix on generated source facade classes."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=False
         )
@@ -109,6 +116,7 @@ class TestGeneratedClassNamingConvention:
         )
 
     def test_tests_class_names_use_tests_prefix_suffix(self, tmp_path: Path) -> None:
+        """Use the Tests prefix on generated test facade classes."""
         project = u.Tests.create_scaffolder_test_project(
             tmp_path=tmp_path, with_all_modules=True
         )
@@ -128,6 +136,7 @@ class TestGeneratedClassNamingConvention:
         )
 
     def test_no_prefix_returns_empty_result(self, tmp_path: Path) -> None:
+        """Skip generation when no package prefix is available."""
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()
