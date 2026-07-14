@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import m, u
+from flext_infra import m, r, u
 from flext_infra.docs._auditor_checks import FlextInfraDocAuditorChecksMixin
 from flext_infra.docs._auditor_report import FlextInfraDocAuditorReportMixin
 from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
@@ -53,11 +53,16 @@ class FlextInfraDocAuditor(
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
         resolved_params = self._audit_params(workspace_root, params)
+        if resolved_params.failure:
+            return r.fail(
+                resolved_params.error or "audit parameter resolution failed",
+                error_code=resolved_params.error_code,
+            )
         return self.run_scoped_docs(
             workspace_root,
             projects=projects,
             output_dir=output_dir,
-            handler=lambda scope: self.audit_scope(scope, params=resolved_params),
+            handler=lambda scope: self.audit_scope(scope, params=resolved_params.value),
         )
 
     def audit_scope(
@@ -115,24 +120,32 @@ class FlextInfraDocAuditor(
 
     def _audit_params(
         self, workspace_root: Path, params: m.Infra.AuditScopeParams | None
-    ) -> m.Infra.AuditScopeParams:
+    ) -> p.Result[m.Infra.AuditScopeParams]:
         """Resolve runtime audit parameters and load default budgets when absent."""
         if params is not None and params.budgets is not None:
-            return params
-        budgets = self.load_audit_budgets(workspace_root)
+            return r[m.Infra.AuditScopeParams].ok(params)
+        budgets_result = self.load_audit_budgets(workspace_root)
+        if budgets_result.failure:
+            return r[m.Infra.AuditScopeParams].fail(
+                budgets_result.error or "audit budget resolution failed",
+                error_code=budgets_result.error_code,
+            )
+        budgets = budgets_result.value
         if params is None:
-            return m.Infra.AuditScopeParams(
+            resolved = m.Infra.AuditScopeParams(
                 check="all",
                 strict=self.strict_mode,
                 docstring_min=self.docstring_min,
                 budgets=budgets,
             )
-        return m.Infra.AuditScopeParams(
-            check=params.check,
-            strict=params.strict,
-            docstring_min=params.docstring_min,
-            budgets=budgets,
-        )
+        else:
+            resolved = m.Infra.AuditScopeParams(
+                check=params.check,
+                strict=params.strict,
+                docstring_min=params.docstring_min,
+                budgets=budgets,
+            )
+        return r[m.Infra.AuditScopeParams].ok(resolved)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.detectors.pattern_smell_detector import FlextInfraPatternSmellDetector
+from flext_infra import config, u
 from tests import m
 from flext_tests import tm
 
@@ -23,9 +23,7 @@ class TestsFlextInfraPatternSmellDetector:
 
     @staticmethod
     def _kinds(file_path: Path, rope_project: t.Infra.RopeProject) -> set[str]:
-        violations = FlextInfraPatternSmellDetector.detect_file(
-            m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project)
-        )
+        violations = u.Infra.detect_static_rules(m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project), config.Infra.enforcement.rules)
         return {v.kind for v in violations}
 
     def test_detects_typing_list_import(
@@ -101,11 +99,9 @@ class TestsFlextInfraPatternSmellDetector:
             "from __future__ import annotations\nfrom pydantic import BaseModel\n",
             encoding="utf-8",
         )
-        violations = FlextInfraPatternSmellDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=sample, rope_project=rope_project, project_name="flext-core"
-            )
-        )
+        violations = u.Infra.detect_static_rules(m.Infra.DetectorContext(
+            file_path=sample, rope_project=rope_project, project_name="flext-core"
+        ), config.Infra.enforcement.rules)
         assert not any(v.kind == "direct_pydantic_import" for v in violations)
 
     def test_detects_owned_library_in_consumer_project(
@@ -116,11 +112,9 @@ class TestsFlextInfraPatternSmellDetector:
             "from __future__ import annotations\nfrom pydantic import BaseModel\n",
             encoding="utf-8",
         )
-        violations = FlextInfraPatternSmellDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=sample,
-                rope_project=rope_project,
-                project_name="flext-target-ldap",
-            )
-        )
+        violations = u.Infra.detect_static_rules(m.Infra.DetectorContext(
+            file_path=sample,
+            rope_project=rope_project,
+            project_name="flext-target-ldap",
+        ), config.Infra.enforcement.rules)
         assert any(v.kind == "direct_pydantic_import" for v in violations)

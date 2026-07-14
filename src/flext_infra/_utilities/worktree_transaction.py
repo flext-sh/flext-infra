@@ -149,6 +149,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return {
             c.Infra.WORKTREE_TRANSACTION_ENV: "1",
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: python_path,
+            c.Infra.ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: "1",
         }
 
     @staticmethod
@@ -225,7 +226,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _import_probe(
         cls, worktree_root: Path, environment: t.StrMapping, timeout_seconds: int
-    ) -> m.Cli.CommandOutput:
+    ) -> p.Cli.CommandOutput:
         """Fresh-import every productive package root in one isolated process."""
         packages = tuple(
             sorted({

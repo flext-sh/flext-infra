@@ -14,6 +14,7 @@ from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c
 from tests import m
 from tests import t
+from tests import u
 
 if TYPE_CHECKING:
     from tests import p
@@ -193,6 +194,7 @@ class TestsFlextInfraWorkspaceMain:
     def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
+        u.Tests.initialize_git_repo(project_root)
 
         exit_code = workspace_main([
             "sync",

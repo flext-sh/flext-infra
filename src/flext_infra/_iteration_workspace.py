@@ -34,6 +34,13 @@ class FlextInfraUtilitiesIterationWorkspace:
             Failure if: workspace inaccessible, discovery fails, or OSError.
 
         """
+        invalid_root = next(
+            (root for root in request.project_roots if not root.is_dir()), None
+        )
+        if invalid_root is not None:
+            return r[t.SequenceOf[Path]].fail(
+                f"python file iteration failed: project root is not a directory: {invalid_root}"
+            )
         try:
             # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): the scanner
             # consumes one exact request and the validated config singleton;

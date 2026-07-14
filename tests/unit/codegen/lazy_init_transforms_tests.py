@@ -47,6 +47,48 @@ class TestsFlextInfraLazyInitTransforms:
         tm.that(init_content, lacks="install_lazy_exports(")
         tm.that(init_content, lacks="__unit__")
 
+    def test_source_packages_exclude_test_named_modules(self, tmp_path: Path) -> None:
+        """Never publish test artifacts from an installable source package."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        models_dir = package_root / "_models"
+        models_dir.mkdir()
+        (models_dir / c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        (models_dir / "model.py").write_text(
+            "from __future__ import annotations\n\n"
+            "class FlextDemoModel:\n"
+            "    pass\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        test_modules = (
+            ("_test_tmp.py", "PrivateTestArtifact"),
+            ("test_fixture.py", "PrefixedTestArtifact"),
+            ("model_tests.py", "SuffixedTestArtifact"),
+        )
+        for filename, class_name in test_modules:
+            (models_dir / filename).write_text(
+                "from __future__ import annotations\n\n"
+                f"class {class_name}:\n"
+                "    pass\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        result = u.Tests.run_lazy_init(workspace_root)
+        init_content = (models_dir / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        tm.that(result, eq=0)
+        tm.that(init_content, has="FlextDemoModel")
+        for _filename, class_name in test_modules:
+            tm.that(init_content, lacks=class_name)
+        tm.that(init_content, lacks="_test_tmp")
+        tm.that(init_content, lacks="test_fixture")
+        tm.that(init_content, lacks="model_tests")
+
     def test_version_exports_are_explicit_runtime_reexports(
         self, tmp_path: Path
     ) -> None:

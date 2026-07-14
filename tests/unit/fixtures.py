@@ -155,6 +155,8 @@ def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
     _ = u.Tests.mk_project(
         modernizer_workspace, "ignored", pyproject=_modernizer_pyproject("ignored")
     )
+    # FLEXT: public modernizer commands fail loud outside a real Git workspace.
+    u.Tests.initialize_git_repo(modernizer_workspace)
     return modernizer_workspace
 
 
@@ -205,7 +207,7 @@ def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
         encoding="utf-8",
     )
 
-    rope_project = u.Infra.init_rope_project(workspace_root, project_prefix="__never__")
+    rope_project = u.Infra.init_rope_project(workspace_root)
     return rope_project, workspace_root
 
 

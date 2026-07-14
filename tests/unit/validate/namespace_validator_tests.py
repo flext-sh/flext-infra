@@ -65,7 +65,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_valid.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
@@ -99,7 +99,7 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(add_result)
         tm.that(add_result.value.exit_code, eq=0)
 
-        result = validator.validate_project(project_root, scan_tests=False)
+        result = validator.validate_project(project_root)
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
@@ -112,7 +112,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_multiple_classes.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -127,7 +127,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_no_class.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -141,7 +141,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_wrong_prefix.py"),
             module_name="constants.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -159,7 +159,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_loose_items.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -176,7 +176,7 @@ class TestFlextInfraNamespaceValidator:
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="constants.py"
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
@@ -187,7 +187,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule1_loose_constant.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -201,7 +201,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule1_loose_enum.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -216,7 +216,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule1_method_in_constants.py"),
             module_name="constants.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -234,7 +234,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule1_magic_number.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -248,7 +248,7 @@ class TestFlextInfraNamespaceValidator:
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name="typings.py"
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
 
@@ -288,7 +288,7 @@ class TestFlextInfraNamespaceValidator:
         root = _make_project_with_module(
             tmp_path, module_source=module_source, module_name=module_name
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.ok(result)
         tm.that(result.value.passed, eq=False)
         tm.that(
@@ -315,7 +315,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_name="utilities.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
@@ -334,7 +334,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
@@ -353,7 +353,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_name="api.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -370,7 +370,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule2_typevar_in_class.py"),
             module_name="typings.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -385,7 +385,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule2_typevar_wrong_module.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -403,7 +403,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule2_composite_type_loose.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -421,7 +421,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule2_protocol_in_types.py"),
             module_name="typings.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
@@ -446,7 +446,7 @@ class TestFlextInfraNamespaceValidator:
         _ = (package_dir / "_private.py").write_text(
             _read_fixture("rule0_no_class.py"), encoding="utf-8"
         )
-        result = validator.validate_project(project_root, scan_tests=False)
+        result = validator.validate_project(project_root)
         tm.that(result.success, eq=True)
         tm.that(result.value.passed, eq=True)
         tm.that(result.value.violations, empty=True)
@@ -459,7 +459,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_valid.py"),
             module_name="constants.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(result.value, is_=m.Infra.ValidationReport)
         tm.that(result.value.summary, has="files checked")
@@ -471,7 +471,7 @@ class TestFlextInfraNamespaceValidator:
             module_source=_read_fixture("rule0_no_class.py"),
             module_name="models.py",
         )
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
         tm.that(result.success, eq=True)
         tm.that(len(result.value.violations), gt=0)
         first = result.value.violations[0]
@@ -491,7 +491,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -514,7 +514,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_name="models.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -540,7 +540,7 @@ class TestFlextInfraNamespaceValidator:
             tmp_path, module_source=module_source, module_path="_constants/sample.py"
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -564,7 +564,7 @@ class TestFlextInfraNamespaceValidator:
             module_path="_typings/typeadapters.py",
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(
@@ -591,7 +591,7 @@ class TestFlextInfraNamespaceValidator:
             module_path="_utilities/private_runtime.py",
         )
 
-        result = validator.validate_project(root, scan_tests=False)
+        result = validator.validate_project(root)
 
         tm.ok(result)
         tm.that(

@@ -28,6 +28,10 @@ class FlextInfraConstantsCodegenLazy:
     "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
     "``_lazy_exports.py``); these reserved names are superseded by the inline "
     "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
+    TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
+    )
+    "Test-module filenames forbidden from installable package export maps."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
     # mro-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.

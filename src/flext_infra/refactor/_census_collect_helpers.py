@@ -65,7 +65,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         """Decide whether to collect object references."""
         if rule_names is None:
             return True
-        return bool({"unused", "test_only"} & set(rule_names))
+        return "unused" in rule_names
 
     @classmethod
     def _should_collect_object_inventory(

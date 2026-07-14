@@ -7,10 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import flext_infra as infra_pkg
-from flext_infra import m, u
+from flext_infra import u
 from flext_tests import tm
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class TestsFlextInfraInfraVersionCore:
@@ -20,13 +24,15 @@ class TestsFlextInfraInfraVersionCore:
     def _project_root() -> Path:
         return Path(__file__).resolve().parents[2]
 
-    def _runtime_constants(self) -> m.ProjectConstants:
-        return u.read_project_constants(infra_pkg.__title__, root=self._project_root())
+    def _metadata(self) -> p.ProjectMetadata:
+        metadata_result = u.read_project_metadata(self._project_root())
+        tm.ok(metadata_result)
+        return metadata_result.value
 
     def test_package_version_matches_project_metadata(self) -> None:
-        constants = self._runtime_constants()
+        metadata = self._metadata()
 
-        tm.that(infra_pkg.__version__, eq=constants.PACKAGE_VERSION)
+        tm.that(infra_pkg.__version__, eq=metadata.project.version)
 
     def test_package_version_info_matches_current_workspace_semver_prefix(self) -> None:
         version_result = u.Infra.current_workspace_version(self._project_root())

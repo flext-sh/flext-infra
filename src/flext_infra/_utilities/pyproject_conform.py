@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
@@ -219,11 +220,11 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         normalized_environments: t.JsonValueList = []
         for index, environment in enumerate(raw_environments):
-            mapping = u.Cli.json_as_mapping(environment)
-            if mapping is None:
+            if not isinstance(environment, Mapping):
                 return r[bool].fail(
                     f"tool.pyright.executionEnvironments[{index}] must be a mapping"
                 )
+            mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(environment)
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]

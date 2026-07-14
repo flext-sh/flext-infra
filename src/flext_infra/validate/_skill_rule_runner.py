@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t, p
 
 
 class FlextInfraSkillRuleRunnerMixin:
@@ -81,7 +81,7 @@ class FlextInfraSkillRuleRunnerMixin:
         )
         if result_wrapper.failure:
             return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
             return 0
         count = 0
@@ -139,7 +139,7 @@ class FlextInfraSkillRuleRunnerMixin:
         )
         if result_wrapper.failure:
             return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)

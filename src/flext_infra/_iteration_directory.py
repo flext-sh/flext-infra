@@ -35,11 +35,14 @@ class FlextInfraUtilitiesIterationDirectory:
             does not exist.
 
         """
-        if not directory.is_dir():
+        resolved_directory = directory.resolve()
+        if not resolved_directory.is_dir():
             return []
-        tracked_files = FlextInfraUtilitiesGitScope.git_tracked_scope_paths(directory)
+        tracked_files = FlextInfraUtilitiesGitScope.git_tracked_scope_paths(
+            resolved_directory
+        )
         files = (
-            sorted(directory.rglob(c.Infra.EXT_PYTHON_GLOB))
+            sorted(resolved_directory.rglob(c.Infra.EXT_PYTHON_GLOB))
             if tracked_files is None
             else [
                 file_path
@@ -48,14 +51,14 @@ class FlextInfraUtilitiesIterationDirectory:
             ]
         )
         # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): exclusion is read
-        # directly from the validated config singleton before consumers see files.
+        # directly from validated config and applies below the explicit scan boundary.
         return [
             file_path
             for file_path in files
             if file_path.is_file()
             and file_path.suffixes == [c.Infra.EXT_PYTHON]
             and not config.Infra.source_scan.ignored_resources.intersection(
-                file_path.parts
+                file_path.relative_to(resolved_directory).parts
             )
         ]
 

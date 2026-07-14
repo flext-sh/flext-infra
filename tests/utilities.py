@@ -465,7 +465,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_dir.mkdir(parents=True, exist_ok=True)
             (project_dir / "pyproject.toml").write_text(pyproject, encoding="utf-8")
             if with_src:
-                (project_dir / "src").mkdir(exist_ok=True)
+                package_dir = project_dir / "src" / name.replace("-", "_")
+                package_dir.mkdir(parents=True, exist_ok=True)
+                # FLEXT: with_src means a discoverable package, not an empty marker.
+                (package_dir / "__init__.py").write_text("", encoding="utf-8")
             if with_git:
                 (project_dir / ".git").mkdir(exist_ok=True)
             return project_dir

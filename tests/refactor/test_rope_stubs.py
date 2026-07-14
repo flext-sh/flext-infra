@@ -16,7 +16,7 @@ class TestsFlextInfraRefactorRopeStubs:
 
     def test_rope_project_wrapper(self, tmp_path: Path) -> None:
         """Confirm the Rope project wrapper creates a live project."""
-        project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+        project = u.Infra.init_rope_project(tmp_path)
         tm.that(project, none=False)
         try:
             assert project.root.real_path
@@ -30,7 +30,7 @@ class TestsFlextInfraRefactorRopeStubs:
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         target = package_dir / "mod.py"
         target.write_text("class Demo:\n    pass\n\nvalue = Demo()\n", encoding="utf-8")
-        project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+        project = u.Infra.init_rope_project(tmp_path)
         tm.that(project, none=False)
         try:
             resource = u.Infra.get_resource_from_path(project, target)

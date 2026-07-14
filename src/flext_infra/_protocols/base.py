@@ -12,8 +12,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from flext_core import p
-    from flext_infra import m, t
+    from flext_infra import t
+    from flext_cli import p
+    from flext_infra import m
 
 
 @runtime_checkable
@@ -343,7 +344,7 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> p.Result[m.Cli.CommandOutput]:
+        ) -> p.Result[p.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
@@ -386,7 +387,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 

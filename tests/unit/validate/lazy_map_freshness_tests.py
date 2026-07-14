@@ -64,8 +64,10 @@ class TestLazyMapFreshnessValidatorCore:
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "services.py", class_name="FlextTestsServices", alias="s"
+        init_path = package_root / "__init__.py"
+        init_path.write_text(
+            f"{init_path.read_text(encoding='utf-8')}\n# stale generated drift\n",
+            encoding="utf-8",
         )
 
         report: m.Infra.ValidationReport = tm.ok(v.build_report(workspace_root))

@@ -193,7 +193,6 @@ class FlextInfraRefactorCensusCollectMixin(
             fixes_total=sum(len(report.fixes) for report in project_reports),
             duplicates=duplicates,
             unused_count=sum(report.unused_count for report in project_reports),
-            test_only_count=sum(report.test_only_count for report in project_reports),
             removal_candidate_count=sum(
                 report.removal_candidate_count for report in project_reports
             ),

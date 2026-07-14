@@ -100,6 +100,21 @@ class FlextInfraCli(type(cli_facade)):
         )
 
     @staticmethod
+    def _transaction_check_requested(route_key: str, args: t.StrSequence) -> bool:
+        """Return whether the outer invocation requires a zero-delta check."""
+        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
+            return any(argument in {"--check", "--check-only"} for argument in args)
+        return any(
+            argument == "--mode=check"
+            or (
+                argument == "--mode"
+                and index + 1 < len(args)
+                and args[index + 1] == "check"
+            )
+            for index, argument in enumerate(args)
+        )
+
+    @staticmethod
     def _transaction_inner_args(route_key: str, args: t.StrSequence) -> t.StrSequence:
         """Force the isolated invocation to materialize its complete patch."""
         normalized: t.MutableSequenceOf[str] = []
@@ -169,13 +184,22 @@ class FlextInfraCli(type(cli_facade)):
             return 1
         report = result.value
         rendered = u.Infra.render_worktree_transaction_report(report)
+        check_failed = self._transaction_check_requested(route_key, args) and any(
+            repository.patch for repository in report.repositories
+        )
+        if check_failed:
+            rendered = f"{rendered}\npending changes detected"
         message_type = (
             c.Cli.MessageTypes.ERROR
-            if report.breakage_detected
+            if report.breakage_detected or check_failed
             else c.Cli.MessageTypes.INFO
         )
         self.display_message(rendered, message_type)
-        if report.breakage_detected or (apply_requested and not report.applied):
+        if (
+            report.breakage_detected
+            or check_failed
+            or (apply_requested and not report.applied)
+        ):
             return 1
         return 0
 

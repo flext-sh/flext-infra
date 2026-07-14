@@ -286,7 +286,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         )
         output = ""
         if result.success:
-            cmd_output: m.Cli.CommandOutput = result.value
+            cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         return sorted({
             m.group(1).strip()
@@ -311,7 +311,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         )
         output = ""
         if result.success:
-            cmd_output: m.Cli.CommandOutput = result.value
+            cmd_output: p.Cli.CommandOutput = result.value
             output = cmd_output.stdout
         seen: t.Infra.StrSet = set()
         ordered: t.MutableSequenceOf[str] = []

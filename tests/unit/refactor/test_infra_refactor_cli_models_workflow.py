@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
 from flext_tests import tm
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,14 +20,15 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_namespace_enforce_cli_fails_on_manual_protocol_violation(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-project"
-        module_dir = project / "src" / "sample_pkg"
-        module_dir.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject="[project]\nname='sample'\n",
+            with_src=True,
         )
-        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        module_dir = workspace / "src" / "sample_pkg"
+        module_dir.mkdir(parents=True)
+        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (module_dir / "service.py").write_text(
             "from __future__ import annotations\n"
             "from typing import Protocol\n\n"
@@ -35,6 +37,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "        ...\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(workspace)
         buffer = StringIO()
         cli_args = ["namespace-enforce", f"--workspace={workspace!s}", "--dry-run"]
         with redirect_stdout(buffer):
@@ -42,15 +45,16 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(result, ne=0)
 
     def test_wrapper_root_namespace_cli_dry_run_succeeds(self, tmp_path: Path) -> None:
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-project"
-        tests_dir = project / "tests" / "unit"
-        tests_dir.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject="[project]\nname='sample'\n",
+            with_src=True,
         )
-        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        source_file = tests_dir / "test_sample.py"
+        scripts_dir = workspace / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        source_file = scripts_dir / "sample.py"
         source_file.write_text(
             "from tests import c\n"
             "\n"
@@ -58,6 +62,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "    _ = c.Core.Tests.ERR_OK_FAILED\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(workspace)
 
         with redirect_stdout(StringIO()):
             result = infra_main([
@@ -73,21 +78,23 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_wrapper_root_namespace_cli_check_fails_when_changes_are_needed(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-project"
-        tests_dir = project / "tests" / "unit"
-        tests_dir.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject="[project]\nname='sample'\n",
+            with_src=True,
         )
-        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        (tests_dir / "test_sample.py").write_text(
+        scripts_dir = workspace / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        (scripts_dir / "sample.py").write_text(
             "from tests import m\n"
             "\n"
             "def test_contract() -> None:\n"
             "    _ = m.Core.Tests.Testobject\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(workspace)
 
         result = infra_main([
             "refactor",
@@ -101,15 +108,16 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     def test_wrapper_root_namespace_cli_apply_rewrites_file(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-project"
-        tests_dir = project / "tests" / "unit"
-        tests_dir.mkdir(parents=True)
-        (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "workspace",
+            pyproject="[project]\nname='sample'\n",
+            with_src=True,
         )
-        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        source_file = tests_dir / "test_sample.py"
+        scripts_dir = workspace / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (workspace / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        source_file = scripts_dir / "sample.py"
         source_file.write_text(
             "from tests import t\n"
             "\n"
@@ -117,6 +125,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             "    _ = t.Core.Tests.Testobject\n",
             encoding="utf-8",
         )
+        u.Tests.initialize_git_repo(workspace)
 
         result = infra_main([
             "refactor",
@@ -130,3 +139,4 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(updated, has="from tests import t")
         tm.that(updated, has="t.Tests.Testobject")
         tm.that(updated, lacks="Core.Tests")
+        tm.that((workspace / "src" / "workspace" / "__pycache__").exists(), eq=False)

@@ -22,7 +22,7 @@ from flext_infra.transformers.project_alias_migrator import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra import t, p
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):
@@ -248,7 +248,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: m.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx
