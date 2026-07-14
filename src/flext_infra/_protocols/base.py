@@ -86,6 +86,21 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def distribution(self) -> str:
+            """Python distribution name."""
+            ...
+
+        @property
+        def url(self) -> str:
+            """Canonical Git URL."""
+            ...
+
+        @property
+        def branch(self) -> str:
+            """Canonical Git branch."""
+            ...
+
+        @property
         def path(self) -> Path:
             """Repository path relative to its workspace root."""
             ...
@@ -107,6 +122,20 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def members(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Attached workspace member repositories."""
+            ...
+
+        @property
+        def content_only(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+            """Declared content-only repositories."""
+            ...
+
+    @runtime_checkable
+    class ToolchainSpec(Protocol):
+        """Toolchain fields consumed by pyproject conformance."""
+
+        @property
+        def uv_required_version(self) -> str:
+            """Required uv version expression."""
             ...
 
     @classmethod

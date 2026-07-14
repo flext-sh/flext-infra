@@ -426,6 +426,10 @@ class FlextInfraModelsDepsToolSettings(
         ruff_src: Annotated[
             t.StrTuple, m.Field(description="Resolved Ruff source roots")
         ]
+        ruff_ignore: Annotated[
+            t.StrTuple,
+            m.Field(description="Resolved ordinary and justified Ruff ignores"),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolSettings"]

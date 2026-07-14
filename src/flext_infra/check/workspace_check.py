@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import shlex
-from typing import TYPE_CHECKING, override
+from typing import override
 
-from flext_core import r
-from flext_infra import c, m, t, u
-from flext_infra.base import s
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -16,10 +14,7 @@ from flext_infra.check.workspace_check_gates import (
     FlextInfraWorkspaceCheckGatesMixin,
 )
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
+from pathlib import Path
 
 
 class FlextInfraWorkspaceChecker(

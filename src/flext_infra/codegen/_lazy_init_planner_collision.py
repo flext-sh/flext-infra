@@ -13,12 +13,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
-    if TYPE_CHECKING:
-        rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
-        _collision_count: int
+    rope_workspace: p.Infra.RopeWorkspaceDsl
+    lazy_init: m.Infra.LazyInitConfig
+    _collision_count: int
 
-        def _module_file(self, module_path: str) -> Path | None: ...
+    def _module_file(self, module_path: str) -> Path | None: ...
 
     def _target_score(self, name: str, target: t.StrPair) -> int:
         """Score a candidate export target to break collision ties."""

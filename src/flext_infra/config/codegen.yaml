@@ -92,6 +92,11 @@ Infra:
         allow_help_declarations: false
 
     managed_files:
+      # NOTE(mro-p68a.5, agent codex): existing repositories consume the same
+      # declarative template ownership as new-project scaffolds.
+      - path: .gitignore
+        owner: codegen
+        overwrite: true
       - path: .gitmodules
         owner: codegen
         overwrite: true

@@ -68,6 +68,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=resolved_root,
         )
         if superproject.failure:
+            # NOTE(mro-p68a.5, agent codex): codegen new emits a validated local
+            # manifest before Git initialization; an existing .git still fails closed.
+            if (
+                not (resolved_root / c.Infra.GIT_DIR).exists()
+                and FlextInfraWorkspaceDetector._manifest_path(resolved_root).is_file()
+            ):
+                return r[Path].ok(resolved_root)
             return r[Path].fail(
                 superproject.error or "unable to resolve Git superproject"
             )

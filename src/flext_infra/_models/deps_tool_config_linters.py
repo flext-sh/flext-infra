@@ -128,11 +128,6 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
 
-        @property
-        def effective_ignore(self) -> t.StrSequence:
-            """Ordinary and evidence-backed global ignores as one SSOT view."""
-            return tuple(sorted({*self.ignore, *self.ignored_rule_rationales}))
-
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 

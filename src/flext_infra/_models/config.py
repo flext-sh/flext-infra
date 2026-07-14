@@ -408,6 +408,10 @@ class FlextInfraConfigModels:
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Python import package name")
         ]
+        packaged_data_dirs: Annotated[
+            t.StrSequence,
+            m.Field(description="Generated root data directories shipped in wheels"),
+        ]
         class_stem: Annotated[
             t.NonEmptyStr, m.Field(description="Public facade class stem")
         ]

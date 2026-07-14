@@ -103,8 +103,31 @@ pep621_dev_dependency_groups = [
 {% endfor %}
 ]
 
+[tool.flext.docs]
+package_name = {{ package_name | tojson }}
+
 [tool.hatch.metadata]
 allow-direct-references = {{ tooling.tools.hatch.allow_direct_references | lower }}
+{% if make_profile != "workspace-root" %}
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ package_name }}"]
+{% if packaged_data_dirs %}
+
+[tool.hatch.build.targets.wheel.force-include]
+{% for data_dir in packaged_data_dirs %}
+{{ data_dir | tojson }} = {{ (package_name ~ "/" ~ data_dir) | tojson }}
+{% endfor %}
+{% endif %}
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "src/{{ package_name }}",
+{% for data_dir in packaged_data_dirs %}
+  {{ data_dir | tojson }},
+{% endfor %}
+]
+{% endif %}
 
 [tool.mypy]
 # FLEXT mypy suppression rationale (validated at the facade-MRO boundary):
@@ -302,7 +325,7 @@ skip-magic-trailing-comma = {{ tooling.tools.ruff.format.skip_magic_trailing_com
 # FLEXT ruff[{{ code }}]: {{ rationale }}
 {% endfor %}
 ignore = [
-{% for item in tooling.tools.ruff.lint.effective_ignore | sort %}
+{% for item in tooling_runtime.ruff_ignore | sort %}
   {{ item | tojson }},
 {% endfor %}
 ]

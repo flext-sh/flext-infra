@@ -198,8 +198,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     root=repository_root,
                     repository=repository,
                     workspace_root=workspace_root,
+                    repository=repository,
                     workspace=workspace,
-                    config=config_spec,
+                    codegen=config_spec,
                 )
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -299,13 +300,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"active repository has no Make profile: {repository.name}"
             )
+        project = workspace.project
+        if project is None:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                f"scaffold workspace has no project metadata: {workspace.name}"
+            )
         profile = c.Infra.MakeProfile(repository.profile)
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         # mro-j47u (codex): new and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=root, skip_check=True)
+        # NOTE(mro-p68a.5, agent codex): a declared member consumes its parent
+        # tooling profile even before the atomic scaffold creates files on disk.
+        tooling_root = (
+            root.parent if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else root
+        )
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=tooling_root, skip_check=True
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
+            package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=(
                 config.Infra.tooling.tools.pyright.path_rules.source_dir,
@@ -435,19 +449,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        tooling_conform = modernizer.conform_source(
+        initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
             declared_python_dirs=(
                 config.Infra.tooling.tools.pyright.path_rules.source_dir,
             ),
         )
-        if tooling_conform.failure:
+        if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                tooling_conform.error or f"tooling conform failed: {pyproject}"
+                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
+            )
+        prepared_result = u.Infra.pyproject_conform(
+            initial_tooling.value,
+            repositories=codegen.repositories,
+            workspace=workspace,
+            toolchain=codegen.toolchain,
+        )
+        if prepared_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                prepared_result.error or f"pyproject prepare failed: {pyproject}"
+            )
+        final_tooling = modernizer.conform_source(
+            prepared_result.value,
+            path=pyproject,
+            declared_python_dirs=(
+                config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            ),
+        )
+        if final_tooling.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                final_tooling.error or f"final tooling conform failed: {pyproject}"
             )
         pyproject_result = u.Infra.pyproject_conform(
-            tooling_conform.value,
+            final_tooling.value,
             repositories=codegen.repositories,
             workspace=workspace,
             toolchain=codegen.toolchain,
@@ -480,10 +515,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         repository: m.Infra.RepositoryRef,
         workspace_root: Path,
+        repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
-        config: m.Infra.CodegenConfigSpec,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Conform existing typed surfaces without accessing scaffold templates."""
+        """Conform every declared managed surface in an existing repository."""
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -505,7 +541,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         resources = (*config.scaffold.resources, *project_resources)
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
-            repositories=config.repositories,
+            repositories=codegen.repositories,
             workspace=workspace,
             toolchain=config.toolchain,
             build=config.scaffold.build,
@@ -520,6 +556,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        tooling_context = modernizer.resolve_tooling_context(
+            project_name=repository.distribution,
+            package_name=u.Infra.project_package_name(root),
+            path=pyproject,
+            declared_python_dirs=(
+                config.Infra.tooling.tools.pyright.path_rules.source_dir,
+            ),
+        )
+        if tooling_context.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                tooling_context.error or f"tooling render failed: {pyproject}"
+            )
         # NOTE (multi-agent, mro-45r9): dependency-derived tooling consumes the
         # canonical groups first; the final pass restores the Git-source contract.
         tooling_result = modernizer.conform_source(
@@ -538,7 +586,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         pyproject_result = u.Infra.pyproject_conform(
             tooling_result.value,
-            repositories=config.repositories,
+            repositories=codegen.repositories,
             workspace=workspace,
             toolchain=config.toolchain,
             build=config.scaffold.build,
@@ -564,6 +612,66 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 custom_result.error or f"custom Make validation failed: {root}"
             )
         planned.extend(custom_result.value)
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
+    def _plan_existing_templates(
+        self,
+        *,
+        root: Path,
+        repository: m.Infra.RepositoryRef,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+        tooling_runtime: m.Infra.ToolingRuntimeContext,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Render configured overwrite-owned templates for an existing tree."""
+        if repository.profile is None:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                f"active repository has no Make profile: {repository.name}"
+            )
+        profile = c.Infra.MakeProfile(repository.profile)
+        context_result = self._render_context(
+            repository, workspace, codegen, tooling_runtime=tooling_runtime
+        )
+        if context_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                context_result.error or "project render context is invalid"
+            )
+        templates_root = (
+            self._package_root() / "templates" / codegen.templates.root
+        ).resolve()
+        planned: list[m.Infra.CodegenFilePlan] = []
+        for managed in codegen.managed_files:
+            if not managed.overwrite or managed.path == Path(
+                c.Infra.PYPROJECT_FILENAME
+            ):
+                continue
+            entries = tuple(
+                entry
+                for entry in codegen.templates.entries
+                if entry.destination == managed.path.as_posix()
+                and entry.delegate == "render"
+            )
+            if len(entries) != 1:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"managed file requires exactly one render template: {managed.path}"
+                )
+            entry = entries[0]
+            if profile not in entry.profiles:
+                continue
+            rendered = u.Cli.template_render(
+                templates_root / entry.source, context_result.value
+            )
+            if rendered.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    rendered.error or f"template render failed: {entry.source}"
+                )
+            file_plan = self._file_plan(root, entry.destination, rendered.value)
+            if file_plan.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    file_plan.error
+                    or f"managed file planning failed: {entry.destination}"
+                )
+            planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
@@ -612,6 +720,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
+        workspace_root_rel = (
+            Path(*(".." for _ in repository.path.parts)).as_posix()
+            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
+            else project.workspace_root_rel
+        )
+        packaged_data_dirs = (
+            tuple(
+                data_dir
+                for data_dir in config.Infra.tooling.tools.hatch.packaged_data_dirs
+                if any(
+                    profile in entry.profiles
+                    and Path(entry.destination).parts
+                    and Path(entry.destination).parts[0] == data_dir
+                    for entry in codegen.templates.entries
+                )
+            )
+            if profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
+            else ()
+        )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 scaffold=codegen.scaffold,
@@ -622,6 +749,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 dist=repository.distribution,
                 const_name=project.constant_name,
                 package_name=project.package_name,
+                packaged_data_dirs=packaged_data_dirs,
                 class_stem=project.class_stem,
                 ns=project.namespace,
                 ns_attr=project.namespace_attribute,
@@ -645,7 +773,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 flext_git_base_url=provider.base_url,
                 flext_git_branch=provider.branch,
                 make_profile=profile,
-                workspace_root_rel=project.workspace_root_rel,
+                workspace_root_rel=workspace_root_rel,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,

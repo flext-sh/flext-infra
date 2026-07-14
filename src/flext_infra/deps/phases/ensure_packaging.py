@@ -61,18 +61,30 @@ class FlextInfraEnsurePackagingPhase:
         if is_root:
             return ()
         project_dir = path.parent
-        package_name = u.Infra.project_package_name(project_dir)
+        docs_meta = u.Infra.docs_meta_from_payload(payload)
+        package_name = u.Infra.package_name_from_payload(
+            project_dir, payload, docs_meta
+        )
         if not package_name:
             return ()
         package_root = project_dir / c.Infra.DEFAULT_SRC_DIR / package_name
+        tool = u.Cli.json_as_mapping(payload.get(c.Infra.TOOL))
+        hatch = u.Cli.json_as_mapping(tool.get("hatch"))
+        build = u.Cli.json_as_mapping(hatch.get("build"))
+        targets = u.Cli.json_as_mapping(build.get("targets"))
+        wheel = u.Cli.json_as_mapping(targets.get("wheel"))
+        declared_force_include = u.Cli.json_as_mapping(wheel.get("force-include"))
         present_dirs = tuple(
             data_dir
             for data_dir in self._tool_config.tools.hatch.packaged_data_dirs
             # Force-include a root data dir only when it exists at the project
             # root AND is not already shipped from inside the package (which
             # would collide on the same wheel path).
-            if (project_dir / data_dir).is_dir()
-            and not (package_root / data_dir).is_dir()
+            if data_dir in declared_force_include
+            or (
+                (project_dir / data_dir).is_dir()
+                and not (package_root / data_dir).is_dir()
+            )
         )
         return FlextInfraTomlPhaseService.apply_payload_phases(
             payload, self._phase(package_name=package_name, data_dirs=present_dirs)
