@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def builder() -> FlextInfraDocBuilder:
+    """Provide the public documentation builder service."""
     return FlextInfraDocBuilder()
 
 
@@ -55,23 +56,31 @@ class TestBuilderCore:
     ) -> None:
         """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:
-            output_dir = kwargs["output_dir"]
-            tm.that(output_dir, is_=str)
-            tm.ok(builder.build(tmp_path, output_dir=str(tmp_path / output_dir)))
+            match kwargs["output_dir"]:
+                case str() as output_dir:
+                    tm.ok(
+                        builder.build(tmp_path, output_dir=str(tmp_path / output_dir))
+                    )
+                case invalid:
+                    pytest.fail(f"invalid output_dir test case: {invalid!r}")
         else:
-            projects = kwargs.get("projects")
-            tm.that(projects, is_=list)
-            tm.ok(builder.build(tmp_path, projects=projects))
+            match kwargs.get("projects"):
+                case list() as projects:
+                    tm.ok(builder.build(tmp_path, projects=projects))
+                case invalid:
+                    pytest.fail(f"invalid projects test case: {invalid!r}")
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
-    def test_build_report_result_field_values(self, status: str) -> None:
+    def test_build_report_result_field_values(
+        self, status: str, tmp_path: Path
+    ) -> None:
         """Test BuildReport result field accepts valid values."""
         report = m.Infra.DocsPhaseReport(
             phase="build",
             scope="test",
             result=status,
             reason="Test reason",
-            site_dir="/tmp/site",
+            site_dir=str(tmp_path / "site"),
         )
         tm.that(report.result, eq=status)
 

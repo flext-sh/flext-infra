@@ -88,7 +88,8 @@ class TestParseViolationValid:
         result = _parse_violation(violation_str)
         tm.that(result, none=False)
         tm.that(result, is_=m.Infra.CensusViolation)
-        tm.that(result, none=False)
+        if result is None:
+            pytest.fail("valid census violation was not parsed")
         tm.that(result.rule, eq=expected_rule)
         tm.that(result.module, eq=expected_module)
         tm.that(result.line, eq=expected_line)
@@ -125,26 +126,30 @@ class TestFixabilityClassification:
     def test_ns000_not_fixable(self) -> None:
         result = _parse_violation("[NS-000-001] src/file.py:1 — Structure violation")
         tm.that(result, none=False)
-        tm.that(result, none=False)
+        if result is None:
+            pytest.fail("NS-000 census violation was not parsed")
         tm.that(not result.fixable, eq=True)
 
     def test_ns001_fixable(self) -> None:
         result = _parse_violation("[NS-001-001] src/file.py:1 — Constant violation")
         tm.that(result, none=False)
-        tm.that(result, none=False)
+        if result is None:
+            pytest.fail("NS-001 census violation was not parsed")
         tm.that(result.fixable, eq=True)
 
     def test_ns002_fixable(self) -> None:
         result = _parse_violation("[NS-002-001] src/file.py:1 — TypeVar violation")
         tm.that(result, none=False)
-        tm.that(result, none=False)
+        if result is None:
+            pytest.fail("NS-002 census violation was not parsed")
         tm.that(result.fixable, eq=True)
 
     def test_ns000_multiple_sub_rules_not_fixable(self) -> None:
         for sub in ("001", "002", "099"):
             result = _parse_violation(f"[NS-000-{sub}] src/x.py:1 — msg")
             tm.that(result, none=False)
-            tm.that(result, none=False)
+            if result is None:
+                pytest.fail(f"NS-000-{sub} census violation was not parsed")
             tm.that(not result.fixable, eq=True)
 
 

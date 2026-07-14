@@ -13,29 +13,24 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
-    if TYPE_CHECKING:
-        rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
-        _module_exports_cache: dict[
-            tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
-        ]
-        _version_module_name: str
+    rope_workspace: p.Infra.RopeWorkspaceDsl
+    lazy_init: m.Infra.LazyInitConfig
+    _module_exports_cache: dict[
+        tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
+    ]
+    _version_module_name: str
 
-        @classmethod
-        def _is_private_test_fixture_package(
-            cls, pkg_dir: Path, surface: str
-        ) -> bool: ...
+    @classmethod
+    def _is_private_test_fixture_package(cls, pkg_dir: Path, surface: str) -> bool: ...
 
-        def _package_entry(
-            self, pkg_dir: Path
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+    def _package_entry(self, pkg_dir: Path) -> m.Infra.RopePackageIndexEntry | None: ...
 
-        def _add(
-            self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
-        ) -> None: ...
+    def _add(
+        self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
+    ) -> None: ...
 
-        @staticmethod
-        def _publish(name: str, *, allow_main: bool) -> bool: ...
+    @staticmethod
+    def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
         self, context: m.Infra.LazyInitPackageContext

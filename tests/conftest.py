@@ -172,6 +172,6 @@ def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
 @pytest.fixture
 def rope_project(tmp_path: Path) -> Iterator[t.Infra.RopeProject]:
     """Shared minimal rope project for refactor unit tests."""
-    project = u.Infra.init_rope_project(tmp_path, project_prefix="__never__")
+    project = u.Infra.init_rope_project(tmp_path)
     yield project
     project.close()

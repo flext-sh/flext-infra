@@ -269,6 +269,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def toml_doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
             normalized: t.JsonValue = u.normalize_to_json_value(doc.unwrap())
             tm.that(normalized, is_=Mapping)
+            if not isinstance(normalized, Mapping):
+                msg = "normalized TOML document is not a mapping"
+                raise TypeError(msg)
             result: dict[str, t.JsonValue] = dict(normalized)
             return result
 
@@ -276,6 +279,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=Mapping)
+            if not isinstance(normalized, Mapping):
+                msg = "normalized TOML value is not a mapping"
+                raise TypeError(msg)
             result: dict[str, t.JsonValue] = dict(normalized)
             return result
 
@@ -283,6 +289,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def toml_list(value: t.JsonPayload | None) -> t.JsonList:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=list)
+            if not isinstance(normalized, list):
+                msg = "normalized TOML value is not a list"
+                raise TypeError(msg)
             result: list[t.JsonValue] = []
             result.extend(normalized)
             return tuple(result)
@@ -291,6 +300,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def toml_strings(value: t.JsonPayload | None) -> t.StrSequence:
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=list)
+            if not isinstance(normalized, list):
+                msg = "normalized TOML strings are not a list"
+                raise TypeError(msg)
             return tuple(str(item) for item in normalized)
 
         @staticmethod

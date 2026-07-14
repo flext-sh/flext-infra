@@ -48,7 +48,10 @@ if TYPE_CHECKING:
         TestsFlextInfraServiceBase as TestsFlextInfraServiceBase,
         s as s,
     )
-    from tests import TestsFlextInfraConstants as TestsFlextInfraConstants, c as c
+    from tests.constants import (
+        TestsFlextInfraConstants as TestsFlextInfraConstants,
+        c as c,
+    )
     from tests.integration.docs_serve_e2e_tests import (
         TestsFlextInfraIntegrationDocsServeE2e as TestsFlextInfraIntegrationDocsServeE2e,
     )
@@ -73,15 +76,18 @@ if TYPE_CHECKING:
     from tests.integration.test_refactor_policy_mro import (
         TestsFlextInfraIntegrationRefactorPolicyMro as TestsFlextInfraIntegrationRefactorPolicyMro,
     )
-    from tests import TestsFlextInfraModels as TestsFlextInfraModels, m as m
-    from tests import TestsFlextInfraProtocols as TestsFlextInfraProtocols, p as p
+    from tests.models import TestsFlextInfraModels as TestsFlextInfraModels, m as m
+    from tests.protocols import (
+        TestsFlextInfraProtocols as TestsFlextInfraProtocols,
+        p as p,
+    )
     from tests.refactor.test_rope_semantic import (
         TestsFlextInfraRefactorRopeSemantic as TestsFlextInfraRefactorRopeSemantic,
     )
     from tests.refactor.test_rope_stubs import (
         TestsFlextInfraRefactorRopeStubs as TestsFlextInfraRefactorRopeStubs,
     )
-    from tests import TestsFlextInfraTypes as TestsFlextInfraTypes, t as t
+    from tests.typings import TestsFlextInfraTypes as TestsFlextInfraTypes, t as t
     from tests.unit._utilities.test_discovery_consolidated import (
         TestsFlextInfraUtilitiesdiscoveryconsolidated as TestsFlextInfraUtilitiesdiscoveryconsolidated,
     )
@@ -628,7 +634,10 @@ if TYPE_CHECKING:
     from tests.unit.workspace_factory import (
         TestsFlextInfraWorkspaceFactory as TestsFlextInfraWorkspaceFactory,
     )
-    from tests import TestsFlextInfraUtilities as TestsFlextInfraUtilities, u as u
+    from tests.utilities import (
+        TestsFlextInfraUtilities as TestsFlextInfraUtilities,
+        u as u,
+    )
 
     # mro-i6nq.10: Static declaration mirrors the installer-owned runtime binding.
     __all__: tuple[str, ...]

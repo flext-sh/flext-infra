@@ -5,9 +5,11 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+import pytest
+from flext_tests import tm
+
 from tests import m
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,6 +25,7 @@ class TestsDocsRenderExcludeDocs:
     """
 
     def test_project_mkdocs_excludes_root_readme_only(self, tmp_path: Path) -> None:
+        """Keep nested README pages while excluding only the docs root README."""
         scope = m.Infra.DocScope(
             name="flext-demo", path=tmp_path, report_dir=tmp_path / ".reports/docs"
         )
@@ -33,6 +36,8 @@ class TestsDocsRenderExcludeDocs:
         # documented text-stream boundary, without an ad-hoc extraction helper.
         match = re.search(r"exclude_docs: \|\n((?: {2}\S.*\n)+)", rendered)
         tm.that(match, none=False)
+        if match is None:
+            pytest.fail("rendered exclude_docs block was not found")
         patterns = tuple(
             line.strip() for line in match.group(1).splitlines() if line.strip()
         )

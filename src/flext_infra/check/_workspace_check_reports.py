@@ -2,15 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, m, t, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraWorkspaceCheckReportsMixin:

@@ -8,41 +8,25 @@ flext-tests dispatcher.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from importlib.metadata import entry_points
 
-import pytest
-from flext_tests.enforcement import clear, get
-
-from flext_infra._fixtures import enforcement as flext_infra_enforcement_plugin
 from flext_tests import tm
+from flext_tests.enforcement import get
 
 
 class TestsFlextInfraEnforcementPlugin:
     """Entry-point and registration contract for the flext-infra plugin."""
 
-    @pytest.fixture
-    def _clear_registry(self) -> Iterator[None]:
-        """Keep the shared contribution registry isolated between cases."""
-        clear()
-        yield
-        clear()
-
-    def test_pytest11_entry_point_is_registered(self, _clear_registry: None) -> None:
-        """The plugin is discoverable through the pytest11 entry-point group."""
+    def test_pytest11_entry_point_registers_detector_contribution(self) -> None:
+        """The installed plugin exposes its public registry contribution."""
         eps = entry_points(group="pytest11")
         names = {ep.name for ep in eps}
-
         tm.that(names, has="flext_infra_enforcement")
-
-    def test_plugin_registers_infra_detector_contribution(
-        self, _clear_registry: None
-    ) -> None:
-        """Loading the module registers the flext-infra detector contribution."""
-        flext_infra_enforcement_plugin.FlextInfraEnforcementPytestPlugin.register()
-
         contribution = get("flext_infra_detector")
         tm.that(contribution, none=False)
+        if contribution is None:
+            msg = "flext-infra detector contribution was not registered"
+            raise AssertionError(msg)
         tm.that(contribution.source_kind, eq="flext_infra_detector")
         tm.that(contribution.builder, none=False)
         tm.that(contribution.warning_categories, eq=())
