@@ -149,6 +149,17 @@ class FlextInfraConstantsCodegenLazy:
         "main",
     )
     "Canonical dependency order for public aliases and operational entry points."
+    # mro-wkii.17 (Codex): static analyzers bind local facade classes, not rebinds.
+    PUBLIC_ROOT_TYPING_FACADE_SUFFIXES: Final[t.MappingKV[str, str]] = (
+        MappingProxyType({
+            "c": "Constants",
+            "t": "Types",
+            "p": "Protocols",
+            "m": "Models",
+            "u": "Utilities",
+        })
+    )
+    "Named local facade suffixes used by generated TYPE_CHECKING aliases."
     FLEXT_CORE_ROOT_TYPING_PARTS_MODULE: Final[str] = "flext_core._root_typing_parts"
     "Runtime package aggregating flext-core root typing exports lazily."
     FLEXT_CORE_ROOT_TYPING_FACADES_MODULE: Final[str] = (

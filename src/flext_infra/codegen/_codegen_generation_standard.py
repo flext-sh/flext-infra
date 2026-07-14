@@ -21,15 +21,32 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
-        """Return public static imports not already bound eagerly."""
+        """Return public static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
         wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         public_exports = frozenset(plan.exports)
-        return {
+        filtered: dict[str, t.StrPair] = {
             name: target
             for name, target in source.items()
             if target[0] not in wildcard_modules and name in public_exports
         }
+        for (
+            alias_name,
+            class_suffix,
+        ) in c.Infra.PUBLIC_ROOT_TYPING_FACADE_SUFFIXES.items():
+            alias_target = filtered.get(alias_name)
+            if alias_target is None or alias_target[1] != alias_name:
+                continue
+            module_name = alias_target[0]
+            candidates = tuple(
+                export_name
+                for export_name, target in filtered.items()
+                if target == (module_name, export_name)
+                and export_name.endswith(class_suffix)
+            )
+            if len(candidates) == 1:
+                filtered[alias_name] = (module_name, candidates[0])
+        return filtered
 
     @classmethod
     def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
