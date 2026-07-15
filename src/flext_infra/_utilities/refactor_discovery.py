@@ -75,17 +75,24 @@ class FlextInfraUtilitiesRefactorDiscovery:
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
             settings
         )
-        ir = FlextInfraUtilitiesIteration.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project,))
-        )
-        if ir.failure:
-            u.Cli.error(ir.error or f"File iteration failed for {project}")
+        try:
+            files = [
+                file_path
+                for directory_name in refactor_config.project_scan_dirs
+                for file_path in (
+                    FlextInfraUtilitiesIteration.iter_directory_python_files(
+                        project / directory_name
+                    )
+                )
+            ]
+        except OSError as exc:
+            u.Cli.error(f"File iteration failed for {project}: {exc}")
             return None
         ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
         return list(
             FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                ir.value,
+                files,
                 base_path=project,
                 pattern=pattern,
                 ignore_patterns=set(ign),
@@ -115,15 +122,22 @@ class FlextInfraUtilitiesRefactorDiscovery:
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
-            ir = FlextInfraUtilitiesIteration.iter_python_files(
-                m.Infra.SourceScanRequest(project_roots=(proj,))
-            )
-            if ir.failure:
-                u.Cli.error(ir.error or f"File iteration failed for {proj}")
+            try:
+                files = [
+                    file_path
+                    for directory_name in refactor_config.project_scan_dirs
+                    for file_path in (
+                        FlextInfraUtilitiesIteration.iter_directory_python_files(
+                            proj / directory_name
+                        )
+                    )
+                ]
+            except OSError as exc:
+                u.Cli.error(f"File iteration failed for {proj}: {exc}")
                 continue
             all_files.extend(
                 FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                    ir.value,
+                    files,
                     base_path=proj,
                     pattern=pattern,
                     ignore_patterns=ignore_patterns,
