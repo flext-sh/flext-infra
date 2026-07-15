@@ -11,11 +11,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from typing import Annotated, override
+from typing import Annotated, override
 
-from flext_core import r
-from flext_infra import m, p, t, u
-from flext_infra.base import s
+from flext_infra import m, t, u, r, s
 from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
+
+from flext_infra import p
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):

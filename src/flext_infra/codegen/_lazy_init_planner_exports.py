@@ -47,15 +47,23 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            generated_support_module = (
+            # mro-pulj: test artifacts never enter an installable package ABI.
+            test_only_source_module = (
+                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
+                is not None
+            )
+            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
+            # (>5 boolean expressions); retired/generated/test modules are
+            # never semantic input for the lazy export map.
+            is_generated_or_test = (
                 py_file.name in skip_names
-                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name) is not None
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
                 or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
+                or test_only_source_module
             )
-            shadowed_by_package = child_entry is not None and bool(
-                child_entry.package_name
-            )
-            if generated_support_module or shadowed_by_package:
+            is_child_package = child_entry is not None and child_entry.package_name
+            if is_generated_or_test or is_child_package:
                 continue
             convention = self.rope_workspace.convention(
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
