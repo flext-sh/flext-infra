@@ -1,8 +1,12 @@
-"""Real gate behavior tests for Ruff and Pyright."""
+"""Real gate behavior tests for Ruff and Pyright.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
@@ -10,12 +14,9 @@ from flext_infra import m
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import u
+from tests import t, u
 
-from pathlib import Path
-
-from tests import t
-
+# NOTE (multi-agent): mro-wkii.17.26.2 keeps public assertions on tm.
 
 
 class TestRealGateRunners:

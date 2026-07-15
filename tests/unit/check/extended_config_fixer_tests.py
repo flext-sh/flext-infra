@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
@@ -16,8 +16,7 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from tests import u
 
-from pathlib import Path
-
+# NOTE (multi-agent): mro-wkii.17.26.2 keeps this test module lint-clean.
 
 
 def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
@@ -203,10 +202,12 @@ class TestConfigFixerRun:
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
-    def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
-        """Ignore nonexistent project selections without mutation."""
+    def test_run_rejects_inaccessible_explicit_project(self, tmp_path: Path) -> None:
+        """Reject an explicit project path that is not accessible."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        tm.ok(fixer.run(["nonexistent"]))
+        tm.fail(
+            fixer.run(["nonexistent"]), has="explicit project path is not accessible"
+        )
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Execute the workspace runner in dry-run mode."""

@@ -7,21 +7,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+from pathlib import Path
+
+from flext_tests import tm
 
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from tests import u
-from flext_tests import tm
 
-from pathlib import Path
-
+# NOTE (multi-agent): mro-wkii.17.26.2 keeps public assertions on tm.
 
 
 class TestGateErrorReportingPublicBehavior:
     """Verify gate issue parsing through the public ``check()`` contract."""
 
     def test_mypy_ignores_empty_lines_in_json_output(self, tmp_path: Path) -> None:
+        """Ignore empty Mypy JSON lines while retaining reported issues."""
         proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         fake_modules = tmp_path / "fake_modules" / "mypy"
@@ -52,10 +53,11 @@ class TestGateErrorReportingPublicBehavior:
             else:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert not result.result.passed
+        tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)
 
     def test_ruff_format_deduplicates_reported_files(self, tmp_path: Path) -> None:
+        """Deduplicate repeated Ruff formatter paths in gate reports."""
         proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         fake_bin = tmp_path / "fake_bin"
@@ -82,5 +84,5 @@ class TestGateErrorReportingPublicBehavior:
         finally:
             os.environ["PATH"] = original_path
 
-        assert not result.result.passed
+        tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=2)

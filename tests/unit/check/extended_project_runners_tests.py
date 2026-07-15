@@ -7,22 +7,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u
-from flext_tests import tm
 
-from pathlib import Path
-
+# NOTE (multi-agent): mro-wkii.17.26.2 keeps public assertions on tm.
 
 
 class TestsExtendedProjectRunners:
     """Exercise runner behavior through the public checker API only."""
 
     def test_run_projects_records_requested_gates(self, tmp_path: Path) -> None:
+        """Record every requested gate in the public project report."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
@@ -42,12 +42,15 @@ class TestsExtendedProjectRunners:
             os.environ["PATH"] = original_path
 
         tm.ok(result)
-        assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
+        tm.that(
+            {"lint", "format", "pyrefly"}.issubset(set(result.value[0].gates)), eq=True
+        )
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(
         self, gate_method: str, tmp_path: Path
     ) -> None:
+        """Return the requested gate result through each public runner method."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
