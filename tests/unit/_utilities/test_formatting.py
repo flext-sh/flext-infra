@@ -1,6 +1,13 @@
+"""Tests for source formatting through the public infrastructure facade.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from flext_tests import tm
+
 from tests import u
 
 

@@ -1,14 +1,16 @@
+"""Tests for protected source edits through the public infrastructure facade.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from tests import c
-from tests import m
-from tests import u
-from flext_tests import tm
 
 from pathlib import Path
 
+from flext_tests import tm
+
+from tests import c, m, u
 
 
 class TestsFlextInfraUtilitiesProtectedEdit:
@@ -87,11 +89,11 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
 
         tm.that(result, eq=(True, []))
-        assert (
-            left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 2"
+        tm.that(
+            left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n"),
+            eq="VALUE = 2",
         )
-        assert (
-            right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 20"
+        tm.that(
+            right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n"),
+            eq="VALUE = 20",
         )

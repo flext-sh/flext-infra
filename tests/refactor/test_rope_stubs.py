@@ -1,14 +1,16 @@
-"""Wave 0 stub tests confirming rope is importable."""
+"""Wave 0 stub tests confirming rope is importable.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from tests import u
-from flext_tests import tm
-
 from pathlib import Path
 
+from flext_tests import tm
+
+from tests import u
 
 
 class TestsFlextInfraRefactorRopeStubs:
@@ -19,7 +21,7 @@ class TestsFlextInfraRefactorRopeStubs:
         project = u.Infra.init_rope_project(tmp_path)
         tm.that(project, none=False)
         try:
-            assert project.root.real_path
+            tm.that(project.root.real_path, none=False)
         finally:
             project.close()
 
@@ -33,11 +35,11 @@ class TestsFlextInfraRefactorRopeStubs:
         project = u.Infra.init_rope_project(tmp_path)
         tm.that(project, none=False)
         try:
-            resource = u.Infra.get_resource_from_path(project, target)
-            tm.that(resource, none=False)
-            offset = u.Infra.find_definition_offset(project, resource, "Demo")
-            tm.that(offset, none=False)
+            resource = tm.not_none(u.Infra.get_resource_from_path(project, target))
+            offset = tm.not_none(
+                u.Infra.find_definition_offset(project, resource, "Demo")
+            )
             hits = u.Infra.find_occurrences(project, resource, offset)
-            assert hits
+            tm.that(hits, empty=False)
         finally:
             project.close()
