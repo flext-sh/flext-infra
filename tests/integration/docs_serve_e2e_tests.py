@@ -4,6 +4,9 @@ No mocks: starts the real ``FlextInfraDocServer`` flow against a synthetic
 single-scope workspace, then polls the bound address until the dev server
 answers an actual HTTP request. The blocking server runs on a daemon thread
 that the pytest process reaps at teardown.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -12,13 +15,12 @@ import http.client
 import socket
 import threading
 import time
-from typing import TYPE_CHECKING
-
-from flext_infra.docs.server import FlextInfraDocServer
-from flext_tests import tm
-
+from http import HTTPStatus
 from pathlib import Path
 
+from flext_tests import tm
+
+from flext_infra.docs.server import FlextInfraDocServer
 
 _DEADLINE_SECONDS = 90.0
 _POLL_INTERVAL_SECONDS = 0.5
@@ -39,7 +41,7 @@ def _http_get_body(host: str, port: int) -> str | None:
         response = connection.getresponse()
         body = (
             response.read().decode("utf-8", errors="replace")
-            if response.status == 200
+            if response.status == HTTPStatus.OK
             else None
         )
         connection.close()
@@ -52,6 +54,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
     """Real serve: a governed scope with mkdocs.yml answers HTTP requests."""
 
     def test_serve_scope_serves_site_over_http(self, tmp_path: Path) -> None:
+        """Serve a real generated site over HTTP from a governed scope."""
         (tmp_path / "docs").mkdir()
         (tmp_path / "docs/index.md").write_text(
             "# Demo\n\nHello from the real dev server.\n", encoding="utf-8"

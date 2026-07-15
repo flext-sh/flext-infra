@@ -1,30 +1,28 @@
-"""Integration test for single-file class-nesting execution flow."""
+"""Integration test for single-file class-nesting execution flow.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import pytest
-
-from flext_infra import c
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests import u
 from flext_tests import tm
 
-from tests import m
-from tests import t
-
+from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
+from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
+from tests import m, t, u
 
 pytestmark = [pytest.mark.integration]
 
 
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
+class _FileRuleHarness(FlextInfraRefactorOrchestrator):
+    def __init__(self, loader: FlextInfraRefactorRuleLoader, config_path: Path) -> None:
+        super().__init__(loader)
         self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
 
     @override
     def _load_class_nesting_config(self) -> t.Infra.ContainerDict:
@@ -34,21 +32,23 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 def _apply_rule(
     workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(workspace_root)
-    try:
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
-        if resource is None:
-            raise FileNotFoundError(file_path)
-        return rule._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
-    finally:
-        rope_project.close()
+    rules_dir = workspace_root / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "class-nesting.yml").write_text(
+        "rules:\n"
+        "  - id: class-nesting-refactor\n"
+        "    enabled: true\n"
+        "    fix_action: nest_classes\n",
+        encoding="utf-8",
+    )
+    settings_path = workspace_root / "settings.yml"
+    settings_path.write_text("refactor: {}\n", encoding="utf-8")
+    loader = FlextInfraRefactorRuleLoader(settings_path)
+    loaded = loader.load_rules()
+    if loaded.failure:
+        raise RuntimeError(loaded.error or "Unable to load class-nesting rule")
+    rule = _FileRuleHarness(loader, config_path)
+    return rule.refactor_file(file_path, dry_run=dry_run, gates=())
 
 
 class TestsFlextInfraIntegrationRefactorNestingFile:
@@ -69,7 +69,6 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         target_file.write_text(
             source
             + "\n\n"
-            + "from pkg import ResultHelpers\n\n"
             + "class ResultHelpers:\n"
             + "    pass\n\n"
             + "def build(value: ResultHelpers) -> ResultHelpers:\n"
@@ -80,7 +79,14 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         )
         config_path = tmp_path / "class-nesting-mappings.yml"
         config_path.write_text(
-            f"confidence_threshold: low\nclass_nesting:\n  - loose_name: ResultHelpers\n    current_file: {target_file.as_posix()}\n    target_namespace: FlextUtilities\n    target_name: ResultHelpers\n    confidence: high\nhelper_consolidation: []\n",
+            "confidence_threshold: low\n"
+            "class_nesting:\n"
+            "  - loose_name: ResultHelpers\n"
+            f"    current_file: {target_file.as_posix()}\n"
+            "    target_namespace: FlextUtilities\n"
+            "    target_name: ResultHelpers\n"
+            "    confidence: high\n"
+            "helper_consolidation: []\n",
             encoding="utf-8",
         )
         result = _apply_rule(tmp_path, target_file, config_path, dry_run=False)
@@ -88,8 +94,8 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         # to enforce against), so the refactor proceeds gracefully and the loose
         # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
         # mapping config.
-        tm.ok(result)
-        assert result.modified
+        tm.that(result.success, eq=True)
+        tm.that(result.modified, eq=True)
         tm.that(result.refactored_code, none=False)
         tm.that(result.refactored_code, has="class FlextUtilities:")
         tm.that(result.refactored_code, has="class ResultHelpers:")

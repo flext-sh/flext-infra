@@ -4,7 +4,7 @@ Provides TestsFlextInfraConstants, extending FlextTestsConstants with
 infra-specific constants for infrastructure testing, project names, and test
 markers.
 
-Copyright (FlextTestsConstants) 2025 FLEXT Team. All rights reserved.
+Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
@@ -12,14 +12,11 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar, Final
+from typing import ClassVar, Final
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c
-
-from flext_infra import t
-
+from flext_infra import c, t
 
 
 class TestsFlextInfraConstants(FlextTestsConstants, c):

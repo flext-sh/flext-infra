@@ -1,26 +1,27 @@
-"""Test configuration for flext-infra."""
+"""Test configuration for flext-infra.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import importlib
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from flext_tests import tm
 
 import flext_infra as infra_pkg
-from tests import c
-from tests import u
+from tests import c, t, u
 
-from collections.abc import Iterator
-from types import ModuleType
-
-from tests import t
-
-# NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
-# the only fixture owner; conftest must not re-export or shadow its fixtures.
-pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
+# NOTE(mro-wkii.17.26.2, agent codex): register the generated unit package once;
+# importing either child plugin executes tests.unit and preloads the other one
+# before assertion rewriting, which Pytest correctly reports as a warning.
+pytest_plugins = ["tests.unit"]
 
 
 @pytest.fixture
