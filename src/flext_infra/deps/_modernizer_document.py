@@ -1,4 +1,8 @@
-"""Document-state processing mixin for pyproject modernization."""
+"""Document-state processing mixin for pyproject modernization.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -120,6 +124,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         ``workspace_root`` defaults to the child dir). The committed
         ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
         no virtualenv exists at modernize time.
+
+
+        Returns:
+            Whether the project is a FLEXT child sharing the workspace environment.
         """
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name

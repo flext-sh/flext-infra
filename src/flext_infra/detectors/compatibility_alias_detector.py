@@ -44,6 +44,10 @@ class FlextInfraCompatibilityAliasDetector:
         - ``from <pkg> import <LongFacadeClass>`` where a canonical short alias
           exists in ``c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES`` and the long
           name is imported without that canonical short alias.
+
+
+        Returns:
+            Detected compatibility alias violations.
         """
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:

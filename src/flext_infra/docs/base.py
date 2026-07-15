@@ -4,6 +4,9 @@ Single source of truth for the docs-specific ``output_dir`` default and for
 the canonical phase-outcome propagation pattern. Phase services inherit
 this base and call :meth:`_propagate_phase_outcome` instead of repeating
 the same five-line ``execute()`` skeleton.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -38,6 +41,10 @@ class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC)
         (used by ``fix`` and ``generate`` whose phase semantics treat WARN
         and OK as success). When provided, reports matching the predicate
         are counted and surfaced as a single ``e.fail_operation`` failure.
+
+
+        Returns:
+            A result indicating whether the phase completed without failures.
         """
         if result.failure:
             return e.fail_operation(label, result.error)

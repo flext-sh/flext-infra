@@ -7,6 +7,9 @@ with ``packages = ["src/<pkg>"]``. Root data directories declared in
 project root, so they survive ``pip install`` (``<pkg>/<dir>``). The source
 distribution is bounded to the package source and those validated data roots,
 preventing caches and ignored workspace state from entering release artifacts.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -54,6 +57,10 @@ class FlextInfraEnsurePackagingPhase:
         The workspace root is not a distributable package, so it is skipped.
         Only data directories that actually exist at the project root are
         force-included, keeping the wheel free of phantom paths.
+
+
+        Returns:
+            The TOML phases emitted for packaging, or an empty sequence when not applicable.
         """
         if is_root:
             return ()

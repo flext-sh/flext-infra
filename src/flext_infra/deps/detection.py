@@ -1,4 +1,8 @@
-"""Dependency detection and analysis service for deptry, pip-check, and typing stubs."""
+"""Dependency detection and analysis service for deptry, pip-check, and typing stubs.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -115,6 +119,10 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
         Returns only the Path objects, filtered to those with pyproject.toml.
         For full ProjectInfo metadata, use u.Infra.discover_projects().
+
+
+        Returns:
+            A result containing discovered project paths.
         """
         names = projects_filter or []
         result = (
