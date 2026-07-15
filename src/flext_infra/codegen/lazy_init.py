@@ -59,7 +59,8 @@ class FlextInfraCodegenLazyInit(
             return r[bool].fail(f"init failed in {errors} package directories")
         if effective_dry_run and self._modified_files:
             return r[bool].fail(
-                f"init drift detected in {len(self._modified_files)} generated artifacts"
+                "init drift detected in "
+                f"{len(self._modified_files)} generated artifacts"
             )
         return r[bool].ok(True)
 
@@ -94,6 +95,7 @@ class FlextInfraCodegenLazyInit(
             )
             package_dirs = indexed_package_dirs
             target_package_dir: Path | None = None
+            target_includes_descendants = False
             if self.target_module:
                 # mro-wkii.17.26 (codex): reuse the canonical workspace project
                 # selector instead of exposing the legacy internal filter field.
@@ -165,6 +167,13 @@ class FlextInfraCodegenLazyInit(
                 scope_prefix = target_parts[: boundary_index + 1]
                 project_prefix = target_parts[:boundary_index]
                 production_prefix = (*project_prefix, c.Infra.DEFAULT_SRC_DIR)
+                # mro-wkii.17.26.2 (codex): roots own a recursive surface;
+                # nested targets are exact so surgical regeneration cannot
+                # rewrite unrelated descendant initializer drift.
+                target_includes_descendants = (
+                    target_parts[boundary_index] == c.Infra.DEFAULT_SRC_DIR
+                    and len(target_parts) == boundary_index + 2
+                ) or len(target_parts) == boundary_index + 1
                 package_dirs = tuple(
                     package_dir
                     for package_dir in indexed_package_dirs
@@ -207,6 +216,7 @@ class FlextInfraCodegenLazyInit(
                 check_only=check_only,
                 planner=planner,
                 target_package_dir=target_package_dir,
+                target_includes_descendants=target_includes_descendants,
             )
         warnings = planner.collision_count
         u.Cli.info(

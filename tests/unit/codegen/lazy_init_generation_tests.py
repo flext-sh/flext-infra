@@ -197,30 +197,31 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(content, contains="from .demo import Demo as Demo")
+        tm.that(content, contains="from .demo import Demo")
+        tm.that(content, lacks="Demo as Demo")
         tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
         tm.that(content, lacks="Nested")
         tm.that(content, lacks="import nested")
         tm.that(content, lacks="install_lazy_exports")
 
     def test_static_renderer_honors_explicit_plan_exports(self, tmp_path: Path) -> None:
-        """Render the typed plan without re-deriving package-name policy."""
+        """Render long public names without redundant E501 identity aliases."""
+        long_name = (
+            "TestsFlextInfraGeneratedInitializerWithAnIntentionallyLongPublicClassName"
+        )
         plan = self._plan(
             tmp_path,
             "demo_pkg._fixtures",
-            ("DemoFixture",),
-            MappingProxyType({
-                "DemoFixture": ("demo_pkg._fixtures.settings", "DemoFixture")
-            }),
+            (long_name,),
+            MappingProxyType({long_name: ("demo_pkg._fixtures.settings", long_name)}),
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(
-            init_content, contains="from .settings import DemoFixture as DemoFixture"
-        )
-        tm.that(init_content, contains='__all__: tuple[str, ...] = ("DemoFixture",)')
+        tm.that(init_content, contains=f"from .settings import (\n    {long_name},\n)")
+        tm.that(init_content, lacks=f"{long_name} as {long_name}")
+        tm.that(init_content, contains=f'    "{long_name}",')
         tm.that(init_content, lacks="install_lazy_exports")
 
     def test_wrapper_surface_roots_use_static_initializers(
@@ -246,10 +247,9 @@ class TestsFlextInfraCodegenGeneration:
             init_content = FlextInfraCodegenGeneration.render_init(plan)
 
             compile(init_content, f"{surface}/__init__.py", "exec")
-            tm.that(
-                init_content, contains=f"from .demo import {class_name} as {class_name}"
-            )
-            tm.that(init_content, contains="from flext_core import r as r")
+            tm.that(init_content, contains=f"from .demo import {class_name}")
+            tm.that(init_content, lacks=f"{class_name} as {class_name}")
+            tm.that(init_content, contains="from flext_core import r")
             tm.that(init_content, contains=f'    "{class_name}",')
             tm.that(init_content, contains='    "r",')
             tm.that(init_content, lacks="install_lazy_exports")
@@ -288,9 +288,8 @@ class TestsFlextInfraCodegenGeneration:
         content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(content, "__init__.py", "exec")
-        tm.that(
-            content, contains="from .models import FlextDemoModels as FlextDemoModels"
-        )
+        tm.that(content, contains="from .models import FlextDemoModels")
+        tm.that(content, lacks="FlextDemoModels as FlextDemoModels")
         tm.that(content, contains='__all__: tuple[str, ...] = ("FlextDemoModels",)')
         tm.that(content, lacks="install_lazy_exports")
 

@@ -1,4 +1,8 @@
-"""Behavior tests for public lazy-init generation."""
+"""Behavior tests for public lazy-init generation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -117,7 +121,9 @@ class TestsFlextInfraLazyInitHelpers:
         """Keep private sibling modules outside the public package contract."""
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "_internal.py").write_text(
-            "from __future__ import annotations\n\nclass FlextDemoInternal:\n    pass\n",
+            "from __future__ import annotations\n\n"
+            "class FlextDemoInternal:\n"
+            "    pass\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
@@ -364,9 +370,8 @@ class TestsFlextInfraLazyInitHelpers:
         generated = self._generated_init(models_dir)
 
         # mro-wkii.17.26 (Codex): policy is authoritative at every depth.
-        tm.that(
-            generated, has="from ._shared import FlextDemoShared as FlextDemoShared"
-        )
+        tm.that(generated, has="from ._shared import FlextDemoShared")
+        tm.that(generated, lacks="FlextDemoShared as FlextDemoShared")
         tm.that(generated, lacks="01_bad")
         tm.that(generated, lacks="FlextDemoBad")
 
@@ -406,11 +411,15 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "colors.py").write_text(
-            'from __future__ import annotations\n\nBLUE = "blue"\n\n__all__: list[str] = ["BLUE"]\n',
+            "from __future__ import annotations\n\n"
+            'BLUE = "blue"\n\n'
+            '__all__: list[str] = ["BLUE"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         (child_dir / "cli.py").write_text(
-            'from __future__ import annotations\n\ndef main() -> str:\n    return "ok"\n',
+            "from __future__ import annotations\n\n"
+            "def main() -> str:\n"
+            '    return "ok"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         u.Tests.write_lazy_init_namespace_module(
@@ -464,11 +473,7 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(
-            init_content,
-            contains=(
-                "from .constants import TestsFlextDemoConstants "
-                "as TestsFlextDemoConstants, c as c"
-            ),
+            init_content, contains=("from .constants import TestsFlextDemoConstants, c")
         )
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
@@ -610,19 +615,9 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(
-            init_content,
-            contains=(
-                "from .constants import TestsFlextDemoUnitConstants "
-                "as TestsFlextDemoUnitConstants"
-            ),
+            init_content, contains="from .constants import TestsFlextDemoUnitConstants"
         )
-        tm.that(
-            init_content,
-            contains=(
-                "from .models import TestsFlextDemoUnitModels "
-                "as TestsFlextDemoUnitModels"
-            ),
-        )
+        tm.that(init_content, contains="from .models import TestsFlextDemoUnitModels")
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 

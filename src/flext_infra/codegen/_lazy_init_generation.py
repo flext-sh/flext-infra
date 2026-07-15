@@ -1,4 +1,8 @@
-"""Lazy-init per-directory generation service — extracted concern."""
+"""Lazy-init per-directory generation service — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -34,6 +38,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
         target_package_dir: Path | None = None,
+        target_includes_descendants: bool = False,
     ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
@@ -55,9 +60,10 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 process=(
                     target_package_dir is None
                     or pkg_dir.resolve() == target_package_dir.resolve()
-                    # mro-wkii.17.26 (Codex): a selected facade owns every
-                    # descendant initializer in its recursive package scope.
-                    or target_package_dir.resolve() in pkg_dir.resolve().parents
+                    or (
+                        target_includes_descendants
+                        and target_package_dir.resolve() in pkg_dir.resolve().parents
+                    )
                 ),
             )
             if exports:

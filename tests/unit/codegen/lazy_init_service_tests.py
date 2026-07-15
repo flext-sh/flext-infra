@@ -1,4 +1,8 @@
-"""Public service tests for lazy-init execution."""
+"""Public service tests for lazy-init execution.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -102,14 +106,54 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(
             child_init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            contains=(
-                "from .conversion import FlextTestsConversion as FlextTestsConversion"
-            ),
+            contains="from .conversion import FlextTestsConversion",
         )
         tm.that(
             service.modified_files,
             eq=(str(selected_root / c.Infra.INIT_PY), str(child_init)),
         )
+
+    def test_nested_target_updates_only_selected_initializer(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep descendant drift untouched for an exact nested target."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        tests_root = workspace_root / c.Infra.DIR_TESTS
+        unit_root = tests_root / "unit"
+        child_root = unit_root / "child"
+        child_root.mkdir(parents=True)
+        for package_root in (tests_root, unit_root, child_root):
+            package_root.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+        unit_root.joinpath("constants.py").write_text(
+            "class TestsUnitConstants:\n"
+            '    """Nested target export."""\n\n'
+            '__all__ = ["TestsUnitConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        child_init = child_root / c.Infra.INIT_PY
+        child_before = child_init.read_bytes()
+        child_root.joinpath("models.py").write_text(
+            "class TestsChildModels:\n"
+            '    """Unrelated descendant export."""\n\n'
+            '__all__ = ["TestsChildModels"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = "tests.unit"
+        service.apply_changes = True
+
+        result = service.execute()
+        unit_init = unit_root.joinpath(c.Infra.INIT_PY)
+
+        tm.that(result.success, eq=True)
+        tm.that(
+            unit_init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
+            contains="from .constants import TestsUnitConstants",
+        )
+        tm.that(child_init.read_bytes(), eq=child_before)
+        tm.that(service.modified_files, eq=(str(unit_init),))
 
     def test_explicit_wrapper_target_generates_only_that_initializer(
         self, tmp_path: Path

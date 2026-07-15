@@ -1,4 +1,8 @@
-"""Canonical public-root and static-subpackage initializer rendering."""
+"""Canonical public-root and static-subpackage initializer rendering.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -153,10 +157,11 @@ class FlextInfraCodegenGenerationStandardMixin(
             current_relative = import_module.startswith(".")
             if lines and previous_relative is not current_relative:
                 lines.append("")
-            # mro-wkii.17.26 (codex): internal generated reexports bind every
-            # public name explicitly so static ABI ownership remains visible.
+            # mro-wkii.17.26.2 (codex): __all__ owns the static ABI; canonical
+            # import parts keep real aliases while removing identity aliases
+            # whose duplicated long names cannot be formatted within E501.
             parts = tuple(
-                f"{imported_name} as {export_name}"
+                cls._format_import_part(imported_name, export_name)
                 for export_name, imported_name in sorted(entries)
             )
             lines.extend(cls._format_import("", import_module, parts))
