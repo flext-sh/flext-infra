@@ -1,4 +1,8 @@
-"""Typed contracts for isolated worktree command transactions."""
+"""Typed contracts for isolated worktree command transactions.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -86,6 +90,12 @@ class FlextInfraModelsWorktree:
         command: Annotated[
             t.StrSequence, m.Field(description="Command arguments after the CLI group")
         ]
+        # NOTE (multi-agent): an empty scope preserves explicit workspace-wide runs;
+        # selected commands carry repository paths through every transaction phase.
+        selected_repositories: Annotated[
+            t.StrSequence,
+            m.Field(description="Repositories selected relative to the workspace root"),
+        ] = ()
         apply_patch: Annotated[
             bool, m.Field(description="Apply a validated operation patch to source")
         ] = False

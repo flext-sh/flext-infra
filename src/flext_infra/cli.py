@@ -152,6 +152,26 @@ class FlextInfraCli(type(cli_facade)):
                     return Path(argument.removeprefix(prefix)).resolve()
         return Path.cwd().resolve()
 
+    @staticmethod
+    def _transaction_selected_repositories(
+        args: t.StrSequence, candidate_root: Path, workspace_root: Path
+    ) -> t.StrSequence:
+        """Carry canonical CLI project selectors into transaction boundaries."""
+        project_values: t.MutableSequenceOf[str] = []
+        for index, argument in enumerate(args):
+            if argument == "--projects" and index + 1 < len(args):
+                project_values.append(args[index + 1])
+            elif argument.startswith("--projects="):
+                project_values.append(argument.partition("=")[2])
+        normalized = u.Infra.normalize_cli_values(*project_values)
+        if normalized:
+            return normalized
+        if candidate_root == workspace_root:
+            return ()
+        # NOTE (multi-agent): direct submodule invocations remain selected-only
+        # even when their route has no explicit --projects option.
+        return (candidate_root.relative_to(workspace_root).as_posix(),)
+
     def _run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""
         if any(argument in self._HELP_FLAGS for argument in args):
@@ -171,9 +191,13 @@ class FlextInfraCli(type(cli_facade)):
             )
             return 1
         apply_requested = self._transaction_apply_requested(route_key, args)
+        selected_repositories = self._transaction_selected_repositories(
+            args, candidate_root, workspace_result.value
+        )
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_result.value,
             command=(group, *self._transaction_inner_args(route_key, args)),
+            selected_repositories=selected_repositories,
             apply_patch=apply_requested,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
         )
