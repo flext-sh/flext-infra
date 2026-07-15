@@ -154,16 +154,36 @@ class FlextInfraCodegenGenerationStandardMixin(
                 if module.startswith(f"{current_pkg}.")
                 else module
             )
+            import_prefix = f"from {import_module} import ("
+            if len(import_prefix) > c.Infra.MAX_LINE_LENGTH:
+                msg = (
+                    "static reexport cannot satisfy generated line-length contract: "
+                    f"{import_prefix}"
+                )
+                raise ValueError(msg)
             current_relative = import_module.startswith(".")
             if lines and previous_relative is not current_relative:
                 lines.append("")
-            # mro-wkii.17.26.2 (codex): __all__ owns the static ABI; canonical
-            # import parts keep real aliases while removing identity aliases
-            # whose duplicated long names cannot be formatted within E501.
+            # mro-wkii.17.26 (codex): internal generated reexports bind every
+            # public name explicitly so static ABI ownership remains visible.
             parts = tuple(
-                cls._format_import_part(imported_name, export_name)
+                f"{imported_name} as {export_name}"
                 for export_name, imported_name in sorted(entries)
             )
+            oversized_part = next(
+                (
+                    part
+                    for part in parts
+                    if len(part) + len("    ,") > c.Infra.MAX_LINE_LENGTH
+                ),
+                None,
+            )
+            if oversized_part is not None:
+                msg = (
+                    "static reexport cannot satisfy generated line-length contract; "
+                    f"rename the source symbol: {oversized_part}"
+                )
+                raise ValueError(msg)
             lines.extend(cls._format_import("", import_module, parts))
             previous_relative = current_relative
         return tuple(lines)

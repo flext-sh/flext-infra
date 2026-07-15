@@ -1,4 +1,8 @@
-"""Export-collision resolution for the lazy-init planner."""
+"""Export-collision resolution for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
-        _collision_count: int
 
         def _module_file(self, module_path: str) -> Path | None: ...
 
@@ -83,16 +86,16 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             index[name] = target
             return
         # mro-j47u (codex): MutableLazyAliasMap values are always StrPair.
-        winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
-            index[name] = winner
+            index[name] = self._pick_preferred_target(name, existing, target)
             return
-        self._collision_count += 1
-        u.Cli.warning(
-            f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}"
+        # mro-wkii.17.26.2 (codex): ambiguous public ownership is a source
+        # defect; choosing one candidate would silently mutate the package ABI.
+        msg = (
+            f"ambiguous export collision for {name!r}: "
+            f"{existing[0]}.{existing[1]} vs {target[0]}.{target[1]}"
         )
-        index[name] = winner
+        raise ValueError(msg)
 
     @classmethod
     def _is_intentional_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:

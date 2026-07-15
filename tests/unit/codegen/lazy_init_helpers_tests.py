@@ -213,8 +213,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
 
-    def test_public_facade_owns_private_fixture_reexports(self, tmp_path: Path) -> None:
-        """Publish a fixture-backed symbol only through its public facade."""
+    def test_public_api_owns_private_fixture_reexports(self, tmp_path: Path) -> None:
+        """Publish a fixture-backed class only through the public API facade."""
         workspace_root, package_root = self._workspace(tmp_path)
         fixtures_dir = package_root / "_fixtures"
         fixtures_dir.mkdir()
@@ -225,15 +225,14 @@ class TestsFlextInfraLazyInitHelpers:
             '__version__ = "0.1.0"\n', encoding=c.Cli.ENCODING_DEFAULT
         )
         fixtures_dir.joinpath("enforcement.py").write_text(
-            "def load_report() -> str:\n"
-            '    """Load a report."""\n'
-            '    return "loaded"\n\n'
-            '__all__ = ["load_report"]\n',
+            "class FlextDemoReportLoader:\n"
+            '    """Load a report through the public facade."""\n\n'
+            '__all__ = ["FlextDemoReportLoader"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        package_root.joinpath("enforcement.py").write_text(
-            "from ._fixtures.enforcement import load_report\n\n"
-            '__all__ = ["load_report"]\n',
+        package_root.joinpath("api.py").write_text(
+            "from ._fixtures.enforcement import FlextDemoReportLoader\n\n"
+            '__all__ = ["FlextDemoReportLoader"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
@@ -242,10 +241,12 @@ class TestsFlextInfraLazyInitHelpers:
         fixture_init = self._generated_init(fixtures_dir)
 
         # mro-wkii.17.26 (Codex): only the public facade may own the root ABI.
-        tm.that(generated, has='".enforcement": ("load_report",)')
+        # mro-wkii.17.26.2 (codex): private implementations never own root ABI.
+        tm.that(generated, has='".api": (')
+        tm.that(generated, has='"FlextDemoReportLoader",')
         tm.that(generated, lacks="flext_demo._fixtures.enforcement")
         tm.that(fixture_init, contains="__all__: tuple[str, ...] = ()")
-        tm.that(fixture_init, lacks="load_report")
+        tm.that(fixture_init, lacks="FlextDemoReportLoader")
         tm.that(fixture_init, lacks="__version__")
 
     def test_nested_runtime_singleton_does_not_widen_root_api(
@@ -370,8 +371,9 @@ class TestsFlextInfraLazyInitHelpers:
         generated = self._generated_init(models_dir)
 
         # mro-wkii.17.26 (Codex): policy is authoritative at every depth.
-        tm.that(generated, has="from ._shared import FlextDemoShared")
-        tm.that(generated, lacks="FlextDemoShared as FlextDemoShared")
+        tm.that(
+            generated, has="from ._shared import FlextDemoShared as FlextDemoShared"
+        )
         tm.that(generated, lacks="01_bad")
         tm.that(generated, lacks="FlextDemoBad")
 
@@ -472,10 +474,10 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = tests_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        tm.that(
-            init_content, contains=("from .constants import TestsFlextDemoConstants, c")
-        )
-        tm.that(init_content, lacks="install_lazy_exports")
+        tm.that(init_content, contains='".constants": (')
+        tm.that(init_content, contains='"TestsFlextDemoConstants",')
+        tm.that(init_content, contains='"c",')
+        tm.that(init_content, contains="_install_lazy_exports(")
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         child_init_content = child_dir.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
@@ -615,9 +617,19 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(
-            init_content, contains="from .constants import TestsFlextDemoUnitConstants"
+            init_content,
+            contains=(
+                "from .constants import TestsFlextDemoUnitConstants "
+                "as TestsFlextDemoUnitConstants"
+            ),
         )
-        tm.that(init_content, contains="from .models import TestsFlextDemoUnitModels")
+        tm.that(
+            init_content,
+            contains=(
+                "from .models import TestsFlextDemoUnitModels "
+                "as TestsFlextDemoUnitModels"
+            ),
+        )
         tm.that(init_content, lacks="install_lazy_exports")
         tm.that(tests_unit_root.joinpath("__unit__.py").exists(), eq=False)
 
@@ -647,10 +659,10 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(exports_content, lacks="FlextDemoHttpTransport")
 
-    def test_undeclared_duplicate_symbols_do_not_widen_the_root_contract(
+    def test_undeclared_duplicate_symbols_fail_before_write(
         self, tmp_path: Path
     ) -> None:
-        """Keep undeclared root siblings outside the generated public contract."""
+        """Reject ambiguous root ownership without changing the initializer."""
         workspace_root, package_root = self._workspace(tmp_path)
         (package_root / "api.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
@@ -662,9 +674,10 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__: list[str] = ["Shared"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        init_path = package_root / c.Infra.INIT_PY
+        original_init = init_path.read_bytes()
 
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
-        tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
-        tm.that(exports_content, lacks="Shared")
+        # mro-wkii.17.26.2 (codex): the source owners must be reconciled; the
+        # generator never picks a public ABI winner on the operator's behalf.
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=1)
+        tm.that(init_path.read_bytes(), eq=original_init)

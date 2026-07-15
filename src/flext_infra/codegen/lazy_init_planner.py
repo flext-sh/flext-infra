@@ -1,4 +1,8 @@
-"""Lazy-init planning over generic Rope workspace indexes."""
+"""Lazy-init planning over generic Rope workspace indexes.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -60,12 +64,6 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
-    _collision_count: int = u.PrivateAttr(default_factory=int)
-
-    @property
-    def collision_count(self) -> int:
-        """Number of export collisions resolved so far."""
-        return self._collision_count
 
 
 class FlextInfraCodegenLazyInitPlanner(

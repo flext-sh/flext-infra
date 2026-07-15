@@ -93,13 +93,39 @@ class FlextInfraCodegenLazyInit(
                     reverse=True,
                 )
             )
-            package_dirs = indexed_package_dirs
+            selected_project_names = frozenset(self.project_names or ())
+            indexed_project_names = frozenset(
+                entry.project_root.name
+                for entry in workspace_index.packages_by_dir.values()
+                if entry.project_root is not None
+            )
+            missing_project_names = selected_project_names - indexed_project_names
+            if missing_project_names:
+                u.Cli.error(
+                    "lazy-init selected project not found: "
+                    + ", ".join(sorted(missing_project_names))
+                )
+                return 1
+            package_dirs = tuple(
+                package_dir
+                for package_dir in indexed_package_dirs
+                if not selected_project_names
+                or (
+                    (
+                        package_entry := workspace_index.packages_by_dir.get(
+                            str(package_dir)
+                        )
+                    )
+                    is not None
+                    and package_entry.project_root is not None
+                    and package_entry.project_root.name in selected_project_names
+                )
+            )
             target_package_dir: Path | None = None
             target_includes_descendants = False
             if self.target_module:
                 # mro-wkii.17.26 (codex): reuse the canonical workspace project
                 # selector instead of exposing the legacy internal filter field.
-                selected_project_names = frozenset(self.project_names or ())
                 mapped_package_dir = workspace_index.package_dir_by_name.get(
                     self.target_module
                 )
@@ -218,10 +244,9 @@ class FlextInfraCodegenLazyInit(
                 target_package_dir=target_package_dir,
                 target_includes_descendants=target_includes_descendants,
             )
-        warnings = planner.collision_count
         u.Cli.info(
-            f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"
-            f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)"
+            f"Lazy-init summary: {ok} generated, {errors} errors "
+            f"({total} dirs scanned, {perf_counter() - started_at:.2f}s)"
         )
         return errors
 

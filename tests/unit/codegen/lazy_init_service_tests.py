@@ -57,6 +57,43 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
+    def test_project_selection_without_module_updates_only_selected_project(
+        self, tmp_path: Path
+    ) -> None:
+        """Filter writes by project while retaining one workspace Rope index."""
+        _, selected_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-selected",
+            package_name="flext_test_selected",
+        )
+        _, unrelated_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-unrelated",
+            package_name="flext_test_unrelated",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            selected_root / "models.py",
+            class_name="FlextTestsSelectedModels",
+            alias="m",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            unrelated_root / "models.py",
+            class_name="FlextTestsUnrelatedModels",
+            alias="m",
+        )
+        unrelated_init = unrelated_root / c.Infra.INIT_PY
+        unrelated_before = unrelated_init.read_bytes()
+        service = u.Tests.create_lazy_init_service(tmp_path)
+        service.selected_projects = ("flext-test-selected",)
+        service.apply_changes = True
+
+        result = service.execute()
+
+        tm.that(result.success, eq=True)
+        tm.that((selected_root / c.Infra.INIT_PY).read_bytes(), ne=b"")
+        tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
+        tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
+
     def test_target_generates_private_descendant_initializers(
         self, tmp_path: Path
     ) -> None:
@@ -106,7 +143,9 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated_root, lacks="FlextTestsConversion")
         tm.that(
             child_init.read_text(encoding=c.Cli.ENCODING_DEFAULT),
-            contains="from .conversion import FlextTestsConversion",
+            contains=(
+                "from .conversion import FlextTestsConversion as FlextTestsConversion"
+            ),
         )
         tm.that(
             service.modified_files,
@@ -179,9 +218,11 @@ class TestsFlextInfraCodegenLazyInitService:
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
-        tm.that(generated, lacks="from .demo import ExamplesDemo")
-        tm.that(generated, lacks="ExamplesDemo")
-        tm.that(generated, contains="__all__: tuple[str, ...] = ()")
+        # mro-wkii.17.26.2 (codex): every declared wrapper has one lazy root;
+        # static identity imports begin only below this boundary.
+        tm.that(generated, contains='".demo": ("ExamplesDemo",)')
+        tm.that(generated, contains='__all__: tuple[str, ...] = ("ExamplesDemo",)')
+        tm.that(generated, contains="_install_lazy_exports(")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
 
@@ -249,6 +290,64 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(check_service.modified_files, eq=())
         tm.that(init_path.read_bytes(), eq=generated_init)
         tm.that((package_root / "__unit__.py").exists(), eq=False)
+
+    def test_child_and_root_targets_render_byte_identical_static_init(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep one static child byte-identical across surgical and root runs."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        models_root = package_root / "_models"
+        models_root.mkdir()
+        models_init = models_root / c.Infra.INIT_PY
+        models_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        models_root.joinpath("_auth.py").write_text(
+            "class FlextTestsModelsAuth:\n"
+            '    """Generated static export."""\n\n'
+            '__all__ = ["FlextTestsModelsAuth"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        child_service = u.Tests.create_lazy_init_service(workspace_root)
+        child_service.target_module = "flext_test_project._models"
+        child_service.apply_changes = True
+
+        child_result = child_service.execute()
+        child_bytes = models_init.read_bytes()
+        root_service = u.Tests.create_lazy_init_service(workspace_root)
+        root_service.target_module = "flext_test_project"
+        root_service.apply_changes = True
+        root_result = root_service.execute()
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service.target_module = "flext_test_project"
+        check_service.check_only = True
+        check_result = check_service.execute()
+
+        tm.that(child_result.success, eq=True)
+        tm.that(
+            child_bytes.decode(c.Cli.ENCODING_DEFAULT),
+            contains=(
+                "from ._auth import FlextTestsModelsAuth as FlextTestsModelsAuth"
+            ),
+        )
+        tm.that(root_result.success, eq=True)
+        tm.that(models_init.read_bytes(), eq=child_bytes)
+        tm.that(str(models_init) in root_service.modified_files, eq=False)
+        tm.that(check_result.success, eq=True)
+        tm.that(check_service.modified_files, eq=())
+
+    def test_unknown_selected_project_fails_loudly(self, tmp_path: Path) -> None:
+        """Reject an unknown project instead of widening to the workspace."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        init_path = package_root / c.Infra.INIT_PY
+        original_init = init_path.read_bytes()
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.selected_projects = ("flext-missing",)
+        service.apply_changes = True
+
+        result = service.execute()
+
+        tm.that(result.success, eq=False)
+        tm.that(init_path.read_bytes(), eq=original_init)
+        tm.that(service.modified_files, eq=())
 
     def test_unknown_target_fails_without_workspace_fallback(
         self, tmp_path: Path
