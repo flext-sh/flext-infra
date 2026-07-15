@@ -1,4 +1,8 @@
-"""Tests for the public constants consolidator command service."""
+"""Tests for the public constants consolidator command service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -9,8 +13,7 @@ from flext_tests import tm
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests import t
-from tests import u
+from tests import t, u
 
 
 class _ConsolidatorFilePayload(cli_m.ContractModel):

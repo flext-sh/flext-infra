@@ -1,4 +1,8 @@
-"""Direct constants consolidation command service."""
+"""Direct constants consolidation command service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.base import s
 from flext_infra.codegen._consolidator_steps import (
     FlextInfraCodegenConsolidatorStepsMixin,
@@ -68,7 +72,10 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     rel_path = python_file.relative_to(self.workspace_root)
                     if self.dry_run:
                         output_lines.extend(
-                            f"  {rel_path}:{symbol.line}  {symbol.name} = {value} -> {ref}"
+                            (
+                                f"  {rel_path}:{symbol.line}  "
+                                f"{symbol.name} = {value} -> {ref}"
+                            )
                             for symbol, ref, value in matches
                         )
                         continue
@@ -112,21 +119,19 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
 
     def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Return governed Python files for one project consolidation pass."""
-        files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_root,))
-        )
-        if files_result.failure:
-            return r[t.SequenceOf[Path]].fail(
-                files_result.error or "project python file discovery failed"
-            )
         constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
-        return r[t.SequenceOf[Path]].ok(
-            tuple(
+        try:
+            files = {
                 path
-                for path in files_result.value
+                for root_name in config.Infra.rope_index.roots
+                for path in u.Infra.iter_directory_python_files(
+                    project_root / root_name
+                )
                 if constants_directory not in path.parts
-            )
-        )
+            }
+        except OSError as exc:
+            return r[t.SequenceOf[Path]].fail_op("project python file discovery", exc)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
 
     def _selected_projects(
         self, rope_workspace: p.Infra.RopeWorkspaceDsl

@@ -9,18 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 
 class TestConstantsQualityGateCLIDispatch:

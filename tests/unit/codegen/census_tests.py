@@ -9,19 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import r, tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
-from tests import m
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import m, t, u
 
 
 def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
@@ -47,14 +41,20 @@ class TestParseViolationValid:
         ),
         [
             (
-                "[NS-000-001] src/file.py:42 — Multiple outer classes found (expected 1, got 2)",
+                (
+                    "[NS-000-001] src/file.py:42 — Multiple outer classes found "
+                    "(expected 1, got 2)"
+                ),
                 "NS-000",
                 "src/file.py",
                 42,
                 "Multiple outer classes found (expected 1, got 2)",
             ),
             (
-                "[NS-001-001] src/file.py:10 — Loose Final constant 'X' belongs in constants.py",
+                (
+                    "[NS-001-001] src/file.py:10 — Loose Final constant 'X' "
+                    "belongs in constants.py"
+                ),
                 "NS-001",
                 "src/file.py",
                 10,
@@ -68,7 +68,10 @@ class TestParseViolationValid:
                 "TypeVar 'T' belongs in typings.py",
             ),
             (
-                "[NS-001-099] src/deep/nested/module.py:999 — Some long message with special chars: !@#",
+                (
+                    "[NS-001-099] src/deep/nested/module.py:999 — Some long message "
+                    "with special chars: !@#"
+                ),
                 "NS-001",
                 "src/deep/nested/module.py",
                 999,

@@ -8,18 +8,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import u
-
-from pathlib import Path
-
-from tests import m
-from tests import t
-
+from tests import m, t, u
 
 
 def _project_info(
