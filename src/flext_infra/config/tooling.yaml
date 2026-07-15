@@ -293,7 +293,6 @@ Infra:
           reportUnnecessaryIsInstance: warning
           reportUnreachable: none
           reportUnsupportedDunderAll: none
-          reportUntypedBaseClass: none
           reportUntypedFunctionDecorator: none
           reportUnusedClass: error
           reportUnusedFunction: error
@@ -340,6 +339,8 @@ Infra:
             - "**/.*"
             - "**/legado"
             - "**/legado/**"
+            - "**/tests/fixtures"
+            - "**/tests/fixtures/**"
             - .venv
             - "**/.venv"
             - "**/.venv/**"

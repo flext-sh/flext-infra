@@ -123,10 +123,7 @@ class TestsFlextInfraWorkspaceSync:
         tm.that(
             settings["python.analysis.userFileIndexFollowSymlinkedFolders"], eq=False
         )
-        overrides = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            settings["python.analysis.diagnosticSeverityOverrides"]
-        )
-        tm.that(overrides["reportUntypedBaseClass"], eq="none")
+        tm.that(settings, lacks="python.analysis.diagnosticSeverityOverrides")
         watcher_excludes = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             settings["files.watcherExclude"]
         )
@@ -216,7 +213,7 @@ class TestsFlextInfraWorkspaceSync:
             tm.that(synced.count(f"{pattern}\n"), eq=1)
 
     def test_sync_preserves_custom_vscode_settings(self, tmp_path: Path) -> None:
-        """Preserve custom editor values while adding canonical diagnostics."""
+        """Preserve custom editor values without adding diagnostic overrides."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         settings_path = project_root / ".vscode" / "settings.json"
@@ -252,7 +249,6 @@ class TestsFlextInfraWorkspaceSync:
             settings["python.analysis.diagnosticSeverityOverrides"]
         )
         tm.that(overrides["reportUnknownMemberType"], eq="none")
-        tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(second_result.value.files_changed, eq=0)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:

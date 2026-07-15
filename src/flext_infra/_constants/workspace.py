@@ -112,11 +112,7 @@ class FlextInfraConstantsWorkspace:
     WORKSPACE_ENV_FILES: Final[t.StrSequence] = (ENVRC_FILENAME, MISE_TOML_FILENAME)
     VSCODE_DIRNAME: Final[str] = ".vscode"
     VSCODE_SETTINGS_FILENAME: Final[str] = "settings.json"
-    VSCODE_DIAGNOSTIC_SEVERITY_OVERRIDES_KEY: Final[str] = (
-        "python.analysis.diagnosticSeverityOverrides"
-    )
     VSCODE_FILES_WATCHER_EXCLUDE_KEY: Final[str] = "files.watcherExclude"
-    VSCODE_REPORT_UNTYPED_BASE_CLASS: Final[str] = "reportUntypedBaseClass"
     # mro-wkii.17.26.2 (codex): keep workspace diagnostics while preventing
     # duplicate dependency indexing and nested-worktree refresh loops.
     VSCODE_REQUIRED_SCALAR_SETTINGS: Final[t.JsonMapping] = MappingProxyType({

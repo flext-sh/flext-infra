@@ -79,7 +79,7 @@ class TestsFlextInfraDepsModernizerPyright:
             return
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.root_venv_path)
-        tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
+        tm.that(pyright, lacks="reportUntypedBaseClass")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))),
             eq=sorted(
@@ -148,7 +148,7 @@ class TestsFlextInfraDepsModernizerPyright:
             return
         tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
         tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.project_venv_path)
-        tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
+        tm.that(pyright, lacks="reportUntypedBaseClass")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
             eq=sorted(rules.env_dirs),

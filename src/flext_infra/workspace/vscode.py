@@ -70,8 +70,7 @@ class FlextInfraWorkspaceVscode:
     def apply_required_settings(cls, settings: t.MutableJsonMapping) -> bool:
         """Mutate one settings mapping with the canonical FLEXT VS Code keys."""
         changed = cls.apply_scalar_settings(settings)
-        changed = cls.apply_watcher_excludes(settings) or changed
-        return cls.apply_diagnostic_overrides(settings) or changed
+        return cls.apply_watcher_excludes(settings) or changed
 
     @staticmethod
     def apply_scalar_settings(settings: t.MutableJsonMapping) -> bool:
@@ -83,23 +82,6 @@ class FlextInfraWorkspaceVscode:
             settings[key] = value
             changed = True
         return changed
-
-    @staticmethod
-    def apply_diagnostic_overrides(settings: t.MutableJsonMapping) -> bool:
-        """Ensure Pylance suppresses the untyped base class diagnostic."""
-        key = c.Infra.VSCODE_DIAGNOSTIC_SEVERITY_OVERRIDES_KEY
-        current = settings.get(key)
-        overrides: dict[str, t.JsonValue] = (
-            {name: u.normalize_to_json_value(value) for name, value in current.items()}
-            if isinstance(current, Mapping)
-            else {}
-        )
-        rule_name = c.Infra.VSCODE_REPORT_UNTYPED_BASE_CLASS
-        if overrides.get(rule_name) == "none" and settings.get(key) == overrides:
-            return False
-        overrides[rule_name] = "none"
-        settings[key] = overrides
-        return True
 
     @staticmethod
     def apply_watcher_excludes(settings: t.MutableJsonMapping) -> bool:
