@@ -1,4 +1,8 @@
-"""Automated namespace enforcement orchestration."""
+"""Automated namespace enforcement orchestration.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -45,6 +49,9 @@ class FlextInfraNamespaceEnforcer(
             project_names: If provided, only enforce these projects.
             gates: If provided, only run these enforcement gates.
 
+        Returns:
+            Aggregated enforcement report for the selected workspace projects.
+
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
         project_reports: list[m.Infra.ProjectEnforcementReport] = []
@@ -90,6 +97,10 @@ class FlextInfraNamespaceEnforcer(
         """Run detect -> optional apply -> re-detect cycle for a violation type.
 
         Re-detection only runs when apply=True AND a real rewrite_fn is provided.
+
+        Returns:
+            Violations remaining after the optional rewrite and re-detection.
+
         """
         violations: t.MutableSequenceOf[V] = []
         for py_file in py_files:
@@ -116,14 +127,23 @@ class FlextInfraNamespaceEnforcer(
             f"Import violations: {report.total_import_violations}",
             f"Namespace source violations: {report.total_namespace_source_violations}",
             f"Internal import violations: {report.total_internal_import_violations}",
-            f"Private import bypass violations: {report.total_private_import_bypass_violations}",
+            (
+                "Private import bypass violations: "
+                f"{report.total_private_import_bypass_violations}"
+            ),
             f"Manual protocol violations: {report.total_manual_protocol_violations}",
             f"Cyclic imports: {report.total_cyclic_imports}",
             f"Runtime alias violations: {report.total_runtime_alias_violations}",
             f"Future violations: {report.total_future_violations}",
             f"Manual typing violations: {report.total_manual_typing_violations}",
-            f"Compatibility alias violations: {report.total_compatibility_alias_violations}",
-            f"Foreign canonical alias violations: {report.total_foreign_canonical_alias_violations}",
+            (
+                "Compatibility alias violations: "
+                f"{report.total_compatibility_alias_violations}"
+            ),
+            (
+                "Foreign canonical alias violations: "
+                f"{report.total_foreign_canonical_alias_violations}"
+            ),
             f"Class placement violations: {report.total_class_placement_violations}",
             f"MRO completeness violations: {report.total_mro_completeness_violations}",
             f"Bare except violations: {report.total_bare_except_violations}",
@@ -132,8 +152,14 @@ class FlextInfraNamespaceEnforcer(
             f"Open-encoding violations: {report.total_open_encoding_violations}",
             f"Dict annotation violations: {report.total_dict_annotation_violations}",
             f"typing.Dict attr violations: {report.total_typing_dict_attr_violations}",
-            f"typing.Dict import violations: {report.total_typing_dict_import_violations}",
-            f"Hardcoded-version violations: {report.total_hardcoded_version_violations}",
+            (
+                "typing.Dict import violations: "
+                f"{report.total_typing_dict_import_violations}"
+            ),
+            (
+                "Hardcoded-version violations: "
+                f"{report.total_hardcoded_version_violations}"
+            ),
             f"Parse failures: {report.total_parse_failures}",
             f"Files scanned: {report.total_files_scanned}",
         ]

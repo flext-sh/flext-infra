@@ -1,4 +1,8 @@
-"""MRO resolution helpers and migration rewrite orchestration."""
+"""MRO resolution helpers and migration rewrite orchestration.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -89,23 +93,35 @@ class FlextInfraRefactorMROResolver:
         """Validate base policy."""
         direct_base_names = tuple(base.__name__ for base in facade_class.__bases__)
         if len(direct_base_names) < len(expected_names):
-            msg = f"family={family} has fewer direct bases than expected: expected={expected_names!r} direct={direct_base_names!r}"
+            msg = (
+                f"family={family} has fewer direct bases than expected: "
+                f"expected={expected_names!r} direct={direct_base_names!r}"
+            )
             raise ValueError(msg)
         if direct_base_names[: len(expected_names)] != expected_names:
-            msg = f"family={family} direct base order violates policy: expected={expected_names!r} direct={direct_base_names!r}"
+            msg = (
+                f"family={family} direct base order violates policy: "
+                f"expected={expected_names!r} direct={direct_base_names!r}"
+            )
             raise ValueError(msg)
         mro_types = inspect.getmro(facade_class)
         mro_names = tuple(entry.__name__ for entry in mro_types)
         mro_index = {name: index for index, name in enumerate(mro_names)}
         missing = tuple(name for name in expected_names if name not in mro_index)
         if missing:
-            msg = f"family={family} missing expected bases in MRO: missing={missing!r} mro={mro_names!r}"
+            msg = (
+                f"family={family} missing expected bases in MRO: "
+                f"missing={missing!r} mro={mro_names!r}"
+            )
             raise ValueError(msg)
         previous_index = -1
         for base_name in expected_names:
             current_index = mro_index[base_name]
             if current_index <= previous_index:
-                msg = f"family={family} MRO order is not C3-coherent for expected chain: expected={expected_names!r} mro={mro_names!r}"
+                msg = (
+                    f"family={family} MRO order is not C3-coherent for expected "
+                    f"chain: expected={expected_names!r} mro={mro_names!r}"
+                )
                 raise ValueError(msg)
             previous_index = current_index
 
@@ -129,7 +145,11 @@ class FlextInfraRefactorMROResolver:
                 continue
             missing_namespaces.append(namespace)
         if missing_namespaces:
-            msg = f"family={family} expected namespaces are not accessible: missing={tuple(missing_namespaces)!r} accessible={accessible_namespaces!r}"
+            msg = (
+                f"family={family} expected namespaces are not accessible: "
+                f"missing={tuple(missing_namespaces)!r} "
+                f"accessible={accessible_namespaces!r}"
+            )
             raise ValueError(msg)
 
     @classmethod

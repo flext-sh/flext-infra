@@ -642,7 +642,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:
-        """Return whether ``symbol_name`` in ``source`` carries a docstring (rope-parsed)."""
+        """Return whether the Rope-parsed symbol carries a docstring."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if pymodule is None:
             return False
@@ -656,7 +656,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def assignment_docstrings_source(source: str) -> t.StrSequence:
-        """Return assignment names followed by a string-literal expression (rope-parsed).
+        """Return names whose assignments are followed by string literals.
 
         Iterates the parsed module's body via ``_fields`` access and pairs each
         ``Assign``/``AnnAssign`` target with the next sibling ``Expr(Constant(str))``.
@@ -1418,7 +1418,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def node_kind(node: object) -> str:
-        """Return an AST node's class name (e.g. ``"AnnAssign"``) without importing ast."""
+        """Return an AST node class name without importing ``ast``."""
         return type(node).__name__
 
     @staticmethod
@@ -1501,7 +1501,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def line_col_range(node: object) -> tuple[int, int, int, int] | None:
-        """Return ``(lineno, col_offset, end_lineno, end_col_offset)`` for an AST node."""
+        """Return the source span coordinates for an AST node."""
         lineno = getattr(node, "lineno", None)
         col_offset = getattr(node, "col_offset", None)
         end_lineno = getattr(node, "end_lineno", None) or lineno
@@ -1594,7 +1594,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def class_info_from_source(source: str) -> t.SequenceOf[m.Infra.ClassInfo]:
-        """Return class info from the current source text without Rope resource cache."""
+        """Return class info from source without the Rope resource cache."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if pymodule is None:
             return ()

@@ -54,7 +54,8 @@ class FlextInfraUtilitiesDependencies:
             return ""
         if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
             return f"~={normalized_version}"
-        # mro-45r9: uv owns the floor; declared caps/exclusions remain compatibility SSOT.
+        # mro-45r9: uv owns the floor; declared caps/exclusions remain
+        # compatibility SSOT.
         preserved = tuple(
             specifier.strip()
             for specifier in current_specifier.split(",")
@@ -108,7 +109,9 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+        policy: c.Infra.DependencyConstraintPolicy = (
+            c.Infra.DependencyConstraintPolicy.FLOOR
+        ),
     ) -> str | None:
         """Rewrite one PEP 621 requirement string using the locked version policy."""
         result: str | None = None
@@ -132,7 +135,12 @@ class FlextInfraUtilitiesDependencies:
                             current_specifier = requirement_part.strip()[
                                 head_match.end() :
                             ].strip()
-                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy, current_specifier=current_specifier)}"
+                            constraint = cls.constraint_specifier(
+                                locked_version,
+                                policy=policy,
+                                current_specifier=current_specifier,
+                            )
+                            rewritten = f"{head}{constraint}"
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
@@ -147,7 +155,9 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+        policy: c.Infra.DependencyConstraintPolicy = (
+            c.Infra.DependencyConstraintPolicy.FLOOR
+        ),
     ) -> t.Infra.InfraValue | None:
         """Rewrite one Poetry dependency value using the locked version policy."""
         result: t.Infra.InfraValue | None = None
