@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 from flext_infra.codegen._codegen_generation_renderers import (
     FlextInfraCodegenGenerationRenderersMixin,
 )
@@ -23,12 +23,9 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return public static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
-        wildcard_modules = frozenset(plan.wildcard_runtime_modules)
         public_exports = frozenset(plan.exports)
         filtered: dict[str, t.StrPair] = {
-            name: target
-            for name, target in source.items()
-            if target[0] not in wildcard_modules and name in public_exports
+            name: target for name, target in source.items() if name in public_exports
         }
         for (
             alias_name,
@@ -50,29 +47,10 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render eager and wildcard runtime imports."""
-        lines: t.MutableSequenceOf[str] = [
-            f"from {module} import *"
-            for module in sorted(set(plan.wildcard_runtime_modules))
-        ]
-        eager_lines: t.MutableSequenceOf[str] = []
-        eager_groups = cls._group_imports(plan.eager_dunders)
-        previous_top: str | None = None
-        for module in sorted(eager_groups, key=str.lower):
-            top = module.split(".", maxsplit=1)[0]
-            if previous_top is not None and top != previous_top:
-                eager_lines.append("")
-            parts = tuple(
-                cls._format_import_part(imported_name, export_name)
-                for export_name, imported_name in sorted(eager_groups[module])
-                if imported_name
-            )
-            eager_lines.extend(cls._format_import("", module, parts))
-            previous_top = top
-        if lines and eager_lines:
-            lines.append("")
-        lines.extend(eager_lines)
-        return "\n".join(lines)
+        """Render explicit eager runtime imports."""
+        return "\n".join(
+            cls._generate_import_lines(cls._group_imports(plan.eager_dunders))
+        )
 
     @classmethod
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
@@ -148,6 +126,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         """Render explicit sibling-relative reexports for one subpackage."""
         lines: t.MutableSequenceOf[str] = []
         previous_relative: bool | None = None
+        max_line_length = config.Infra.tooling.tools.ruff.line_length
         for module, entries in sorted(cls._group_imports(imports).items()):
             import_module = (
                 f".{module.removeprefix(f'{current_pkg}.')}"
@@ -155,7 +134,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                 else module
             )
             import_prefix = f"from {import_module} import ("
-            if len(import_prefix) > c.Infra.MAX_LINE_LENGTH:
+            if len(import_prefix) > max_line_length:
                 msg = (
                     "static reexport cannot satisfy generated line-length contract: "
                     f"{import_prefix}"
@@ -164,26 +143,25 @@ class FlextInfraCodegenGenerationStandardMixin(
             current_relative = import_module.startswith(".")
             if lines and previous_relative is not current_relative:
                 lines.append("")
-            # mro-wkii.17.26 (codex): internal generated reexports bind every
-            # public name explicitly so static ABI ownership remains visible.
-            parts = tuple(
-                f"{imported_name} as {export_name}"
-                for export_name, imported_name in sorted(entries)
-            )
-            oversized_part = next(
-                (
-                    part
-                    for part in parts
-                    if len(part) + len("    ,") > c.Infra.MAX_LINE_LENGTH
-                ),
-                None,
-            )
-            if oversized_part is not None:
-                msg = (
-                    "static reexport cannot satisfy generated line-length contract; "
-                    f"rename the source symbol: {oversized_part}"
-                )
-                raise ValueError(msg)
+            parts: t.MutableSequenceOf[str] = []
+            for export_name, imported_name in sorted(entries):
+                explicit_part = f"{imported_name} as {export_name}"
+                part = explicit_part
+                if len(explicit_part) + len("    ,") > max_line_length:
+                    # NOTE (multi-agent, mro-wkii.17.26.2 / agent: codex): a
+                    # literal __all__ preserves an oversized identity reexport.
+                    if (
+                        imported_name == export_name
+                        and len(imported_name) + len("    ,") <= max_line_length
+                    ):
+                        part = imported_name
+                    else:
+                        msg = (
+                            "static reexport cannot satisfy generated line-length "
+                            f"contract; rename the source symbol: {explicit_part}"
+                        )
+                        raise ValueError(msg)
+                parts.append(part)
             lines.extend(cls._format_import("", import_module, parts))
             previous_relative = current_relative
         return tuple(lines)

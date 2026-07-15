@@ -1,4 +1,8 @@
-"""Public Rope workspace DSL and facade mixin."""
+"""Public Rope workspace DSL and facade mixin.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -53,6 +57,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     )
     _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
+    )
+    _registry_imports_cache: dict[str, tuple[tuple[Path, str], ...]] = u.PrivateAttr(
+        default_factory=dict
     )
     _import_dependents_index: dict[str, tuple[Path, ...]] | None = u.PrivateAttr(
         default_factory=lambda: None
@@ -142,6 +149,9 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         files and already restored the original on-disk content before the
         refresh runs. ``validate_project=False`` is reserved for those reverted
         preview flows so cleanup does not rescan an already-restored project.
+
+        Returns:
+            Current workspace session after cache invalidation.
         """
         if validate_project and self._rope_project is not None:
             self._rope_project.validate()
@@ -152,6 +162,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._resource_cache.clear()
         if not preserve_indexes:
             self._name_index = None
+            self._registry_imports_cache.clear()
             self._import_dependents_index = None
         return self.session_snapshot()
 
@@ -256,6 +267,29 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             for name, refs in index.items()
         }
         return self._name_index
+
+    def registry_imports(self, name: str) -> tuple[tuple[Path, str], ...]:
+        """Return project-scoped imports from one declarative module registry."""
+        cached = self._registry_imports_cache.get(name)
+        if cached is not None:
+            return cached
+        imports: set[tuple[Path, str]] = set()
+        # mro-wkii.17.26 (codex): registry ownership is discovered through the
+        # shared Rope module index; the lexical name index is not semantic.
+        for module_entry in self.modules():
+            if module_entry.project_root is None:
+                continue
+            imports.update(
+                (module_entry.project_root.resolve(), import_path)
+                for import_path in u.Infra.get_module_registry_imports(
+                    self.rope_project, self._resource_for(module_entry.file_path), name
+                )
+            )
+        resolved = tuple(
+            sorted(imports, key=lambda item: (item[0].as_posix(), item[1]))
+        )
+        self._registry_imports_cache[name] = resolved
+        return resolved
 
     _SURFACE_DIRS: ClassVar[t.StrSequence] = (
         c.Infra.DIR_TESTS,
@@ -451,6 +485,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_object_cache.clear()
         self._resource_cache.clear()
         self._name_index = None
+        self._registry_imports_cache.clear()
         self._import_dependents_index = None
 
     def __enter__(self) -> Self:

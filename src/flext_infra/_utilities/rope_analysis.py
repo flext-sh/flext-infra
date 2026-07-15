@@ -623,8 +623,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         """Return imports from one Rope-located declarative assignment.
 
         Rope owns assignment identity and its definition line. Python's lexical
-        tokenizer then accepts only a literal list or tuple, making dynamic
-        registries fail loudly without AST traversal or regex discovery.
+        tokenizer then accepts only a plain string, literal list, or literal
+        tuple, making dynamic registries fail loudly without AST traversal.
         """
         _module, line = pyname.get_definition_location()
         if line is None or line < 1:
@@ -634,6 +634,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         equals_found = False
         container_open = ""
         container_closed = False
+        tuple_comma_found = False
         expect_value = True
         values: list[str] = []
         tokens = _tokenize.generate_tokens(_io.StringIO(pymodule.source_code).readline)
@@ -658,10 +659,22 @@ class FlextInfraUtilitiesRopeAnalysis:
                 msg = f"Declarative assignment has trailing expression: {name}"
                 raise ValueError(msg)
             if not container_open:
+                if token.type == _tokenize.STRING:
+                    values.append(
+                        FlextInfraUtilitiesRopeAnalysis._plain_registry_import(
+                            token.string, name=name
+                        )
+                    )
+                    container_closed = True
+                    expect_value = False
+                    continue
                 if token.type == _tokenize.OP and token.string in {"(", "["}:
                     container_open = token.string
                     continue
-                msg = f"Declarative assignment must be a literal list or tuple: {name}"
+                msg = (
+                    "Declarative assignment must be a plain string, literal list, "
+                    f"or tuple: {name}"
+                )
                 raise ValueError(msg)
             if token.type == _tokenize.STRING:
                 if not expect_value:
@@ -681,10 +694,15 @@ class FlextInfraUtilitiesRopeAnalysis:
                 if expect_value:
                     msg = f"Declarative assignment contains an empty value: {name}"
                     raise ValueError(msg)
+                if container_open == "(":
+                    tuple_comma_found = True
                 expect_value = True
                 continue
             expected_close = ")" if container_open == "(" else "]"
             if token.string == expected_close:
+                if container_open == "(" and values and not tuple_comma_found:
+                    msg = f"Declarative assignment requires a tuple comma: {name}"
+                    raise ValueError(msg)
                 container_closed = True
                 continue
             msg = f"Declarative assignment contains an unsupported token: {name}"

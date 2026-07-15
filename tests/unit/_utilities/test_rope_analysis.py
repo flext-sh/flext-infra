@@ -50,6 +50,18 @@ class TestsFlextInfraRopeAnalysis:
         _ = invalid_registry_path.write_text(
             'pytest_plugins = ("tests.unit.bad-name",)\n', encoding="utf-8"
         )
+        scalar_registry_path = package_dir / "scalar_registry.py"
+        _ = scalar_registry_path.write_text(
+            'pytest_plugins = ("tests.unit.fixtures")\n', encoding="utf-8"
+        )
+        list_registry_path = package_dir / "list_registry.py"
+        _ = list_registry_path.write_text(
+            'pytest_plugins = ["tests.unit.fixtures"]\n', encoding="utf-8"
+        )
+        string_registry_path = package_dir / "string_registry.py"
+        _ = string_registry_path.write_text(
+            'pytest_plugins = "tests.unit.fixtures"\n', encoding="utf-8"
+        )
 
         with u.Infra.open_project(project) as rope_project:
             # NOTE (multi-agent): preserve Rope's optional boundary while proving
@@ -68,7 +80,10 @@ class TestsFlextInfraRopeAnalysis:
             )
             with pytest.raises(
                 ValueError,
-                match="Declarative assignment must be a literal list or tuple",
+                match=(
+                    "Declarative assignment must be a plain string, literal list, "
+                    "or tuple"
+                ),
             ):
                 _ = u.Infra.get_module_registry_imports(
                     rope_project, dynamic_resource, "pytest_plugins"
@@ -91,9 +106,32 @@ class TestsFlextInfraRopeAnalysis:
                 _ = u.Infra.get_module_registry_imports(
                     rope_project, invalid_resource, "pytest_plugins"
                 )
+            scalar_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, scalar_registry_path)
+            )
+            with pytest.raises(
+                ValueError, match="Declarative assignment requires a tuple comma"
+            ):
+                _ = u.Infra.get_module_registry_imports(
+                    rope_project, scalar_resource, "pytest_plugins"
+                )
+            list_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, list_registry_path)
+            )
+            list_registry = u.Infra.get_module_registry_imports(
+                rope_project, list_resource, "pytest_plugins"
+            )
+            string_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, string_registry_path)
+            )
+            string_registry = u.Infra.get_module_registry_imports(
+                rope_project, string_resource, "pytest_plugins"
+            )
 
         tm.that(registry, eq=("tests.unit.fixtures", "tests.unit.fixtures_git"))
         tm.that(missing, eq=())
+        tm.that(list_registry, eq=("tests.unit.fixtures",))
+        tm.that(string_registry, eq=("tests.unit.fixtures",))
 
     def test_facade_scanner_reads_facade_with_imported_superclass(
         self, tmp_path: Path

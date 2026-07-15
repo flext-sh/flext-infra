@@ -1,4 +1,8 @@
-"""Child-package merging for the lazy-init planner."""
+"""Child-package merging for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -22,6 +26,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
+        def _is_registered_import(
+            self, project_root: Path | None, module_name: str
+        ) -> bool: ...
+
     def _merge_children(
         self, pkg_dir: Path, lazy_map: t.MutableLazyAliasMap
     ) -> t.StrSequence:
@@ -44,6 +52,10 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             if child_entry is None or not child_entry.package_name:
                 continue
             if resolved_child_dir.parent != resolved_pkg_dir:
+                continue
+            if self._is_registered_import(
+                child_entry.project_root, child_entry.package_name
+            ):
                 continue
             # mro-wkii.17.26 (codex): privacy controls parent publication;
             # side-effect policy controls only the child's own initializer.

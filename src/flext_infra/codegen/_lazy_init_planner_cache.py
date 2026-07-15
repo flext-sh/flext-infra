@@ -1,4 +1,8 @@
-"""Package/module entry and name-resolution caches for the lazy-init planner."""
+"""Package/module entry and name-resolution caches for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _source_plan_cache: dict[str, m.Infra.LazyInitPlan]
         _source_exports_visiting: set[str]
         _module_file_by_name: dict[str, Path]
+        _registered_imports_cache: frozenset[tuple[str, str]] | None
 
         def build_plan(
             self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
@@ -106,3 +111,20 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             }
             resolved = self._module_file_by_name.get(module_path)
         return resolved
+
+    def _is_registered_import(
+        self, project_root: Path | None, module_name: str
+    ) -> bool:
+        """Return whether a project registry owns one local import target."""
+        if project_root is None or not module_name:
+            return False
+        registered = self._registered_imports_cache
+        if registered is None:
+            registered = frozenset(
+                (str(root.resolve()), import_path)
+                for root, import_path in self.rope_workspace.registry_imports(
+                    c.Infra.PYTEST_PLUGINS_ASSIGNMENT
+                )
+            )
+            self._registered_imports_cache = registered
+        return (str(project_root.resolve()), module_name) in registered

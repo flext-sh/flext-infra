@@ -1,4 +1,8 @@
-"""Domain models for the codegen subpackage."""
+"""Domain models for the codegen subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -262,9 +266,6 @@ class FlextInfraModelsCodegen(
         inline_constants: t.StrMapping = m.Field(
             default_factory=lambda: MappingProxyType({}),
             description="Inline constants emitted directly into __init__.py.",
-        )
-        wildcard_runtime_modules: t.StrSequence = m.Field(
-            default_factory=tuple, description="Runtime wildcard import modules."
         )
         child_packages_for_lazy: t.StrSequence = m.Field(
             default_factory=tuple,

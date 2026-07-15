@@ -1,4 +1,8 @@
-"""Per-package and per-module export resolution for the lazy-init planner."""
+"""Per-package and per-module export resolution for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -25,6 +29,10 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
+        def _is_registered_import(
+            self, project_root: Path | None, module_name: str
+        ) -> bool: ...
+
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
@@ -47,23 +55,22 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            # mro-pulj: test artifacts never enter an installable package ABI.
-            test_only_source_module = (
-                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
-                is not None
-            )
-            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
-            # (>5 boolean expressions); retired/generated/test modules are
-            # never semantic input for the lazy export map.
-            is_generated_or_test = (
+            # NOTE (multi-agent, mro-wkii.17.26.2): the validated namespace
+            # convention below owns pytest exclusion; this early guard handles
+            # only generated artifacts and modules shadowed by packages.
+            is_generated_support = (
                 py_file.name in skip_names
-                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name) is not None
                 or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
-                or test_only_source_module
             )
-            is_child_package = child_entry is not None and child_entry.package_name
-            if is_generated_or_test or is_child_package:
+            shadowed_by_package = child_entry is not None and bool(
+                child_entry.package_name
+            )
+            if is_generated_support or shadowed_by_package:
+                continue
+            if self._is_registered_import(
+                module_entry.project_root, module_entry.module_name
+            ):
                 continue
             convention = self.rope_workspace.convention(
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)

@@ -93,6 +93,77 @@ class TestsFlextInfraLazyInitTransforms:
         tm.that(init_content, lacks="test_fixture")
         tm.that(init_content, lacks="model_tests")
 
+    def test_pytest_registry_owns_plugin_import_order(self, tmp_path: Path) -> None:
+        """Keep registry ownership lazy and isolated to its declaring project."""
+        workspace_root = tmp_path / "workspace"
+        registered_project, _registered_package = u.Tests.create_lazy_init_workspace(
+            workspace_root,
+            project_name="flext-registered",
+            package_name="flext_registered",
+        )
+        peer_project, _peer_package = u.Tests.create_lazy_init_workspace(
+            workspace_root, project_name="flext-peer", package_name="flext_peer"
+        )
+        layouts: list[tuple[Path, Path, Path]] = []
+        for project_root, prefix in (
+            (registered_project, "Registered"),
+            (peer_project, "Peer"),
+        ):
+            tests_dir = project_root / "tests"
+            unit_dir = tests_dir / "unit"
+            plugins_dir = tests_dir / "plugins"
+            unit_dir.mkdir(parents=True)
+            plugins_dir.mkdir()
+            for package_dir in (tests_dir, unit_dir, plugins_dir):
+                (package_dir / c.Infra.INIT_PY).write_text(
+                    "", encoding=c.Cli.ENCODING_DEFAULT
+                )
+            (unit_dir / "fixtures.py").write_text(
+                f"class {prefix}Fixture:\n    pass\n", encoding=c.Cli.ENCODING_DEFAULT
+            )
+            (unit_dir / "helper.py").write_text(
+                f"class {prefix}Helper:\n    pass\n", encoding=c.Cli.ENCODING_DEFAULT
+            )
+            (plugins_dir / "hooks.py").write_text(
+                f"class {prefix}PluginHook:\n    pass\n",
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            layouts.append((tests_dir, unit_dir, plugins_dir))
+        registered_tests, registered_unit, registered_plugins = layouts[0]
+        peer_tests, peer_unit, _peer_plugins = layouts[1]
+        (registered_tests / "conftest.py").write_text(
+            "pytest_plugins: tuple[str, ...] = (\n"
+            '    "tests.unit.fixtures",\n'
+            '    "tests.plugins",\n'
+            ")\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        result = u.Tests.run_lazy_init(workspace_root)
+
+        registered_tests_init = (registered_tests / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        registered_unit_init = (registered_unit / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        registered_plugins_init = (registered_plugins / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        peer_tests_init = (peer_tests / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        peer_unit_init = (peer_unit / c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        tm.that(result, eq=0)
+        tm.that(registered_unit_init, has="RegisteredHelper")
+        tm.that(registered_unit_init, lacks="RegisteredFixture")
+        tm.that(registered_tests_init, lacks='".plugins": ("plugins",)')
+        tm.that(registered_plugins_init, has="RegisteredPluginHook")
+        tm.that(peer_unit_init, has="PeerFixture")
+        tm.that(peer_tests_init, has='".plugins": ("plugins",)')
+
     def test_version_exports_are_explicit_runtime_reexports(
         self, tmp_path: Path
     ) -> None:

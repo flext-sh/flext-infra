@@ -61,6 +61,9 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         default_factory=dict
     )
     _module_file_by_name: dict[str, Path] = u.PrivateAttr(default_factory=dict)
+    _registered_imports_cache: frozenset[tuple[str, str]] | None = u.PrivateAttr(
+        default_factory=lambda: None
+    )
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
@@ -160,7 +163,6 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map=dict(lazy_map),
             type_checking_map=type_checking_map,
             eager_dunders=eager_dunders,
-            wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )

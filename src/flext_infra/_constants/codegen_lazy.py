@@ -1,4 +1,8 @@
-"""Lazy-init constants for the codegen package."""
+"""Lazy-init constants for the codegen package.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -12,8 +16,8 @@ from flext_infra import t
 class FlextInfraConstantsCodegenLazy:
     """Lazy-init and export-policy constants for codegen."""
 
-    MAX_LINE_LENGTH: Final[int] = 88
-    "Maximum line length for generated import lines."
+    # NOTE (multi-agent, mro-wkii.17.26.2 / agent: codex): generated width is
+    # runtime tooling policy, owned only by config.Infra.tooling.tools.ruff.
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
     ROOT_EXPORTS_FILENAME: Final[str] = "_exports.py"
@@ -46,6 +50,8 @@ class FlextInfraConstantsCodegenLazy:
     "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: Final[str] = "__init__.pyi"
     "Forbidden legacy initializer stub name retained only for violation detection."
+    PYTEST_PLUGINS_ASSIGNMENT: Final[str] = "pytest_plugins"
+    "Declarative Pytest plugin registry consumed by generated initializers."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (

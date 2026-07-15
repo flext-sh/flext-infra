@@ -10,6 +10,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
+
 from flext_tests import tm
 
 from flext_infra import c, m, t
@@ -204,10 +205,12 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, lacks="import nested")
         tm.that(content, lacks="install_lazy_exports")
 
-    def test_static_renderer_rejects_unformattable_identity_aliases(
+    def test_static_renderer_uses_all_for_unformattable_identity_aliases(
         self, tmp_path: Path
     ) -> None:
-        """Fail loudly when a source name cannot preserve the static ABI style."""
+        """Use literal __all__ when a redundant alias cannot fit one line."""
+        # NOTE (multi-agent, mro-wkii.17.26.2 / agent: codex): __all__ owns
+        # the reexport contract when spelling an identity alias exceeds Ruff.
         long_name = (
             "TestsFlextInfraGeneratedInitializerWithAnIntentionallyLongPublicClassName"
         )
@@ -216,6 +219,30 @@ class TestsFlextInfraCodegenGeneration:
             "demo_pkg._fixtures",
             (long_name,),
             MappingProxyType({long_name: ("demo_pkg._fixtures.settings", long_name)}),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains=f"from .settings import (\n    {long_name},\n)")
+        tm.that(content, lacks=f"{long_name} as {long_name}")
+        tm.that(content, contains=f'    "{long_name}",')
+
+    def test_static_renderer_rejects_unformattable_nonidentity_aliases(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail loud when a renamed reexport cannot satisfy line length."""
+        imported_name = (
+            "FlextInfraGeneratedInitializerWithAnIntentionallyLongOwnedClassName"
+        )
+        export_name = "FlextInfraGeneratedInitializerWithAnIntentionallyLongPublicAlias"
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg._fixtures",
+            (export_name,),
+            MappingProxyType({
+                export_name: ("demo_pkg._fixtures.settings", imported_name)
+            }),
         )
 
         with pytest.raises(
@@ -271,6 +298,59 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="FlextDemoProtocols as p")
         tm.that(content, lacks="p as p")
+
+    def test_root_type_checking_separates_absolute_and_relative_imports(self) -> None:
+        """Render Ruff-ordered absolute and local typing import sections."""
+        # NOTE (multi-agent, mro-wkii.17.26.2 / agent: codex): reproduce the
+        # fleet I001 failure at the public TYPE_CHECKING renderer boundary.
+        lines = FlextInfraCodegenGeneration.generate_type_checking(
+            {
+                "flext_cli": (("FlextCliExternal", "FlextCliExternal"),),
+                "flext_core": (("r", "r"),),
+                "flext_infra.api": (
+                    ("FlextInfraApi", "FlextInfraApi"),
+                    ("infra", "infra"),
+                ),
+            },
+            include_flext_types=False,
+            local_package_root="flext_infra",
+        )
+
+        tm.that(
+            "\n".join(lines),
+            contains=(
+                "    from flext_cli import FlextCliExternal\n"
+                "    from flext_core import r\n\n"
+                "    from .api import FlextInfraApi, infra"
+            ),
+        )
+
+    def test_root_runtime_keeps_first_party_imports_in_one_section(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep distinct first-party modules in one Ruff import section."""
+        # NOTE (multi-agent, mro-wkii.17.26.2 / agent: codex): distinct FLEXT
+        # owners are one isort section; module boundaries are not sections.
+        plan = self._plan(
+            tmp_path,
+            "demo_pkg",
+            ("__cli_version__", "__core_version__"),
+            MappingProxyType({}),
+            eager_dunders=MappingProxyType({
+                "__cli_version__": ("flext_cli.__version__", "__version__"),
+                "__core_version__": ("flext_core.__version__", "__version__"),
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        tm.that(
+            content,
+            contains=(
+                "from flext_cli.__version__ import __version__ as __cli_version__\n"
+                "from flext_core.__version__ import __version__ as __core_version__"
+            ),
+        )
 
     def test_private_internal_package_is_not_empty(self, tmp_path: Path) -> None:
         """Private packages use the same explicit static contract."""

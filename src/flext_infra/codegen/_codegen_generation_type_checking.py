@@ -1,4 +1,8 @@
-"""TYPE_CHECKING render helpers for lazy-init generation."""
+"""TYPE_CHECKING render helpers for lazy-init generation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -19,12 +23,14 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     def _collapse_to_children(
         groups: t.MappingKV[str, t.StrPairSequence],
         child_packages: t.StrSequence | None,
-    ) -> t.MappingKV[str, t.MutableSequenceOf[t.StrPair]]:
+    ) -> t.MutableMappingKV[str, t.MutableSequenceOf[t.StrPair]]:
         """Collapse child module imports into configured child packages."""
         sorted_children: list[str] = sorted(
             set(child_packages or []), key=len, reverse=True
         )
-        collapsed: dict[str, list[t.StrPair]] = defaultdict(list)
+        collapsed: t.MutableMappingKV[str, t.MutableSequenceOf[t.StrPair]] = (
+            defaultdict(list)
+        )
         for mod, items in groups.items():
             target = mod
             for child_package in sorted_children:
@@ -44,30 +50,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         )
 
     @staticmethod
-    def _public_alias_rank(export_name: str) -> int:
-        """Return the semantic c-t-p-m-u rank for one public export."""
-        order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
-        return order.index(export_name) if export_name in order else len(order)
-
-    @staticmethod
-    def _type_checking_sort_key(
-        mod: str, items: t.StrPairSequence, local_package_root: str | None
-    ) -> t.StrPair:
-        """Return a stable TYPE_CHECKING import sort key."""
-        top = mod.split(".", maxsplit=1)[0]
-        alias_rank = min(
-            (
-                FlextInfraCodegenGenerationTypeCheckingMixin._public_alias_rank(
-                    export_name
-                )
-                for export_name, _attr_name in items
-            ),
-            default=len(c.Infra.PUBLIC_ROOT_ALIAS_ORDER),
+    def _type_checking_sort_key(mod: str, items: t.StrPairSequence) -> t.StrPair:
+        """Return the Ruff/isort section and module ordering key."""
+        owner = FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+            mod, items
         )
-        if local_package_root == "tests":
-            test_order = {"flext_tests": "0", "flext_infra": "1", "tests": "2"}
-            return (f"{test_order.get(top, '1')}:{alias_rank:03d}", mod.lower())
-        return (f"{alias_rank:03d}", mod.lower())
+        return ("1" if owner.startswith(".") else "0", owner.lower())
 
     @staticmethod
     def _type_checking_sort_owner(mod: str, items: t.StrPairSequence) -> str:
@@ -120,9 +108,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         for export_name, attr_name in sorted(
             items,
             key=lambda item: (
-                FlextInfraCodegenGenerationTypeCheckingMixin._public_alias_rank(
-                    item[0]
-                ),
+                (item[1] or item[0]).lower(),
                 item[1] or item[0],
                 item[0] != (item[1] or item[0]),
             ),
@@ -193,27 +179,29 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if include_flext_types and (
             not FlextInfraCodegenGenerationTypeCheckingMixin._has_flext_types(collapsed)
         ):
-            lines.append("    from flext_core import FlextTypes")
+            collapsed.setdefault("flext_core", []).append(("FlextTypes", "FlextTypes"))
         sorted_mods = sorted(
             collapsed,
             key=lambda mod: (
                 FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
-                    FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
-                        mod, collapsed[mod]
-                    ),
-                    collapsed[mod],
-                    root_name,
+                    mod, collapsed[mod]
                 )
             ),
         )
         bound_exports: t.MutableSequenceOf[str] = []
+        previous_relative: bool | None = None
         for mod in sorted_mods:
+            current_relative = mod.startswith(".")
+            if previous_relative is not None and current_relative != previous_relative:
+                lines.append("")
             bound_exports.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
                     mod, collapsed[mod], root_name, lines
                 )
             )
+            previous_relative = current_relative
         if bound_exports:
+            lines.append("")
             lines.append("    _ = (")
             lines.extend(
                 f"        {export_name},"

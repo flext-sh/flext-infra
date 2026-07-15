@@ -112,6 +112,8 @@ class FlextInfraProtocolsRope(Protocol):
             self,
         ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
 
+        def registry_imports(self, name: str) -> tuple[tuple[Path, str], ...]: ...
+
         def objects(
             self,
             file_path: Path,
