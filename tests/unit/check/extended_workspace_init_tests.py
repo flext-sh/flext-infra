@@ -1,20 +1,18 @@
-"""Public behavior tests for FlextInfraWorkspaceChecker."""
+"""Public behavior tests for FlextInfraWorkspaceChecker.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import c
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import c, t, u
 
 
 class TestWorkspaceChecker:
@@ -28,8 +26,9 @@ class TestWorkspaceChecker:
         tm.that(FlextInfraWorkspaceChecker.parse_tool_args(raw), eq=list(expected))
 
     def test_init_creates_default_reports_dir(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        tm.that(checker._default_reports_dir.exists(), eq=True)
+        FlextInfraWorkspaceChecker(workspace=tmp_path)
+        reports_dir = tmp_path / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
+        tm.that(reports_dir.is_dir(), eq=True)
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).execute()

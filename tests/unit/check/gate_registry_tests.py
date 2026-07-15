@@ -2,24 +2,22 @@
 
 `loc-cap`, `boundary`, and `canonical-alias` must be in the SSOT-derived
 ALLOWED_GATES and resolve through the registry.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c, m, p, r, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
-
-from pathlib import Path
-
-import pytest
-
 from tests import t
-
 
 
 class TestGateRegistry:

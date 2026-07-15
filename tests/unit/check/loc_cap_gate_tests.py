@@ -2,21 +2,19 @@
 
 The gate flags any module whose tokei `code` line count exceeds 200 and
 accepts modules under the cap, exercised through the public gate runner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 _OVER_CAP = (
     "from __future__ import annotations\n\n"
