@@ -134,7 +134,9 @@ class FlextInfraModelsDepsToolConfigLinters:
             t.StrMapping,
             m.Field(
                 alias="ignored-rule-rationales",
-                description="Global Ruff exclusions mapped to verified architecture rationales.",
+                description=(
+                    "Global Ruff exclusions mapped to verified architecture rationales."
+                ),
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         banned_api: Annotated[
@@ -157,7 +159,9 @@ class FlextInfraModelsDepsToolConfigLinters:
             t.MappingKV[str, t.StrSequence],
             m.Field(
                 alias="per-file-ignores",
-                description="Per-file ignore mapping from glob pattern to ruff rule IDs.",
+                description=(
+                    "Per-file ignore mapping from glob pattern to Ruff rule IDs."
+                ),
             ),
         ]
 
@@ -237,7 +241,9 @@ class FlextInfraModelsDepsToolConfigLinters:
         exclude: Annotated[
             str,
             m.Field(
-                description="Regex used to exclude generated or fixture-like paths from mypy."
+                description=(
+                    "Regex used to exclude generated or fixture-like paths from Mypy."
+                )
             ),
         ] = ""
         disabled_error_codes: Annotated[
@@ -269,11 +275,17 @@ class FlextInfraModelsDepsToolConfigLinters:
         overrides: Annotated[
             tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
             m.Field(
-                description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
+                description=(
+                    "Per-module Mypy overrides for auto-generated files and "
+                    "PEP 695 generics."
+                )
             ),
         ] = m.Field(
             default_factory=tuple,
-            description="Per-module mypy overrides for auto-generated files and PEP 695 generics.",
+            description=(
+                "Per-module Mypy overrides for auto-generated files and "
+                "PEP 695 generics."
+            ),
         )
 
     class PydanticMypyConfig(m.ArbitraryTypesModel):

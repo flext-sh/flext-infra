@@ -197,7 +197,9 @@ class FlextInfraModelsDepsToolSettings(
             m.Field(
                 alias="exclude-also",
                 default_factory=tuple,
-                description="Coverage report line patterns excluded from runtime coverage.",
+                description=(
+                    "Coverage report line patterns excluded from runtime coverage."
+                ),
             ),
         ]
         omit: Annotated[
@@ -338,14 +340,18 @@ class FlextInfraModelsDepsToolSettings(
             t.StrMapping,
             m.Field(
                 alias="surface-prefixes",
-                description="Class prefixes by wrapper surface such as tests/examples/scripts.",
+                description=(
+                    "Class prefixes by wrapper surface such as tests/examples/scripts."
+                ),
             ),
         ]
         inherited_exports: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
                 alias="inherited-exports",
-                description="Allowed inherited exports from parent package by root surface.",
+                description=(
+                    "Allowed inherited exports from parent package by root surface."
+                ),
             ),
         ]
         main_export_files: Annotated[
@@ -372,10 +378,13 @@ class FlextInfraModelsDepsToolSettings(
         tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = m.Field(
             description="Tools"
         )
-        project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = m.Field(
-            alias="project-type-overrides",
-            description="Per-project-type configuration overrides.",
-        )
+        project_type_overrides: Annotated[
+            FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig,
+            m.Field(
+                alias="project-type-overrides",
+                description="Per-project-type configuration overrides.",
+            ),
+        ]
         lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
             alias="lazy-init", description="Declarative lazy-init generation policy."
         )

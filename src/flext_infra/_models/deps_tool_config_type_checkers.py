@@ -94,7 +94,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="test-like-dirs",
-                    description="Env dirs that should include project root in extraPaths.",
+                    description=(
+                        "Env dirs that should include project root in extraPaths."
+                    ),
                 ),
             ]
             default_excludes: Annotated[
@@ -108,7 +110,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="dynamic-exclude-dirs",
-                    description="Directory names excluded only when present in project.",
+                    description=(
+                        "Directory names excluded only when present in project."
+                    ),
                 ),
             ]
             root_typings_paths: Annotated[
@@ -129,7 +133,10 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="ignored-diagnostic-globs",
-                    description="Pyright ignore globs for files that remain on search paths but must not emit diagnostics.",
+                    description=(
+                        "Pyright ignore globs for files that remain on search paths "
+                        "but must not emit diagnostics."
+                    ),
                 ),
             ]
             diagnostic_path_overrides: Annotated[
@@ -139,28 +146,36 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ],
                 m.Field(
                     alias="diagnostic-path-overrides",
-                    description="Existing path roots with evidence-backed diagnostic overrides.",
+                    description=(
+                        "Existing path roots with evidence-backed diagnostic overrides."
+                    ),
                 ),
             ] = ()
             source_report_private_usage: Annotated[
                 str,
                 m.Field(
                     alias="source-report-private-usage",
-                    description="reportPrivateUsage value for source-dir execution envs.",
+                    description=(
+                        "reportPrivateUsage value for source-dir execution envs."
+                    ),
                 ),
             ]
             test_like_report_private_usage: Annotated[
                 str,
                 m.Field(
                     alias="test-like-report-private-usage",
-                    description="reportPrivateUsage value for test-like execution envs.",
+                    description=(
+                        "reportPrivateUsage value for test-like execution envs."
+                    ),
                 ),
             ]
             other_report_private_usage: Annotated[
                 str,
                 m.Field(
                     alias="other-report-private-usage",
-                    description="reportPrivateUsage value for non-source/non-test-like envs.",
+                    description=(
+                        "reportPrivateUsage value for non-source/non-test-like envs."
+                    ),
                 ),
             ]
             root_venv_path: Annotated[
@@ -181,7 +196,9 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 str,
                 m.Field(
                     alias="venv-name",
-                    description="Virtualenv directory name shared across pyright configs.",
+                    description=(
+                        "Virtualenv directory name shared across Pyright configs."
+                    ),
                 ),
             ]
 
@@ -202,14 +219,19 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             t.StrMapping,
             m.Field(
                 alias="lazy-import-suppressions",
-                description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
+                description=(
+                    "Pyright rules suppressed in all envs due to lazy import pattern."
+                ),
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         global_suppression_rationales: Annotated[
             t.StrMapping,
             m.Field(
                 alias="global-suppression-rationales",
-                description="Global Pyright exclusions mapped to verified facade-MRO rationales.",
+                description=(
+                    "Global Pyright exclusions mapped to verified facade-MRO "
+                    "rationales."
+                ),
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         source_env_suppressions: Annotated[
@@ -292,14 +314,19 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 bool,
                 m.Field(
                     alias="include-path-dependencies-in-search-path",
-                    description="Include resolved path dependencies in pyrefly search-path.",
+                    description=(
+                        "Include resolved path dependencies in Pyrefly search-path."
+                    ),
                 ),
             ]
             project_shared_search_paths: Annotated[
                 t.StrSequence,
                 m.Field(
                     alias="project-shared-search-paths",
-                    description="Additional shared workspace paths for subproject pyrefly search-path.",
+                    description=(
+                        "Additional shared workspace paths for subproject Pyrefly "
+                        "search-path."
+                    ),
                 ),
             ]
 

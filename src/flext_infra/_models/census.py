@@ -157,7 +157,10 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 m.Field(
-                    description="Violation kind (misplaced/duplicate/unused/missing_mro_base/flat_alias/wrong_tier)"
+                    description=(
+                        "Violation kind (misplaced/duplicate/unused/missing_mro_base/"
+                        "flat_alias/wrong_tier)"
+                    )
                 ),
             ]
             severity: Annotated[str, m.Field(description="Severity level")] = (
