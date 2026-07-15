@@ -1,18 +1,19 @@
-"""Execution tests for the generated base.mk contract."""
+"""Execution tests for the generated base.mk contract.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import os
 import stat
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests import m, p, u
-
-from pathlib import Path
-
 
 _MAKE_ISOLATION_ENV_KEYS = (
     "FLEXT_ROOT",
@@ -163,14 +164,41 @@ class TestsFlextInfraBasemkMakeContract:
             has=[
                 "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
                 "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
-                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
-                'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
-                'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
-                'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen',
-                'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
-                'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs',
-                'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
-                'PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate',
+                (
+                    "PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH "
+                    'PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python '
+                    "-m flext_infra"
+                ),
+                (
+                    "PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH "
+                    'PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) '
+                    "-m flext_infra"
+                ),
+                (
+                    'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_ROOT) check"
+                ),
+                (
+                    'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_ROOT) codegen"
+                ),
+                (
+                    'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_BOOT) deps"
+                ),
+                (
+                    'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_ROOT) docs"
+                ),
+                (
+                    'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_ROOT) github"
+                ),
+                (
+                    "PROJECT_INFRA_VALIDATE := "
+                    'FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" '
+                    "$(PROJECT_INFRA_ROOT) validate"
+                ),
             ],
         )
 
@@ -179,7 +207,12 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate',
+            has=(
+                "BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH "
+                'PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" '
+                "$(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) "
+                "-m flext_infra validate"
+            ),
         )
 
     def test_rendered_base_mk_keeps_workspace_preflight_read_only(self) -> None:
@@ -210,7 +243,10 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
+            has=(
+                'if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then '
+                '_coverage_args="--no-cov"; fi;'
+            ),
         )
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
@@ -252,7 +288,10 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir.mkdir(parents=True, exist_ok=True)
         _write_executable(
             bin_dir / "poetry",
-            '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+            (
+                "#!/usr/bin/env bash\nprintf 'PYTHONPATH=%s MYPYPATH=%s %s\\n' "
+                '"${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+            )
             + str(log_path)
             + '"\nexit 0\n',
         )
@@ -292,7 +331,10 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir.mkdir(parents=True, exist_ok=True)
         _write_executable(
             bin_dir / "poetry",
-            '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+            (
+                "#!/usr/bin/env bash\nprintf 'PYTHONPATH=%s MYPYPATH=%s %s\\n' "
+                '"${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+            )
             + str(log_path)
             + '"\nexit 0\n',
         )
@@ -354,12 +396,16 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             log_path.read_text(encoding="utf-8"),
             has=(
-                f"python -m flext_infra check run --workspace {tmp_path} --gates lint,pyright --reports-dir "
+                f"python -m flext_infra check run --workspace {tmp_path} "
+                "--gates lint,pyright --reports-dir "
             ),
         )
         tm.that(
             log_path.read_text(encoding="utf-8"),
-            has="--projects . --fix --ruff-args --select E501 --pyright-args --level basic",
+            has=(
+                "--projects . --fix --ruff-args --select E501 "
+                "--pyright-args --level basic"
+            ),
         )
 
     def test_make_check_fast_path_check_only_suppresses_fix_writes(
@@ -404,7 +450,10 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=2)
         tm.that(
             result.stdout + result.stderr,
-            has="FILE/FILES/CHANGED_ONLY fast-path only supports lint,format,pyrefly,mypy,pyright",
+            has=(
+                "FILE/FILES/CHANGED_ONLY fast-path only supports "
+                "lint,format,pyrefly,mypy,pyright"
+            ),
         )
 
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
@@ -428,7 +477,10 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             log_content,
             has=[
-                f"python -m flext_infra validate basemk-validate --workspace {workspace_root}",
+                (
+                    "python -m flext_infra validate basemk-validate "
+                    f"--workspace {workspace_root}"
+                ),
                 # NOTE (multi-agent, mro-wkii.17.9): path-sync is not part of
                 # the generated Make contract; conform owns pyproject output.
                 "python -m flext_infra deps internal-sync",

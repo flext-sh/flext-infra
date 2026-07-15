@@ -1,13 +1,16 @@
+"""Tests for safe checkpoint handling.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-from tests import c
-from tests import u
-from flext_tests import tm
 
 from pathlib import Path
 
+from flext_tests import tm
+
+from tests import c, u
 
 
 def _run_git(repo: Path, *args: str) -> None:

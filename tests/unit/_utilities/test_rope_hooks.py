@@ -1,16 +1,16 @@
-"""Tests for declarative rope hook execution."""
+"""Tests for declarative rope hook execution.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from tests import u
-from flext_tests import tm
-
 from pathlib import Path
 
-from tests import m
+from flext_tests import tm
 
+from tests import m, u
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
@@ -53,12 +53,16 @@ class TestsFlextInfraUtilitiesRopeHooks:
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
         )
 
-        assert any(
-            result.file_path == consumer_path and result.modified for result in results
+        tm.that(
+            any(
+                result.file_path == consumer_path and result.modified
+                for result in results
+            ),
+            eq=True,
         )
-        assert (
-            'class FlextDemoConstants:\n    FOO = "value"'
-            in constants_path.read_text(encoding="utf-8")
+        tm.that(
+            constants_path.read_text(encoding="utf-8"),
+            has='class FlextDemoConstants:\n    FOO = "value"',
         )
         consumer_text = consumer_path.read_text(encoding="utf-8")
         tm.that(consumer_text, has="from demo_pkg.constants import c")
@@ -73,7 +77,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
         )
 
-        assert any(result.file_path == consumer_path for result in results)
-        assert all(not result.modified for result in results)
+        tm.that(any(result.file_path == consumer_path for result in results), eq=True)
+        tm.that(all(not result.modified for result in results), eq=True)
         tm.that(constants_path.read_text(encoding="utf-8"), eq=original_constants)
         tm.that(consumer_path.read_text(encoding="utf-8"), eq=original_consumer)
