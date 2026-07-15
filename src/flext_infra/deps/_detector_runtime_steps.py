@@ -1,4 +1,8 @@
-"""Cohesive environment-setup + per-project execution mixin for the dependency detector runtime."""
+"""Environment and project execution steps for dependency detection.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -19,7 +23,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
     def _validate_environment(
         self, params: m.Infra.DetectCommand, root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.SequenceOf[Path], Path]]:
-        """Discover projects and verify deptry binary; return ``(projects, limits_path)``."""
+        """Discover projects and verify the deptry executable."""
         detector = self._detector
         projects_result = detector.deps.discover_project_paths(
             root, projects_filter=params.project_names
@@ -159,7 +163,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         params: m.Infra.DetectCommand,
         report_model: p.Infra.WorkspaceReport,
     ) -> p.Result[bool]:
-        """Execute the workspace ``pip check`` and stamp the report; ``r.ok(pip_ok)``."""
+        """Execute workspace ``pip check`` and stamp the report."""
         if params.no_pip_check:
             return r[bool].ok(True)
         if not isinstance(deps_service, p.Infra.PipCheckDepsService):

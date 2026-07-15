@@ -66,7 +66,8 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
 
     @staticmethod
     def bracket_balance_line(line: str) -> int:
-        """Return net bracket depth delta of one line (strings + ``#`` comments ignored)."""
+        """Return the net bracket-depth delta for one line."""
+        cls = FlextInfraUtilitiesRopeBracketBalanceMixin
         try:
             return sum(
                 1 if token.string in "([{" else -1
@@ -74,13 +75,11 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
                 if token.type == tokenize.OP and token.string in "()[]{}"
             )
         except tokenize.TokenError:
-            return FlextInfraUtilitiesRopeBracketBalanceMixin._fallback_bracket_balance_line(
-                line
-            )
+            return cls._fallback_bracket_balance_line(line)
 
     @staticmethod
     def _fallback_bracket_balance_line(line: str) -> int:
-        """Approximate bracket balance for incomplete lines that ``tokenize`` rejects."""
+        """Approximate bracket balance when ``tokenize`` rejects a line."""
         balance = 0
         in_single_quote = False
         in_double_quote = False

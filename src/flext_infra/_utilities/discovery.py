@@ -1,4 +1,8 @@
-"""Project discovery utilities for package and workspace resolution."""
+"""Project discovery utilities for package and workspace resolution.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -140,7 +144,7 @@ class FlextInfraUtilitiesDiscovery:
 
     @staticmethod
     def package_name(file_path: Path) -> str:
-        """Discover the module or package path for one Python file or package directory."""
+        """Discover the package path for one Python file or directory."""
         return FlextInfraUtilitiesDiscovery._discover_package_from_path(str(file_path))
 
     @staticmethod
@@ -284,7 +288,8 @@ class FlextInfraUtilitiesDiscovery:
             if scan_root.is_file():
                 if scan_root.name != c.Infra.PYPROJECT_FILENAME:
                     return r[t.SequenceOf[Path]].fail(
-                        f"explicit project file must be {c.Infra.PYPROJECT_FILENAME}: {scan_root}"
+                        "explicit project file must be "
+                        f"{c.Infra.PYPROJECT_FILENAME}: {scan_root}"
                     )
                 all_files.append(scan_root)
                 continue
@@ -349,7 +354,7 @@ class FlextInfraUtilitiesDiscovery:
     def resolve_transitive_parent_packages(
         workspace_root: Path, package_names: t.StrSequence
     ) -> t.StrSequence:
-        """Resolve parent packages transitively with ancestors ordered before children."""
+        """Resolve parent packages with ancestors before children."""
         resolved: list[str] = []
         visited: set[str] = set()
 
