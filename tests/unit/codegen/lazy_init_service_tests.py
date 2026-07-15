@@ -10,8 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
+from tests import c, u
 
 
 # NOTE (multi-agent, mro-wkii.17.15): prove scoped writes and read-only drift publicly.

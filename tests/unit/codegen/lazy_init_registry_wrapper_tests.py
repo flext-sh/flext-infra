@@ -1,4 +1,8 @@
-"""Public cleanup tests for superseded lazy-init sidecars."""
+"""Public cleanup tests for superseded lazy-init sidecars.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,8 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
+from tests import c, u
 
 
 # mro-i6nq.10: Cleanup is proven through the real generator, not private mixins.
@@ -95,9 +98,7 @@ class TestsFlextInfraLazyInitCleanup:
         tm.that(obsolete_module.is_file(), eq=True)
         tm.that(str(obsolete_module) in service.modified_files, eq=True)
 
-    def test_obsolete_root_support_cleanup_fails_closed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_obsolete_root_support_cleanup_fails_closed(self, tmp_path: Path) -> None:
         """Reject unexpected content before deleting any retired registry."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(

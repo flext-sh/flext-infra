@@ -10,9 +10,9 @@ import os
 import sys
 from pathlib import Path
 
-from tests import c
-from tests import u
 from flext_tests import tm
+
+from tests import c, u
 
 
 class TestsFlextInfraLazyInitHelpers:
