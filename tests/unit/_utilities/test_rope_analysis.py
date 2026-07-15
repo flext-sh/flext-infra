@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import u
@@ -16,6 +17,79 @@ from flext_infra.detectors.facade_scanner import FlextInfraScanner
 
 class TestsFlextInfraRopeAnalysis:
     """Behavior contract for Rope-backed semantic analysis."""
+
+    def test_assignment_strings_resolve_local_registry_with_rope(
+        self, tmp_path: Path
+    ) -> None:
+        """Read declarative module registries from Rope-owned assignments."""
+        project = tmp_path / "demo-project"
+        package_dir = project / "tests"
+        package_dir.mkdir(parents=True)
+        _ = (project / "pyproject.toml").write_text(
+            "[project]\nname='demo-project'\n", encoding="utf-8"
+        )
+        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        registry_path = package_dir / "conftest.py"
+        _ = registry_path.write_text(
+            "pytest_plugins: tuple[str, ...] = (\n"
+            '    "tests.unit.fixtures",\n'
+            '    "tests.unit.fixtures_git",\n'
+            ")\n",
+            encoding="utf-8",
+        )
+        dynamic_registry_path = package_dir / "dynamic_registry.py"
+        _ = dynamic_registry_path.write_text(
+            "pytest_plugins = build_plugins()\n", encoding="utf-8"
+        )
+        triple_registry_path = package_dir / "triple_registry.py"
+        _ = triple_registry_path.write_text(
+            'pytest_plugins = ("""tests.unit.fixtures""",)\n', encoding="utf-8"
+        )
+        invalid_registry_path = package_dir / "invalid_registry.py"
+        _ = invalid_registry_path.write_text(
+            'pytest_plugins = ("tests.unit.bad-name",)\n', encoding="utf-8"
+        )
+
+        with u.Infra.open_project(project) as rope_project:
+            resource = u.Infra.get_resource_from_path(rope_project, registry_path)
+            registry = u.Infra.get_module_registry_imports(
+                rope_project, resource, "pytest_plugins"
+            )
+            missing = u.Infra.get_module_registry_imports(
+                rope_project, resource, "missing_registry"
+            )
+            dynamic_resource = u.Infra.get_resource_from_path(
+                rope_project, dynamic_registry_path
+            )
+            with pytest.raises(
+                ValueError,
+                match="Declarative assignment must be a literal list or tuple",
+            ):
+                _ = u.Infra.get_module_registry_imports(
+                    rope_project, dynamic_resource, "pytest_plugins"
+                )
+            triple_resource = u.Infra.get_resource_from_path(
+                rope_project, triple_registry_path
+            )
+            with pytest.raises(
+                ValueError, match="Declarative assignment requires plain strings"
+            ):
+                _ = u.Infra.get_module_registry_imports(
+                    rope_project, triple_resource, "pytest_plugins"
+                )
+            invalid_resource = u.Infra.get_resource_from_path(
+                rope_project, invalid_registry_path
+            )
+            with pytest.raises(
+                ValueError, match="Declarative assignment requires dotted imports"
+            ):
+                _ = u.Infra.get_module_registry_imports(
+                    rope_project, invalid_resource, "pytest_plugins"
+                )
+
+        tm.that(registry, eq=("tests.unit.fixtures", "tests.unit.fixtures_git"))
+        tm.that(missing, eq=())
 
     def test_facade_scanner_reads_facade_with_imported_superclass(
         self, tmp_path: Path

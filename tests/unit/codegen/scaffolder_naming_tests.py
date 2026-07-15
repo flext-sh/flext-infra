@@ -9,25 +9,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c
-from tests import u
-
-from pathlib import Path
-
-from tests import m
-from tests import t
-
+from tests import c, m, t, u
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
     """Extract all class names from Python source via the codegen regex authority.
 
     Single Responsibility: detect class definitions only.
+
+    Returns:
+        The class names declared in the source text.
     """
     return tuple(map(str, c.Infra.DETECTION_CLASS_DECL_RE.findall(source)))
 

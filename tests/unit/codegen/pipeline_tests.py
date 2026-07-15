@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
@@ -18,9 +18,6 @@ from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-
-from pathlib import Path
-
 
 _SRC_MODULES = (
     "constants.py",

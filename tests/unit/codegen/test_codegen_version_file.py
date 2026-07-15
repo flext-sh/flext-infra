@@ -6,16 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests import c
-from flext_tests import tm
-
 from pathlib import Path
 
-from tests import t
+from flext_tests import tm
 
+from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
+from tests import c, t
 
 _WORKSPACE_PYPROJECT = """\
 [project]
@@ -69,7 +65,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         tm.ok(result)
         version_file = pkg / "__version__.py"
-        assert version_file.exists()
+        tm.that(version_file.exists(), eq=True)
 
     def test_generated_file_contains_class_name(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -99,7 +95,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that((pkg / "__version__.py").exists(), eq=False)
 
     def test_dry_run_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -110,7 +106,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that((pkg / "__version__.py").exists(), eq=False)
 
     def test_idempotent_when_file_already_correct(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -159,20 +155,22 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert (
+        generated_version = (
             ws
             / c.Tests.PROJECT_A_NAME
             / "src"
             / c.Tests.PROJECT_A_NAME.replace("-", "_")
             / "__version__.py"
-        ).exists()
-        assert not (
+        )
+        excluded_version = (
             ws
             / c.Tests.PROJECT_B_NAME
             / "src"
             / c.Tests.PROJECT_B_NAME.replace("-", "_")
             / "__version__.py"
-        ).exists()
+        )
+        tm.that(generated_version.exists(), eq=True)
+        tm.that(excluded_version.exists(), eq=False)
 
     def test_skips_project_without_src_pkg_dir(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspace"

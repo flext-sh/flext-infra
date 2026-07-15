@@ -10,16 +10,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import u
-
-from tests import m
-from tests import t
-
+from tests import m, t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:

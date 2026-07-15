@@ -6,18 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-import pytest
-
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from tests import c
-from flext_tests import tm
-
 from pathlib import Path
 
-from tests import t
+import pytest
+from flext_tests import tm
 
+from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
+from tests import c, t
 
 
 class TestsFlextInfraCodegenPyTyped:

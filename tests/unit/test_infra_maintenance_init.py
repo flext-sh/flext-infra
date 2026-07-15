@@ -1,15 +1,18 @@
 """Tests for flext_infra.maintenance module initialization.
 
 Tests lazy loading and __getattr__ fallthrough behavior.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.maintenance
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_tests import tm
 
 
 class TestsFlextInfraInfraMaintenanceInit:

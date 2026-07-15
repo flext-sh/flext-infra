@@ -10,17 +10,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import main as infra_main
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 
 class TestHandleLazyInit:

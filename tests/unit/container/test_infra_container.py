@@ -13,11 +13,10 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
+from flext_tests import tm
 
 from flext_core import FlextContainer
-from tests import c
-from tests import u
-from flext_tests import tm
+from tests import c, u
 
 
 class TestsFlextInfraContainerInfraContainer:
@@ -28,49 +27,49 @@ class TestsFlextInfraContainerInfraContainer:
     @pytest.fixture
     def setup(self) -> None:
         """Ensure container is configured before each test."""
-        FlextContainer().initialize_di_components()
+        FlextContainer.shared().initialize_di_components()
 
     def test_get_flext_infra_container_returns_singleton(self) -> None:
         """Verify FlextContainer is a singleton-like container."""
-        container = FlextContainer()
-        assert callable(container.has)
-        assert callable(container.resolve)
+        container = FlextContainer.shared()
+        tm.that(callable(container.has), eq=True)
+        tm.that(callable(container.resolve), eq=True)
 
     def test_get_flext_infra_service_returns_result(self) -> None:
         """Verify container get returns values for registered services."""
-        container = FlextContainer()
-        assert callable(container.bind)
-        assert callable(container.resolve)
+        container = FlextContainer.shared()
+        tm.that(callable(container.bind), eq=True)
+        tm.that(callable(container.resolve), eq=True)
 
     def test_io_methods_available(self) -> None:
         """Verify IO methods are accessible via u.Infra MRO."""
-        assert callable(u.Cli.json_write)
+        tm.that(callable(u.Cli.json_write), eq=True)
 
     def test_cli_runtime_methods_available(self) -> None:
         """Verify command runtime methods are accessible via u.Cli."""
-        assert callable(u.Cli.run_checked)
-        assert callable(u.Cli.run_raw)
-        assert callable(u.Cli.capture)
-        assert callable(u.Cli.run_to_file)
+        tm.that(callable(u.Cli.run_checked), eq=True)
+        tm.that(callable(u.Cli.run_raw), eq=True)
+        tm.that(callable(u.Cli.capture), eq=True)
+        tm.that(callable(u.Cli.run_to_file), eq=True)
 
     def test_discovery_methods_available(self) -> None:
         """Verify discovery methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.discover_projects)
-        assert callable(u.Infra.discover_project_roots)
+        tm.that(callable(u.Infra.discover_projects), eq=True)
+        tm.that(callable(u.Infra.discover_project_roots), eq=True)
 
     def test_output_methods_available(self) -> None:
         """Verify output methods are accessible via u.Infra MRO."""
-        assert callable(u.Cli.status)
-        assert callable(u.Cli.summary)
-        assert callable(u.Cli.error)
-        assert callable(u.Cli.warning)
-        assert callable(u.Cli.info)
-        assert callable(u.Cli.header)
-        assert callable(u.Cli.progress)
+        tm.that(callable(u.Cli.status), eq=True)
+        tm.that(callable(u.Cli.summary), eq=True)
+        tm.that(callable(u.Cli.error), eq=True)
+        tm.that(callable(u.Cli.warning), eq=True)
+        tm.that(callable(u.Cli.info), eq=True)
+        tm.that(callable(u.Cli.header), eq=True)
+        tm.that(callable(u.Cli.progress), eq=True)
 
     def test_path_methods_available(self) -> None:
         """Verify path methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.rope_workspace_root)
+        tm.that(callable(u.Infra.rope_workspace_root), eq=True)
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra MRO."""
@@ -80,25 +79,25 @@ class TestsFlextInfraContainerInfraContainer:
 
     def test_versioning_methods_available(self) -> None:
         """Verify versioning methods are accessible via u.Infra MRO."""
-        assert callable(u.Infra.parse_semver)
-        assert callable(u.Infra.bump_version)
+        tm.that(callable(u.Infra.parse_semver), eq=True)
+        tm.that(callable(u.Infra.bump_version), eq=True)
 
     def test_toml_methods_available(self) -> None:
         """Verify TOML methods are accessible via u.Infra MRO."""
-        assert callable(u.Cli.toml_ensure_table)
-        assert callable(u.Cli.toml_table_path)
+        tm.that(callable(u.Cli.toml_ensure_table), eq=True)
+        tm.that(callable(u.Cli.toml_table_path), eq=True)
 
     def test_patterns_available(self) -> None:
         """Verify pattern constants are accessible via u.Infra MRO."""
-        assert callable(u.Cli.matches)
+        tm.that(callable(u.Cli.matches), eq=True)
 
     def test_container_has_service_method(self) -> None:
         """Verify FlextContainer has has_service method."""
-        assert callable(FlextContainer().has)
+        tm.that(callable(FlextContainer.shared().has), eq=True)
 
     def test_container_list_services_method(self) -> None:
         """Verify FlextContainer has list_services method."""
-        assert callable(FlextContainer().names)
+        tm.that(callable(FlextContainer.shared().names), eq=True)
 
     def test_output_methods_write_to_configured_stream(self) -> None:
         """Verify output methods write through the shared namespace stream."""

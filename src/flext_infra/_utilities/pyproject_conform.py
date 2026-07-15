@@ -1,4 +1,8 @@
-"""Pure Git-first pyproject conformance through the flext-cli TOML facade."""
+"""Pure Git-first pyproject conformance through the flext-cli TOML facade.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -313,12 +317,8 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_value(pyright, "executionEnvironments")
         )
         normalized_environments: t.JsonValueList = []
-        for index, environment in enumerate(raw_environments):
+        for environment in raw_environments:
             mapping = u.Cli.json_as_mapping(environment)
-            if mapping is None:
-                return r[bool].fail(
-                    f"tool.pyright.executionEnvironments[{index}] must be a mapping"
-                )
             normalized: t.JsonDict = dict(mapping)
             root = normalized.get("root")
             normalized[c.Infra.EXTRA_PATHS] = ["src"] if root == "src" else [".", "src"]

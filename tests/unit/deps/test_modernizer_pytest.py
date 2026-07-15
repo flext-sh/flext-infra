@@ -1,4 +1,8 @@
-"""Pytest phase tests for deps modernizer."""
+"""Pytest phase tests for deps modernizer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -8,8 +12,7 @@ from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from tests import t
-from tests import u
+from tests import t, u
 
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:

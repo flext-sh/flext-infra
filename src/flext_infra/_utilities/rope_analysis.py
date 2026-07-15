@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import io as _io
 import importlib.util as _importlib_util
+import tokenize as _tokenize
 from pathlib import Path
 from typing import ClassVar
 
@@ -464,6 +466,30 @@ class FlextInfraUtilitiesRopeAnalysis:
         return export_names
 
     @staticmethod
+    def get_module_registry_imports(
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource, name: str
+    ) -> t.StrSequence:
+        """Return import paths owned by one local declarative registry.
+
+        Returns:
+            Dotted import paths in declaration order, or an empty tuple when
+            the requested assignment is not declared locally.
+        """
+        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+        pyname = pymodule.get_attributes().get(name)
+        if (
+            pyname is None
+            or not FlextInfraUtilitiesRopeRuntime.is_assigned_name(pyname)
+            or not FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource)
+        ):
+            return ()
+        # mro-wkii.17.26.2 (codex): Rope owns assignment identity and source
+        # bounds; codegen consumes only the resulting declarative string values.
+        return FlextInfraUtilitiesRopeAnalysis._registry_assignment_imports(
+            pyname, pymodule, name=name
+        )
+
+    @staticmethod
     def _module_export_names(
         *,
         export_options: m.Infra.ExportOptions,
@@ -589,6 +615,104 @@ class FlextInfraUtilitiesRopeAnalysis:
             slice_text = "\n".join(lines[start - 1 : end])
             return tuple(dict.fromkeys(c.Infra.STRING_LITERAL_RE.findall(slice_text)))
         return None
+
+    @staticmethod
+    def _registry_assignment_imports(
+        pyname: t.Infra.RopeAssignedName, pymodule: t.Infra.RopePyModule, *, name: str
+    ) -> t.StrSequence:
+        """Return imports from one Rope-located declarative assignment.
+
+        Rope owns assignment identity and its definition line. Python's lexical
+        tokenizer then accepts only a literal list or tuple, making dynamic
+        registries fail loudly without AST traversal or regex discovery.
+        """
+        _module, line = pyname.get_definition_location()
+        if line is None or line < 1:
+            msg = f"Rope assignment has no definition line: {name}"
+            raise ValueError(msg)
+        assignment_found = False
+        equals_found = False
+        container_open = ""
+        container_closed = False
+        expect_value = True
+        values: list[str] = []
+        tokens = _tokenize.generate_tokens(_io.StringIO(pymodule.source_code).readline)
+        for token in tokens:
+            if token.start[0] < line:
+                continue
+            if not assignment_found:
+                if token.start[0] > line:
+                    break
+                assignment_found = token.type == _tokenize.NAME and token.string == name
+                continue
+            if token.type in {_tokenize.NL, _tokenize.COMMENT}:
+                continue
+            if token.type in {_tokenize.NEWLINE, _tokenize.ENDMARKER}:
+                break
+            if not equals_found:
+                equals_found = token.type == _tokenize.OP and token.string == "="
+                continue
+            if token.type == _tokenize.OP and token.string == ";":
+                break
+            if container_closed:
+                msg = f"Declarative assignment has trailing expression: {name}"
+                raise ValueError(msg)
+            if not container_open:
+                if token.type == _tokenize.OP and token.string in {"(", "["}:
+                    container_open = token.string
+                    continue
+                msg = f"Declarative assignment must be a literal list or tuple: {name}"
+                raise ValueError(msg)
+            if token.type == _tokenize.STRING:
+                if not expect_value:
+                    msg = f"Declarative assignment values require commas: {name}"
+                    raise ValueError(msg)
+                values.append(
+                    FlextInfraUtilitiesRopeAnalysis._plain_registry_import(
+                        token.string, name=name
+                    )
+                )
+                expect_value = False
+                continue
+            if token.type != _tokenize.OP:
+                msg = f"Declarative assignment contains a dynamic value: {name}"
+                raise ValueError(msg)
+            if token.string == ",":
+                if expect_value:
+                    msg = f"Declarative assignment contains an empty value: {name}"
+                    raise ValueError(msg)
+                expect_value = True
+                continue
+            expected_close = ")" if container_open == "(" else "]"
+            if token.string == expected_close:
+                container_closed = True
+                continue
+            msg = f"Declarative assignment contains an unsupported token: {name}"
+            raise ValueError(msg)
+        if not assignment_found or not equals_found or not container_closed:
+            msg = f"Declarative assignment is incomplete: {name}"
+            raise ValueError(msg)
+        return tuple(dict.fromkeys(values))
+
+    @staticmethod
+    def _plain_registry_import(source: str, *, name: str) -> str:
+        """Decode and validate one canonical dotted import string token."""
+        if (
+            len(source) < FlextInfraUtilitiesRopeAnalysis._STRING_LITERAL_MIN_LENGTH
+            or source[0] not in {'"', "'"}
+            or source[-1] != source[0]
+            or source.startswith(('"""', "'''"))
+            or "\\" in source[1:-1]
+        ):
+            msg = f"Declarative assignment requires plain string literals: {name}"
+            raise ValueError(msg)
+        module_name = source[1:-1]
+        if not module_name or not all(
+            part.isidentifier() for part in module_name.split(".")
+        ):
+            msg = f"Declarative assignment requires dotted import names: {name}"
+            raise ValueError(msg)
+        return module_name
 
     @staticmethod
     def _is_local_name(

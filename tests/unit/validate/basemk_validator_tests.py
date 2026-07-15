@@ -8,20 +8,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from pathlib import Path
+from typing import Final
 
 import pytest
 from flext_tests import tf, tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-from tests import m
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import m, t, u
 
 _ROOT: Final[str] = "# root content"
 
@@ -47,15 +42,19 @@ class TestBaseMkValidatorCore:
     def test_missing_root_basemk_fails(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(not report.passed, eq=True)
-        tm.that(report.summary, has="missing root base.mk")
+        tm.that(report.summary, has="missing canonical base.mk")
 
     def test_matching_basemk_returns_report_model(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
         (tmp_path / "base.mk").write_text(_generated_content(), encoding="utf-8")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -63,7 +62,9 @@ class TestBaseMkValidatorCore:
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
         tf(base_dir=tmp_path).create("# stale content", "base.mk")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(not report.passed, eq=True)
         tm.that(report.summary, has="out of sync")
 
@@ -71,14 +72,18 @@ class TestBaseMkValidatorCore:
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
         (tmp_path / "base.mk").write_text(_generated_content(), encoding="utf-8")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="matches generated template")
 
     def test_empty_workspace_missing_basemk(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(not report.passed, eq=True)
 
 
@@ -89,7 +94,9 @@ class TestBaseMkValidatorEdgeCases:
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
         tf(base_dir=tmp_path).create("# different", "base.mk")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(not report.passed, eq=True)
         tm.that(report.violations[0], has="stale")
 
@@ -97,7 +104,9 @@ class TestBaseMkValidatorEdgeCases:
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
         tf(base_dir=tmp_path).create("# mismatch", "base.mk")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        result = v.build_report(tmp_path)
+        tm.ok(result)
+        report = result.unwrap()
         tm.that(not report.passed, eq=True)
         tm.that(report.violations, length=1)
 

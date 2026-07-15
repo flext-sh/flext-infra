@@ -1,6 +1,9 @@
 """Tests for FlextInfraReportingService — report dir/path operations.
 
 Tests cover report path generation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -8,9 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
 from tests import u
-from flext_tests import tm
 
 
 class TestsFlextInfraInfraReportingCore:
