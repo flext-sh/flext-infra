@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import r, tm
 
@@ -15,22 +15,9 @@ from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from tests import u as test_u
 
-from pathlib import Path
-
-
 
 class TestFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
-
-    def test_init_creates_instance(self) -> None:
-        """Test that checker initializes with default workspace root."""
-        checker = FlextInfraWorkspaceChecker()
-        tm.that(checker, none=False)
-
-    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
-        """Test that checker accepts custom workspace root."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
-        tm.that(checker, none=False)
 
     def test_execute_returns_failure(self) -> None:
         """Test that execute() returns failure with helpful message."""
@@ -105,7 +92,7 @@ class TestFlextInfraWorkspaceChecker:
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
         tm.ok(result)
-        assert not result.value
+        tm.that(result.value, empty=True)
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
@@ -113,7 +100,7 @@ class TestFlextInfraWorkspaceChecker:
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
-        assert reports_dir.exists()
+        tm.that(reports_dir.is_dir(), eq=True)
 
     def test_lint_returns_gate_result(self, tmp_path: Path) -> None:
         """Test that lint() returns a GateResult."""

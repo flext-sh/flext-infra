@@ -1,20 +1,19 @@
-"""Public CLI tests for workspace quality checks."""
+"""Public CLI tests for workspace quality checks.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 
 class TestWorkspaceCheckCli:
@@ -42,6 +41,7 @@ class TestWorkspaceCheckCli:
         return module_path
 
     def test_resolve_gates_maps_type_alias(self) -> None:
+        """Map the public type alias and remove duplicate gate names."""
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type", "lint"])
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly"])
@@ -54,6 +54,7 @@ class TestWorkspaceCheckCli:
     def test_run_cli_lint_exit_code_matches_source_validity(
         self, tmp_path: Path, source: str, expected_exit: int
     ) -> None:
+        """Return the lint exit code that matches real source validity."""
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", source)
 
@@ -73,6 +74,7 @@ class TestWorkspaceCheckCli:
     def test_run_cli_returns_one_for_report_directory_error(
         self, tmp_path: Path
     ) -> None:
+        """Return failure when the requested report parent is a file."""
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "value = 1\n")
         blocked = tmp_path / "blocked"
@@ -94,6 +96,7 @@ class TestWorkspaceCheckCli:
         tm.that(exit_code, eq=1)
 
     def test_run_cli_handles_multiple_projects(self, tmp_path: Path) -> None:
+        """Run the public lint command across multiple selected projects."""
         workspace = self._create_workspace(tmp_path, project_names=("proj1", "proj2"))
         _ = self._write_module(workspace, "proj1", "value = 1\n")
         _ = self._write_module(workspace, "proj2", "other = 2\n")
@@ -116,6 +119,7 @@ class TestWorkspaceCheckCli:
     def test_run_cli_fix_rewrites_source_with_forwarded_ruff_args(
         self, tmp_path: Path
     ) -> None:
+        """Forward Ruff arguments and apply the requested source repair."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
             workspace, "flext-core", "import os\n\nvalue = 1\n"
@@ -139,6 +143,7 @@ class TestWorkspaceCheckCli:
         tm.that("import os" in module_path.read_text(encoding="utf-8"), eq=False)
 
     def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
+        """Preserve source when check-only is combined with the fix option."""
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
             workspace, "flext-core", "import os\n\nvalue = 1\n"
@@ -163,6 +168,7 @@ class TestWorkspaceCheckCli:
         tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
 
     def test_run_cli_rejects_shared_dry_run_flag(self) -> None:
+        """Reject the shared dry-run flag when the check command does not own it."""
         exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])
 
         tm.that(exit_code, eq=2)

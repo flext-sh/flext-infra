@@ -6,24 +6,23 @@ The gate parses a qlty SARIF payload into per-project issues, emits one
 issue instead of a silent pass. All assertions run against a literal SARIF
 fixture returned by an owned temporary ``qlty`` executable, exercising only
 the public gate boundary.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_core import c as c, e as core_e
+from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
-
-from pathlib import Path
-
 from tests import t
-
 
 _SMELL_CODES: t.StrSequence = tuple(sorted(c.Infra.SMELLS_RULE_TAGS))
 

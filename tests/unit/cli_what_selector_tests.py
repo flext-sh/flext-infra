@@ -1,9 +1,14 @@
-"""Contract tests for the ``--what`` phase selector on check/validate groups."""
+"""Contract tests for the ``--what`` phase selector on check/validate groups.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from flext_infra.cli import main
 from flext_tests import tm
+
+from flext_infra.cli import main
 
 
 class TestsFlextInfraCliWhatSelector:
