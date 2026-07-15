@@ -52,15 +52,19 @@ class TestsFlextInfraRopeAnalysis:
         )
 
         with u.Infra.open_project(project) as rope_project:
-            resource = u.Infra.get_resource_from_path(rope_project, registry_path)
+            # NOTE (multi-agent): preserve Rope's optional boundary while proving
+            # every fixture path exists before exercising registry semantics.
+            resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, registry_path)
+            )
             registry = u.Infra.get_module_registry_imports(
                 rope_project, resource, "pytest_plugins"
             )
             missing = u.Infra.get_module_registry_imports(
                 rope_project, resource, "missing_registry"
             )
-            dynamic_resource = u.Infra.get_resource_from_path(
-                rope_project, dynamic_registry_path
+            dynamic_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, dynamic_registry_path)
             )
             with pytest.raises(
                 ValueError,
@@ -69,20 +73,20 @@ class TestsFlextInfraRopeAnalysis:
                 _ = u.Infra.get_module_registry_imports(
                     rope_project, dynamic_resource, "pytest_plugins"
                 )
-            triple_resource = u.Infra.get_resource_from_path(
-                rope_project, triple_registry_path
+            triple_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, triple_registry_path)
             )
             with pytest.raises(
-                ValueError, match="Declarative assignment requires plain strings"
+                ValueError, match="Declarative assignment requires plain string"
             ):
                 _ = u.Infra.get_module_registry_imports(
                     rope_project, triple_resource, "pytest_plugins"
                 )
-            invalid_resource = u.Infra.get_resource_from_path(
-                rope_project, invalid_registry_path
+            invalid_resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, invalid_registry_path)
             )
             with pytest.raises(
-                ValueError, match="Declarative assignment requires dotted imports"
+                ValueError, match="Declarative assignment requires dotted import"
             ):
                 _ = u.Infra.get_module_registry_imports(
                     rope_project, invalid_resource, "pytest_plugins"
