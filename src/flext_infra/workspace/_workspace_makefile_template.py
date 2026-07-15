@@ -1,4 +1,8 @@
-"""Workspace Makefile template rendering helpers."""
+"""Workspace Makefile template rendering helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -60,13 +64,28 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
     def _template_header() -> t.StrSequence:
         """Return the generated workspace Makefile header."""
         return (
-            "# =============================================================================\n",
+            (
+                "# ===================="
+                "===================="
+                "===================="
+                "=================\n"
+            ),
             "# FLEXT Workspace Makefile\n",
-            "# =============================================================================\n",
+            (
+                "# ===================="
+                "===================="
+                "===================="
+                "=================\n"
+            ),
             f"{c.Infra.MAKEFILE_GENERATED_MARKER}\n",
             "# Run 'make sync' from workspace root to regenerate this file.\n",
             "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
-            "# =============================================================================\n",
+            (
+                "# ===================="
+                "===================="
+                "===================="
+                "=================\n"
+            ),
         )
 
     @staticmethod
@@ -82,7 +101,10 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         return (
             content
             + "\n"
-            + "# Workspace-specific custom targets (optional, never overwritten by sync)\n"
+            + (
+                "# Workspace-specific custom targets (optional, never overwritten "
+                "by sync)\n"
+            )
             + f"{c.Infra.MAKEFILE_CUSTOM_INCLUDE}\n"
         )
 

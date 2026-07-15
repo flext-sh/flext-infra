@@ -27,7 +27,8 @@ class FlextInfraTomlPhaseOps:
         if isinstance(operation, m.Infra.Deps.Toml.SetOp):
             if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
                 out.append(
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}"
+                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
+                    f"{operation.value}"
                 )
             return
         if isinstance(operation, m.Infra.Deps.Toml.ListOp):
@@ -57,7 +58,8 @@ class FlextInfraTomlPhaseOps:
             case c.Infra.TomlOperationKind.SET:
                 if u.Cli.toml_mapping_sync_value(tbl, operation.key, operation.value):
                     out.append(
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}"
+                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
+                        f"{operation.value}"
                     )
             case c.Infra.TomlOperationKind.LIST:
                 if operation.strategy in {
@@ -98,7 +100,8 @@ class FlextInfraTomlPhaseOps:
             return
         if u.Cli.toml_remove_key_if_present(target, operation.key):
             out.append(
-                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed"
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} "
+                "removed"
             )
 
     @staticmethod
@@ -118,7 +121,8 @@ class FlextInfraTomlPhaseOps:
             return
         if u.Cli.toml_mapping_remove_key_if_present(target, operation.key):
             out.append(
-                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed"
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} "
+                "removed"
             )
 
 

@@ -3,6 +3,9 @@
 Provides workspace/project scoped application of any transformer implementing
 ``apply_to_source(source: str) -> (str, list[str])``, with dry-run support and
 reporting via ``m.Infra.Result``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -49,7 +52,8 @@ class FlextInfraModernizeOrchestrator:
                 )
                 if project_results.failure:
                     return r[t.SequenceOf[m.Infra.Result]].fail(
-                        f"Modernize failed for {project_root.name}: {project_results.error}",
+                        f"Modernize failed for {project_root.name}: "
+                        f"{project_results.error}",
                         error_code="MODERNIZE_PROJECT_FAILED",
                     )
                 results.extend(project_results.value)
@@ -64,8 +68,9 @@ class FlextInfraModernizeOrchestrator:
         transformer_factory: Callable[[], p.Infra.ChangeTracker],
         description: str,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Execute a modernization as a convenience entrypoint for CLI route handlers."""
-        # mro-r3r8: keep detailed results in run(); CLI routes expose one scalar contract.
+        """Execute one modernization for a CLI route."""
+        # mro-r3r8: keep detailed results in run(); CLI routes expose one scalar
+        # contract.
         orchestrator = cls(transformer_factory, description=description)
         result = orchestrator.run(params)
         if result.failure:
@@ -172,7 +177,8 @@ class FlextInfraModernizeOrchestrator:
         failed = sum(1 for res in results if not res.success)
         mode = "dry-run" if dry_run else "applied"
         cli.display_text(
-            f"Modernize {mode}: {len(results)} files, {modified} modified, {failed} failed."
+            f"Modernize {mode}: {len(results)} files, {modified} modified, "
+            f"{failed} failed."
         )
 
 
