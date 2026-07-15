@@ -1,4 +1,8 @@
-"""Domain models for namespace enforcer violations and reports."""
+"""Domain models for namespace enforcer violations and reports.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -271,7 +275,9 @@ class FlextInfraModelsNamespaceEnforcer:
             ],
             m.Field(
                 default_factory=tuple,
-                description="Private-import bypass violations collected for the project.",
+                description=(
+                    "Private-import bypass violations collected for the project."
+                ),
             ),
         ]
         manual_protocol_violations: Annotated[
@@ -357,14 +363,18 @@ class FlextInfraModelsNamespaceEnforcer:
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`breakpoint()` / pdb violations collected for the project.",
+                description=(
+                    "`breakpoint()` / pdb violations collected for the project."
+                ),
             ),
         ]
         open_encoding_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`open()` without encoding violations collected for the project.",
+                description=(
+                    "`open()` without encoding violations collected for the project."
+                ),
             ),
         ]
         dict_annotation_violations: Annotated[
@@ -378,35 +388,45 @@ class FlextInfraModelsNamespaceEnforcer:
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`typing.Dict` attribute violations collected for the project.",
+                description=(
+                    "`typing.Dict` attribute violations collected for the project."
+                ),
             ),
         ]
         typing_dict_import_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`from typing import Dict` violations collected for the project.",
+                description=(
+                    "`from typing import Dict` violations collected for the project."
+                ),
             ),
         ]
         hardcoded_version_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="Hardcoded `__version__` violations collected for the project.",
+                description=(
+                    "Hardcoded `__version__` violations collected for the project."
+                ),
             ),
         ]
         type_ignore_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`# type: ignore` suppression violations collected for the project.",
+                description=(
+                    "`# type: ignore` suppression violations collected for the project."
+                ),
             ),
         ]
         noqa_violations: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`# noqa` suppression violations collected for the project.",
+                description=(
+                    "`# noqa` suppression violations collected for the project."
+                ),
             ),
         ]
         inline_import_violations: Annotated[

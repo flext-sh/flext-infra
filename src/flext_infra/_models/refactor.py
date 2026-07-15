@@ -1,4 +1,8 @@
-"""Domain models for the refactor subpackage."""
+"""Domain models for the refactor subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -37,7 +41,10 @@ class FlextInfraModelsRefactor(
         target: Annotated[
             str,
             m.Field(
-                description="Migration target scope (constants/typings/protocols/models/utilities/all)"
+                description=(
+                    "Migration target scope "
+                    "(constants/typings/protocols/models/utilities/all)"
+                )
             ),
         ] = "all"
 

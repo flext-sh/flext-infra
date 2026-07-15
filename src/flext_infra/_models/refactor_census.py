@@ -1,4 +1,8 @@
-"""Census models for the refactor subpackage."""
+"""Census models for the refactor subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -28,7 +32,9 @@ class FlextInfraModelsRefactorCensus:
         package_dir: Annotated[
             str,
             m.Field(
-                description="Relative path to _xxx package dir (e.g. 'flext_core/_utilities')"
+                description=(
+                    "Relative path to _xxx package dir (e.g. 'flext_core/_utilities')"
+                )
             ),
         ]
         facade_module: Annotated[

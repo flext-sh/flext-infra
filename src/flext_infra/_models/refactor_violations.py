@@ -1,4 +1,8 @@
-"""Violation and helper classification models for the refactor subpackage."""
+"""Violation and helper classification models for the refactor subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -244,9 +248,10 @@ class FlextInfraModelsRefactorViolations:
             FlextInfraModelsRefactorViolations.ViolationTopFileSection, ...
         ] = m.Field(default_factory=tuple, description="Top hotspot files")
         files_scanned: Annotated[t.NonNegativeInt, m.Field(description="Files scanned")]
-        helper_classification: FlextInfraModelsRefactorViolations.HelperClassificationReport = m.Field(
-            description="Helper classification summary"
-        )
+        helper_classification: Annotated[
+            FlextInfraModelsRefactorViolations.HelperClassificationReport,
+            m.Field(description="Helper classification summary"),
+        ]
         class_nesting: FlextInfraModelsRefactorViolations.ClassNestingReport = m.Field(
             description="Class nesting analysis summary"
         )

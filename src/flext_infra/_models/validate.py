@@ -1,4 +1,8 @@
-"""Domain models for the core subpackage."""
+"""Domain models for the core subpackage.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -68,7 +72,9 @@ class FlextInfraModelsCore:
         unresolved_missing: Annotated[
             t.MutableSequenceOf[str],
             m.Field(
-                description="Missing external imports without an installed typed dependency"
+                description=(
+                    "Missing external imports without an installed typed dependency"
+                )
             ),
         ] = m.Field(default_factory=list)
         total_missing: Annotated[
