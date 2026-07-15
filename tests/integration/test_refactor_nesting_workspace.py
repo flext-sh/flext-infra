@@ -1,16 +1,18 @@
-"""Workspace-level integration tests for class nesting refactor."""
+"""Workspace-level integration tests for class nesting refactor.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, MutableSequence
-from typing import TYPE_CHECKING
+from pathlib import Path
+
+from flext_tests import tm
 
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests import m
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 class TestsFlextInfraIntegrationRefactorNestingWorkspace:
@@ -40,8 +42,8 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
             violations_count += (
                 int(raw_violations) if isinstance(raw_violations, (int, float)) else 0
             )
-        assert files_scanned >= 3
-        assert violations_count >= 0
+        tm.that(files_scanned >= len(projects), eq=True)
+        tm.that(violations_count >= len(projects), eq=True)
 
     def test_cross_project_references_updated(self, tmp_path: Path) -> None:
         """Test that cross-project references are scanned correctly."""
@@ -51,7 +53,9 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
         proj_b = tmp_path / "project-b" / "src" / "project_b"
         proj_b.mkdir(parents=True)
         _ = (proj_b / "consumer.py").write_text(
-            "\nfrom project_a.core import CoreService\n\ndef use_service(svc: CoreService) -> None:\n    pass\n"
+            "\nfrom project_a.core import CoreService\n\n"
+            "def use_service(svc: CoreService) -> None:\n"
+            "    pass\n"
         )
         scanner = FlextInfraRefactorLooseClassScanner()
         result_a = scanner.scan(tmp_path / "project-a")
@@ -59,10 +63,11 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
         tm.ok(result_a)
         tm.ok(result_b)
         total_files = 0
-        for result in (result_a, result_b):
+        results = (result_a, result_b)
+        for result in results:
             raw = result.value.get("files_scanned", 0)
             total_files += int(raw) if isinstance(raw, (int, float)) else 0
-        assert total_files >= 2
+        tm.that(total_files >= len(results), eq=True)
 
     def test_all_projects_consistent(self, tmp_path: Path) -> None:
         """Verify all projects remain consistent after refactor."""
@@ -72,7 +77,10 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
             src_dir.mkdir(parents=True)
             _ = (src_dir / "__init__.py").write_text("")
             _ = (src_dir / "utils.py").write_text(
-                '\nclass UtilityHelper:\n    @staticmethod\n    def help() -> str:\n        return "help"\n'
+                "\nclass UtilityHelper:\n"
+                "    @staticmethod\n"
+                "    def help() -> str:\n"
+                '        return "help"\n'
             )
         scanner = FlextInfraRefactorLooseClassScanner()
         all_violations: MutableSequence[m.Infra.LooseClassViolation] = []
@@ -88,6 +96,6 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
                         all_violations.append(
                             m.Infra.LooseClassViolation.model_validate(v_item)
                         )
-        assert len(all_violations) >= 3
+        tm.that(len(all_violations) >= len(projects), eq=True)
         for v in all_violations:
             tm.that({"high", "medium", "low"}, has=v.confidence)

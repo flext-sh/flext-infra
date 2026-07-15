@@ -1,94 +1,51 @@
-"""Idempotency tests for class nesting file execution."""
+"""Idempotency tests for class nesting transformation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
-
-from flext_infra import c
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
-from tests import m
-from tests import t
-
-
-
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.Infra.ContainerDict:
-        return u.Cli.yaml_load_mapping(self._config_path)
-
-
-def _apply_rule(
-    workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(workspace_root)
-    try:
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
-        if resource is None:
-            raise FileNotFoundError(file_path)
-        return rule._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
-    finally:
-        rope_project.close()
+from flext_infra.transformers.class_nesting import (
+    FlextInfraRefactorClassNestingTransformer,
+)
 
 
 class TestsFlextInfraIntegrationRefactorNestingIdempotency:
-    """Test that running refactor multiple times is idempotent."""
+    """Test that repeated class-nesting transformations are idempotent."""
 
-    def test_first_run_produces_changes(self, tmp_path: Path) -> None:
-        """First run should produce changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
-        )
-        result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        tm.that(result.modified, eq=True)
-        tm.that(result.refactored_code, none=False)
-        tm.that(result.refactored_code, has="class FlextDispatcher:")
+    _SOURCE: str = "class TimeoutEnforcer:\n    pass\n"
 
-    def test_second_run_produces_no_changes(self, tmp_path: Path) -> None:
-        """Second run on already-refactored code should produce no changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
+    @staticmethod
+    def _transform_source(source: str) -> str:
+        """Transform source through the public class-nesting API."""
+        transformer = FlextInfraRefactorClassNestingTransformer(
+            {"TimeoutEnforcer": "FlextDispatcher"}, {}, {}
         )
-        result1 = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        tm.that(result1.refactored_code, none=False)
-        test_file.write_text(result1.refactored_code)
-        result2 = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
-        tm.ok(result2)
+        transformed, _ = transformer.apply_to_source(source)
+        return transformed
 
-    def test_third_run_produces_no_changes(self, tmp_path: Path) -> None:
-        """Third run should also produce no changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n  - loose_name: TimeoutEnforcer\n    current_file: test.py\n    target_namespace: FlextDispatcher\n    target_name: TimeoutEnforcer\n    confidence: high\n"
-        )
+    def test_first_run_produces_changes(self) -> None:
+        """Verify the first transformation nests the loose class."""
+        transformed = self._transform_source(self._SOURCE)
+
+        tm.that(transformed, ne=self._SOURCE)
+        tm.that(transformed, has="class FlextDispatcher:")
+        tm.that(transformed, has="    class TimeoutEnforcer:")
+
+    def test_second_run_produces_no_changes(self) -> None:
+        """Verify a second transformation preserves the transformed source."""
+        first = self._transform_source(self._SOURCE)
+        second = self._transform_source(first)
+
+        tm.that(second, eq=first)
+
+    def test_third_run_produces_no_changes(self) -> None:
+        """Verify idempotency remains stable across three transformations."""
+        transformed = self._SOURCE
         for _ in range(3):
-            result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-            if result.modified and result.refactored_code is not None:
-                test_file.write_text(result.refactored_code)
-        final_result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
-        tm.ok(final_result)
+            previous = transformed
+            transformed = self._transform_source(transformed)
+        tm.that(transformed, eq=previous)

@@ -1,10 +1,16 @@
-"""Integration tests for policy-driven MRO resolution."""
+"""Integration tests for policy-driven MRO resolution.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
+import pytest
+from flext_tests import tm
+
 from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
 from tests import c
-from flext_tests import tm
 
 
 class TestsFlextInfraIntegrationRefactorPolicyMro:
@@ -56,6 +62,7 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
         """Stub composed utilities facade."""
 
     def test_mro_resolver_accepts_expected_order(self) -> None:
+        """Verify matching policy order produces one resolution per facade."""
         resolutions = FlextInfraRefactorMROResolver.resolve(
             family_classes={
                 c.Infra.FacadeFamily.C: self.DemoMigrationConstants,
@@ -79,8 +86,8 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
         )
 
     def test_mro_resolver_rejects_wrong_order(self) -> None:
-        raised = False
-        try:
+        """Verify a reversed facade base order fails validation."""
+        with pytest.raises(ValueError, match="direct base order violates policy"):
             FlextInfraRefactorMROResolver.resolve(
                 family_classes={
                     c.Infra.FacadeFamily.C: (self.DemoMigrationConstants),
@@ -97,6 +104,3 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
                     c.Infra.FacadeFamily.U: ["FlextLdapUtilities", "FlextCliUtilities"],
                 },
             )
-        except ValueError:
-            raised = True
-        assert raised
