@@ -67,10 +67,8 @@ class FlextInfraConstantsCli:
         "release": "Release orchestration",
         "workspace": "Workspace detection, sync, orchestration, migration",
     })
-    # mro-wkii.17.26 (codex): write routes share one isolated transaction seam.
-    WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
-    WORKTREE_TRANSACTION_ROOT: Final[str] = ".worktrees"
-    WORKTREE_TRANSACTION_TIMEOUT_SECONDS: Final[int] = 3600
+    # NOTE (multi-agent, mro-wkii.17.26.2.11 / agent: codex): route membership
+    # is structural CLI taxonomy; operator transaction values live in config.
     WORKTREE_TRANSACTION_APPLY_ROUTES: Final[frozenset[str]] = frozenset({
         "basemk:generate",
         "check:fix-enforcement",
@@ -104,11 +102,6 @@ class FlextInfraConstantsCli:
         "codegen:conform"
     })
     "CLI routes that express application through ``--mode apply``."
-    WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = (
-        ("ruff", ("ruff", "check", ".", "--preview", "--statistics")),
-        ("pyrefly", ("pyrefly", "check")),
-    )
-    "Lint commands captured before and after each isolated mutation."
 
 
 __all__: tuple[str, ...] = ("FlextInfraConstantsCli",)

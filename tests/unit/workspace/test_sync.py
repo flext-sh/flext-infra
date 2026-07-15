@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import override
 
 from flext_core import r
+from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.constants import c
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
@@ -88,25 +89,15 @@ class TestsFlextInfraWorkspaceSync:
             target=target,
             timestamp=datetime(2026, 5, 4, tzinfo=UTC),
         )
+        expected_payload: t.JsonDict = {
+            "files_changed": 2,
+            "source": str(source),
+            "target": str(target),
+            "timestamp": "2026-05-04T00:00:00+00:00",
+        }
 
-        tm.that(
-            payload.model_dump(mode="json"),
-            eq={
-                "files_changed": 2,
-                "source": str(source),
-                "target": str(target),
-                "timestamp": "2026-05-04T00:00:00+00:00",
-            },
-        )
-        tm.that(
-            u.normalize_to_json_value(payload),
-            eq={
-                "files_changed": 2,
-                "source": str(source),
-                "target": str(target),
-                "timestamp": "2026-05-04T00:00:00+00:00",
-            },
-        )
+        tm.that(payload.model_dump(mode="json"), eq=expected_payload)
+        tm.that(u.normalize_to_json_value(payload), eq=expected_payload)
 
     def test_sync_generates_basemk_gitignore_and_makefile(self, tmp_path: Path) -> None:
         """Generate canonical project files and strict editor settings."""
@@ -139,7 +130,9 @@ class TestsFlextInfraWorkspaceSync:
         watcher_excludes = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             settings["files.watcherExclude"]
         )
-        tm.that(watcher_excludes["**/.worktrees/**"], eq=True)
+        tm.that(
+            watcher_excludes[f"**/{config.Infra.worktree_transaction.root}/**"], eq=True
+        )
         tm.that(watcher_excludes["**/.claude/worktrees/**"], eq=True)
 
     def test_sync_dry_run_reports_changes_without_writing(self, tmp_path: Path) -> None:

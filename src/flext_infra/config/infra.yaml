@@ -2,6 +2,25 @@ Infra:
   name: flext-infra
   # NOTE(mro-wkii.17.26, agent codex): canonical package version for the 0.20 test release.
   version: "0.20.0-dev0"
+  # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): the owner repository,
+  # destination, dialect, and public identity drive the sole conform artifact.
+  codegen_schema:
+    path: schemas/codegen.schema.json
+    dialect: https://json-schema.org/draft/2020-12/schema
+    identifier: https://github.com/flext-sh/flext-infra/schemas/codegen.schema.json
+    title: FLEXT Infra Codegen Configuration
+  # NOTE (multi-agent, mro-wkii.17.26.2.11 / agent: codex): isolated
+  # transaction runtime policy is modeled once and consumed directly.
+  worktree_transaction:
+    environment_variable: FLEXT_INFRA_WORKTREE_TRANSACTION
+    active_value: "1"
+    root: .worktrees
+    timeout_seconds: 3600
+    lint_commands:
+      - tool: ruff
+        command: [ruff, check, ".", --preview, --statistics]
+      - tool: pyrefly
+        command: [pyrefly, check]
   source_scan:
     roots:
       - src

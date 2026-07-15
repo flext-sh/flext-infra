@@ -11,13 +11,105 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import m, u as infra_u
+from flext_infra import config, m, u as infra_u
 from flext_infra import main as infra_main
 from tests import t, u
 
 
 class TestWorktreeTransactionScope:
     """Prove selected transactions exclude unrelated dirty repository state."""
+
+    def test_transaction_policy_is_complete_and_typed(self) -> None:
+        """Expose one complete transaction policy through public config."""
+        tm.that(Path(config.Infra.worktree_transaction.root).is_absolute(), eq=False)
+        tm.that(config.Infra.worktree_transaction.timeout_seconds > 0, eq=True)
+        tm.that(config.Infra.worktree_transaction.environment_variable, ne="")
+        tm.that(config.Infra.worktree_transaction.active_value, ne="")
+        tm.that(len(config.Infra.worktree_transaction.lint_commands) > 0, eq=True)
+
+    def test_transaction_root_rejects_empty_path(self) -> None:
+        """Reject an empty transaction root through its length constraint."""
+        with pytest.raises(
+            m.ValidationError, match="String should have at least 1 character"
+        ):
+            _ = m.Infra.WorktreeTransactionSpec(
+                environment_variable=(
+                    config.Infra.worktree_transaction.environment_variable
+                ),
+                active_value=config.Infra.worktree_transaction.active_value,
+                root="",
+                timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
+                lint_commands=config.Infra.worktree_transaction.lint_commands,
+            )
+
+    @pytest.mark.parametrize(
+        "invalid_root",
+        [
+            "\0",
+            "\n",
+            " ",
+            ".",
+            ". ",
+            ".worktrees\n",
+            "..",
+            ".. ",
+            Path.cwd().as_posix(),
+            "../transaction",
+            "nested/../root",
+            "nested/. /root",
+            "nested/.. /root",
+            "nested/root\n",
+            "nested/trailing.",
+            "nested/trailing ",
+            "C:/transaction",
+            r"C:\transaction",
+            r"nested\..\root",
+            "CON",
+            "con.txt",
+            "NUL",
+            "COM1.log",
+            "nested/LPT9/root",
+        ],
+    )
+    def test_transaction_root_rejects_unsafe_paths(self, invalid_root: str) -> None:
+        """Reject unsafe POSIX and Windows transaction roots declaratively."""
+        with pytest.raises(m.ValidationError, match="String should match pattern"):
+            _ = m.Infra.WorktreeTransactionSpec(
+                environment_variable=(
+                    config.Infra.worktree_transaction.environment_variable
+                ),
+                active_value=config.Infra.worktree_transaction.active_value,
+                root=invalid_root,
+                timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
+                lint_commands=config.Infra.worktree_transaction.lint_commands,
+            )
+
+    @pytest.mark.parametrize(
+        "valid_root",
+        [
+            ".transactions",
+            ".hidden/nested-1",
+            "a.b/c_d",
+            "com10",
+            "console",
+            "nested/transactions",
+        ],
+    )
+    def test_transaction_root_accepts_safe_relative_paths(
+        self, valid_root: str
+    ) -> None:
+        """Accept hidden and nested repository-relative transaction roots."""
+        policy = m.Infra.WorktreeTransactionSpec(
+            environment_variable=(
+                config.Infra.worktree_transaction.environment_variable
+            ),
+            active_value=config.Infra.worktree_transaction.active_value,
+            root=valid_root,
+            timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
+            lint_commands=config.Infra.worktree_transaction.lint_commands,
+        )
+
+        tm.that(policy.root, eq=valid_root)
 
     def test_selected_repository_excludes_unselected_dirty_state(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -161,7 +253,14 @@ _install_lazy_exports(
         status_after = infra_u.Infra.git_capture(workspace, ("status", "--short"))
         tm.ok(status_after)
         tm.that(status_after.value, eq=status_before.value)
-        tm.that(tuple((workspace / ".worktrees").glob("transaction-*")), eq=())
+        tm.that(
+            tuple(
+                (workspace / config.Infra.worktree_transaction.root).glob(
+                    "transaction-*"
+                )
+            ),
+            eq=(),
+        )
         progress_output = capsys.readouterr().out
         tm.that(progress_output, contains="materializing flext-selected")
         tm.that(progress_output, contains="repository deltas")

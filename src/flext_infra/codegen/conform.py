@@ -43,6 +43,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ] = None
 
     @classmethod
+    def render_config_schema(cls) -> p.Result[str]:
+        """Render the complete codegen document schema deterministically."""
+        # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): the document
+        # owns fields; validated config owns deployment metadata and destination.
+        policy = config.Infra.codegen_schema
+        document_schema = m.Infra.CodegenConfigDocumentSpec.model_json_schema()
+        document_schema.update({
+            "$schema": str(policy.dialect),
+            "$id": str(policy.identifier),
+            "title": policy.title,
+        })
+        schema = u.Cli.normalize_json_value(document_schema)
+        return u.Cli.json_dumps(
+            schema, sort_keys=True, indent=c.Cli.DEFAULT_JSON_INDENT
+        ).map(lambda rendered: f"{rendered}\n")
+
+    @classmethod
     def execute_request(
         cls,
         request: m.Infra.CodegenConformRequest,
@@ -205,6 +222,24 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"repository planning failed: {repository_root}"
                 )
             files.extend(repository_plan.value)
+            if repository.name == config.Infra.name:
+                # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): the
+                # owner schema participates in the same checked atomic file plan.
+                rendered_schema = self.render_config_schema()
+                if rendered_schema.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        rendered_schema.error or "codegen schema rendering failed"
+                    )
+                schema_plan = self._file_plan(
+                    repository_root,
+                    config.Infra.codegen_schema.path,
+                    rendered_schema.value,
+                )
+                if schema_plan.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        schema_plan.error or "codegen schema planning failed"
+                    )
+                files.append(schema_plan.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -304,6 +339,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = c.Infra.MakeProfile(repository.profile)
         pyproject = root / c.Infra.PYPROJECT_FILENAME
+        template_roots = {
+            Path(entry.destination).parts[0]
+            for entry in codegen.templates.entries
+            if profile in entry.profiles and Path(entry.destination).parts
+        }
+        declared_python_dirs = tuple(
+            directory
+            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            if directory in template_roots
+        )
         # mro-j47u (codex): new and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
         # NOTE(mro-p68a.5, agent codex): a declared member consumes its parent
@@ -318,9 +363,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -449,9 +492,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -475,9 +516,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         final_tooling = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -540,6 +579,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else ()
         )
         resources = (*codegen.scaffold.resources, *project_resources)
+        declared_python_dirs = tuple(
+            directory
+            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            if (root / directory).is_dir()
+        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
@@ -561,9 +605,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_name=repository.distribution,
             package_name=u.Infra.project_package_name(root),
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -572,7 +614,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # NOTE (multi-agent, mro-45r9): dependency-derived tooling consumes the
         # canonical groups first; the final pass restores the Git-source contract.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject
+            prepared_result.value,
+            path=pyproject,
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

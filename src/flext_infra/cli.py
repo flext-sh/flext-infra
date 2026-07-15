@@ -12,7 +12,7 @@ from typing import ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
@@ -177,7 +177,12 @@ class FlextInfraCli(type(cli_facade)):
         if any(argument in self._HELP_FLAGS for argument in args):
             return None
         process_environment = u.Cli.process_env()
-        if process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
+        if (
+            process_environment.get(
+                config.Infra.worktree_transaction.environment_variable
+            )
+            == config.Infra.worktree_transaction.active_value
+        ):
             return None
         route_key = self._transaction_route_key(group, args)
         if route_key is None:
@@ -199,7 +204,7 @@ class FlextInfraCli(type(cli_facade)):
             command=(group, *self._transaction_inner_args(route_key, args)),
             selected_repositories=selected_repositories,
             apply_patch=apply_requested,
-            timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+            timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
         )
         result = u.Infra.execute_worktree_transaction(request)
         if result.failure:

@@ -1,8 +1,12 @@
-"""Phase: Inject managed/custom markers into pyproject.toml."""
+"""Phase: Inject managed/custom markers into pyproject.toml.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from flext_infra import c, config, t
+from flext_infra import c, config, t, u
 
 
 class FlextInfraInjectCommentsPhase:
@@ -57,12 +61,6 @@ class FlextInfraInjectCommentsPhase:
             ),
         )
 
-    @staticmethod
-    def _is_section_header(line: str) -> bool:
-        """Is section header."""
-        stripped = line.strip()
-        return stripped.startswith("[") and stripped.endswith("]")
-
     @classmethod
     def _managed_marker_lines(cls) -> t.Infra.StrSet:
         """Return the managed marker lines."""
@@ -77,113 +75,219 @@ class FlextInfraInjectCommentsPhase:
         return markers
 
     @staticmethod
-    def _marker_for_section(section_header: str) -> str | None:
-        """Marker for section."""
-        for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
-            if section_header.startswith(section_prefix):
-                marker: str = marker_text
-                return marker
-        return None
+    def _is_managed_comment(
+        item: t.Cli.TomlItem, managed_lines: t.Infra.StrSet
+    ) -> bool:
+        """Match managed text only after TOML parsed it as comment trivia."""
+        text = item.as_string().strip()
+        return text in managed_lines or text.startswith((
+            "# Sections with [MANAGED] are enforced",
+            "# FLEXT mypy[",
+            "# FLEXT ruff[",
+            "# FLEXT pyright[",
+        ))
 
     @classmethod
-    def _strip_managed_lines(
-        cls, lines: t.StrSequence
-    ) -> t.Pair[t.StrSequence, t.StrSequence]:
-        """Strip managed lines."""
-        changes: t.MutableSequenceOf[str] = []
-        managed_lines = cls._managed_marker_lines()
-        cleaned: t.MutableSequenceOf[str] = []
-        skip_broken_group_section = False
-        broken_removed = False
-        for line in lines:
-            stripped = line.strip()
-            if skip_broken_group_section:
-                if cls._is_section_header(line):
-                    skip_broken_group_section = False
-                else:
-                    continue
-            # Remove legacy banner variants so canonical banner can be re-injected.
-            if stripped.startswith("# Sections with [MANAGED] are enforced"):
+    def _collect_structure(
+        cls, parent: t.Cli.TomlDocument | t.Cli.TomlTable, prefix: t.StrSequence = ()
+    ) -> tuple[
+        tuple[tuple[t.StrSequence, t.Cli.TomlTable], ...],
+        tuple[t.Cli.TomlContainer, ...],
+    ]:
+        """Collect ordered table and container references without rendering text."""
+        container = parent.value if u.Cli.toml_is_table(parent) else parent
+        tables: t.MutableSequenceOf[tuple[t.StrSequence, t.Cli.TomlTable]] = []
+        containers: t.MutableSequenceOf[t.Cli.TomlContainer] = [container]
+        for key, item in tuple(container.body):
+            if key is None:
                 continue
-            if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
-                continue
-            if stripped.startswith("# FLEXT mypy["):
-                continue
-            if stripped.startswith("# FLEXT ruff["):
-                continue
-            if stripped.startswith("# FLEXT pyright["):
-                continue
-            if stripped == "[group.dev.dependencies]":
-                skip_broken_group_section = True
-                broken_removed = True
-                continue
-            if stripped in managed_lines:
-                continue
-            cleaned.append(line)
-        if broken_removed:
-            changes.append("broken [group.dev.dependencies] section removed")
-        return cleaned, changes
+            path = (*prefix, key.key)
+            if u.Cli.toml_is_table(item):
+                tables.append((path, item))
+                nested_tables, nested_containers = cls._collect_structure(item, path)
+                tables.extend(nested_tables)
+                containers.extend(nested_containers)
+            elif u.Cli.toml_is_aot(item):
+                for table in item.body:
+                    tables.append((path, table))
+                    nested_tables, nested_containers = cls._collect_structure(
+                        table, path
+                    )
+                    tables.extend(nested_tables)
+                    containers.extend(nested_containers)
+        return tuple(tables), tuple(containers)
 
     @staticmethod
-    def _inject_dev_markers(
-        out: t.MutableSequenceOf[str],
-        changes: t.MutableSequenceOf[str],
-        emitted_markers: t.Infra.StrSet,
+    def _remove_legacy_group(document: t.Cli.TomlDocument) -> bool:
+        """Remove only the invalid legacy dependency table from the TOML tree."""
+        group = u.Cli.toml_table_child(document, "group")
+        if group is None:
+            return False
+        dev = u.Cli.toml_table_child(group, "dev")
+        if dev is None or "dependencies" not in dev:
+            return False
+        dev.remove("dependencies")
+        if not dev:
+            group.remove("dev")
+        if not group:
+            document.remove("group")
+        return True
+
+    @classmethod
+    def _remove_managed_comments(
+        cls, document: t.Cli.TomlDocument, containers: t.SequenceOf[t.Cli.TomlContainer]
     ) -> None:
-        """Inject dev markers."""
-        managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
-        if managed_marker not in emitted_markers:
-            out.append(managed_marker)
-            changes.append("marker injected for optional-dependencies.dev")
-            emitted_markers.add(managed_marker)
+        """Remove managed comments while preserving all scalar and custom trivia."""
+        managed_lines = cls._managed_marker_lines()
+        for container in containers:
+            retained = container.body[:0]
+            discarded_indexes: t.MutableSequenceOf[int] = []
+            for index, (key, item) in enumerate(container.body):
+                if key is None and cls._is_managed_comment(item, managed_lines):
+                    discarded_indexes.append(index)
+                    continue
+                whitespace = key is None and not item.as_string().strip()
+                if whitespace and item.as_string().count("\n") > 1:
+                    anchor = next(
+                        (
+                            previous
+                            for previous_key, previous in reversed(retained)
+                            if previous_key is not None or previous.as_string().strip()
+                        ),
+                        None,
+                    )
+                    if anchor is not None:
+                        trail = anchor.trivia.trail.rstrip("\n")
+                        anchor.trivia.trail = f"{trail}\n\n"
+                        discarded_indexes.append(index)
+                        continue
+                retained.append((key, item))
+            if discarded_indexes:
+                u.Cli.toml_discard_unkeyed_items(container, discarded_indexes)
+        leading_indexes: t.MutableSequenceOf[int] = []
+        for index, (key, item) in enumerate(document.body):
+            if key is not None or item.as_string().strip():
+                break
+            leading_indexes.append(index)
+        if leading_indexes:
+            u.Cli.toml_discard_unkeyed_items(document, leading_indexes)
 
     @staticmethod
-    def _collapse_blank_lines(lines: t.StrSequence) -> t.StrSequence:
-        """Collapse repeated blank lines into a single canonical separator."""
-        normalized: t.MutableSequenceOf[str] = []
-        previous_blank = False
-        for line in lines:
-            is_blank = not line.strip()
-            if is_blank and previous_blank:
+    def _marker_for_path(path: t.StrSequence) -> t.Pair[str, str | None]:
+        """Return the rendered canonical header and its configured marker."""
+        section_header = f"[{'.'.join(path)}]"
+        for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
+            if section_header.startswith(section_prefix):
+                return section_header, marker_text
+        return section_header, None
+
+    @classmethod
+    def _first_rendered_item(
+        cls, parent: t.Cli.TomlDocument | t.Cli.TomlTable
+    ) -> t.Cli.TomlItem | None:
+        """Find the first serialized item beneath non-rendered super tables."""
+        container = parent.value if u.Cli.toml_is_table(parent) else parent
+        for key, item in container.body:
+            if key is None:
+                if item.as_string().strip():
+                    return item
                 continue
-            normalized.append(line)
-            previous_blank = is_blank
-        return normalized
+            if u.Cli.toml_is_table(item) and item.is_super_table():
+                nested = cls._first_rendered_item(item)
+                if nested is not None:
+                    return nested
+                continue
+            if u.Cli.toml_is_aot(item):
+                return next(iter(item.body), None)
+            return item
+        return None
+
+    @staticmethod
+    def _prepend_marker(item: t.Cli.TomlItem, marker: str) -> None:
+        """Attach one marker to the trivia immediately preceding an item."""
+        item.trivia.indent = f"{marker}\n{item.trivia.indent}"
+
+    @classmethod
+    def _inject_structural_comments(
+        cls,
+        tables: t.SequenceOf[tuple[t.StrSequence, t.Cli.TomlTable]],
+        changes: t.MutableSequenceOf[str],
+    ) -> None:
+        """Attach configured markers and rationales to parsed table trivia."""
+        emitted_markers: set[str] = set()
+        for path, table in tables:
+            normalized_path = tuple(path)
+            if normalized_path == ("project", "optional-dependencies"):
+                target: t.Cli.TomlItem | None = table
+                if table.is_super_table():
+                    target = u.Cli.toml_item_child(table, "dev")
+                if (
+                    target is not None
+                    and c.Infra.DEV_OPTIONAL_DEPS_MARKER not in emitted_markers
+                ):
+                    cls._prepend_marker(target, c.Infra.DEV_OPTIONAL_DEPS_MARKER)
+                    changes.append("marker injected for optional-dependencies.dev")
+                    emitted_markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
+            if table.is_super_table():
+                continue
+            section_header, marker = cls._marker_for_path(path)
+            if marker is not None and marker not in emitted_markers:
+                cls._prepend_marker(table, marker)
+                changes.append(f"marker injected for {section_header}")
+                emitted_markers.add(marker)
+            rationale_lines: t.StrSequence = ()
+            rationale_name = ""
+            if normalized_path == ("tool", "mypy"):
+                rationale_lines = cls._mypy_rationale_lines()
+                rationale_name = "Mypy"
+            elif normalized_path == ("tool", "ruff", "lint"):
+                rationale_lines = cls._ruff_rationale_lines()
+                rationale_name = "Ruff"
+            elif normalized_path == ("tool", "pyright"):
+                rationale_lines = cls._pyright_rationale_lines()
+                rationale_name = "Pyright"
+            if rationale_lines:
+                rationale_block = "\n".join(rationale_lines)
+                table.trivia.trail = f"\n{rationale_block}\n"
+                changes.append(f"{rationale_name} suppression rationales injected")
 
     def apply(self, rendered: str) -> t.Pair[str, t.StrSequence]:
         """Inject managed banner/markers and return updated TOML plus change messages."""
+        # NOTE (multi-agent, mro-wkii.17.26.2.26 / agent: codex): all detection
+        # and mutation is structural so TOML-looking text inside scalars is opaque.
+        document = u.Cli.toml_parse_text(rendered)
+        if document is None:
+            msg = "managed comment injection requires valid TOML"
+            raise ValueError(msg)
+        baseline = u.Cli.toml_as_mapping(document)
+        if not baseline:
+            msg = "managed comment injection requires non-empty TOML"
+            raise ValueError(msg)
         changes: t.MutableSequenceOf[str] = []
-        lines = rendered.splitlines()
-        cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
-        changes.extend(cleanup_changes)
-        banner_lines = c.Infra.BANNER.splitlines()
-        out: t.MutableSequenceOf[str] = [*banner_lines]
-        if lines[: len(banner_lines)] != banner_lines:
+        if self._remove_legacy_group(document):
+            changes.append("broken [group.dev.dependencies] section removed")
+        expected_mapping = u.Cli.toml_as_mapping(document)
+        if not expected_mapping:
+            msg = "managed comment injection cannot remove all TOML data"
+            raise ValueError(msg)
+        tables, containers = self._collect_structure(document)
+        self._remove_managed_comments(document, containers)
+        self._inject_structural_comments(tables, changes)
+        first_item = self._first_rendered_item(document)
+        if first_item is None:
+            msg = "managed comment injection requires one TOML item"
+            raise ValueError(msg)
+        first_item.trivia.indent = f"{c.Infra.BANNER}{first_item.trivia.indent}"
+        if not rendered.startswith(c.Infra.BANNER):
             changes.append("managed banner injected")
-        emitted_markers: set[str] = set()
-        for line in cleaned_lines:
-            stripped = line.strip()
-            marker = self._marker_for_section(stripped)
-            if marker and marker not in emitted_markers:
-                out.append(marker)
-                changes.append(f"marker injected for {stripped}")
-                emitted_markers.add(marker)
-            if stripped == "[project.optional-dependencies]" or stripped.startswith(
-                "optional-dependencies.dev"
-            ):
-                self._inject_dev_markers(out, changes, emitted_markers)
-            out.append(line)
-            if stripped == "[tool.mypy]":
-                out.extend(self._mypy_rationale_lines())
-                changes.append("Mypy suppression rationales injected")
-            elif stripped == "[tool.ruff.lint]":
-                out.extend(self._ruff_rationale_lines())
-                changes.append("Ruff suppression rationales injected")
-            elif stripped == "[tool.pyright]":
-                out.extend(self._pyright_rationale_lines())
-                changes.append("Pyright suppression rationales injected")
-        updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
-        original = rendered.rstrip() + "\n"
+        updated = u.Cli.toml_dumps(document)
+        if not updated.endswith("\n"):
+            updated = f"{updated}\n"
+        actual_mapping = u.Cli.toml_mapping_from_text(updated)
+        if actual_mapping != expected_mapping:
+            msg = "managed comment injection changed TOML semantic data"
+            raise ValueError(msg)
+        original = rendered if rendered.endswith("\n") else f"{rendered}\n"
         if updated == original:
             return (updated, [])
         return (updated, changes)

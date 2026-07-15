@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 
 
@@ -187,7 +187,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
             str(path) for path in cls._source_roots(worktree_root)
         )
         return {
-            c.Infra.WORKTREE_TRANSACTION_ENV: "1",
+            config.Infra.worktree_transaction.environment_variable: (
+                config.Infra.worktree_transaction.active_value
+            ),
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: python_path,
             c.Infra.ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: "1",
         }
@@ -264,24 +266,30 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return tuple(
             cls._lint_snapshot(
                 worktree_root,
-                tool,
+                lint_command.tool,
                 # mro-wkii.17.26 (codex): the detached worktree deliberately has
                 # no copied .venv; Pyrefly must query the caller interpreter.
-                (*command, *targets, "--python-interpreter-path", sys.executable)
-                if tool == c.Infra.PYREFLY
+                (
+                    *lint_command.command,
+                    *targets,
+                    "--python-interpreter-path",
+                    sys.executable,
+                )
+                if lint_command.tool == c.Infra.PYREFLY
                 else tuple(
                     scoped_argument
-                    for argument in command
+                    for argument in lint_command.command
                     for scoped_argument in (
                         targets
-                        if tool == c.Infra.RUFF and argument == Path().as_posix()
+                        if lint_command.tool == c.Infra.RUFF
+                        and argument == Path().as_posix()
                         else (argument,)
                     )
                 ),
                 environment,
                 timeout_seconds,
             )
-            for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+            for lint_command in config.Infra.worktree_transaction.lint_commands
         )
 
     @classmethod
@@ -429,7 +437,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         transaction_id = uuid4().hex
         worktree_root = (
             workspace_root
-            / c.Infra.WORKTREE_TRANSACTION_ROOT
+            / config.Infra.worktree_transaction.root
             / f"transaction-{transaction_id}"
         )
         selection_text = ",".join(request.selected_repositories) or "workspace"

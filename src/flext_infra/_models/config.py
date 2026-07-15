@@ -15,13 +15,53 @@ from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenPro
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
+# NOTE (multi-agent, mro-wkii.17.26.2.26 / agent: codex): these fragments use
+# the same semantics in Python ``re`` and ECMA-262 Unicode regular expressions.
+_STRICT_END = r"(?![\s\S])"
+_WINDOWS_DEVICE_STEM = (
+    r"(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|"
+    r"[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])"
+)
+_PORTABLE_PATH_COMPONENT = (
+    rf"(?=[A-Za-z0-9._-]{{1,255}}(?:/|{_STRICT_END}))"
+    rf"(?!{_WINDOWS_DEVICE_STEM}(?:[.]|/|{_STRICT_END}))"
+    r"[A-Za-z0-9._-]*[A-Za-z0-9_-]"
+)
+_PORTABLE_RELATIVE_PATH_PATTERN = (
+    rf"^{_PORTABLE_PATH_COMPONENT}(?:/{_PORTABLE_PATH_COMPONENT})*{_STRICT_END}"
+)
+_STRICT_TEXT_PATTERN = (
+    rf"^[^\s\x00-\x1F\x7F]"
+    rf"(?:[^\x00-\x1F\x7F]*[^\s\x00-\x1F\x7F])?{_STRICT_END}"
+)
+_ENVIRONMENT_VARIABLE_PATTERN = rf"^[A-Za-z_][A-Za-z0-9_]*{_STRICT_END}"
+_TOOL_IDENTIFIER_PATTERN = rf"^[A-Za-z0-9][A-Za-z0-9._-]*{_STRICT_END}"
+
+# NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): every configured
+# repository-relative write root shares this single portable field grammar.
+type _PortableRelativePath = Annotated[
+    t.NonEmptyStr, m.Field(pattern=_PORTABLE_RELATIVE_PATH_PATTERN)
+]
+type _StrictText = Annotated[t.NonEmptyStr, m.Field(pattern=_STRICT_TEXT_PATTERN)]
+type _EnvironmentVariableName = Annotated[
+    t.NonEmptyStr, m.Field(max_length=255, pattern=_ENVIRONMENT_VARIABLE_PATTERN)
+]
+type _ToolIdentifier = Annotated[
+    t.NonEmptyStr, m.Field(max_length=255, pattern=_TOOL_IDENTIFIER_PATTERN)
+]
+
+
 class _ConfigContract(m.ContractModel):
     """Private declarative base for schema-loaded codegen records."""
 
     # NOTE (multi-agent, mro-wkii.17 / agent: codex): rendered file payloads are
     # byte contracts; Pydantic must never trim their final newline.
     model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        strict=False,
+        frozen=True,
+        extra="forbid",
+        str_strip_whitespace=False,
+        regex_engine="python-re",
     )
 
 
@@ -605,6 +645,75 @@ class FlextInfraConfigModels:
             m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
+    # NOTE (multi-agent, mro-wkii.17.26.2.7 / agent: codex): model the exact
+    # external YAML envelope so its JSON Schema is generated, never hand-mirrored.
+    class CodegenConfigNamespaceSpec(_ConfigContract):
+        """Typed ``Infra`` namespace stored in ``config/codegen.yaml``."""
+
+        codegen: Annotated[
+            FlextInfraConfigModels.CodegenConfigSpec,
+            m.Field(description="Canonical code-generation configuration"),
+        ]
+
+    # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): config owns the
+    # generated schema identity and destination; the model owns only its fields.
+    class CodegenSchemaSpec(_ConfigContract):
+        """Repository destination and JSON Schema identity for codegen config."""
+
+        path: Annotated[
+            _PortableRelativePath,
+            m.Field(description="Owner-repository-relative schema path"),
+        ]
+        dialect: Annotated[
+            t.HttpUrl, m.Field(description="JSON Schema dialect identifier")
+        ]
+        identifier: Annotated[
+            t.HttpUrl, m.Field(description="Published schema identifier")
+        ]
+        title: Annotated[_StrictText, m.Field(description="Published schema title")]
+
+    class CodegenConfigDocumentSpec(_ConfigContract):
+        """Complete schema-generating contract for ``config/codegen.yaml``."""
+
+        Infra: Annotated[
+            FlextInfraConfigModels.CodegenConfigNamespaceSpec,
+            m.Field(description="FLEXT Infra configuration namespace"),
+        ]
+
+    class WorktreeTransactionLintCommandSpec(_ConfigContract):
+        """One lint command captured around an isolated transaction."""
+
+        tool: Annotated[_ToolIdentifier, m.Field(description="Lint tool identifier")]
+        command: Annotated[
+            tuple[_StrictText, ...],
+            m.Field(min_length=1, description="Complete lint command arguments"),
+        ]
+
+    # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): the field grammar
+    # rejects non-portable paths before transaction code can construct a Path.
+    class WorktreeTransactionSpec(_ConfigContract):
+        """Operator policy for complete isolated worktree transactions."""
+
+        environment_variable: Annotated[
+            _EnvironmentVariableName,
+            m.Field(description="Child-process recursion guard variable"),
+        ]
+        active_value: Annotated[
+            _StrictText, m.Field(description="Value activating the recursion guard")
+        ]
+        root: Annotated[
+            _PortableRelativePath,
+            m.Field(description="Portable repository-relative transaction directory"),
+        ]
+        timeout_seconds: Annotated[
+            int,
+            m.Field(gt=0, description="Maximum duration of each transaction command"),
+        ]
+        lint_commands: Annotated[
+            tuple[FlextInfraConfigModels.WorktreeTransactionLintCommandSpec, ...],
+            m.Field(min_length=1, description="Ordered transaction lint commands"),
+        ]
+
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
     # selection is modeled once for iteration and census.
     class SourceScanSpec(_ConfigContract):
@@ -752,6 +861,14 @@ class FlextInfraConfigModels:
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
         version: Annotated[
             t.NonEmptyStr, m.Field(description="Project release version")
+        ]
+        codegen_schema: Annotated[
+            FlextInfraConfigModels.CodegenSchemaSpec,
+            m.Field(description="Generated codegen configuration schema policy"),
+        ]
+        worktree_transaction: Annotated[
+            FlextInfraConfigModels.WorktreeTransactionSpec,
+            m.Field(description="Isolated mutation transaction policy"),
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,

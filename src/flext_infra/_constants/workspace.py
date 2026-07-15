@@ -127,9 +127,10 @@ class FlextInfraConstantsWorkspace:
         "python.analysis.userFileIndexFollowSymlinkedFolders": False,
         "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     })
+    # NOTE (multi-agent, mro-wkii.17.26.2.11 / agent: codex): the configurable
+    # transaction root exclusion is derived by the workspace consumer.
     VSCODE_REQUIRED_WATCHER_EXCLUDES: Final[t.JsonMapping] = MappingProxyType({
-        "**/.worktrees/**": True,
-        "**/.claude/worktrees/**": True,
+        "**/.claude/worktrees/**": True
     })
     MAKEFILE_INCLUDE_OLD: Final[str] = (
         'ifneq ("$(wildcard ../base.mk)", "")\n'

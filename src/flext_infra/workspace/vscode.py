@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, config, p, t, u
 
 
 class FlextInfraWorkspaceVscode:
@@ -111,8 +111,12 @@ class FlextInfraWorkspaceVscode:
             if isinstance(current, Mapping)
             else {}
         )
+        required_excludes: t.JsonDict = {
+            f"**/{config.Infra.worktree_transaction.root}/**": True,
+            **c.Infra.VSCODE_REQUIRED_WATCHER_EXCLUDES,
+        }
         changed = False
-        for pattern, expected in c.Infra.VSCODE_REQUIRED_WATCHER_EXCLUDES.items():
+        for pattern, expected in required_excludes.items():
             if excludes.get(pattern) == expected:
                 continue
             excludes[pattern] = expected

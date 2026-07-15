@@ -68,6 +68,7 @@ class TestCodegenConform:
         tm.that(first.value.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").is_file(), eq=True)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
+        tm.that((root / config.Infra.codegen_schema.path).exists(), eq=False)
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part

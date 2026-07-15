@@ -1,432 +1,145 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/flext-sh/flext-infra/schemas/codegen.schema.json",
-  "$comment": "NOTE(mro-wkii.17.26, agent codex): strict schema for the 0.20 development codegen SSOT.",
-  "title": "FLEXT Infra Codegen Configuration",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "version",
-    "toolchain",
-    "providers",
-    "profiles",
-    "make",
-    "managed_files",
-    "templates",
-    "repositories",
-    "workspaces"
-  ],
-  "properties": {
-    "version": {
-      "const": 1
-    },
-    "toolchain": {
-      "$ref": "#/$defs/toolchain"
-    },
-    "providers": {
-      "type": "array",
-      "minItems": 2,
-      "maxItems": 2,
-      "uniqueItems": true,
-      "prefixItems": [
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/provider"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "flext-sh"
-                },
-                "organization": {
-                  "const": "flext-sh"
-                },
-                "base_url": {
-                  "const": "https://github.com/flext-sh"
-                },
-                "branch": {
-                  "const": "0.20.0-dev"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/provider"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "datacosmos-br"
-                },
-                "organization": {
-                  "const": "datacosmos-br"
-                },
-                "base_url": {
-                  "const": "https://github.com/datacosmos-br"
-                },
-                "branch": {
-                  "const": "main"
-                }
-              }
-            }
-          ]
-        }
-      ],
-      "items": false
-    },
-    "profiles": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
-      "uniqueItems": true,
-      "prefixItems": [
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/profile"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "workspace-root"
-                },
-                "environment_scope": {
-                  "const": "root"
-                },
-                "setup_scope": {
-                  "const": "root-and-members"
-                },
-                "execution_scope": {
-                  "const": "root"
-                },
-                "discovery_scope": {
-                  "const": "manifest"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/profile"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "workspace-member"
-                },
-                "environment_scope": {
-                  "const": "root-when-attached"
-                },
-                "setup_scope": {
-                  "const": "delegate-root-when-attached"
-                },
-                "execution_scope": {
-                  "const": "root-when-attached"
-                },
-                "discovery_scope": {
-                  "const": "none"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/profile"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "standalone"
-                },
-                "environment_scope": {
-                  "const": "self"
-                },
-                "setup_scope": {
-                  "const": "self"
-                },
-                "execution_scope": {
-                  "const": "self"
-                },
-                "discovery_scope": {
-                  "const": "none"
-                }
-              }
-            }
-          ]
-        }
-      ],
-      "items": false
-    },
-    "make": {
-      "$ref": "#/$defs/make"
-    },
-    "managed_files": {
-      "type": "array",
-      "minItems": 7,
-      "maxItems": 7,
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/managedFile"
-      }
-    },
-    "templates": {
-      "$ref": "#/$defs/templates"
-    },
-    "repositories": {
-      "type": "array",
-      "minItems": 40,
-      "maxItems": 40,
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/repository"
-      }
-    },
-    "workspaces": {
-      "type": "array",
-      "minItems": 2,
-      "maxItems": 2,
-      "uniqueItems": true,
-      "prefixItems": [
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/workspacePointer"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "flext"
-                },
-                "repository": {
-                  "const": "flext"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "allOf": [
-            {
-              "$ref": "#/$defs/workspacePointer"
-            },
-            {
-              "properties": {
-                "name": {
-                  "const": "cosmos-main"
-                },
-                "repository": {
-                  "const": "cosmos-main"
-                }
-              }
-            }
-          ]
-        }
-      ],
-      "items": false
-    }
-  },
   "$defs": {
-    "identifier": {
-      "type": "string",
-      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    },
-    "relativePath": {
-      "type": "string",
-      "minLength": 1,
-      "pattern": "^[A-Za-z0-9._{}-]+(?:/[A-Za-z0-9._{}-]+)*$",
-      "not": {
-        "pattern": "(^|/)\\.\\.(/|$)"
-      }
-    },
-    "toolchain": {
-      "type": "object",
+    "CodegenConfigNamespaceSpec": {
       "additionalProperties": false,
-      "required": [
-        "python_version",
-        "python_minor_version",
-        "python_required_version",
-        "uv_version",
-        "uv_required_version"
-      ],
+      "description": "Typed ``Infra`` namespace stored in ``config/codegen.yaml``.",
       "properties": {
-        "python_version": {
-          "const": "3.13.11"
-        },
-        "python_minor_version": {
-          "const": "3.13"
-        },
-        "python_required_version": {
-          "const": ">=3.13.11,<3.14"
-        },
-        "uv_version": {
-          "const": "0.11.28"
-        },
-        "uv_required_version": {
-          "const": "==0.11.28"
+        "codegen": {
+          "$ref": "#/$defs/CodegenConfigSpec",
+          "description": "Canonical code-generation configuration"
         }
-      }
-    },
-    "provider": {
-      "type": "object",
-      "additionalProperties": false,
+      },
       "required": [
-        "name",
-        "organization",
-        "base_url",
-        "branch"
+        "codegen"
       ],
-      "properties": {
-        "name": {
-          "enum": [
-            "flext-sh",
-            "datacosmos-br"
-          ]
-        },
-        "organization": {
-          "enum": [
-            "flext-sh",
-            "datacosmos-br"
-          ]
-        },
-        "base_url": {
-          "type": "string",
-          "pattern": "^https://github\\.com/(flext-sh|datacosmos-br)$"
-        },
-        "branch": {
-          "enum": [
-            "0.20.0-dev",
-            "main"
-          ]
-        }
-      }
+      "title": "CodegenConfigNamespaceSpec",
+      "type": "object"
     },
-    "profile": {
-      "type": "object",
+    "CodegenConfigSpec": {
       "additionalProperties": false,
-      "required": [
-        "name",
-        "environment_scope",
-        "setup_scope",
-        "execution_scope",
-        "discovery_scope"
-      ],
+      "description": "Fully modeled content of ``config/codegen.yaml``.",
       "properties": {
-        "name": {
-          "enum": [
-            "workspace-root",
-            "workspace-member",
-            "standalone"
-          ]
+        "grpc": {
+          "$ref": "#/$defs/GrpcCodegenSpec",
+          "description": "gRPC generated-source normalization policy"
         },
-        "environment_scope": {
-          "enum": [
-            "root",
-            "root-when-attached",
-            "self"
-          ]
+        "make": {
+          "$ref": "#/$defs/MakeSpec",
+          "description": "Canonical Make contract"
         },
-        "setup_scope": {
-          "enum": [
-            "root-and-members",
-            "delegate-root-when-attached",
-            "self"
-          ]
-        },
-        "execution_scope": {
-          "enum": [
-            "root",
-            "root-when-attached",
-            "self"
-          ]
-        },
-        "discovery_scope": {
-          "enum": [
-            "manifest",
-            "none"
-          ]
-        }
-      }
-    },
-    "make": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "selector",
-        "apply_variable",
-        "apply_value",
-        "verbs",
-        "custom_handler_policy"
-      ],
-      "properties": {
-        "selector": {
-          "const": "WHAT"
-        },
-        "apply_variable": {
-          "const": "APPLY"
-        },
-        "apply_value": {
-          "const": "Y"
-        },
-        "verbs": {
-          "type": "array",
-          "minItems": 13,
-          "maxItems": 13,
-          "uniqueItems": true,
+        "managed_files": {
+          "description": "Files owned by conform",
           "items": {
-            "$ref": "#/$defs/makeVerb"
-          }
+            "$ref": "#/$defs/ManagedFileSpec"
+          },
+          "title": "Managed Files",
+          "type": "array"
         },
-        "custom_handler_policy": {
-          "$ref": "#/$defs/customHandlerPolicy"
+        "profiles": {
+          "description": "Ordered Make profiles",
+          "items": {
+            "$ref": "#/$defs/ProfileSpec"
+          },
+          "title": "Profiles",
+          "type": "array"
+        },
+        "providers": {
+          "description": "Ordered Git providers",
+          "items": {
+            "$ref": "#/$defs/ProviderSpec"
+          },
+          "title": "Providers",
+          "type": "array"
+        },
+        "repositories": {
+          "description": "Ordered repository catalog",
+          "items": {
+            "$ref": "#/$defs/RepositoryRef"
+          },
+          "title": "Repositories",
+          "type": "array"
+        },
+        "scaffold": {
+          "$ref": "#/$defs/ScaffoldSpec",
+          "description": "Typed new-project scaffold policy"
+        },
+        "templates": {
+          "$ref": "#/$defs/TemplatesSpec",
+          "description": "New-project-only scaffold template manifest"
+        },
+        "toolchain": {
+          "$ref": "#/$defs/ToolchainSpec",
+          "description": "Exact generated toolchain"
+        },
+        "version": {
+          "description": "Config schema version",
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "workspaces": {
+          "description": "Pointers to local workspace topology manifests",
+          "items": {
+            "$ref": "#/$defs/WorkspaceCatalogRef"
+          },
+          "title": "Workspaces",
+          "type": "array"
         }
-      }
-    },
-    "makeVerb": {
-      "type": "object",
-      "additionalProperties": false,
+      },
       "required": [
-        "name",
-        "default_what",
-        "apply_guarded"
+        "version",
+        "grpc",
+        "toolchain",
+        "providers",
+        "profiles",
+        "make",
+        "managed_files",
+        "scaffold",
+        "templates",
+        "repositories",
+        "workspaces"
       ],
-      "properties": {
-        "name": {
-          "enum": [
-            "help",
-            "setup",
-            "deps",
-            "build",
-            "check",
-            "test",
-            "format",
-            "run",
-            "status",
-            "docs",
-            "clean",
-            "release",
-            "codegen"
-          ]
-        },
-        "default_what": {
-          "type": "string",
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-        },
-        "apply_guarded": {
-          "type": "boolean"
-        }
-      }
+      "title": "CodegenConfigSpec",
+      "type": "object"
     },
-    "customHandlerPolicy": {
-      "type": "object",
+    "CustomHandlerPolicy": {
       "additionalProperties": false,
+      "description": "Strict schema for the only handwritten Make extension file.",
+      "properties": {
+        "allow_generated_target_redefinition": {
+          "description": "Permit generated target redefinition",
+          "title": "Allow Generated Target Redefinition",
+          "type": "boolean"
+        },
+        "allow_help_declarations": {
+          "description": "Permit help declarations",
+          "title": "Allow Help Declarations",
+          "type": "boolean"
+        },
+        "allow_public_targets": {
+          "description": "Permit public targets",
+          "title": "Allow Public Targets",
+          "type": "boolean"
+        },
+        "allow_setup_declarations": {
+          "description": "Permit setup declarations",
+          "title": "Allow Setup Declarations",
+          "type": "boolean"
+        },
+        "allow_toolchain_declarations": {
+          "description": "Permit toolchain declarations",
+          "title": "Allow Toolchain Declarations",
+          "type": "boolean"
+        },
+        "filename": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Versioned custom handler filename"
+        },
+        "target_pattern": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Required private target regular expression"
+        }
+      },
       "required": [
         "filename",
         "target_pattern",
@@ -436,414 +149,709 @@
         "allow_setup_declarations",
         "allow_help_declarations"
       ],
-      "properties": {
-        "filename": {
-          "const": "custom.mk"
-        },
-        "target_pattern": {
-          "const": "^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$"
-        },
-        "allow_public_targets": {
-          "const": false
-        },
-        "allow_generated_target_redefinition": {
-          "const": false
-        },
-        "allow_toolchain_declarations": {
-          "const": false
-        },
-        "allow_setup_declarations": {
-          "const": false
-        },
-        "allow_help_declarations": {
-          "const": false
-        }
-      }
+      "title": "CustomHandlerPolicy",
+      "type": "object"
     },
-    "managedFile": {
-      "type": "object",
+    "GrpcCodegenSpec": {
       "additionalProperties": false,
+      "description": "Canonical normalization policy for official compiler modules.",
+      "properties": {
+        "ruff_safe_fixes": {
+          "description": "Ordered safe Ruff fix selectors",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Ruff Safe Fixes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ruff_safe_fixes"
+      ],
+      "title": "GrpcCodegenSpec",
+      "type": "object"
+    },
+    "MakeProfile": {
+      "description": "Generated Makefile profile for one repository.",
+      "enum": [
+        "workspace-root",
+        "workspace-member",
+        "standalone"
+      ],
+      "title": "MakeProfile",
+      "type": "string"
+    },
+    "MakeSpec": {
+      "additionalProperties": false,
+      "description": "Complete generated Makefile public and extension contract.",
+      "properties": {
+        "apply_value": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Only accepted write-enable value"
+        },
+        "apply_variable": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Write-enable variable name"
+        },
+        "custom_handler_policy": {
+          "$ref": "#/$defs/CustomHandlerPolicy",
+          "description": "Private custom target policy"
+        },
+        "selector": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Single selector variable name"
+        },
+        "verbs": {
+          "description": "Ordered canonical public verbs",
+          "items": {
+            "$ref": "#/$defs/MakeVerbSpec"
+          },
+          "title": "Verbs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "selector",
+        "apply_variable",
+        "apply_value",
+        "verbs",
+        "custom_handler_policy"
+      ],
+      "title": "MakeSpec",
+      "type": "object"
+    },
+    "MakeVerbSpec": {
+      "additionalProperties": false,
+      "description": "One public Make verb and its single default selector.",
+      "properties": {
+        "apply_guarded": {
+          "default": false,
+          "description": "Whether mutation requires APPLY=Y",
+          "title": "Apply Guarded",
+          "type": "boolean"
+        },
+        "default_what": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Default WHAT selector"
+        },
+        "name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Public Make verb"
+        }
+      },
+      "required": [
+        "name",
+        "default_what"
+      ],
+      "title": "MakeVerbSpec",
+      "type": "object"
+    },
+    "ManagedFileSpec": {
+      "additionalProperties": false,
+      "description": "One versioned file owned by codegen.",
+      "properties": {
+        "overwrite": {
+          "description": "Whether clean committed content may be replaced",
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "owner": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Canonical owner"
+        },
+        "path": {
+          "description": "Repository-relative file path",
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        }
+      },
       "required": [
         "path",
         "owner",
         "overwrite"
       ],
-      "properties": {
-        "path": {
-          "$ref": "#/$defs/relativePath"
-        },
-        "owner": {
-          "enum": [
-            "codegen",
-            "custom",
-            "uv"
-          ]
-        },
-        "overwrite": {
-          "type": "boolean"
-        }
-      }
+      "title": "ManagedFileSpec",
+      "type": "object"
     },
-    "templates": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "root",
-        "entries"
-      ],
-      "properties": {
-        "root": {
-          "const": "project"
-        },
-        "entries": {
-          "type": "array",
-          "$comment": "NOTE(mro-wkii.19.1): U18 keeps one base/config/settings composition path with no access proxies.",
-          "minItems": 53,
-          "maxItems": 53,
-          "uniqueItems": true,
-          "contains": {
-            "type": "object",
-            "required": [
-              "source"
-            ],
-            "properties": {
-              "source": {
-                "const": "base/gitmodules.j2"
-              }
-            }
-          },
-          "minContains": 1,
-          "maxContains": 1,
-          "items": {
-            "$ref": "#/$defs/templateEntry"
-          }
-        }
-      }
+    "NonEmptyStr": {
+      "minLength": 1,
+      "type": "string"
     },
-    "templateEntry": {
-      "type": "object",
+    "ProfileSpec": {
       "additionalProperties": false,
-      "required": [
-        "source",
-        "destination",
-        "profiles",
-        "delegate",
-        "overwrite"
-      ],
+      "description": "Execution semantics for one generated Make profile.",
       "properties": {
-        "source": {
-          "$ref": "#/$defs/relativePath"
+        "discovery_scope": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "repository discovery policy"
         },
-        "destination": {
-          "$ref": "#/$defs/relativePath"
+        "environment_scope": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "uv environment ownership"
         },
-        "profiles": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 3,
-          "uniqueItems": true,
-          "items": {
-            "enum": [
-              "workspace-root",
-              "workspace-member",
-              "standalone"
-            ]
-          }
+        "execution_scope": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "check/test runtime scope"
         },
-        "delegate": {
-          "enum": [
-            "render",
-            "manifest"
-          ]
+        "name": {
+          "$ref": "#/$defs/MakeProfile",
+          "description": "Closed Make profile name"
         },
-        "overwrite": {
-          "type": "boolean"
+        "setup_scope": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "setup orchestration scope"
         }
       },
-      "allOf": [
-        {
-          "$comment": "NOTE(mro-wkii.17.11, agent codex): .gitmodules is the only overwrite-enabled rendered template; legacy .envrc is invalid.",
-          "not": {
-            "anyOf": [
-              {
-                "required": [
-                  "source"
-                ],
-                "properties": {
-                  "source": {
-                    "const": "base/.envrc.j2"
-                  }
-                }
-              },
-              {
-                "required": [
-                  "destination"
-                ],
-                "properties": {
-                  "destination": {
-                    "const": ".envrc"
-                  }
-                }
-              }
-            ]
-          }
-        },
-        {
-          "if": {
-            "anyOf": [
-              {
-                "required": [
-                  "source"
-                ],
-                "properties": {
-                  "source": {
-                    "const": "base/gitmodules.j2"
-                  }
-                }
-              },
-              {
-                "required": [
-                  "destination"
-                ],
-                "properties": {
-                  "destination": {
-                    "const": ".gitmodules"
-                  }
-                }
-              }
-            ]
-          },
-          "then": {
-            "properties": {
-              "source": {
-                "const": "base/gitmodules.j2"
-              },
-              "destination": {
-                "const": ".gitmodules"
-              },
-              "profiles": {
-                "const": [
-                  "workspace-root"
-                ]
-              },
-              "delegate": {
-                "const": "render"
-              },
-              "overwrite": {
-                "const": true
-              }
-            }
-          },
-          "else": {
-            "properties": {
-              "overwrite": {
-                "const": false
-              }
-            }
-          }
-        }
-      ]
+      "required": [
+        "name",
+        "environment_scope",
+        "setup_scope",
+        "execution_scope",
+        "discovery_scope"
+      ],
+      "title": "ProfileSpec",
+      "type": "object"
     },
-    "repository": {
-      "type": "object",
+    "ProviderSpec": {
       "additionalProperties": false,
+      "description": "One GitHub organization and its mandatory branch policy.",
+      "properties": {
+        "base_url": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "GitHub HTTPS base URL"
+        },
+        "branch": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Provider branch"
+        },
+        "name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Provider key"
+        },
+        "organization": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "GitHub organization"
+        }
+      },
+      "required": [
+        "name",
+        "organization",
+        "base_url",
+        "branch"
+      ],
+      "title": "ProviderSpec",
+      "type": "object"
+    },
+    "RepositoryRef": {
+      "additionalProperties": false,
+      "description": "One declared repository and its immutable Git origin contract.",
+      "properties": {
+        "branch": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Required Git branch"
+        },
+        "distribution": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Python distribution or repository name"
+        },
+        "name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Catalog key"
+        },
+        "path": {
+          "description": "POSIX path relative to its workspace root",
+          "format": "path",
+          "title": "Path",
+          "type": "string"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MakeProfile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Makefile generation profile"
+        },
+        "provider": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Provider key from the codegen configuration"
+        },
+        "role": {
+          "$ref": "#/$defs/RepositoryRole",
+          "description": "Repository role in the declared topology"
+        },
+        "state": {
+          "$ref": "#/$defs/RepositoryState",
+          "default": "active",
+          "description": "Repository lifecycle state"
+        },
+        "url": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Canonical GitHub clone URL ending in .git"
+        }
+      },
       "required": [
         "name",
         "distribution",
-        "provider",
         "url",
         "branch",
         "path",
         "role",
-        "state"
+        "provider"
       ],
+      "title": "RepositoryRef",
+      "type": "object"
+    },
+    "RepositoryRole": {
+      "description": "Repository role in a declared workspace topology.",
+      "enum": [
+        "workspace-root",
+        "workspace-member",
+        "standalone",
+        "content-only",
+        "excluded"
+      ],
+      "title": "RepositoryRole",
+      "type": "string"
+    },
+    "RepositoryState": {
+      "description": "Lifecycle state used by repository selection.",
+      "enum": [
+        "active",
+        "content-only",
+        "excluded"
+      ],
+      "title": "RepositoryState",
+      "type": "string"
+    },
+    "ResourceSpec": {
+      "additionalProperties": false,
+      "description": "One PEP-compliant repository resource root and wheel mapping.",
       "properties": {
-        "name": {
-          "$ref": "#/$defs/identifier"
+        "required": {
+          "default": false,
+          "description": "Whether every Python project requires the root",
+          "title": "Required",
+          "type": "boolean"
         },
-        "distribution": {
-          "$ref": "#/$defs/identifier"
+        "source": {
+          "description": "Repository-root-relative resource directory",
+          "format": "path",
+          "title": "Source",
+          "type": "string"
         },
-        "provider": {
-          "enum": [
-            "flext-sh",
-            "datacosmos-br"
-          ]
-        },
-        "url": {
-          "type": "string",
-          "pattern": "^https://github\\.com/(flext-sh|datacosmos-br)/[a-z0-9][a-z0-9-]*\\.git$"
-        },
-        "branch": {
-          "enum": [
-            "0.20.0-dev",
-            "main"
-          ]
-        },
-        "path": {
+        "wheel_destination": {
           "anyOf": [
             {
-              "const": "."
+              "$ref": "#/$defs/NonEmptyStr"
             },
             {
-              "$ref": "#/$defs/relativePath"
+              "type": "null"
             }
-          ]
-        },
-        "role": {
-          "enum": [
-            "workspace-root",
-            "workspace-member",
-            "standalone",
-            "content-only"
-          ]
-        },
-        "state": {
-          "enum": [
-            "active",
-            "content-only"
-          ]
-        },
-        "profile": {
-          "type": [
-            "string",
-            "null"
           ],
-          "enum": [
-            "workspace-root",
-            "workspace-member",
-            "standalone",
-            null
-          ]
+          "default": null,
+          "description": "Package-relative wheel destination with {package_name} support"
         }
       },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "active"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "required": [
-              "profile"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "role": {
-                "const": "workspace-root"
-              }
-            },
-            "required": [
-              "role"
-            ]
-          },
-          "then": {
-            "properties": {
-              "state": {
-                "const": "active"
-              },
-              "profile": {
-                "const": "workspace-root"
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "role": {
-                "const": "workspace-member"
-              }
-            },
-            "required": [
-              "role"
-            ]
-          },
-          "then": {
-            "properties": {
-              "state": {
-                "const": "active"
-              },
-              "profile": {
-                "const": "workspace-member"
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "role": {
-                "const": "standalone"
-              }
-            },
-            "required": [
-              "role"
-            ]
-          },
-          "then": {
-            "properties": {
-              "state": {
-                "const": "active"
-              },
-              "profile": {
-                "const": "standalone"
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "role": {
-                "const": "content-only"
-              }
-            },
-            "required": [
-              "role"
-            ]
-          },
-          "then": {
-            "properties": {
-              "state": {
-                "const": "content-only"
-              },
-              "profile": {
-                "const": null
-              }
-            }
-          }
-        }
-      ]
+      "required": [
+        "source"
+      ],
+      "title": "ResourceSpec",
+      "type": "object"
     },
-    "workspacePointer": {
-      "type": "object",
+    "ScaffoldBuildSpec": {
       "additionalProperties": false,
+      "description": "Configured Python build backend for newly scaffolded projects.",
+      "properties": {
+        "backend": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "PEP 517 backend"
+        },
+        "requirements": {
+          "description": "Build-system requirements",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "backend",
+        "requirements"
+      ],
+      "title": "ScaffoldBuildSpec",
+      "type": "object"
+    },
+    "ScaffoldDependencyProfileSpec": {
+      "additionalProperties": false,
+      "description": "Dependencies selected by the declared upstream FLEXT facade.",
+      "properties": {
+        "codegen": {
+          "default": [],
+          "description": "Code-generation requirements",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "title": "Codegen",
+          "type": "array"
+        },
+        "dev": {
+          "default": [],
+          "description": "Development and validation requirements",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "title": "Dev",
+          "type": "array"
+        },
+        "runtime": {
+          "description": "Runtime requirements",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Runtime",
+          "type": "array"
+        },
+        "upstream": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Supported upstream facade package"
+        }
+      },
+      "required": [
+        "upstream",
+        "runtime"
+      ],
+      "title": "ScaffoldDependencyProfileSpec",
+      "type": "object"
+    },
+    "ScaffoldGitignoreSectionSpec": {
+      "additionalProperties": false,
+      "description": "One configured section of the generated Git ignore policy.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Section heading"
+        },
+        "patterns": {
+          "description": "Ignored path patterns",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Patterns",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "patterns"
+      ],
+      "title": "ScaffoldGitignoreSectionSpec",
+      "type": "object"
+    },
+    "ScaffoldPingExampleSpec": {
+      "additionalProperties": false,
+      "description": "Values for the functional ping example created only by codegen new.",
+      "properties": {
+        "command_name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Public CLI command"
+        },
+        "disabled_reply": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Disabled ping response"
+        },
+        "enabled_default": {
+          "description": "Default runtime enablement",
+          "title": "Enabled Default",
+          "type": "boolean"
+        },
+        "help_text": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Public CLI command help"
+        },
+        "reply": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Enabled ping response"
+        },
+        "success_message": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "CLI success message"
+        }
+      },
+      "required": [
+        "command_name",
+        "help_text",
+        "success_message",
+        "enabled_default",
+        "reply",
+        "disabled_reply"
+      ],
+      "title": "ScaffoldPingExampleSpec",
+      "type": "object"
+    },
+    "ScaffoldProjectSpec": {
+      "additionalProperties": false,
+      "description": "Project metadata policy for newly scaffolded distributions.",
+      "properties": {
+        "classifiers": {
+          "description": "Default PyPI classifiers",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Classifiers",
+          "type": "array"
+        },
+        "dependency_profiles": {
+          "description": "Upstream dependency profiles",
+          "items": {
+            "$ref": "#/$defs/ScaffoldDependencyProfileSpec"
+          },
+          "minItems": 1,
+          "title": "Dependency Profiles",
+          "type": "array"
+        },
+        "keywords": {
+          "default": [],
+          "description": "Default project keywords",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "title": "Keywords",
+          "type": "array"
+        },
+        "readme": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "PEP 621 readme path"
+        },
+        "supported_licenses": {
+          "description": "Licenses with complete templates",
+          "items": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "minItems": 1,
+          "title": "Supported Licenses",
+          "type": "array"
+        }
+      },
+      "required": [
+        "readme",
+        "supported_licenses",
+        "classifiers",
+        "dependency_profiles"
+      ],
+      "title": "ScaffoldProjectSpec",
+      "type": "object"
+    },
+    "ScaffoldSpec": {
+      "additionalProperties": false,
+      "description": "Complete typed policy consumed only by new-project templates.",
+      "properties": {
+        "build": {
+          "$ref": "#/$defs/ScaffoldBuildSpec",
+          "description": "Build-system policy"
+        },
+        "gitignore_sections": {
+          "description": "Generated Git ignore sections",
+          "items": {
+            "$ref": "#/$defs/ScaffoldGitignoreSectionSpec"
+          },
+          "minItems": 1,
+          "title": "Gitignore Sections",
+          "type": "array"
+        },
+        "ping_example": {
+          "$ref": "#/$defs/ScaffoldPingExampleSpec",
+          "description": "Functional scaffold example"
+        },
+        "project": {
+          "$ref": "#/$defs/ScaffoldProjectSpec",
+          "description": "Project metadata and dependency policy"
+        },
+        "resources": {
+          "description": "Canonical repository resource roots",
+          "items": {
+            "$ref": "#/$defs/ResourceSpec"
+          },
+          "minItems": 1,
+          "title": "Resources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "build",
+        "project",
+        "resources",
+        "ping_example",
+        "gitignore_sections"
+      ],
+      "title": "ScaffoldSpec",
+      "type": "object"
+    },
+    "TemplateEntrySpec": {
+      "additionalProperties": false,
+      "description": "One scaffold-only template mapping consumed by ``codegen new``.",
+      "properties": {
+        "delegate": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Canonical rendering delegate"
+        },
+        "destination": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Tokenized repository-relative destination"
+        },
+        "overwrite": {
+          "default": false,
+          "description": "Whether the template owns existing content",
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "profiles": {
+          "description": "Profiles that consume the template",
+          "items": {
+            "$ref": "#/$defs/MakeProfile"
+          },
+          "title": "Profiles",
+          "type": "array"
+        },
+        "source": {
+          "description": "Template-root-relative source",
+          "format": "path",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "destination",
+        "profiles",
+        "delegate"
+      ],
+      "title": "TemplateEntrySpec",
+      "type": "object"
+    },
+    "TemplatesSpec": {
+      "additionalProperties": false,
+      "description": "New-project scaffold root and its complete ordered manifest.",
+      "properties": {
+        "entries": {
+          "description": "Complete ordered template manifest",
+          "items": {
+            "$ref": "#/$defs/TemplateEntrySpec"
+          },
+          "title": "Entries",
+          "type": "array"
+        },
+        "root": {
+          "description": "Package-relative template root",
+          "format": "path",
+          "title": "Root",
+          "type": "string"
+        }
+      },
+      "required": [
+        "root",
+        "entries"
+      ],
+      "title": "TemplatesSpec",
+      "type": "object"
+    },
+    "ToolchainSpec": {
+      "additionalProperties": false,
+      "description": "Python selector and exact uv version shared by generated projects.",
+      "properties": {
+        "python_minor_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Python major.minor tool configuration value"
+        },
+        "python_required_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "PEP 440 project Python requirement"
+        },
+        "python_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Python toolchain version selector"
+        },
+        "ruff_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Exact Ruff version for mise"
+        },
+        "uv_link_mode": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Portable uv installation link mode"
+        },
+        "uv_required_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "PEP 440 uv required-version expression"
+        },
+        "uv_version": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Exact uv version"
+        }
+      },
+      "required": [
+        "python_version",
+        "python_minor_version",
+        "python_required_version",
+        "ruff_version",
+        "uv_version",
+        "uv_required_version",
+        "uv_link_mode"
+      ],
+      "title": "ToolchainSpec",
+      "type": "object"
+    },
+    "WorkspaceCatalogRef": {
+      "additionalProperties": false,
+      "description": "Global pointer to a local workspace topology manifest.",
+      "properties": {
+        "manifest": {
+          "description": "Repository-relative manifest path",
+          "format": "path",
+          "title": "Manifest",
+          "type": "string"
+        },
+        "name": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Workspace name"
+        },
+        "repository": {
+          "$ref": "#/$defs/NonEmptyStr",
+          "description": "Root repository catalog key"
+        }
+      },
       "required": [
         "name",
         "repository",
         "manifest"
       ],
-      "properties": {
-        "name": {
-          "$ref": "#/$defs/identifier"
-        },
-        "repository": {
-          "$ref": "#/$defs/identifier"
-        },
-        "manifest": {
-          "const": "config/workspace.yaml"
-        }
-      }
+      "title": "WorkspaceCatalogRef",
+      "type": "object"
     }
-  }
+  },
+  "$id": "https://github.com/flext-sh/flext-infra/schemas/codegen.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Complete schema-generating contract for ``config/codegen.yaml``.",
+  "properties": {
+    "Infra": {
+      "$ref": "#/$defs/CodegenConfigNamespaceSpec",
+      "description": "FLEXT Infra configuration namespace"
+    }
+  },
+  "required": [
+    "Infra"
+  ],
+  "title": "FLEXT Infra Codegen Configuration",
+  "type": "object"
 }
