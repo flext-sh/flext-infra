@@ -167,7 +167,12 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
+            (
+                f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution "
+                "Pre-requisites — for the canonical pre-change checklist (parent "
+                "MRO chain, Scope bootstrap, skill loading, zero-debt baseline, "
+                "slot registry verification)."
+            ),
         ]
 
     @staticmethod
@@ -179,7 +184,12 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
+            (
+                "Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see "
+                "`AGENTS.md` §5 (Make Contract) and the "
+                f"[`flext-quality-gates`]({skill_link}) skill for selectors and "
+                "thresholds."
+            ),
         ]
 
     @staticmethod
@@ -223,7 +233,10 @@ class FlextInfraUtilitiesDocsRender:
                 f"- Package: `{scope.package_name}`",
                 f"- Description: {description}",
                 "",
-                "This project portal is generated from `pyproject.toml`, package exports, and real docstrings.",
+                (
+                    "This project portal is generated from `pyproject.toml`, "
+                    "package exports, and real docstrings."
+                ),
                 "",
                 "## Start Here",
                 "",
@@ -267,13 +280,17 @@ class FlextInfraUtilitiesDocsRender:
         description = str(data.get("description", "")).strip() or "_not declared_"
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
-        # NOTE(mro-wkii.17.26, agent codex): render release status from package metadata.
+        # NOTE(mro-wkii.17.26, agent codex): render release status from package
+        # metadata.
         return "\n".join([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name}",
             "",
-            f"**Version**: `{version}` | **Python**: 3.13+ | **Project class**: `{scope.project_class}`",
+            (
+                f"**Version**: `{version}` | **Python**: 3.13+ | "
+                f"**Project class**: `{scope.project_class}`"
+            ),
             "",
             (
                 f"> **Alpha ({version}).** This package is alpha quality. Every "
@@ -296,14 +313,32 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "## Operation Flow",
             "",
-            "- Public surface: see [`docs/index.md`](docs/index.md) and [`docs/api-reference/README.md`](docs/api-reference/README.md).",
-            "- Generated module overview: [`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md).",
-            "- Settings env prefix: see project `pyproject.toml` `[tool.flext]` and `FlextSettings` ConfigDict.",
+            (
+                "- Public surface: see [`docs/index.md`](docs/index.md) and "
+                "[`docs/api-reference/README.md`](docs/api-reference/README.md)."
+            ),
+            (
+                "- Generated module overview: "
+                "[`docs/api-reference/generated/overview.md`]"
+                "(docs/api-reference/generated/overview.md)."
+            ),
+            (
+                "- Settings env prefix: see project `pyproject.toml` `[tool.flext]` "
+                "and `FlextSettings` ConfigDict."
+            ),
             "",
             "## Integration Points",
             "",
-            "- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.",
-            f"- Public extensions exposed by this project: {FlextInfraUtilitiesDocsRender._preview(facades)}.",
+            (
+                "- Parent MRO chain: read this project's `pyproject.toml` "
+                "`dependencies` array filtered by `flext-*`. The MRO cascade is "
+                "encoded in the inheritance lists of the facade classes listed "
+                "under Module Map above."
+            ),
+            (
+                "- Public extensions exposed by this project: "
+                f"{FlextInfraUtilitiesDocsRender._preview(facades)}."
+            ),
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
             *FlextInfraUtilitiesDocsRender._quality_gates_lines(
@@ -325,7 +360,10 @@ class FlextInfraUtilitiesDocsRender:
             "",
             f"# {scope.name} Guides",
             "",
-            "Curated operational guides live here. Keep API behavior in generated reference pages sourced from code and docstrings.",
+            (
+                "Curated operational guides live here. Keep API behavior in "
+                "generated reference pages sourced from code and docstrings."
+            ),
             "",
             "- [Back to project docs](../index.md)",
             "- [API Reference](../api-reference/README.md)",
@@ -468,6 +506,10 @@ class FlextInfraUtilitiesDocsRender:
         keywords = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
+        classifiers = FlextInfraUtilitiesDocsRender._preview(
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "classifiers"),
+            limit=6,
+        )
         return "\n".join([
             c.Infra.GENERATED_HEADER,
             "",
@@ -476,8 +518,11 @@ class FlextInfraUtilitiesDocsRender:
             f"- Package: `{scope.package_name}`",
             f"- Version: `{data.get('version', '')}`",
             f"- Description: {data.get('description', '') or '_not declared_'}",
-            f"- Doc summary: {str(data.get('doc_summary', '')).strip() or '_not declared_'}",
-            f"- Classifiers: {FlextInfraUtilitiesDocsRender._preview(FlextInfraUtilitiesDocsRender.as_string_sequence(data, 'classifiers'), limit=6)}",
+            (
+                "- Doc summary: "
+                f"{str(data.get('doc_summary', '')).strip() or '_not declared_'}"
+            ),
+            f"- Classifiers: {classifiers}",
             f"- Project class: `{scope.project_class}`",
             f"- Keywords: {keywords}",
             f"- Main facades: {facades}",
@@ -567,14 +612,23 @@ class FlextInfraUtilitiesDocsRender:
         return "\n".join([
             c.Infra.GENERATED_HEADER,
             "",
-            f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
+            (
+                f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} "
+                "API Overview"
+            ),
             "",
             f"- Version: `{str(data.get('version', '')).strip() or 'unknown'}`",
-            f"- Description: {str(data.get('description', '')).strip() or '_not declared_'}",
+            (
+                "- Description: "
+                f"{str(data.get('description', '')).strip() or '_not declared_'}"
+            ),
             f"- Governed projects: `{project_count}`",
             f"- Project classes: {classes}",
             "",
-            "Generated from workspace discovery, `pyproject.toml`, public exports, and docstrings.",
+            (
+                "Generated from workspace discovery, `pyproject.toml`, public "
+                "exports, and docstrings."
+            ),
             "",
             "## Next Pages",
             "",
@@ -639,7 +693,10 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "# FLEXT Project Catalog",
             "",
-            "Project links resolve to the generated root API reference for each governed FLEXT package.",
+            (
+                "Project links resolve to the generated root API reference for "
+                "each governed FLEXT package."
+            ),
             "",
             "| project | class | package | description |",
             "|---|---|---|---|",
