@@ -1,8 +1,12 @@
-"""Public Bandit and Markdown gate behavior tests using protocol runners."""
+"""Public Bandit and Markdown gate behavior tests using protocol runners.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
@@ -12,19 +16,18 @@ from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from tests import TestsFlextInfraUtilities as u
 
-from pathlib import Path
-
-
 
 class TestBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
     @staticmethod
     def make_ctx(root: Path) -> m.Infra.GateContext:
+        """Build a gate context rooted in the temporary workspace."""
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
     def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
+        """Build a deterministic command runner from prepared results."""
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -36,7 +39,12 @@ class TestBanditAndMarkdownGates:
                 (
                     r.ok(
                         u.Tests.stub_run(
-                            stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
+                            stdout=(
+                                '{"results": [{"filename": "a.py", '
+                                '"line_number": 1, "test_id": "B101", '
+                                '"issue_text": "Assert used", '
+                                '"issue_severity": "MEDIUM"}]}'
+                            ),
                             returncode=1,
                         )
                     ),
@@ -55,11 +63,13 @@ class TestBanditAndMarkdownGates:
     def test_bandit_check(
         self,
         tmp_path: Path,
+        *,
         with_src: bool,
         runner_results: tuple[r[m.Cli.CommandOutput], ...],
         passed: bool,
         issues_len: int,
     ) -> None:
+        """Report Bandit outcomes for absent, valid, and malformed outputs."""
         project_dir = u.Tests.mk_project(tmp_path, "bandit-project")
         if with_src:
             (project_dir / "src").mkdir()
@@ -110,6 +120,7 @@ class TestBanditAndMarkdownGates:
     def test_markdown_check(
         self,
         tmp_path: Path,
+        *,
         markdown_text: str,
         config_text: str | None,
         runner_result: p.Result[m.Cli.CommandOutput] | None,
@@ -117,6 +128,7 @@ class TestBanditAndMarkdownGates:
         issues_len: int,
         raw_output: str,
     ) -> None:
+        """Report Markdown outcomes for absent, valid, and failed runs."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-project")
         if markdown_text:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
@@ -141,6 +153,7 @@ class TestBanditAndMarkdownGates:
     def test_markdown_prefers_local_config_when_root_is_missing(
         self, tmp_path: Path
     ) -> None:
+        """Use a project-local Markdown config when the root config is absent."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")

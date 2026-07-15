@@ -1,21 +1,21 @@
-"""Public Mypy and Pyright gate behavior tests using protocol runners."""
+"""Public Mypy and Pyright gate behavior tests using protocol runners.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import m, p, r
+from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from tests import TestsFlextInfraUtilities as u
-
-from pathlib import Path
-
-from flext_infra.gates.base_gate import FlextInfraGate
-
 
 
 class TestTypeGates:
@@ -23,10 +23,12 @@ class TestTypeGates:
 
     @staticmethod
     def make_ctx(root: Path) -> m.Infra.GateContext:
+        """Build a gate context rooted in the temporary workspace."""
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
     def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
+        """Build a deterministic command runner from prepared results."""
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -38,7 +40,11 @@ class TestTypeGates:
                 True,
                 r.ok(
                     u.Tests.stub_run(
-                        stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
+                        stdout=(
+                            '{"file": "a.py", "line": 1, "column": 0, '
+                            '"code": "E001", "message": "Error", '
+                            '"severity": "error"}'
+                        ),
                         returncode=1,
                     )
                 ),
@@ -51,7 +57,12 @@ class TestTypeGates:
                 True,
                 r.ok(
                     u.Tests.stub_run(
-                        stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
+                        stdout=(
+                            '{"generalDiagnostics": [{"file": "a.py", '
+                            '"range": {"start": {"line": 0, '
+                            '"character": 0}}, "rule": "E001", '
+                            '"message": "Error", "severity": "error"}]}'
+                        ),
                         returncode=1,
                     )
                 ),
@@ -71,11 +82,13 @@ class TestTypeGates:
         self,
         tmp_path: Path,
         gate_class: type[FlextInfraGate],
+        *,
         project_has_src: bool,
         runner_result: p.Result[m.Cli.CommandOutput] | None,
         passed: bool,
         issues_len: int,
     ) -> None:
+        """Report Mypy and Pyright outcomes through the shared gate contract."""
         project_dir = u.Tests.mk_project(tmp_path, "type-project")
         if project_has_src:
             (project_dir / "src").mkdir()

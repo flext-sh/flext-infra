@@ -1,4 +1,8 @@
-"""Tests for catalog-driven enforcement fixer orchestration."""
+"""Tests for catalog-driven enforcement fixer orchestration.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -8,16 +12,16 @@ from types import ModuleType, SimpleNamespace
 from typing import ClassVar
 
 import pytest
+from flext_tests import tm
 
 from flext_cli import cli
-from flext_core import m as m, r, u
+from flext_core import r
 from flext_infra import m, p, t, u
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from tests import c
-from flext_tests import tm
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -132,7 +136,10 @@ class TestsEnforcementFixerOrchestrator:
 
         tm.ok(result)
         tm.that(result.unwrap(), has="skipped: 1")
-        tm.that(source_file.read_text(encoding="utf-8"), eq="from __future__ import annotations\n")
+        tm.that(
+            source_file.read_text(encoding="utf-8"),
+            eq="from __future__ import annotations\n",
+        )
 
     def test_stub_file_rule_collects_pyi_probes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

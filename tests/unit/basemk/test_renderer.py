@@ -1,16 +1,17 @@
-"""Public rendering tests for the base.mk template renderer."""
+"""Public rendering tests for the base.mk template renderer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from _pytest.capture import CaptureFixture
+from flext_tests import tm
 
 from flext_infra import m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_tests import tm
-
-from _pytest.capture import CaptureFixture
-
 
 _MIN_RENDERED_LINES = 400
 
@@ -111,7 +112,10 @@ class TestsFlextInfraBasemkRenderer:
         text = result.value
         for part in (
             "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"',
+            (
+                'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,'
+                'security,markdown,smells,type"'
+            ),
             'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
             'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
             'echo "  DIAG=1                      Emit extended pytest diagnostics"',
