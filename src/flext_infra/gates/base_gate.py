@@ -1,4 +1,8 @@
-"""Shared gate template abstraction for workspace quality checks."""
+"""Shared gate template abstraction for workspace quality checks.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -65,11 +69,14 @@ class FlextInfraGate(ABC):
 
         Passes file paths directly to the tool CLI for scoped validation.
         Falls back to directory check if no files provided.
+
+        Returns:
+            The scoped gate execution result.
         """
         if not files:
             return self.check(project_dir, ctx)
         started = time.monotonic()
-        file_strs = [str(f.relative_to(project_dir)) for f in files if f.exists()]
+        file_strs = self._file_targets(files, project_dir, ctx)
         if not file_strs:
             return self._skip_result(project_dir, started)
         cmd = self._build_check_command(project_dir, ctx, file_strs)
@@ -90,6 +97,29 @@ class FlextInfraGate(ABC):
             ),
             issues=issues,
             raw_output=result.stderr,
+        )
+
+    def _filter_check_files(
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.SequenceOf[Path]:
+        """Keep existing files owned by the selected project."""
+        _ = ctx
+        project_root = project_dir.resolve()
+        selected: list[Path] = []
+        for file_path in files:
+            resolved = file_path.resolve()
+            if resolved.is_file() and resolved.is_relative_to(project_root):
+                selected.append(resolved)
+        return tuple(selected)
+
+    def _file_targets(
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.StrSequence:
+        """Return project-relative tool targets after gate-specific filtering."""
+        project_root = project_dir.resolve()
+        return tuple(
+            file_path.relative_to(project_root).as_posix()
+            for file_path in self._filter_check_files(files, project_root, ctx)
         )
 
     # ------------------------------------------------------------------
@@ -157,6 +187,43 @@ class FlextInfraGate(ABC):
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=result.exit_code == 0,
+                errors=[],
+                duration=round(time.monotonic() - started, 3),
+            ),
+            issues=[],
+            raw_output=self._fix_raw_output(result),
+        )
+
+    def fix_files(
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
+        """Apply a supported fix only to explicitly selected files."""
+        if ctx.check_only or not ctx.apply_fixes:
+            return self._check_only_fix_result(project_dir)
+        if not self.can_fix:
+            return self._build_gate_result(
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=True,
+                    errors=[],
+                    duration=0.0,
+                ),
+                issues=[],
+                raw_output=f"Gate {self.gate_id} does not support fix",
+            )
+        started = time.monotonic()
+        targets = self._file_targets(files, project_dir, ctx)
+        if not targets:
+            return self._skip_result(project_dir, started)
+        result = self._run(
+            self._build_fix_command(project_dir, ctx, targets), project_dir
+        )
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -237,6 +304,9 @@ class FlextInfraGate(ABC):
         When ``ctx.gate_mode == "warn"`` the gate reports issues but is
         marked passed so advisory enforcement gates do not fail the check
         pipeline.
+
+        Returns:
+            The normalized gate execution result.
         """
         if (
             ctx is not None

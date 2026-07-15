@@ -105,5 +105,28 @@ class TestTypeGates:
         tm.that(result.result.passed, eq=passed)
         tm.that(len(result.issues), eq=issues_len)
 
+    def test_mypy_file_scope_honors_configured_exclude(self, tmp_path: Path) -> None:
+        """Keep excluded test modules out of an explicit Mypy file scope."""
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "mypy-file-scope",
+            pyproject='[tool.mypy]\nexclude = "^(?:tests)(?:/|$)"\n',
+        )
+        source_file = project_dir / "src" / "main.py"
+        test_file = project_dir / "tests" / "test_main.py"
+        source_file.parent.mkdir()
+        test_file.parent.mkdir()
+        source_file.write_text("value: int = 1\n", encoding="utf-8")
+        test_file.write_text("value: int = 1\n", encoding="utf-8")
+        runner = u.Tests.SequenceRunner([r.ok(u.Tests.stub_run())])
+        gate = FlextInfraMypyGate(tmp_path, runner=runner)
+
+        result = gate.check_files(
+            (source_file, test_file), project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(runner.commands[0], has="src/main.py", lacks="tests/test_main.py")
+
 
 __all__: list[str] = []

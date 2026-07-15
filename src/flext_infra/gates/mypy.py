@@ -1,4 +1,8 @@
-"""FLEXT mypy quality gate."""
+"""FLEXT mypy quality gate.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -72,6 +76,22 @@ class FlextInfraMypyGate(FlextInfraGate):
         if discovered_dirs or root_files:
             return [*discovered_dirs, *root_files]
         return []
+
+    @override
+    def _filter_check_files(
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.SequenceOf[Path]:
+        """Honor the configured Mypy exclusion for explicit file scopes."""
+        selected = super()._filter_check_files(files, project_dir, ctx)
+        exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
+        if exclude is None:
+            return selected
+        project_root = project_dir.resolve()
+        return tuple(
+            file_path
+            for file_path in selected
+            if exclude.match(file_path.relative_to(project_root).as_posix()) is None
+        )
 
     def _resolve_config(self, project_dir: Path, ctx: m.Infra.GateContext) -> Path:
         """Resolve mypy settings: project-local if it has [tool.mypy], else workspace."""

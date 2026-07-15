@@ -48,6 +48,10 @@ class FlextInfraModelsGates:
         pyright_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Pyright")
         ] = ()
+        files: tuple[Path, ...] = m.Field(
+            default_factory=tuple,
+            description="Resolved files selected for a scoped gate run.",
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

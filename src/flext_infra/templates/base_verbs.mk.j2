@@ -79,6 +79,10 @@ check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to 
 		gates="{{ make.PROJECT_CHECK_GATES_DEFAULT }}"; \
 	fi; \
 	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
+	project_key="$(PROJECT_NAME)"; \
+	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
+		project_key="."; \
+	fi; \
 	_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -114,13 +118,15 @@ check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to 
 			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyrefly check $$_files || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,mypy,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run mypy $$_files || status=$$?;; \
+			*,mypy,*) $(PROJECT_INFRA_CHECK) run \
+				--workspace "$(WORKSPACE_ROOT)" \
+				--gates mypy \
+				--reports-dir "$(CURDIR)/.reports/check" \
+				--projects "$$project_key" \
+				--files "$$_files" \
+				--check-only || status=$$?;; \
 		esac; \
 		exit $$status; \
-	fi; \
-	project_key="$(PROJECT_NAME)"; \
-	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
-		project_key="."; \
 	fi; \
 	$(PROJECT_INFRA_CHECK) run --workspace "$(WORKSPACE_ROOT)" --gates "$$gates" --reports-dir "$(CURDIR)/.reports/check" --projects "$$project_key" $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) $(if $(filter 1,$(CHECK_ONLY)),--check-only,) $(if $(RUFF_ARGS),--ruff-args "$(RUFF_ARGS)",) $(if $(PYRIGHT_ARGS),--pyright-args "$(PYRIGHT_ARGS)",); \
 	exit $$?

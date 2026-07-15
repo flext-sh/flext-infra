@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_tests import tm
 
 from tests import m
@@ -15,6 +17,7 @@ class TestCheckIssueFormatted:
     """Test _m.Infra.Issue.formatted property."""
 
     def test_formatted_with_code(self) -> None:
+        """Include an available issue code in the formatted location."""
         issue = m.Infra.Issue(
             file="test.py",
             line=10,
@@ -27,6 +30,7 @@ class TestCheckIssueFormatted:
         tm.that(issue.formatted, contains="test.py:10:5")
 
     def test_formatted_without_code(self) -> None:
+        """Format an issue location when no issue code is available."""
         issue = m.Infra.Issue(
             file="test.py",
             line=10,
@@ -42,6 +46,7 @@ class TestRunCommandGateParsing:
     """Test run-command gate parsing for check workflows."""
 
     def test_run_command_splits_csv_gate_in_sequence_payload(self) -> None:
+        """Normalize a comma-delimited gate payload into ordered gate names."""
         command = m.Infra.RunCommand.model_validate({
             "projects": ["flext-core"],
             "gates": ["lint,format,pyrefly,mypy,pyright,security,markdown"],
@@ -52,11 +57,29 @@ class TestRunCommandGateParsing:
             eq=("lint", "format", "pyrefly", "mypy", "pyright", "security", "markdown"),
         )
 
+    def test_run_command_resolves_shell_style_file_scope(self) -> None:
+        """Resolve each shell-style file selector against the invocation path."""
+        command = m.Infra.RunCommand.model_validate({
+            "projects": ["flext-infra"],
+            "gates": ["mypy"],
+            "files": ["src/a.py tests/b.py"],
+        })
+
+        tm.that(command.files, eq=("src/a.py", "tests/b.py"))
+        tm.that(
+            command.file_paths,
+            eq=(
+                (Path.cwd() / "src/a.py").resolve(),
+                (Path.cwd() / "tests/b.py").resolve(),
+            ),
+        )
+
 
 class TestProjectResultProperties:
     """Test _ProjectResult computed properties."""
 
     def test_total_errors_multiple_gates(self) -> None:
+        """Count errors contributed by every executed project gate."""
         gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
@@ -82,6 +105,7 @@ class TestProjectResultProperties:
         tm.that(project.total_errors, eq=3)
 
     def test_total_errors_ignores_warning_issues(self) -> None:
+        """Exclude warning-severity issues from the project error total."""
         gate = m.Infra.GateResult(
             gate="pyright", project="p", passed=True, errors=[], duration=0.0
         )
@@ -100,6 +124,7 @@ class TestProjectResultProperties:
         tm.that(project.total_errors, eq=0)
 
     def test_passed_all_gates_pass(self) -> None:
+        """Report a project as passed when every gate passes."""
         gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
@@ -114,6 +139,7 @@ class TestProjectResultProperties:
         tm.that(project.passed, eq=True)
 
     def test_passed_one_gate_fails(self) -> None:
+        """Report a project as failed when any gate fails."""
         gate1 = m.Infra.GateResult(
             gate="lint", project="p", passed=True, errors=[], duration=0.0
         )
@@ -132,6 +158,7 @@ class TestWorkspaceCheckerErrorSummary:
     """Test error summary reporting."""
 
     def test_error_summary_with_multiple_projects_and_gates(self) -> None:
+        """Summarize issues across multiple projects and gates."""
         issue1 = m.Infra.Issue(
             file="a.py", line=1, column=1, code="E1", message="m1", severity="error"
         )

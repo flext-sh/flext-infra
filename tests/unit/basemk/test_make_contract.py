@@ -262,16 +262,20 @@ class TestsFlextInfraBasemkMakeContract:
 
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:
         """Dispatch a file-scoped Mypy check through the generated Makefile."""
-        log_path = tmp_path / "tool.log"
-        bin_dir = tmp_path / "bin"
+        workspace_root = tmp_path / "workspace"
+        project_root = workspace_root / "demo-project"
+        project_root.mkdir(parents=True)
+        (workspace_root / "flext-infra" / "src" / "flext_infra").mkdir(parents=True)
+        log_path = workspace_root / "tool.log"
+        bin_dir = workspace_root / "bin"
         _write_stubs(bin_dir, log_path)
-        _write_project(tmp_path)
-        _write_venv_python_stub(tmp_path, log_path)
-        (tmp_path / "src").mkdir()
-        (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+        _write_project(project_root, include_parent=True)
+        _write_venv_python_stub(project_root, log_path)
+        (project_root / "src").mkdir()
+        (project_root / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
         result = _run_make(
-            tmp_path,
+            project_root,
             "check",
             "FILE=src/demo.py",
             "CHECK_GATES=mypy",
@@ -279,12 +283,26 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
-        tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
+        tm.that(
+            log_path.read_text(encoding="utf-8"),
+            has=[
+                "python -m flext_infra check run",
+                "--gates mypy",
+                "--projects demo-project",
+                "--files src/demo.py",
+                "--check-only",
+            ],
+            lacks="run mypy",
+        )
 
     def test_make_check_file_scope_unsets_python_path_env(self, tmp_path: Path) -> None:
         """Remove inherited Python path variables from file-scoped checks."""
-        log_path = tmp_path / "tool.log"
-        bin_dir = tmp_path / "bin"
+        workspace_root = tmp_path / "workspace"
+        project_root = workspace_root / "demo-project"
+        project_root.mkdir(parents=True)
+        (workspace_root / "flext-infra" / "src" / "flext_infra").mkdir(parents=True)
+        log_path = workspace_root / "tool.log"
+        bin_dir = workspace_root / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
         _write_executable(
             bin_dir / "poetry",
@@ -301,13 +319,13 @@ class TestsFlextInfraBasemkMakeContract:
             + str(log_path)
             + '"\nexit 0\n',
         )
-        _write_project(tmp_path)
-        _write_venv_python_stub(tmp_path, log_path)
-        (tmp_path / "src").mkdir()
-        (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+        _write_project(project_root, include_parent=True)
+        _write_venv_python_stub(project_root, log_path, include_env=True)
+        (project_root / "src").mkdir()
+        (project_root / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
 
         result = _run_make(
-            tmp_path,
+            project_root,
             "check",
             "FILE=src/demo.py",
             "CHECK_GATES=mypy",
@@ -321,7 +339,10 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=0)
         tm.that(
             log_path.read_text(encoding="utf-8"),
-            has="PYTHONPATH=unset MYPYPATH=unset run mypy src/demo.py",
+            has=(
+                f"PYTHONPATH={workspace_root}/flext-infra/src MYPYPATH=unset "
+                "python -m flext_infra check run"
+            ),
         )
 
     def test_make_check_full_run_unsets_python_path_env(self, tmp_path: Path) -> None:

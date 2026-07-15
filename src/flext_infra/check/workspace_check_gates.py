@@ -113,6 +113,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
             fail_fast=ctx.fail_fast,
             ruff_args=ctx.ruff_args,
             pyright_args=ctx.pyright_args,
+            files=ctx.files,
         )
 
     def _run_single_project(
@@ -276,6 +277,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 fail_fast=ctx.fail_fast,
                 ruff_args=ctx.ruff_args,
                 pyright_args=ctx.pyright_args,
+                files=ctx.files,
                 gate_mode="warn"
                 if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES
                 else "error",
@@ -313,9 +315,15 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.GateExecution:
         """Run fix-then-check or check-only for a single gate instance."""
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:
-            fix_execution = gate_instance.fix(project_dir, ctx)
+            fix_execution = (
+                gate_instance.fix_files(ctx.files, project_dir, ctx)
+                if ctx.files
+                else gate_instance.fix(project_dir, ctx)
+            )
             if not fix_execution.result.passed:
                 return fix_execution
+        if ctx.files:
+            return gate_instance.check_files(ctx.files, project_dir, ctx)
         return gate_instance.check(project_dir, ctx)
 
 

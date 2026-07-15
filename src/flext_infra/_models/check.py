@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
@@ -32,6 +33,15 @@ class FlextInfraModelsCheck:
                 alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
+        files: Annotated[
+            t.StrSequence | None,
+            m.Field(
+                description=(
+                    "Files to check; repeat --files PATH or pass one shell-style "
+                    "path list"
+                )
+            ),
+        ] = None
         fix: Annotated[
             bool, m.Field(False, description="Apply supported gate fixes before run")
         ] = False
@@ -53,6 +63,20 @@ class FlextInfraModelsCheck:
             ),
         ] = None
 
+        @m.field_validator("files", mode="before")
+        @classmethod
+        def _parse_files(
+            cls, value: str | t.SequenceOf[str] | None
+        ) -> t.StrSequence | None:
+            """Normalize repeated or shell-style file selectors."""
+            if value is None:
+                return None
+            values = (value,) if isinstance(value, str) else value
+            normalized = tuple(
+                token for item in values if item for token in shlex.split(item) if token
+            )
+            return normalized or None
+
         @property
         def reports_dir_path(self) -> Path:
             """Resolved reports directory path."""
@@ -60,6 +84,19 @@ class FlextInfraModelsCheck:
             if reports_dir.is_absolute():
                 return reports_dir.resolve()
             return (Path.cwd() / reports_dir).resolve()
+
+        @property
+        def file_paths(self) -> tuple[Path, ...]:
+            """Resolve selected files against the invoking working directory."""
+            return tuple(
+                (
+                    path.expanduser().resolve()
+                    if path.is_absolute()
+                    else (Path.cwd() / path).resolve()
+                )
+                for raw_path in self.files or ()
+                for path in (Path(raw_path),)
+            )
 
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""

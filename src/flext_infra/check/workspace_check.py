@@ -1,4 +1,8 @@
-"""FLEXT infrastructure workspace checker."""
+"""FLEXT infrastructure workspace checker.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -86,6 +90,7 @@ class FlextInfraWorkspaceChecker(
             check_only=params.check_only,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
+            files=params.file_paths,
         )
         run_result = checker.run_projects(
             projects=project_targets,
