@@ -3,21 +3,19 @@
 The gate enforces silent-failure detection on every Python project the
 workspace discovers — there is no project-name allowlist. Tests assert
 that the gate detects violations universally and accepts clean code.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"
