@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDiscovery:
         if not project_dir.is_dir():
             return list[str]()
         effective_skip = (
-            skip_dirs if skip_dirs is not None else c.Infra.PYPROJECT_SKIP_DIRS
+            skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
         return [
             subdir.name

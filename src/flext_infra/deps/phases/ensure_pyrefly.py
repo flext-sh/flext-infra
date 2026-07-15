@@ -50,9 +50,10 @@ class FlextInfraEnsurePyreflyConfigPhase:
         if declared_python_dirs:
             expected_search = sorted({
                 *expected_search,
-                *declared_python_dirs,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
             })
+            # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
+            # project-includes; only import roots belong in search-path.
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )

@@ -286,6 +286,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return root
         return (root / repository.path).resolve()
 
+    @staticmethod
+    def _scaffold_python_dirs(
+        entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
+    ) -> t.StrSequence:
+        """Return Python roots the selected scaffold manifest actually creates."""
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): derive future roots from both
+        # declarative owners so scaffold and existing-tree discovery converge.
+        generated_roots = {
+            Path(entry.destination).parts[0]
+            for entry in entries
+            if profile in entry.profiles
+            and entry.delegate == "render"
+            and Path(entry.destination).parts
+        }
+        return tuple(
+            directory
+            for directory in config.Infra.tooling.tools.pyright.path_rules.env_dirs
+            if directory in generated_roots
+        )
+
     def _plan_scaffold_repository(
         self,
         *,
@@ -316,13 +336,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
         )
+        declared_python_dirs = self._scaffold_python_dirs(
+            codegen.templates.entries, profile
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -451,9 +472,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         initial_tooling = modernizer.conform_source(
             pyproject_render.value,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -472,9 +491,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         final_tooling = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=declared_python_dirs,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

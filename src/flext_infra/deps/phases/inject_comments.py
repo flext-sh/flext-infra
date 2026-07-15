@@ -157,11 +157,18 @@ class FlextInfraInjectCommentsPhase:
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
         changes.extend(cleanup_changes)
         banner_lines = c.Infra.BANNER.splitlines()
-        out: t.MutableSequenceOf[str] = [*banner_lines]
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): banner injection owns the
+        # leading separator so parse/render trivia cannot require a second pass.
+        first_content = next(
+            (index for index, line in enumerate(cleaned_lines) if line.strip()),
+            len(cleaned_lines),
+        )
+        content_lines = cleaned_lines[first_content:]
+        out: t.MutableSequenceOf[str] = [*banner_lines, ""]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
         emitted_markers: set[str] = set()
-        for line in cleaned_lines:
+        for line in content_lines:
             stripped = line.strip()
             marker = self._marker_for_section(stripped)
             if marker and marker not in emitted_markers:

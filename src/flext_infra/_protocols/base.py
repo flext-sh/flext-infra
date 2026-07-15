@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+# NOTE (multi-agent, mro-wkii.17.9.2.1): declaration-only protocol types stay
+# behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from flext_infra import t
     from flext_cli import p
-    from flext_infra import m
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -144,6 +145,25 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def uv_required_version(self) -> str:
             """Required uv version expression."""
+            ...
+
+    @runtime_checkable
+    class TemplateEntrySpec(Protocol):
+        """Template-entry fields consumed by scaffold root selection."""
+
+        @property
+        def destination(self) -> str:
+            """Tokenized repository-relative destination."""
+            ...
+
+        @property
+        def profiles(self) -> t.StrSequence:
+            """Make profiles that consume the template."""
+            ...
+
+        @property
+        def delegate(self) -> str:
+            """Canonical template rendering delegate."""
             ...
 
     @classmethod

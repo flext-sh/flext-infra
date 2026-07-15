@@ -6,11 +6,10 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import tomlkit
-from flext_tests._utilities.matchers import tm
+from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,7 +23,9 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_root_config_sets_expected_execution_environments(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        rules = tool_config_document.tools.pyright.path_rules
+        """Render configured root and member analyzer environments."""
+        pyright_rules = tool_config_document.tools.pyright
+        rules = pyright_rules.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace'\n\n"
             "[tool.uv.workspace]\n"
@@ -82,14 +83,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))),
-            eq=sorted(
-                set(rules.default_excludes)
-                | {
-                    directory
-                    for directory in rules.dynamic_exclude_dirs
-                    if (tmp_path / directory).is_dir()
-                }
-            ),
+            eq=sorted(set(rules.default_excludes)),
         )
         expected_ignores = [*rules.root_typings_paths, *rules.ignored_diagnostic_globs]
         if expected_ignores:
@@ -111,16 +105,22 @@ class TestsFlextInfraDepsModernizerPyright:
             u.Cli.toml_unwrap_item(pyright["executionEnvironments"]),
             eq=[
                 {
+                    **pyright_rules.lazy_import_suppressions,
+                    **pyright_rules.source_env_suppressions,
                     "root": f"flext-api/{rules.source_dir}",
                     "reportPrivateUsage": rules.source_report_private_usage,
                     "extraPaths": [f"flext-api/{rules.source_dir}"],
                 },
                 {
+                    **pyright_rules.lazy_import_suppressions,
+                    **pyright_rules.source_env_suppressions,
                     "root": f"flext-core/{rules.source_dir}",
                     "reportPrivateUsage": rules.source_report_private_usage,
                     "extraPaths": [f"flext-core/{rules.source_dir}"],
                 },
                 {
+                    **pyright_rules.lazy_import_suppressions,
+                    **pyright_rules.test_like_env_suppressions,
                     "root": f"flext-core/{rules.test_like_dirs[0]}",
                     "reportPrivateUsage": rules.test_like_report_private_usage,
                     "extraPaths": ["flext-core", f"flext-core/{rules.source_dir}"],
@@ -131,7 +131,9 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_subproject_config_sets_expected_execution_environments(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        rules = tool_config_document.tools.pyright.path_rules
+        """Render every configured standalone analyzer environment."""
+        pyright_rules = tool_config_document.tools.pyright
+        rules = pyright_rules.path_rules
         doc = tomlkit.document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -155,6 +157,16 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         expected_envs = [
             {
+                **pyright_rules.lazy_import_suppressions,
+                **(
+                    pyright_rules.source_env_suppressions
+                    if env_dir == rules.source_dir
+                    else (
+                        pyright_rules.test_like_env_suppressions
+                        if env_dir in rules.test_like_dirs
+                        else {}
+                    )
+                ),
                 "root": env_dir,
                 "reportPrivateUsage": (
                     rules.source_report_private_usage
@@ -180,6 +192,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_subproject_config_uses_workspace_typings_and_fixture_excludes(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Render typed paths and config-owned fixture exclusions."""
         rules = tool_config_document.tools.pyright.path_rules
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
@@ -225,6 +238,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_pyright_phase_is_idempotent(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
+        """Produce no changes after the first canonical phase application."""
         project_dir = tmp_path / "flext-sample"
         (project_dir / "src").mkdir(parents=True, exist_ok=True)
         phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)

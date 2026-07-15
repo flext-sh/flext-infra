@@ -100,13 +100,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Always-applied pyright exclude globs.",
                 ),
             ]
-            dynamic_exclude_dirs: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="dynamic-exclude-dirs",
-                    description="Directory names excluded only when present in project.",
-                ),
-            ]
             root_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
