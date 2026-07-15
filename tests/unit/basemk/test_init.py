@@ -1,16 +1,19 @@
 """Tests for flext_infra.basemk module initialization.
 
 Tests lazy loading and __getattr__ fallthrough behavior.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.basemk as basemk_module
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_tests import tm
 
 
 class TestsFlextInfraBasemkInit:

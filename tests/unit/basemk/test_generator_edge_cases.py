@@ -1,15 +1,18 @@
-"""Real edge-case tests for public generator APIs."""
+"""Real edge-case tests for public generator APIs.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import io
-from typing import TYPE_CHECKING, override
+from pathlib import Path
+from typing import override
 
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
-from pathlib import Path
-
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class _FailingStream(io.StringIO):
@@ -24,6 +27,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
     """Behavior contract for test_generator_edge_cases."""
 
     def test_generator_write_handles_file_path_failure(self, tmp_path: Path) -> None:
+        """Return a failure when the output path cannot be created."""
         blocked_parent = tmp_path / "readonly"
         blocked_parent.write_text("occupied", encoding="utf-8")
 
@@ -32,9 +36,10 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         )
 
         tm.fail(result)
-        assert result.error
+        tm.that(result.error or "", empty=False)
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
+        """Return a failure when the output stream raises OSError."""
         result = FlextInfraBaseMkGenerator().write(
             "all:\n\t@echo 'test'\n", stream=_FailingStream()
         )
@@ -43,6 +48,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         tm.that((result.error or ""), has="stdout write failed")
 
     def test_generator_write_to_closed_stream_fails(self) -> None:
+        """Return a failure when the output stream is closed."""
         stream = io.StringIO()
         stream.close()
 

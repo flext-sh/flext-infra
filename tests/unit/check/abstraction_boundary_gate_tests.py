@@ -3,21 +3,19 @@
 Behaviour parity with the two retired scripts: banned CLI-domain libs are
 flagged in consumers, ``click`` is exempt in Singer-SDK boundary files, and
 concrete ``FlextCli<X>`` imports are flagged outside src extension files.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from tests import u
-
-from pathlib import Path
-
-from tests import t
-
+from tests import t, u
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:
