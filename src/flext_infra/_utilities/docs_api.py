@@ -467,11 +467,11 @@ class FlextInfraUtilitiesDocsApi:
         modules = FlextInfraUtilitiesDocsApi._resolve_modules(
             package_name=package_name, target_map=target_map
         )
-        rope_symbols = FlextInfraUtilitiesDocsApi._rope_public_symbols(
-            project_root, target_map
+        rope_symbols = frozenset(
+            FlextInfraUtilitiesDocsApi._rope_public_symbols(project_root, target_map)
         )
         public_symbols = [
-            name for name in rope_symbols if name in symbol_exports
+            name for name in symbol_exports if name in rope_symbols
         ] or symbol_exports
         facades = [
             name for name in public_symbols if name.startswith(metadata.class_stem)
