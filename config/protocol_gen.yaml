@@ -1,0 +1,17 @@
+# Rules-as-data for codegen protocol generation & validation (LAW-1).
+# Consumed by FlextInfraCodegenProtocolGen via u.Cli.config_load with the
+# sibling schema in config/schemas/protocol_gen.schema.json.
+facet_allowlist:
+  - models
+  - services
+  - api
+  - base
+banned_annotations:
+  - Any
+  - object
+  - "typing.Any"
+field_only_max_methods: 0
+warning_severities:
+  out_of_contract: HIGH
+  unresolved_annotation: MEDIUM
+  private_leak: HIGH

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProtocolGenConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["facet_allowlist", "banned_annotations", "field_only_max_methods", "warning_severities"],
+  "properties": {
+    "facet_allowlist": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "banned_annotations": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "field_only_max_methods": {"type": "integer", "minimum": 0},
+    "warning_severities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["out_of_contract", "unresolved_annotation", "private_leak"],
+      "properties": {
+        "out_of_contract": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+        "unresolved_annotation": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+        "private_leak": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]}
+      }
+    }
+  }
+}
