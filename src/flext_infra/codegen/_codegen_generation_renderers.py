@@ -17,7 +17,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
 
     @staticmethod
     def _render_model(
-        template_name: str, context: p.Model, *, target_filename: str
+        template_name: str, context: p.BaseModel, *, target_filename: str
     ) -> str:
         """Render and deterministically format a typed Python artifact."""
         template_root = u.Infra.resource_root("templates")

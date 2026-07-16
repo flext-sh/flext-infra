@@ -111,9 +111,7 @@ class FlextInfraConfigModels:
         """One GitHub organization and its mandatory branch policy."""
 
         name: Annotated[NonEmptyStr, m.Field(description="Provider key")]
-        organization: Annotated[
-            NonEmptyStr, m.Field(description="GitHub organization")
-        ]
+        organization: Annotated[NonEmptyStr, m.Field(description="GitHub organization")]
         base_url: Annotated[NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[NonEmptyStr, m.Field(description="Provider branch")]
 
@@ -266,8 +264,7 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Runtime requirements"),
         ]
         codegen: Annotated[
-            tuple[NonEmptyStr, ...],
-            m.Field(description="Code-generation requirements"),
+            tuple[NonEmptyStr, ...], m.Field(description="Code-generation requirements")
         ] = ()
         dev: Annotated[
             tuple[NonEmptyStr, ...],
@@ -297,9 +294,7 @@ class FlextInfraConfigModels:
     class ScaffoldPingExampleSpec(_ConfigContract):
         """Values for the functional ping example created only by codegen new."""
 
-        command_name: Annotated[
-            NonEmptyStr, m.Field(description="Public CLI command")
-        ]
+        command_name: Annotated[NonEmptyStr, m.Field(description="Public CLI command")]
         help_text: Annotated[
             NonEmptyStr, m.Field(description="Public CLI command help")
         ]
@@ -383,9 +378,7 @@ class FlextInfraConfigModels:
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
-        package_name: Annotated[
-            NonEmptyStr, m.Field(description="Import package name")
-        ]
+        package_name: Annotated[NonEmptyStr, m.Field(description="Import package name")]
         class_stem: Annotated[
             NonEmptyStr, m.Field(description="Canonical public facade class stem")
         ]
@@ -405,14 +398,10 @@ class FlextInfraConfigModels:
         environment_prefix: Annotated[
             NonEmptyStr, m.Field(description="Project settings environment prefix")
         ]
-        description: Annotated[
-            NonEmptyStr, m.Field(description="Project description")
-        ]
+        description: Annotated[NonEmptyStr, m.Field(description="Project description")]
         version: Annotated[NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[NonEmptyStr, m.Field(description="SPDX license id")]
-        author_name: Annotated[
-            NonEmptyStr, m.Field(description="Author display name")
-        ]
+        author_name: Annotated[NonEmptyStr, m.Field(description="Author display name")]
         author_email: Annotated[NonEmptyStr, m.Field(description="Author email")]
         upstream: Annotated[
             NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
@@ -480,9 +469,7 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
-        description: Annotated[
-            NonEmptyStr, m.Field(description="Project description")
-        ]
+        description: Annotated[NonEmptyStr, m.Field(description="Project description")]
         version: Annotated[NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[NonEmptyStr, m.Field(description="SPDX license id")]
         python_version: Annotated[
@@ -503,9 +490,7 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
-        author_name: Annotated[
-            NonEmptyStr, m.Field(description="Author display name")
-        ]
+        author_name: Annotated[NonEmptyStr, m.Field(description="Author display name")]
         author_email: Annotated[NonEmptyStr, m.Field(description="Author email")]
         repository: Annotated[
             NonEmptyStr, m.Field(description="Project repository page URL")
@@ -903,9 +888,7 @@ class FlextInfraConfigModels:
         """Complete flext-infra configuration namespace."""
 
         name: Annotated[NonEmptyStr, m.Field(description="Project distribution name")]
-        version: Annotated[
-            NonEmptyStr, m.Field(description="Project release version")
-        ]
+        version: Annotated[NonEmptyStr, m.Field(description="Project release version")]
         codegen_schema: Annotated[
             FlextInfraConfigModels.CodegenSchemaSpec,
             m.Field(description="Generated codegen configuration schema policy"),

@@ -392,9 +392,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
             )
         )
-        phase_builder = m.Cli.TomlPhaseConfig.Builder("pyright").table(
-            c.Infra.PYRIGHT
-        )
+        phase_builder = m.Cli.TomlPhaseConfig.Builder("pyright").table(c.Infra.PYRIGHT)
         if expected_excludes:
             phase_builder = phase_builder.list(c.Infra.EXCLUDE, expected_excludes)
         else:

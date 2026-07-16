@@ -48,9 +48,9 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
             "$id": str(policy.identifier),
             "title": policy.title,
         })
-        schema = u.Cli.normalize_json_value(document_schema)
+        schema = u.Cli.json_normalize_value(document_schema)
         return u.Cli.json_dumps(
-            schema, sort_keys=True, indent=c.Cli.DEFAULT_JSON_INDENT
+            schema, sort_keys=True, indent=c.Cli.JSON_DEFAULT_INDENT
         ).map(lambda rendered: f"{rendered}\n")
 
     @classmethod

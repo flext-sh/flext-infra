@@ -114,9 +114,9 @@ class FlextInfraConstantsCheck:
         "prompt_toolkit": "cli.prompt / cli.confirm / cli.prompt_password",
         "tqdm": "cli.display_progress",
         "getpass": "cli.prompt_password",
-        "orjson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
-        "ujson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
-        "simplejson": "cli.read_json_file / cli.write_json_file / u.Cli.json_dumps",
+        "orjson": "cli.json_read_file / cli.json_write_file / u.Cli.json_dumps",
+        "ujson": "cli.json_read_file / cli.json_write_file / u.Cli.json_dumps",
+        "simplejson": "cli.json_read_file / cli.json_write_file / u.Cli.json_dumps",
     })
     # Precompiled (lib, regex, replacement) rows — click is exempted at the call
     # site for Singer-SDK boundary files.

@@ -68,7 +68,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         issues: t.MutableSequenceOf[p.Infra.Issue] = []
         if json_file.exists():
-            read = u.Cli.files_read_json(json_file)
+            read = u.Cli.json_read_files(json_file)
             if read.failure:
                 issues.append(
                     m.Infra.Issue(

@@ -20,9 +20,7 @@ class FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
     model_config = SettingsConfigDict(
-        env_prefix="FLEXT_INFRA_",
-        env_nested_delimiter="__",
-        extra="ignore",
+        env_prefix="FLEXT_INFRA_", env_nested_delimiter="__", extra="ignore"
     )
 
     Infra: FlextInfraSettingsModels.Infra = Field(

@@ -73,7 +73,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             )
         issues: t.SequenceOf[t.Infra.ContainerDict] = []
         if out_file.exists():
-            loaded_result = u.Cli.files_read_json(out_file)
+            loaded_result = u.Cli.json_read_files(out_file)
             if loaded_result.failure:
                 return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
                     loaded_result.error or "deptry JSON output unreadable/invalid"

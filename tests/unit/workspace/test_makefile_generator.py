@@ -193,7 +193,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
                 "exclude_roots": ["sample-external-alpha", "sample-external-beta"]
             }
         }
-        cli.write_json_file(docs_dir / "docs_config.json", docs_config).unwrap()
+        cli.json_write_file(docs_dir / "docs_config.json", docs_config).unwrap()
         project_names = ("flext-core", "sample-external-alpha", "sample-external-beta")
         for project_name in project_names:
             project_dir = workspace_root / project_name

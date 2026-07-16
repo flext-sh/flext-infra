@@ -166,7 +166,7 @@ class TestsCodegenConfigSchema:
 
     def test_policy_patterns_compile_as_ecma_262_unicode(self) -> None:
         """Compile every emitted policy pattern with the JSON Schema regex engine."""
-        schemas = u.Cli.normalize_json_value([
+        schemas = u.Cli.json_normalize_value([
             m.Infra.CodegenSchemaSpec.model_json_schema(),
             m.Infra.WorktreeTransactionLintCommandSpec.model_json_schema(),
             m.Infra.WorktreeTransactionSpec.model_json_schema(),
