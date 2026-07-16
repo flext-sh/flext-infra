@@ -24,7 +24,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
         stale_error_keys: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
-    ) -> p.Infra.Deps.Toml.PhaseConfig:
+    ) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         venv_rules = self._tool_config.tools.pyright.path_rules
@@ -65,7 +65,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             ),
         )
         return (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Cli.TomlPhaseConfig
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)

@@ -13,11 +13,11 @@ class FlextInfraEnsurePytestConfigPhase:
         """Store tool configuration used to compose canonical pytest defaults."""
         self._tool_config = tool_config
 
-    def _phase(self) -> p.Infra.Deps.Toml.PhaseConfig:
+    def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pytest phase definition."""
         pytest = self._tool_config.tools.pytest
         return (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Cli.TomlPhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
             # mro-j47u (codex): no pytest policy literal survives outside config.
@@ -25,32 +25,32 @@ class FlextInfraEnsurePytestConfigPhase:
             .list(
                 c.Infra.PYTHON_CLASSES,
                 pytest.python_classes,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                strategy=c.Cli.TomlMergeMode.MERGE,
             )
             .list(
                 c.Infra.PYTHON_FILES,
                 pytest.python_files,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                strategy=c.Cli.TomlMergeMode.MERGE,
             )
             # mro-wkii.17 (codex): replace stale collection roots and warning bypasses.
             .list(
-                "testpaths", pytest.test_paths, strategy=c.Infra.TomlMergeMode.REPLACE
+                "testpaths", pytest.test_paths, strategy=c.Cli.TomlMergeMode.REPLACE
             )
             .list(
                 c.Infra.ADDOPTS,
                 pytest.standard_addopts,
                 # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
-                strategy=c.Infra.TomlMergeMode.REPLACE,
+                strategy=c.Cli.TomlMergeMode.REPLACE,
             )
             .list(
                 c.Infra.MARKERS,
                 pytest.standard_markers,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                strategy=c.Cli.TomlMergeMode.MERGE,
             )
             .list(
                 "filterwarnings",
                 pytest.filter_warnings,
-                strategy=c.Infra.TomlMergeMode.REPLACE,
+                strategy=c.Cli.TomlMergeMode.REPLACE,
             )
             .build()
         )

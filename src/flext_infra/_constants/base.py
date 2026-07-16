@@ -214,14 +214,6 @@ class FlextInfraConstantsBase(
     )
 
     @unique
-    class TomlMergeMode(StrEnum):
-        """SSOT merge strategies for TOML list synchronization."""
-
-        REPLACE = "replace"
-        ADDITIVE = "additive"
-        MERGE = "merge"
-
-    @unique
     class ResultStatus(StrEnum):
         """SSOT status values for reports and gate summaries."""
 
@@ -253,14 +245,6 @@ class FlextInfraConstantsBase(
 
         FLOOR = "floor"
         COMPATIBLE = "compatible"
-
-    @unique
-    class TomlOperationKind(StrEnum):
-        """SSOT TOML phase operation kinds."""
-
-        SET = "set"
-        LIST = "list"
-        REMOVE = "remove"
 
     @unique
     class OperationMode(StrEnum):

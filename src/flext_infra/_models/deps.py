@@ -12,12 +12,11 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
-from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
-class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDepsToml):
+class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     """Models for dependency detection and modernization reporting."""
 
     class DetectCommand(mm.WriteMixin, m.ContractModel):

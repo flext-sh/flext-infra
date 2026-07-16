@@ -13,12 +13,12 @@ class FlextInfraEnsureVultureConfigPhase:
         """Store the canonical tooling document."""
         self._tool_config = tool_config
 
-    def _phase(self) -> p.Infra.Deps.Toml.PhaseConfig:
+    def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the config-owned Vulture TOML phase."""
         # mro-j47u: reachability policy is data; projects receive no local branch.
         vulture = self._tool_config.tools.vulture
         return (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Cli.TomlPhaseConfig
             .Builder("vulture")
             .table("vulture")
             .deprecated("min-confidence")

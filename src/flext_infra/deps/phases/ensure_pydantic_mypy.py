@@ -13,10 +13,10 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
         """Store tool configuration used to populate pydantic-mypy settings."""
         self._tool_config = tool_config
 
-    def _phase(self) -> p.Infra.Deps.Toml.PhaseConfig:
+    def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pydantic-mypy phase definition."""
         return (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Cli.TomlPhaseConfig
             .Builder("pydantic-mypy")
             .table("pydantic-mypy")
             .value(

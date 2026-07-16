@@ -1,6 +1,6 @@
 """TOML operation appliers for the TOML phase (cohesive mixin, §3.1 split).
 
-Holds the discriminated ``m.Infra.Deps.Toml.Operation`` appliers for both the
+Holds the discriminated ``m.Cli.TomlOperation`` appliers for both the
 ``t.Cli.TomlTable`` (document) and ``t.MutableJsonMapping`` (payload) paths.
 Composed into ``FlextInfraTomlPhaseService`` via MRO.
 
@@ -19,22 +19,22 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_operation(
         tbl: t.Cli.TomlTable,
-        operation: p.Infra.Deps.Toml.Operation,
+        operation: p.Cli.TomlOperation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
-        if isinstance(operation, m.Infra.Deps.Toml.SetOp):
+        if isinstance(operation, m.Cli.TomlSetOp):
             if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
                 out.append(
                     f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
                     f"{operation.value}"
                 )
             return
-        if isinstance(operation, m.Infra.Deps.Toml.ListOp):
+        if isinstance(operation, m.Cli.TomlListOp):
             if operation.strategy in {
-                c.Infra.TomlMergeMode.ADDITIVE,
-                c.Infra.TomlMergeMode.MERGE,
+                c.Cli.TomlMergeMode.ADDITIVE,
+                c.Cli.TomlMergeMode.MERGE,
             }:
                 if u.Cli.toml_merge_string_list(tbl, operation.key, operation.values):
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
@@ -49,22 +49,22 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: p.Infra.Deps.Toml.Operation,
+        operation: p.Cli.TomlOperation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to one plain mapping table."""
         match operation.kind:
-            case c.Infra.TomlOperationKind.SET:
+            case c.Cli.TomlOperationKind.SET:
                 if u.Cli.toml_mapping_sync_value(tbl, operation.key, operation.value):
                     out.append(
                         f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
                         f"{operation.value}"
                     )
-            case c.Infra.TomlOperationKind.LIST:
+            case c.Cli.TomlOperationKind.LIST:
                 if operation.strategy in {
-                    c.Infra.TomlMergeMode.ADDITIVE,
-                    c.Infra.TomlMergeMode.MERGE,
+                    c.Cli.TomlMergeMode.ADDITIVE,
+                    c.Cli.TomlMergeMode.MERGE,
                 }:
                     if u.Cli.toml_mapping_merge_string_list(
                         tbl, operation.key, operation.values
@@ -74,7 +74,7 @@ class FlextInfraTomlPhaseOps:
                     tbl, operation.key, operation.values, sort_values=operation.sort
                 ):
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
-            case c.Infra.TomlOperationKind.REMOVE:
+            case c.Cli.TomlOperationKind.REMOVE:
                 FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
@@ -85,7 +85,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_operation(
         tbl: t.Cli.TomlTable,
-        operation: p.Infra.Deps.Toml.RemoveOp,
+        operation: p.Cli.TomlRemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -107,7 +107,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: p.Infra.Deps.Toml.RemoveOp,
+        operation: p.Cli.TomlRemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:

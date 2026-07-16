@@ -29,11 +29,11 @@ class FlextInfraEnsurePackagingPhase:
 
     def _phase(
         self, *, package_name: str, data_dirs: t.StrSequence
-    ) -> p.Infra.Deps.Toml.PhaseConfig:
+    ) -> p.Cli.TomlPhaseConfig:
         """Build bounded distribution targets for one resolved package name."""
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
         builder = (
-            m.Infra.Deps.Toml.PhaseConfig
+            m.Cli.TomlPhaseConfig
             .Builder("packaging")
             .table("hatch", "build", "targets")
             .nested("wheel", lists=(("packages", (package_path,)),))
