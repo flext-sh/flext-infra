@@ -19,6 +19,7 @@ from flext_infra.refactor._namespace_enforcer_project import (
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
+from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
 class FlextInfraNamespaceEnforcer(
@@ -30,7 +31,7 @@ class FlextInfraNamespaceEnforcer(
         """Initialize with the workspace root path."""
         super().__init__()
         self._workspace_root = workspace_root.resolve()
-        self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
+        self._rope_workspace = FlextInfraRopeWorkspace.open_workspace(
             self._workspace_root
         )
 
@@ -55,14 +56,17 @@ class FlextInfraNamespaceEnforcer(
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
         project_reports: list[m.Infra.ProjectEnforcementReport] = []
-        for project_root in project_roots:
-            report = self._enforce_project(
-                project_root=project_root,
-                project_name=project_root.name,
-                apply=apply,
-                gates=gates,
-            )
-            project_reports.append(report)
+        with self._rope_workspace as rope:
+            _ = rope.workspace_index
+            for project_root in project_roots:
+                report = self._enforce_project(
+                    project_root=project_root,
+                    project_name=project_root.name,
+                    apply=apply,
+                    gates=gates,
+                    rope_workspace=rope,
+                )
+                project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
             workspace=str(self._workspace_root), projects=project_reports
         )
@@ -108,7 +112,8 @@ class FlextInfraNamespaceEnforcer(
         if not (apply and violations and rewrite_fn is not None):
             return violations
         rewrite_fn(violations)
-        self._rope_project.validate(self._rope_project.root)
+        rope_project = self._rope_workspace.rope_project
+        rope_project.validate(rope_project.root)
         post_violations: t.MutableSequenceOf[V] = []
         for py_file in py_files:
             post_violations.extend(detect_fn(py_file))

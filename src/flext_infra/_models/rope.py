@@ -124,6 +124,11 @@ class FlextInfraModelsRope:
         local_name: t.NonEmptyStr = m.Field(description="Bound local name")
         is_from_import: bool = m.Field(description="From-import marker")
 
+        @property
+        def imported_name(self) -> str:
+            """Imported member, or the normal-import module name."""
+            return self.member or self.module
+
     class IgnoredRegion(mm.PositiveLineMixin, m.ContractModel):
         """One Rope-classified string or comment region in source text."""
 

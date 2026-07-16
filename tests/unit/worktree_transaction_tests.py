@@ -25,6 +25,10 @@ class TestWorktreeTransactionScope:
         tm.that(config.Infra.worktree_transaction.timeout_seconds > 0, eq=True)
         tm.that(config.Infra.worktree_transaction.environment_variable, ne="")
         tm.that(config.Infra.worktree_transaction.active_value, ne="")
+        tm.that(
+            config.Infra.worktree_transaction.preserved_ignored_paths,
+            contains=".mise.toml",
+        )
         tm.that(len(config.Infra.worktree_transaction.lint_commands) > 0, eq=True)
 
     def test_transaction_root_rejects_empty_path(self) -> None:
@@ -38,6 +42,7 @@ class TestWorktreeTransactionScope:
                 ),
                 active_value=config.Infra.worktree_transaction.active_value,
                 root="",
+                preserved_ignored_paths=(".mise.toml",),
                 timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
                 lint_commands=config.Infra.worktree_transaction.lint_commands,
             )
@@ -80,6 +85,7 @@ class TestWorktreeTransactionScope:
                 ),
                 active_value=config.Infra.worktree_transaction.active_value,
                 root=invalid_root,
+                preserved_ignored_paths=(".mise.toml",),
                 timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
                 lint_commands=config.Infra.worktree_transaction.lint_commands,
             )
@@ -105,6 +111,7 @@ class TestWorktreeTransactionScope:
             ),
             active_value=config.Infra.worktree_transaction.active_value,
             root=valid_root,
+            preserved_ignored_paths=(".mise.toml",),
             timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,
             lint_commands=config.Infra.worktree_transaction.lint_commands,
         )
@@ -112,7 +119,10 @@ class TestWorktreeTransactionScope:
         tm.that(policy.root, eq=valid_root)
 
     def test_selected_repository_excludes_unselected_dirty_state(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Materialize the workspace once while validating only the selection."""
         workspace = tmp_path / "workspace"
@@ -240,11 +250,12 @@ _install_lazy_exports(
         first_command_output = result.value.command_output.stdout
         tm.that(first_command_output.count("rope: opening workspace at"), eq=1)
         tm.that(first_command_output.count("rope: indexed "), eq=1)
+        monkeypatch.chdir(workspace)
         cli_exit = infra_main([
             "codegen",
             "init",
             "--workspace",
-            str(workspace),
+            ".",
             "--projects",
             "flext-selected",
             "--check",

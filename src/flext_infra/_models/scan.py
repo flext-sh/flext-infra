@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import p, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
@@ -31,6 +31,12 @@ class FlextInfraModelsScan:
         rope_project: t.Infra.RopeProject = m.Field(
             description="Initialized Rope project for semantic metadata."
         )
+        rope_workspace: Annotated[
+            p.Infra.RopeWorkspaceDsl | None,
+            m.Field(
+                description="Shared workspace session for cross-project semantic facts."
+            ),
+        ] = None
         parse_failures: Annotated[
             (
                 t.MutableSequenceOf[

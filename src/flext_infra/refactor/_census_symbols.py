@@ -1,4 +1,8 @@
-"""Lightweight Rope symbol indexing + detector context — extracted census concern."""
+"""Lightweight Rope symbol indexing + detector context — extracted census concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -116,6 +120,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         return m.Infra.DetectorContext(
             file_path=file_path,
             rope_project=rope.rope_project,
+            rope_workspace=rope,
             parse_failures=parse_failures,
             project_name=project_name,
             project_root=project_root,

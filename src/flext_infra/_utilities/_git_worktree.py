@@ -1,4 +1,8 @@
-"""Canonical Git worktree, checkpoint, and patch operations for ``u.Infra``."""
+"""Canonical Git worktree, checkpoint, and patch operations for ``u.Infra``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, config, m, p, t
 
 
 class FlextInfraUtilitiesGitWorktreeMixin:
@@ -184,6 +188,46 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[bool].ok(True)
 
     @classmethod
+    def _git_copy_preserved_ignored(
+        cls, source_root: Path, worktree_root: Path, excluded: t.SequenceOf[Path]
+    ) -> p.Result[bool]:
+        """Reproduce configured ignored generated files in the checkpoint tree."""
+        for (
+            configured_path
+        ) in config.Infra.worktree_transaction.preserved_ignored_paths:
+            relative_path = Path(configured_path)
+            if cls._git_path_is_excluded(relative_path, excluded):
+                continue
+            source_path = source_root / relative_path
+            if not source_path.exists():
+                continue
+            if not source_path.is_file():
+                return r[bool].fail(
+                    f"preserved ignored path is not a file: {relative_path}"
+                )
+            destination_path = worktree_root / relative_path
+            ensure_parent = u.Cli.ensure_dir(destination_path.parent)
+            if ensure_parent.failure:
+                return r[bool].fail(
+                    ensure_parent.error or f"failed to create {destination_path.parent}"
+                )
+            copy_result = u.Cli.files_copy(source_path, destination_path)
+            if copy_result.failure:
+                return r[bool].fail(
+                    copy_result.error
+                    or f"failed to copy preserved ignored path {relative_path}"
+                )
+            stage_result = cls.git_capture(
+                worktree_root, ("add", "-f", "--", relative_path.as_posix())
+            )
+            if stage_result.failure:
+                return r[bool].fail(
+                    stage_result.error
+                    or f"failed to checkpoint preserved ignored path {relative_path}"
+                )
+        return r[bool].ok(True)
+
+    @classmethod
     def git_copy_worktree_state(
         cls,
         source_root: Path,
@@ -218,7 +262,15 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                     (output.stderr or output.stdout).strip()
                     or "dirty patch did not apply"
                 )
-        return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
+        excluded_paths = tuple(excluded)
+        untracked_result = cls._git_copy_untracked(
+            source_root, worktree_root, excluded_paths
+        )
+        if untracked_result.failure:
+            return untracked_result
+        return cls._git_copy_preserved_ignored(
+            source_root, worktree_root, excluded_paths
+        )
 
     @classmethod
     def git_checkpoint_worktree(

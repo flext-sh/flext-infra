@@ -15,6 +15,7 @@ Infra:
     environment_variable: FLEXT_INFRA_WORKTREE_TRANSACTION
     active_value: "1"
     root: .worktrees
+    preserved_ignored_paths: [.envrc, .mise.toml, base.mk]
     timeout_seconds: 3600
     lint_commands:
       - tool: ruff
@@ -111,6 +112,20 @@ Infra:
           \ underlying typing contract instead of suppressing it."}
       - {operator: comment, marker: "# noqa", kind: noqa, detail: "Fix the underlying lint\
           \ defect instead of suppressing it."}
+      - operator: private_root_import
+        module: _config
+        singleton: config
+        type-checking-families: [_constants, _models, _protocols, _typings]
+        allow-generated-root-init: true
+        kind: private_config_import
+        detail: "Consume validated configuration through the public package singleton."
+      - operator: private_root_import
+        module: _settings
+        singleton: settings
+        type-checking-families: [_constants, _models, _protocols, _typings]
+        allow-generated-root-init: true
+        kind: private_settings_import
+        detail: "Consume validated settings through the public package singleton."
       # mro-wkii.17.26 (codex): Ruff supplies the diagnostic; Rope must prove
       # the configured test scope before the closed operator inserts content.
       - operator: ruff_issue

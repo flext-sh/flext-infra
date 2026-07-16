@@ -116,11 +116,32 @@ class FlextInfraCli(type(cli_facade)):
         )
 
     @staticmethod
-    def _transaction_inner_args(route_key: str, args: t.StrSequence) -> t.StrSequence:
+    def _transaction_inner_args(
+        route_key: str, args: t.StrSequence, *, candidate_root: Path
+    ) -> t.StrSequence:
         """Force the isolated invocation to materialize its complete patch."""
+        path_flags = frozenset({"--root", "--workspace"})
+        resolved_args: t.MutableSequenceOf[str] = []
+        path_value_expected = False
+        for argument in args:
+            if path_value_expected:
+                resolved_args.append(str(candidate_root))
+                path_value_expected = False
+                continue
+            if argument in path_flags:
+                resolved_args.append(argument)
+                path_value_expected = True
+                continue
+            resolved_argument = argument
+            for flag in path_flags:
+                prefix = f"{flag}="
+                if argument.startswith(prefix):
+                    resolved_argument = f"{prefix}{candidate_root}"
+                    break
+            resolved_args.append(resolved_argument)
         normalized: t.MutableSequenceOf[str] = []
         skip_next = False
-        for argument in args:
+        for argument in resolved_args:
             if skip_next:
                 skip_next = False
                 continue
@@ -201,7 +222,12 @@ class FlextInfraCli(type(cli_facade)):
         )
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_result.value,
-            command=(group, *self._transaction_inner_args(route_key, args)),
+            command=(
+                group,
+                *self._transaction_inner_args(
+                    route_key, args, candidate_root=candidate_root
+                ),
+            ),
             selected_repositories=selected_repositories,
             apply_patch=apply_requested,
             timeout_seconds=config.Infra.worktree_transaction.timeout_seconds,

@@ -325,6 +325,62 @@ class TestsFlextInfraCodegenGeneration:
             ),
         )
 
+    def test_wrapper_root_type_checking_matches_ruff_order(
+        self, tmp_path: Path
+    ) -> None:
+        """Render wrapper facade imports in deterministic Ruff order."""
+        # NOTE (multi-agent, mro-0ftd.3.5 / agent: codex): preserve the exact
+        # pruned tests-root plan that exposed I001 in the LDIF transaction.
+        lazy_map = MappingProxyType({
+            "integration": ("tests.integration", ""),
+            "unit": ("tests.unit", ""),
+            **{
+                name: ("flext_tests", name)
+                for name in ("d", "e", "h", "r", "td", "tf", "tk", "tm", "tv", "x")
+            },
+            "TestsFlextLdifServiceBase": ("tests.base", "TestsFlextLdifServiceBase"),
+            "s": ("tests.base", "s"),
+            "TestsFlextLdifConstants": ("tests.constants", "TestsFlextLdifConstants"),
+            "c": ("tests.constants", "c"),
+            "TestsFlextLdifModels": ("tests.models", "TestsFlextLdifModels"),
+            "m": ("tests.models", "m"),
+            "TestsFlextLdifProtocols": ("tests.protocols", "TestsFlextLdifProtocols"),
+            "p": ("tests.protocols", "p"),
+            "TestsFlextLdifSettings": ("tests.settings", "TestsFlextLdifSettings"),
+            "TestsFlextLdifTypes": ("tests.typings", "TestsFlextLdifTypes"),
+            "t": ("tests.typings", "t"),
+            "TestsFlextLdifUtilities": ("tests.utilities", "TestsFlextLdifUtilities"),
+            "u": ("tests.utilities", "u"),
+        })
+        plan = self._plan(
+            tmp_path, "tests", tuple(lazy_map), lazy_map, production=False
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+        type_checking_block = content.split("if TYPE_CHECKING:", maxsplit=1)[1].split(
+            "_LAZY_MODULES", maxsplit=1
+        )[0]
+
+        tm.that(
+            type_checking_block,
+            contains=(
+                "    from flext_tests import d, e, h, r, td, tf, tk, tm, tv, x\n\n"
+                "    from . import integration, unit\n"
+                "    from .base import TestsFlextLdifServiceBase, s\n"
+                "    from .constants import TestsFlextLdifConstants, "
+                "TestsFlextLdifConstants as c\n"
+                "    from .models import TestsFlextLdifModels, "
+                "TestsFlextLdifModels as m\n"
+                "    from .protocols import TestsFlextLdifProtocols, "
+                "TestsFlextLdifProtocols as p\n"
+                "    from .settings import TestsFlextLdifSettings\n"
+                "    from .typings import TestsFlextLdifTypes, "
+                "TestsFlextLdifTypes as t\n"
+                "    from .utilities import TestsFlextLdifUtilities, "
+                "TestsFlextLdifUtilities as u"
+            ),
+        )
+
     def test_root_runtime_keeps_first_party_imports_in_one_section(
         self, tmp_path: Path
     ) -> None:

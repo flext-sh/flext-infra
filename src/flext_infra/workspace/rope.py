@@ -254,7 +254,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
                 msg = f"rope name index failed to read {py_file}: {read.error}"
                 raise RuntimeError(msg)
             source_text = read.value
-            surface = self._reference_surface_for(py_file)
+            surface = self.surface(py_file)
             lines_by_name: dict[str, list[int]] = {}
             for lineno, source_line in enumerate(source_text.splitlines(), start=1):
                 for match in self._IDENTIFIER_PATTERN.finditer(source_line):
@@ -298,7 +298,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     )
 
     @classmethod
-    def _reference_surface_for(cls, file_path: Path) -> str:
+    def surface(cls, file_path: Path) -> str:
         """Return the reference surface for a file path."""
         for part in file_path.parts:
             if part in cls._SURFACE_DIRS:

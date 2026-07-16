@@ -1,4 +1,8 @@
-"""Workspace-wide Rope-only census orchestration."""
+"""Workspace-wide Rope-only census orchestration.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -122,21 +126,6 @@ class FlextInfraRefactorCensus(
         """
         return (c.Infra.LINT, c.Infra.PYREFLY)
 
-    def _rope_root_for_selection(self) -> Path | None:
-        """Return a project-scoped Rope root when exactly one project is selected.
-
-        Workspace-wide scans (zero or many projects) keep the canonical workspace
-        root so cross-project rules such as duplicate detection remain accurate.
-        """
-        names = self.project_names
-        if names is None or len(names) != 1:
-            return None
-        project_name: str = names[0]
-        project_path: Path = self.root / project_name
-        if project_path.is_dir():
-            return project_path
-        return None
-
     def _execution_reports(
         self,
     ) -> tuple[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
@@ -144,10 +133,8 @@ class FlextInfraRefactorCensus(
         started = time.monotonic()
         applied = frozenset[str]()
         impact_map_report: m.Infra.Census.WorkspaceReport | None = None
-        rope_root = self._rope_root_for_selection()
-        with FlextInfraRopeWorkspace.open_workspace(
-            self.root, rope_workspace_root=rope_root
-        ) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(self.root) as rope:
+            _ = rope.workspace_index
 
             def collect(applied: frozenset[str]) -> m.Infra.Census.WorkspaceReport:
                 return self._collect_report(

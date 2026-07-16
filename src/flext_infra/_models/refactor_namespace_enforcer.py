@@ -122,8 +122,11 @@ class FlextInfraModelsNamespaceEnforcer:
         """Internal import violation."""
 
     class PrivateImportBypassViolation(mm.ViolationDetailMixin, ImportViolationBase):
-        """Private-module import that should use the canonical facade."""
+        """Semantically proven package-root config/settings import bypass."""
 
+        kind: Annotated[
+            t.NonEmptyStr, m.Field(description="Validated enforcement rule kind")
+        ]
         private_module: Annotated[
             t.NonEmptyStr,
             m.Field(description="Fully-qualified private module being imported"),
@@ -132,13 +135,27 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonEmptyStr,
             m.Field(description="Symbol imported from the private module"),
         ]
-        suggested_facade: Annotated[
-            t.NonEmptyStr, m.Field(description="Canonical facade module to import from")
+        bound_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Local name bound by the import")
         ]
-        symbol_exported: Annotated[
-            bool,
-            m.Field(description="Whether the symbol is already exported by the facade"),
-        ] = False
+        target_file: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Resolved package-root private module file"),
+        ]
+        canonical_singleton: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Canonical public package singleton import target"),
+        ]
+        owner_project: Annotated[
+            t.NonEmptyStr, m.Field(description="Project owning the private target")
+        ]
+        surface: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Classified src/tests/examples/scripts surface"),
+        ]
+        type_checking_guarded: Annotated[
+            bool, m.Field(description="Whether Rope proved a TYPE_CHECKING guard")
+        ]
 
     class InlineImportViolation(mm.ViolationDetailMixin, ImportViolationBase):
         """Inline or lazy import declared inside a function body."""

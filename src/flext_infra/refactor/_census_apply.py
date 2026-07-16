@@ -1,4 +1,8 @@
-"""Census fix application + post-apply regeneration — extracted concern."""
+"""Census fix application + post-apply regeneration — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -22,9 +26,6 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 )
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
-)
-from flext_infra.detectors.private_import_bypass_detector import (
-    FlextInfraPrivateImportBypassDetector,
 )
 from flext_infra.refactor._census_apply_formatting import (
     FlextInfraRefactorCensusApplyFormattingMixin,
@@ -130,23 +131,6 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     continue
                 u.Infra.rewrite_compatibility_alias_violations(
                     violations=violations, parse_failures=parse_failures
-                )
-                changed = True
-            elif action == "rewrite_private_import_bypass":
-                violations = tuple(
-                    violation
-                    for violation in FlextInfraPrivateImportBypassDetector.detect_file(
-                        ctx
-                    )
-                    if violation.imported_symbol in object_names
-                    and violation.symbol_exported
-                )
-                if not violations:
-                    continue
-                u.Infra.rewrite_private_import_bypass_violations(
-                    rope_project=ctx.rope_project,
-                    violations=violations,
-                    parse_failures=parse_failures,
                 )
                 changed = True
             elif action == "rewrite_mro_completeness":
@@ -275,6 +259,9 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ``hoist_inline_import`` for stdlib imports (no cycle risk) and
         ``rewrite_library_abstraction`` for libraries owned by another FLEXT
         project.
+
+        Returns:
+            Whether Rope produced and applied a changed module source.
         """
         resource = rope.resource(file_path)
         if resource is None:

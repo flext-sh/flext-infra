@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from rope.base import codeanalyze, simplify, worder
 
 from flext_infra import c, m, p, t
@@ -103,6 +105,243 @@ class FlextInfraUtilitiesRopeStructure:
             file_path=str(display_path),
             project_name=ctx.project_name,
         )
+
+    @classmethod
+    def detect_private_root_imports(
+        cls,
+        ctx: m.Infra.DetectorContext,
+        rules: t.SequenceOf[m.Infra.StaticPrivateRootImportRule],
+    ) -> t.SequenceOf[m.Infra.PrivateImportBypassViolation]:
+        """Detect imports resolved to a project's package-root config/settings file."""
+        if not rules:
+            return ()
+        rope = ctx.rope_workspace
+        if rope is None:
+            msg = "private-root import detection requires one shared Rope workspace"
+            raise RuntimeError(msg)
+        resource = rope.resource(ctx.file_path)
+        module_entry = rope.module(ctx.file_path)
+        if resource is None or module_entry is None:
+            msg = f"private-root import resource is not indexed: {ctx.file_path}"
+            raise RuntimeError(msg)
+        project_root = ctx.project_root or module_entry.project_root
+        if project_root is None:
+            msg = f"private-root import project owner is unknown: {ctx.file_path}"
+            raise RuntimeError(msg)
+        project_root = project_root.resolve()
+        workspace_index = rope.workspace_index
+        package_name = workspace_index.project_package_by_root.get(str(project_root))
+        if not package_name:
+            msg = f"private-root import package owner is unknown: {project_root}"
+            raise RuntimeError(msg)
+        package_dir = workspace_index.package_dir_by_name.get(package_name)
+        if package_dir is None:
+            msg = f"private-root import package directory is unknown: {package_name}"
+            raise RuntimeError(msg)
+        source = resource.read()
+        statements = cls.logical_statements(source)
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
+                ctx.rope_project, resource
+            )
+            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
+                ctx.rope_project, pymodule
+            )
+        except (*c.Infra.SYNTAX_ERRORS,) as exc:
+            if ctx.parse_failures is None:
+                raise
+            ctx.parse_failures.append(
+                m.Infra.ParseFailureViolation(
+                    file=str(ctx.file_path),
+                    stage="private_root_imports",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                )
+            )
+            return ()
+        rules_by_module = {rule.module: rule for rule in rules}
+        if len(rules_by_module) != len(rules):
+            msg = "private-root import rule modules must be unique"
+            raise RuntimeError(msg)
+        attributes = pymodule.get_attributes()
+        violations: tuple[m.Infra.PrivateImportBypassViolation, ...] = ()
+        for fact in cls._import_facts(module_imports):
+            rule = rules_by_module.get(fact.module.rsplit(".", maxsplit=1)[-1])
+            if rule is None or not fact.is_from_import:
+                continue
+            statement = cls._statement_for_import(
+                statements, file_path=ctx.file_path, line=fact.line
+            )
+            target_file = cls._definition_file_for_import(
+                ctx=ctx, attributes=attributes, fact=fact
+            )
+            expected_target = (package_dir / f"{rule.module}.py").resolve()
+            if target_file != expected_target or cls._private_root_import_exempt(
+                ctx=ctx,
+                rule=rule,
+                statement=statement,
+                source=source,
+                package_dir=package_dir,
+            ):
+                continue
+            cls._validate_public_singleton(
+                ctx=ctx,
+                rope=rope,
+                package_dir=package_dir,
+                package_name=package_name,
+                rule=rule,
+                expected_target=expected_target,
+            )
+            current_import = " ".join(statement.text.split())
+            private_module = f"{package_name}.{rule.module}"
+            canonical_singleton = f"{package_name}.{rule.singleton}"
+            violation = m.Infra.PrivateImportBypassViolation(
+                file=str(ctx.file_path),
+                line=fact.line,
+                current_import=current_import,
+                detail=(
+                    f"{rule.detail} Resolved '{fact.imported_name}' from "
+                    f"'{private_module}'; consume '{canonical_singleton}'."
+                ),
+                kind=rule.kind,
+                private_module=private_module,
+                imported_symbol=fact.imported_name,
+                bound_name=fact.local_name,
+                target_file=str(expected_target),
+                canonical_singleton=canonical_singleton,
+                owner_project=project_root.name,
+                surface=rope.surface(ctx.file_path),
+                type_checking_guarded=statement.type_checking_guarded,
+            )
+            if violation not in violations:
+                violations = (*violations, violation)
+        return violations
+
+    @staticmethod
+    def _statement_for_import(
+        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        *,
+        file_path: Path,
+        line: int,
+    ) -> m.Infra.LogicalStatement:
+        """Return the exact Rope logical statement containing an import line."""
+        statement = next(
+            (
+                candidate
+                for candidate in statements
+                if candidate.line <= line <= candidate.end_line
+            ),
+            None,
+        )
+        if statement is None:
+            msg = f"private-root import statement is unknown at {file_path}:{line}"
+            raise RuntimeError(msg)
+        return statement
+
+    @staticmethod
+    def _definition_file_for_import(
+        *,
+        ctx: m.Infra.DetectorContext,
+        attributes: t.MappingKV[str, t.Infra.RopePyName],
+        fact: m.Infra.ImportFact,
+    ) -> Path:
+        """Resolve one import binding to its exact definition resource."""
+        pyname = attributes.get(fact.local_name)
+        if pyname is None:
+            msg = (
+                "private-root import binding is unresolved: "
+                f"{ctx.file_path}:{fact.line}:{fact.local_name}"
+            )
+            raise RuntimeError(msg)
+        definition_module, definition_line = pyname.get_definition_location()
+        definition_resource = (
+            definition_module.get_resource() if definition_module is not None else None
+        )
+        if definition_resource is None or not isinstance(definition_line, int):
+            msg = (
+                "private-root import definition is unresolved: "
+                f"{ctx.file_path}:{fact.line}:{fact.local_name}"
+            )
+            raise RuntimeError(msg)
+        target_file = FlextInfraUtilitiesRopeCore.resource_file_path(
+            ctx.rope_project, definition_resource
+        )
+        if target_file is None:
+            msg = (
+                "private-root import target path is unresolved: "
+                f"{ctx.file_path}:{fact.line}:{fact.local_name}"
+            )
+            raise RuntimeError(msg)
+        return target_file
+
+    @staticmethod
+    def _private_root_import_exempt(
+        *,
+        ctx: m.Infra.DetectorContext,
+        rule: m.Infra.StaticPrivateRootImportRule,
+        statement: m.Infra.LogicalStatement,
+        source: str,
+        package_dir: Path,
+    ) -> bool:
+        """Return whether config data explicitly permits one proven type-only edge."""
+        resolved_file = ctx.file_path.resolve()
+        resolved_package = package_dir.resolve()
+        if (
+            rule.allow_generated_root_init
+            and statement.type_checking_guarded
+            and resolved_file == resolved_package / c.Infra.INIT_PY
+            and source.startswith(c.Infra.AUTOGEN_HEADER)
+        ):
+            return True
+        if not statement.type_checking_guarded or not resolved_file.is_relative_to(
+            resolved_package
+        ):
+            return False
+        relative_parts = resolved_file.relative_to(resolved_package).parts
+        return bool(relative_parts and relative_parts[0] in rule.type_checking_families)
+
+    @staticmethod
+    def _validate_public_singleton(
+        *,
+        ctx: m.Infra.DetectorContext,
+        rope: p.Infra.RopeWorkspaceDsl,
+        package_dir: Path,
+        package_name: str,
+        rule: m.Infra.StaticPrivateRootImportRule,
+        expected_target: Path,
+    ) -> None:
+        """Fail loud unless the public package singleton resolves to the same owner."""
+        root_init = package_dir.resolve() / c.Infra.INIT_PY
+        root_resource = rope.resource(root_init)
+        if root_resource is None:
+            msg = f"canonical package root is not indexed: {root_init}"
+            raise RuntimeError(msg)
+        root_module = FlextInfraUtilitiesRopeCore.get_pymodule(
+            ctx.rope_project, root_resource
+        )
+        pyname = root_module.get_attributes().get(rule.singleton)
+        if pyname is None:
+            msg = (
+                f"canonical singleton is not exported: {package_name}.{rule.singleton}"
+            )
+            raise RuntimeError(msg)
+        definition_module, definition_line = pyname.get_definition_location()
+        definition_resource = (
+            definition_module.get_resource() if definition_module is not None else None
+        )
+        target_file = (
+            FlextInfraUtilitiesRopeCore.resource_file_path(
+                ctx.rope_project, definition_resource
+            )
+            if definition_resource is not None
+            else None
+        )
+        if not isinstance(definition_line, int) or target_file != expected_target:
+            msg = (
+                "canonical singleton owner mismatch: "
+                f"{package_name}.{rule.singleton} -> {target_file}"
+            )
+            raise RuntimeError(msg)
 
     @classmethod
     def evaluate_static_rules(
@@ -283,7 +522,10 @@ class FlextInfraUtilitiesRopeStructure:
         """Validate Rope NormalImport/FromImport objects into immutable facts."""
         facts: tuple[m.Infra.ImportFact, ...] = ()
         for statement in tuple(module_imports.imports):
-            line = statement.start_line if statement.start_line > 0 else 1
+            if statement.start_line < 1:
+                msg = "Rope import statement did not provide a positive source line"
+                raise RuntimeError(msg)
+            line = statement.start_line
             info = statement.import_info
             if FlextInfraUtilitiesRopeRuntime.is_normal_import(info):
                 for module, alias in info.names_and_aliases:

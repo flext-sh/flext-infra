@@ -69,8 +69,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 for export_name, attr_name in items
             )
         ):
-            # mro-i6nq.10: Module aliases emit from their parent package.
-            return mod.rsplit(".", maxsplit=1)[0]
+            # NOTE (multi-agent, mro-0ftd.3.5 / agent: codex): group module
+            # aliases by their emitted parent before applying Ruff ordering.
+            return mod.rsplit(".", maxsplit=1)[0] or "."
         return mod
 
     @staticmethod
@@ -108,9 +109,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         for export_name, attr_name in sorted(
             items,
             key=lambda item: (
-                (item[1] or item[0]).lower(),
                 item[1] or item[0],
                 item[0] != (item[1] or item[0]),
+                item[0],
             ),
         ):
             if FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
@@ -170,7 +171,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             FlextInfraCodegenGenerationTypeCheckingMixin._reject_noncanonical_type_checking_import(
                 resolved, local_package_root, items
             )
-            normalized_groups[resolved] = (*normalized_groups.get(resolved, ()), *items)
+            import_owner = (
+                FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+                    resolved, items
+                )
+            )
+            normalized_groups[import_owner] = (
+                *normalized_groups.get(import_owner, ()),
+                *items,
+            )
         collapsed = FlextInfraCodegenGenerationTypeCheckingMixin._collapse_to_children(
             normalized_groups, child_packages
         )

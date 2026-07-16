@@ -1,4 +1,8 @@
-"""Per-project namespace enforcement — extracted concern of the namespace enforcer."""
+"""Per-project namespace enforcement — extracted concern of the namespace enforcer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import config, m, t, u
+from flext_infra import config, m, p, t, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -78,17 +82,17 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         project_root: Path,
         project_name: str,
         apply: bool,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         gates: t.StrSequence | None = None,
     ) -> m.Infra.ProjectEnforcementReport:
-        """Enforce project."""
-        with u.Infra.open_project(project_root) as rope_project:
-            return self._enforce_project_with_rope(
-                project_root=project_root,
-                project_name=project_name,
-                apply=apply,
-                gates=gates,
-                rope_project=rope_project,
-            )
+        """Enforce one project through the workspace-wide Rope session."""
+        return self._enforce_project_with_rope(
+            project_root=project_root,
+            project_name=project_name,
+            apply=apply,
+            gates=gates,
+            rope_workspace=rope_workspace,
+        )
 
     @staticmethod
     def _detector_context(
@@ -98,11 +102,13 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
         project_name: str = "",
         project_root: Path | None = None,
+        rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
     ) -> m.Infra.DetectorContext:
         """Build the canonical detector context for one file."""
         return m.Infra.DetectorContext(
             file_path=file_path,
             rope_project=rope_project,
+            rope_workspace=rope_workspace,
             parse_failures=parse_failures,
             project_name=project_name,
             project_root=project_root,
@@ -115,9 +121,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         project_name: str,
         apply: bool,
         gates: t.StrSequence | None,
-        rope_project: t.Infra.RopeProject,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> m.Infra.ProjectEnforcementReport:
-        """Enforce project using the Rope project scoped to ``project_root``."""
+        """Enforce project using the single indexed workspace Rope project."""
+        rope_project = rope_workspace.rope_project
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] = []
         facade_statuses = self._scan_facades(
             project=(project_root, project_name),
@@ -204,13 +211,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_root=project_root,
+                    rope_workspace=rope_workspace,
                 )
             ),
-            rewrite_fn=lambda vs: u.Infra.rewrite_private_import_bypass_violations(
-                rope_project=rope_project,
-                violations=tuple(v for v in vs if v.symbol_exported),
-                parse_failures=parse_failures,
-            ),
+            rewrite_fn=None,
             apply=apply,
         )
         runtime_alias_violations = self._detect_and_apply(

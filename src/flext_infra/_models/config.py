@@ -49,6 +49,9 @@ type _EnvironmentVariableName = Annotated[
 type _ToolIdentifier = Annotated[
     t.NonEmptyStr, m.Field(max_length=255, pattern=_TOOL_IDENTIFIER_PATTERN)
 ]
+type _RepositoryRootFileName = Annotated[
+    t.NonEmptyStr, m.Field(pattern=r"^\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$")
+]
 
 
 class _ConfigContract(m.ContractModel):
@@ -705,6 +708,15 @@ class FlextInfraConfigModels:
             _PortableRelativePath,
             m.Field(description="Portable repository-relative transaction directory"),
         ]
+        preserved_ignored_paths: Annotated[
+            tuple[_RepositoryRootFileName, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Generated ignored files reproduced in the isolated checkpoint"
+                ),
+            ),
+        ]
         timeout_seconds: Annotated[
             int,
             m.Field(gt=0, description="Maximum duration of each transaction command"),
@@ -801,6 +813,30 @@ class FlextInfraConfigModels:
         operator: Literal["comment"] = m.Field(description="Operator")
         marker: t.NonEmptyStr = m.Field(description="Rejected comment marker")
 
+    class StaticPrivateRootImportRule(StaticRule):
+        """Reject a private package-root config or settings singleton import."""
+
+        operator: Literal["private_root_import"] = m.Field(description="Operator")
+        module: t.NonEmptyStr = m.Field(
+            pattern=r"^_[a-z][a-z0-9_]*$",
+            description="Private package-root module basename",
+        )
+        singleton: t.NonEmptyStr = m.Field(
+            description="Canonical public singleton exported by the package root"
+        )
+        type_checking_families: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                alias="type-checking-families",
+                min_length=1,
+                description="Private facade families allowed for proven type-only edges",
+            ),
+        ]
+        allow_generated_root_init: bool = m.Field(
+            alias="allow-generated-root-init",
+            description="Allow the generated package root to assemble this singleton",
+        )
+
     # mro-wkii.17.26 (codex): lint remediation is validated rule data; Rope
     # verifies the configured semantic scope before the closed operator writes.
     class StaticRuffIssueRule(StaticRule):
@@ -841,6 +877,7 @@ class FlextInfraConfigModels:
         | StaticBareExceptRule
         | StaticAnnotatedStringRule
         | StaticCommentRule
+        | StaticPrivateRootImportRule
         | StaticRuffIssueRule,
         m.Field(discriminator="operator"),
     ]

@@ -696,7 +696,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 context_result.error or "project render context is invalid"
             )
         templates_root = (
-            self._package_root() / "templates" / codegen.templates.root
+            u.Infra.resource_root("templates") / codegen.templates.root
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
