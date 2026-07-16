@@ -117,7 +117,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> p.Result[m.Infra.TypingsReport]:
+    ) -> p.Result[p.Infra.TypingsReport]:
         """Analyze project and generate typing stubs requirements report."""
         limits = self.load_dependency_limits(limits_path)
         exclude_set: t.Infra.StrSet = set()
@@ -131,7 +131,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         if include_mypy:
             hints_result = self.run_mypy_stub_hints(project_path)
             if hints_result.failure:
-                return r[m.Infra.TypingsReport].fail(
+                return r[p.Infra.TypingsReport].fail(
                     hints_result.error or "typing hint detection failed"
                 )
             typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
@@ -159,7 +159,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             limits_applied=bool(limits),
             python_version=python_version,
         )
-        return r[m.Infra.TypingsReport].ok(report)
+        return r[p.Infra.TypingsReport].ok(report)
 
     def load_dependency_limits(
         self, limits_path: Path | None = None

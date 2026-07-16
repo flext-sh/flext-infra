@@ -31,7 +31,7 @@ from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 class FlextInfraValidateLazyMapFreshness(s[bool]):
     """Flags ``__init__.py`` files whose lazy maps are out of sync with siblings."""
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
@@ -45,9 +45,9 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         try:
             errors = generator.generate_inits(check_only=True)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
+            return r[p.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
         if errors > 0:
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 f"lazy-map freshness scan errored in {errors} package(s)"
             )
         modified = tuple(generator.modified_files)
@@ -60,7 +60,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
             if passed
             else f"{len(violations)} stale __init__.py file(s) — run 'make gen'"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=violations, summary=summary
             )

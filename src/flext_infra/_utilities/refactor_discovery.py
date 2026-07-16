@@ -25,7 +25,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
     @staticmethod
     def _resolve_refactor_config(
         settings: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> m.Infra.RefactorConfig:
+    ) -> p.Infra.RefactorConfig:
         """Resolve the typed refactor config through the shared CLI DSL."""
         return m.Infra.RefactorConfig.model_validate(
             u.Cli.rules_resolve_scope(

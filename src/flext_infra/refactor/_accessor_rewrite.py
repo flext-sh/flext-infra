@@ -24,7 +24,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
     # rename = one entry in flext-core's enforcement constant, never duplicated
     # here. Token-level rename is idempotent — once source_name has been
     # renamed, subsequent passes find zero matching tokens.
-    _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = tuple(
+    _AUTOMATED_RULES: ClassVar[tuple[p.Infra.AccessorMigrationRule, ...]] = tuple(
         m.Infra.AccessorMigrationRule(
             source_name=src, replacement_name=repl, reason=reason, origin="flext_core"
         )
@@ -40,13 +40,13 @@ class FlextInfraAccessorMigrationRewriteMixin:
 
     def _apply_automated_rewrites(
         self, rope_project: t.Infra.RopeProject, py_file: Path, source: str
-    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, t.SequenceOf[p.Infra.AccessorMigrationChange]]:
         """Apply automated rewrites."""
         resource = u.Infra.get_resource_from_path(rope_project, py_file)
         if resource is None:
             return source, ()
         updated_source = source
-        changes: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        changes: t.MutableSequenceOf[p.Infra.AccessorMigrationChange] = []
         for rule in self._AUTOMATED_RULES:
             updated_source, rule_changes = self._rename_symbol_tokens(
                 rope_project,
@@ -70,9 +70,9 @@ class FlextInfraAccessorMigrationRewriteMixin:
         replacement_name: str,
         reason: str,
         file_path: Path,
-    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> tuple[str, t.SequenceOf[p.Infra.AccessorMigrationChange]]:
         """Rename symbol tokens."""
-        token_lines: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        token_lines: t.MutableSequenceOf[p.Infra.AccessorMigrationChange] = []
         rewrite_ranges: t.MutableSequenceOf[tuple[int, int, str]] = []
         for token in generate_tokens(io.StringIO(source).readline):
             if token.type != NAME or token.string != source_name:
@@ -113,10 +113,10 @@ class FlextInfraAccessorMigrationRewriteMixin:
 
     def _collect_manual_warnings(
         self, py_file: Path, source: str
-    ) -> t.SequenceOf[m.Infra.AccessorMigrationChange]:
+    ) -> t.SequenceOf[p.Infra.AccessorMigrationChange]:
         """Collect manual warnings."""
         lines = source.splitlines()
-        warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
+        warnings: t.MutableSequenceOf[p.Infra.AccessorMigrationChange] = []
         scope_stack: t.MutableSequenceOf[tuple[str, int]] = []
         for line_index, line_text in enumerate(lines, start=1):
             stripped = line_text.lstrip()

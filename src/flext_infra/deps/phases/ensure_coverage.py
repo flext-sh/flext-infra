@@ -15,7 +15,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def _phases(
         self, *, project_kind: str = "core"
-    ) -> tuple[m.Infra.Deps.Toml.PhaseConfig, m.Infra.Deps.Toml.PhaseConfig]:
+    ) -> tuple[p.Infra.Deps.Toml.PhaseConfig, m.Infra.Deps.Toml.PhaseConfig]:
         """Build the canonical coverage phases for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
         fail_under_map: t.IntMapping = {

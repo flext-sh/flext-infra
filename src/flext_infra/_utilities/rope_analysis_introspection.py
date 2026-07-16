@@ -62,9 +62,9 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     @staticmethod
     def get_module_symbols(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
+    ) -> t.SequenceOf[p.Infra.SymbolInfo]:
         """Return top-level symbols defined in one module through Rope metadata."""
-        result: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
+        result: t.MutableSequenceOf[p.Infra.SymbolInfo] = []
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             tree: p.AttributeProbe = pymodule.get_ast()
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     @staticmethod
     def _module_symbols_from_node(
         node: p.AttributeProbe,
-    ) -> t.SequenceOf[m.Infra.SymbolInfo]:
+    ) -> t.SequenceOf[p.Infra.SymbolInfo]:
         """Return top-level symbol entries represented by one Rope AST node."""
         node_kind = node.__class__.__name__
         line = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_line(node)

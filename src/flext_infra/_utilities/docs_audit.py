@@ -109,9 +109,9 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     @staticmethod
     def docs_broken_link_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect broken internal link issues in one docs scope."""
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[p.Infra.AuditIssue] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             rel = md_file.relative_to(scope.path).as_posix()
             content = md_file.read_text(
@@ -153,7 +153,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     @staticmethod
     def docs_stale_symbol_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect stale-symbol issues outside the explicit migration docs."""
         tokens = FlextInfraUtilitiesDocsAudit.docs_policy_list(
             scope, section="audit", key="stale_symbols"
@@ -163,7 +163,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                 scope, section="audit", key="stale_symbol_exempt_paths"
             )
         )
-        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        issues: t.MutableSequenceOf[p.Infra.AuditIssue] = []
         if not tokens:
             return issues
         live_public_symbols = (
@@ -197,7 +197,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     @staticmethod
     def docs_audit_markdown(
         scope: m.Infra.DocScope,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
+        issues: t.SequenceOf[p.Infra.AuditIssue],
         docstring_coverage: m.Infra.DocstringCoverage | None = None,
     ) -> t.StrSequence:
         """Render the standard markdown audit report."""

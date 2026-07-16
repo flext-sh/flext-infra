@@ -22,12 +22,12 @@ class TestTypeGates:
     """Declarative public-contract tests for Python type gates."""
 
     @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
+    def make_ctx(root: Path) -> p.Infra.GateContext:
         """Build a gate context rooted in the temporary workspace."""
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
+    def make_runner(*results: p.Result[p.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         """Build a deterministic command runner from prepared results."""
         return u.Tests.SequenceRunner(list(results))
 
@@ -84,7 +84,7 @@ class TestTypeGates:
         gate_class: type[FlextInfraGate],
         *,
         project_has_src: bool,
-        runner_result: p.Result[m.Cli.CommandOutput] | None,
+        runner_result: p.Result[p.Cli.CommandOutput] | None,
         passed: bool,
         issues_len: int,
     ) -> None:

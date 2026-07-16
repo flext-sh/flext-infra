@@ -331,7 +331,7 @@ class FlextInfraEnforcementFixerOrchestrator(
             project_dir, rule, message
         )
 
-    def _command_ctx(self) -> m.Infra.FixEnforcementCommand:
+    def _command_ctx(self) -> p.Infra.FixEnforcementCommand:
         """Build a command context for adapters from the service fields.
 
         Dry-run (``apply=False``) must never trigger post-fix checks, because

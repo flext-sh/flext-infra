@@ -40,22 +40,22 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module: m.Infra.RopeModuleIndexEntry,
             config: m.Infra.Census.ScanConfig,
             *,
-            project_objects: dict[str, list[m.Infra.Census.Object]],
-            project_violations: dict[str, list[m.Infra.Census.Violation]],
-            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            project_objects: dict[str, list[p.Infra.Census.Object]],
+            project_violations: dict[str, list[p.Infra.Census.Violation]],
+            project_fixes: dict[str, list[p.Infra.Census.Fix]],
             report_projects: set[str],
         ) -> None: ...
         def _assemble_report(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             *,
-            project_objects: dict[str, list[m.Infra.Census.Object]],
-            project_violations: dict[str, list[m.Infra.Census.Violation]],
-            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            project_objects: dict[str, list[p.Infra.Census.Object]],
+            project_violations: dict[str, list[p.Infra.Census.Violation]],
+            project_fixes: dict[str, list[p.Infra.Census.Fix]],
             report_projects: set[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None,
-        ) -> m.Infra.Census.WorkspaceReport: ...
+        ) -> p.Infra.Census.WorkspaceReport: ...
 
     @staticmethod
     def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
@@ -131,7 +131,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_names: t.StrSequence | None,
         selected_families: frozenset[str],
         rule_names: t.StrSequence | None,
-    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+    ) -> tuple[p.Infra.RopeModuleIndexEntry, ...]:
         """Modules for rules."""
         modules = tuple(rope.modules(project_names=project_names))
         declarative_rules = self._declarative_rules_for_selection(rule_names)
@@ -152,9 +152,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     def _stub_modules(
         cls,
         rope: p.Infra.RopeWorkspaceDsl,
-        modules: t.SequenceOf[m.Infra.RopeModuleIndexEntry],
+        modules: t.SequenceOf[p.Infra.RopeModuleIndexEntry],
         project_names: t.StrSequence | None,
-    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+    ) -> tuple[p.Infra.RopeModuleIndexEntry, ...]:
         """Return synthetic module entries for selected workspace ``.pyi`` files."""
         known_paths = frozenset(module.file_path.resolve() for module in modules)
         roots = tuple(
@@ -165,7 +165,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             })
         )
         project_filter = frozenset(project_names or ())
-        entries: list[m.Infra.RopeModuleIndexEntry] = []
+        entries: list[p.Infra.RopeModuleIndexEntry] = []
         for root in roots:
             if project_filter and root.name not in project_filter:
                 continue
@@ -186,7 +186,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_root: Path,
         src_root: Path,
         stub_path: Path,
-    ) -> m.Infra.RopeModuleIndexEntry:
+    ) -> p.Infra.RopeModuleIndexEntry:
         """Build a RopeModuleIndexEntry for a ``.pyi`` file."""
         relative = stub_path.relative_to(src_root)
         module_parts = relative.with_suffix("").parts
@@ -215,7 +215,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rule_names: t.StrSequence | None,
         include_local_scopes: bool,
         applied: frozenset[str],
-    ) -> m.Infra.Census.WorkspaceReport:
+    ) -> p.Infra.Census.WorkspaceReport:
         """Scan selected modules then assemble the workspace census report."""
         selected_families = self._selected_families(family_names)
         selected_rules: frozenset[str] | None = (
@@ -236,11 +236,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             include_local_scopes=include_local_scopes,
             applied=applied,
         )
-        project_objects: dict[str, list[m.Infra.Census.Object]] = defaultdict(list)
-        project_violations: dict[str, list[m.Infra.Census.Violation]] = defaultdict(
+        project_objects: dict[str, list[p.Infra.Census.Object]] = defaultdict(list)
+        project_violations: dict[str, list[p.Infra.Census.Violation]] = defaultdict(
             list
         )
-        project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
+        project_fixes: dict[str, list[p.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()
         for module in self._modules_for_rules(
             rope,

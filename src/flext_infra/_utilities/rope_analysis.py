@@ -79,7 +79,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def get_module_semantic_state(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Return local classes plus declared and semantic imports in one pass.
 
         Uses rope's ``PyModule.get_attributes()`` for class discovery and
@@ -105,7 +105,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         return state
 
     @staticmethod
-    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+    def _empty_module_semantic_state() -> p.Infra.ModuleSemanticState:
         """Return an empty semantic state."""
         return m.Infra.ModuleSemanticState(
             class_infos=(), declared_imports={}, semantic_imports={}
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         pymodule: t.Infra.RopePyModule,
-    ) -> m.Infra.ModuleSemanticState:
+    ) -> p.Infra.ModuleSemanticState:
         """Build semantic state from one resolved Rope module."""
         current_package = FlextInfraUtilitiesRopeAnalysis._package_name_for_module(
             pymodule.get_name(), resource
@@ -142,9 +142,9 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _module_class_infos(
         *, pymodule: t.Infra.RopePyModule, resource: t.Infra.RopeResource
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> t.SequenceOf[p.Infra.ClassInfo]:
         """Return local class infos for one resolved Rope module."""
-        class_infos: t.MutableSequenceOf[m.Infra.ClassInfo] = []
+        class_infos: t.MutableSequenceOf[p.Infra.ClassInfo] = []
         ast_bases_by_class = {
             class_info.name: class_info.bases
             for class_info in FlextInfraUtilitiesRopeAnalysis.class_info_from_source(
@@ -369,7 +369,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def scope_definitions(
         pymodule: t.Infra.RopePyModule,
-    ) -> t.SequenceOf[m.Infra.ScopeDefinition]:
+    ) -> t.SequenceOf[p.Infra.ScopeDefinition]:
         """Return every def/class scope in a module via rope's semantic tree.
 
         Uses ``PyModule.get_scope()`` and recursive ``PyScope.get_scopes()`` —
@@ -380,7 +380,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         root_scope = pymodule.get_scope()
         if root_scope is None:
             return ()
-        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition] = []
+        definitions: t.MutableSequenceOf[p.Infra.ScopeDefinition] = []
         FlextInfraUtilitiesRopeAnalysis._collect_scope_definitions(
             scope=root_scope, is_module_level=True, definitions=definitions
         )
@@ -391,7 +391,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         *,
         scope: t.Infra.RopeScope,
         is_module_level: bool,
-        definitions: t.MutableSequenceOf[m.Infra.ScopeDefinition],
+        definitions: t.MutableSequenceOf[p.Infra.ScopeDefinition],
     ) -> None:
         """Recurse the rope scope tree, appending one entry per child scope."""
         for child in scope.get_scopes():
@@ -1725,9 +1725,9 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def get_class_info(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> t.SequenceOf[p.Infra.ClassInfo]:
         """Return ClassInfo (name, line, bases) for all classes in a module."""
-        class_infos: t.SequenceOf[m.Infra.ClassInfo] = (
+        class_infos: t.SequenceOf[p.Infra.ClassInfo] = (
             FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
                 rope_project, resource
             ).class_infos
@@ -1735,7 +1735,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         return class_infos
 
     @staticmethod
-    def class_info_from_source(source: str) -> t.SequenceOf[m.Infra.ClassInfo]:
+    def class_info_from_source(source: str) -> t.SequenceOf[p.Infra.ClassInfo]:
         """Return class info from source without the Rope resource cache."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
         if pymodule is None:
@@ -1753,7 +1753,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         )
 
     @staticmethod
-    def _class_info_from_ast(node: object) -> m.Infra.ClassInfo | None:
+    def _class_info_from_ast(node: object) -> p.Infra.ClassInfo | None:
         """Return ClassInfo for one top-level ClassDef AST node."""
         if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ClassDef":
             return None

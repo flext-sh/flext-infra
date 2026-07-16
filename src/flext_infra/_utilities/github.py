@@ -21,7 +21,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
     @classmethod
     def lint_github_workflows(
         cls, request: m.Infra.GithubWorkflowLintRequest
-    ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
+    ) -> p.Result[p.Infra.GithubWorkflowLintOutcome]:
         """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
         workspace_root = request.workspace_path
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
                     payload_skipped,
                     m.Cli.JsonWriteOptions(sort_keys=True),
                 )
-            return r[m.Infra.GithubWorkflowLintOutcome].ok(payload_skipped)
+            return r[p.Infra.GithubWorkflowLintOutcome].ok(payload_skipped)
         result = u.Cli.run_raw([actionlint], cwd=workspace_root)
         if result.success:
             output = result.value
@@ -57,35 +57,35 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
                 request.report_path, payload, m.Cli.JsonWriteOptions(sort_keys=True)
             )
         if payload.status == c.Infra.WorkflowLintStatus.FAIL.value and request.strict:
-            return r[m.Infra.GithubWorkflowLintOutcome].fail(
+            return r[p.Infra.GithubWorkflowLintOutcome].fail(
                 result.error or "actionlint found issues"
             )
-        return r[m.Infra.GithubWorkflowLintOutcome].ok(payload)
+        return r[p.Infra.GithubWorkflowLintOutcome].ok(payload)
 
     @classmethod
     def sync_github_workflows(
         cls, request: m.Infra.GithubWorkflowSyncRequest
-    ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
+    ) -> p.Result[p.Infra.GithubWorkflowSyncReport]:
         """Sync workflows across all workspace projects."""
         workspace_root = request.workspace_path
         source_result = cls._github_resolve_source_workflow(workspace_root, None)
         if source_result.failure:
-            return r[m.Infra.GithubWorkflowSyncReport].fail(
+            return r[p.Infra.GithubWorkflowSyncReport].fail(
                 source_result.error or "source resolution failed"
             )
         template_result = cls._github_render_template(source_result.value)
         if template_result.failure:
-            return r[m.Infra.GithubWorkflowSyncReport].fail(
+            return r[p.Infra.GithubWorkflowSyncReport].fail(
                 template_result.error or "template render failed"
             )
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root, list(request.projects or [])
         )
         if projects_result.failure:
-            return r[m.Infra.GithubWorkflowSyncReport].fail(
+            return r[p.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed"
             )
-        all_operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
+        all_operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation] = []
         for project in projects_result.value:
             ctx = m.Infra.GithubWorkflowSyncContext(
                 project_name=project.name,
@@ -105,7 +105,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             _ = u.Cli.json_write(
                 request.report_path, report, m.Cli.JsonWriteOptions(sort_keys=True)
             )
-        return r[m.Infra.GithubWorkflowSyncReport].ok(report)
+        return r[p.Infra.GithubWorkflowSyncReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGithub"]

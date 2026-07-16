@@ -25,7 +25,7 @@ from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 
-VALIDATE_COMMAND_ROUTES: tuple[m.Cli.ResultCommandRoute, ...] = tuple(
+VALIDATE_COMMAND_ROUTES: tuple[p.Cli.ResultCommandRoute, ...] = tuple(
     m.Cli.ResultCommandRoute(
         name=route_name, help_text=help_text, model_cls=model_cls, handler=handler
     )

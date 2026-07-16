@@ -15,7 +15,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     """Detect class nesting violations and report MRO hierarchy issues."""
 
     @classmethod
-    def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:
+    def analyze_files(cls, files: t.SequenceOf[Path]) -> p.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""
         if not files:
             return m.Infra.ClassNestingReport(
@@ -39,7 +39,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
-        violations: t.MutableSequenceOf[m.Infra.ClassNestingViolation] = []
+        violations: t.MutableSequenceOf[p.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
             scan_result = scanner.scan(project_root)
             if scan_result.failure:
@@ -48,7 +48,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                     scan_result.value.get(c.Infra.RK_VIOLATIONS, [])
                 )
-                parsed_violations: t.SequenceOf[m.Infra.LooseClassViolation] = [
+                parsed_violations: t.SequenceOf[p.Infra.LooseClassViolation] = [
                     m.Infra.LooseClassViolation.model_validate(item)
                     for item in typed_items
                 ]
@@ -140,7 +140,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 raw_nesting
             )
-            entries: t.SequenceOf[m.Infra.ClassNestingMapping] = [
+            entries: t.SequenceOf[p.Infra.ClassNestingMapping] = [
                 m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
             ]
         except c.ValidationError as exc:

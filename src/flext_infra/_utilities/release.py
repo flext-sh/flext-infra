@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_infra import c, p, r, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
@@ -23,7 +23,7 @@ class FlextInfraUtilitiesRelease:
     def generate_notes(
         version: str,
         tag: str,
-        project_list: t.SequenceOf[m.Infra.ProjectInfo],
+        project_list: t.SequenceOf[p.Infra.ProjectInfo],
         changes: str,
         output_path: Path,
     ) -> p.Result[bool]:

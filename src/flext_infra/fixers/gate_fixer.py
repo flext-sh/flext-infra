@@ -209,8 +209,8 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _matching_issues(
-        rule: me.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
-    ) -> tuple[m.Infra.Issue, ...]:
+        rule: me.EnforcementRuleSpec, issues: t.SequenceOf[p.Infra.Issue]
+    ) -> tuple[p.Infra.Issue, ...]:
         """Return gate issues that correspond to the selected rule fix action."""
         fix_action = rule.fix_action
         if fix_action is None:

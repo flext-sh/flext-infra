@@ -41,13 +41,13 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
 
     def validate_project(
         self, project_root: Path
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Validate namespace rules inside one project."""
         files_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 files_result.error or "Namespace validation failed: discovery failed"
             )
         files = [
@@ -98,7 +98,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
     @staticmethod
     def _validation_report(
         *, files: t.SequenceOf[Path], violations: t.SequenceOf[str]
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Build the namespace validation report."""
         passed = not violations
         summary = (
@@ -106,7 +106,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
             if passed
             else f"{len(violations)} namespace violation(s) found ({len(files)} files checked)"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=tuple(violations), summary=summary
             )

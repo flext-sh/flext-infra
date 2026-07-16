@@ -20,7 +20,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
     class Analysis(m.Value):
         """Detection results for a single Python file's self-import patterns."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True, arbitrary_types_allowed=True
         )
 

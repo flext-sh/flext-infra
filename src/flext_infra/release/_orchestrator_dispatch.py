@@ -216,7 +216,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def _build_release_stages(
         self, phases: t.StrSequence, dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig
-    ) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
+    ) -> t.SequenceOf[p.Cli.PipelineStageSpec]:
         """Build release stage specs preserving declared order."""
         active: set[str] = set(phases)
         phase_order: t.StrSequence = [
@@ -256,11 +256,11 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
         def handler(
             _ctx: m.Cli.PipelineStageContext,
-        ) -> p.Result[m.Cli.PipelineStageResult]:
+        ) -> p.Result[p.Cli.PipelineStageResult]:
             phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
             phase_result = self._dispatch_phase(phase_cfg)
             if phase_result.failure:
-                return r[m.Cli.PipelineStageResult].fail(
+                return r[p.Cli.PipelineStageResult].fail(
                     phase_result.error or f"{phase_name} failed"
                 )
             return cli.ok_stage(phase_name)
@@ -373,7 +373,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         changes_result = self._collect_changes(workspace_root, previous, tag)
         changes: str = changes_result.value if changes_result.success else ""
         projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
-        project_list: t.SequenceOf[m.Infra.ProjectInfo] = (
+        project_list: t.SequenceOf[p.Infra.ProjectInfo] = (
             projects_result.unwrap() if projects_result.success else []
         )
         return u.Infra.generate_notes(

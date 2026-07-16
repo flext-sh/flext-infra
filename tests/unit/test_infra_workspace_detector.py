@@ -25,7 +25,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         profile: c.Infra.MakeProfile,
         url: str | None = None,
         branch: str = "main",
-    ) -> m.Infra.RepositoryRef:
+    ) -> p.Infra.RepositoryRef:
         """Build one typed manifest repository contract."""
         return m.Infra.RepositoryRef(
             name=name,
@@ -44,7 +44,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         repository_root: Path,
         repository: m.Infra.RepositoryRef,
         *,
-        members: tuple[m.Infra.RepositoryRef, ...] = (),
+        members: tuple[p.Infra.RepositoryRef, ...] = (),
     ) -> None:
         """Write one schema-shaped manifest through the public YAML facade."""
         spec = m.Infra.WorkspaceSpec(

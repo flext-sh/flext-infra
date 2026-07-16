@@ -15,7 +15,7 @@ class FlextInfraRuntimeAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.RuntimeAliasViolation]:
+    ) -> t.SequenceOf[p.Infra.RuntimeAliasViolation]:
         """Detect missing/duplicate runtime alias assignments in a facade file."""
         file_path = ctx.file_path
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)

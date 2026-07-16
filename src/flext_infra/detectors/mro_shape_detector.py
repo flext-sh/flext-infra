@@ -31,7 +31,7 @@ class FlextInfraMROShapeDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.MROShapeViolation]:
+    ) -> t.SequenceOf[p.Infra.MROShapeViolation]:
         """Detect ENFORCE-046/047/049/051 for every local class in ``file_path``."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project
@@ -65,7 +65,7 @@ class FlextInfraMROShapeDetector:
         project_name = ctx.project_name or package_name.replace("_", "-")
         project_prefix = FlextInfraMROShapeDetector._project_prefix(project_name)
         valid_suffixes = FlextInfraMROShapeDetector._valid_alias_suffixes(package_name)
-        violations: list[m.Infra.MROShapeViolation] = []
+        violations: list[p.Infra.MROShapeViolation] = []
         for node, qualname in class_nodes:
             bases = FlextInfraMROShapeDetector._class_bases(node)
             if not bases:
@@ -299,7 +299,7 @@ class FlextInfraMROShapeDetector:
         valid_suffixes: tuple[str, ...],
         pymodule: t.Infra.RopePyModule,
         file_path: Path,
-    ) -> m.Infra.MROShapeViolation | None:
+    ) -> p.Infra.MROShapeViolation | None:
         """Return ENFORCE-047/049 violation when facade first base is invalid."""
         if not FlextInfraMROShapeDetector._is_facade(class_name, project_prefix):
             return None
@@ -354,7 +354,7 @@ class FlextInfraMROShapeDetector:
     @staticmethod
     def _check_enforce_046(
         *, node: object, qualname: str, first_base: str, file_path: Path
-    ) -> m.Infra.MROShapeViolation | None:
+    ) -> p.Infra.MROShapeViolation | None:
         """Return ENFORCE-046 violation for redundant nested namespace class."""
         outer_name, _, _ = qualname.partition(".")
         first_base_qualname = first_base.split("[", 1)[0]
@@ -385,7 +385,7 @@ class FlextInfraMROShapeDetector:
         bases: t.StrSequence,
         first_base: str,
         file_path: Path,
-    ) -> m.Infra.MROShapeViolation | None:
+    ) -> p.Infra.MROShapeViolation | None:
         """Return ENFORCE-051 violation for utilities.py self-root import."""
         if len(bases) < FlextInfraMROShapeDetector._BINARY_ARITY:
             return None

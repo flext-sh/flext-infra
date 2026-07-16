@@ -33,7 +33,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             ["[DRY-RUN] Scanning...\n"] if self.dry_run else []
         )
         found = applied = failed = 0
-        file_results: t.MutableSequenceOf[m.Infra.ConsolidatorFileResult] = []
+        file_results: t.MutableSequenceOf[p.Infra.ConsolidatorFileResult] = []
 
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             projects_result = self._selected_projects(rope)

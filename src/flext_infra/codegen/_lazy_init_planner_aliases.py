@@ -26,7 +26,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
 
         def _package_entry(
             self, pkg_dir: Path
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> p.Infra.RopePackageIndexEntry | None: ...
 
         def _parents_from_constants_module(
             self, module_path: Path, current_pkg: str, visited: set[str] | None = None

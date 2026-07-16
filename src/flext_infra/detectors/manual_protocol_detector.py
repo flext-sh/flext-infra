@@ -15,7 +15,7 @@ class FlextInfraManualProtocolDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.ManualProtocolViolation]:
+    ) -> t.SequenceOf[p.Infra.ManualProtocolViolation]:
         """Detect Protocol classes outside canonical locations."""
         if (
             ctx.file_path.name in c.Infra.MRO_PROTOCOLS_FILE_NAMES

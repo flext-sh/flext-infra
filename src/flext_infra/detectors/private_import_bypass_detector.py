@@ -15,7 +15,7 @@ class FlextInfraPrivateImportBypassDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.PrivateImportBypassViolation]:
+    ) -> t.SequenceOf[p.Infra.PrivateImportBypassViolation]:
         """Return private-import bypass violations for one file."""
         rules = tuple(
             rule

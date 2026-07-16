@@ -31,7 +31,7 @@ class _FileRuleHarness(FlextInfraRefactorOrchestrator):
 
 def _apply_rule(
     workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
+) -> p.Infra.Result:
     rules_dir = workspace_root / "rules"
     rules_dir.mkdir()
     (rules_dir / "class-nesting.yml").write_text(

@@ -21,11 +21,11 @@ class FlextInfraDocAuditorReportMixin:
         self,
         scope: m.Infra.DocScope,
         *,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
+        issues: t.SequenceOf[p.Infra.AuditIssue],
         checks: t.StrSequence,
         params: m.Infra.AuditScopeParams,
         docstring_coverage: m.Infra.DocstringCoverage | None = None,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Build the standard docs audit phase report."""
         default_budget, per_scope_budget = params.budgets or (None, {})
         scope_budget = per_scope_budget.get(scope.name, default_budget)

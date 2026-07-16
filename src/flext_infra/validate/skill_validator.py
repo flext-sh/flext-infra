@@ -87,7 +87,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         *,
         mode: c.Infra.OperationMode = c.Infra.OperationMode.BASELINE,
         _project_filter: t.StrSequence | None = None,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Validate a single skill across workspace projects.
 
         Args:
@@ -102,10 +102,10 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         try:
             return self._build_skill_report(workspace_root, skill_name, mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[m.Infra.ValidationReport].fail_op("skill validation", exc)
+            return r[p.Infra.ValidationReport].fail_op("skill validation", exc)
 
     @staticmethod
-    def _missing_rules_report(skill_name: str) -> m.Infra.ValidationReport:
+    def _missing_rules_report(skill_name: str) -> p.Infra.ValidationReport:
         """Build the report returned when a skill lacks rules.yml."""
         return m.Infra.ValidationReport(
             passed=False,
@@ -158,7 +158,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _skill_report_model(
         self, context: m.Infra.SkillReportContext
-    ) -> m.Infra.ValidationReport:
+    ) -> p.Infra.ValidationReport:
         """Build the canonical skill validation report model."""
         total = sum(context.counts.values())
         passed = (
@@ -178,26 +178,26 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _build_skill_report(
         self, workspace_root: Path, skill_name: str, mode: c.Infra.OperationMode
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Build a skill validation report after path resolution."""
         root = workspace_root.resolve()
         skills_dir = root / c.Infra.SKILLS_DIR
         rules_path = skills_dir / skill_name / "rules.yml"
         if not rules_path.exists():
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 self._missing_rules_report(skill_name)
             )
         rules = u.Cli.yaml_load_mapping(rules_path)
         scan_targets_raw = rules.get("scan_targets", {})
         scan_targets = u.Cli.json_as_mapping(scan_targets_raw)
         if not scan_targets and scan_targets_raw not in ({}, None):
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 f"scan_targets must be a mapping: {rules_path}"
             )
         include_globs, exclude_globs = self._scan_globs(scan_targets)
         rules_list_result = self._rules_list(rules)
         if rules_list_result.failure:
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 rules_list_result.error or "rules must be a list"
             )
         counts, violations = self._evaluate_rules(
@@ -210,7 +210,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
                 exclude_globs=exclude_globs,
             )
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             self._skill_report_model(
                 m.Infra.SkillReportContext(
                     rules=rules,

@@ -28,7 +28,7 @@ class FlextInfraGateContractModels:
     class Violation(m.BaseModel):
         """One contract violation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         script: Annotated[str, m.Field(description="Script path")]
         check: Annotated[str, m.Field(description="Failed check")]
@@ -40,7 +40,7 @@ class FlextInfraGateContractModels:
     class ScriptInfo(m.BaseModel):
         """Validation result for one script."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         path: Annotated[str, m.Field(description="Script path")]
         extension: Annotated[str, m.Field(description="File extension")]
@@ -53,7 +53,7 @@ class FlextInfraGateContractModels:
     class Summary(m.BaseModel):
         """Aggregate counts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         errors: Annotated[int, m.Field(description="Error count")] = 0
         gate_scripts: Annotated[int, m.Field(description="Gate script count")] = 0
@@ -63,7 +63,7 @@ class FlextInfraGateContractModels:
     class RunResult(m.BaseModel):
         """CLI outcome."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         exit_code: Annotated[int, m.Field(description="Process exit code")]
         violation_count: Annotated[int, m.Field(description="Error count")]

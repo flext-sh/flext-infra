@@ -63,10 +63,10 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         if json_file.exists():
             read = u.Cli.files_read_json(json_file)
             if read.failure:
@@ -126,7 +126,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         return result.exit_code == 0, issues
 
     @staticmethod
-    def _parse_error_issue(message: str) -> m.Infra.Issue:
+    def _parse_error_issue(message: str) -> p.Infra.Issue:
         """Return the canonical parse-error issue."""
         return m.Infra.Issue(
             file="<pyrefly-output>",
@@ -185,7 +185,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     @staticmethod
     def _issues_from_error_items(
         error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> t.SequenceOf[p.Infra.Issue]:
         """Convert validated pyrefly error items to gate issues."""
         return tuple(
             m.Infra.Issue(

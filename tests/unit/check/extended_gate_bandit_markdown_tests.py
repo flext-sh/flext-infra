@@ -21,12 +21,12 @@ class TestBanditAndMarkdownGates:
     """Declarative public-contract tests for Bandit and Markdown gates."""
 
     @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
+    def make_ctx(root: Path) -> p.Infra.GateContext:
         """Build a gate context rooted in the temporary workspace."""
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
+    def make_runner(*results: p.Result[p.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
         """Build a deterministic command runner from prepared results."""
         return u.Tests.SequenceRunner(list(results))
 
@@ -65,7 +65,7 @@ class TestBanditAndMarkdownGates:
         tmp_path: Path,
         *,
         with_src: bool,
-        runner_results: tuple[r[m.Cli.CommandOutput], ...],
+        runner_results: tuple[r[p.Cli.CommandOutput], ...],
         passed: bool,
         issues_len: int,
     ) -> None:
@@ -123,7 +123,7 @@ class TestBanditAndMarkdownGates:
         *,
         markdown_text: str,
         config_text: str | None,
-        runner_result: p.Result[m.Cli.CommandOutput] | None,
+        runner_result: p.Result[p.Cli.CommandOutput] | None,
         passed: bool,
         issues_len: int,
         raw_output: str,

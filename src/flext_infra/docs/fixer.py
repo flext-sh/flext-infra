@@ -19,7 +19,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
         apply: bool = False,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Run documentation fixes across project scopes."""
         return self.run_scoped_docs(
             workspace_root,
@@ -43,9 +43,9 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
 
     def _fix_scope(
         self, scope: m.Infra.DocScope, *, apply: bool
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Run TOC, link and python-codeblock fixes on one scope."""
-        collected: list[m.Infra.DocsPhaseItemModel] = []
+        collected: list[p.Infra.DocsPhaseItemModel] = []
         for md_file in u.Infra.iter_scope_markdown_files(scope):
             item = u.Infra.docs_process_markdown_file(md_file, apply=apply)
             if item.links or item.toc:

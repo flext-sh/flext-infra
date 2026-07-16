@@ -57,7 +57,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
     @staticmethod
     def classify_issues(
         issues: t.SequenceOf[t.Infra.ContainerDict],
-    ) -> m.Infra.DeptryIssueGroups:
+    ) -> p.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004)."""
         groups = m.Infra.DeptryIssueGroups(dep001=[], dep002=[], dep003=[], dep004=[])
         for item in issues:
@@ -87,7 +87,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     def build_project_report(
         self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
-    ) -> m.Infra.ProjectDependencyReport:
+    ) -> p.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues."""
         classified = self.classify_issues(deptry_issues)
 
@@ -134,7 +134,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
             return r[t.SequenceOf[Path]].fail(
                 result.error or "project resolution failed"
             )
-        projects_info: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+        projects_info: t.SequenceOf[p.Infra.ProjectInfo] = result.value
         projects = [
             project.path
             for project in projects_info

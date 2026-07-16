@@ -42,7 +42,7 @@ class FlextInfraNamespaceEnforcer(
         apply: bool = False,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
-    ) -> m.Infra.WorkspaceEnforcementReport:
+    ) -> p.Infra.WorkspaceEnforcementReport:
         """Run namespace enforcement across projects in the workspace.
 
         Args:
@@ -55,7 +55,7 @@ class FlextInfraNamespaceEnforcer(
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
-        project_reports: list[m.Infra.ProjectEnforcementReport] = []
+        project_reports: list[p.Infra.ProjectEnforcementReport] = []
         with self._rope_workspace as rope:
             _ = rope.workspace_index
             for project_root in project_roots:
@@ -173,7 +173,7 @@ class FlextInfraNamespaceEnforcer(
     @classmethod
     def execute_command(
         cls, params: m.Infra.RefactorNamespaceEnforceInput
-    ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
+    ) -> p.Result[p.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)
         report = enforcer.enforce(
@@ -181,10 +181,10 @@ class FlextInfraNamespaceEnforcer(
         )
         cli.display_text(cls.render_text(report))
         if report.has_violations:
-            return r[m.Infra.WorkspaceEnforcementReport].fail(
+            return r[p.Infra.WorkspaceEnforcementReport].fail(
                 "Namespace violations found"
             )
-        return r[m.Infra.WorkspaceEnforcementReport].ok(report)
+        return r[p.Infra.WorkspaceEnforcementReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcer"]

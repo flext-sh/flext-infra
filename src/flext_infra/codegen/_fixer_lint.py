@@ -65,7 +65,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
             raise RuntimeError(msg)
 
     @staticmethod
-    def _ruff_issue_rules() -> tuple[m.Infra.StaticRuffIssueRule, ...]:
+    def _ruff_issue_rules() -> tuple[p.Infra.StaticRuffIssueRule, ...]:
         """Return configured Ruff rules without duplicating policy in Python."""
         return tuple(
             rule
@@ -75,7 +75,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
 
     @staticmethod
     def _ruff_rule_files(
-        project_path: Path, rules: t.SequenceOf[m.Infra.StaticRuffIssueRule]
+        project_path: Path, rules: t.SequenceOf[p.Infra.StaticRuffIssueRule]
     ) -> tuple[Path, ...]:
         """Return Python files below the roots declared by selected rules."""
         roots = tuple(dict.fromkeys(root for rule in rules for root in rule.roots))
@@ -109,13 +109,13 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx: m.Infra.FixContext,
         project_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        issues: t.SequenceOf[m.Infra.Issue],
-        rules: t.SequenceOf[m.Infra.StaticRuffIssueRule],
+        issues: t.SequenceOf[p.Infra.Issue],
+        rules: t.SequenceOf[p.Infra.StaticRuffIssueRule],
     ) -> frozenset[Path]:
         """Group configured diagnostics by file and apply each file once."""
         grouped: t.MutableMappingKV[
             Path,
-            t.MutableSequenceOf[t.Pair[m.Infra.Issue, m.Infra.StaticRuffIssueRule]],
+            t.MutableSequenceOf[t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]],
         ] = {}
         for issue in issues:
             rule = next((item for item in rules if item.code == issue.code), None)
@@ -164,7 +164,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx: m.Infra.FixContext,
         file_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        entries: t.SequenceOf[t.Pair[m.Infra.Issue, m.Infra.StaticRuffIssueRule]],
+        entries: t.SequenceOf[t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]],
     ) -> None:
         """Render all insertions against one stable Rope/source snapshot."""
         source = rope_workspace.source(file_path)
@@ -173,7 +173,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         )
         insertions: t.MutableSequenceOf[t.Pair[int, str]] = []
         fixed: t.MutableSequenceOf[
-            t.Pair[m.Infra.Issue, m.Infra.StaticRuffIssueRule]
+            t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]
         ] = []
         for issue, rule in entries:
             semantic_object = next(

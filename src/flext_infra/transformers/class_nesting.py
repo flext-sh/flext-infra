@@ -6,7 +6,7 @@ import textwrap
 from collections import defaultdict
 from typing import override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
@@ -130,7 +130,7 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
                 return False
         return True
 
-    def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
+    def _policy_for(self, symbol_name: str) -> p.Infra.ClassNestingPolicy | None:
         """Policy for."""
         return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,

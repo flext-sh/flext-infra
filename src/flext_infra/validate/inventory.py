@@ -30,7 +30,7 @@ class FlextInfraInventoryService(s[bool]):
 
     def generate(
         self, workspace_root: Path, *, output_dir: Path | None = None
-    ) -> p.Result[m.Infra.InventoryReport]:
+    ) -> p.Result[p.Infra.InventoryReport]:
         """Build and write scripts inventory reports.
 
         Args:
@@ -45,7 +45,7 @@ class FlextInfraInventoryService(s[bool]):
         try:
             return self._generate_inventory_report(workspace_root, output_dir)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.InventoryReport].fail_op("inventory generation", exc)
+            return r[p.Infra.InventoryReport].fail_op("inventory generation", exc)
 
     @staticmethod
     def _script_paths(root: Path) -> t.StrSequence:
@@ -122,7 +122,7 @@ class FlextInfraInventoryService(s[bool]):
 
     def _generate_inventory_report(
         self, workspace_root: Path, output_dir: Path | None
-    ) -> p.Result[m.Infra.InventoryReport]:
+    ) -> p.Result[p.Infra.InventoryReport]:
         """Generate inventory reports after path resolution."""
         root = workspace_root.resolve()
         scripts = self._script_paths(root)
@@ -132,10 +132,10 @@ class FlextInfraInventoryService(s[bool]):
             reports_dir, inventory, wiring, external
         )
         if written_result.failure:
-            return r[m.Infra.InventoryReport].fail(
+            return r[p.Infra.InventoryReport].fail(
                 written_result.error or "inventory report write failed"
             )
-        return r[m.Infra.InventoryReport].ok(
+        return r[p.Infra.InventoryReport].ok(
             m.Infra.InventoryReport(
                 total_scripts=len(scripts), reports_written=written_result.value
             )

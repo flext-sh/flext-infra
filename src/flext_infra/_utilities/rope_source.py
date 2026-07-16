@@ -188,7 +188,7 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def parse_forbidden_rules(
         value: t.JsonPayload,
-    ) -> t.SequenceOf[m.Infra.ImportModernizerRuleConfig]:
+    ) -> t.SequenceOf[p.Infra.ImportModernizerRuleConfig]:
         """Parse and validate forbidden import rule configs."""
         raw_items = u.Cli.json_as_mapping_list(value)
         if not raw_items:
@@ -252,9 +252,9 @@ class FlextInfraUtilitiesRopeSource:
         return shadowed
 
     @staticmethod
-    def find_final_candidates(source: str) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
+    def find_final_candidates(source: str) -> t.SequenceOf[p.Infra.MROSymbolCandidate]:
         """Find module-level ``Final``-annotated constants via regex."""
-        candidates: t.MutableSequenceOf[m.Infra.MROSymbolCandidate] = []
+        candidates: t.MutableSequenceOf[p.Infra.MROSymbolCandidate] = []
         for line_number, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
             if line != stripped and stripped:

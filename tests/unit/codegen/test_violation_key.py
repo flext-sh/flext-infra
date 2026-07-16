@@ -22,7 +22,7 @@ def _violation(
     line: int = 5,
     message: str = "test violation",
     fixable: bool = True,
-) -> m.Infra.CensusViolation:
+) -> p.Infra.CensusViolation:
     return m.Infra.CensusViolation(
         module=module, rule=rule, line=line, message=message, fixable=fixable
     )

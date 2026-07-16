@@ -31,11 +31,11 @@ class FlextInfraCodegenPipelineStagesMixin:
             stage_id: str,
             action: Callable[[], V],
             emit: Callable[[V], t.JsonMapping],
-        ) -> p.Result[m.Cli.PipelineStageResult]: ...
+        ) -> p.Result[p.Cli.PipelineStageResult]: ...
 
     def _stage_discover(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Discover workspace projects once for reuse across all stages.
 
         Failure to enumerate projects propagates as a stage failure — no
@@ -43,14 +43,14 @@ class FlextInfraCodegenPipelineStagesMixin:
         actual workspace inventory.
         """
 
-        def _action() -> tuple[m.Infra.ProjectInfo, ...]:
+        def _action() -> tuple[p.Infra.ProjectInfo, ...]:
             projects_result = u.Infra.projects(ctx.workspace_root)
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)
             return tuple(projects_result.unwrap())
 
-        def _emit(discovered: tuple[m.Infra.ProjectInfo, ...]) -> t.JsonMapping:
+        def _emit(discovered: tuple[p.Infra.ProjectInfo, ...]) -> t.JsonMapping:
             self._state.discovered_projects = discovered
             return {"projects_discovered": len(discovered)}
 
@@ -58,7 +58,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_py_typed(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
 
         def _action() -> int:
@@ -73,18 +73,18 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_census_before(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
         def _action() -> tuple[
-            FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
+            FlextInfraCodegenCensus, t.SequenceOf[p.Infra.CensusReport]
         ]:
             census = FlextInfraCodegenCensus(workspace_root=ctx.workspace_root)
             projects = self._state.discovered_projects or None
             return census, census.run(projects=projects)
 
         def _emit(
-            payload: tuple[FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]],
+            payload: tuple[FlextInfraCodegenCensus, t.SequenceOf[p.Infra.CensusReport]],
         ) -> t.JsonMapping:
             census, reports = payload
             self._state.census_service = census
@@ -98,17 +98,17 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_scaffold(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
 
-        def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
+        def _action() -> t.SequenceOf[p.Infra.ScaffoldResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             return FlextInfraCodegenScaffolder(workspace_root=ctx.workspace_root).run(
                 dry_run=dry_run, projects=projects
             )
 
-        def _emit(results: t.SequenceOf[m.Infra.ScaffoldResult]) -> t.JsonMapping:
+        def _emit(results: t.SequenceOf[p.Infra.ScaffoldResult]) -> t.JsonMapping:
             self._state.scaffold_results = results
             return {
                 "total_created": sum(len(rsl.files_created) for rsl in results),
@@ -119,17 +119,17 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_auto_fix(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
 
-        def _action() -> t.SequenceOf[m.Infra.AutoFixResult]:
+        def _action() -> t.SequenceOf[p.Infra.AutoFixResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             return FlextInfraCodegenFixer(
                 workspace_root=ctx.workspace_root, dry_run=dry_run
             ).fix_workspace(projects=projects)
 
-        def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
+        def _emit(results: t.SequenceOf[p.Infra.AutoFixResult]) -> t.JsonMapping:
             self._state.fix_results = results
             return {
                 "total_fixed": sum(len(rsl.violations_fixed) for rsl in results),
@@ -140,7 +140,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_lazy_init(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
 
         def _action() -> int:
@@ -156,7 +156,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_grpc(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Generate real gRPC runtime modules before initializer discovery."""
 
         def _action() -> bool:
@@ -178,17 +178,17 @@ class FlextInfraCodegenPipelineStagesMixin:
 
     def _stage_census_after(
         self, ctx: m.Cli.PipelineStageContext
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
 
-        def _action() -> t.SequenceOf[m.Infra.CensusReport]:
+        def _action() -> t.SequenceOf[p.Infra.CensusReport]:
             census = self._state.census_service or FlextInfraCodegenCensus(
                 workspace_root=ctx.workspace_root
             )
             projects = self._state.discovered_projects or None
             return census.run(projects=projects)
 
-        def _emit(reports: t.SequenceOf[m.Infra.CensusReport]) -> t.JsonMapping:
+        def _emit(reports: t.SequenceOf[p.Infra.CensusReport]) -> t.JsonMapping:
             self._state.reports_after = reports
             return {
                 "total_violations": sum(report.total for report in reports),

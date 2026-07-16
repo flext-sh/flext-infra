@@ -101,7 +101,7 @@ class FlextInfraPyprojectModernizer(
         package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
-    ) -> p.Result[m.Infra.ToolingRuntimeContext]:
+    ) -> p.Result[p.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # mro-j47u (codex): resolve values only; template retains the full structure.
         seed = u.Cli.toml_document()
@@ -121,17 +121,17 @@ class FlextInfraPyprojectModernizer(
             u.Cli.toml_dumps(seed), path=path, declared_python_dirs=declared_python_dirs
         )
         if conformed.failure:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 conformed.error or f"tooling resolution failed: {path}"
             )
         payload = u.Cli.toml_mapping_from_text(conformed.value)
         if payload is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution produced invalid TOML: {path}"
             )
         tooling = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
         if tooling is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution produced no [tool] table: {path}"
             )
         coverage = u.Cli.toml_mapping_path(tooling, ("coverage", "report"))
@@ -151,35 +151,35 @@ class FlextInfraPyprojectModernizer(
             else None
         )
         if coverage is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted coverage.report: {path}"
             )
         if deptry is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted deptry: {path}"
             )
         if mypy is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted mypy: {path}"
             )
         if pyrefly is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted pyrefly: {path}"
             )
         if pyright is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted pyright: {path}"
             )
         if ruff is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted ruff: {path}"
             )
         if ruff_lint is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted ruff.lint: {path}"
             )
         if ruff_isort is None:
-            return r[m.Infra.ToolingRuntimeContext].fail(
+            return r[p.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution omitted ruff.lint.isort: {path}"
             )
         scalar_keys = frozenset({
@@ -207,7 +207,7 @@ class FlextInfraPyprojectModernizer(
         ):
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
-                return r[m.Infra.ToolingRuntimeContext].fail(
+                return r[p.Infra.ToolingRuntimeContext].fail(
                     classified.error or f"project classification failed: {path}"
                 )
             project_kind = classified.value
@@ -241,18 +241,18 @@ class FlextInfraPyprojectModernizer(
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:
-            return r[m.Infra.ToolingRuntimeContext].fail_op(
+            return r[p.Infra.ToolingRuntimeContext].fail_op(
                 "tooling runtime context validation", exc
             )
-        return r[m.Infra.ToolingRuntimeContext].ok(runtime)
+        return r[p.Infra.ToolingRuntimeContext].ok(runtime)
 
     @staticmethod
     def _tooling_pyright_environments(
         raw_environments: t.SequenceOf[t.JsonValue],
-    ) -> t.SequenceOf[m.Infra.ToolingPyrightEnvironment]:
+    ) -> t.SequenceOf[p.Infra.ToolingPyrightEnvironment]:
         """Validate Pyright environments once into their canonical models."""
         # mro-j47u: nested tooling data crosses the TOML boundary as models, not dicts.
-        environments: t.MutableSequenceOf[m.Infra.ToolingPyrightEnvironment] = []
+        environments: t.MutableSequenceOf[p.Infra.ToolingPyrightEnvironment] = []
         excluded = frozenset({"root", c.Infra.EXTRA_PATHS})
         for raw_environment in raw_environments:
             environment = t.Cli.JSON_MAPPING_ADAPTER.validate_python(raw_environment)

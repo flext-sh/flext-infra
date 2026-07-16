@@ -23,20 +23,20 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
     @classmethod
     def run_github_workspace_pull_requests(
         cls, request: m.Infra.GithubPullRequestWorkspaceRequest
-    ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
+    ) -> p.Result[p.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
             workspace_root, list(request.project_names or [])
         )
         if projects_result.failure:
-            return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
+            return r[p.Infra.GithubPullRequestWorkspaceReport].fail(
                 projects_result.error or "project resolution failed"
             )
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
-        outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
+        outcomes: t.MutableSequenceOf[p.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root, request=request, outcomes=outcomes
         )
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
                 if request.fail_fast:
                     break
         total = len(repos)
-        return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
+        return r[p.Infra.GithubPullRequestWorkspaceReport].ok(
             m.Infra.GithubPullRequestWorkspaceReport(
                 total=total,
                 success=total - failures,
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
     @classmethod
     def _github_pr_process_repo(
         cls, repo_root: Path, context: m.Infra.GithubPullRequestWorkspaceContext
-    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Process one repository during workspace pull-request execution.
 
         ``r.ok(outcome)`` when the per-repo run produced an outcome (which
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             )
         if context.request.checkpoint:
             _ = cls._github_pr_checkpoint(repo_root, context.request.branch)
-        run_result: p.Result[m.Infra.GithubPullRequestOutcome] = (
+        run_result: p.Result[p.Infra.GithubPullRequestOutcome] = (
             cls._run_github_pull_request_for_repo(
                 repo_root=repo_root,
                 workspace_root=context.workspace_root,
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             return run_result
         outcome = run_result.value
         context.outcomes.append(outcome)
-        return r[m.Infra.GithubPullRequestOutcome].ok(outcome)
+        return r[p.Infra.GithubPullRequestOutcome].ok(outcome)
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:

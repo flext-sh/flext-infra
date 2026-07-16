@@ -1,6 +1,6 @@
 {# NOTE (codex, mro-j47u): precompute compact/multiline Protocol declarations from line length. -#}
-{%- set config_property_line = "        def " ~ ns ~ "(self) -> m." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
-{%- set config_property_declaration = config_property_line if config_property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> m." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
+{%- set config_property_line = "        def " ~ ns ~ "(self) -> p." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
+{%- set config_property_declaration = config_property_line if config_property_line | length <= tooling.tools.ruff.line_length else "        def " ~ ns ~ "(\n            self,\n        ) -> p." ~ ns ~ ".ConfigRoot.ConfigNamespace:" -%}
 """Structural config declarations for {{ package_name }}.
 
 Copyright (c) {{ year }} {{ author_name }}. All rights reserved.

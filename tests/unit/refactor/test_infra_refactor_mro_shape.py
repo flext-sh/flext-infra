@@ -24,7 +24,7 @@ def _write_file(tmp_path: Path, rel_path: str, source: str) -> Path:
 
 def _detect(
     file_path: Path, rope_project: t.Infra.RopeProject
-) -> t.SequenceOf[m.Infra.MROShapeViolation]:
+) -> t.SequenceOf[p.Infra.MROShapeViolation]:
     """Run the detector against ``file_path``."""
     return FlextInfraMROShapeDetector.detect_file(
         m.Infra.DetectorContext(file_path=file_path, rope_project=rope_project)

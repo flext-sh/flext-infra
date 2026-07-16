@@ -90,8 +90,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @staticmethod
     def rewrite_namespace_source_violations(
         *,
-        violations: t.SequenceOf[m.Infra.NamespaceSourceViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.NamespaceSourceViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite runtime aliases imported from a foreign FLEXT package source."""
@@ -207,7 +207,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         project_root: Path,
         py_files: t.SequenceOf[Path],
-        violations: t.SequenceOf[m.Infra.ManualProtocolViolation],
+        violations: t.SequenceOf[p.Infra.ManualProtocolViolation],
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite manual protocol violations."""
@@ -237,8 +237,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_manual_typing_alias_violations(
         *,
         project_root: Path,
-        violations: t.SequenceOf[m.Infra.ManualTypingAliasViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.ManualTypingAliasViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite manual typing alias violations."""
@@ -258,8 +258,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def rewrite_loose_object_violations(
         *,
         project_root: Path,
-        violations: t.SequenceOf[m.Infra.LooseObjectViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.LooseObjectViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite loose namespace objects whose canonical mover is deterministic."""
@@ -279,18 +279,18 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     @staticmethod
     def rewrite_compatibility_alias_violations(
         *,
-        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite compatibility alias violations."""
         _ = parse_failures
         assignment_grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
         compat_import_grouped: t.MappingKV[
-            Path, t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation]
+            Path, t.MutableSequenceOf[p.Infra.CompatibilityAliasViolation]
         ] = defaultdict(list)
         project_alias_grouped: t.MappingKV[
-            Path, t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation]
+            Path, t.MutableSequenceOf[p.Infra.CompatibilityAliasViolation]
         ] = defaultdict(list)
         project_alias_owners = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
         for violation in violations:
@@ -402,7 +402,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         *,
         rope_project: t.Infra.RopeProject,
         file_path: Path,
-        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
         gates: t.StrSequence | None,
     ) -> None:
         """Rewrite non-canonical facade imports using Rope rename (file-local)."""

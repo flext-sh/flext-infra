@@ -23,7 +23,7 @@ class TestRealGateRunners:
     """Exercise real gate behavior through public gate APIs."""
 
     @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
+    def make_ctx(root: Path) -> p.Infra.GateContext:
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     def test_ruff_lint_reports_real_issue(self, tmp_path: Path) -> None:

@@ -83,7 +83,7 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
                 '        return "help"\n'
             )
         scanner = FlextInfraRefactorLooseClassScanner()
-        all_violations: MutableSequence[m.Infra.LooseClassViolation] = []
+        all_violations: MutableSequence[p.Infra.LooseClassViolation] = []
         for proj in projects:
             result = scanner.scan(tmp_path / proj)
             tm.ok(result)

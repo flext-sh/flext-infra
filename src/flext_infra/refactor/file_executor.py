@@ -100,7 +100,7 @@ class FlextInfraRefactorFileExecutor:
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Apply file rule selection."""
         _ = (kind, settings)
         return self._apply_class_nesting(rope_project, resource, dry_run=dry_run)
@@ -111,7 +111,7 @@ class FlextInfraRefactorFileExecutor:
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool = False,
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Apply class nesting."""
         root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
         project_root = Path(root_real_path) if isinstance(root_real_path, str) else None
@@ -136,7 +136,7 @@ class FlextInfraRefactorFileExecutor:
 
     def _apply_class_nesting_checked(
         self, resource: t.Infra.RopeResource, file_path: Path, *, dry_run: bool
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Apply class nesting after the public error boundary."""
         source = resource.read()
         config = self._load_class_nesting_config()
@@ -187,7 +187,7 @@ class FlextInfraRefactorFileExecutor:
 
     def _run_class_nesting_postcheck(
         self, *, file_path: Path, updated: str, changes: t.StrSequence
-    ) -> m.Infra.Result | None:
+    ) -> p.Infra.Result | None:
         """Run postchecks for a modified class-nesting result."""
         expected_base_chain: t.JsonValueList = []
         post_checks: t.JsonValueList = [c.Infra.RK_IMPORTS_RESOLVE]

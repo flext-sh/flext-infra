@@ -37,116 +37,116 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_manual_typing_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_class_placement(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_private_import_bypass(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_compatibility_alias(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_mro_completeness(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_mro_shape(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_inline_import(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         def _rule_silent_failure(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             project_name: str,
-            objects: tuple[m.Infra.Census.Object, ...] | None,
+            objects: tuple[p.Infra.Census.Object, ...] | None,
             applied: frozenset[str],
             selected_kinds: frozenset[str],
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
-        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
+        ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]: ...
         @staticmethod
         def _detector_context(
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
             convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+            parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
-        ) -> m.Infra.DetectorContext: ...
+        ) -> p.Infra.DetectorContext: ...
         @staticmethod
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
@@ -161,14 +161,14 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             description: str,
             fixable: bool = False,
             fix_action: str = "",
-        ) -> m.Infra.Census.Violation: ...
+        ) -> p.Infra.Census.Violation: ...
 
     def _module_rules(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         project_name: str,
         applied: frozenset[str],
         kind_names: t.StrSequence | None,
@@ -176,7 +176,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         selected_kinds: frozenset[str] | None = None,
         selected_rules: frozenset[str] | None = None,
         convention: m.Infra.RopeModuleConvention | None = None,
-    ) -> tuple[tuple[m.Infra.Census.Violation, ...], tuple[m.Infra.Census.Fix, ...]]:
+    ) -> tuple[tuple[p.Infra.Census.Violation, ...], tuple[p.Infra.Census.Fix, ...]]:
         """Run every selected alias/MRO rule for one module and collect outcomes."""
         resolved_convention = convention or rope.convention(file_path)
         resolved_kinds = (
@@ -185,8 +185,8 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             else (frozenset(kind_names) if kind_names else frozenset())
         )
         symbol_index = self._lightweight_symbol_index(rope, file_path)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
 
         def selected(rule_name: str) -> bool:
             return self._include_rule(
@@ -339,10 +339,10 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         selected_rules: frozenset[str] | None,
         rule_names: t.StrSequence | None,
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Run catalog-driven declarative rules for one module."""
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         rules = self._declarative_catalog_rules()
         if not rules:
             return violations, fixes

@@ -37,7 +37,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         root: str,
         extra_paths: t.StrSequence,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> m.Infra.PyrightConfig.ExecutionEnvironment:
+    ) -> p.Infra.PyrightConfig.ExecutionEnvironment:
         """Env entry."""
         return m.Infra.PyrightConfig.ExecutionEnvironment(
             root=root,
@@ -64,7 +64,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         source_path: str,
         project_root: str,
         rules: m.Infra.PyrightConfig.PathRulesConfig,
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
         """Envs for dirs."""
         return [
             self._env_entry(
@@ -83,7 +83,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _diagnostic_override_envs(
         self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
         """Resolve configured overrides only when their project path exists."""
         if project_dir is None:
             return ()
@@ -114,7 +114,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _expected_envs(
         self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir=project_dir)
@@ -192,7 +192,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _expected_envs_for_project(
         self, *, project_dir: Path | None
-    ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
@@ -259,7 +259,7 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _override_for_kind(
         self, project_kind: str
-    ) -> m.Infra.ProjectTypeOverrideConfig | None:
+    ) -> p.Infra.ProjectTypeOverrideConfig | None:
         """Return the project-type override settings for the given kind."""
         overrides = self._tool_config.project_type_overrides
         kind_map: t.MappingKV[str, m.Infra.ProjectTypeOverrideConfig] = {
@@ -358,7 +358,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         project_kind: str = "core",
         paths_manager: FlextInfraExtraPathsManager | None = None,
         declared_python_dirs: t.StrSequence = (),
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> p.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
         expected_excludes = self._expected_excludes()

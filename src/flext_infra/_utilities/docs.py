@@ -120,17 +120,17 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         *,
         projects: t.StrSequence | None,
         output_dir: Path | str,
-        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
             workspace_root=workspace_root, projects=projects, output_dir=output_dir
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[t.SequenceOf[p.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope error"
             )
-        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
+        return r[t.SequenceOf[p.Infra.DocsPhaseReport]].ok([
             handler(scope) for scope in scopes_result.value
         ])
 

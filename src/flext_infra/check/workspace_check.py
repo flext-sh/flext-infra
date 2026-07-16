@@ -112,11 +112,11 @@ class FlextInfraWorkspaceChecker(
     @staticmethod
     def _resolve_project_targets(
         params: m.Infra.RunCommand,
-    ) -> p.Result[t.SequenceOf[m.Infra.CheckProjectTarget]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.CheckProjectTarget]]:
         """Resolve explicit projects or discover the workspace project set."""
         requested = params.project_names
         if requested:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
+            return r[t.SequenceOf[p.Infra.CheckProjectTarget]].ok(
                 tuple(
                     m.Infra.CheckProjectTarget.from_workspace_name(
                         params.workspace_path, project_name
@@ -126,7 +126,7 @@ class FlextInfraWorkspaceChecker(
             )
         discovered = u.Infra.resolve_projects(params.workspace_path, ())
         if discovered.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
+            return r[t.SequenceOf[p.Infra.CheckProjectTarget]].fail(
                 discovered.error or "project discovery failed"
             )
         project_targets = tuple(
@@ -134,49 +134,49 @@ class FlextInfraWorkspaceChecker(
             for project in discovered.value
         )
         if not project_targets:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
+            return r[t.SequenceOf[p.Infra.CheckProjectTarget]].fail(
                 "no projects discovered"
             )
-        return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(project_targets)
+        return r[t.SequenceOf[p.Infra.CheckProjectTarget]].ok(project_targets)
 
-    def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
+    def format(self, project_dir: Path) -> p.Result[p.Infra.GateResult]:
         """Run format checks for one project."""
-        return r[m.Infra.GateResult].ok(
+        return r[p.Infra.GateResult].ok(
             self._run_gate(c.Infra.FORMAT, project_dir).result
         )
 
-    def lint(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
+    def lint(self, project_dir: Path) -> p.Result[p.Infra.GateResult]:
         """Run lint checks for one project."""
-        return r[m.Infra.GateResult].ok(
+        return r[p.Infra.GateResult].ok(
             self._run_gate(c.Infra.LINT, project_dir).result
         )
 
     def run_project(
         self, project: str, gates: t.StrSequence
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates))
 
     def run_projects(
         self,
-        projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
+        projects: t.StrSequence | t.SequenceOf[p.Infra.CheckProjectTarget],
         gates: t.StrSequence,
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
         ctx: m.Infra.GateContext | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[p.Infra.ProjectResult]].fail(
                 resolved_gates_result.error or "invalid gates"
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[p.Infra.ProjectResult]].fail(
                 dir_ensure.error or "failed to create report directory"
             )
         effective_ctx = ctx or m.Infra.GateContext(
@@ -191,10 +191,10 @@ class FlextInfraWorkspaceChecker(
         return self._write_reports_and_summary(resolved_gates, report_base, outcome)
 
     def _project_targets(
-        self, projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget]
-    ) -> t.SequenceOf[m.Infra.CheckProjectTarget]:
+        self, projects: t.StrSequence | t.SequenceOf[p.Infra.CheckProjectTarget]
+    ) -> t.SequenceOf[p.Infra.CheckProjectTarget]:
         """Return typed project targets from public names or internal selections."""
-        targets: list[m.Infra.CheckProjectTarget] = []
+        targets: list[p.Infra.CheckProjectTarget] = []
         for project in projects:
             if isinstance(project, m.Infra.CheckProjectTarget):
                 targets.append(project)

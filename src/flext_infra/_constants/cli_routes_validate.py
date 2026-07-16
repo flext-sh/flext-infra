@@ -16,7 +16,7 @@ from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
-VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
+VALIDATE_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_DOCS: tuple(
         m.Cli.ResultCommandRoute(
             name=route_name,

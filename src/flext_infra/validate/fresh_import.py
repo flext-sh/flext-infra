@@ -36,7 +36,7 @@ class FlextInfraValidateFreshImport(s[bool]):
 
     def build_report(
         self, packages: t.StrSequence = ()
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Import each package in a fresh subprocess, collect failures.
 
         Args:
@@ -74,7 +74,7 @@ class FlextInfraValidateFreshImport(s[bool]):
             if passed
             else f"{total} package(s) failed to import"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=list(violations), summary=summary
             )

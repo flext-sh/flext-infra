@@ -142,7 +142,7 @@ class FlextInfraModelsDepsToml:
 
                     def operation(
                         self,
-                        operation_type: type[m.ContractModel],
+                        operation_type: type[p.ContractModel],
                         /,
                         **data: t.JsonValue
                         | t.JsonPayload

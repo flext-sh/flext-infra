@@ -126,18 +126,18 @@ class FakeSubprocess:
     """Fake command runner for CLI runtime execution."""
 
     _run_checked_result: p.Result[bool] = r[bool].ok(True)
-    _run_raw_result: p.Result[m.Cli.CommandOutput] | None = None
+    _run_raw_result: p.Result[p.Cli.CommandOutput] | None = None
     _run_checked_called: bool = False
 
     def run_checked(self, *args: str, **kwargs: str) -> p.Result[bool]:
         self._run_checked_called = True
         return self._run_checked_result
 
-    def run_raw(self, *args: str, **kwargs: str) -> p.Result[m.Cli.CommandOutput]:
+    def run_raw(self, *args: str, **kwargs: str) -> p.Result[p.Cli.CommandOutput]:
         if self._run_raw_result is not None:
             return self._run_raw_result
         output = m.Cli.CommandOutput(exit_code=0, stdout="ok", stderr="")
-        return r[m.Cli.CommandOutput].ok(output)
+        return r[p.Cli.CommandOutput].ok(output)
 
 
 class FakeReporting:
@@ -155,13 +155,13 @@ class FakeReporting:
 class FakeSelection:
     """Fake for FlextInfraUtilitiesSelection."""
 
-    _resolve_result: p.Result[Sequence[m.Infra.ProjectInfo]] = r[
-        t.SequenceOf[m.Infra.ProjectInfo]
+    _resolve_result: p.Result[Sequence[p.Infra.ProjectInfo]] = r[
+        t.SequenceOf[p.Infra.ProjectInfo]
     ].ok([])
 
     def resolve_projects(
         self, workspace_root: Path, names: t.StrSequence
-    ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+    ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
         return self._resolve_result
 
 

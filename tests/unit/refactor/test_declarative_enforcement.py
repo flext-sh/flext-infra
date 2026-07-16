@@ -27,7 +27,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
 
     @staticmethod
-    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
+    def _rule(rule_id: str) -> p.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
@@ -35,7 +35,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     def _ctx(
         rope_project: t.Infra.RopeProject,
         file_path: Path,
-    ) -> m.Infra.DetectorContext:
+    ) -> p.Infra.DetectorContext:
         return m.Infra.DetectorContext(
             file_path=file_path,
             rope_project=rope_project,
@@ -179,7 +179,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
 
         def _fail(
             ctx: m.Infra.DetectorContext,
-        ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
+        ) -> t.SequenceOf[p.Infra.ClassPlacementViolation]:
             _ = ctx
             msg = "class placement exploded"
             raise RuntimeError(msg)

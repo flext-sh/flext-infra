@@ -160,7 +160,7 @@ class TestsFlextInfraRefactorInfraRefactorMroCompleteness:
             "    pass\n",
             encoding="utf-8",
         )
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
 
         violations = FlextInfraMROCompletenessDetector.detect_file(
             m.Infra.DetectorContext(

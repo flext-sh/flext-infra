@@ -37,24 +37,24 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @classmethod
     def load_workspace_spec(
         cls, repository_root: Path
-    ) -> p.Result[m.Infra.WorkspaceSpec]:
+    ) -> p.Result[p.Infra.WorkspaceSpec]:
         """Load the canonical repository-local workspace manifest."""
         manifest_path = cls._manifest_path(repository_root)
         loaded = u.Cli.config_load(
             manifest_path, schema_path=cls._schema_path(), expand_env=False
         )
         if loaded.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
+            return r[p.Infra.WorkspaceSpec].fail(
                 loaded.error or f"invalid workspace manifest: {manifest_path}"
             )
         try:
             # mro-i6nq.10: Validate the pure config model at its loading boundary.
             validated = m.Infra.WorkspaceSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            return r[m.Infra.WorkspaceSpec].fail_op(
+            return r[p.Infra.WorkspaceSpec].fail_op(
                 f"workspace manifest model validation ({manifest_path})", exc
             )
-        return r[m.Infra.WorkspaceSpec].ok(validated)
+        return r[p.Infra.WorkspaceSpec].ok(validated)
 
     @staticmethod
     def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:

@@ -20,7 +20,7 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
 
         def _package_entry(
             self, pkg_dir: Path
-        ) -> m.Infra.RopePackageIndexEntry | None: ...
+        ) -> p.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair

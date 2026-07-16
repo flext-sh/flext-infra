@@ -33,12 +33,12 @@ class _RopeImportBoundaryBase(s[bool]):
     _VIOLATION_KIND: ClassVar[str] = ""
     _SCAN_KIND: ClassVar[str] = ""
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Scan ``workspace_root`` and return a ``ValidationReport``."""
         try:
             violations = self._collect_violations(workspace_root)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 f"{self._SCAN_KIND} scan failed: {exc}"
             )
         passed = not violations
@@ -47,7 +47,7 @@ class _RopeImportBoundaryBase(s[bool]):
             if passed
             else f"{len(violations)} {self._VIOLATION_KIND} violation(s)"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=list(violations), summary=summary
             )

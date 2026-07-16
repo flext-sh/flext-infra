@@ -100,7 +100,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
 
     def extract(
         self, junit_path: Path, log_path: Path
-    ) -> p.Result[m.Infra.PytestDiagnostics]:
+    ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract diagnostics from JUnit XML and pytest log.
 
         Args:
@@ -114,7 +114,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         try:
             return self._extract_diagnostics(junit_path, log_path)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.PytestDiagnostics].fail_op(
+            return r[p.Infra.PytestDiagnostics].fail_op(
                 "pytest diagnostics extraction", exc
             )
 
@@ -131,7 +131,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         return r[str].ok(log_read.value)
 
     @staticmethod
-    def _diagnostics_model(diag: _DiagResult) -> m.Infra.PytestDiagnostics:
+    def _diagnostics_model(diag: _DiagResult) -> p.Infra.PytestDiagnostics:
         """Convert mutable extraction state to the canonical diagnostics model."""
         return m.Infra.PytestDiagnostics(
             failed_count=len(diag.failed_cases),
@@ -147,11 +147,11 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
 
     def _extract_diagnostics(
         self, junit_path: Path, log_path: Path
-    ) -> p.Result[m.Infra.PytestDiagnostics]:
+    ) -> p.Result[p.Infra.PytestDiagnostics]:
         """Extract pytest diagnostics after input normalization."""
         log_text_result = self._read_log_text(log_path)
         if log_text_result.failure:
-            return r[m.Infra.PytestDiagnostics].fail(
+            return r[p.Infra.PytestDiagnostics].fail(
                 log_text_result.error or f"Failed to read pytest log: {log_path}"
             )
         lines = log_text_result.value.splitlines()
@@ -162,7 +162,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         self._extract_warnings(lines, diag)
         if not diag.slow_entries:
             self._extract_slow_from_log(lines, diag)
-        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
+        return r[p.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
 
     @override
     def execute(self) -> p.Result[bool]:

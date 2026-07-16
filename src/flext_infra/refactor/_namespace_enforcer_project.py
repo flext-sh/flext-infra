@@ -71,7 +71,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             rope_project: t.Infra.RopeProject,
             apply: bool,
             workspace_root: Path,
-        ) -> t.SequenceOf[m.Infra.FacadeStatus]: ...
+        ) -> t.SequenceOf[p.Infra.FacadeStatus]: ...
 
         @staticmethod
         def _collect_py_files(*, project_root: Path) -> t.SequenceOf[Path]: ...
@@ -84,7 +84,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         apply: bool,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         gates: t.StrSequence | None = None,
-    ) -> m.Infra.ProjectEnforcementReport:
+    ) -> p.Infra.ProjectEnforcementReport:
         """Enforce one project through the workspace-wide Rope session."""
         return self._enforce_project_with_rope(
             project_root=project_root,
@@ -99,11 +99,11 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         *,
         file_path: Path,
         rope_project: t.Infra.RopeProject,
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
         project_name: str = "",
         project_root: Path | None = None,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
-    ) -> m.Infra.DetectorContext:
+    ) -> p.Infra.DetectorContext:
         """Build the canonical detector context for one file."""
         return m.Infra.DetectorContext(
             file_path=file_path,
@@ -122,10 +122,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         apply: bool,
         gates: t.StrSequence | None,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> m.Infra.ProjectEnforcementReport:
+    ) -> p.Infra.ProjectEnforcementReport:
         """Enforce project using the single indexed workspace Rope project."""
         rope_project = rope_workspace.rope_project
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] = []
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation] = []
         facade_statuses = self._scan_facades(
             project=(project_root, project_name),
             rope_project=rope_project,
@@ -341,7 +341,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             rewrite_fn=None,
             apply=apply,
         )
-        smell_buckets: dict[str, list[m.Infra.PatternSmellViolation]] = {
+        smell_buckets: dict[str, list[p.Infra.PatternSmellViolation]] = {
             "bare_except": [],
             "print": [],
             "breakpoint": [],
@@ -391,16 +391,16 @@ class FlextInfraNamespaceEnforcerProjectMixin:
 
     @staticmethod
     def _split_compatibility_alias_violations(
-        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
         *,
         package_name: str,
     ) -> tuple[
-        list[m.Infra.CompatibilityAliasViolation],
-        list[m.Infra.CompatibilityAliasViolation],
+        list[p.Infra.CompatibilityAliasViolation],
+        list[p.Infra.CompatibilityAliasViolation],
     ]:
         """Split legacy compatibility aliases from foreign canonical imports."""
-        compatibility_aliases: list[m.Infra.CompatibilityAliasViolation] = []
-        foreign_canonical_aliases: list[m.Infra.CompatibilityAliasViolation] = []
+        compatibility_aliases: list[p.Infra.CompatibilityAliasViolation] = []
+        foreign_canonical_aliases: list[p.Infra.CompatibilityAliasViolation] = []
         for violation in violations:
             action = FlextInfraCompatibilityAliasDetector.fix_action_for(
                 violation, current_project=package_name

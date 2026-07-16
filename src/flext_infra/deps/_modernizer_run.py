@@ -32,7 +32,7 @@ class FlextInfraPyprojectModernizerRunMixin:
 
         def _read_document_state(
             self, path: Path
-        ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
+        ) -> p.Result[p.Infra.PyprojectDocumentState]: ...
 
         def _process_document_state(
             self,
@@ -132,12 +132,12 @@ class FlextInfraPyprojectModernizerRunMixin:
                 )
             )
         violations: MutableMapping[str, t.StrSequence] = {}
-        document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
+        document_states: t.MutableSequenceOf[p.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
         total = 0
         for file_path in files:
             document_state_result = (
-                r[m.Infra.PyprojectDocumentState].ok(root_state)
+                r[p.Infra.PyprojectDocumentState].ok(root_state)
                 if file_path.resolve() == root_state.pyproject_path.resolve()
                 else self._read_document_state(file_path)
             )
@@ -184,7 +184,7 @@ class FlextInfraPyprojectModernizerRunMixin:
 
     def _run_build_check(
         self,
-        document_states: t.SequenceOf[m.Infra.PyprojectDocumentState],
+        document_states: t.SequenceOf[p.Infra.PyprojectDocumentState],
         *,
         invalid_paths: t.SequenceOf[Path] = (),
     ) -> int:

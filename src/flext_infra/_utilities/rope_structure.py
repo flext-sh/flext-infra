@@ -19,13 +19,13 @@ class FlextInfraUtilitiesRopeStructure:
     """Expose one Rope-owned fact pass to every structural detector."""
 
     @staticmethod
-    def logical_statements(source: str) -> t.SequenceOf[m.Infra.LogicalStatement]:
+    def logical_statements(source: str) -> t.SequenceOf[p.Infra.LogicalStatement]:
         """Return Rope logical regions with scope and TYPE_CHECKING context."""
         if not source:
             return ()
         lines = codeanalyze.SourceLinesAdapter(source)
         finder = codeanalyze.LogicalLineFinder(lines)
-        statements: t.MutableSequenceOf[m.Infra.LogicalStatement] = []
+        statements: t.MutableSequenceOf[p.Infra.LogicalStatement] = []
         enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
@@ -65,8 +65,8 @@ class FlextInfraUtilitiesRopeStructure:
 
     @classmethod
     def detect_static_rules(
-        cls, ctx: m.Infra.DetectorContext, rules: t.SequenceOf[m.Infra.StaticRuleSpec]
-    ) -> t.SequenceOf[m.Infra.PatternSmellViolation]:
+        cls, ctx: m.Infra.DetectorContext, rules: t.SequenceOf[p.Infra.StaticRuleSpec]
+    ) -> t.SequenceOf[p.Infra.PatternSmellViolation]:
         """Resolve one detector context and evaluate the configured Rope policy."""
         resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
             ctx.rope_project, ctx.file_path
@@ -110,8 +110,8 @@ class FlextInfraUtilitiesRopeStructure:
     def detect_private_root_imports(
         cls,
         ctx: m.Infra.DetectorContext,
-        rules: t.SequenceOf[m.Infra.StaticPrivateRootImportRule],
-    ) -> t.SequenceOf[m.Infra.PrivateImportBypassViolation]:
+        rules: t.SequenceOf[p.Infra.StaticPrivateRootImportRule],
+    ) -> t.SequenceOf[p.Infra.PrivateImportBypassViolation]:
         """Detect imports resolved to a project's package-root config/settings file."""
         if not rules:
             return ()
@@ -164,7 +164,7 @@ class FlextInfraUtilitiesRopeStructure:
             msg = "private-root import rule modules must be unique"
             raise RuntimeError(msg)
         attributes = pymodule.get_attributes()
-        violations: tuple[m.Infra.PrivateImportBypassViolation, ...] = ()
+        violations: tuple[p.Infra.PrivateImportBypassViolation, ...] = ()
         for fact in cls._import_facts(module_imports):
             rule = rules_by_module.get(fact.module.rsplit(".", maxsplit=1)[-1])
             if rule is None or not fact.is_from_import:
@@ -219,11 +219,11 @@ class FlextInfraUtilitiesRopeStructure:
 
     @staticmethod
     def _statement_for_import(
-        statements: t.SequenceOf[m.Infra.LogicalStatement],
+        statements: t.SequenceOf[p.Infra.LogicalStatement],
         *,
         file_path: Path,
         line: int,
-    ) -> m.Infra.LogicalStatement:
+    ) -> p.Infra.LogicalStatement:
         """Return the exact Rope logical statement containing an import line."""
         statement = next(
             (
@@ -349,10 +349,10 @@ class FlextInfraUtilitiesRopeStructure:
         *,
         source: str,
         module_imports: t.Infra.RopeModuleImports,
-        rules: t.SequenceOf[m.Infra.StaticRuleSpec],
+        rules: t.SequenceOf[p.Infra.StaticRuleSpec],
         file_path: str,
         project_name: str,
-    ) -> t.SequenceOf[m.Infra.PatternSmellViolation]:
+    ) -> t.SequenceOf[p.Infra.PatternSmellViolation]:
         """Evaluate config rules in one Rope logical-statement pass."""
         if not source:
             return ()
@@ -360,7 +360,7 @@ class FlextInfraUtilitiesRopeStructure:
         regions = cls._ignored_regions(source, lines)
         facts = cls._import_facts(module_imports)
         word_finder = worder.Worder(source, True)
-        violations: tuple[m.Infra.PatternSmellViolation, ...] = ()
+        violations: tuple[p.Infra.PatternSmellViolation, ...] = ()
         for statement in cls.logical_statements(source):
             for rule in rules:
                 if isinstance(rule, m.Infra.StaticCommentRule) or not cls._rule_matches(
@@ -407,8 +407,8 @@ class FlextInfraUtilitiesRopeStructure:
         *,
         rule: m.Infra.StaticRuleSpec,
         statement: m.Infra.LogicalStatement,
-        facts: t.SequenceOf[m.Infra.ImportFact],
-        regions: t.SequenceOf[m.Infra.IgnoredRegion],
+        facts: t.SequenceOf[p.Infra.ImportFact],
+        regions: t.SequenceOf[p.Infra.IgnoredRegion],
         source: str,
         lines: codeanalyze.SourceLinesAdapter,
         word_finder: p.Infra.RopeWorder,
@@ -477,7 +477,7 @@ class FlextInfraUtilitiesRopeStructure:
         lines: codeanalyze.SourceLinesAdapter,
         statement: m.Infra.LogicalStatement,
         primary: str,
-        regions: t.SequenceOf[m.Infra.IgnoredRegion],
+        regions: t.SequenceOf[p.Infra.IgnoredRegion],
         word_finder: p.Infra.RopeWorder,
         *,
         called: bool = False,
@@ -518,9 +518,9 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _import_facts(
         module_imports: t.Infra.RopeModuleImports,
-    ) -> t.SequenceOf[m.Infra.ImportFact]:
+    ) -> t.SequenceOf[p.Infra.ImportFact]:
         """Validate Rope NormalImport/FromImport objects into immutable facts."""
-        facts: tuple[m.Infra.ImportFact, ...] = ()
+        facts: tuple[p.Infra.ImportFact, ...] = ()
         for statement in tuple(module_imports.imports):
             if statement.start_line < 1:
                 msg = "Rope import statement did not provide a positive source line"
@@ -555,9 +555,9 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _ignored_regions(
         source: str, lines: codeanalyze.SourceLinesAdapter
-    ) -> t.SequenceOf[m.Infra.IgnoredRegion]:
+    ) -> t.SequenceOf[p.Infra.IgnoredRegion]:
         """Validate Rope string/comment regions into immutable facts."""
-        regions: tuple[m.Infra.IgnoredRegion, ...] = ()
+        regions: tuple[p.Infra.IgnoredRegion, ...] = ()
         for start, end, _metadata in simplify.ignored_regions(source):
             text = source[start:end]
             if text:
@@ -577,7 +577,7 @@ class FlextInfraUtilitiesRopeStructure:
     def _string_assignment(
         statement: m.Infra.LogicalStatement,
         lines: codeanalyze.SourceLinesAdapter,
-        regions: t.SequenceOf[m.Infra.IgnoredRegion],
+        regions: t.SequenceOf[p.Infra.IgnoredRegion],
     ) -> bool:
         """Return whether an annotated assignment starts with a Rope string."""
         stripped = statement.text.strip()

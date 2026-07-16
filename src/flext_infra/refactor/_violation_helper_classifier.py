@@ -20,11 +20,11 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
     @classmethod
     def _analyze_file_helpers(
         cls, *, file_path: Path, content: str
-    ) -> m.Infra.HelperFileAnalysis:
+    ) -> p.Infra.HelperFileAnalysis:
         """Analyze file helpers."""
-        suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
+        suggestions: t.MutableSequenceOf[p.Infra.HelperClassification] = []
         totals: Counter[str] = Counter()
-        manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
+        manual_review: t.MutableSequenceOf[p.Infra.HelperClassification] = []
         local_to_import = cls._extract_local_to_import(content)
         for match in c.Infra.FUNCTION_DEF_SIMPLE_RE.finditer(content):
             func_name = match.group(1)

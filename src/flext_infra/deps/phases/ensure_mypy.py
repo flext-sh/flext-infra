@@ -13,7 +13,7 @@ class FlextInfraEnsureMypyConfigPhase:
         """Store tool configuration used to generate the canonical mypy section."""
         self._tool_config = tool_config
 
-    def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
+    def _phase(self) -> p.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical mypy phase definition."""
         configured = self._tool_config.tools.mypy.overrides
         expected_overrides: t.SequenceOf[t.JsonDict] = [

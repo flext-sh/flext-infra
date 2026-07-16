@@ -40,7 +40,7 @@ class _DepsStub(
     @override
     def build_project_report(
         self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
-    ) -> m.Infra.ProjectRuntimeReport:
+    ) -> p.Infra.ProjectRuntimeReport:
         del project_name, deptry_issues
         return m.Infra.ProjectRuntimeReport(
             deptry=m.Infra.DeptryReport(
@@ -55,11 +55,11 @@ class _DepsStub(
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> p.Result[m.Infra.TypingsReport]:
+    ) -> p.Result[p.Infra.TypingsReport]:
         self.typings_calls += 1
         del project_path, limits_path
         del include_mypy
-        return r[m.Infra.TypingsReport].ok(
+        return r[p.Infra.TypingsReport].ok(
             m.Infra.TypingsReport(to_add=list(self._to_add))
         )
 
@@ -77,7 +77,7 @@ class _DepsStub(
 
 
 class _RunnerStub(p.Infra.RunnerService):
-    def __init__(self, run_raw: Callable[..., p.Result[m.Cli.CommandOutput]]) -> None:
+    def __init__(self, run_raw: Callable[..., p.Result[p.Cli.CommandOutput]]) -> None:
         self._run_raw = run_raw
 
     @override
@@ -87,7 +87,7 @@ class _RunnerStub(p.Infra.RunnerService):
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         return self._run_raw(
             cmd, cwd=cwd or Path.cwd(), timeout=timeout or 0, env=env or {}
         )
@@ -105,7 +105,7 @@ class _DetectorStub:
 
 
 def _setup_typings_detector(
-    tmp_path: Path, to_add: t.StrSequence, run_raw_result: p.Result[m.Cli.CommandOutput]
+    tmp_path: Path, to_add: t.StrSequence, run_raw_result: p.Result[p.Cli.CommandOutput]
 ) -> tuple[FlextInfraDependencyDetectorRuntime, t.SequenceOf[t.StrSequence]]:
     project_path = tmp_path / "proj-a"
     (project_path / "src").mkdir(parents=True)
@@ -116,7 +116,7 @@ def _setup_typings_detector(
 
     def _run_raw(
         cmd: t.StrSequence, *, cwd: Path, timeout: int, env: t.StrMapping
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         del cwd, timeout, env
         captured_commands.append(cmd)
         return run_raw_result
@@ -145,7 +145,7 @@ class TestsFlextInfraDepsDetectorMain:
             detector=_DetectorStub(
                 deps=deps,
                 runner=_RunnerStub(
-                    lambda cmd, *, cwd, timeout, env: r[m.Cli.CommandOutput].ok(
+                    lambda cmd, *, cwd, timeout, env: r[p.Cli.CommandOutput].ok(
                         m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
                     )
                 ),
@@ -165,7 +165,7 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that(deps.typings_calls, eq=0)
 
     def test_run_with_apply_typings_success(self, tmp_path: Path) -> None:
-        run_result = r[m.Cli.CommandOutput].ok(
+        run_result = r[p.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
         )
         runtime, calls = _setup_typings_detector(
@@ -182,7 +182,7 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that(len(calls), eq=1)
 
     def test_run_with_apply_typings_multiple_packages(self, tmp_path: Path) -> None:
-        run_result = r[m.Cli.CommandOutput].ok(
+        run_result = r[p.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
         )
         runtime, calls = _setup_typings_detector(
@@ -201,7 +201,7 @@ class TestsFlextInfraDepsDetectorMain:
         tm.that(len(calls), eq=3)
 
     def test_run_with_apply_typings_poetry_add_failure(self, tmp_path: Path) -> None:
-        run_result = r[m.Cli.CommandOutput].ok(
+        run_result = r[p.Cli.CommandOutput].ok(
             m.Cli.CommandOutput(stdout="", stderr="", exit_code=1)
         )
         runtime, _ = _setup_typings_detector(tmp_path, ["types-requests"], run_result)
@@ -216,7 +216,7 @@ class TestsFlextInfraDepsDetectorMain:
         runtime, _ = _setup_typings_detector(
             tmp_path,
             ["types-requests"],
-            r[m.Cli.CommandOutput].fail("poetry add failed"),
+            r[p.Cli.CommandOutput].fail("poetry add failed"),
         )
         params = FlextInfraModelsDeps.DetectCommand(
             workspace=str(tmp_path), typings=True, apply_typings=True, no_pip_check=True

@@ -59,7 +59,7 @@ class TestsFlextInfraDepsDetectionTypings:
         with patch.object(
             service,
             "_run_raw",
-            return_value=tr[m.Cli.CommandOutput].ok(
+            return_value=tr[p.Cli.CommandOutput].ok(
                 m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
             ),
         ):
@@ -70,7 +70,7 @@ class TestsFlextInfraDepsDetectionTypings:
         with patch.object(
             service,
             "_run_raw",
-            return_value=tr[m.Cli.CommandOutput].ok(
+            return_value=tr[p.Cli.CommandOutput].ok(
                 m.Cli.CommandOutput(
                     stdout='note: hint: "pip install types-pyyaml"',
                     stderr='error: Library stubs not installed for "requests"',

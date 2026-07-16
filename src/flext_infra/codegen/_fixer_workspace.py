@@ -24,7 +24,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
 
     def _fix_project(
         self, project: p.Infra.ProjectInfo, *, rope_workspace: p.Infra.RopeWorkspaceDsl
-    ) -> m.Infra.AutoFixResult:
+    ) -> p.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
         project_layout = u.Infra.layout(project_path)
@@ -52,7 +52,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
 
     def fix_workspace(
         self, *, projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None
-    ) -> t.SequenceOf[m.Infra.AutoFixResult]:
+    ) -> t.SequenceOf[p.Infra.AutoFixResult]:
         """Run auto-fix on selected projects."""
         if projects is not None:
             selected_projects = tuple(projects)

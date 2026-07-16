@@ -24,7 +24,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         paths_manager: FlextInfraExtraPathsManager | None = None,
         stale_error_keys: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> p.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
         venv_rules = self._tool_config.tools.pyright.path_rules

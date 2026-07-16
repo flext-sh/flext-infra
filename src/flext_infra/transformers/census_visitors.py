@@ -78,7 +78,7 @@ class FlextInfraCensusUsageCollector:
         self.direct_imports = direct_imports
         self.file_path = file_path
         self.project_name = project_name
-        self.records: t.MutableSequenceOf[m.Infra.CensusUsageRecord] = []
+        self.records: t.MutableSequenceOf[p.Infra.CensusUsageRecord] = []
 
     def scan_source(self, source: str) -> None:
         """Scan source text for attribute access patterns."""

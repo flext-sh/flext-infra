@@ -38,7 +38,7 @@ class TestsFlextInfraLooseObjectCharacterization:
         project, package_dir = cls._project(tmp_path)
         module_file = package_dir / "widget.py"
         _ = module_file.write_text(source, encoding="utf-8")
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraLooseObjectDetector.detect_file(
                 m.Infra.DetectorContext(

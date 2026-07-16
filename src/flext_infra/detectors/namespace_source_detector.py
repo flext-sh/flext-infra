@@ -15,9 +15,9 @@ class FlextInfraNamespaceSourceDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.NamespaceSourceViolation]:
+    ) -> t.SequenceOf[p.Infra.NamespaceSourceViolation]:
         """Detect runtime aliases imported from a different flext package root."""
-        result: t.SequenceOf[m.Infra.NamespaceSourceViolation] = []
+        result: t.SequenceOf[p.Infra.NamespaceSourceViolation] = []
         file_path = ctx.file_path
         project_root = ctx.project_root
         if project_root is not None:
@@ -44,7 +44,7 @@ class FlextInfraNamespaceSourceDetector:
                             file_path=file_path, source=source
                         ):
                             source_lines = source.splitlines()
-                            violations: list[m.Infra.NamespaceSourceViolation] = []
+                            violations: list[p.Infra.NamespaceSourceViolation] = []
                             for from_import in u.Infra.get_absolute_from_imports(
                                 ctx.rope_project, resource
                             ):

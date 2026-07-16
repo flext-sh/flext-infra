@@ -45,13 +45,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
         worktree_root: Path,
         transaction_id: str,
         selected_repositories: t.StrSequence,
-    ) -> p.Result[t.SequenceOf[m.Infra.RepositoryWorktree]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.RepositoryWorktree]]:
         """Materialize every repository but snapshot dirty state only in scope."""
         submodules_result = FlextInfraUtilitiesGitScope.git_submodule_paths(
             workspace_root
         )
         if submodules_result.failure:
-            return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+            return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                 submodules_result.error or "failed to discover workspace repositories"
             )
         submodule_paths = submodules_result.value
@@ -68,10 +68,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
         if invalid_paths:
             invalid_text = ", ".join(path.as_posix() for path in invalid_paths)
-            return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+            return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                 f"transaction selected unknown repositories: {invalid_text}"
             )
-        created: t.MutableSequenceOf[m.Infra.RepositoryWorktree] = []
+        created: t.MutableSequenceOf[p.Infra.RepositoryWorktree] = []
         for relative_path in repository_paths:
             source_root = (
                 workspace_root
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
             if add_result.failure:
                 cls._cleanup_worktrees(created, worktree_root)
-                return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                     add_result.error or f"failed to create worktree for {relative_path}"
                 )
             repository = m.Infra.RepositoryWorktree(
@@ -107,11 +107,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
             if copy_result.failure:
                 cls._cleanup_worktrees(created, worktree_root)
-                return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                     copy_result.error
                     or f"failed to reproduce dirty state for {relative_path}"
                 )
-        checkpointed: t.MutableSequenceOf[m.Infra.RepositoryWorktree] = []
+        checkpointed: t.MutableSequenceOf[p.Infra.RepositoryWorktree] = []
         for repository in sorted(
             created, key=lambda item: len(Path(item.relative_path).parts), reverse=True
         ):
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             )
             if checkpoint_result.failure:
                 cls._cleanup_worktrees(created, worktree_root)
-                return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                     checkpoint_result.error
                     or f"failed to checkpoint {repository.relative_path}"
                 )
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     checkpoint_sha=checkpoint_result.value,
                 )
             )
-        return r[t.SequenceOf[m.Infra.RepositoryWorktree]].ok(
+        return r[t.SequenceOf[p.Infra.RepositoryWorktree]].ok(
             tuple(
                 sorted(
                     checkpointed,
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         command: t.StrSequence,
         environment: t.StrMapping,
         timeout_seconds: int,
-    ) -> m.Infra.LintSnapshot:
+    ) -> p.Infra.LintSnapshot:
         """Capture one lint command without hiding a non-zero exit status."""
         result = u.Cli.run_raw(
             command, cwd=worktree_root, env=environment, timeout=timeout_seconds
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         environment: t.StrMapping,
         timeout_seconds: int,
         selected_repositories: t.StrSequence,
-    ) -> t.VariadicTuple[m.Infra.LintSnapshot]:
+    ) -> t.VariadicTuple[p.Infra.LintSnapshot]:
         """Capture canonical lint commands for selected repositories only."""
         targets = selected_repositories or (Path().as_posix(),)
         return tuple(
@@ -348,8 +348,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _lint_regressed(
-        before: t.SequenceOf[m.Infra.LintSnapshot],
-        after: t.SequenceOf[m.Infra.LintSnapshot],
+        before: t.SequenceOf[p.Infra.LintSnapshot],
+        after: t.SequenceOf[p.Infra.LintSnapshot],
     ) -> bool:
         """Return whether any lint tool gained diagnostics or newly failed."""
         return any(
@@ -361,22 +361,22 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _repository_deltas(
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
-    ) -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
+        repositories: t.SequenceOf[p.Infra.RepositoryWorktree],
+    ) -> p.Result[t.SequenceOf[p.Infra.RepositoryDelta]]:
         """Capture operation-only deltas from every isolated repository."""
-        deltas: t.MutableSequenceOf[m.Infra.RepositoryDelta] = []
+        deltas: t.MutableSequenceOf[p.Infra.RepositoryDelta] = []
         for repository in repositories:
             result = FlextInfraUtilitiesGitScope.git_repository_delta(repository)
             if result.failure:
-                return r[t.SequenceOf[m.Infra.RepositoryDelta]].fail(
+                return r[t.SequenceOf[p.Infra.RepositoryDelta]].fail(
                     result.error
                     or f"failed to capture delta for {repository.relative_path}"
                 )
             deltas.append(result.value)
-        return r[t.SequenceOf[m.Infra.RepositoryDelta]].ok(tuple(deltas))
+        return r[t.SequenceOf[p.Infra.RepositoryDelta]].ok(tuple(deltas))
 
     @staticmethod
-    def _check_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
+    def _check_patches(deltas: t.SequenceOf[p.Infra.RepositoryDelta]) -> p.Result[bool]:
         """Dry-run every patch before any source worktree mutation."""
         for delta in deltas:
             result = FlextInfraUtilitiesGitScope.git_check_patch(delta)
@@ -387,7 +387,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return r[bool].ok(True)
 
     @staticmethod
-    def _apply_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
+    def _apply_patches(deltas: t.SequenceOf[p.Infra.RepositoryDelta]) -> p.Result[bool]:
         """Apply every previously checked patch, deepest repositories first."""
         ordered = sorted(
             deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
@@ -402,7 +402,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _cleanup_worktrees(
-        cls, repositories: t.SequenceOf[m.Infra.RepositoryWorktree], worktree_root: Path
+        cls, repositories: t.SequenceOf[p.Infra.RepositoryWorktree], worktree_root: Path
     ) -> p.Result[bool]:
         """Remove only transaction-owned worktrees and their remaining directory."""
         failures: t.MutableSequenceOf[str] = []
@@ -431,7 +431,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def execute_worktree_transaction(
         cls, request: m.Infra.WorktreeTransactionRequest
-    ) -> p.Result[m.Infra.WorktreeTransactionReport]:
+    ) -> p.Result[p.Infra.WorktreeTransactionReport]:
         """Execute, validate, optionally apply, and always remove one worktree."""
         workspace_root = request.workspace_root.resolve()
         transaction_id = uuid4().hex
@@ -448,11 +448,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
             workspace_root, worktree_root, transaction_id, request.selected_repositories
         )
         if create_result.failure:
-            return r[m.Infra.WorktreeTransactionReport].fail(
+            return r[p.Infra.WorktreeTransactionReport].fail(
                 create_result.error or "failed to create complete worktree"
             )
         repositories = create_result.value
-        report_result: p.Result[m.Infra.WorktreeTransactionReport]
+        report_result: p.Result[p.Infra.WorktreeTransactionReport]
         try:
             report_result = cls._execute_isolated(
                 request,
@@ -464,7 +464,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             u.Cli.info(f"worktree transaction {transaction_id}: cleaning up")
             cleanup_result = cls._cleanup_worktrees(repositories, worktree_root)
         if cleanup_result.failure:
-            return r[m.Infra.WorktreeTransactionReport].fail(
+            return r[p.Infra.WorktreeTransactionReport].fail(
                 cleanup_result.error or "failed to remove transaction worktree"
             )
         return report_result
@@ -476,8 +476,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
         *,
         transaction_id: str,
         worktree_root: Path,
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
-    ) -> p.Result[m.Infra.WorktreeTransactionReport]:
+        repositories: t.SequenceOf[p.Infra.RepositoryWorktree],
+    ) -> p.Result[p.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
         environment = cls._transaction_environment(worktree_root)
         u.Cli.info(f"worktree transaction {transaction_id}: lint before")
@@ -521,7 +521,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         u.Cli.info(f"worktree transaction {transaction_id}: repository deltas")
         deltas_result = cls._repository_deltas(repositories)
         if deltas_result.failure:
-            return r[m.Infra.WorktreeTransactionReport].fail(
+            return r[p.Infra.WorktreeTransactionReport].fail(
                 deltas_result.error or "failed to capture repository deltas"
             )
         deltas = deltas_result.value
@@ -563,7 +563,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             summary = f"{summary}; apply-error={apply_error}"
         if out_of_scope:
             summary = f"{summary}; out-of-scope={','.join(out_of_scope)}"
-        return r[m.Infra.WorktreeTransactionReport].ok(
+        return r[p.Infra.WorktreeTransactionReport].ok(
             m.Infra.WorktreeTransactionReport(
                 transaction_id=transaction_id,
                 command=relocated,

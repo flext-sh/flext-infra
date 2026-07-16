@@ -61,7 +61,7 @@ class FlextInfraCodegenCensus(s[str]):
         *,
         output_format: str = c.Cli.OutputFormats.JSON,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> t.SequenceOf[m.Infra.CensusReport]:
+    ) -> t.SequenceOf[p.Infra.CensusReport]:
         """Run census on all projects in workspace.
 
         Args:
@@ -82,7 +82,7 @@ class FlextInfraCodegenCensus(s[str]):
         workspace: Path,
         *,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> t.SequenceOf[m.Infra.CensusReport]:
+    ) -> t.SequenceOf[p.Infra.CensusReport]:
         """Census all projects in workspace using the standard path."""
         if projects is not None:
             selected_projects = tuple(projects)
@@ -93,7 +93,7 @@ class FlextInfraCodegenCensus(s[str]):
             )
         return [self._census_project(project) for project in selected_projects]
 
-    def _census_project(self, project: p.Infra.ProjectInfo) -> m.Infra.CensusReport:
+    def _census_project(self, project: p.Infra.ProjectInfo) -> p.Infra.CensusReport:
         """Run census on a single project."""
         violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate_project(project.path)

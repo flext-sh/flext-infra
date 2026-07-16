@@ -35,14 +35,14 @@ class FlextInfraLocCapGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
         issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 
     @classmethod
-    def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
+    def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[p.Infra.Issue, ...]:
         """Extract over-cap modules from a tokei `--output json` payload.
 
         Pure function (no subprocess) so the cap logic is unit-testable against
@@ -53,7 +53,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
         data = parsed.unwrap() if parsed.success else empty
         if not isinstance(data, Mapping):
             return ()
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         for language, payload in data.items():
             if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(
                 payload, Mapping

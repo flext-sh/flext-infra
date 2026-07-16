@@ -18,7 +18,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
+    ) -> t.SequenceOf[p.Infra.ClassPlacementViolation]:
         """Detect classes and class-level constants outside canonical families."""
         if u.Infra.matches_root_namespace_file(ctx.file_path.name):
             return []
@@ -29,7 +29,7 @@ class FlextInfraClassPlacementDetector:
             return []
         file_path = ctx.file_path
         parts = file_path.parts
-        violations: list[m.Infra.ClassPlacementViolation] = []
+        violations: list[p.Infra.ClassPlacementViolation] = []
 
         governed_classes = (
             FlextInfraClassPlacementDetector._governed_classes_with_family(
@@ -56,7 +56,7 @@ class FlextInfraClassPlacementDetector:
         if not FlextInfraClassPlacementDetector._in_canonical_location(
             "c", parts, file_path.name
         ):
-            classvar_violations: list[m.Infra.ClassPlacementViolation] = []
+            classvar_violations: list[p.Infra.ClassPlacementViolation] = []
             for ci in FlextInfraClassPlacementDetector._public_classes(
                 ctx.rope_project, res
             ):
@@ -114,9 +114,9 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _governed_classes_with_family(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> tuple[tuple[m.Infra.ClassInfo, str], ...]:
+    ) -> tuple[tuple[p.Infra.ClassInfo, str], ...]:
         """Return public governed classes with their family letters."""
-        results: list[tuple[m.Infra.ClassInfo, str]] = []
+        results: list[tuple[p.Infra.ClassInfo, str]] = []
         for ci in u.Infra.get_class_info(rope_project, resource):
             if ci.name.startswith("_"):
                 continue
@@ -133,7 +133,7 @@ class FlextInfraClassPlacementDetector:
         ci: m.Infra.ClassInfo,
         family: str,
         fixable: bool,
-    ) -> m.Infra.ClassPlacementViolation:
+    ) -> p.Infra.ClassPlacementViolation:
         """Build a ClassPlacementViolation for a misplaced class."""
         return m.Infra.ClassPlacementViolation(
             file=str(ctx.file_path),
@@ -210,7 +210,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _public_classes(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-    ) -> t.SequenceOf[m.Infra.ClassInfo]:
+    ) -> t.SequenceOf[p.Infra.ClassInfo]:
         """Return all public top-level classes in a resource."""
         return tuple(
             ci
@@ -238,7 +238,7 @@ class FlextInfraClassPlacementDetector:
         resource: t.Infra.RopeResource,
         *,
         class_name: str,
-    ) -> t.SequenceOf[m.Infra.ConstantInfo]:
+    ) -> t.SequenceOf[p.Infra.ConstantInfo]:
         """Return class-level constants declared in ``class_name``'s body.
 
         Includes explicit ``ClassVar[...]`` annotations and implicit
@@ -252,7 +252,7 @@ class FlextInfraClassPlacementDetector:
         body = FlextInfraClassPlacementDetector._class_body_nodes(
             tree, class_name=class_name
         )
-        constants: list[m.Infra.ConstantInfo] = []
+        constants: list[p.Infra.ConstantInfo] = []
         for node in body:
             node_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(node)
             if node_kind == "AnnAssign":
@@ -266,7 +266,7 @@ class FlextInfraClassPlacementDetector:
         return tuple(constants)
 
     @staticmethod
-    def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _annassign_constant(node: object) -> p.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
         target_name = FlextInfraUtilitiesRopeAnalysis.name_of(
             getattr(node, "target", None)
@@ -293,7 +293,7 @@ class FlextInfraClassPlacementDetector:
         )
 
     @staticmethod
-    def _assign_constant(node: object) -> m.Infra.ConstantInfo | None:
+    def _assign_constant(node: object) -> p.Infra.ConstantInfo | None:
         """Return ConstantInfo for an implicit Assign node, or None if not a violation."""
         targets = getattr(node, "targets", None)
         if not isinstance(targets, (list, tuple)) or len(targets) != 1:

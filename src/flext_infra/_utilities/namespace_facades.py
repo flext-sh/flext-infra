@@ -9,7 +9,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra import c, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_common import (
@@ -125,7 +125,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         *,
         project_root: Path,
         project_name: str,
-        facade_statuses: t.SequenceOf[m.Infra.FacadeStatus],
+        facade_statuses: t.SequenceOf[p.Infra.FacadeStatus],
         workspace_root: Path | None = None,
     ) -> None:
         """Ensure missing facades."""

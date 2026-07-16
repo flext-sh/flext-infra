@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesRefactor:
@@ -69,7 +69,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def write_impact_map(
-        results: t.SequenceOf[m.Infra.Result], output_path: Path
+        results: t.SequenceOf[p.Infra.Result], output_path: Path
     ) -> p.Result[bool]:
         """Write refactor impact map JSON to disk."""
         payload = {

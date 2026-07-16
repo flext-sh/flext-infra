@@ -32,7 +32,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Scan one project's Python sources for abstraction-boundary breaches."""
         _ = ctx
         started = time.monotonic()
@@ -58,8 +58,8 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         return self._result(project_dir, started, issues)
 
     def _result(
-        self, project_dir: Path, started: float, issues: t.SequenceOf[m.Infra.Issue]
-    ) -> m.Infra.GateExecution:
+        self, project_dir: Path, started: float, issues: t.SequenceOf[p.Infra.Issue]
+    ) -> p.Infra.GateExecution:
         """Assemble the gate execution from collected issues."""
         return self._build_gate_result(
             result=m.Infra.GateResult(
@@ -73,7 +73,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             raw_output="\n".join(issue.formatted for issue in issues),
         )
 
-    def _scan_file(self, path: Path, project: str) -> t.SequenceOf[m.Infra.Issue]:
+    def _scan_file(self, path: Path, project: str) -> t.SequenceOf[p.Infra.Issue]:
         """Return boundary violations for a single file via the c.Infra catalog."""
         read = u.Cli.files_read_text(path)
         if read.failure:
@@ -82,7 +82,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         posix = str(path).replace("\\", "/")
         if any(frag in posix for frag in c.Infra.BOUNDARY_SELF_FILES):
             return []
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         click_ok = any(frag in posix for frag in c.Infra.BOUNDARY_CLICK_FILES)
         for lib, regex, replacement in c.Infra.BOUNDARY_BANNED_RULES:
             if lib == "click" and click_ok:
@@ -104,11 +104,11 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     def _concrete_cli_issues(
         self, path: Path, text: str, posix: str
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> t.SequenceOf[p.Infra.Issue]:
         """Flag concrete FlextCli<X> imports outside src extension files."""
         if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
             return ()
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
             for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(
                 match.group("imports")
@@ -120,7 +120,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
                 )
         return issues
 
-    def _issue(self, path: Path, message: str) -> m.Infra.Issue:
+    def _issue(self, path: Path, message: str) -> p.Infra.Issue:
         """Build a boundary Issue anchored at the file head."""
         return m.Infra.Issue(
             file=str(path),
@@ -142,7 +142,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Unused — `check` is overridden directly."""
         _ = result, project_dir, ctx
         return True, ()

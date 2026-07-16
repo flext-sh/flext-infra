@@ -21,7 +21,7 @@ from tests import t
 
 def make_config(
     workspace_root: Path, *, project_names: list[str] | None = None
-) -> m.Infra.ReleaseOrchestratorConfig:
+) -> p.Infra.ReleaseOrchestratorConfig:
     """Build the validated release configuration used by public probes."""
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,

@@ -110,7 +110,7 @@ class FlextInfraUtilitiesRefactorCensus:
             return None
         ranges_by_file: dict[Path, list[t.IntPair]] = defaultdict(list)
         ranges_by_file[definition_path].append(definition_range)
-        sites_by_path: dict[Path, list[m.Infra.Census.ReferenceSite]] = defaultdict(
+        sites_by_path: dict[Path, list[p.Infra.Census.ReferenceSite]] = defaultdict(
             list
         )
         for site in FlextInfraUtilitiesRefactorCensus._supporting_reference_sites(
@@ -141,7 +141,7 @@ class FlextInfraUtilitiesRefactorCensus:
         source: str,
         candidate: m.Infra.Census.RemovalCandidate,
         *,
-        sites: tuple[m.Infra.Census.ReferenceSite, ...],
+        sites: tuple[p.Infra.Census.ReferenceSite, ...],
     ) -> tuple[t.IntPair, ...] | None:
         """Plan removable top-level ranges for one support file."""
         planned_ranges: list[t.IntPair] = []
@@ -852,7 +852,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def _supporting_reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+    ) -> tuple[p.Infra.Census.ReferenceSite, ...]:
         """Supporting reference sites."""
         return (*candidate.example_reference_sites, *candidate.script_reference_sites)
 

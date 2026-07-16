@@ -15,7 +15,7 @@ class FlextInfraFutureAnnotationsDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.FutureAnnotationsViolation]:
+    ) -> t.SequenceOf[p.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
         resource = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_protected=True
@@ -30,7 +30,7 @@ class FlextInfraFutureAnnotationsDetector:
             return []
         if c.Infra.FUTURE_ANNOTATIONS_RE.search(source):
             return []
-        return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
+        return [p.Infra.FutureAnnotationsViolation(file=str(file_path))]
 
 
 __all__: list[str] = ["FlextInfraFutureAnnotationsDetector"]

@@ -83,7 +83,7 @@ class FlextInfraRefactorCensusInventoryMixin:
     @classmethod
     def parent_alias_collisions(
         cls, report: m.Infra.Census.WorkspaceReport, *, workspace_root: Path
-    ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
+    ) -> tuple[tuple[p.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 
         Returns ``(symbol, parent_paths)`` pairs where the consumer's
@@ -109,7 +109,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
         """
         inventory = cls._build_parent_inventory(workspace_root)
-        collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
+        collisions: list[tuple[p.Infra.Census.Object, t.StrSequence]] = []
         for project_report in report.projects:
             self_pkg_prefix = f"{project_report.project.replace('-', '_')}."
             for obj in project_report.objects:

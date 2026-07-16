@@ -39,7 +39,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     )
 
     @staticmethod
-    def default_config() -> m.Infra.BaseMkConfig:
+    def default_config() -> p.Infra.BaseMkConfig:
         """Return default base.mk generation configuration."""
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.DEFAULT_UNNAMED,
@@ -60,19 +60,19 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def normalize_config(
         settings: m.Infra.BaseMkConfig | t.ScalarMapping | None,
-    ) -> p.Result[m.Infra.BaseMkConfig]:
+    ) -> p.Result[p.Infra.BaseMkConfig]:
         """Normalize user-provided config to the canonical BaseMk model."""
         if settings is None:
-            return r[m.Infra.BaseMkConfig].ok(
+            return r[p.Infra.BaseMkConfig].ok(
                 FlextInfraBaseMkTemplateRenderer.default_config()
             )
         if isinstance(settings, m.Infra.BaseMkConfig):
-            return r[m.Infra.BaseMkConfig].ok(settings)
+            return r[p.Infra.BaseMkConfig].ok(settings)
         try:
             normalized = m.Infra.BaseMkConfig.model_validate(settings)
-            return r[m.Infra.BaseMkConfig].ok(normalized)
+            return r[p.Infra.BaseMkConfig].ok(normalized)
         except c.EXC_TYPE_VALIDATION as exc:
-            return r[m.Infra.BaseMkConfig].fail_op(
+            return r[p.Infra.BaseMkConfig].fail_op(
                 "base.mk configuration validation", exc
             )
 

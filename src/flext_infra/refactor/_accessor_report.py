@@ -41,10 +41,10 @@ class FlextInfraAccessorMigrationReportMixin:
         *,
         source: str,
         updated_source: str,
-        automated_changes: t.SequenceOf[m.Infra.AccessorMigrationChange],
-        warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange],
+        automated_changes: t.SequenceOf[p.Infra.AccessorMigrationChange],
+        warnings: t.MutableSequenceOf[p.Infra.AccessorMigrationChange],
         include_preview: bool,
-    ) -> m.Infra.AccessorMigrationFile:
+    ) -> p.Infra.AccessorMigrationFile:
         """Process file."""
         lint_before: dict[str, t.StrSequence] = {}
         lint_after: dict[str, t.StrSequence] = {}

@@ -24,7 +24,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
 
         def build_plan(
             self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
-        ) -> m.Infra.LazyInitPlan: ...
+        ) -> p.Infra.LazyInitPlan: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
         """Return all export names for a package (init + source plans)."""
@@ -93,7 +93,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         )
         return project_pkg
 
-    def _package_entry(self, pkg_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
+    def _package_entry(self, pkg_dir: Path) -> p.Infra.RopePackageIndexEntry | None:
         """Return the workspace index entry for a package directory."""
         return self.rope_workspace.package(pkg_dir)
 

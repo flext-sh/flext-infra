@@ -18,7 +18,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
+    ) -> t.SequenceOf[p.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
         if ctx.project_root is not None and not cls._is_src_file(
             file_path=ctx.file_path, project_root=ctx.project_root
@@ -67,7 +67,7 @@ class FlextInfraLooseObjectDetector:
                 )
             )
 
-        class_symbols: t.MutableSequenceOf[m.Infra.SymbolInfo] = []
+        class_symbols: t.MutableSequenceOf[p.Infra.SymbolInfo] = []
         for symbol in u.Infra.get_module_symbols(rope_project, res):
             if (symbol.line, symbol.name) in logger_keys:
                 continue
@@ -149,7 +149,7 @@ class FlextInfraLooseObjectDetector:
 
     @classmethod
     def _allows_private_base_module_classes(
-        cls, *, file_path: Path, class_symbols: t.SequenceOf[m.Infra.SymbolInfo]
+        cls, *, file_path: Path, class_symbols: t.SequenceOf[p.Infra.SymbolInfo]
     ) -> bool:
         """Return whether a private ``_base.py`` module satisfies MRO contracts."""
         if file_path.name != c.Infra.NAMESPACE_PRIVATE_BASE_MODULE:
@@ -170,13 +170,13 @@ class FlextInfraLooseObjectDetector:
         resource: t.Infra.RopeResource,
         file_path: Path,
         class_stem: str,
-    ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
+    ) -> t.SequenceOf[p.Infra.LooseObjectViolation]:
         """Detect loose Final/collection/Enum/TypeVar objects via rope structure."""
         _ = rope_project
         statements = u.Infra.logical_statements(resource.read())
         file_str = str(file_path)
         seen: set[tuple[int, str]] = set()
-        violations: list[m.Infra.LooseObjectViolation] = []
+        violations: list[p.Infra.LooseObjectViolation] = []
 
         def _add(line: int, name: str, kind: str, suffix: str) -> None:
             key = (line, name)
@@ -348,7 +348,7 @@ class FlextInfraLooseObjectDetector:
     @staticmethod
     def _detect_logger_assignments(
         *, lines: t.StrSequence, file_str: str, class_stem: str
-    ) -> t.SequenceOf[m.Infra.LooseObjectViolation]:
+    ) -> t.SequenceOf[p.Infra.LooseObjectViolation]:
         """Detect top-level logger assignments directly from module source."""
         return tuple(
             m.Infra.LooseObjectViolation(

@@ -18,7 +18,7 @@ from tests import m, t, u
 
 def _project_info(
     project: Path, *, package_name: str = "test_proj"
-) -> m.Infra.ProjectInfo:
+) -> p.Infra.ProjectInfo:
     return u.Tests.create_project_info(
         project, name=project.name, package_name=package_name
     )

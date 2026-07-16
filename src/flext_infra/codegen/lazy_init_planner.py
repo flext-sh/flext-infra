@@ -84,7 +84,7 @@ class FlextInfraCodegenLazyInitPlanner(
     @override
     def build_plan(
         self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
-    ) -> m.Infra.LazyInitPlan:
+    ) -> p.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
         empty_action: c.Infra.LazyInitAction = (
@@ -172,7 +172,7 @@ class FlextInfraCodegenLazyInitPlanner(
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
         return plan
 
-    def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
+    def context(self, pkg_dir: Path) -> p.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""
         return self.rope_workspace.package_context(pkg_dir)
 

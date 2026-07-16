@@ -45,7 +45,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         *,
         dry_run: bool = False,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
-    ) -> t.SequenceOf[m.Infra.ScaffoldResult]:
+    ) -> t.SequenceOf[p.Infra.ScaffoldResult]:
         """Scaffold missing base modules for all projects in workspace.
 
         Args:
@@ -70,7 +70,7 @@ class FlextInfraCodegenScaffolder(s[str]):
 
     def _scaffold_project(
         self, project: p.Infra.ProjectInfo, *, dry_run: bool = False
-    ) -> m.Infra.ScaffoldResult:
+    ) -> p.Infra.ScaffoldResult:
         """Scaffold missing base modules for a single project.
 
         Args:

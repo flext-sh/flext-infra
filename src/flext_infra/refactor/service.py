@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
@@ -64,7 +64,7 @@ class FlextInfraRefactorService:
         *,
         dry_run: bool = False,
         gates: t.StrSequence | None = None,
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_file(file_path, dry_run=dry_run, gates=gates)
 
@@ -74,7 +74,7 @@ class FlextInfraRefactorService:
         *,
         dry_run: bool = False,
         gates: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_files(
             file_paths, dry_run=dry_run, gates=gates
@@ -88,7 +88,7 @@ class FlextInfraRefactorService:
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
         gates: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Delegate project refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_project(
             project_path,
@@ -106,7 +106,7 @@ class FlextInfraRefactorService:
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
         gates: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
             workspace_root,

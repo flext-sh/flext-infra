@@ -57,7 +57,7 @@ class FlextInfraUtilitiesDocsBuild:
     @staticmethod
     def docs_run_mkdocs(
         scope: m.Infra.DocScope, *, runner: p.Cli.CommandRunner
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
         settings = scope.path / "mkdocs.yml"
         if not settings.exists():
@@ -174,7 +174,7 @@ class FlextInfraUtilitiesDocsBuild:
     @staticmethod
     def docs_serve_mkdocs(
         scope: m.Infra.DocScope, *, dev_addr: str, livereload: bool, strict: bool
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the MkDocs Python serve API (blocking)."""
         settings = scope.path / "mkdocs.yml"
         if not settings.exists():

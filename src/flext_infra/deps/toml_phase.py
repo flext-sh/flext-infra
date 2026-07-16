@@ -23,7 +23,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
         t.Cli.TomlDocument, m.Field(exclude=True, description="Target TOML document")
     ]
     phases: Annotated[
-        t.SequenceOf[m.Infra.Deps.Toml.PhaseConfig],
+        t.SequenceOf[p.Infra.Deps.Toml.PhaseConfig],
         m.Field(
             default_factory=tuple,
             description="Ordered TOML transformation phases to apply.",

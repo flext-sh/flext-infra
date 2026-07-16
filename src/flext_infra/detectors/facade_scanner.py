@@ -17,7 +17,7 @@ class FlextInfraScanner:
     @classmethod
     def scan_project(
         cls, *, project_root: Path, rope_project: t.Infra.RopeProject
-    ) -> t.SequenceOf[m.Infra.FacadeStatus]:
+    ) -> t.SequenceOf[p.Infra.FacadeStatus]:
         """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
         layout = u.Infra.layout(project_root)
         if layout is None or not layout.src_dir.is_dir():
@@ -29,7 +29,7 @@ class FlextInfraScanner:
             ]
         stem = layout.class_stem
         src_dir = layout.src_dir
-        results: list[m.Infra.FacadeStatus] = []
+        results: list[p.Infra.FacadeStatus] = []
         for family, suffix in c.Infra.FAMILY_SUFFIXES.items():
             expected = f"{stem}{suffix}"
             pattern = c.Infra.FAMILY_FILES[family]

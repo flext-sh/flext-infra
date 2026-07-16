@@ -29,7 +29,7 @@ class FlextInfraCli(type(cli_facade)):
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
-    _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
+    _GROUP_COMMANDS: ClassVar[dict[str, tuple[p.Cli.ResultCommandRoute, ...]]] = {
         **_ROUTES_CODEGEN,
         **_ROUTES_VALIDATE,
         **_ROUTES_WORKSPACE,

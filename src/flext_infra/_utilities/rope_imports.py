@@ -11,7 +11,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_infra import c, p, r, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -808,8 +808,8 @@ class FlextInfraUtilitiesRopeImports:
     @staticmethod
     def rewrite_foreign_canonical_alias_violations(
         rope_project: t.Infra.RopeProject,
-        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite foreign canonical alias imports to local project facades.
 

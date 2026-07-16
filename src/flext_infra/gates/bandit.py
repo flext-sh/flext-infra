@@ -49,10 +49,10 @@ class FlextInfraBanditGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         try:
             parsed_payload = self._parse_bandit_payload(result.stdout or "{}")
         except c.EXC_VALIDATION_TYPE as err:
@@ -105,7 +105,7 @@ class FlextInfraBanditGate(FlextInfraGate):
     @staticmethod
     def _bandit_issues(
         bandit_data: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    ) -> t.SequenceOf[p.Infra.Issue]:
         """Build typed gate issues from parsed Bandit result entries."""
         return tuple(
             m.Infra.Issue(
@@ -124,7 +124,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _parse_error_issue(message: str) -> m.Infra.Issue:
+    def _parse_error_issue(message: str) -> p.Infra.Issue:
         """Build the canonical Bandit output parse issue."""
         return m.Infra.Issue(
             file="<bandit-output>",

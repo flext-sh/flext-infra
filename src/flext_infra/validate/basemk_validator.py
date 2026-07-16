@@ -28,7 +28,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         ),
     ] = None
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Validate that canonical base.mk matches generated template output.
 
         Args:
@@ -41,9 +41,9 @@ class FlextInfraBaseMkValidator(s[bool]):
         try:
             source = self._canonical_source(workspace_root)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
+            return r[p.Infra.ValidationReport].fail_op("base.mk validation", exc)
         if not source.exists():
-            return r[m.Infra.ValidationReport].ok(self._missing_source_report(source))
+            return r[p.Infra.ValidationReport].ok(self._missing_source_report(source))
         return self._compare_with_generated(source)
 
     @staticmethod
@@ -59,7 +59,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         return owner / c.Infra.BASE_MK
 
     @staticmethod
-    def _missing_source_report(source: Path) -> m.Infra.ValidationReport:
+    def _missing_source_report(source: Path) -> p.Infra.ValidationReport:
         """Return the canonical missing-base.mk report."""
         violation = f"missing canonical base.mk: {source}"
         return m.Infra.ValidationReport(
@@ -68,12 +68,12 @@ class FlextInfraBaseMkValidator(s[bool]):
 
     def _compare_with_generated(
         self, source: Path
-    ) -> p.Result[m.Infra.ValidationReport]:
+    ) -> p.Result[p.Infra.ValidationReport]:
         """Compare source base.mk with freshly generated content."""
         generator = self.generator or FlextInfraBaseMkGenerator()
         gen_result = generator.generate_basemk()
         if gen_result.failure:
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
                     passed=False,
                     violations=[gen_result.error or "base.mk generation failed"],
@@ -85,8 +85,8 @@ class FlextInfraBaseMkValidator(s[bool]):
                 source, gen_result.value
             )
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
-        return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].fail_op("base.mk validation", exc)
+        return r[p.Infra.ValidationReport].ok(
             self._build_freshness_report(existing_hash, generated_hash)
         )
 
@@ -98,7 +98,7 @@ class FlextInfraBaseMkValidator(s[bool]):
     @staticmethod
     def _build_freshness_report(
         existing_hash: str, generated_hash: str
-    ) -> m.Infra.ValidationReport:
+    ) -> p.Infra.ValidationReport:
         """Build freshness validation report from hash comparison."""
         violations: t.MutableSequenceOf[str] = []
         if generated_hash != existing_hash:

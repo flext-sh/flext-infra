@@ -33,7 +33,7 @@ class TestBuilderCore:
         self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with valid scope returns success."""
-        reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
+        reports: t.SequenceOf[p.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:

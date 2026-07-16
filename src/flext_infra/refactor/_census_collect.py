@@ -50,21 +50,21 @@ class FlextInfraRefactorCensusCollectMixin(
         ) -> bool: ...
         @staticmethod
         def _duplicate_groups(
-            project_objects: tuple[list[m.Infra.Census.Object], ...],
-        ) -> tuple[m.Infra.Census.DuplicateGroup, ...]: ...
+            project_objects: tuple[list[p.Infra.Census.Object], ...],
+        ) -> tuple[p.Infra.Census.DuplicateGroup, ...]: ...
         @staticmethod
         def _object_key(item: m.Infra.Census.Object) -> str: ...
         def _project_report(
             self,
             project: str,
             *,
-            objects: tuple[m.Infra.Census.Object, ...],
-            seed_violations: tuple[m.Infra.Census.Violation, ...],
-            fixes: tuple[m.Infra.Census.Fix, ...],
+            objects: tuple[p.Infra.Census.Object, ...],
+            seed_violations: tuple[p.Infra.Census.Violation, ...],
+            fixes: tuple[p.Infra.Census.Fix, ...],
             duplicate_keys: frozenset[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None = None,
-        ) -> m.Infra.Census.ProjectReport: ...
+        ) -> p.Infra.Census.ProjectReport: ...
 
     def _scan_module(
         self,
@@ -72,9 +72,9 @@ class FlextInfraRefactorCensusCollectMixin(
         module: m.Infra.RopeModuleIndexEntry,
         config: m.Infra.Census.ScanConfig,
         *,
-        project_objects: dict[str, list[m.Infra.Census.Object]],
-        project_violations: dict[str, list[m.Infra.Census.Violation]],
-        project_fixes: dict[str, list[m.Infra.Census.Fix]],
+        project_objects: dict[str, list[p.Infra.Census.Object]],
+        project_violations: dict[str, list[p.Infra.Census.Violation]],
+        project_fixes: dict[str, list[p.Infra.Census.Fix]],
         report_projects: set[str],
     ) -> None:
         """Scan one module, accumulating objects/violations/fixes per project."""
@@ -82,8 +82,8 @@ class FlextInfraRefactorCensusCollectMixin(
         project = self._project_name_for_module(module, convention)
         if not project:
             return
-        module_objects: tuple[m.Infra.Census.Object, ...] | None = None
-        objects: tuple[m.Infra.Census.Object, ...] = ()
+        module_objects: tuple[p.Infra.Census.Object, ...] | None = None
+        objects: tuple[p.Infra.Census.Object, ...] = ()
         if config.collect_object_inventory:
             try:
                 module_objects = tuple(
@@ -140,13 +140,13 @@ class FlextInfraRefactorCensusCollectMixin(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         *,
-        project_objects: dict[str, list[m.Infra.Census.Object]],
-        project_violations: dict[str, list[m.Infra.Census.Violation]],
-        project_fixes: dict[str, list[m.Infra.Census.Fix]],
+        project_objects: dict[str, list[p.Infra.Census.Object]],
+        project_violations: dict[str, list[p.Infra.Census.Violation]],
+        project_fixes: dict[str, list[p.Infra.Census.Fix]],
         report_projects: set[str],
         rule_names: t.StrSequence | None,
         selected_rules: frozenset[str] | None,
-    ) -> m.Infra.Census.WorkspaceReport:
+    ) -> p.Infra.Census.WorkspaceReport:
         """Aggregate per-project scans into the final workspace census report."""
         duplicates = self._duplicate_groups(tuple(project_objects.values()))
         duplicate_keys = frozenset(

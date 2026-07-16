@@ -27,7 +27,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
 
     def _resolved_projects(
         self: _WorkspaceOrchestratorProtocol,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Resolve selected projects using workspace discovery."""
         return u.Infra.resolve_projects(
             self.root, self.project_names or (), include_attached=True
@@ -45,7 +45,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
 
     @staticmethod
     def _prepare_projects(
-        projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+        projects: t.SequenceOf[p.Infra.ProjectInfo], *, workspace_root: Path
     ) -> p.Result[bool]:
         """Ensure each selected project has ``base.mk`` and ``Makefile``."""
         for project in projects:

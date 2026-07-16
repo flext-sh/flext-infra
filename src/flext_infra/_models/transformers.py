@@ -17,7 +17,7 @@ class FlextInfraModelsTransformers:
     class SourceRewrite(m.ArbitraryTypesModel):
         """One source rewrite: replace ``source[start:end]`` with ``text``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         start: Annotated[int, m.Field(description="Start byte offset in the source")]
         end: Annotated[int, m.Field(description="End byte offset in the source")]
@@ -49,7 +49,7 @@ class FlextInfraModelsTransformers:
     class HeaderInfo(m.ArbitraryTypesModel):
         """Structural summary of a module header."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         has_future_annotations: Annotated[
             bool, m.Field(description="Whether the module already imports annotations")

@@ -37,7 +37,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         apply: bool,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
-    ) -> m.Infra.MROMigrationReport:
+    ) -> p.Infra.MROMigrationReport:
         """Run scan, transform, rewrite, and validation phases."""
         start_time = perf_counter()
         normalized_target = self._normalize_target(target=target)
@@ -135,7 +135,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
     @classmethod
     def execute_command(
         cls, params: m.Infra.RefactorMigrateMroInput
-    ) -> p.Result[m.Infra.MROMigrationReport]:
+    ) -> p.Result[p.Infra.MROMigrationReport]:
         """Execute MRO migration directly from the canonical refactor payload."""
         report = cls(workspace_root=params.workspace_path).run(
             target=params.target or cls._DEFAULT_TARGET,
@@ -144,11 +144,11 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         )
         cli.display_text(cls.render_text(report))
         if report.errors:
-            return r[m.Infra.MROMigrationReport].fail("MRO migration had errors")
-        return r[m.Infra.MROMigrationReport].ok(report)
+            return r[p.Infra.MROMigrationReport].fail("MRO migration had errors")
+        return r[p.Infra.MROMigrationReport].ok(report)
 
     @classmethod
-    def run_as_hook(cls, path: Path, *, dry_run: bool) -> t.SequenceOf[m.Infra.Result]:
+    def run_as_hook(cls, path: Path, *, dry_run: bool) -> t.SequenceOf[p.Infra.Result]:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)

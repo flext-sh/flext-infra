@@ -30,13 +30,13 @@ class FlextInfraRefactorViolationAnalyzer(
     @classmethod
     def analyze_files(
         cls, files: t.SequenceOf[Path]
-    ) -> m.Infra.ViolationAnalysisReport:
+    ) -> p.Infra.ViolationAnalysisReport:
         """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
         per_file: MutableMapping[str, t.MutableIntMapping] = {}
-        helper_suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
+        helper_suggestions: t.MutableSequenceOf[p.Infra.HelperClassification] = []
         helper_totals: Counter[str] = Counter()
-        helper_manual_review: t.MutableSequenceOf[m.Infra.HelperClassification] = []
+        helper_manual_review: t.MutableSequenceOf[p.Infra.HelperClassification] = []
         for file_path in files:
             read = u.Cli.files_read_text(file_path)
             if read.failure:

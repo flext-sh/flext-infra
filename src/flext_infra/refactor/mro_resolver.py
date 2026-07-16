@@ -22,9 +22,9 @@ class FlextInfraRefactorMROResolver:
         expected_base_chains: t.MappingKV[
             c.Infra.FacadeFamily, t.SequenceOf[t.Infra.ExpectedBase]
         ],
-    ) -> t.VariadicTuple[m.Infra.FamilyMROResolution]:
+    ) -> t.VariadicTuple[p.Infra.FamilyMROResolution]:
         """Resolve expected and effective MRO data for all facade families."""
-        resolutions: t.MutableSequenceOf[m.Infra.FamilyMROResolution] = []
+        resolutions: t.MutableSequenceOf[p.Infra.FamilyMROResolution] = []
         for family in (
             c.Infra.FacadeFamily.C,
             c.Infra.FacadeFamily.T,
@@ -50,7 +50,7 @@ class FlextInfraRefactorMROResolver:
         family: c.Infra.FacadeFamily,
         facade_class: type,
         expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
-    ) -> m.Infra.FamilyMROResolution:
+    ) -> p.Infra.FamilyMROResolution:
         """Resolve family."""
         expected_names = cls._normalize_expected_chain(expected_chain=expected_chain)
         cls._validate_base_policy(

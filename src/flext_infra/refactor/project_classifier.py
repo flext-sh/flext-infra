@@ -32,7 +32,7 @@ class FlextInfraProjectClassifier(
         self._pyproject_payload = pyproject_payload
         self._src_path = self._project_root / c.Infra.DEFAULT_SRC_DIR
 
-    def classify(self) -> m.Infra.ProjectClassification:
+    def classify(self) -> p.Infra.ProjectClassification:
         """Return classification and family chains for this project."""
         project_name, dependencies = self._read_project_metadata()
         internal_dependencies = self._internal_dependencies(

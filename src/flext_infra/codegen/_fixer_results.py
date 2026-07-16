@@ -14,7 +14,7 @@ class FlextInfraCodegenFixerResultsMixin:
     """Private result and validation helpers for codegen fixer composition."""
 
     @staticmethod
-    def _empty_result(project_name: str) -> m.Infra.AutoFixResult:
+    def _empty_result(project_name: str) -> p.Infra.AutoFixResult:
         """Empty result."""
         return m.Infra.AutoFixResult(
             project=project_name,
@@ -26,7 +26,7 @@ class FlextInfraCodegenFixerResultsMixin:
     @staticmethod
     def _build_result(
         project_name: str, ctx: m.Infra.FixContext
-    ) -> m.Infra.AutoFixResult:
+    ) -> p.Infra.AutoFixResult:
         """Build result."""
         return m.Infra.AutoFixResult(
             project=project_name,
@@ -38,7 +38,7 @@ class FlextInfraCodegenFixerResultsMixin:
     @staticmethod
     def _load_initial_violations(
         ctx: m.Infra.FixContext, project_path: Path
-    ) -> t.SequenceOf[m.Infra.CensusViolation]:
+    ) -> t.SequenceOf[p.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure."""
         initial_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate_project(project_path)
@@ -63,7 +63,7 @@ class FlextInfraCodegenFixerResultsMixin:
     def _classify_remaining_violations(
         ctx: m.Infra.FixContext,
         project_path: Path,
-        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
+        initial_violations: t.SequenceOf[p.Infra.CensusViolation],
     ) -> None:
         """Re-run validation and split outstanding violations into fixed vs skipped."""
         remaining_result = u.Infra.parse_namespace_validation(

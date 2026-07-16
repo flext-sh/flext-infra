@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 
@@ -23,17 +23,17 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             *,
             dry_run: bool = False,
             gates: t.StrSequence | None = None,
-        ) -> t.SequenceOf[m.Infra.Result]: ...
+        ) -> t.SequenceOf[p.Infra.Result]: ...
 
         @staticmethod
-        def _error_result(fp: Path, error: str) -> m.Infra.Result: ...
+        def _error_result(fp: Path, error: str) -> p.Infra.Result: ...
 
         @staticmethod
         def _refactor_header(message: str) -> None: ...
 
     def _try_safety_checkpoint(
         self, target: Path, *, apply_safety: bool, dry_run: bool
-    ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
+    ) -> t.Pair[str, t.SequenceOf[p.Infra.Result] | None]:
         """Try safety checkpoint."""
         if not apply_safety or dry_run:
             return "", None
@@ -50,7 +50,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         target: Path,
         checkpoint_ref: str,
         processed_targets: t.StrSequence,
-        results: t.MutableSequenceOf[m.Infra.Result],
+        results: t.MutableSequenceOf[p.Infra.Result],
     ) -> None:
         """Finalize safety."""
         checkpoint = self.safety_manager.save_checkpoint_state(
@@ -91,7 +91,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         *,
         target: Path,
         checkpoint_ref: str,
-        results: t.MutableSequenceOf[m.Infra.Result],
+        results: t.MutableSequenceOf[p.Infra.Result],
         msg: str,
     ) -> None:
         """Stop processing, log, attempt rollback, and append a failure result.
@@ -116,13 +116,13 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
         gates: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Refactor files under configured project directories."""
         checkpoint_ref, error_results = self._try_safety_checkpoint(
             project_path, apply_safety=apply_safety, dry_run=dry_run
         )
         if error_results is not None:
-            results_out: t.SequenceOf[m.Infra.Result] = error_results
+            results_out: t.SequenceOf[p.Infra.Result] = error_results
             return results_out
         collected = u.Infra.collect_refactor_project_files(
             self.loader.settings, project_path, pattern=pattern
@@ -134,7 +134,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
                 )
             ]
         u.Cli.info(f"Found {len(collected)} files to process")
-        results: t.MutableSequenceOf[m.Infra.Result] = []
+        results: t.MutableSequenceOf[p.Infra.Result] = []
         results.extend(self.refactor_files(collected, dry_run=dry_run, gates=gates))
         results.extend(u.Infra.run_rope_post_hooks(project_path, dry_run=dry_run))
         if apply_safety and not dry_run:
@@ -154,7 +154,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
         apply_safety: bool = True,
         gates: t.StrSequence | None = None,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Refactor all discoverable workspace projects."""
         root = workspace_root.resolve()
         if not root.exists() or not root.is_dir():
@@ -169,9 +169,9 @@ class FlextInfraRefactorOrchestratorScopeMixin:
             root, apply_safety=apply_safety, dry_run=dry_run
         )
         if error_results is not None:
-            results_out: t.SequenceOf[m.Infra.Result] = error_results
+            results_out: t.SequenceOf[p.Infra.Result] = error_results
             return results_out
-        results: t.MutableSequenceOf[m.Infra.Result] = []
+        results: t.MutableSequenceOf[p.Infra.Result] = []
         processed: t.MutableSequenceOf[str] = []
         for project in projects:
             if apply_safety and self.safety_manager.emergency_stop_requested:

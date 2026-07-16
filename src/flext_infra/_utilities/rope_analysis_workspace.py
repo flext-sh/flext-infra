@@ -82,14 +82,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[
         dict[str, m.Infra.RopeModuleIndexEntry],
-        dict[Path, list[m.Infra.RopeModuleIndexEntry]],
+        dict[Path, list[p.Infra.RopeModuleIndexEntry]],
         dict[str, Path],
         dict[str, str],
         set[Path],
     ]:
         """Collect modules."""
         modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
-        modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
+        modules_by_dir: dict[Path, list[p.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}
         project_package_by_root: dict[str, str] = {}
         package_dirs: set[Path] = set()
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     @classmethod
     def index_rope_workspace(
         cls, rope_project: t.Infra.RopeProject, workspace_root: Path
-    ) -> m.Infra.RopeWorkspaceIndex:
+    ) -> p.Infra.RopeWorkspaceIndex:
         """Build a generic Rope workspace index for package-oriented planning."""
         resolved_root = workspace_root.resolve()
         (

@@ -44,9 +44,9 @@ class FlextInfraRefactorCensusRulesStructMixin:
             file_path: Path,
             *,
             convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+            parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
-        ) -> m.Infra.DetectorContext: ...
+        ) -> p.Infra.DetectorContext: ...
         @staticmethod
         def _raw_violation(
             *,
@@ -59,13 +59,13 @@ class FlextInfraRefactorCensusRulesStructMixin:
             description: str,
             fixable: bool = False,
             fix_action: str = "",
-        ) -> m.Infra.Census.Violation: ...
+        ) -> p.Infra.Census.Violation: ...
         @staticmethod
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
         def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...], name: str
-        ) -> m.Infra.Census.Object | None: ...
+            objects: tuple[p.Infra.Census.Object, ...], name: str
+        ) -> p.Infra.Census.Object | None: ...
 
     def _rule_class_placement(
         self,
@@ -73,17 +73,17 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for misplaced class declarations."""
         _ = symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraClassPlacementDetector.detect_file(ctx):
             matched = (
                 self._named_object(objects, detector_violation.name)
@@ -125,16 +125,16 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect private-root import bypasses without proposing a rewrite."""
         _ = objects, symbol_index, applied
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
+        violations: list[p.Infra.Census.Violation] = []
         for detector_violation in FlextInfraPrivateImportBypassDetector.detect_file(
             ctx
         ):
@@ -161,16 +161,16 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for compatibility-alias violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraCompatibilityAliasDetector.detect_file(ctx):
             matched = (
                 self._named_object(objects, detector_violation.alias_name)
@@ -227,19 +227,19 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for MRO-completeness violations."""
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
         mro_ctx = self._detector_context(
             rope, file_path, parse_failures=parse_failures, convention=convention
         )
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
             mro_ctx
         ):
@@ -292,17 +292,17 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for MRO-shape violations (manual-only)."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraMROShapeDetector.detect_file(ctx):
             object_kind = "class"
             if selected_kinds and object_kind not in selected_kinds:
@@ -341,17 +341,17 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for inline/lazy imports inside function bodies."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraInlineImportDetector.detect_file(ctx):
             object_kind = "import"
             if selected_kinds and object_kind not in selected_kinds:
@@ -395,17 +395,17 @@ class FlextInfraRefactorCensusRulesStructMixin:
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
+    ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect exception-silencing patterns; auto-fix deterministic sentinels."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
+        violations: list[p.Infra.Census.Violation] = []
+        fixes: list[p.Infra.Census.Fix] = []
         for detector_violation in FlextInfraSilentFailureDetector.detect_violations(
             ctx
         ):

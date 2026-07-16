@@ -140,7 +140,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         command_env = cls._command_env()
         gate_timeout = max(5, min(15, c.Infra.TIMEOUT_SHORT))
 
-        results: list[m.Infra.LintGateResult] = []
+        results: list[p.Infra.LintGateResult] = []
         ruff_template = next(
             (tmpl for tool, tmpl in selected_tools if tool == "ruff"), None
         )
@@ -211,7 +211,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         gate_timeout: int,
         tool_name: str,
         template: t.StrSequence,
-    ) -> m.Infra.LintGateResult:
+    ) -> p.Infra.LintGateResult:
         """Run one lint gate and return a validated result model."""
         cmd = [
             *cls._workspace_tool_command(workspace, template[0]),
@@ -231,7 +231,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _lint_snapshot_from_results(
-        results: t.SequenceOf[m.Infra.LintGateResult],
+        results: t.SequenceOf[p.Infra.LintGateResult],
     ) -> t.Infra.LintSnapshot:
         """Convert validated lint gate results into the public snapshot contract."""
         return {result.tool_name: result.errors for result in results if result.errors}

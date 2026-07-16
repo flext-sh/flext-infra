@@ -40,7 +40,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply AST-based fixers for auto-fixable smell findings.
 
         Runs the same scan as ``check()``, then attempts a registered fixer
@@ -92,7 +92,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """One cached full-workspace qlty scan, filtered to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
@@ -127,7 +127,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
         issues = self._issues_from_sarif(result.stdout or "{}", project_dir.name)
@@ -168,7 +168,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         fallback = Path.home() / c.Infra.QLTY_BINARY_FALLBACK_SUFFIX
         return str(fallback) if fallback.is_file() else None
 
-    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
         return m.Infra.Issue(
             file=c.Infra.PYPROJECT_FILENAME,
@@ -189,7 +189,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @classmethod
     def _issues_from_sarif(
         cls, sarif_json: str, project_name: str
-    ) -> tuple[m.Infra.Issue, ...]:
+    ) -> tuple[p.Infra.Issue, ...]:
         """Extract one Issue per smell finding inside ``project_name``.
 
         Pure function over a literal qlty SARIF payload (unit-testable, no
@@ -206,7 +206,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
 
     @classmethod
-    def _issue_from_result(cls, result: t.JsonMapping, prefix: str) -> m.Infra.Issue:
+    def _issue_from_result(cls, result: t.JsonMapping, prefix: str) -> p.Infra.Issue:
         """Map one SARIF result to an Issue enriched with the FLEXT fix text."""
         rule_id = u.Cli.json_pick_str(result, "ruleId")
         code = rule_id.removeprefix(c.Infra.SMELLS_RULE_PREFIX)

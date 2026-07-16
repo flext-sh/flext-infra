@@ -15,7 +15,7 @@ class FlextInfraManualTypingAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.ManualTypingAliasViolation]:
+    ) -> t.SequenceOf[p.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
         if (
             ctx.file_path.name in c.Infra.MRO_TYPINGS_FILE_NAMES
@@ -27,7 +27,7 @@ class FlextInfraManualTypingAliasDetector:
             return []
         file_path = ctx.file_path
         lines = resource.read().splitlines()
-        violations: t.MutableSequenceOf[m.Infra.ManualTypingAliasViolation] = []
+        violations: t.MutableSequenceOf[p.Infra.ManualTypingAliasViolation] = []
         for line_number, line in enumerate(lines, start=1):
             if not line or line[0].isspace():
                 continue

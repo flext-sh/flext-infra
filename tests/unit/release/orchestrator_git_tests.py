@@ -21,7 +21,7 @@ def make_config(
     phase: str = c.Infra.VERB_VALIDATE,
     project_names: list[str] | None = None,
     push: bool = False,
-) -> m.Infra.ReleaseOrchestratorConfig:
+) -> p.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version=c.Tests.RELEASE_VERSION_TARGET,
@@ -39,7 +39,7 @@ def make_config(
 
 def publish_ctx(
     workspace_root: Path, *, push: bool = False
-) -> m.Infra.ReleasePhaseDispatchConfig:
+) -> p.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERB_PUBLISH,
         workspace_root=workspace_root,

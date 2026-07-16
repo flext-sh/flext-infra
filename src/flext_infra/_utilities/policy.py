@@ -84,7 +84,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_context: t.Infra.PolicyContext | None,
         symbol_families: t.StrMapping | None,
         symbol_name: str,
-    ) -> m.Infra.ClassNestingPolicy | None:
+    ) -> p.Infra.ClassNestingPolicy | None:
         """Resolve one validated policy entry for the symbol family in context."""
         if policy_context is None or symbol_families is None:
             return None

@@ -23,7 +23,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             *,
             dry_run: bool = False,
             gates: t.StrSequence | None = None,
-        ) -> m.Infra.Result: ...
+        ) -> p.Infra.Result: ...
 
         def refactor_files(
             self,
@@ -31,7 +31,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             *,
             dry_run: bool = False,
             gates: t.StrSequence | None = None,
-        ) -> t.SequenceOf[m.Infra.Result]: ...
+        ) -> t.SequenceOf[p.Infra.Result]: ...
 
         def refactor_project(
             self,
@@ -41,7 +41,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
             apply_safety: bool = True,
             gates: t.StrSequence | None = None,
-        ) -> t.SequenceOf[m.Infra.Result]: ...
+        ) -> t.SequenceOf[p.Infra.Result]: ...
 
         def refactor_workspace(
             self,
@@ -51,10 +51,10 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
             apply_safety: bool = True,
             gates: t.StrSequence | None = None,
-        ) -> t.SequenceOf[m.Infra.Result]: ...
+        ) -> t.SequenceOf[p.Infra.Result]: ...
 
     @staticmethod
-    def _error_result(fp: Path, error: str) -> m.Infra.Result:
+    def _error_result(fp: Path, error: str) -> p.Infra.Result:
         """Build a failure result."""
         return m.Infra.Result(
             file_path=fp,
@@ -66,7 +66,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         )
 
     @staticmethod
-    def _skip_result(fp: Path) -> m.Infra.Result:
+    def _skip_result(fp: Path) -> p.Infra.Result:
         """Build a skip result for non-Python files."""
         return m.Infra.Result(
             file_path=fp,
@@ -108,7 +108,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             u.Cli.info(line)
 
     @staticmethod
-    def _print_summary(results: t.SequenceOf[m.Infra.Result], *, dry_run: bool) -> None:
+    def _print_summary(results: t.SequenceOf[p.Infra.Result], *, dry_run: bool) -> None:
         """Print refactor execution summary."""
         total = len(results)
         success = sum(1 for item in results if item.success)
@@ -194,7 +194,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
                     u.Cli.error(f"File not found: {path}")
             results = list(self.refactor_files(existing, dry_run=args.dry_run))
         else:
-            results = list[m.Infra.Result]()
+            results = list[p.Infra.Result]()
         self._print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)

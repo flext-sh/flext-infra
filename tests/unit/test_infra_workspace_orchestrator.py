@@ -83,19 +83,19 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
             self._project = project
 
         @override
-        def _resolved_projects(self) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([self._project])
+        def _resolved_projects(self) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].ok([self._project])
 
         @staticmethod
         @override
         def _prepare_projects(
-            projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+            projects: t.SequenceOf[p.Infra.ProjectInfo], *, workspace_root: Path
         ) -> p.Result[bool]:
             _ = (projects, workspace_root)
             return r[bool].ok(True)
 
     @staticmethod
-    def _command_output(exit_code: int = 0) -> m.Cli.CommandOutput:
+    def _command_output(exit_code: int = 0) -> p.Cli.CommandOutput:
         return m.Cli.CommandOutput(
             stdout="", stderr="", exit_code=exit_code, duration=0.0
         )

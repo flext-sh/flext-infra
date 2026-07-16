@@ -18,7 +18,7 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
+def _stale_symbol_scope(tmp_path: Path) -> p.Infra.DocScope:
     workspace = tmp_path / "workspace"
     project = workspace / "flext-demo"
     package_root = project / "src" / "flext_demo"

@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra import c, t
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -20,13 +20,13 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
     @staticmethod
     def rewrite_mro_completeness_violations(
         *,
-        violations: t.SequenceOf[m.Infra.MROCompletenessViolation],
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[p.Infra.MROCompletenessViolation],
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite mro completeness violations."""
         _ = parse_failures
         violations_by_file: t.MappingKV[
-            Path, t.MutableSequenceOf[m.Infra.MROCompletenessViolation]
+            Path, t.MutableSequenceOf[p.Infra.MROCompletenessViolation]
         ] = defaultdict(list)
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)

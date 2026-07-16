@@ -86,7 +86,7 @@ def _scanner_gate(
     return FlextInfraSmellsGate(tmp_path)
 
 
-def _ctx(tmp_path: Path, *, apply_fixes: bool = False) -> m.Infra.GateContext:
+def _ctx(tmp_path: Path, *, apply_fixes: bool = False) -> p.Infra.GateContext:
     return m.Infra.GateContext(
         workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=apply_fixes
     )

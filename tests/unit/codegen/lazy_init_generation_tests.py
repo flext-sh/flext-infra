@@ -31,7 +31,7 @@ class TestsFlextInfraCodegenGeneration:
         eager_dunders: t.LazyAliasMap | None = None,
         child_packages: t.StrSequence = (),
         production: bool = True,
-    ) -> m.Infra.LazyInitPlan:
+    ) -> p.Infra.LazyInitPlan:
         """Build one validated render plan for a synthetic package path."""
         package_dir = workspace_root.joinpath(
             *((c.Infra.DEFAULT_SRC_DIR,) if production else ()), *current_pkg.split(".")

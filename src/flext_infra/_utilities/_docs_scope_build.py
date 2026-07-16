@@ -29,20 +29,20 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
     @staticmethod
     def build_scopes(
         workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
-    ) -> p.Result[t.SequenceOf[m.Infra.DocScope]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocScope]]:
         """Build DocScope objects for workspace root and selected projects."""
         try:
             scopes = FlextInfraUtilitiesDocsScopeBuildMixin._build_scopes_unchecked(
                 workspace_root, projects, output_dir
             )
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
-        return r[t.SequenceOf[m.Infra.DocScope]].ok(scopes)
+            return r[t.SequenceOf[p.Infra.DocScope]].fail_op("scope resolution", exc)
+        return r[t.SequenceOf[p.Infra.DocScope]].ok(scopes)
 
     @staticmethod
     def _build_scopes_unchecked(
         workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
-    ) -> t.SequenceOf[m.Infra.DocScope]:
+    ) -> t.SequenceOf[p.Infra.DocScope]:
         """Build docs scopes without exception wrapping."""
         resolved_root = workspace_root.resolve()
         if FlextInfraUtilitiesDocsScope.is_governed_project(
@@ -60,9 +60,9 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
     @staticmethod
     def _workspace_scopes(
         workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
-    ) -> t.SequenceOf[m.Infra.DocScope]:
+    ) -> t.SequenceOf[p.Infra.DocScope]:
         """Build docs scopes for a workspace root plus child projects."""
-        scopes: list[m.Infra.DocScope] = [
+        scopes: list[p.Infra.DocScope] = [
             m.Infra.DocScope(
                 name=c.Infra.RK_ROOT,
                 path=workspace_root,
@@ -93,7 +93,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         return tuple(scopes)
 
     @staticmethod
-    def _discover_projects(workspace_root: Path) -> t.SequenceOf[m.Infra.ProjectInfo]:
+    def _discover_projects(workspace_root: Path) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Discover workspace projects or raise a typed value error."""
         discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
             workspace_root

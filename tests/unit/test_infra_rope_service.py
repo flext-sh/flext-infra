@@ -598,9 +598,9 @@ class TestsFlextInfraInfraRopeService:
             line: int,
             rope_workspace: p.AttributeProbe | None = None,
         ) -> tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
         ]:
             del source, module_name, name, line, rope_workspace
             msg = "facade members should not trigger reference scanning"
@@ -648,9 +648,9 @@ class TestsFlextInfraInfraRopeService:
             line: int,
             rope_workspace: p.AttributeProbe | None = None,
         ) -> tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
         ]:
             seen_names.append(name)
             return original(

@@ -20,7 +20,7 @@ def publish_ctx(
     project_names: list[str] | None = None,
     dry_run: bool = False,
     push: bool = False,
-) -> m.Infra.ReleasePhaseDispatchConfig:
+) -> p.Infra.ReleasePhaseDispatchConfig:
     return m.Infra.ReleasePhaseDispatchConfig(
         phase=c.Infra.VERB_PUBLISH,
         workspace_root=workspace_root,

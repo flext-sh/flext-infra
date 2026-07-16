@@ -12,7 +12,7 @@ class FlextInfraSilentFailureDetector:
     """Detect branches that hide failures behind generic sentinel returns."""
 
     @staticmethod
-    def detect_file(ctx: m.Infra.DetectorContext) -> t.SequenceOf[m.Infra.Issue]:
+    def detect_file(ctx: m.Infra.DetectorContext) -> t.SequenceOf[p.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
@@ -41,7 +41,7 @@ class FlextInfraSilentFailureDetector:
     @classmethod
     def detect_violations(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.SilentFailureViolation]:
+    ) -> t.SequenceOf[p.Infra.SilentFailureViolation]:
         """Return silent-failure violations with kind + fix_action for census."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:

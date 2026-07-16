@@ -62,7 +62,7 @@ class FlextInfraEnsureRuffConfigPhase:
         workspace_namespaces: t.StrSequence,
         stale_patterns: t.StrSequence,
         include_handler: bool,
-    ) -> m.Infra.Deps.Toml.PhaseConfig:
+    ) -> p.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)

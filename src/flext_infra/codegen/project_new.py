@@ -18,7 +18,7 @@ from flext_infra.base import s
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 
-class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
+class FlextInfraCodegenProjectNew(s[p.Infra.CodegenResult]):
     """Create a new FLEXT project (internal member or external standalone)."""
 
     name: Annotated[
@@ -73,10 +73,10 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     year: Annotated[int, m.Field(ge=2025, description="Deterministic copyright year.")]
 
     @override
-    def execute(self) -> p.Result[m.Infra.CodegenResult]:
+    def execute(self) -> p.Result[p.Infra.CodegenResult]:
         """Build one typed manifest and delegate all output to conform."""
         if self.effective_dry_run:
-            return r[m.Infra.CodegenResult].fail("codegen new requires apply mode")
+            return r[p.Infra.CodegenResult].fail("codegen new requires apply mode")
         kind = c.Infra.ProjectKind(self.kind)
         profile = (
             c.Infra.MakeProfile.WORKSPACE_MEMBER
@@ -97,7 +97,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             None,
         )
         if provider is None:
-            return r[m.Infra.CodegenResult].fail(
+            return r[p.Infra.CodegenResult].fail(
                 f"unknown codegen repository provider: {self.provider}"
             )
         known = next(
@@ -109,7 +109,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             None,
         )
         if known is not None and known.provider != provider.name:
-            return r[m.Infra.CodegenResult].fail(
+            return r[p.Infra.CodegenResult].fail(
                 f"repository provider differs from catalog: {self.name}"
             )
         package_name = self.package_name or self.name.replace("-", "_")

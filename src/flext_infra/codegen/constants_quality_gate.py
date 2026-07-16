@@ -247,7 +247,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 critical=True,
             ),
         )
-        checks: t.SequenceOf[m.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
+        checks: t.SequenceOf[p.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
         return [check.model_dump() for check in checks]
 
     @staticmethod

@@ -48,7 +48,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         return False
 
     @classmethod
-    def _lazy_init_config(cls) -> m.Infra.LazyInitConfig:
+    def _lazy_init_config(cls) -> p.Infra.LazyInitConfig:
         """Return the validated lazy-init policy document."""
         return config.Infra.tooling.lazy_init
 
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def layout(
         cls, project_root: Path, *, project: p.Infra.ProjectInfo | None = None
-    ) -> m.Infra.RopeProjectLayout | None:
+    ) -> p.Infra.RopeProjectLayout | None:
         """Return the canonical project layout contract for one project root."""
         resolved_root = project_root.resolve()
         package_name = (
@@ -310,7 +310,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def policy(
         cls, file_path: Path, *, rel_path: Path | None = None, current_pkg: str = ""
-    ) -> m.Infra.NamespaceModulePolicy:
+    ) -> p.Infra.NamespaceModulePolicy:
         """Return the derived Pydantic policy for one governed module."""
         settings = cls._lazy_init_config()
         package_name = current_pkg or FlextInfraUtilitiesDiscovery.package_name(
@@ -406,15 +406,15 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         workspace_root: Path,
         *,
-        projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
                 workspace_root
             )
             if not projects_result.success:
-                return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(
+                return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
                     projects_result.error or "project discovery failed"
                 )
             discovered = projects_result.unwrap()
@@ -425,19 +425,19 @@ class FlextInfraUtilitiesCodegenNamespace:
             for project in discovered
             if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
         )
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok(selected)
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
 
     @classmethod
     def parse_namespace_validation(
-        cls, validation: p.Result[m.Infra.ValidationReport]
-    ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
+        cls, validation: p.Result[p.Infra.ValidationReport]
+    ) -> p.Result[tuple[p.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
+            return r[tuple[p.Infra.CensusViolation, ...]].fail(
                 validation.error or "namespace validation failed"
             )
         report = validation.unwrap()
-        parsed: list[m.Infra.CensusViolation] = []
+        parsed: list[p.Infra.CensusViolation] = []
         for violation in report.violations:
             match = c.Infra.VIOLATION_PATTERN.match(violation)
             if match is None:
@@ -453,7 +453,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                     fixable=cls._is_rule_fixable(rule, module),
                 )
             )
-        return r[tuple[m.Infra.CensusViolation, ...]].ok(tuple(parsed))
+        return r[tuple[p.Infra.CensusViolation, ...]].ok(tuple(parsed))
 
     @classmethod
     def normalize_canonical_facades(
@@ -586,10 +586,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         cls,
         *,
         project_path: Path,
-        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
-        remaining_violations: t.SequenceOf[m.Infra.CensusViolation],
+        initial_violations: t.SequenceOf[p.Infra.CensusViolation],
+        remaining_violations: t.SequenceOf[p.Infra.CensusViolation],
     ) -> tuple[
-        tuple[m.Infra.CensusViolation, ...], tuple[m.Infra.CensusViolation, ...]
+        tuple[p.Infra.CensusViolation, ...], tuple[p.Infra.CensusViolation, ...]
     ]:
         """Split initial violations into fixed and still-skipped groups."""
         if not initial_violations:
@@ -603,8 +603,8 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
             for violation in remaining_violations
         )
-        fixed: t.MutableSequenceOf[m.Infra.CensusViolation] = []
-        skipped: t.MutableSequenceOf[m.Infra.CensusViolation] = []
+        fixed: t.MutableSequenceOf[p.Infra.CensusViolation] = []
+        skipped: t.MutableSequenceOf[p.Infra.CensusViolation] = []
         for violation in initial_violations:
             key = cls._build_violation_key(
                 violation=violation,
@@ -632,7 +632,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         violation: m.Infra.CensusViolation,
         project_path: Path,
         source_cache: MutableMapping[str, t.StrSequence],
-    ) -> m.Infra.ViolationKey:
+    ) -> p.Infra.ViolationKey:
         """Build violation key."""
         if violation.module not in source_cache:
             source_cache[violation.module] = cls._read_source_lines(

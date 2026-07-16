@@ -32,11 +32,11 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 order_config
             )
-            self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
+            self._order_config: t.SequenceOf[p.Infra.MethodOrderRule] = [
                 m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
             ]
         except c.ValidationError:
-            self._order_config = list[m.Infra.MethodOrderRule]()
+            self._order_config = list[p.Infra.MethodOrderRule]()
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -112,7 +112,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
 
     def _collect_method_chunks(
         self, *, class_obj: t.Infra.RopePyObject, lines: t.SequenceOf[str]
-    ) -> list[tuple[m.Infra.MethodInfo, int, int, str]]:
+    ) -> list[tuple[p.Infra.MethodInfo, int, int, str]]:
         """Collect ``(MethodInfo, start_offset, end_offset, source_chunk)`` ordered by line."""
         line_offsets = self._line_offsets(lines)
         source = "".join(lines)
@@ -145,7 +145,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             )
             raw.append((start_line, end_line, method_info))
         raw.sort(key=operator.itemgetter(0))
-        chunks: list[tuple[m.Infra.MethodInfo, int, int, str]] = []
+        chunks: list[tuple[p.Infra.MethodInfo, int, int, str]] = []
         for start_line, end_line, method_info in raw:
             block_start = line_offsets[start_line - 1]
             block_end = (
@@ -162,13 +162,13 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     @staticmethod
     def _contiguous_method_blocks(
         *,
-        method_chunks: t.SequenceOf[tuple[m.Infra.MethodInfo, int, int, str]],
+        method_chunks: t.SequenceOf[tuple[p.Infra.MethodInfo, int, int, str]],
         source: str,
-    ) -> list[list[tuple[m.Infra.MethodInfo, int, int, str]]]:
+    ) -> list[list[tuple[p.Infra.MethodInfo, int, int, str]]]:
         """Split method chunks into reorderable blocks separated only by spacing/comments."""
         if not method_chunks:
             return []
-        blocks: list[list[tuple[m.Infra.MethodInfo, int, int, str]]] = [
+        blocks: list[list[tuple[p.Infra.MethodInfo, int, int, str]]] = [
             [method_chunks[0]]
         ]
         for chunk in method_chunks[1:]:

@@ -38,7 +38,7 @@ from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 
-WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
+WORKSPACE_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_REFACTOR: (
         m.Cli.ResultCommandRoute(
             name="migrate-mro",

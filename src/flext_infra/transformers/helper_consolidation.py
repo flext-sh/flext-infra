@@ -5,7 +5,7 @@ from __future__ import annotations
 import textwrap
 from typing import override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
@@ -97,7 +97,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
                     result = not (not policy.allow_kwarg and "**" in params_str)
         return result
 
-    def _policy_for(self, name: str) -> m.Infra.ClassNestingPolicy | None:
+    def _policy_for(self, name: str) -> p.Infra.ClassNestingPolicy | None:
         """Policy for."""
         return u.Infra.policy_for_symbol(
             policy_context=self._policy_context,

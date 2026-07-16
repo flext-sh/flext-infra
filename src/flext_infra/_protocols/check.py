@@ -9,12 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
-
-if TYPE_CHECKING:
-    # mro-wkii.17.26.2 (codex): m is annotation-only here; importing the
-    # model facade at runtime closes the proven p -> m initialization cycle.
-    from flext_infra import m
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -25,7 +20,7 @@ class FlextInfraProtocolsCheck(Protocol):
     class WorkspaceLoopOutcome(Protocol):
         """Public structural view of the workspace gate loop outcome."""
 
-        results: tuple[m.Infra.ProjectResult, ...]
+        results: tuple[p.Infra.ProjectResult, ...]
         failed: int
         skipped: int
         total_elapsed: float

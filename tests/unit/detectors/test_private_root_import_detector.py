@@ -201,9 +201,9 @@ class TestsFlextInfraPrivateRootImportDetector:
     @staticmethod
     def detect(
         rope: p.Infra.RopeWorkspaceDsl, fixture: Fixture, file_path: Path
-    ) -> t.SequenceOf[m.Infra.PrivateImportBypassViolation]:
+    ) -> t.SequenceOf[p.Infra.PrivateImportBypassViolation]:
         """Detect one source through the shared semantic workspace session."""
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation] = []
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation] = []
         violations = FlextInfraPrivateImportBypassDetector.detect_file(
             m.Infra.DetectorContext(
                 file_path=file_path,

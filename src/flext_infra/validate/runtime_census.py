@@ -77,7 +77,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             modules.append(f"{package_name}: walk_packages failed: {exc}")
         return modules
 
-    def _check_module(self, module_name: str) -> t.SequenceOf[m.Infra.ValidationReport]:
+    def _check_module(self, module_name: str) -> t.SequenceOf[p.Infra.ValidationReport]:
         """Import one module and run runtime enforcement on its local classes."""
         try:
             module = importlib.import_module(module_name)
@@ -121,7 +121,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         ]
 
-    def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
+    def _project_report(self, project: p.Infra.ProjectInfo) -> p.Infra.ValidationReport:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
@@ -152,7 +152,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 name.split(".")
             )
         ]
-        all_reports: list[m.Infra.ValidationReport] = [
+        all_reports: list[p.Infra.ValidationReport] = [
             m.Infra.ValidationReport(
                 passed=False,
                 violations=tuple(import_failures),
@@ -174,16 +174,16 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             passed=passed, violations=merged_violations, summary=summary
         )
 
-    def build_report(self) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self) -> p.Result[p.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
         projects_result = u.Infra.projects(self.workspace_root)
         if projects_result.failure:
-            return r[m.Infra.ValidationReport].fail(
+            return r[p.Infra.ValidationReport].fail(
                 projects_result.error or "project discovery failed"
             )
         projects = self._selected_projects(projects_result.unwrap())
         if not projects:
-            return r[m.Infra.ValidationReport].ok(
+            return r[p.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(
                     passed=True,
                     violations=(),
@@ -200,7 +200,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if passed
             else f"runtime census found {len(merged_violations)} violation(s)"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=tuple(merged_violations), summary=summary
             )

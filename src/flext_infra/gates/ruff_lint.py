@@ -46,10 +46,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         parsed_result = u.Cli.json_parse(result.stdout or "[]")
         empty_items: t.JsonValueList = []
         ruff_data = parsed_result.unwrap() if parsed_result.success else empty_items

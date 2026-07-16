@@ -336,7 +336,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         parsed = [
             m.Infra.SignatureMigration.model_validate(item) for item in typed_items
         ]
-        migrations: t.SequenceOf[m.Infra.SignatureMigration] = [
+        migrations: t.SequenceOf[p.Infra.SignatureMigration] = [
             item for item in parsed if item.enabled
         ]
         if not migrations:

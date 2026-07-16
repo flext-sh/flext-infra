@@ -64,26 +64,26 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _read_document_state(
         self, path: Path
-    ) -> p.Result[m.Infra.PyprojectDocumentState]:
+    ) -> p.Result[p.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
         read = u.Cli.files_read_text(path)
         if read.failure:
-            return r[m.Infra.PyprojectDocumentState].fail(
+            return r[p.Infra.PyprojectDocumentState].fail(
                 read.error or f"failed to read {path}"
             )
         original_rendered = read.value
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
-            return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
+            return r[p.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
         try:
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
                 payload_source
             )
         except c.ValidationError as exc:
-            return r[m.Infra.PyprojectDocumentState].fail_op(
+            return r[p.Infra.PyprojectDocumentState].fail_op(
                 "TOML payload validation", exc
             )
-        return r[m.Infra.PyprojectDocumentState].ok(
+        return r[p.Infra.PyprojectDocumentState].ok(
             m.Infra.PyprojectDocumentState(
                 pyproject_path=path,
                 original_rendered=original_rendered,

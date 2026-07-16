@@ -122,7 +122,7 @@ class FlextInfraDocAuditorMixin:
     @staticmethod
     def write_audit_reports(
         scope: m.Infra.DocScope,
-        issues: t.SequenceOf[m.Infra.AuditIssue],
+        issues: t.SequenceOf[p.Infra.AuditIssue],
         checks: t.Infra.StrSet,
         *,
         strict: bool,
@@ -130,7 +130,7 @@ class FlextInfraDocAuditorMixin:
         to_markdown_fn: Callable[
             [
                 m.Infra.DocScope,
-                t.SequenceOf[m.Infra.AuditIssue],
+                t.SequenceOf[p.Infra.AuditIssue],
                 m.Infra.DocstringCoverage | None,
             ],
             t.StrSequence,

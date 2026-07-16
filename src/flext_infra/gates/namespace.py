@@ -23,7 +23,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Run NS-000..003 validation scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
@@ -70,7 +70,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx
         return True, ()

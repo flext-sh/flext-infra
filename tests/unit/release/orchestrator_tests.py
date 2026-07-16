@@ -22,7 +22,7 @@ def make_config(
     dry_run: bool = False,
     create_branches: bool = False,
     next_dev: bool = False,
-) -> m.Infra.ReleaseOrchestratorConfig:
+) -> p.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version=c.Tests.RELEASE_VERSION_TARGET,

@@ -20,7 +20,7 @@ class FlextInfraModelsEnforcement:
     class EnforcementEvaluation(m.ArbitraryTypesModel):
         """Collected rule probes and collection failures for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
             tuple[tuple[me.EnforcementRuleSpec, p.AttributeProbe], ...],
@@ -39,7 +39,7 @@ class FlextInfraModelsEnforcement:
         inspect via ``getattr``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
 
         file_path: Annotated[str, m.Field(description="Target file path")]
         line: Annotated[int, m.Field(description="Line number of the violation")] = 0

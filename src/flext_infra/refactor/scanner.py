@@ -34,9 +34,9 @@ class FlextInfraRefactorLooseClassScanner:
 
     def _scan_discovered_files(
         self, *, project_root: Path
-    ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
+    ) -> tuple[t.SequenceOf[p.Infra.LooseClassViolation], t.BoolMapping, int, int]:
         """Scan discovered files."""
-        violations: t.MutableSequenceOf[m.Infra.LooseClassViolation] = []
+        violations: t.MutableSequenceOf[p.Infra.LooseClassViolation] = []
         targets_found: dict[str, bool] = dict.fromkeys(
             c.Infra.REQUIRED_CLASS_TARGETS, False
         )
@@ -75,7 +75,7 @@ class FlextInfraRefactorLooseClassScanner:
         self,
         *,
         files_scanned: int,
-        violations: t.SequenceOf[m.Infra.LooseClassViolation],
+        violations: t.SequenceOf[p.Infra.LooseClassViolation],
         targets_found: t.BoolMapping,
         classes_scanned: int,
     ) -> t.Infra.ContainerDict:
@@ -100,7 +100,7 @@ class FlextInfraRefactorLooseClassScanner:
 
     def _build_violation(
         self, rel_path: Path, occ: m.Infra.ClassOccurrence
-    ) -> m.Infra.LooseClassViolation | None:
+    ) -> p.Infra.LooseClassViolation | None:
         """Build violation."""
         if not occ.is_top_level:
             return None

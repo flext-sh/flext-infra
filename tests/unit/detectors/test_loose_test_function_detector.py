@@ -31,7 +31,7 @@ class TestsFlextInfraLooseTestFunctionDetector:
     @staticmethod
     def _violations(
         *, project: Path, file_path: Path
-    ) -> tuple[m.Infra.LooseTestFunctionViolation, ...]:
+    ) -> tuple[p.Infra.LooseTestFunctionViolation, ...]:
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraLooseTestFunctionDetector.detect_file(
                 m.Infra.DetectorContext(

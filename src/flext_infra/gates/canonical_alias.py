@@ -46,7 +46,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Scan one project's Python sources for ENFORCE-080 violations."""
         _ = ctx
         started = time.monotonic()
@@ -78,7 +78,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
         rope_project = u.Infra.init_rope_project(project_dir)
         try:
-            issues: list[m.Infra.Issue] = []
+            issues: list[p.Infra.Issue] = []
             for file_path in files_result.value:
                 for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                     m.Infra.DetectorContext(
@@ -125,7 +125,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         )
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply ENFORCE-080 rewrites for the selected project."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -211,7 +211,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         message: str,
         started: float,
         ctx: m.Infra.GateContext,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Build a failed fix result for local rewrite failures."""
         issue = m.Infra.Issue(
             file=str(file_path),
@@ -245,7 +245,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx
         return True, ()

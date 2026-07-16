@@ -41,7 +41,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         apply: bool = False,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
-    ) -> m.Infra.WorkspaceEnforcementReport:
+    ) -> p.Infra.WorkspaceEnforcementReport:
         """Enforce namespace rules across the workspace."""
         _ = apply, project_names, gates
         msg = "enforce must be provided by the concrete enforcer"
@@ -54,7 +54,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         rope_project: t.Infra.RopeProject,
         apply: bool,
         workspace_root: Path,
-    ) -> t.SequenceOf[m.Infra.FacadeStatus]:
+    ) -> t.SequenceOf[p.Infra.FacadeStatus]:
         """Scan facades and optionally create missing ones."""
         project_root, project_name = project
         facade_statuses = FlextInfraScanner.scan_project(

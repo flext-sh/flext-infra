@@ -14,7 +14,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
 
     def validate_workspace(
         self, request: m.Infra.DocsGenerateRequest
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
         return self.run_scoped_docs(
             request.workspace_root,
@@ -65,7 +65,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
 
     def _validate_scope(
         self, scope: m.Infra.DocScope, *, apply_mode: bool
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports."""
         status = c.Infra.ResultStatus.OK
         messages: list[str] = []

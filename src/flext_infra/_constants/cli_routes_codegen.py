@@ -29,7 +29,7 @@ from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrat
 
 # NOTE (multi-agent, mro-wkii.17.9): deps no longer exposes path-sync;
 # codegen consumes the pure u.Infra pyproject renderer internally.
-CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
+CODEGEN_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_BASEMK: (
         m.Cli.ResultCommandRoute(
             name="generate",

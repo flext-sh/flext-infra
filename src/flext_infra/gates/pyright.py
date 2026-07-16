@@ -67,10 +67,10 @@ class FlextInfraPyrightGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        issues: t.MutableSequenceOf[p.Infra.Issue] = []
         empty: t.MappingKV[str, t.Infra.InfraValue] = {}
         parsed_result = u.Cli.json_parse(result.stdout or "{}")
         parsed = parsed_result.unwrap() if parsed_result.success else empty

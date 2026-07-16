@@ -31,7 +31,7 @@ class FlextInfraUtilitiesRopeInventory:
         include_local_scopes: bool,
         include_references: bool = True,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> tuple[p.Infra.Census.Object, ...]:
         """Return all same-file defined objects for one Rope module."""
         try:
             pymodule = cls.get_pymodule(rope_project, resource)
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesRopeInventory:
             )
             raise RuntimeError(msg) from exc
         source = resource.read()
-        items: t.MutableSequenceOf[m.Infra.Census.Object] = []
+        items: t.MutableSequenceOf[p.Infra.Census.Object] = []
         module_scope = pymodule.get_scope()
         if module_scope is None:
             msg = f"rope inventory scope unavailable for {resource.path}"
@@ -100,9 +100,9 @@ class FlextInfraUtilitiesRopeInventory:
         *,
         parent_options: m.Infra.RopeInventoryRecordInput,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> tuple[p.Infra.Census.Object, ...]:
         """Scope objects."""
-        items: t.MutableSequenceOf[m.Infra.Census.Object] = []
+        items: t.MutableSequenceOf[p.Infra.Census.Object] = []
         child_scopes = tuple(scope.get_scopes())
         for name, pyname in cls._sorted_scope_names(scope, parent_options.resource):
             child_scope = cls._child_scope_for(child_scopes, pyname)
@@ -132,7 +132,7 @@ class FlextInfraUtilitiesRopeInventory:
         record_options: m.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
-    ) -> tuple[m.Infra.Census.Object, ...]:
+    ) -> tuple[p.Infra.Census.Object, ...]:
         """Child scope objects."""
         if (
             not include_local_scopes
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _descend_options(
         parent_options: m.Infra.RopeInventoryRecordInput, record: m.Infra.Census.Object
-    ) -> m.Infra.RopeInventoryRecordInput:
+    ) -> p.Infra.RopeInventoryRecordInput:
         """Descend options."""
         return parent_options.model_copy(
             update={
@@ -200,7 +200,7 @@ class FlextInfraUtilitiesRopeInventory:
     @classmethod
     def _record(
         cls, options: m.Infra.RopeInventoryRecordInput, *, include_references: bool
-    ) -> m.Infra.Census.Object | None:
+    ) -> p.Infra.Census.Object | None:
         """Record."""
         line = cls._definition_line(options.pyname, options.resource)
         if line is None:
@@ -376,9 +376,9 @@ class FlextInfraUtilitiesRopeInventory:
         rope_workspace: p.AttributeProbe | None = None,
         module_name: str,
     ) -> tuple[
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
     ]:
         """Collect the reference sites for a symbol."""
         lines = source.splitlines(keepends=True)
@@ -419,9 +419,9 @@ class FlextInfraUtilitiesRopeInventory:
         hits = FlextInfraUtilitiesRopeImports.find_occurrences(
             rope_project, resource, offset, resources=search_resources
         )
-        runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        example_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        runtime_reference_sites: list[p.Infra.Census.ReferenceSite] = []
+        example_reference_sites: list[p.Infra.Census.ReferenceSite] = []
+        script_reference_sites: list[p.Infra.Census.ReferenceSite] = []
         seen_sites: set[tuple[str, int, str]] = set()
         skipped_definition = False
         for hit in hits:
@@ -508,9 +508,9 @@ class FlextInfraUtilitiesRopeInventory:
         module_name: str,
         name: str,
     ) -> tuple[
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
-        tuple[m.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
+        tuple[p.Infra.Census.ReferenceSite, ...],
     ]:
         """Fallback reference sites from indexed dependent modules.
 
@@ -553,9 +553,9 @@ class FlextInfraUtilitiesRopeInventory:
         normalized_definition = FlextInfraUtilitiesRopeInventory._normalize_file_path(
             definition_path.resolve()
         )
-        runtime_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        example_reference_sites: list[m.Infra.Census.ReferenceSite] = []
-        script_reference_sites: list[m.Infra.Census.ReferenceSite] = []
+        runtime_reference_sites: list[p.Infra.Census.ReferenceSite] = []
+        example_reference_sites: list[p.Infra.Census.ReferenceSite] = []
+        script_reference_sites: list[p.Infra.Census.ReferenceSite] = []
         seen_sites: set[tuple[str, int, str]] = set()
         for path, surface, lines in name_index_getter().get(name, ()):
             normalized_path = FlextInfraUtilitiesRopeInventory._normalize_file_path(
@@ -593,9 +593,9 @@ class FlextInfraUtilitiesRopeInventory:
         rope_workspace: p.AttributeProbe, *, name: str, definition_path: Path, line: int
     ) -> (
         tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
+            tuple[p.Infra.Census.ReferenceSite, ...],
         ]
         | None
     ):
@@ -647,7 +647,7 @@ class FlextInfraUtilitiesRopeInventory:
     @staticmethod
     def _reference_site(
         location: t.Infra.RopeLocation,
-    ) -> m.Infra.Census.ReferenceSite | None:
+    ) -> p.Infra.Census.ReferenceSite | None:
         """Build a reference site from a rope location."""
         file_path = FlextInfraUtilitiesRopeInventory._location_file_path(location)
         if file_path is None:
@@ -660,7 +660,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _discard_definition_site(
-        sites: list[m.Infra.Census.ReferenceSite], *, definition_path: Path, line: int
+        sites: list[p.Infra.Census.ReferenceSite], *, definition_path: Path, line: int
     ) -> None:
         """Discard definition site."""
         definition_key = (

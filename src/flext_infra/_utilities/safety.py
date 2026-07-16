@@ -112,7 +112,7 @@ class FlextInfraUtilitiesSafety:
         validate: Callable[[t.SequenceOf[Path]], r[bool]],
         *,
         mode: c.Infra.ExecutionMode = c.Infra.ExecutionMode.APPLY_SAFE,
-    ) -> m.Infra.SafeExecutionResult:
+    ) -> p.Infra.SafeExecutionResult:
         """Pipeline: backup -> transform -> validate -> (cleanup | rollback).
 
         Fail fast: any step failure = immediate rollback + raise.

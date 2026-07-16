@@ -21,7 +21,7 @@ def _make_config(
     *,
     phases: t.SequenceOf[str] | None = None,
     dry_run: bool = False,
-) -> m.Infra.ReleaseOrchestratorConfig:
+) -> p.Infra.ReleaseOrchestratorConfig:
     return m.Infra.ReleaseOrchestratorConfig(
         workspace_root=workspace_root,
         version=c.Tests.RELEASE_VERSION_TARGET,

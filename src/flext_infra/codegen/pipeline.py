@@ -51,7 +51,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
     # Stage builder
     # ------------------------------------------------------------------
 
-    def _build_codegen_stages(self) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
+    def _build_codegen_stages(self) -> t.SequenceOf[p.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
         handlers: t.Cli.PipelineHandlerMap = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
@@ -75,7 +75,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
     @override
     def _run_stage[V](
         self, stage_id: str, action: Callable[[], V], emit: Callable[[V], t.JsonMapping]
-    ) -> p.Result[m.Cli.PipelineStageResult]:
+    ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run one pipeline stage with a single try-boundary.
 
         ``action`` performs the work and may mutate ``self._state``; ``emit``
@@ -83,7 +83,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         exception is captured and returned as ``r.fail_op(stage_id, exc)``
         so the DAG runner can fail-fast — never silenced, never demoted.
         """
-        return r[m.Cli.PipelineStageResult].create_from_callable(
+        return r[p.Cli.PipelineStageResult].create_from_callable(
             lambda: cli.stage_result(stage_id, output=emit(action())),
             error_code=stage_id,
         )

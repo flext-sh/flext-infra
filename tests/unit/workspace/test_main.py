@@ -54,7 +54,7 @@ def _write_workspace(workspace_root: Path) -> None:
     _write_project(workspace_root / "demo-a", "demo-a")
 
 
-def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
+def _cmd_out(exit_code: int = 0) -> p.Cli.CommandOutput:
     return m.Cli.CommandOutput(stdout="", stderr="", exit_code=exit_code, duration=0.0)
 
 
@@ -65,13 +65,13 @@ def _install_successful_orchestration(
 
     def _resolved_projects(
         self: FlextInfraOrchestratorService,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         del self
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok([project])
 
     def _prepare_projects(
         self: FlextInfraOrchestratorService,
-        projects: t.SequenceOf[m.Infra.ProjectInfo],
+        projects: t.SequenceOf[p.Infra.ProjectInfo],
         *,
         workspace_root: Path,
     ) -> p.Result[bool]:
@@ -85,9 +85,9 @@ def _install_successful_orchestration(
         _index: int,
         *,
         make_args: t.StrSequence,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         _ = (self, project_name, verb, _index, make_args)
-        return r[m.Cli.CommandOutput].ok(_cmd_out())
+        return r[p.Cli.CommandOutput].ok(_cmd_out())
 
     orchestrator._resolved_projects = _resolved_projects.__get__(
         orchestrator, FlextInfraOrchestratorService

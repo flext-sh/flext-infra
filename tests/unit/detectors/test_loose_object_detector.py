@@ -31,8 +31,8 @@ class TestsFlextInfraLooseObjectDetector:
     @staticmethod
     def _violations(
         *, project: Path, file_path: Path
-    ) -> tuple[m.Infra.LooseObjectViolation, ...]:
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+    ) -> tuple[p.Infra.LooseObjectViolation, ...]:
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraLooseObjectDetector.detect_file(
                 m.Infra.DetectorContext(

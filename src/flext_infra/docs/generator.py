@@ -13,7 +13,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
 
     def generate(
         self, request: m.Infra.DocsGenerateRequest
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Generate docs across the workspace root and governed FLEXT projects."""
         return self.run_scoped_docs(
             request.workspace_root,
@@ -39,7 +39,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
 
     def _generate_scope(
         self, scope: m.Infra.DocScope, *, request: m.Infra.DocsGenerateRequest
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
         report = u.Infra.docs_generate_scope(
             scope,

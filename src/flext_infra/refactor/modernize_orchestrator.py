@@ -33,16 +33,16 @@ class FlextInfraModernizeOrchestrator:
 
     def run(
         self, params: m.Infra.ModernizeInput
-    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.Result]]:
         """Run modernize across selected projects."""
         workspace_root = params.workspace_path
         project_roots = self._resolve_projects(workspace_root, params.projects)
         if not project_roots:
-            return r[t.SequenceOf[m.Infra.Result]].fail(
+            return r[t.SequenceOf[p.Infra.Result]].fail(
                 "No projects selected", error_code="MODERNIZE_NO_PROJECTS"
             )
 
-        results: list[m.Infra.Result] = []
+        results: list[p.Infra.Result] = []
         with u.Infra.open_project(workspace_root) as rope_project:
             for project_root in project_roots:
                 project_results = self._modernize_project(
@@ -51,14 +51,14 @@ class FlextInfraModernizeOrchestrator:
                     apply=params.apply,
                 )
                 if project_results.failure:
-                    return r[t.SequenceOf[m.Infra.Result]].fail(
+                    return r[t.SequenceOf[p.Infra.Result]].fail(
                         f"Modernize failed for {project_root.name}: "
                         f"{project_results.error}",
                         error_code="MODERNIZE_PROJECT_FAILED",
                     )
                 results.extend(project_results.value)
 
-        return r[t.SequenceOf[m.Infra.Result]].ok(tuple(results))
+        return r[t.SequenceOf[p.Infra.Result]].ok(tuple(results))
 
     @classmethod
     def execute_command(
@@ -90,12 +90,12 @@ class FlextInfraModernizeOrchestrator:
 
     def _modernize_project(
         self, *, rope_project: t.Infra.RopeProject, project_root: Path, apply: bool
-    ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.Result]]:
         """Apply transformer to all Python files in a project."""
-        results: list[m.Infra.Result] = []
+        results: list[p.Infra.Result] = []
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():
-            return r[t.SequenceOf[m.Infra.Result]].ok(tuple(results))
+            return r[t.SequenceOf[p.Infra.Result]].ok(tuple(results))
 
         for resource in rope_project.get_python_files():
             file_path = Path(resource.real_path).resolve()
@@ -103,21 +103,21 @@ class FlextInfraModernizeOrchestrator:
                 continue
             file_result = self._modernize_file(file_path=file_path, apply=apply)
             if file_result.failure:
-                return r[t.SequenceOf[m.Infra.Result]].fail(
+                return r[t.SequenceOf[p.Infra.Result]].fail(
                     f"Failed to modernize {file_path}: {file_result.error}",
                     error_code="MODERNIZE_FILE_FAILED",
                 )
             results.append(file_result.value)
 
-        return r[t.SequenceOf[m.Infra.Result]].ok(tuple(results))
+        return r[t.SequenceOf[p.Infra.Result]].ok(tuple(results))
 
     def _modernize_file(
         self, *, file_path: Path, apply: bool
-    ) -> p.Result[m.Infra.Result]:
+    ) -> p.Result[p.Infra.Result]:
         """Apply transformer to a single file."""
         read_result = u.Cli.files_read_text(file_path)
         if read_result.failure:
-            return r[m.Infra.Result].fail(
+            return r[p.Infra.Result].fail(
                 f"Cannot read {file_path}: {read_result.error}",
                 error_code="MODERNIZE_READ_FAILED",
             )
@@ -126,7 +126,7 @@ class FlextInfraModernizeOrchestrator:
         transformer = self._transformer_factory()
         transform_result = self._safe_transform(transformer, source)
         if transform_result.failure:
-            return r[m.Infra.Result].fail(
+            return r[p.Infra.Result].fail(
                 f"Transform failed for {file_path}: {transform_result.error}",
                 error_code="MODERNIZE_TRANSFORM_FAILED",
             )
@@ -136,12 +136,12 @@ class FlextInfraModernizeOrchestrator:
         if apply and modified:
             write_result = u.Cli.atomic_write_text_file(file_path, updated)
             if write_result.failure:
-                return r[m.Infra.Result].fail(
+                return r[p.Infra.Result].fail(
                     f"Cannot write {file_path}: {write_result.error}",
                     error_code="MODERNIZE_WRITE_FAILED",
                 )
 
-        return r[m.Infra.Result].ok(
+        return r[p.Infra.Result].ok(
             m.Infra.Result(
                 file_path=file_path,
                 success=True,
@@ -170,7 +170,7 @@ class FlextInfraModernizeOrchestrator:
 
     @staticmethod
     def _display_results(
-        results: t.SequenceOf[m.Infra.Result], *, dry_run: bool
+        results: t.SequenceOf[p.Infra.Result], *, dry_run: bool
     ) -> None:
         """Render concise summary of modernize results."""
         modified = sum(1 for res in results if res.modified)

@@ -15,7 +15,7 @@ class FlextInfraImportAliasDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.ImportAliasViolation]:
+    ) -> t.SequenceOf[p.Infra.ImportAliasViolation]:
         """Detect deep alias imports directly from Rope import descriptors."""
         resource = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_init_py=True
@@ -28,7 +28,7 @@ class FlextInfraImportAliasDetector:
             return []
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         source_lines = source.splitlines()
-        violations: list[m.Infra.ImportAliasViolation] = []
+        violations: list[p.Infra.ImportAliasViolation] = []
         for from_import in u.Infra.get_absolute_from_imports(
             ctx.rope_project, resource
         ):

@@ -53,7 +53,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> p.Infra.LazyInitRootRender:
         """Build one inline lazy context for a public package root."""
         current_pkg = plan.context.current_pkg
         # mro-wkii.17.26 (codex): rendering is a second fail-closed boundary;
@@ -169,7 +169,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _static_context(
         cls, plan: m.Infra.LazyInitPlan
-    ) -> m.Infra.StaticPackageInitRender:
+    ) -> p.Infra.StaticPackageInitRender:
         """Build an explicit static subpackage context."""
         static_imports = cls._static_imports(plan)
         return m.Infra.StaticPackageInitRender(

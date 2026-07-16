@@ -21,8 +21,8 @@ class FlextInfraCyclicImportDetector:
         *,
         project_root: Path,
         rope_project: t.Infra.RopeProject,
-        _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | None = None,
-    ) -> t.SequenceOf[m.Infra.CyclicImportViolation]:
+        _parse_failures: t.SequenceOf[p.Infra.ParseFailureViolation] | None = None,
+    ) -> t.SequenceOf[p.Infra.CyclicImportViolation]:
         """Build import graph via rope and detect cycles with topological sort."""
         del _parse_failures
         scan_dirs = [
@@ -63,7 +63,7 @@ class FlextInfraCyclicImportDetector:
                 if target_module in file_map:
                     graph[module_name].add(target_module)
 
-        violations: t.MutableSequenceOf[m.Infra.CyclicImportViolation] = []
+        violations: t.MutableSequenceOf[p.Infra.CyclicImportViolation] = []
         try:
             list(TopologicalSorter(graph).static_order())
         except CycleError as exc:

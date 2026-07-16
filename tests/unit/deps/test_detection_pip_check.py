@@ -15,7 +15,7 @@ from pathlib import Path
 
 class TestsFlextInfraDepsDetectionPipCheck:
     @staticmethod
-    def make_runner(result: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
+    def make_runner(result: p.Result[p.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         return u.Tests.DeptryRunner(result)
 
     @pytest.mark.parametrize(

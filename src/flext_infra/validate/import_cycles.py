@@ -40,7 +40,7 @@ class FlextInfraValidateImportCycles(s[bool]):
 
     _MIN_CYCLE_SIZE: ClassVar[int] = 2
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[p.Infra.ValidationReport]:
         """Scan ``workspace_root`` for runtime import cycles via rope.
 
         Detection is scoped per project root: each governed project is an
@@ -60,7 +60,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         try:
             graphs = self._build_graphs(workspace_root)
         except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("import-cycles scan", exc)
+            return r[p.Infra.ValidationReport].fail_op("import-cycles scan", exc)
         total_modules = 0
         cycles: list[tuple[str, t.StrSequence]] = []
         for label, graph in graphs:
@@ -82,7 +82,7 @@ class FlextInfraValidateImportCycles(s[bool]):
             if passed
             else f"found {len(cycles)} runtime import cycle(s) across {total_modules} modules"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=violations, summary=summary
             )

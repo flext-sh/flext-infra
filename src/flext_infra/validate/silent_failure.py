@@ -30,7 +30,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
         }
         return [project for project in projects if project.name in selected]
 
-    def build_report(self) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self) -> p.Result[p.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
         issues: t.MutableSequenceOf[str] = []
         projects_result = u.Infra.projects(self.workspace_root)
@@ -42,7 +42,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
                 m.Infra.SourceScanRequest(project_roots=(project.path,))
             )
             if iter_result.failure:
-                return r[m.Infra.ValidationReport].fail(
+                return r[p.Infra.ValidationReport].fail(
                     iter_result.error
                     or f"python file iteration failed for {project.name}"
                 )
@@ -67,7 +67,7 @@ class FlextInfraSilentFailureValidator(s[bool]):
             if passed
             else f"silent failure validation found {len(issues)} issue(s)"
         )
-        return r[m.Infra.ValidationReport].ok(
+        return r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
                 passed=passed, violations=list(issues), summary=summary
             )

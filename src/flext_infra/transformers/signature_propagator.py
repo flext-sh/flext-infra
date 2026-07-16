@@ -21,7 +21,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
     def __init__(
         self,
         *,
-        migrations: t.SequenceOf[m.Infra.SignatureMigration],
+        migrations: t.SequenceOf[p.Infra.SignatureMigration],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize transformer state for declarative signature migrations."""

@@ -58,9 +58,9 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             file_path: Path,
             *,
             convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+            parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
-        ) -> m.Infra.DetectorContext: ...
+        ) -> p.Infra.DetectorContext: ...
         @staticmethod
         def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
         @staticmethod
@@ -80,7 +80,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             for fix in project.fixes:
                 requested_fixes[Path(fix.source_file), fix.action].add(fix.object_name)
         for (file_path, action), object_names in requested_fixes.items():
-            parse_failures: list[m.Infra.ParseFailureViolation] = []
+            parse_failures: list[p.Infra.ParseFailureViolation] = []
             ctx = self._detector_context(rope, file_path, parse_failures=parse_failures)
             changed = False
             if action == "rewrite_runtime_alias":

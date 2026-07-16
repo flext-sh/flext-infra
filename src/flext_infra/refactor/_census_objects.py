@@ -31,7 +31,7 @@ class FlextInfraRefactorCensusObjectsMixin:
         description: str,
         fixable: bool = False,
         fix_action: str = "",
-    ) -> m.Infra.Census.Violation:
+    ) -> p.Infra.Census.Violation:
         """Raw violation."""
         return m.Infra.Census.Violation(
             project=project,
@@ -63,7 +63,7 @@ class FlextInfraRefactorCensusObjectsMixin:
         description: str,
         fixable: bool = False,
         fix_action: str = "",
-    ) -> m.Infra.Census.Violation:
+    ) -> p.Infra.Census.Violation:
         """Violation."""
         return FlextInfraRefactorCensusObjectsMixin._raw_violation(
             project=item.project,
@@ -89,7 +89,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @classmethod
     def _removal_candidate(
         cls, item: m.Infra.Census.Object, *, include_unused: bool
-    ) -> m.Infra.Census.RemovalCandidate | None:
+    ) -> p.Infra.Census.RemovalCandidate | None:
         """Build a removal candidate for an object."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
@@ -123,7 +123,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @classmethod
     def _impact_map_results(
         cls, report: m.Infra.Census.WorkspaceReport
-    ) -> tuple[m.Infra.Result, ...]:
+    ) -> tuple[p.Infra.Result, ...]:
         """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)
         for candidate in report.removal_candidates:
@@ -167,7 +167,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @staticmethod
     def _reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
-    ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
+    ) -> tuple[p.Infra.Census.ReferenceSite, ...]:
         """Return all reference sites for a removal candidate."""
         return (
             *candidate.runtime_reference_sites,

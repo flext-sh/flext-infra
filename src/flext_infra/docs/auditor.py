@@ -46,7 +46,7 @@ class FlextInfraDocAuditor(
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
         params: m.Infra.AuditScopeParams | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
         resolved_params = self._audit_params(workspace_root, params)
         if resolved_params.failure:
@@ -63,7 +63,7 @@ class FlextInfraDocAuditor(
 
     def audit_scope(
         self, scope: m.Infra.DocScope, *, params: m.Infra.AuditScopeParams
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Audit one scope and persist the standard reports."""
         checks = sorted(self.resolve_checks(params.check))
         issues = self._collect_issues(scope, checks)
@@ -116,13 +116,13 @@ class FlextInfraDocAuditor(
 
     def _audit_params(
         self, workspace_root: Path, params: m.Infra.AuditScopeParams | None
-    ) -> p.Result[m.Infra.AuditScopeParams]:
+    ) -> p.Result[p.Infra.AuditScopeParams]:
         """Resolve runtime audit parameters and load default budgets when absent."""
         if params is not None and params.budgets is not None:
-            return r[m.Infra.AuditScopeParams].ok(params)
+            return r[p.Infra.AuditScopeParams].ok(params)
         budgets_result = self.load_audit_budgets(workspace_root)
         if budgets_result.failure:
-            return r[m.Infra.AuditScopeParams].fail(
+            return r[p.Infra.AuditScopeParams].fail(
                 budgets_result.error or "audit budget resolution failed",
                 error_code=budgets_result.error_code,
             )
@@ -141,7 +141,7 @@ class FlextInfraDocAuditor(
                 docstring_min=params.docstring_min,
                 budgets=budgets,
             )
-        return r[m.Infra.AuditScopeParams].ok(resolved)
+        return r[p.Infra.AuditScopeParams].ok(resolved)
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@ class FlextInfraDocAuditorChecksMixin:
     @staticmethod
     def _policy_token_issues(
         scope: m.Infra.DocScope, *, policy_key: str, issue_type: str
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return text-token issues for one scope using the named policy list."""
-        issues: t.SequenceOf[m.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
+        issues: t.SequenceOf[p.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
             scope,
             tokens=u.Infra.docs_policy_list(scope, section="audit", key=policy_key),
             issue_type=issue_type,
@@ -25,14 +25,14 @@ class FlextInfraDocAuditorChecksMixin:
     @staticmethod
     def forbidden_term_issues(
         scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope."""
         return FlextInfraDocAuditorChecksMixin._policy_token_issues(
             scope, policy_key="forbidden_terms", issue_type="forbidden_term"
         )
 
     @staticmethod
-    def placeholder_issues(scope: m.Infra.DocScope) -> t.SequenceOf[m.Infra.AuditIssue]:
+    def placeholder_issues(scope: m.Infra.DocScope) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope."""
         return FlextInfraDocAuditorChecksMixin._policy_token_issues(
             scope, policy_key="placeholder_terms", issue_type="placeholder"
@@ -40,10 +40,10 @@ class FlextInfraDocAuditorChecksMixin:
 
     def _collect_issues(
         self, scope: m.Infra.DocScope, checks: t.StrSequence
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
         handlers: tuple[
-            tuple[str, Callable[[m.Infra.DocScope], t.SequenceOf[m.Infra.AuditIssue]]],
+            tuple[str, Callable[[p.Infra.DocScope], t.SequenceOf[p.Infra.AuditIssue]]],
             ...,
         ] = (
             ("links", u.Infra.docs_broken_link_issues),

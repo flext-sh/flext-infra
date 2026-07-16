@@ -57,24 +57,24 @@ class FlextInfraUtilitiesGithubSyncMixin:
     @classmethod
     def _github_sync_project(
         cls, ctx: m.Infra.GithubWorkflowSyncContext
-    ) -> p.Result[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.GithubWorkflowSyncOperation]]:
         """Github sync project."""
-        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
+        operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation] = []
         try:
             cls._github_sync_ci_yml(ctx, operations)
             if ctx.prune and ctx.workflows_dir.exists():
                 cls._github_prune_workflows(ctx, operations)
         except OSError as exc:
-            return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].fail(
+            return r[t.SequenceOf[p.Infra.GithubWorkflowSyncOperation]].fail(
                 f"sync error: {exc}"
             )
-        return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].ok(operations)
+        return r[t.SequenceOf[p.Infra.GithubWorkflowSyncOperation]].ok(operations)
 
     @classmethod
     def _github_sync_ci_yml(
         cls,
         ctx: m.Infra.GithubWorkflowSyncContext,
-        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation],
+        operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Sync a single ci.yml file for a project."""
         destination = ctx.ci_destination
@@ -121,7 +121,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
     @staticmethod
     def _github_prune_workflows(
         ctx: m.Infra.GithubWorkflowSyncContext,
-        operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation],
+        operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Remove non-canonical workflow files from a project."""
         candidates = sorted(ctx.workflows_dir.glob("*.yml")) + sorted(

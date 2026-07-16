@@ -87,7 +87,7 @@ class FlextInfraInternalImportDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.InternalImportViolation]:
+    ) -> t.SequenceOf[p.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
         res = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_init_py=True

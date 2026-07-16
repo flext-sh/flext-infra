@@ -33,7 +33,7 @@ class FlextInfraModelsMixins:
         command.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         workspace: Annotated[
             str,

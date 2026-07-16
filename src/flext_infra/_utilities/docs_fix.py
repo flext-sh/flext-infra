@@ -38,7 +38,7 @@ class FlextInfraUtilitiesDocsFix:
     @staticmethod
     def docs_fix_python_codeblocks(
         scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Auto-fix ``python`` fenced code blocks using ``ruff check --fix``.
 
         Only fixes issues that ``ruff`` can resolve automatically; blocks that
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsFix:
         Returns:
             Generated files containing changed Python code blocks.
         """
-        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        changed: t.MutableSequenceOf[p.Infra.GeneratedFile] = []
         for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
             original = md_file.read_text(
                 encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesDocsFix:
     @staticmethod
     def docs_process_markdown_file(
         md_file: Path, *, apply: bool
-    ) -> m.Infra.DocsPhaseItemModel:
+    ) -> p.Infra.DocsPhaseItemModel:
         """Fix one markdown file and return the phase item summary."""
         original = md_file.read_text(
             encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesDocsFix:
     def docs_write_fix_reports(
         scope: m.Infra.DocScope,
         *,
-        items: t.SequenceOf[m.Infra.DocsPhaseItemModel],
+        items: t.SequenceOf[p.Infra.DocsPhaseItemModel],
         apply: bool,
     ) -> None:
         """Persist the standard fix summary and markdown report."""

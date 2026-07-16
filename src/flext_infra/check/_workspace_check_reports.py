@@ -16,7 +16,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
 
     @staticmethod
     def _generate_markdown(
-        results: t.SequenceOf[m.Infra.ProjectResult],
+        results: t.SequenceOf[p.Infra.ProjectResult],
         gates: t.StrSequence,
         timestamp: str,
     ) -> str:
@@ -52,11 +52,11 @@ class FlextInfraWorkspaceCheckReportsMixin:
 
     @staticmethod
     def _generate_sarif(
-        results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
-    ) -> m.Infra.SarifReport:
+        results: t.SequenceOf[p.Infra.ProjectResult], gates: t.StrSequence
+    ) -> p.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
         rules_by_id: dict[str, m.Infra.SarifRule] = {}
-        sarif_results: list[m.Infra.SarifResult] = []
+        sarif_results: list[p.Infra.SarifResult] = []
         for project in results:
             for gate in gates:
                 execution = project.gates.get(gate)
@@ -102,7 +102,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         resolved_gates: t.StrSequence,
         report_base: Path,
         outcome: p.Infra.WorkspaceLoopOutcome,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectResult]]:
         """Write markdown/SARIF reports and print summary to output."""
         results = outcome.results
         timestamp = u.now().strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -114,7 +114,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             ),
         )
         if md_write_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[p.Infra.ProjectResult]].fail(
                 md_write_result.error or "failed to write markdown report"
             )
         sarif_path = report_base / "check-report.sarif"
@@ -124,7 +124,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         try:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
         except OSError as exc:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+            return r[t.SequenceOf[p.Infra.ProjectResult]].fail(
                 f"failed to write sarif report: {exc}"
             )
         total_errors = sum(project.total_errors for project in results)
@@ -156,7 +156,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 u.Cli.error(
                     f"{project.project:30s} {project.total_errors:6d}  ({breakdown})"
                 )
-        return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)
+        return r[t.SequenceOf[p.Infra.ProjectResult]].ok(results)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceCheckReportsMixin"]

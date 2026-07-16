@@ -225,7 +225,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
-        detector: Callable[[m.Infra.DetectorContext], t.SequenceOf[V]],
+        detector: Callable[[p.Infra.DetectorContext], t.SequenceOf[V]],
         filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
         rewrite: Callable[[t.SequenceOf[V]], None],
         empty_reason: str,
@@ -399,7 +399,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
 
         def _rewrite(
-            file_violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+            file_violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
         ) -> None:
             if ctx.apply:
                 u.Infra.rewrite_compatibility_alias_violations(
@@ -642,7 +642,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _hoist_inline_import_source(
         cls,
         source: str,
-        violations: t.SequenceOf[m.Infra.InlineImportViolation],
+        violations: t.SequenceOf[p.Infra.InlineImportViolation],
         *,
         file_path: Path,
     ) -> t.Infra.TransformResult:

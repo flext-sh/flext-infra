@@ -29,7 +29,7 @@ class FlextInfraInlineImportDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.InlineImportViolation]:
+    ) -> t.SequenceOf[p.Infra.InlineImportViolation]:
         """Return Rope-resolved inline imports and dynamic import calls."""
         file_path = ctx.file_path
         parts = file_path.parts
@@ -49,7 +49,7 @@ class FlextInfraInlineImportDetector:
         source_lines = source.splitlines(keepends=True)
         module, _, name = c.Infra.IMPORTLIB_IMPORT_MODULE.rpartition(".")
         bindings: t.MutableSequenceOf[t.Triple[str, int, int]] = []
-        violations: t.MutableSequenceOf[m.Infra.InlineImportViolation] = []
+        violations: t.MutableSequenceOf[p.Infra.InlineImportViolation] = []
         for statement in statements:
             if statement.type_checking_guarded or statement.category not in {
                 c.Infra.StatementCategory.IMPORT,

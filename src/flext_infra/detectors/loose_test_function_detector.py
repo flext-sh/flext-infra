@@ -27,10 +27,10 @@ class FlextInfraLooseTestFunctionDetector:
     _RULES_FILE: ClassVar[Path] = (
         Path(__file__).parent.parent / "rules" / "test-tree-rules.yml"
     )
-    _rules_cache: ClassVar[m.Infra.TestTreeRulesConfig | None] = None
+    _rules_cache: ClassVar[p.Infra.TestTreeRulesConfig | None] = None
 
     @classmethod
-    def _rules(cls) -> m.Infra.TestTreeRulesConfig:
+    def _rules(cls) -> p.Infra.TestTreeRulesConfig:
         """Return the validated, cached test-tree rule parameters."""
         cached = cls._rules_cache
         if cached is None:
@@ -55,7 +55,7 @@ class FlextInfraLooseTestFunctionDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.LooseTestFunctionViolation]:
+    ) -> t.SequenceOf[p.Infra.LooseTestFunctionViolation]:
         """Return one violation per loose ``test_*`` function in a test module."""
         rules = cls._rules()
         if not cls._is_test_file(ctx, rules):
@@ -69,7 +69,7 @@ class FlextInfraLooseTestFunctionDetector:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
         except FlextInfraConstantsRope.RUNTIME_ERRORS:
             return []
-        violations: list[m.Infra.LooseTestFunctionViolation] = []
+        violations: list[p.Infra.LooseTestFunctionViolation] = []
         for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
             if definition.kind != FlextInfraConstantsRope.RopeScopeKind.FUNCTION:
                 continue

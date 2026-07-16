@@ -61,7 +61,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         value_map: t.StrMapping,
     ) -> (
         tuple[
-            t.Infra.RopeResource, str, t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]
+            t.Infra.RopeResource, str, t.SequenceOf[tuple[p.Infra.SymbolInfo, str, str]]
         ]
         | None
     ):
@@ -81,13 +81,13 @@ class FlextInfraCodegenConsolidatorStepsMixin:
 
     @staticmethod
     def _match_assignments(
-        symbols: t.SequenceOf[m.Infra.SymbolInfo],
+        symbols: t.SequenceOf[p.Infra.SymbolInfo],
         # mro-j47u (codex): use the canonical scalar sequence alias directly.
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
-    ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
+    ) -> t.SequenceOf[tuple[p.Infra.SymbolInfo, str, str]]:
         """Match assignments."""
-        matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
+        matches: t.MutableSequenceOf[tuple[p.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
             # mro-j47u (codex): widen the validated constrained int for indexing.
             line_number: int = symbol.line
@@ -118,7 +118,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         workspace: Path,
         pkg_name: str,
         backup: str,
-        matches: t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
+        matches: t.SequenceOf[tuple[p.Infra.SymbolInfo, str, str]],
     ) -> t.Infra.EditResultWithDescs:
         """Apply and validate."""
         src_lines = backup.splitlines(keepends=True)

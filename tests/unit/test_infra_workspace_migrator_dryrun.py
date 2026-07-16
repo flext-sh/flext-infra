@@ -32,7 +32,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("unchanged for flext-core" in c for c in migrations[0].changes), eq=True
         )
@@ -48,7 +48,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "Makefile not found" in c
@@ -68,7 +68,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "pyproject.toml not found" in c
@@ -88,7 +88,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "unchanged for flext-core" in c
@@ -112,7 +112,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and ".gitignore already normalized" in c

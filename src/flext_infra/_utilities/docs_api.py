@@ -611,7 +611,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def docstring_issues(
         project_root: Path, contract: t.Infra.ContainerDict
-    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+    ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings."""
         return [
             m.Infra.AuditIssue(
@@ -631,7 +631,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def docstring_coverage(
         project_root: Path, contract: t.Infra.ContainerDict
-    ) -> m.Infra.DocstringCoverage:
+    ) -> p.Infra.DocstringCoverage:
         """Aggregate docstring coverage over every public target.
 
         ``percent`` is computed here (behavior lives in ``u``); the model is a

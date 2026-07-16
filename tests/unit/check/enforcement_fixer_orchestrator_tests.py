@@ -28,7 +28,7 @@ class TestsEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
-    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
+    def _rule(rule_id: str) -> p.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
@@ -328,7 +328,7 @@ class TestsEnforcementFixerOrchestrator:
 
             def check(
                 self, project_dir: Path, ctx: m.Infra.GateContext
-            ) -> m.Infra.GateExecution:
+            ) -> p.Infra.GateExecution:
                 _ = self.workspace_root
                 tm.that(ctx.check_only, eq=True)
                 tm.that(ctx.apply_fixes, eq=False)
@@ -352,7 +352,7 @@ class TestsEnforcementFixerOrchestrator:
 
             def fix(
                 self, project_dir: Path, ctx: m.Infra.GateContext
-            ) -> m.Infra.GateExecution:
+            ) -> p.Infra.GateExecution:
                 _ = project_dir, ctx
                 FakeGate.fixed = True
                 msg = "dry-run must not execute gate fixes"

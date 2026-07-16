@@ -20,7 +20,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
         *,
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Build MkDocs sites across project scopes."""
         return self.run_scoped_docs(
             workspace_root,
@@ -42,7 +42,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+    def _build_scope(self, scope: m.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports."""
         report = u.Infra.docs_run_mkdocs(scope, runner=self._runner)
         u.Infra.docs_write_build_reports(scope, report)

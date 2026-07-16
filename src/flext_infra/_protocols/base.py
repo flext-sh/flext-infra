@@ -230,7 +230,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self, project: str, gates: t.StrSequence
-        ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
+        ) -> p.Result[t.SequenceOf[p.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
 
@@ -246,7 +246,7 @@ class FlextInfraProtocolsBase(Protocol):
             workspace_root: Path | None = None,
             settings: m.Infra.BaseMkConfig | None = None,
             canonical_root: Path | None = None,
-        ) -> p.Result[m.Infra.SyncResult]:
+        ) -> p.Result[p.Infra.SyncResult]:
             """Synchronize generated workspace or project artifacts."""
             ...
 
@@ -256,7 +256,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def generate(
             self, request: m.Infra.DocsGenerateRequest
-        ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+        ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
 
@@ -266,7 +266,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def discover_projects(
             self, workspace_root: Path
-        ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+        ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
 
@@ -304,7 +304,7 @@ class FlextInfraProtocolsBase(Protocol):
     class Scanner(Protocol):
         """Protocol for file scanners that detect violations."""
 
-        def scan_file(self, *, file_path: Path) -> m.Infra.ScanResult:
+        def scan_file(self, *, file_path: Path) -> p.Infra.ScanResult:
             """Scan a single file and return scan result."""
             ...
 
@@ -375,7 +375,7 @@ class FlextInfraProtocolsBase(Protocol):
             limits_path: Path | None = None,
             *,
             include_mypy: bool = True,
-        ) -> p.Result[m.Infra.TypingsReport]:
+        ) -> p.Result[p.Infra.TypingsReport]:
             """Get required typing libraries for a project."""
             ...
 
@@ -464,7 +464,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
-        ) -> t.SequenceOf[m.Infra.CensusReport]:
+        ) -> t.SequenceOf[p.Infra.CensusReport]:
             """Run census and return typed reports."""
             ...
 
@@ -514,7 +514,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def validate(
             self, files: t.SequenceOf[Path], project_dir: Path
-        ) -> p.Result[m.Infra.GateResult]:
+        ) -> p.Result[p.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""
             ...
 
@@ -560,24 +560,24 @@ class FlextInfraProtocolsBase(Protocol):
 
         def sync_github_workflows(
             self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
+        ) -> p.Result[p.Infra.GithubWorkflowSyncReport]:
             """Sync GitHub workflow files."""
             ...
 
         def lint_github_workflows(
             self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
+        ) -> p.Result[p.Infra.GithubWorkflowLintOutcome]:
             """Lint GitHub workflow files."""
             ...
 
         def run_github_pull_request(
             self, params: m.Infra.GithubPullRequestRequest
-        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+        ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
             """Manage pull request for a single project."""
             ...
 
         def run_github_workspace_pull_requests(
             self, params: m.Infra.GithubPullRequestWorkspaceRequest
-        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
+        ) -> p.Result[p.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...

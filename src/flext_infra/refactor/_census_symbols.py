@@ -96,9 +96,9 @@ class FlextInfraRefactorCensusSymbolsMixin:
         file_path: Path,
         *,
         convention: m.Infra.RopeModuleConvention | None = None,
-        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
+        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
         | None = None,
-    ) -> m.Infra.DetectorContext:
+    ) -> p.Infra.DetectorContext:
         """Detector context."""
         resolved_convention = convention or rope.convention(file_path)
         layout = resolved_convention.project_layout

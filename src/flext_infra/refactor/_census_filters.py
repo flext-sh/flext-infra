@@ -19,16 +19,16 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _duplicate_groups(
-        project_objects: tuple[list[m.Infra.Census.Object], ...],
-    ) -> tuple[m.Infra.Census.DuplicateGroup, ...]:
+        project_objects: tuple[list[p.Infra.Census.Object], ...],
+    ) -> tuple[p.Infra.Census.DuplicateGroup, ...]:
         """Duplicate groups."""
-        groups: dict[tuple[str, str, str], list[m.Infra.Census.Object]] = defaultdict(
+        groups: dict[tuple[str, str, str], list[p.Infra.Census.Object]] = defaultdict(
             list
         )
         for item in (obj for objects in project_objects for obj in objects):
             owner = item.scope_path.rpartition(".")[0]
             groups[item.kind, item.name, owner].append(item)
-        duplicates: list[m.Infra.Census.DuplicateGroup] = []
+        duplicates: list[p.Infra.Census.DuplicateGroup] = []
         for key in sorted(groups):
             definitions = groups[key]
             if (
@@ -98,8 +98,8 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _named_object(
-        objects: tuple[m.Infra.Census.Object, ...], name: str
-    ) -> m.Infra.Census.Object | None:
+        objects: tuple[p.Infra.Census.Object, ...], name: str
+    ) -> p.Infra.Census.Object | None:
         """Named object."""
         return next(
             (item for item in objects if name in {item.scope_path, item.name}), None
@@ -108,8 +108,8 @@ class FlextInfraRefactorCensusFiltersMixin:
     @staticmethod
     def _runtime_alias_target(
         convention: m.Infra.RopeModuleConvention,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
-    ) -> m.Infra.Census.Object | None:
+        objects: tuple[p.Infra.Census.Object, ...] | None,
+    ) -> p.Infra.Census.Object | None:
         """Runtime alias target."""
         if objects is None:
             return None

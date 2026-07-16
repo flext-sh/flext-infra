@@ -49,7 +49,7 @@ def deptry_report_payload() -> t.JsonPayload:
 
 
 @pytest.fixture
-def tool_config_document() -> m.Infra.ToolConfigDocument:
+def tool_config_document() -> p.Infra.ToolConfigDocument:
     return u.Tests.tool_config_document()
 
 

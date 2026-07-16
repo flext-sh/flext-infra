@@ -23,7 +23,7 @@ class FlextInfraRefactorMROImportRewriter(
     class RewriteFilesInput(m.BaseModel):
         """Typed input envelope for workspace rewrite execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True
         )
 
@@ -38,18 +38,18 @@ class FlextInfraRefactorMROImportRewriter(
         cls,
         *,
         workspace_root: Path,
-        scan_results: t.SequenceOf[m.Infra.MROScanReport],
+        scan_results: t.SequenceOf[p.Infra.MROScanReport],
         apply: bool,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
     ) -> t.Triple[
-        t.SequenceOf[m.Infra.MROFileMigration],
-        t.SequenceOf[m.Infra.MRORewriteResult],
+        t.SequenceOf[p.Infra.MROFileMigration],
+        t.SequenceOf[p.Infra.MRORewriteResult],
         t.StrSequence,
     ]:
         """Transform migrated files and propagate consumer rewrites across the workspace."""
         errors: list[str] = []
-        migrations: list[m.Infra.MROFileMigration] = []
+        migrations: list[p.Infra.MROFileMigration] = []
         module_moves: MutableMapping[str, t.Pair[str, t.StrMapping]] = {}
         module_source_paths: MutableMapping[str, Path] = {}
         pending_sources: MutableMapping[Path, str] = {}
@@ -111,7 +111,7 @@ class FlextInfraRefactorMROImportRewriter(
         apply: bool,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
-    ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
+    ) -> tuple[t.SequenceOf[p.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
             return ((), ())
@@ -133,9 +133,9 @@ class FlextInfraRefactorMROImportRewriter(
     @classmethod
     def _rewrite_files(
         cls, *, request: RewriteFilesInput
-    ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
+    ) -> tuple[t.SequenceOf[p.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite files."""
-        rewrites: list[m.Infra.MRORewriteResult] = []
+        rewrites: list[p.Infra.MRORewriteResult] = []
         errors: list[str] = []
         for file_path in sorted(request.file_moves):
             source = request.pending_sources.get(file_path)

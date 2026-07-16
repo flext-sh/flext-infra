@@ -17,14 +17,14 @@ class FlextInfraCodegenGrpcEngineMixin(FlextInfraCodegenGrpcRenderMixin):
     @classmethod
     def _generate_project(
         cls, project_root: Path
-    ) -> p.Result[m.Infra.GrpcProjectRender]:
+    ) -> p.Result[p.Infra.GrpcProjectRender]:
         """Compile every package-owned schema into normalized temporary modules."""
         source_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not source_root.is_dir():
-            return r[m.Infra.GrpcProjectRender].ok(m.Infra.GrpcProjectRender(schemas=0))
+            return r[p.Infra.GrpcProjectRender].ok(m.Infra.GrpcProjectRender(schemas=0))
         proto_files = tuple(sorted(source_root.rglob(c.Infra.GRPC_PROTO_GLOB)))
         if not proto_files:
-            return r[m.Infra.GrpcProjectRender].ok(m.Infra.GrpcProjectRender(schemas=0))
+            return r[p.Infra.GrpcProjectRender].ok(m.Infra.GrpcProjectRender(schemas=0))
         source_names = tuple(
             path.relative_to(source_root).as_posix() for path in proto_files
         )
@@ -44,7 +44,7 @@ class FlextInfraCodegenGrpcEngineMixin(FlextInfraCodegenGrpcRenderMixin):
                 command, cwd=project_root, timeout=c.Infra.GRPC_CODEGEN_TIMEOUT_SECONDS
             )
             if compiled.failure:
-                return r[m.Infra.GrpcProjectRender].fail(
+                return r[p.Infra.GrpcProjectRender].fail(
                     compiled.error or f"grpc_tools.protoc failed in {project_root}"
                 )
             artifacts = cls._compiler_artifacts(
@@ -53,8 +53,8 @@ class FlextInfraCodegenGrpcEngineMixin(FlextInfraCodegenGrpcRenderMixin):
                 proto_files=proto_files,
             )
             if artifacts.failure:
-                return r[m.Infra.GrpcProjectRender].fail(artifacts.error)
-            return r[m.Infra.GrpcProjectRender].ok(
+                return r[p.Infra.GrpcProjectRender].fail(artifacts.error)
+            return r[p.Infra.GrpcProjectRender].ok(
                 m.Infra.GrpcProjectRender(
                     schemas=len(proto_files), artifacts=artifacts.value
                 )

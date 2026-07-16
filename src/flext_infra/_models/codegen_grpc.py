@@ -12,7 +12,7 @@ from flext_infra import t
 class _GrpcCodegenModel(m.ContractModel):
     """Immutable base contract for one compiler synchronization record."""
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+    model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
         extra="forbid", frozen=True, str_strip_whitespace=False
     )
 

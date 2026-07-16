@@ -10,7 +10,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import ClassVar, cast
 
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities._rope.bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
 )
@@ -44,10 +44,10 @@ class FlextInfraUtilitiesRopeHelpers(
     @classmethod
     def run_rope_post_hooks(
         cls, path: Path, *, dry_run: bool
-    ) -> t.SequenceOf[m.Infra.Result]:
+    ) -> t.SequenceOf[p.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
         cls._ensure_default_post_hooks_registered()
-        results: list[m.Infra.Result] = []
+        results: list[p.Infra.Result] = []
         for hook in cls._post_hooks:
             results.extend(hook(path, dry_run=dry_run))
         return results

@@ -36,7 +36,7 @@ class FlextInfraCompatibilityAliasDetector:
     @classmethod
     def detect_file(
         cls, ctx: m.Infra.DetectorContext
-    ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
+    ) -> t.SequenceOf[p.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
 
         Covers:
@@ -55,7 +55,7 @@ class FlextInfraCompatibilityAliasDetector:
         file_path = ctx.file_path
         source = resource.read()
         lines = source.splitlines()
-        violations: list[m.Infra.CompatibilityAliasViolation] = []
+        violations: list[p.Infra.CompatibilityAliasViolation] = []
         for line_number, line in enumerate(lines, start=1):
             match = c.Infra.COMPAT_ALIAS_RE.match(line)
             if match is None:
@@ -139,7 +139,7 @@ class FlextInfraCompatibilityAliasDetector:
     @classmethod
     def _detect_foreign_canonical_aliases(
         cls, *, ctx: m.Infra.DetectorContext, source: str, file_path: Path
-    ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
+    ) -> t.SequenceOf[p.Infra.CompatibilityAliasViolation]:
         """Detect runtime canonical aliases imported from ``flext_core``."""
         current_module = u.Infra.package_name(file_path)
         current_package = current_module.split(".", maxsplit=1)[0]
@@ -158,7 +158,7 @@ class FlextInfraCompatibilityAliasDetector:
             return ()
 
         local_aliases_set = frozenset(local_aliases)
-        violations: list[m.Infra.CompatibilityAliasViolation] = []
+        violations: list[p.Infra.CompatibilityAliasViolation] = []
         # mro-j47u (codex): parse each Rope-owned runtime statement in place;
         # the module-wide table intentionally excludes conditional imports.
         for statement in u.Infra.logical_statements(source):

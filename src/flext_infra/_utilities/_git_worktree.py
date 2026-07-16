@@ -314,18 +314,18 @@ class FlextInfraUtilitiesGitWorktreeMixin:
     @classmethod
     def git_repository_delta(
         cls, repository: m.Infra.RepositoryWorktree
-    ) -> p.Result[m.Infra.RepositoryDelta]:
+    ) -> p.Result[p.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint."""
         head_result = cls.git_repository_head(repository.worktree_root)
         if head_result.failure or head_result.value != repository.checkpoint_sha:
-            return r[m.Infra.RepositoryDelta].fail(
+            return r[p.Infra.RepositoryDelta].fail(
                 head_result.error
                 if head_result.failure
                 else "isolated command moved repository HEAD"
             )
         stage_result = cls.git_capture(repository.worktree_root, ("add", "-A"))
         if stage_result.failure:
-            return r[m.Infra.RepositoryDelta].fail(
+            return r[p.Infra.RepositoryDelta].fail(
                 stage_result.error or "failed to stage operation delta"
             )
         names_result = cls.git_capture(
@@ -337,7 +337,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             ("diff", "--cached", "--binary", repository.checkpoint_sha, "--"),
         )
         if names_result.failure or patch_result.failure:
-            return r[m.Infra.RepositoryDelta].fail(
+            return r[p.Infra.RepositoryDelta].fail(
                 names_result.error
                 if names_result.failure
                 else patch_result.error or "failed to capture operation patch"
@@ -349,7 +349,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         patch_bytes = patch_result.value
         if patch_bytes and not patch_bytes.endswith(b"\n"):
             patch_bytes += b"\n"
-        return r[m.Infra.RepositoryDelta].ok(
+        return r[p.Infra.RepositoryDelta].ok(
             m.Infra.RepositoryDelta(
                 relative_path=repository.relative_path,
                 source_root=repository.source_root,

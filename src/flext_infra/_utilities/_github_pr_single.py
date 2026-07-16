@@ -21,7 +21,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
     @classmethod
     def run_github_pull_request(
         cls, params: m.Infra.GithubPullRequestRequest
-    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command from the canonical single-repo payload."""
         result = cls._run_github_pull_request_for_repo(
             repo_root=params.repo_root_path,
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
             request=params,
         )
         if result.success and result.value.exit_code != 0:
-            return r[m.Infra.GithubPullRequestOutcome].fail(
+            return r[p.Infra.GithubPullRequestOutcome].fail(
                 f"PR operation exited with code {result.value.exit_code}"
             )
         return result
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         request: (
             m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
-    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = (
@@ -54,7 +54,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         ).resolve()
         ensure_dir_result = u.Cli.ensure_dir(report_dir)
         if ensure_dir_result.failure:
-            return r[m.Infra.GithubPullRequestOutcome].fail(
+            return r[p.Infra.GithubPullRequestOutcome].fail(
                 ensure_dir_result.error or "failed to create report directory"
             )
         report_dir = ensure_dir_result.value
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         started = time.monotonic()
         to_file_result = u.Cli.run_to_file(command, log_path)
         if to_file_result.failure:
-            return r[m.Infra.GithubPullRequestOutcome].fail(
+            return r[p.Infra.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error"
             )
         exit_code = to_file_result.value
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         status = (
             c.Infra.ResultStatus.OK if exit_code == 0 else c.Infra.ResultStatus.FAIL
         )
-        return r[m.Infra.GithubPullRequestOutcome].ok(
+        return r[p.Infra.GithubPullRequestOutcome].ok(
             m.Infra.GithubPullRequestOutcome(
                 display=display,
                 status=status,

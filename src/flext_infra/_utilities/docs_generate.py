@@ -33,12 +33,12 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def _prune_generated_tree(
         root: Path, expected: t.SequenceOf[Path], *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Prune stale files from one tool-owned generated tree."""
         if not root.exists():
             return []
         expected_paths = {path.resolve() for path in expected}
-        removed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        removed: t.MutableSequenceOf[p.Infra.GeneratedFile] = []
         for path in sorted(root.rglob("*.md")):
             if path.resolve() in expected_paths:
                 continue
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_project_generated_files(
         scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
         contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDocsGenerate:
             scope.path / "docs/api-reference/generated/public-api.md",
             scope.path / "docs/api-reference/generated/modules/index.md",
         ]
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[p.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 scope.path / "README.md",
                 FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
@@ -142,7 +142,7 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_project_guides_files(
         scope: m.Infra.DocScope, *, workspace_root: Path, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Return project guide files managed by generation.
 
         Guide propagation is intentionally disabled; curated guides stay local.
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_project_mkdocs_files(
         scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Return the managed mkdocs settings file when it does not exist yet."""
         path = scope.path / "mkdocs.yml"
         if path.exists():
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_root_generated_files(
         workspace_root: Path, *, apply: bool, projects: t.StrSequence | None = None
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects.
 
         The root site is an AGGREGATE of every workspace project, so scope
@@ -238,7 +238,7 @@ class FlextInfraUtilitiesDocsGenerate:
         expected_project_generated: t.MutableSequenceOf[Path] = [
             workspace_root / "docs/projects/generated/catalog.md"
         ]
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
+        files: t.MutableSequenceOf[p.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
                 workspace_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
@@ -351,9 +351,9 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_sanitize_scope_fences(
         scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
+    ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Remove unsupported ``notest`` qualifiers from code fence info lines."""
-        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
+        changed: t.MutableSequenceOf[p.Infra.GeneratedFile] = []
         docs_root = scope.path / "docs"
         if not docs_root.exists():
             return changed
@@ -377,9 +377,9 @@ class FlextInfraUtilitiesDocsGenerate:
         apply: bool,
         workspace_root: Path,
         projects: t.StrSequence | None = None,
-    ) -> m.Infra.DocsPhaseReport:
+    ) -> p.Infra.DocsPhaseReport:
         """Generate one scope and persist the standard reports."""
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
+        files: t.MutableSequenceOf[p.Infra.GeneratedFile] = list(
             FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
                 workspace_root, apply=apply, projects=projects
             )

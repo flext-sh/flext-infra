@@ -31,7 +31,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
         *,
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Serve the single matching docs scope (blocks until stopped)."""
         scopes_result = u.Infra.build_scopes(
             workspace_root,
@@ -39,7 +39,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             output_dir=output_dir or c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[t.SequenceOf[p.Infra.DocsPhaseReport]].fail(
                 scopes_result.error or "scope resolution failed"
             )
         servable = [
@@ -48,16 +48,16 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             if (scope.path / "mkdocs.yml").exists()
         ]
         if not servable:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[t.SequenceOf[p.Infra.DocsPhaseReport]].fail(
                 "no docs scope with mkdocs.yml; run `docs generate` first"
             )
         if len(servable) > 1:
             names = ", ".join(scope.name for scope in servable)
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
+            return r[t.SequenceOf[p.Infra.DocsPhaseReport]].fail(
                 "serve targets exactly one scope; narrow with --project "
                 f"(candidates: {names})"
             )
-        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
+        return r[t.SequenceOf[p.Infra.DocsPhaseReport]].ok([
             self._serve_scope(servable[0])
         ])
 
@@ -74,7 +74,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _serve_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
+    def _serve_scope(self, scope: m.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the docs build utilities (blocking)."""
         self.logger.info(
             "docs_serve_scope_started", project=scope.name, dev_addr=self.dev_addr

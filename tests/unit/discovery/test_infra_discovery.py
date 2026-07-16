@@ -141,7 +141,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
-        projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
+        projects: t.SequenceOf[p.Infra.ProjectInfo] = result.value
         for item in projects:
             tm.that(item, is_=m.Infra.ProjectInfo)
 

@@ -47,9 +47,9 @@ class FlextInfraProjectSelectionMixin:
         workspace_root: Path,
         *,
         output_dir: Path | str | None,
-        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
+        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
         projects: t.StrSequence | None = None,
-    ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes."""
         return FlextInfraUtilitiesDocs.run_scoped(
             workspace_root,

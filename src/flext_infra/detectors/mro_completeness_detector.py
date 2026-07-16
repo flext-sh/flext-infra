@@ -15,7 +15,7 @@ class FlextInfraMROCompletenessDetector:
     @staticmethod
     def detect_file(
         ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.MROCompletenessViolation]:
+    ) -> t.SequenceOf[p.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path
         rope_project = ctx.rope_project

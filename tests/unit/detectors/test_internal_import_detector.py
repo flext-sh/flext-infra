@@ -36,7 +36,7 @@ class TestsFlextInfraInternalImportDetector:
             encoding="utf-8",
         )
 
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraInternalImportDetector.detect_file(
                 m.Infra.DetectorContext(
@@ -70,7 +70,7 @@ class TestsFlextInfraInternalImportDetector:
             encoding="utf-8",
         )
 
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
+        parse_failures: list[p.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraInternalImportDetector.detect_file(
                 m.Infra.DetectorContext(

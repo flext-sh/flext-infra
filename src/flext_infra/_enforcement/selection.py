@@ -20,7 +20,7 @@ class FlextInfraEnforcementSelection:
     _STUB_VIOLATION_FIELD: ClassVar[str] = "stub_file_violations"
 
     @staticmethod
-    def canonical_catalog() -> m.EnforcementCatalog:
+    def canonical_catalog() -> p.EnforcementCatalog:
         """Return the canonical flext-core enforcement catalog."""
         return u.build_canonical_catalog()
 
@@ -32,7 +32,7 @@ class FlextInfraEnforcementSelection:
         wanted: t.StrSequence = (),
         safe_only: bool = True,
         adapterless: t.StrSequence = (),
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> tuple[p.EnforcementRuleSpec, ...]:
         """Return enabled fixable rules selected for fixer execution."""
         wanted_ids = frozenset(wanted)
         adapterless_ids = frozenset(adapterless)
@@ -58,7 +58,7 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def declarative_rules(
         rule_names: t.StrSequence | None = None,
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> tuple[p.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative detector."""
         selected = frozenset(rule_names) if rule_names else None
         return tuple(
@@ -86,7 +86,7 @@ class FlextInfraEnforcementSelection:
 
     @staticmethod
     def _validate_requested_rules(
-        candidates: tuple[m.EnforcementRuleSpec, ...],
+        candidates: tuple[p.EnforcementRuleSpec, ...],
         *,
         wanted_ids: frozenset[str],
         adapterless_ids: frozenset[str],

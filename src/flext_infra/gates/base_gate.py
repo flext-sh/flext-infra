@@ -36,7 +36,7 @@ class FlextInfraGate(ABC):
 
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Template method: timing + dirs + skip + run + parse + result."""
         started = time.monotonic()
         check_dirs = self._get_check_dirs(project_dir, ctx)
@@ -64,7 +64,7 @@ class FlextInfraGate(ABC):
 
     def check_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Check specific files instead of whole directory.
 
         Passes file paths directly to the tool CLI for scoped validation.
@@ -144,7 +144,7 @@ class FlextInfraGate(ABC):
     # mro-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse tool output into (passed, issues)."""
         ...
 
@@ -165,7 +165,7 @@ class FlextInfraGate(ABC):
     # Template method: fix
     # ------------------------------------------------------------------
 
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
         """Template method: timing + targets + skip + run fix + result."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -201,7 +201,7 @@ class FlextInfraGate(ABC):
 
     def fix_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Apply a supported fix only to explicitly selected files."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -236,7 +236,7 @@ class FlextInfraGate(ABC):
             raw_output=self._fix_raw_output(result),
         )
 
-    def _check_only_fix_result(self, project_dir: Path) -> m.Infra.GateExecution:
+    def _check_only_fix_result(self, project_dir: Path) -> p.Infra.GateExecution:
         """Return a non-mutating fix preview for check-only gate contexts."""
         return self._build_gate_result(
             result=m.Infra.GateResult(
@@ -295,10 +295,10 @@ class FlextInfraGate(ABC):
         self,
         *,
         result: m.Infra.GateResult,
-        issues: t.SequenceOf[m.Infra.Issue],
+        issues: t.SequenceOf[p.Infra.Issue],
         raw_output: str = "",
         ctx: m.Infra.GateContext | None = None,
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Build gate result.
 
         When ``ctx.gate_mode == "warn"`` the gate reports issues but is
@@ -358,7 +358,7 @@ class FlextInfraGate(ABC):
                 out.append(directory)
         return out
 
-    def _skip_result(self, project_dir: Path, started: float) -> m.Infra.GateExecution:
+    def _skip_result(self, project_dir: Path, started: float) -> p.Infra.GateExecution:
         """Skip result."""
         return self._build_gate_result(
             result=m.Infra.GateResult(

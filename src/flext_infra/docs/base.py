@@ -31,9 +31,9 @@ class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC)
     @staticmethod
     def _propagate_phase_outcome(
         label: str,
-        result: p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]],
+        result: p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]],
         *,
-        failure_predicate: Callable[[m.Infra.DocsPhaseReport], bool] | None = None,
+        failure_predicate: Callable[[p.Infra.DocsPhaseReport], bool] | None = None,
     ) -> p.Result[bool]:
         """Convert a verb result into a boolean execute() outcome.
 

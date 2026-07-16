@@ -54,7 +54,7 @@ class FlextInfraUtilitiesDocsContract:
     @staticmethod
     def docs_write_if_needed(
         path: Path, content: str, *, apply: bool, overwrite: bool = True
-    ) -> m.Infra.GeneratedFile:
+    ) -> p.Infra.GeneratedFile:
         """Write generated content only when needed and allowed."""
         if path.exists() and not overwrite:
             return m.Infra.GeneratedFile(path=path.as_posix(), written=False)

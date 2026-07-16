@@ -23,7 +23,7 @@ class FlextInfraModelsWorkspace:
     class ProjectInfo(mm.ProjectEntryNameMixin, m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -53,7 +53,7 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
