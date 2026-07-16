@@ -10,7 +10,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, t, u
 from flext_infra.transformers._tier0_transformer import FlextInfraTier0TransformerMixin
 
 
@@ -20,7 +20,7 @@ class FlextInfraTransformerTier0ImportFixer(FlextInfraTier0TransformerMixin):
     class Analysis(m.Value):
         """Detection results for a single Python file's self-import patterns."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, arbitrary_types_allowed=True
         )
 

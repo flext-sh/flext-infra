@@ -12,6 +12,7 @@ import ast
 from pathlib import Path
 from typing import ClassVar, override
 
+from flext_infra import p
 from flext_infra.transformers.smells.base import (
     FlextInfraSmellFixer,
     register_smell_fixer,

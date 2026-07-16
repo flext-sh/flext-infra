@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 

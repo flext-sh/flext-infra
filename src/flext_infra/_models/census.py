@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -27,7 +27,7 @@ class FlextInfraModelsCensus:
         ):
             """Single reference site supporting a census classification."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             surface: Annotated[
                 str,
@@ -43,7 +43,7 @@ class FlextInfraModelsCensus:
         ):
             """Single discovered Python object with tier and classification metadata."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             name: Annotated[t.NonEmptyStr, m.Field(description="Object identifier")]
             kind: Annotated[
@@ -108,7 +108,7 @@ class FlextInfraModelsCensus:
         ):
             """Explicit aggressive-removal candidate derived from census results."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr, m.Field(description="Candidate object name")
@@ -143,7 +143,7 @@ class FlextInfraModelsCensus:
         class Violation(mm.ProjectNameMixin, m.ArbitraryTypesModel):
             """Detected census violation with fix metadata."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr, m.Field(description="Name of the violating object")
@@ -181,7 +181,7 @@ class FlextInfraModelsCensus:
         class Fix(m.ArbitraryTypesModel):
             """Applied or proposed auto-fix operation."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
                 t.NonEmptyStr, m.Field(description="Name of the fixed object")
@@ -209,7 +209,7 @@ class FlextInfraModelsCensus:
         class ScanConfig(m.ArbitraryTypesModel):
             """Resolved per-collect scan configuration shared across modules."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             kind_names: Annotated[
                 t.StrSequence | None, m.Field(description="Symbol-kind filters")
@@ -243,7 +243,7 @@ class FlextInfraModelsCensus:
         class DuplicateGroup(m.ArbitraryTypesModel):
             """Cross-project duplicate object cluster."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             name: Annotated[
                 t.NonEmptyStr, m.Field(description="Shared object name across projects")
@@ -263,7 +263,7 @@ class FlextInfraModelsCensus:
         class ProjectReport(mm.ProjectNameMixin, m.ArbitraryTypesModel):
             """Per-project census summary."""
 
-            model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
             objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = m.Field(
                 default_factory=tuple, description="Objects discovered for this project"

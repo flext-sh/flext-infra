@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from flext_cli import p
+
 
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):

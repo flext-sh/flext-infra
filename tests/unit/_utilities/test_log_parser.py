@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import c, t, u
+from tests import c, p, t, u
 
 
 class TestsFlextInfraUtilitiesLogParser:

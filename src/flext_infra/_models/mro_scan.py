@@ -13,7 +13,7 @@ class FlextInfraModelsMroScan:
     class MROSymbolCandidate(m.ArbitraryTypesModel):
         """Unified symbol candidate used by MRO scan and rewrites."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         facade_name: Annotated[str, m.Field(description="Facade alias/import name")] = (
             ""
@@ -32,7 +32,7 @@ class FlextInfraModelsMroScan:
     class MROScanReport(m.ArbitraryTypesModel):
         """Scan result for one MRO candidate file."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         module: Annotated[t.NonEmptyStr, m.Field(description="Import module path")]
@@ -47,7 +47,7 @@ class FlextInfraModelsMroScan:
     class MROTargetSpec(m.ContractModel):
         """Specification for an MRO target family."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_alias: Annotated[
             t.NonEmptyStr, m.Field(description="Family alias letter")

@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 
 _log = u.fetch_logger(__name__)
 

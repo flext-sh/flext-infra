@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t, u
+from flext_infra import c, p, t, u
 from flext_infra.codegen._lazy_init_generation_io import (
     FlextInfraCodegenLazyInitGenerationIOMixin,
 )

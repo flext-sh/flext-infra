@@ -15,7 +15,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore

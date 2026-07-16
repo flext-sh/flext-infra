@@ -7,7 +7,7 @@ from typing import cast
 
 from flext_tests import tm
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 
 

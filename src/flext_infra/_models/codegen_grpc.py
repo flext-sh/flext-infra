@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import m
-from flext_infra import p, t
+from flext_infra import t
 
 
 class _GrpcCodegenModel(m.ContractModel):
     """Immutable base contract for one compiler synchronization record."""
 
-    model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
         extra="forbid", frozen=True, str_strip_whitespace=False
     )
 

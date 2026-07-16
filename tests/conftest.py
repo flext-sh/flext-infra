@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 import flext_infra as infra_pkg
-from tests import c, t, u
+from tests import c, p, t, u
 
 # NOTE(mro-wkii.17.26.2, agent codex): register the generated unit package once;
 # importing either child plugin executes tests.unit and preloads the other one

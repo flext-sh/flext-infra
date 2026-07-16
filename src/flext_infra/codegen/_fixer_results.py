@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 
 _log = u.fetch_logger(__name__)

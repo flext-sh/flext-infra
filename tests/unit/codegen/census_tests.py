@@ -15,7 +15,7 @@ import pytest
 from flext_tests import r, tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
-from tests import m, t, u
+from tests import m, p, t, u
 
 
 def _parse_violation(violation: str) -> p.Infra.CensusViolation | None:

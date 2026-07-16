@@ -370,7 +370,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
     def test_no_duplicate_t_import_when_t_from_project_package(self) -> None:
         source = (
             "from __future__ import annotations\n"
-            "from flext_ldif import c, m, t\n\n"
+            "from flext_ldif import c, m, p, t\n\n"
             "def foo(x: int | float) -> None:\n"
             "    pass\n"
         )
@@ -380,7 +380,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         })
         updated, changes = rule.apply(source)
         tm.that(updated, has="t.Numeric")
-        tm.that(updated, has="from flext_ldif import c, m, t")
+        tm.that(updated, has="from flext_ldif import c, m, p, t")
         assert any(
             change == "Canonicalized inline union int | float -> t.Numeric"
             for change in changes

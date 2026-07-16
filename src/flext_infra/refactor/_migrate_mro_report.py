@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 
 
 class FlextInfraRefactorMigrateMroReportMixin:

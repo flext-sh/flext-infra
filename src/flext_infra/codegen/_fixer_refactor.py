@@ -1,10 +1,14 @@
-"""Refactor pass helper for the codegen fixer service."""
+"""Refactor pass helper for the codegen fixer service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra import c, m, p
 from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
 from flext_infra.refactor.service import FlextInfraRefactorService
 

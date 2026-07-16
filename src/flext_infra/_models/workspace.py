@@ -7,8 +7,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p, u
-from flext_infra import c, p, t
+from flext_cli import m, u
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -23,7 +23,7 @@ class FlextInfraModelsWorkspace:
     class ProjectInfo(mm.ProjectEntryNameMixin, m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -53,7 +53,7 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 

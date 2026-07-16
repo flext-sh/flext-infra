@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models.config import FlextInfraConfigModels
 
 
@@ -74,7 +74,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     class DocsPhaseItemModel(m.BaseModel):
         """Unified item payload for docs phase reports."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True
         )
 
@@ -144,7 +144,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     class DocsPublicContract(m.ArbitraryTypesModel):
         """Exact project/config objects plus derived public API analysis."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 

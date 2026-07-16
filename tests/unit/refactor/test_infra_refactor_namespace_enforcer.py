@@ -123,7 +123,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         )
         _ = (typings_dir / "base.py").write_text(
             "from __future__ import annotations\n\n"
-            "from flext_core import m, t\n\n"
+            "from flext_core import m, p, t\n\n"
             "Payload = t.StrMapping\n"
             "ModelBase = m.Base\n",
             encoding="utf-8",

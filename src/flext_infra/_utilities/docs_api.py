@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 

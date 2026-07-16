@@ -14,7 +14,7 @@ from flext_tests import tm
 
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
-from tests import m, t, u
+from tests import m, p, t, u
 
 pytestmark = [pytest.mark.integration]
 

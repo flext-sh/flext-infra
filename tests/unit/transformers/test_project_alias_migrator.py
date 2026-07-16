@@ -194,7 +194,7 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
     def test_keeps_core_aliases_inside_private_facade_implementation(self) -> None:
         source = (
             "from __future__ import annotations\n\n"
-            "from flext_core import m, t\n\n"
+            "from flext_core import m, p, t\n\n"
             "class Demo(m.Base):\n"
             "    names: t.StrSequence = ()\n"
         )

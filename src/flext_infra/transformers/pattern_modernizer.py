@@ -9,6 +9,9 @@ Applies safe, syntactic transformations that do not require type inference:
 
 The transformer is intentionally conservative: it only rewrites code when the
 result is unambiguous and records every change.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

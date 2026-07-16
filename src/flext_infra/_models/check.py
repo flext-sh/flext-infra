@@ -11,8 +11,8 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import FlextCliModels as m, p, u
-from flext_infra import c, p, t
+from flext_cli import FlextCliModels as m, u
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -101,7 +101,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -350,7 +350,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         schema_uri: str = m.Field(
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",

@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import c, t, u
+from tests import c, p, t, u
 
 
 class TestWorkspaceChecker:

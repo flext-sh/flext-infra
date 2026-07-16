@@ -6,7 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
 )
@@ -23,7 +23,7 @@ class FlextInfraRefactorMROImportRewriter(
     class RewriteFilesInput(m.BaseModel):
         """Typed input envelope for workspace rewrite execution."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True
         )
 

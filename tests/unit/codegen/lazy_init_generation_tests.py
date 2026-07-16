@@ -13,7 +13,7 @@ import pytest
 
 from flext_tests import tm
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 

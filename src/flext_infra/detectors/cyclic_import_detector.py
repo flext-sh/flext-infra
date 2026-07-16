@@ -9,7 +9,7 @@ from __future__ import annotations
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 
 

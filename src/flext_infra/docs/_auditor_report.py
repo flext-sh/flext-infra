@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraDocAuditorReportMixin:

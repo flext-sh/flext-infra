@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m
-from flext_infra import p, t
+from flext_infra import t
 
 
 class FlextInfraModelsGates:
@@ -20,7 +20,7 @@ class FlextInfraModelsGates:
         """Quality gate execution context and configuration."""
 
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True, populate_by_name=True
         )
         workspace_root: Path = m.Field(

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, p, t
 from flext_infra.codegen._codegen_generation_renderers import (
     FlextInfraCodegenGenerationRenderersMixin,
 )

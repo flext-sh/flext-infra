@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import m, t, u
+from tests import m, p, t, u
 
 
 def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Path:

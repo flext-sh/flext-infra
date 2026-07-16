@@ -10,7 +10,7 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_core._models.enforcement import FlextModelsEnforcement as me
-from flext_infra import p
+from flext_infra import p, t
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
@@ -20,7 +20,7 @@ class FlextInfraModelsEnforcement:
     class EnforcementEvaluation(m.ArbitraryTypesModel):
         """Collected rule probes and collection failures for one project."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
             tuple[tuple[me.EnforcementRuleSpec, p.AttributeProbe], ...],
@@ -39,7 +39,7 @@ class FlextInfraModelsEnforcement:
         inspect via ``getattr``.
         """
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
 
         file_path: Annotated[str, m.Field(description="Target file path")]
         line: Annotated[int, m.Field(description="Line number of the violation")] = 0

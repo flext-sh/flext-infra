@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_infra import c, t, u
+from flext_infra import c, p, t, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 

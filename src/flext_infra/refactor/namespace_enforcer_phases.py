@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
 
 

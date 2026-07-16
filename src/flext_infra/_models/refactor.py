@@ -11,8 +11,8 @@ from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m, p, u
-from flext_infra import p, t
+from flext_cli import m, u
+from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
@@ -145,7 +145,7 @@ class FlextInfraModelsRefactor(
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         line: Annotated[
@@ -158,7 +158,7 @@ class FlextInfraModelsRefactor(
     class LooseClassViolation(m.ArbitraryTypesModel):
         """A detected loose-class naming violation with confidence."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Source file path")]
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
@@ -176,7 +176,7 @@ class FlextInfraModelsRefactor(
     class FamilyMROResolution(m.ArbitraryTypesModel):
         """Resolution payload for one facade family MRO."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         family: Annotated[t.NonEmptyStr, m.Field(description="Facade family letter")]
         expected_bases: Annotated[
@@ -194,7 +194,7 @@ class FlextInfraModelsRefactor(
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -250,7 +250,7 @@ class FlextInfraModelsRefactor(
     class ClassvarConstantAutofixPlan(m.ArbitraryTypesModel):
         """Planned edits for one ENFORCE-079 ClassVar-constant autofix."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         class_module: Annotated[
             str, m.Field(description="Module that declares the owning class")
@@ -285,7 +285,7 @@ class FlextInfraModelsRefactor(
     class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[

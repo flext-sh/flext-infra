@@ -6,7 +6,7 @@ import difflib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, t, u
+from flext_infra import m, p, t, u
 
 
 class FlextInfraAccessorMigrationReportMixin:

@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import p, t
+from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -32,7 +32,7 @@ class FlextInfraModelsRefactorViolations:
     class ClassNestingMapping(m.ArbitraryTypesModel):
         """Unified mapping contract for class-nesting rewrite planning."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         loose_name: Annotated[str, m.Field(description="Original loose class name")] = (
             ""
@@ -56,7 +56,7 @@ class FlextInfraModelsRefactorViolations:
     ):
         """Normalized class-nesting violation with rewrite metadata."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
             str, m.Field(description="Expected namespace class")
@@ -65,7 +65,7 @@ class FlextInfraModelsRefactorViolations:
     class ClassNestingPolicy(m.ContractModel):
         """Validated policy contract used by class-nesting transformers."""
 
-        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         family_name: Annotated[t.NonEmptyStr, m.Field(description="Module family name")]
         module_patterns: t.StrSequence = m.Field(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, t
+from flext_infra import c, m, p, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 
