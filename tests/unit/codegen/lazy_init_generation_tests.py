@@ -195,7 +195,24 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="FlextDemoProtocols as p")
-        tm.that(content, lacks="p")
+        tm.that(content, lacks="from .protocols import FlextDemoProtocols, p")
+
+    def test_root_service_alias_uses_typed_service_base(self) -> None:
+        """Bind ``s`` to the concrete project service base for static analysis."""
+        plan = self._plan(
+            "demo_pkg",
+            ("FlextDemoServiceBase", "s"),
+            MappingProxyType({
+                "FlextDemoServiceBase": ("demo_pkg.base", "FlextDemoServiceBase"),
+                "s": ("demo_pkg.base", "s"),
+            }),
+        )
+
+        content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(content, "__init__.py", "exec")
+        tm.that(content, contains="FlextDemoServiceBase as s")
+        tm.that(content, lacks="from .base import FlextDemoServiceBase, s")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports preserve facade aliases explicitly."""
