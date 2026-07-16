@@ -42,29 +42,37 @@ The generator NEVER silently skips. Every non-generated class produces either a 
 ## File Structure
 
 **New config (LAW-1 rules-as-data):**
+
 - `flext-infra/config/protocol_gen.yaml` — classification thresholds, facet allowlist, banned annotations, warning severities.
 - `flext-infra/config/schemas/protocol_gen.schema.json` — JSON Schema validating the above.
 
 **New models (declaration-only, rope models facet):**
+
 - `flext-infra/src/flext_infra/_models/protocol_gen.py` — `ProtocolFieldSpec`, `ProtocolMethodSpec`, `ProtocolClassPlan`, `ProtocolGenWarning`, `ProtocolGenReport` (Pydantic `m.ContractModel`).
 
 **New protocol port:**
+
 - `flext-infra/src/flext_infra/_protocols/protocol_gen.py` — `ProtocolGenEngine` Protocol (signature stubs only).
 
 **New rope-semantic extractor (behavior, LAW-2):**
+
 - `flext-infra/src/flext_infra/_utilities/protocol_extract.py` — `FlextInfraUtilitiesProtocolExtract.extract_class(...) -> r[ProtocolClassPlan]`.
 
 **New classifier (behavior):**
+
 - `flext-infra/src/flext_infra/_utilities/protocol_classify.py` — `FlextInfraUtilitiesProtocolClassify.classify(...)`.
 
 **New codegen orchestrator:**
+
 - `flext-infra/src/flext_infra/codegen/protocol_gen.py` — `FlextInfraCodegenProtocolGen(s[str])`.
 
 **New templates (reuse scaffold branch):**
+
 - `flext-infra/src/flext_infra/templates/project/base/src/_protocols/_field_protocol.py.j2`
 - `flext-infra/src/flext_infra/templates/project/base/src/_protocols/_method_protocol.py.j2`
 
 **New tests:**
+
 - `flext-infra/tests/unit/codegen/test_protocol_gen_config.py`
 - `flext-infra/tests/unit/codegen/test_protocol_gen_models.py`
 - `flext-infra/tests/unit/codegen/test_protocol_extract.py`
@@ -77,6 +85,7 @@ The generator NEVER silently skips. Every non-generated class produces either a 
 - `flext-infra/tests/unit/codegen/_fixtures/sample_models.py`
 
 **Wiring:**
+
 - `flext-infra/src/flext_infra/cli.py` — `protocol-gen` subcommand.
 - `flext-infra/src/flext_infra/codegen/pipeline.py` — register stage.
 - `flext-infra/base.mk` — `protocol-gen` make verb (dry-run default, `APPLY=1` writes).
@@ -86,11 +95,13 @@ The generator NEVER silently skips. Every non-generated class produces either a 
 ## Task 1: Rules-as-data config + schema
 
 **Files:**
+
 - Create: `flext-infra/config/protocol_gen.yaml`
 - Create: `flext-infra/config/schemas/protocol_gen.schema.json`
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_config.py`
 
 **Interfaces:**
+
 - Produces: `config/protocol_gen.yaml` with keys `facet_allowlist: list[str]`, `banned_annotations: list[str]`, `field_only_max_methods: int`, `warning_severities: {out_of_contract, unresolved_annotation, private_leak}`; validated by `protocol_gen.schema.json`.
 
 - [ ] **Step 1: Write the failing test**
@@ -187,12 +198,14 @@ git commit -m "feat(codegen): protocol_gen rules-as-data config + schema" config
 ## Task 2: Declaration-only spec models
 
 **Files:**
+
 - Create: `flext-infra/src/flext_infra/_models/protocol_gen.py`
 - Modify: `flext-infra/src/flext_infra/_models/__init__.py` (lazy export `FlextInfraModelsProtocolGen`)
 - Modify: `flext-infra/src/flext_infra/models.py` (compose into `m.Infra` MRO — follow `FlextInfraModelsRope`/`m.Infra.SymbolInfo` pattern)
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_models.py`
 
 **Interfaces:**
+
 - Produces (all `m.Infra.*`, frozen `m.ContractModel`):
   - `ProtocolFieldSpec(name: str, annotation: str)`
   - `ProtocolMethodSpec(name: str, signature: str, kind: str)`
@@ -217,7 +230,9 @@ class TestProtocolGenModels:
 
     def test_class_plan_holds_specs(self) -> None:
         plan = m.Infra.ProtocolClassPlan(
-            class_name="Storage", module="storage.py", kind="field_only",
+            class_name="Storage",
+            module="storage.py",
+            kind="field_only",
             fields=(m.Infra.ProtocolFieldSpec(name="namespace", annotation="str"),),
         )
         assert plan.kind == "field_only"
@@ -225,8 +240,12 @@ class TestProtocolGenModels:
 
     def test_warning_carries_reason_and_line(self) -> None:
         warn = m.Infra.ProtocolGenWarning(
-            class_name="FlextService", module="service.py", symbol="fetch_global",
-            reason="public method missing from p.Service", severity="HIGH", line=53,
+            class_name="FlextService",
+            module="service.py",
+            symbol="fetch_global",
+            reason="public method missing from p.Service",
+            severity="HIGH",
+            line=53,
         )
         assert warn.line == 53
 ```
@@ -310,6 +329,7 @@ Expected: PASS (3 passed).
 
 Run: `cd flext-infra && env -u PYTHONPATH .venv/bin/python -m ruff check src/flext_infra/_models/protocol_gen.py && env -u PYTHONPATH .venv/bin/python -m pyright src/flext_infra/_models/protocol_gen.py`
 Expected: ruff pass, 0 pyright errors.
+
 ```bash
 git commit -m "feat(codegen): declaration-only protocol_gen spec models" src/flext_infra/_models/protocol_gen.py src/flext_infra/_models/__init__.py src/flext_infra/models.py tests/unit/codegen/test_protocol_gen_models.py
 ```
@@ -319,12 +339,14 @@ git commit -m "feat(codegen): declaration-only protocol_gen spec models" src/fle
 ## Task 3: Rope-semantic protocol extractor (LAW-2)
 
 **Files:**
+
 - Create: `flext-infra/src/flext_infra/_utilities/protocol_extract.py`
 - Modify: `flext-infra/src/flext_infra/utilities.py` (compose `u.Infra.ProtocolExtract`)
 - Test: `flext-infra/tests/unit/codegen/test_protocol_extract.py`
 - Fixture: `flext-infra/tests/unit/codegen/_fixtures/sample_models.py`
 
 **Interfaces:**
+
 - Consumes: `m.Infra.ProtocolFieldSpec/ProtocolMethodSpec/ProtocolClassPlan` (Task 2); `FlextInfraUtilitiesRopeAnalysis.get_class_methods(rope_project, resource, class_name, include_private=False) -> t.StrMapping`; `FlextInfraUtilitiesRopeStructure.logical_statements(source) -> tuple[p.Infra.LogicalStatement, ...]` + `target_name`.
 - Produces: `FlextInfraUtilitiesProtocolExtract.extract_class(project_root: Path, file_path: Path, class_name: str) -> r[m.Infra.ProtocolClassPlan]` — fields from class-enclosed `ANN_ASSIGN` statements, methods from `get_class_methods`, `kind="unclassified"`.
 
@@ -371,14 +393,18 @@ _ROOT = Path(__file__).resolve().parents[3]
 
 class TestProtocolExtract:
     def test_extract_field_only_returns_fields(self) -> None:
-        result = u.Infra.ProtocolExtract.extract_class(_ROOT, _FIXTURE, "SampleFieldOnly")
+        result = u.Infra.ProtocolExtract.extract_class(
+            _ROOT, _FIXTURE, "SampleFieldOnly"
+        )
         assert result.success, result.error
         names = {f.name for f in result.value.fields}
         assert names == {"namespace", "max_size"}
         assert result.value.methods == ()
 
     def test_extract_behavior_returns_public_method(self) -> None:
-        result = u.Infra.ProtocolExtract.extract_class(_ROOT, _FIXTURE, "SampleBehavior")
+        result = u.Infra.ProtocolExtract.extract_class(
+            _ROOT, _FIXTURE, "SampleBehavior"
+        )
         assert result.success, result.error
         assert "describe" in {mth.name for mth in result.value.methods}
 ```
@@ -496,6 +522,7 @@ Expected: PASS (2 passed).
 
 Run: `cd flext-infra && grep -nE "import ast|ast\.parse|get_ast|walk_ast_nodes" src/flext_infra/_utilities/protocol_extract.py`
 Expected: NO output.
+
 ```bash
 git commit -m "feat(codegen): rope-semantic protocol extractor (LAW-2)" src/flext_infra/_utilities/protocol_extract.py src/flext_infra/utilities.py tests/unit/codegen/test_protocol_extract.py tests/unit/codegen/_fixtures/sample_models.py
 ```
@@ -505,11 +532,13 @@ git commit -m "feat(codegen): rope-semantic protocol extractor (LAW-2)" src/flex
 ## Task 4: Classifier (field_only / behavior / out_of_contract)
 
 **Files:**
+
 - Create: `flext-infra/src/flext_infra/_utilities/protocol_classify.py`
 - Modify: `flext-infra/src/flext_infra/utilities.py` (compose `u.Infra.ProtocolClassify`)
 - Test: `flext-infra/tests/unit/codegen/test_protocol_classify.py`
 
 **Interfaces:**
+
 - Consumes: `m.Infra.ProtocolClassPlan` (unclassified), `m.Infra.ProtocolGenWarning`, Task-1 config mapping.
 - Produces: `FlextInfraUtilitiesProtocolClassify.classify(plan: m.Infra.ProtocolClassPlan, config: t.JsonMapping) -> tuple[m.Infra.ProtocolClassPlan, tuple[m.Infra.ProtocolGenWarning, ...]]` — banned annotation → `out_of_contract`+warning; public methods > `field_only_max_methods` → `behavior`; else `field_only`.
 
@@ -525,14 +554,20 @@ _CONFIG = {
     "facet_allowlist": ["models"],
     "banned_annotations": ["Any", "object"],
     "field_only_max_methods": 0,
-    "warning_severities": {"out_of_contract": "HIGH", "unresolved_annotation": "MEDIUM", "private_leak": "HIGH"},
+    "warning_severities": {
+        "out_of_contract": "HIGH",
+        "unresolved_annotation": "MEDIUM",
+        "private_leak": "HIGH",
+    },
 }
 
 
 class TestProtocolClassify:
     def test_field_only_when_no_methods(self) -> None:
         plan = m.Infra.ProtocolClassPlan(
-            class_name="S", module="s.py", kind="unclassified",
+            class_name="S",
+            module="s.py",
+            kind="unclassified",
             fields=(m.Infra.ProtocolFieldSpec(name="x", annotation="str"),),
         )
         classified, warnings = u.Infra.ProtocolClassify.classify(plan, _CONFIG)
@@ -541,15 +576,25 @@ class TestProtocolClassify:
 
     def test_behavior_when_public_methods(self) -> None:
         plan = m.Infra.ProtocolClassPlan(
-            class_name="Svc", module="svc.py", kind="unclassified",
-            methods=(m.Infra.ProtocolMethodSpec(name="run", signature="def run(self) -> object: ...", kind="instance"),),
+            class_name="Svc",
+            module="svc.py",
+            kind="unclassified",
+            methods=(
+                m.Infra.ProtocolMethodSpec(
+                    name="run",
+                    signature="def run(self) -> object: ...",
+                    kind="instance",
+                ),
+            ),
         )
         classified, _ = u.Infra.ProtocolClassify.classify(plan, _CONFIG)
         assert classified.kind == "behavior"
 
     def test_out_of_contract_warns_on_banned_annotation(self) -> None:
         plan = m.Infra.ProtocolClassPlan(
-            class_name="Bad", module="b.py", kind="unclassified",
+            class_name="Bad",
+            module="b.py",
+            kind="unclassified",
             fields=(m.Infra.ProtocolFieldSpec(name="data", annotation="Any"),),
         )
         classified, warnings = u.Infra.ProtocolClassify.classify(plan, _CONFIG)
@@ -597,9 +642,12 @@ class FlextInfraUtilitiesProtocolClassify:
         severity = str(config["warning_severities"]["unresolved_annotation"])
         warnings = tuple(
             m.Infra.ProtocolGenWarning(
-                class_name=plan.class_name, module=plan.module, symbol=field.name,
+                class_name=plan.class_name,
+                module=plan.module,
+                symbol=field.name,
                 reason=f"field annotation '{field.annotation}' is banned for protocol generation",
-                severity=severity, line=0,
+                severity=severity,
+                line=0,
             )
             for field in plan.fields
             if field.annotation in banned
@@ -634,11 +682,13 @@ git commit -m "feat(codegen): protocol classifier with out-of-contract warnings"
 ## Task 5: Generic field + method protocol templates (reuse scaffold branch)
 
 **Files:**
+
 - Create: `flext-infra/src/flext_infra/templates/project/base/src/_protocols/_field_protocol.py.j2`
 - Create: `flext-infra/src/flext_infra/templates/project/base/src/_protocols/_method_protocol.py.j2`
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_render.py`
 
 **Interfaces:**
+
 - Consumes: render context vars `package_name`, `year`, `author_name`, `protocol_class_name: str`, `fields: list[{name, annotation}]`, `methods: list[{signature}]`.
 - Produces: rendered protocol source matching the existing `settings.py.j2` field-only shape + a method-stub block.
 
@@ -652,17 +702,30 @@ from pathlib import Path
 
 from flext_infra import u
 
-_TPL_DIR = Path(__file__).resolve().parents[3] / "src" / "flext_infra" / "templates" / "project" / "base" / "src" / "_protocols"
+_TPL_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "flext_infra"
+    / "templates"
+    / "project"
+    / "base"
+    / "src"
+    / "_protocols"
+)
 
 
 class TestProtocolGenRender:
     def test_field_protocol_renders_property_per_field(self) -> None:
         tpl = (_TPL_DIR / "_field_protocol.py.j2").read_text(encoding="utf-8")
         ctx = {
-            "package_name": "flext_demo", "year": "2026", "author_name": "FLEXT Team",
+            "package_name": "flext_demo",
+            "year": "2026",
+            "author_name": "FLEXT Team",
             "protocol_class_name": "Storage",
-            "fields": [{"name": "namespace", "annotation": "str"},
-                       {"name": "max_size", "annotation": "int | None"}],
+            "fields": [
+                {"name": "namespace", "annotation": "str"},
+                {"name": "max_size", "annotation": "int | None"},
+            ],
         }
         result = u.Cli.render_template_string(tpl, ctx)
         assert result.success, result.error
@@ -749,12 +812,14 @@ git commit -m "feat(codegen): generic field + method protocol templates" src/fle
 ## Task 6: Codegen orchestrator (extract → classify → report)
 
 **Files:**
+
 - Create: `flext-infra/src/flext_infra/codegen/protocol_gen.py`
 - Create: `flext-infra/src/flext_infra/_protocols/protocol_gen.py`
 - Modify: `flext-infra/src/flext_infra/protocols.py` (compose `FlextInfraProtocolsProtocolGen`)
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_validate.py`
 
 **Interfaces:**
+
 - Consumes: `u.Infra.ProtocolExtract.extract_class`, `u.Infra.ProtocolClassify.classify`, Task-1 config; class discovery via `FlextInfraUtilitiesRopeAnalysis.get_module_classes` (LAW-2) unioned with `u.Infra.RopeAnalysisIntrospection.extract_public_methods_from_dir`.
 - Produces: `FlextInfraCodegenProtocolGen.run(package_dir: Path, *, apply: bool) -> r[m.Infra.ProtocolGenReport]` — dry-run by default (Safe-by-Default); writes only when `apply=True`.
 
@@ -854,16 +919,18 @@ if TYPE_CHECKING:
 class FlextInfraCodegenProtocolGen(s[str]):
     """Drive protocol generation and validation for one package directory."""
 
-    def run(
-        self, package_dir: Path, *, apply: bool
-    ) -> r[m.Infra.ProtocolGenReport]:
+    def run(self, package_dir: Path, *, apply: bool) -> r[m.Infra.ProtocolGenReport]:
         """Discover, extract, classify, (optionally) render, and report."""
         config = self._load_config()
         if config.failure:
-            return r[m.Infra.ProtocolGenReport].fail(config.error or "config load failed")
+            return r[m.Infra.ProtocolGenReport].fail(
+                config.error or "config load failed"
+            )
         project_root = FlextInfraUtilitiesDiscovery.project_root(package_dir / "foo.py")
         if project_root is None:
-            return r[m.Infra.ProtocolGenReport].fail(f"no project root for {package_dir}")
+            return r[m.Infra.ProtocolGenReport].fail(
+                f"no project root for {package_dir}"
+            )
         plans: list[m.Infra.ProtocolClassPlan] = []
         warnings: list[m.Infra.ProtocolGenWarning] = []
         for py_file in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB)):
@@ -886,7 +953,9 @@ class FlextInfraCodegenProtocolGen(s[str]):
         return r[m.Infra.ProtocolGenReport].ok(
             m.Infra.ProtocolGenReport(
                 generated=generated,
-                validated=tuple(p.class_name for p in generated if p.kind == "behavior"),
+                validated=tuple(
+                    p.class_name for p in generated if p.kind == "behavior"
+                ),
                 warnings=tuple(warnings),
             )
         )
@@ -934,6 +1003,7 @@ Expected: PASS (2 passed).
 
 Run: `cd flext-infra && grep -nE "get_ast|import ast|ast\.parse" src/flext_infra/codegen/protocol_gen.py`
 Expected: NO output.
+
 ```bash
 git commit -m "feat(codegen): protocol-gen orchestrator (extract/classify/report)" src/flext_infra/codegen/protocol_gen.py src/flext_infra/_protocols/protocol_gen.py src/flext_infra/protocols.py tests/unit/codegen/test_protocol_gen_validate.py
 ```
@@ -943,10 +1013,12 @@ git commit -m "feat(codegen): protocol-gen orchestrator (extract/classify/report
 ## Task 7: Idempotent writer
 
 **Files:**
+
 - Modify: `flext-infra/src/flext_infra/codegen/protocol_gen.py:_render_field_only`
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_idempotent.py`
 
 **Interfaces:**
+
 - Consumes: Task-5 `_field_protocol.py.j2`, Task-6 `generated` plans.
 - Produces: `_render_field_only` writes `_protocols/<snake>.py` per `field_only` plan through the SSOT renderer, only when content differs; two `apply=True` runs are byte-identical.
 
@@ -987,36 +1059,40 @@ Expected: FAIL — `_protocols/` empty (`_render_field_only` is a stub).
 Replace `_render_field_only` with:
 
 ```python
-    @staticmethod
-    def _render_field_only(
-        package_dir: Path, plans: tuple[m.Infra.ProtocolClassPlan, ...]
-    ) -> None:
-        """Write one field-only protocol file per plan, byte-idempotently."""
-        out_dir = package_dir / "_protocols"
-        out_dir.mkdir(exist_ok=True)
-        template = (
-            Path(__file__).resolve().parents[1]
-            / "templates" / "project" / "base" / "src" / "_protocols"
-            / "_field_protocol.py.j2"
-        ).read_text(encoding="utf-8")
-        for plan in plans:
-            if plan.kind != "field_only":
-                continue
-            ctx: t.MutableStrMapping = {
-                "package_name": package_dir.name,
-                "year": "2026",
-                "author_name": "FLEXT Team",
-                "protocol_class_name": plan.class_name,
-                "fields": [
-                    {"name": f.name, "annotation": f.annotation} for f in plan.fields
-                ],
-            }
-            rendered = u.Cli.render_template_string(template, ctx)
-            if rendered.failure:
-                continue
-            target = out_dir / f"{plan.class_name.lower()}.py"
-            if not target.exists() or target.read_text(encoding="utf-8") != rendered.value:
-                target.write_text(rendered.value, encoding="utf-8")
+@staticmethod
+def _render_field_only(
+    package_dir: Path, plans: tuple[m.Infra.ProtocolClassPlan, ...]
+) -> None:
+    """Write one field-only protocol file per plan, byte-idempotently."""
+    out_dir = package_dir / "_protocols"
+    out_dir.mkdir(exist_ok=True)
+    template = (
+        Path(__file__).resolve().parents[1]
+        / "templates"
+        / "project"
+        / "base"
+        / "src"
+        / "_protocols"
+        / "_field_protocol.py.j2"
+    ).read_text(encoding="utf-8")
+    for plan in plans:
+        if plan.kind != "field_only":
+            continue
+        ctx: t.MutableStrMapping = {
+            "package_name": package_dir.name,
+            "year": "2026",
+            "author_name": "FLEXT Team",
+            "protocol_class_name": plan.class_name,
+            "fields": [
+                {"name": f.name, "annotation": f.annotation} for f in plan.fields
+            ],
+        }
+        rendered = u.Cli.render_template_string(template, ctx)
+        if rendered.failure:
+            continue
+        target = out_dir / f"{plan.class_name.lower()}.py"
+        if not target.exists() or target.read_text(encoding="utf-8") != rendered.value:
+            target.write_text(rendered.value, encoding="utf-8")
 ```
 
 Use the confirmed SSOT renderer name from Task 5 if different.
@@ -1030,6 +1106,7 @@ Expected: PASS.
 
 Run: `cd flext-infra && env -u PYTHONPATH .venv/bin/python -m pytest tests/unit/codegen/ -v`
 Expected: all protocol_gen tests PASS.
+
 ```bash
 git commit -m "feat(codegen): idempotent field-protocol writer" src/flext_infra/codegen/protocol_gen.py tests/unit/codegen/test_protocol_gen_idempotent.py
 ```
@@ -1039,10 +1116,12 @@ git commit -m "feat(codegen): idempotent field-protocol writer" src/flext_infra/
 ## Task 8: CLI subcommand + warning report
 
 **Files:**
+
 - Modify: `flext-infra/src/flext_infra/cli.py`
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_cli.py`
 
 **Interfaces:**
+
 - Consumes: `FlextInfraCodegenProtocolGen.run`, `m.Infra.ProtocolGenReport`.
 - Produces: `flext-infra protocol-gen --package <dir> [--apply]` printing `WARNING [severity] <module>::<class>.<symbol> — <reason>` per warning + `generated=N validated=M warnings=K`; exit 1 if any HIGH/CRITICAL warning, else 0.
 
@@ -1062,7 +1141,9 @@ _FIXTURE_DIR = Path(__file__).parent / "_fixtures"
 
 class TestProtocolGenCli:
     def test_protocol_gen_dry_run_prints_summary(self) -> None:
-        result = CliRunner().invoke(app, ["protocol-gen", "--package", str(_FIXTURE_DIR)])
+        result = CliRunner().invoke(
+            app, ["protocol-gen", "--package", str(_FIXTURE_DIR)]
+        )
         assert result.exit_code == 0
         assert "generated=" in result.stdout
         assert "warnings=" in result.stdout
@@ -1100,11 +1181,13 @@ git commit -m "feat(codegen): protocol-gen CLI with warning report" src/flext_in
 ## Task 9: Pipeline registration + make verb
 
 **Files:**
+
 - Modify: `flext-infra/src/flext_infra/codegen/pipeline.py`
 - Modify: `flext-infra/base.mk`
 - Test: `flext-infra/tests/unit/codegen/test_protocol_gen_pipeline.py`
 
 **Interfaces:**
+
 - Consumes: `FlextInfraCodegenProtocolGen`.
 - Produces: `protocol_gen` registered as a named pipeline stage (dry-run default); `make protocol-gen PROJECT=<name>` validates, `APPLY=1` regenerates.
 
@@ -1185,6 +1268,7 @@ Expected: scratch archived.
 ## Self-Review
 
 **1. Spec coverage:**
+
 - "validar e gerar o maximo de protocols" → Tasks 3-7 (extract/classify/generate field_only) + Task 6/8 (validate behavior). ✓
 - "validar o maximo que temos" → Task 6 behavior validation + Task 10 real flext-core run. ✓
 - "warning ... que ele nao pode gerar que estao em desacordo com o contrato do serviço, indicando o que é" → Task 4 `out_of_contract` warnings + Task 8 CLI report naming symbol+reason. ✓
