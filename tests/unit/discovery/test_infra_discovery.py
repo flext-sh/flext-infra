@@ -15,7 +15,7 @@ from tests import c
 from tests import m
 from tests import u
 
-from tests import t
+from tests import p, t
 
 
 

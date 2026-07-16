@@ -137,7 +137,7 @@ class FlextInfraAccessorMigrationReportMixin:
         return "".join(diff_lines[:80])
 
     @staticmethod
-    def render_text(report: m.Infra.AccessorMigrationReport) -> str:
+    def render_text(report: p.Infra.AccessorMigrationReport) -> str:
         """Render an accessor migration report as CLI text."""
         lines: t.MutableSequenceOf[str] = [
             "Accessor Migration",

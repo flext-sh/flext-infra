@@ -120,7 +120,7 @@ class FlextInfraNamespaceEnforcer(
         return post_violations
 
     @staticmethod
-    def render_text(report: m.Infra.WorkspaceEnforcementReport) -> str:
+    def render_text(report: p.Infra.WorkspaceEnforcementReport) -> str:
         """Render a workspace enforcement report as plain text."""
         lines = [
             "Namespace Enforcement Report",
@@ -172,7 +172,7 @@ class FlextInfraNamespaceEnforcer(
 
     @classmethod
     def execute_command(
-        cls, params: m.Infra.RefactorNamespaceEnforceInput
+        cls, params: p.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[p.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)

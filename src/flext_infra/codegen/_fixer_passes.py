@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.codegen._fixer_lint import FlextInfraCodegenFixerLintMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.migrate_to_class_mro import (
@@ -19,7 +19,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
     """Private pipeline passes for codegen fixer composition."""
 
     @staticmethod
-    def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
+    def _run_mro_migration(ctx: p.Infra.FixContext, project_path: Path) -> None:
         """Run the MRO migrator and accumulate fixed/skipped violations."""
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
             target="all", apply=True, gates=(c.Infra.LINT,)
@@ -68,7 +68,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
         )
 
     @staticmethod
-    def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
+    def _run_namespace_enforcement(ctx: p.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
         enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
             apply=True, gates=(c.Infra.LINT,)
@@ -98,7 +98,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
 
     @staticmethod
     def _run_lazy_init_regeneration(
-        ctx: m.Infra.FixContext, project_path: Path
+        ctx: p.Infra.FixContext, project_path: Path
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
         lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)

@@ -9,7 +9,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsureCoverageConfigPhase:
     """Ensure coverage report configuration with per-project-type thresholds."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Capture tool configuration used to build canonical coverage settings."""
         self._tool_config = tool_config
 

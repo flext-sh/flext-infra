@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c, m, t, u
+from tests import c, m, p, t, u
 
 
 def _parse_class_names(source: str) -> t.StrSequence:

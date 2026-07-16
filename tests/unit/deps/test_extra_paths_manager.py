@@ -11,7 +11,7 @@ from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 from pathlib import Path
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
-from tests import t
+from tests import p, t
 
 
 

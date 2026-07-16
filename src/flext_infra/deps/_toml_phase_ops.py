@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraTomlPhaseOps:
@@ -19,7 +19,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_operation(
         tbl: t.Cli.TomlTable,
-        operation: m.Infra.Deps.Toml.Operation,
+        operation: p.Infra.Deps.Toml.Operation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -49,7 +49,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _apply_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: m.Infra.Deps.Toml.Operation,
+        operation: p.Infra.Deps.Toml.Operation,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -85,7 +85,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_operation(
         tbl: t.Cli.TomlTable,
-        operation: m.Infra.Deps.Toml.RemoveOp,
+        operation: p.Infra.Deps.Toml.RemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:
@@ -107,7 +107,7 @@ class FlextInfraTomlPhaseOps:
     @staticmethod
     def _remove_payload_operation(
         tbl: t.MutableJsonMapping,
-        operation: m.Infra.Deps.Toml.RemoveOp,
+        operation: p.Infra.Deps.Toml.RemoveOp,
         out: t.MutableSequenceOf[str],
         pfx: str,
     ) -> None:

@@ -20,7 +20,7 @@ from tests import c
 
 from pathlib import Path
 
-from tests import t
+from tests import p, t
 
 
 

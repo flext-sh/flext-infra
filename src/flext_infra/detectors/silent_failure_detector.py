@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
 
 
@@ -12,7 +12,7 @@ class FlextInfraSilentFailureDetector:
     """Detect branches that hide failures behind generic sentinel returns."""
 
     @staticmethod
-    def detect_file(ctx: m.Infra.DetectorContext) -> t.SequenceOf[p.Infra.Issue]:
+    def detect_file(ctx: p.Infra.DetectorContext) -> t.SequenceOf[p.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
@@ -40,7 +40,7 @@ class FlextInfraSilentFailureDetector:
 
     @classmethod
     def detect_violations(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.SilentFailureViolation]:
         """Return silent-failure violations with kind + fix_action for census."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 
 _SOURCE = (
     "from typing import ClassVar, TYPE_CHECKING\n"

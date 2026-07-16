@@ -12,7 +12,7 @@ from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
-from tests import t, u
+from tests import p, t, u
 
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:

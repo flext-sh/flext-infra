@@ -10,7 +10,7 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, p, r, s, t, u
 from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
 
 logger = u.fetch_logger(__name__)
@@ -34,7 +34,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
 
     @classmethod
     @override
-    def execute_command(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
+    def execute_command(cls, params: p.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
         fixer = cls(workspace_root=params.workspace_path)
         fix_result = fixer.run(

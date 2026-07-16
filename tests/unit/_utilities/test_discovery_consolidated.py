@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c, m, u
+from tests import c, m, p, u
 
 
 class TestsFlextInfraUtilitiesdiscoveryconsolidated:

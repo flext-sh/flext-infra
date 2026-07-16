@@ -22,7 +22,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
 
     @classmethod
     def run_github_workspace_pull_requests(
-        cls, request: m.Infra.GithubPullRequestWorkspaceRequest
+        cls, request: p.Infra.GithubPullRequestWorkspaceRequest
     ) -> p.Result[p.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
 
     @classmethod
     def _github_pr_process_repo(
-        cls, repo_root: Path, context: m.Infra.GithubPullRequestWorkspaceContext
+        cls, repo_root: Path, context: p.Infra.GithubPullRequestWorkspaceContext
     ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Process one repository during workspace pull-request execution.
 

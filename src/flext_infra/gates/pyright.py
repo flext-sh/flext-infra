@@ -22,7 +22,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Use the project pyright config as SSOT when it exists."""
         _ = ctx
@@ -32,7 +32,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
@@ -58,7 +58,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         )
 
     @override
-    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
         """Check timeout."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_LONG
@@ -66,7 +66,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx

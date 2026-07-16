@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.grpc import FlextInfraCodegenGrpc
@@ -24,7 +24,7 @@ class FlextInfraCodegenPipelineStagesMixin:
     if TYPE_CHECKING:
         # Provided by the composed facade (FlextInfraCodegenPipeline); declared
         # here so the handlers type-resolve against the facade state + harness.
-        _state: m.Infra.CodegenPipelineState
+        _state: p.Infra.CodegenPipelineState
 
         def _run_stage[V](
             self,
@@ -34,7 +34,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         ) -> p.Result[p.Cli.PipelineStageResult]: ...
 
     def _stage_discover(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Discover workspace projects once for reuse across all stages.
 
@@ -57,7 +57,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.DISCOVER, _action, _emit)
 
     def _stage_py_typed(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
 
@@ -72,7 +72,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_before(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
@@ -97,7 +97,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.CENSUS_BEFORE, _action, _emit)
 
     def _stage_scaffold(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
 
@@ -118,7 +118,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.SCAFFOLD, _action, _emit)
 
     def _stage_auto_fix(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
 
@@ -139,7 +139,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.AUTO_FIX, _action, _emit)
 
     def _stage_lazy_init(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
 
@@ -155,7 +155,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_grpc(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Generate real gRPC runtime modules before initializer discovery."""
 
@@ -177,7 +177,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_after(
-        self, ctx: m.Cli.PipelineStageContext
+        self, ctx: p.Cli.PipelineStageContext
     ) -> p.Result[p.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
 

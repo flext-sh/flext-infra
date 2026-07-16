@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -15,7 +15,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         _modified_files: t.Infra.StrSet
 
     def _cleanup_generated_support_files(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+        self, plan: p.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> int:
         """Remove generated files superseded by inline ``__init__.py`` maps."""
         try:
@@ -31,7 +31,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         return 0
 
     def _remove_obsolete_root_support(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+        self, plan: p.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
         """Remove closed, preflighted root registries superseded by inline maps."""
         context = plan.context
@@ -97,7 +97,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             path.rmdir()
 
     def _remove_obsolete_generated_files(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+        self, plan: p.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
         """Remove generated artifacts retired by the inline-root contract."""
         for filename in c.Infra.OBSOLETE_GENERATED_INIT_FILES:
@@ -112,7 +112,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             self._modified_files.add(str(path))
 
     def _remove_generated_export_sidecars(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+        self, plan: p.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> None:
         """Remove generated ``_exports*`` files no longer used by codegen."""
         search_dirs = {

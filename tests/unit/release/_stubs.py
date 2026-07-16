@@ -18,7 +18,7 @@ import pytest
 from flext_infra import r
 from tests import c
 from tests import m
-from tests import t
+from tests import p, t
 
 from pathlib import Path
 

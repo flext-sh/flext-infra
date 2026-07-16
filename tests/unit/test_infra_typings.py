@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from tests import c
-from tests import t
+from tests import p, t
 
 
 class TestsFlextInfraInfraTypings:

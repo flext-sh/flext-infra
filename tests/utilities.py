@@ -22,7 +22,7 @@ from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import c
 from tests import m
 from tests import p
-from tests import t
+from tests import p, t
 
 from tomlkit import TOMLDocument
 
@@ -422,7 +422,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             @override
             def generate_basemk(
-                self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
+                self, settings: p.Infra.BaseMkConfig | t.ScalarMapping | None = None
             ) -> p.Result[str]:
                 del settings
                 if self._fail:
@@ -870,7 +870,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
             selection_error: str | None = None,
-            command_output: m.Cli.CommandOutput | None = None,
+            command_output: p.Cli.CommandOutput | None = None,
             run_error: str | None = None,
         ) -> FlextInfraDependencyDetectionService:
             """Provide the typed test helper `create_deptry_service`."""
@@ -1082,7 +1082,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def build_project_migrator(
-            project: m.Infra.ProjectInfo,
+            project: p.Infra.ProjectInfo,
             base_mk: str,
             *,
             workspace_root: Path | None = None,
@@ -1235,7 +1235,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path,
             project_dir: Path,
             *,
-            ctx: m.Infra.GateContext | None = None,
+            ctx: p.Infra.GateContext | None = None,
             reports_dir: Path | None = None,
             runner: p.Cli.CommandRunner | None = None,
         ) -> p.Infra.GateExecution:

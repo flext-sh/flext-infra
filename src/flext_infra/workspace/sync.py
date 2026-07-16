@@ -74,7 +74,7 @@ class FlextInfraSyncService(
     def _sync_locked_content(
         self,
         resolved: Path,
-        settings: m.Infra.BaseMkConfig | None,
+        settings: p.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
     ) -> p.Result[p.Infra.SyncResult]:

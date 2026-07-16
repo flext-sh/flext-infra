@@ -28,7 +28,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self._dependency_limits_factory = dependency_limits_factory
         self._pip_check_factory = pip_check_factory
 
-    def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
+    def run(self, params: p.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator)."""
         detector = self._detector
         root = params.workspace_path
@@ -93,7 +93,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
 
     def _write_workspace_report(
         self,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         root: Path,
         report_model: p.Infra.WorkspaceReport,
         projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]],
@@ -129,7 +129,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]],
         *,
         pip_ok: bool,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
     ) -> p.Result[bool]:
         """Aggregate deptry counts, log the summary, decide overall pass/fail."""
         total_issues = sum(

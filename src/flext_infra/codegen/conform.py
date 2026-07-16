@@ -17,7 +17,7 @@ from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
 from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra.typings import p, t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -62,8 +62,8 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
     @classmethod
     def execute_request(
         cls,
-        request: m.Infra.CodegenConformRequest,
-        initial_workspace: m.Infra.WorkspaceSpec | None = None,
+        request: p.Infra.CodegenConformRequest,
+        initial_workspace: p.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[p.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         service = cls(
@@ -125,7 +125,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         )
 
     def plan(
-        self, request: m.Infra.CodegenConformRequest
+        self, request: p.Infra.CodegenConformRequest
     ) -> p.Result[p.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
@@ -267,7 +267,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _validate_workspace_catalog(
-        config: m.Infra.CodegenConfigSpec, workspace: m.Infra.WorkspaceSpec
+        config: p.Infra.CodegenConfigSpec, workspace: p.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
         """Require declared fleet members to match their global Git contracts."""
         local_refs = (workspace.repository, *workspace.members, *workspace.content_only)
@@ -291,9 +291,9 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _select_repositories(
-        request: m.Infra.CodegenConformRequest,
-        workspace: m.Infra.WorkspaceSpec,
-        current_repository: m.Infra.RepositoryRef,
+        request: p.Infra.CodegenConformRequest,
+        workspace: p.Infra.WorkspaceSpec,
+        current_repository: p.Infra.RepositoryRef,
     ) -> p.Result[tuple[p.Infra.RepositoryRef, ...]]:
         """Resolve self/members/all from the governing topology manifest."""
         scope = c.Infra.CodegenConformScope(request.scope)
@@ -343,9 +343,9 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        repository: m.Infra.RepositoryRef,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
+        repository: p.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[p.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         if repository.profile is None:
@@ -577,10 +577,10 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         workspace_root: Path,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
     ) -> p.Result[t.SequenceOf[p.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
         pyproject = root / c.Infra.PYPROJECT_FILENAME
@@ -700,10 +700,10 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        repository: m.Infra.RepositoryRef,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
-        tooling_runtime: m.Infra.ToolingRuntimeContext,
+        repository: p.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
+        tooling_runtime: p.Infra.ToolingRuntimeContext,
     ) -> p.Result[t.SequenceOf[p.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
         if repository.profile is None:
@@ -758,11 +758,11 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _render_context(
-        repository: m.Infra.RepositoryRef,
-        workspace: m.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
+        repository: p.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: p.Infra.CodegenConfigSpec,
         *,
-        tooling_runtime: m.Infra.ToolingRuntimeContext,
+        tooling_runtime: p.Infra.ToolingRuntimeContext,
     ) -> p.Result[p.Infra.ProjectRenderContext]:
         """Build the complete typed template context from manifest data."""
         project = workspace.project
@@ -872,7 +872,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
 
     @classmethod
     def _validate_initial_manifest(
-        cls, rendered: str, expected: m.Infra.WorkspaceSpec
+        cls, rendered: str, expected: p.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
         """Validate rendered manifest syntax, schema, model, and exact payload."""
         parsed = u.Cli.yaml_parse(rendered)
@@ -893,7 +893,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _plan_existing_custom(
-        self, root: Path, config: m.Infra.CodegenConfigSpec
+        self, root: Path, config: p.Infra.CodegenConfigSpec
     ) -> p.Result[t.SequenceOf[p.Infra.CodegenFilePlan]]:
         """Validate an existing custom Make surface without creating one."""
         path = root / config.make.custom_handler_policy.filename
@@ -928,7 +928,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
 
     @staticmethod
     def _validate_custom_make(
-        content: str, policy: m.Infra.CustomHandlerPolicy
+        content: str, policy: p.Infra.CustomHandlerPolicy
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
@@ -1043,7 +1043,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         return r[tuple[p.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
 
     @staticmethod
-    def _apply_file_plan(file: m.Infra.CodegenFilePlan) -> p.Result[bool]:
+    def _apply_file_plan(file: p.Infra.CodegenFilePlan) -> p.Result[bool]:
         """Apply one prevalidated write or directory move without replacement."""
         if file.operation == "write":
             return u.Cli.atomic_write_text_file(file.path, file.rendered)
@@ -1086,9 +1086,9 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         *,
         root: Path,
         workspace_root: Path,
-        repository: m.Infra.RepositoryRef,
-        workspace: m.Infra.WorkspaceSpec,
-        config: m.Infra.CodegenConfigSpec,
+        repository: p.Infra.RepositoryRef,
+        workspace: p.Infra.WorkspaceSpec,
+        config: p.Infra.CodegenConfigSpec,
     ) -> p.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         profile = c.Infra.MakeProfile(repository.profile)

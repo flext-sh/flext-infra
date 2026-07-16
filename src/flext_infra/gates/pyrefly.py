@@ -23,7 +23,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Check only local Python roots to avoid scanning dependency trees."""
         _ = ctx
@@ -38,7 +38,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
@@ -62,7 +62,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"

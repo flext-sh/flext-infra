@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 
 
 class FlextInfraMROCompletenessDetector:
@@ -14,7 +14,7 @@ class FlextInfraMROCompletenessDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.MROCompletenessViolation]:
         """Detect missing MRO bases: expected - declared = violations."""
         file_path = ctx.file_path
@@ -123,7 +123,7 @@ class FlextInfraMROCompletenessDetector:
         return expanded
 
     @staticmethod
-    def _is_src_root_facade(ctx: m.Infra.DetectorContext) -> bool:
+    def _is_src_root_facade(ctx: p.Infra.DetectorContext) -> bool:
         """Return whether the file is a root source facade module."""
         project_root = ctx.project_root
         if project_root is None:

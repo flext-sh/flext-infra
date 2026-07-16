@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.refactor._project_classifier_deps import (
     FlextInfraProjectClassifierDepsMixin,
 )

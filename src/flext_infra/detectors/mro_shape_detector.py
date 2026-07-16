@@ -30,7 +30,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.MROShapeViolation]:
         """Detect ENFORCE-046/047/049/051 for every local class in ``file_path``."""
         file_path = ctx.file_path
@@ -109,7 +109,7 @@ class FlextInfraMROShapeDetector:
 
     @staticmethod
     def _record_parse_failure(
-        ctx: m.Infra.DetectorContext, *, error_type: str, detail: str
+        ctx: p.Infra.DetectorContext, *, error_type: str, detail: str
     ) -> None:
         """Record MRO-shape parse failures, or fail loud without a collector."""
         if ctx.parse_failures is None:

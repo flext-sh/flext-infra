@@ -16,7 +16,7 @@ from typing import ClassVar, Final
 
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c, t
+from flext_infra import c, p, t
 
 
 class TestsFlextInfraConstants(FlextTestsConstants, c):

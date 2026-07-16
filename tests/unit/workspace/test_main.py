@@ -13,7 +13,7 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c
 from tests import m
-from tests import t
+from tests import p, t
 from tests import u
 
 from tests import p

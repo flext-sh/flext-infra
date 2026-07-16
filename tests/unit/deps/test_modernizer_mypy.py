@@ -21,7 +21,7 @@ class TestsFlextInfraDepsModernizerMypy:
     """Declarative tests for generated mypy and pydantic-mypy settings."""
 
     def test_mypy_phase_sets_expected_state(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
@@ -54,7 +54,7 @@ class TestsFlextInfraDepsModernizerMypy:
             tm.that(mypy_mapping[key], eq=value)
 
     def test_mypy_phase_keeps_misc_globally_disabled(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
@@ -66,7 +66,7 @@ class TestsFlextInfraDepsModernizerMypy:
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
     def test_mypy_phase_removes_legacy_test_overrides(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
@@ -97,7 +97,7 @@ class TestsFlextInfraDepsModernizerMypy:
         tm.that(override_modules, lacks=("tests.integration.patterns.*",))
 
     def test_mypy_phase_replaces_managed_lists_and_overrides(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.parse(
             """
@@ -156,7 +156,7 @@ warn_return_any = false
         )
 
     def test_mypy_phase_is_idempotent(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         phase = FlextInfraEnsureMypyConfigPhase(tool_config_document)
         doc = tomlkit.document()
@@ -167,7 +167,7 @@ warn_return_any = false
         tm.that(second_changes, eq=[])
 
     def test_pydantic_mypy_phase_sets_expected_state(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         doc = tomlkit.document()
 
@@ -190,7 +190,7 @@ warn_return_any = false
         )
 
     def test_pydantic_mypy_phase_is_idempotent(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         phase = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document)
         doc = tomlkit.document()

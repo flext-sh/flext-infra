@@ -43,7 +43,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
-            convention: m.Infra.RopeModuleConvention | None = None,
+            convention: p.Infra.RopeModuleConvention | None = None,
             parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
         ) -> p.Infra.DetectorContext: ...
@@ -77,7 +77,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for misplaced class declarations."""
         _ = symbol_index
@@ -129,7 +129,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect private-root import bypasses without proposing a rewrite."""
         _ = objects, symbol_index, applied
@@ -165,7 +165,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for compatibility-alias violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
@@ -231,7 +231,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for MRO-completeness violations."""
         parse_failures: list[p.Infra.ParseFailureViolation] = []
@@ -296,7 +296,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for MRO-shape violations (manual-only)."""
         _ = objects, symbol_index
@@ -345,7 +345,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for inline/lazy imports inside function bodies."""
         _ = objects, symbol_index
@@ -399,7 +399,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect exception-silencing patterns; auto-fix deterministic sentinels."""
         _ = objects, symbol_index

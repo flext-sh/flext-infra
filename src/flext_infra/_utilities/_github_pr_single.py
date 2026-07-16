@@ -20,7 +20,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
 
     @classmethod
     def run_github_pull_request(
-        cls, params: m.Infra.GithubPullRequestRequest
+        cls, params: p.Infra.GithubPullRequestRequest
     ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command from the canonical single-repo payload."""
         result = cls._run_github_pull_request_for_repo(

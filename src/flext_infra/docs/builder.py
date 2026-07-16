@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
 
@@ -42,7 +42,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _build_scope(self, scope: m.Infra.DocScope) -> p.Infra.DocsPhaseReport:
+    def _build_scope(self, scope: p.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports."""
         report = u.Infra.docs_run_mkdocs(scope, runner=self._runner)
         u.Infra.docs_write_build_reports(scope, report)

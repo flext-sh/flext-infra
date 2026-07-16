@@ -17,7 +17,7 @@ from flext_infra.constants import c
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import m
-from tests import t
+from tests import p, t
 from tests import u
 from flext_tests import tm
 
@@ -28,7 +28,7 @@ def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
     class _Gen(FlextInfraBaseMkGenerator):
         @override
         def generate_basemk(
-            self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
+            self, settings: p.Infra.BaseMkConfig | t.ScalarMapping | None = None
         ) -> p.Result[str]:
             _ = self
             _ = settings

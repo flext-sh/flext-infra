@@ -313,7 +313,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
 
     @classmethod
     def git_repository_delta(
-        cls, repository: m.Infra.RepositoryWorktree
+        cls, repository: p.Infra.RepositoryWorktree
     ) -> p.Result[p.Infra.RepositoryDelta]:
         """Stage and capture the operation-only patch after a checkpoint."""
         head_result = cls.git_repository_head(repository.worktree_root)
@@ -364,7 +364,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         )
 
     @classmethod
-    def git_check_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def git_check_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Verify one operation patch against the untouched source worktree."""
         if not delta.patch:
             return r[bool].ok(True)
@@ -383,7 +383,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[bool].ok(True)
 
     @classmethod
-    def git_apply_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+    def git_apply_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
         """Apply one previously checked operation patch to the source worktree."""
         if not delta.patch:
             return r[bool].ok(True)

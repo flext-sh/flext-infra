@@ -34,15 +34,15 @@ class FlextInfraRefactorCensusCollectMixin(
 
         @staticmethod
         def _project_name_for_module(
-            module: m.Infra.RopeModuleIndexEntry,
-            convention: m.Infra.RopeModuleConvention,
+            module: p.Infra.RopeModuleIndexEntry,
+            convention: p.Infra.RopeModuleConvention,
         ) -> str: ...
         def _handle_rope_stage_failure(
             self, *, file_path: Path, stage: str, exc: BaseException
         ) -> None: ...
         @staticmethod
         def _include_object(
-            item: m.Infra.Census.Object,
+            item: p.Infra.Census.Object,
             *,
             kind_names: t.StrSequence | None,
             selected_families: frozenset[str],
@@ -53,7 +53,7 @@ class FlextInfraRefactorCensusCollectMixin(
             project_objects: tuple[list[p.Infra.Census.Object], ...],
         ) -> tuple[p.Infra.Census.DuplicateGroup, ...]: ...
         @staticmethod
-        def _object_key(item: m.Infra.Census.Object) -> str: ...
+        def _object_key(item: p.Infra.Census.Object) -> str: ...
         def _project_report(
             self,
             project: str,
@@ -69,8 +69,8 @@ class FlextInfraRefactorCensusCollectMixin(
     def _scan_module(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        module: m.Infra.RopeModuleIndexEntry,
-        config: m.Infra.Census.ScanConfig,
+        module: p.Infra.RopeModuleIndexEntry,
+        config: p.Infra.Census.ScanConfig,
         *,
         project_objects: dict[str, list[p.Infra.Census.Object]],
         project_violations: dict[str, list[p.Infra.Census.Violation]],

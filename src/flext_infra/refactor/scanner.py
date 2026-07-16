@@ -99,7 +99,7 @@ class FlextInfraRefactorLooseClassScanner:
         })
 
     def _build_violation(
-        self, rel_path: Path, occ: m.Infra.ClassOccurrence
+        self, rel_path: Path, occ: p.Infra.ClassOccurrence
     ) -> p.Infra.LooseClassViolation | None:
         """Build violation."""
         if not occ.is_top_level:

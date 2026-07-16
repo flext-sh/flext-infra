@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from operator import itemgetter
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.transformers.base import FlextInfraChangeTrackingTransformer
 
@@ -36,7 +36,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result
 
     def _apply_migration(
-        self, source: str, migration: m.Infra.SignatureMigration
+        self, source: str, migration: p.Infra.SignatureMigration
     ) -> str:
         """Apply a single migration to source text."""
         keyword_renames = dict(migration.keyword_renames)

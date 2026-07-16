@@ -13,7 +13,7 @@ from flext_infra.detectors.silent_failure_detector import (
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from tests import m
-from tests import t
+from tests import p, t
 from tests import u
 
 from pathlib import Path

@@ -14,7 +14,7 @@ from flext_infra.detectors.manual_protocol_detector import (
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from tests import m
 
-from tests import t
+from tests import p, t
 
 
 
@@ -34,7 +34,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (pkg / "service.py").write_text(
-            "from flext_core import c, m, r, p, t, u, p\nfrom flext_infra import c, m, t, u, p\n\nVALUE = 1",
+            "from flext_core import c, m, r, p, t, u, p\nfrom flext_infra import c, m, p, t, u, p\n\nVALUE = 1",
             encoding="utf-8",
         )
 
@@ -54,7 +54,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(service_source, has="from __future__ import annotations")
         tm.that(service_source, has="VALUE = 1")
         tm.that(service_source, lacks="from flext_core import c, m, r, p, t, u, p")
-        tm.that(service_source, lacks="from flext_infra import c, m, t, u, p")
+        tm.that(service_source, lacks="from flext_infra import c, m, p, t, u, p")
         tm.that(service_source, lacks="from sample_pkg import")
 
     def test_namespace_enforcer_detects_manual_typings_and_compat_aliases(

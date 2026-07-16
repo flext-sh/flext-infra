@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraScanner:
@@ -18,7 +18,7 @@ class FlextInfraScanner:
     def scan_project(
         cls, *, project_root: Path, rope_project: t.Infra.RopeProject
     ) -> t.SequenceOf[p.Infra.FacadeStatus]:
-        """Return FacadeStatus for each family (c, t, p, m, u) in a project."""
+        """Return FacadeStatus for each family (c, t, p, m, p, u) in a project."""
         layout = u.Infra.layout(project_root)
         if layout is None or not layout.src_dir.is_dir():
             return [

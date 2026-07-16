@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from tests import c, t
+from tests import c, p, t
 
 
 class TestsFlextInfraCodegenPyTyped:

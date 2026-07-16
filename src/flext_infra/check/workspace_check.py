@@ -73,7 +73,7 @@ class FlextInfraWorkspaceChecker(
 
     @classmethod
     @override
-    def execute_command(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
+    def execute_command(cls, params: p.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
         checker = cls(workspace_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
@@ -111,7 +111,7 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def _resolve_project_targets(
-        params: m.Infra.RunCommand,
+        params: p.Infra.RunCommand,
     ) -> p.Result[t.SequenceOf[p.Infra.CheckProjectTarget]]:
         """Resolve explicit projects or discover the workspace project set."""
         requested = params.project_names
@@ -164,7 +164,7 @@ class FlextInfraWorkspaceChecker(
         *,
         reports_dir: Path | None = None,
         fail_fast: bool = False,
-        ctx: m.Infra.GateContext | None = None,
+        ctx: p.Infra.GateContext | None = None,
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectResult]]:
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)

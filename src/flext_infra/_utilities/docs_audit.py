@@ -68,7 +68,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
 
     @staticmethod
     def docs_policy_list(
-        scope: m.Infra.DocScope, section: str, key: str
+        scope: p.Infra.DocScope, section: str, key: str
     ) -> t.StrSequence:
         """Read one list of policy tokens from the minimal root docs settings."""
         workspace_root = (
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
         ) and relative_docs_path.endswith(".md")
 
     @staticmethod
-    def docs_live_public_symbol_names(scope: m.Infra.DocScope) -> set[str]:
+    def docs_live_public_symbol_names(scope: p.Infra.DocScope) -> set[str]:
         """Return public symbol names that are still exported by one docs scope."""
         if not scope.package_name:
             return set()
@@ -108,7 +108,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
 
     @staticmethod
     def docs_broken_link_issues(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
     ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect broken internal link issues in one docs scope."""
         issues: t.MutableSequenceOf[p.Infra.AuditIssue] = []
@@ -152,7 +152,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
 
     @staticmethod
     def docs_stale_symbol_issues(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
     ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect stale-symbol issues outside the explicit migration docs."""
         tokens = FlextInfraUtilitiesDocsAudit.docs_policy_list(
@@ -196,9 +196,9 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
 
     @staticmethod
     def docs_audit_markdown(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         issues: t.SequenceOf[p.Infra.AuditIssue],
-        docstring_coverage: m.Infra.DocstringCoverage | None = None,
+        docstring_coverage: p.Infra.DocstringCoverage | None = None,
     ) -> t.StrSequence:
         """Render the standard markdown audit report."""
         metric_lines: t.MutableSequenceOf[str] = []

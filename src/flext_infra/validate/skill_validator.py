@@ -135,7 +135,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         return r[t.JsonList].ok(t.Cli.JSON_LIST_ADAPTER.validate_python(rules_list_obj))
 
     def _evaluate_rules(
-        self, context: m.Infra.SkillRuleEvaluationContext
+        self, context: p.Infra.SkillRuleEvaluationContext
     ) -> tuple[t.IntMapping, t.StrSequence]:
         """Evaluate skill validation rules and return counts plus violations."""
         counts: t.MutableIntMapping = {}
@@ -157,7 +157,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         return counts, tuple(violations)
 
     def _skill_report_model(
-        self, context: m.Infra.SkillReportContext
+        self, context: p.Infra.SkillReportContext
     ) -> p.Infra.ValidationReport:
         """Build the canonical skill validation report model."""
         total = sum(context.counts.values())

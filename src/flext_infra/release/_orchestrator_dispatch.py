@@ -38,15 +38,15 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         def effective_dry_run(self) -> bool: ...
 
         def phase_version(
-            self, ctx: m.Infra.ReleasePhaseDispatchConfig
+            self, ctx: p.Infra.ReleasePhaseDispatchConfig
         ) -> p.Result[bool]: ...
 
         def phase_build(
-            self, ctx: m.Infra.ReleasePhaseDispatchConfig
+            self, ctx: p.Infra.ReleasePhaseDispatchConfig
         ) -> p.Result[bool]: ...
 
         def phase_publish(
-            self, ctx: m.Infra.ReleasePhaseDispatchConfig
+            self, ctx: p.Infra.ReleasePhaseDispatchConfig
         ) -> p.Result[bool]: ...
 
         def _build_targets(
@@ -100,7 +100,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return r[str].ok(f"v{version}")
 
     def run_release(
-        self, release_config: m.Infra.ReleaseOrchestratorConfig
+        self, release_config: p.Infra.ReleaseOrchestratorConfig
     ) -> p.Result[bool]:
         """Run release workflow via the configured pipeline."""
         workspace_root = release_config.workspace_root
@@ -215,7 +215,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _build_release_stages(
-        self, phases: t.StrSequence, dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig
+        self, phases: t.StrSequence, dispatch_cfg: p.Infra.ReleasePhaseDispatchConfig
     ) -> t.SequenceOf[p.Cli.PipelineStageSpec]:
         """Build release stage specs preserving declared order."""
         active: set[str] = set(phases)
@@ -250,12 +250,12 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
 
     def _make_phase_handler(
-        self, phase_name: str, dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig
+        self, phase_name: str, dispatch_cfg: p.Infra.ReleasePhaseDispatchConfig
     ) -> t.Cli.PipelineHandler:
         """Adapt a phase handler to pipeline stage result contract."""
 
         def handler(
-            _ctx: m.Cli.PipelineStageContext,
+            _ctx: p.Cli.PipelineStageContext,
         ) -> p.Result[p.Cli.PipelineStageResult]:
             phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
             phase_result = self._dispatch_phase(phase_cfg)
@@ -268,7 +268,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return handler
 
     def _dispatch_phase(
-        self, ctx: m.Infra.ReleasePhaseDispatchConfig
+        self, ctx: p.Infra.ReleasePhaseDispatchConfig
     ) -> p.Result[bool]:
         """Route to the configured release phase implementation."""
         match ctx.phase:
@@ -363,7 +363,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return result
 
     def _generate_notes(
-        self, ctx: m.Infra.ReleasePhaseDispatchConfig, output_path: Path
+        self, ctx: p.Infra.ReleasePhaseDispatchConfig, output_path: Path
     ) -> p.Result[bool]:
         """Generate release notes with project diff context."""
         workspace_root = ctx.workspace_root

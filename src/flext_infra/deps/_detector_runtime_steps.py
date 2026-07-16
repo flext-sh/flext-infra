@@ -21,7 +21,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
     _pip_check_factory: Callable[..., m.Infra.PipCheckReport]
 
     def _validate_environment(
-        self, params: m.Infra.DetectCommand, root: Path, venv_bin: Path
+        self, params: p.Infra.DetectCommand, root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.SequenceOf[Path], Path]]:
         """Discover projects and verify the deptry executable."""
         detector = self._detector
@@ -79,7 +79,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         typing_deps: p.Infra.TypingsDepsService | None,
         venv_bin: Path,
         limits_path: Path,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         do_typings: bool,
         projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
     ) -> p.Result[bool]:
@@ -117,7 +117,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         typing_deps: p.Infra.TypingsDepsService | None,
         venv_bin: Path,
         limits_path: Path,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
     ) -> p.Result[bool]:
         """Detect required typings for a project and optionally add them via poetry."""
@@ -160,7 +160,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         deps_service: p.Infra.DepsService,
         root: Path,
         venv_bin: Path,
-        params: m.Infra.DetectCommand,
+        params: p.Infra.DetectCommand,
         report_model: p.Infra.WorkspaceReport,
     ) -> p.Result[bool]:
         """Execute workspace ``pip check`` and stamp the report."""

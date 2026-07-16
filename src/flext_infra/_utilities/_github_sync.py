@@ -56,7 +56,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
 
     @classmethod
     def _github_sync_project(
-        cls, ctx: m.Infra.GithubWorkflowSyncContext
+        cls, ctx: p.Infra.GithubWorkflowSyncContext
     ) -> p.Result[t.SequenceOf[p.Infra.GithubWorkflowSyncOperation]]:
         """Github sync project."""
         operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation] = []
@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
     @classmethod
     def _github_sync_ci_yml(
         cls,
-        ctx: m.Infra.GithubWorkflowSyncContext,
+        ctx: p.Infra.GithubWorkflowSyncContext,
         operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Sync a single ci.yml file for a project."""
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
 
     @staticmethod
     def _github_prune_workflows(
-        ctx: m.Infra.GithubWorkflowSyncContext,
+        ctx: p.Infra.GithubWorkflowSyncContext,
         operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation],
     ) -> None:
         """Remove non-canonical workflow files from a project."""

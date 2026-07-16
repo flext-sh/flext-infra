@@ -74,7 +74,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             failure_predicate=lambda report: report.result == c.Infra.ResultStatus.FAIL,
         )
 
-    def _serve_scope(self, scope: m.Infra.DocScope) -> p.Infra.DocsPhaseReport:
+    def _serve_scope(self, scope: p.Infra.DocScope) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the docs build utilities (blocking)."""
         self.logger.info(
             "docs_serve_scope_started", project=scope.name, dev_addr=self.dev_addr

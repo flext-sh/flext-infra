@@ -193,7 +193,7 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
 
     @override
     def leave_ImportFrom(
-        self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        self, original_node: cst.ImportFrom, p, updated_node: cst.ImportFrom
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         _ = original_node
         module = _CstImportHelpers.dotted_name(updated_node.module)

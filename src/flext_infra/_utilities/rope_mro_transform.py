@@ -19,7 +19,7 @@ class FlextInfraUtilitiesRopeMroTransform:
 
     @staticmethod
     def migrate_file(
-        *, scan_result: m.Infra.MROScanReport
+        *, scan_result: p.Infra.MROScanReport
     ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
         """Transform a candidate file and return code plus symbol map."""
         source = Path(scan_result.file).read_text(encoding=c.Cli.ENCODING_DEFAULT)

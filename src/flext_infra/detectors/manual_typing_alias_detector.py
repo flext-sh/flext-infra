@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraManualTypingAliasDetector:
@@ -14,7 +14,7 @@ class FlextInfraManualTypingAliasDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.ManualTypingAliasViolation]:
         """Detect typing declaration placement violations in a single file."""
         if (

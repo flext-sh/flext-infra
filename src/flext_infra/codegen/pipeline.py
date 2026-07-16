@@ -15,7 +15,7 @@ _log = u.fetch_logger(__name__)
 class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
-    _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
+    _state: p.Infra.CodegenPipelineState = u.PrivateAttr(
         default_factory=m.Infra.CodegenPipelineState
     )
 

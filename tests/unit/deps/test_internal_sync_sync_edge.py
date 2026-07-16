@@ -8,7 +8,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
-from tests import t
+from tests import p, t
 
 from collections.abc import Callable, Generator
 from pathlib import Path

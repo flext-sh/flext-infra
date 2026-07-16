@@ -26,8 +26,8 @@ class FlextInfraUtilitiesRopeInventory:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
-        module_entry: m.Infra.RopeModuleIndexEntry | None,
-        convention: m.Infra.RopeModuleConvention,
+        module_entry: p.Infra.RopeModuleIndexEntry | None,
+        convention: p.Infra.RopeModuleConvention,
         include_local_scopes: bool,
         include_references: bool = True,
         rope_workspace: p.Infra.RopeWorkspaceDsl | None = None,
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesRopeInventory:
         cls,
         scope: p.Infra.RopeScopeDsl,
         *,
-        parent_options: m.Infra.RopeInventoryRecordInput,
+        parent_options: p.Infra.RopeInventoryRecordInput,
         include_references: bool = True,
     ) -> tuple[p.Infra.Census.Object, ...]:
         """Scope objects."""
@@ -127,9 +127,9 @@ class FlextInfraUtilitiesRopeInventory:
     def _child_scope_objects(
         cls,
         *,
-        record: m.Infra.Census.Object,
+        record: p.Infra.Census.Object,
         child_scope: p.Infra.RopeScopeDsl | None,
-        record_options: m.Infra.RopeInventoryRecordInput,
+        record_options: p.Infra.RopeInventoryRecordInput,
         include_local_scopes: bool = True,
         include_references: bool = True,
     ) -> tuple[p.Infra.Census.Object, ...]:
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _descend_options(
-        parent_options: m.Infra.RopeInventoryRecordInput, record: m.Infra.Census.Object
+        parent_options: p.Infra.RopeInventoryRecordInput, record: p.Infra.Census.Object
     ) -> p.Infra.RopeInventoryRecordInput:
         """Descend options."""
         return parent_options.model_copy(
@@ -199,7 +199,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @classmethod
     def _record(
-        cls, options: m.Infra.RopeInventoryRecordInput, *, include_references: bool
+        cls, options: p.Infra.RopeInventoryRecordInput, *, include_references: bool
     ) -> p.Infra.Census.Object | None:
         """Record."""
         line = cls._definition_line(options.pyname, options.resource)
@@ -742,7 +742,7 @@ class FlextInfraUtilitiesRopeInventory:
         return " ".join(snippet.replace(name, "<name>").split())
 
     @staticmethod
-    def _actual_tier(convention: m.Infra.RopeModuleConvention) -> str:
+    def _actual_tier(convention: p.Infra.RopeModuleConvention) -> str:
         """Actual tier."""
         policy = convention.module_policy
         expected: str = policy.expected_family or ""
@@ -754,7 +754,7 @@ class FlextInfraUtilitiesRopeInventory:
         return stem
 
     @staticmethod
-    def _expected_tier(convention: m.Infra.RopeModuleConvention, *, kind: str) -> str:
+    def _expected_tier(convention: p.Infra.RopeModuleConvention, *, kind: str) -> str:
         """Return the expected tier for a module convention."""
         expected: str = convention.module_policy.expected_family or ""
         if expected:
@@ -766,7 +766,7 @@ class FlextInfraUtilitiesRopeInventory:
 
     @staticmethod
     def _is_facade_member(
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         *,
         name: str,
         scope_chain: t.StrSequence,

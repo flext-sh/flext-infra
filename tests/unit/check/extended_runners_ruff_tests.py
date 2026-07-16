@@ -14,7 +14,7 @@ from flext_infra import m
 from flext_infra.gates.pyright import FlextInfraPyrightGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
-from tests import t, u
+from tests import p, t, u
 
 # NOTE (multi-agent): mro-wkii.17.26.2 keeps public assertions on tm.
 

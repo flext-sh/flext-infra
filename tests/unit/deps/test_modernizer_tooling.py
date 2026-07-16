@@ -18,14 +18,14 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from tests import m, u
+from tests import m, p, u
 
 
 class TestsFlextInfraDepsModernizerTooling:
     """Declarative tests for formatting, namespace, and Ruff phases."""
 
     def test_typecheck_policy_keeps_tracked_surfaces_visible(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Keep every tracked Python surface visible to all four analyzers."""
         tools = tool_config_document.tools
@@ -43,7 +43,7 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(hidden_globs.isdisjoint(tools.pyrefly.project_exclude_globs), eq=True)
 
     def test_formatting_phase_sets_expected_state(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Render every managed formatting tool from typed policy."""
         doc = tomlkit.document()
@@ -86,7 +86,7 @@ class TestsFlextInfraDepsModernizerTooling:
         )
 
     def test_formatting_phase_is_idempotent(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Keep formatting output stable after the first application."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
@@ -98,7 +98,7 @@ class TestsFlextInfraDepsModernizerTooling:
         tm.that(second_changes, eq=[])
 
     def test_formatting_phase_removes_codespell_skip(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Remove the obsolete codespell skip setting."""
         phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
@@ -169,7 +169,7 @@ workspace = true
         )
 
     def test_ruff_phase_sets_expected_state(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Render Ruff policy while retaining tracked test roots."""
         project_dir = tmp_path / "flext-sample"
@@ -263,7 +263,7 @@ select = ["E501"]
         )
 
     def test_ruff_phase_is_idempotent(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Keep the Ruff phase stable after the first application."""
         project_dir = tmp_path / "flext-sample"
@@ -279,7 +279,7 @@ select = ["E501"]
         tm.that(second_changes, eq=[])
 
     def test_ruff_phase_skips_attached_workspace_namespaces(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Exclude attached consumer namespaces from FLEXT first-party names."""
         workspace_root = tmp_path / "workspace"

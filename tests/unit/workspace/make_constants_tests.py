@@ -12,7 +12,7 @@ from flext_tests import tm
 
 from flext_infra import c
 
-from tests import t
+from tests import p, t
 
 
 _PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})

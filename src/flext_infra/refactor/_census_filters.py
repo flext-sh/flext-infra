@@ -53,7 +53,7 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _include_object(
-        item: m.Infra.Census.Object,
+        item: p.Infra.Census.Object,
         *,
         kind_names: t.StrSequence | None,
         selected_families: frozenset[str],
@@ -107,7 +107,7 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _runtime_alias_target(
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
         objects: tuple[p.Infra.Census.Object, ...] | None,
     ) -> p.Infra.Census.Object | None:
         """Runtime alias target."""
@@ -121,7 +121,7 @@ class FlextInfraRefactorCensusFiltersMixin:
         return FlextInfraRefactorCensusFiltersMixin._named_object(objects, target_name)
 
     @staticmethod
-    def _runtime_alias_target_name(convention: m.Infra.RopeModuleConvention) -> str:
+    def _runtime_alias_target_name(convention: p.Infra.RopeModuleConvention) -> str:
         """Return the expected runtime alias target name."""
         layout = convention.project_layout
         family = convention.module_policy.expected_family or ""

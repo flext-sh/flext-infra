@@ -10,7 +10,7 @@ import sys
 from collections.abc import Mapping
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraCompatibilityAliasDetector:
@@ -18,7 +18,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def fix_action_for(
-        cls, violation: m.Infra.CompatibilityAliasViolation, *, current_project: str
+        cls, violation: p.Infra.CompatibilityAliasViolation, *, current_project: str
     ) -> str:
         """Return the catalog fix action for a compatibility-alias violation.
 
@@ -35,7 +35,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def detect_file(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
 
@@ -138,7 +138,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def _detect_foreign_canonical_aliases(
-        cls, *, ctx: m.Infra.DetectorContext, source: str, file_path: Path
+        cls, *, ctx: p.Infra.DetectorContext, source: str, file_path: Path
     ) -> t.SequenceOf[p.Infra.CompatibilityAliasViolation]:
         """Detect runtime canonical aliases imported from ``flext_core``."""
         current_module = u.Infra.package_name(file_path)

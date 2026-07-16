@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
-from flext_infra import m, p, t
+from flext_infra import p, t
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
@@ -16,7 +16,7 @@ class FlextInfraEnforcementMetadata:
 
     @staticmethod
     def detect_declarative(
-        rule: me.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
+        rule: me.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Detect one declarative rule for one detector context."""
         return FlextInfraRefactorDeclarativeEnforcement.detect(rule, ctx)

@@ -12,7 +12,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -57,7 +57,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
-            convention: m.Infra.RopeModuleConvention | None = None,
+            convention: p.Infra.RopeModuleConvention | None = None,
             parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
         ) -> p.Infra.DetectorContext: ...
@@ -69,7 +69,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ) -> str: ...
 
     def _apply_supported_fixes(
-        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.Census.WorkspaceReport
+        self, rope: p.Infra.RopeWorkspaceDsl, report: p.Infra.Census.WorkspaceReport
     ) -> frozenset[str]:
         """Apply supported fixes."""
         applied: set[str] = set()
@@ -406,7 +406,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         return changed
 
     @staticmethod
-    def _derive_constants_module(convention: m.Infra.RopeModuleConvention) -> str:
+    def _derive_constants_module(convention: p.Infra.RopeModuleConvention) -> str:
         """Return the canonical _constants module for a source convention."""
         base_package = convention.package_name.split(".")[0]
         return f"{base_package}._constants"

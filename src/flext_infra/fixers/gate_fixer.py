@@ -47,7 +47,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
         if not violations:
@@ -173,7 +173,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         rule: me.EnforcementRuleSpec,
         target: str,
-        execution: m.Infra.GateExecution,
+        execution: p.Infra.GateExecution,
     ) -> fr.ProjectFixResult:
         """Build a dry-run result from the non-mutating gate check output."""
         matching = self._matching_issues(rule, execution.issues)

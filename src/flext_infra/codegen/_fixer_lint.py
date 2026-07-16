@@ -17,7 +17,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     @classmethod
     def _run_lint_remediation(
         cls,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         project_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> None:
@@ -94,7 +94,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         )
 
     @staticmethod
-    def _raise_for_parse_failure(execution: m.Infra.GateExecution) -> None:
+    def _raise_for_parse_failure(execution: p.Infra.GateExecution) -> None:
         """Fail loudly when Ruff output did not become typed diagnostics."""
         parse_failure = next(
             (issue for issue in execution.issues if issue.code == "PARSE_ERROR"), None
@@ -106,7 +106,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     def _apply_configured_issues(
         cls,
         *,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         project_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         issues: t.SequenceOf[p.Infra.Issue],
@@ -145,7 +145,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
 
     @staticmethod
     def _validate_rule_path(
-        project_path: Path, file_path: Path, rule: m.Infra.StaticRuffIssueRule
+        project_path: Path, file_path: Path, rule: p.Infra.StaticRuffIssueRule
     ) -> None:
         """Prove one diagnostic belongs to a configured project-relative root."""
         resolved_project = project_path.resolve()
@@ -161,7 +161,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     def _apply_file_entries(
         cls,
         *,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
         file_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         entries: t.SequenceOf[t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]],

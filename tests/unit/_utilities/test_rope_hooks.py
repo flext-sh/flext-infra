@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import m, u
+from tests import m, p, u
 
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:

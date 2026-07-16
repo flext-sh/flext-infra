@@ -38,7 +38,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Return relative markdown file paths (doubles as check_dirs for _build_check_command)."""
         _ = ctx
@@ -49,7 +49,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = ctx
@@ -61,7 +61,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
@@ -83,7 +83,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = ctx

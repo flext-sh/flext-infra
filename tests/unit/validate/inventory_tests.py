@@ -15,7 +15,7 @@ from tests import m
 
 from pathlib import Path
 
-from tests import t
+from tests import p, t
 
 
 
@@ -30,7 +30,7 @@ class TestInventoryServiceCore:
     def test_generate_empty_workspace(self, tmp_path: Path) -> None:
         """Empty workspace returns success with zero scripts."""
         service = FlextInfraInventoryService()
-        report: m.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
+        report: p.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
         tm.that(report, is_=m.Infra.InventoryReport)
         tm.that(report.total_scripts, eq=0)
 
@@ -74,7 +74,7 @@ class TestInventoryServiceScripts:
         (scripts / "script1.py").write_text("")
         (scripts / "script2.sh").write_text("")
         (scripts / "script3.py").write_text("")
-        report: m.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
+        report: p.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
         tm.that(report.total_scripts, eq=3)
 
     def test_generate_finds_nested_scripts(self, tmp_path: Path) -> None:
@@ -84,7 +84,7 @@ class TestInventoryServiceScripts:
         subdir.mkdir(parents=True)
         (tmp_path / "scripts" / "script1.py").write_text("")
         (subdir / "script2.sh").write_text("")
-        report: m.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
+        report: p.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
         tm.that(report.total_scripts, eq=2)
 
     def test_generate_ignores_non_script_files(self, tmp_path: Path) -> None:
@@ -95,13 +95,13 @@ class TestInventoryServiceScripts:
         (scripts / "script.py").write_text("")
         (scripts / "readme.txt").write_text("")
         (scripts / "settings.json").write_text("")
-        report: m.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
+        report: p.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
         tm.that(report.total_scripts, eq=1)
 
     def test_generate_missing_scripts_dir(self, tmp_path: Path) -> None:
         """Missing scripts directory returns zero scripts."""
         service = FlextInfraInventoryService()
-        report: m.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
+        report: p.Infra.InventoryReport = tm.ok(service.generate(tmp_path))
         tm.that(report.total_scripts, eq=0)
 
     def test_generate_sorts_scripts_alphabetically(self, tmp_path: Path) -> None:
@@ -123,7 +123,7 @@ class TestInventoryServiceReports:
         service = FlextInfraInventoryService()
         output_dir = tmp_path / "reports"
         output_dir.mkdir()
-        report: m.Infra.InventoryReport = tm.ok(
+        report: p.Infra.InventoryReport = tm.ok(
             service.generate(tmp_path, output_dir=output_dir)
         )
         tm.that(report.reports_written, is_=list)

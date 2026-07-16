@@ -9,7 +9,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import t
+from tests import p, t
 
 
 class TestsFlextInfraDepsDetectionClassify:

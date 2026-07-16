@@ -149,7 +149,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _process_document_state(
         self,
-        state: m.Infra.PyprojectDocumentState,
+        state: p.Infra.PyprojectDocumentState,
         *,
         canonical_dev: t.StrSequence,
         dry_run: bool,

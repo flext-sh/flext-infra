@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
@@ -12,7 +12,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used when enforcing pyrefly project settings."""
         self._tool_config = tool_config
 

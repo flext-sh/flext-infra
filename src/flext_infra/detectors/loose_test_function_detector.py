@@ -41,7 +41,7 @@ class FlextInfraLooseTestFunctionDetector:
 
     @classmethod
     def _is_test_file(
-        cls, ctx: m.Infra.DetectorContext, rules: m.Infra.TestTreeRulesConfig
+        cls, ctx: p.Infra.DetectorContext, rules: p.Infra.TestTreeRulesConfig
     ) -> bool:
         """Return True when ``ctx.file_path`` sits under a configured test glob."""
         root = ctx.project_root or ctx.file_path.parent
@@ -54,7 +54,7 @@ class FlextInfraLooseTestFunctionDetector:
 
     @classmethod
     def detect_file(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.LooseTestFunctionViolation]:
         """Return one violation per loose ``test_*`` function in a test module."""
         rules = cls._rules()

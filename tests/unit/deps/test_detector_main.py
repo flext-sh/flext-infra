@@ -11,7 +11,7 @@ from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from tests import m
 from tests import p
-from tests import t
+from tests import p, t
 from tests import TestsFlextInfraUtilities as u
 
 

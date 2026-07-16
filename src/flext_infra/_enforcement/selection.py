@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import m, t, u
+from flext_infra import p, t, u
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
@@ -28,7 +28,7 @@ class FlextInfraEnforcementSelection:
     def selected_rules(
         cls,
         *,
-        catalog: m.EnforcementCatalog | None = None,
+        catalog: p.EnforcementCatalog | None = None,
         wanted: t.StrSequence = (),
         safe_only: bool = True,
         adapterless: t.StrSequence = (),
@@ -71,12 +71,12 @@ class FlextInfraEnforcementSelection:
         )
 
     @staticmethod
-    def supports_declarative(rule: m.EnforcementRuleSpec) -> bool:
+    def supports_declarative(rule: p.EnforcementRuleSpec) -> bool:
         """Return whether the declarative detector supports ``rule``."""
         return FlextInfraRefactorDeclarativeEnforcement.supports(rule)
 
     @classmethod
-    def rule_requires_stub_file(cls, rule: m.EnforcementRuleSpec) -> bool:
+    def rule_requires_stub_file(cls, rule: p.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` needs explicit ``.pyi`` file discovery."""
         source = rule.source
         return (

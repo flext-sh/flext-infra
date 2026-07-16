@@ -429,7 +429,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
-        export_options: m.Infra.ExportOptions | None = None,
+        export_options: p.Infra.ExportOptions | None = None,
     ) -> t.StrSequence:
         """Return module-local export names from Rope metadata."""
         resolved_export_options = export_options or m.Infra.ExportOptions()
@@ -492,7 +492,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _module_export_names(
         *,
-        export_options: m.Infra.ExportOptions,
+        export_options: p.Infra.ExportOptions,
         pymodule: t.Infra.RopePyModule,
         resource: t.Infra.RopeResource,
     ) -> t.StrSequence:
@@ -558,7 +558,7 @@ class FlextInfraUtilitiesRopeAnalysis:
     def _implicit_export_names(
         *,
         attributes: t.MappingKV[str, t.Infra.RopePyName],
-        export_options: m.Infra.ExportOptions,
+        export_options: p.Infra.ExportOptions,
         resource: t.Infra.RopeResource,
     ) -> t.StrSequence:
         """Return implicit export names accepted by the export options."""
@@ -576,7 +576,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     @staticmethod
     def _is_export_name(
-        *, export_options: m.Infra.ExportOptions, name: str, pyname: t.Infra.RopePyName
+        *, export_options: p.Infra.ExportOptions, name: str, pyname: t.Infra.RopePyName
     ) -> bool:
         """Return whether one Rope name is exportable under the options."""
         if isinstance(pyname, FlextInfraConstantsRope.IMPORTED_NAME_TYPES):

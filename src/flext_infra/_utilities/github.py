@@ -20,7 +20,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
 
     @classmethod
     def lint_github_workflows(
-        cls, request: m.Infra.GithubWorkflowLintRequest
+        cls, request: p.Infra.GithubWorkflowLintRequest
     ) -> p.Result[p.Infra.GithubWorkflowLintOutcome]:
         """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
 
     @classmethod
     def sync_github_workflows(
-        cls, request: m.Infra.GithubWorkflowSyncRequest
+        cls, request: p.Infra.GithubWorkflowSyncRequest
     ) -> p.Result[p.Infra.GithubWorkflowSyncReport]:
         """Sync workflows across all workspace projects."""
         workspace_root = request.workspace_path

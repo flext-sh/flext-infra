@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
@@ -152,7 +152,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     def _sync_basemk(
         self,
         workspace_root: Path,
-        settings: m.Infra.BaseMkConfig | None,
+        settings: p.Infra.BaseMkConfig | None,
         *,
         canonical_root: Path | None = None,
         apply: bool,

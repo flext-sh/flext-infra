@@ -26,7 +26,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Run the tier-whitelist scan scoped to ``project_dir``."""
         _ = ctx
@@ -65,7 +65,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """No external tool — execution happens in ``check``."""
         _ = project_dir, ctx, check_dirs
@@ -73,7 +73,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx

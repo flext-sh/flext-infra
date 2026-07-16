@@ -102,7 +102,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
 
     def _isolate_context(
-        self, ctx: m.Infra.GateContext, target: m.Infra.CheckProjectTarget
+        self, ctx: p.Infra.GateContext, target: p.Infra.CheckProjectTarget
     ) -> p.Infra.GateContext:
         """Create a fresh GateContext scoped to a single project."""
         return m.Infra.GateContext(
@@ -118,11 +118,11 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
     def _run_single_project(
         self,
-        target: m.Infra.CheckProjectTarget,
+        target: p.Infra.CheckProjectTarget,
         index: int,
         total: int,
         resolved_gates: t.StrSequence,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> p.Infra.ProjectResult | None:
         """Check one project, returning None when the project should be skipped."""
         project_dir = target.path
@@ -150,7 +150,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         self,
         projects: t.SequenceOf[p.Infra.CheckProjectTarget],
         resolved_gates: t.StrSequence,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         *,
         fail_fast: bool,
     ) -> _LoopOutcome:
@@ -192,7 +192,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         reports_dir: Path | None = None,
         *,
-        ctx: m.Infra.GateContext | None = None,
+        ctx: p.Infra.GateContext | None = None,
     ) -> p.Infra.GateExecution:
         """Run gate."""
         gate = self._registry.create(gate_id, self._workspace_root)
@@ -211,7 +211,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         return gate.check(project_dir, ctx or self._gate_ctx(reports_dir))
 
     def _check_project_with_ctx(
-        self, project_dir: Path, gates: t.StrSequence, ctx: m.Infra.GateContext
+        self, project_dir: Path, gates: t.StrSequence, ctx: p.Infra.GateContext
     ) -> p.Infra.ProjectResult:
         """Run gates for one project as independent DAG stages."""
         project_name = project_dir.name
@@ -250,7 +250,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         self,
         gate_instance: FlextInfraGate,
         project_dir: Path,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
     ) -> t.Cli.PipelineHandler:
         """Build a pipeline stage handler that executes a single gate.
@@ -311,7 +311,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
     @staticmethod
     def _execute_gate(
-        gate_instance: FlextInfraGate, project_dir: Path, ctx: m.Infra.GateContext
+        gate_instance: FlextInfraGate, project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Run fix-then-check or check-only for a single gate instance."""
         if ctx.apply_fixes and (not ctx.check_only) and gate_instance.can_fix:

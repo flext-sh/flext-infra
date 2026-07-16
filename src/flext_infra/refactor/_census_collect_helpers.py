@@ -37,8 +37,8 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         def _scan_module(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
-            module: m.Infra.RopeModuleIndexEntry,
-            config: m.Infra.Census.ScanConfig,
+            module: p.Infra.RopeModuleIndexEntry,
+            config: p.Infra.Census.ScanConfig,
             *,
             project_objects: dict[str, list[p.Infra.Census.Object]],
             project_violations: dict[str, list[p.Infra.Census.Violation]],
@@ -96,7 +96,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
 
     @staticmethod
     def _project_name_for_module(
-        module: m.Infra.RopeModuleIndexEntry, convention: m.Infra.RopeModuleConvention
+        module: p.Infra.RopeModuleIndexEntry, convention: p.Infra.RopeModuleConvention
     ) -> str:
         """Project name for a module entry."""
         layout = convention.project_layout

@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, m, u as infra_u
+from flext_infra import config, m, p, u as infra_u
 from flext_infra import main as infra_main
-from tests import t, u
+from tests import p, t, u
 
 
 class TestWorktreeTransactionScope:

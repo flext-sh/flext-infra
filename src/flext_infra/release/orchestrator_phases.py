@@ -30,7 +30,7 @@ class FlextInfraReleaseOrchestratorPhases(FlextInfraReleaseOrchestratorPublishMi
         output = (output_model.stdout + "\n" + output_model.stderr).strip()
         return r[t.Pair[int, str]].ok((output_model.exit_code, output))
 
-    def phase_build(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_build(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Execute the build phase and write build-report.json."""
         workspace_root = ctx.workspace_root
         version = ctx.version
@@ -83,7 +83,7 @@ class FlextInfraReleaseOrchestratorPhases(FlextInfraReleaseOrchestratorPublishMi
             return r[bool].fail(f"build failed: {failures} project(s)")
         return r[bool].ok(True)
 
-    def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_version(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Execute versioning phase across workspace and selected projects."""
         target = f"{ctx.version}-dev" if ctx.dev_suffix else ctx.version
         parse_result = u.Infra.parse_semver(ctx.version)

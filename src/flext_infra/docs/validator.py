@@ -13,7 +13,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     """Validate the governed docs contract for root and FLEXT projects."""
 
     def validate_workspace(
-        self, request: m.Infra.DocsGenerateRequest
+        self, request: p.Infra.DocsGenerateRequest
     ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Validate documentation across the workspace root and governed projects."""
         return self.run_scoped_docs(
@@ -64,7 +64,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         return (0 if not missing else 1, missing)
 
     def _validate_scope(
-        self, scope: m.Infra.DocScope, *, apply_mode: bool
+        self, scope: p.Infra.DocScope, *, apply_mode: bool
     ) -> p.Infra.DocsPhaseReport:
         """Validate one docs scope and persist the standard reports."""
         status = c.Infra.ResultStatus.OK

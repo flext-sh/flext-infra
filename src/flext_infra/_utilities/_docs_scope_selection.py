@@ -76,7 +76,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _doc_scope(
-        *, project: m.Infra.ProjectInfo, output_dir: Path | str
+        *, project: p.Infra.ProjectInfo, output_dir: Path | str
     ) -> p.Infra.DocScope:
         """Build one canonical docs scope model."""
         resolved = project.path.resolve()

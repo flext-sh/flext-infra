@@ -51,7 +51,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
         # NOTE (multi-agent): mypy aborts the whole gate when a positional dir
@@ -79,7 +79,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @override
     def _filter_check_files(
-        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.SequenceOf[Path]:
         """Honor the configured Mypy exclusion for explicit file scopes."""
         selected = super()._filter_check_files(files, project_dir, ctx)
@@ -93,7 +93,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             if exclude.match(file_path.relative_to(project_root).as_posix()) is None
         )
 
-    def _resolve_config(self, project_dir: Path, ctx: m.Infra.GateContext) -> Path:
+    def _resolve_config(self, project_dir: Path, ctx: p.Infra.GateContext) -> Path:
         """Resolve mypy settings: project-local if it has [tool.mypy], else workspace."""
         pyproject_name: str = c.Infra.PYPROJECT_FILENAME
         proj_py = project_dir / pyproject_name
@@ -110,7 +110,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         cfg = self._resolve_config(project_dir, ctx)
@@ -126,7 +126,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         ]
 
     @override
-    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
         """Allow large projects enough time for a full mypy graph walk."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_LONG
@@ -134,7 +134,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @override
     def _check_env(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrMapping | None:
         """Check env."""
         _ = project_dir
@@ -148,7 +148,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx

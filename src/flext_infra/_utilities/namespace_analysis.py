@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )

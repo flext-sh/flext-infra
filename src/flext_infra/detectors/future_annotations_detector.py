@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 
 
 class FlextInfraFutureAnnotationsDetector:
@@ -14,7 +14,7 @@ class FlextInfraFutureAnnotationsDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.FutureAnnotationsViolation]:
         """Detect missing future annotations in a single file."""
         resource = u.Infra.fetch_python_resource(

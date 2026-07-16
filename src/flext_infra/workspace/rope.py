@@ -31,7 +31,7 @@ class FlextInfraRopeWorkspace(s[p.Infra.RopeWorkspaceSession]):
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None
     )
-    _workspace_index: m.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
+    _workspace_index: p.Infra.RopeWorkspaceIndex | None = u.PrivateAttr(
         default_factory=lambda: None
     )
     _codegen_projects: tuple[p.Infra.ProjectInfo, ...] | None = u.PrivateAttr(
@@ -129,7 +129,7 @@ class FlextInfraRopeWorkspace(s[p.Infra.RopeWorkspaceSession]):
     @override
     def execute(self) -> p.Result[p.Infra.RopeWorkspaceSession]:
         """Materialize the public Rope session snapshot."""
-        snapshot: m.Infra.RopeWorkspaceSession = self.session_snapshot()
+        snapshot: p.Infra.RopeWorkspaceSession = self.session_snapshot()
         return r[p.Infra.RopeWorkspaceSession].ok(snapshot)
 
     def session_snapshot(self) -> p.Infra.RopeWorkspaceSession:
@@ -461,7 +461,7 @@ class FlextInfraRopeWorkspace(s[p.Infra.RopeWorkspaceSession]):
         )
 
     def exports(
-        self, file_path: Path, *, export_options: m.Infra.ExportOptions | None = None
+        self, file_path: Path, *, export_options: p.Infra.ExportOptions | None = None
     ) -> t.StrSequence:
         """Return public export names for one module path."""
         resolved_export_options = export_options or m.Infra.ExportOptions()

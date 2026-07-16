@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_core import r
 from flext_infra.constants import c
 from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra.typings import p, t
 
 
 class FlextInfraUtilitiesBase:

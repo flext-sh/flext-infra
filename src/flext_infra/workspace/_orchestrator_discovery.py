@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.workspace.sync import FlextInfraSyncService
 
 
@@ -34,7 +34,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
         )
 
     @staticmethod
-    def _project_target(project: m.Infra.ProjectInfo, *, workspace_root: Path) -> str:
+    def _project_target(project: p.Infra.ProjectInfo, *, workspace_root: Path) -> str:
         """Map a project info object into a relative make target."""
         project_path = project.path.resolve()
         resolved_workspace_root = workspace_root.resolve()

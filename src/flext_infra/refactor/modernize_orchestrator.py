@@ -32,7 +32,7 @@ class FlextInfraModernizeOrchestrator:
         self._description = description
 
     def run(
-        self, params: m.Infra.ModernizeInput
+        self, params: p.Infra.ModernizeInput
     ) -> p.Result[t.SequenceOf[p.Infra.Result]]:
         """Run modernize across selected projects."""
         workspace_root = params.workspace_path
@@ -63,7 +63,7 @@ class FlextInfraModernizeOrchestrator:
     @classmethod
     def execute_command(
         cls,
-        params: m.Infra.ModernizeInput,
+        params: p.Infra.ModernizeInput,
         *,
         transformer_factory: Callable[[], p.Infra.ChangeTracker],
         description: str,

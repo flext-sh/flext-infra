@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
@@ -79,7 +79,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
         if not violations:
@@ -188,7 +188,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
         fix_action: me.EnforcementFixAction | None,
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
     ) -> fr.ProjectFixResult:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
 
 
@@ -18,13 +18,13 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         _modified_files: t.Infra.StrSet
 
         def _cleanup_generated_support_files(
-            self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+            self, plan: p.Infra.LazyInitPlan, *, check_only: bool = False
         ) -> int: ...
 
         @staticmethod
         def _read_generated_file(path: Path) -> str | None: ...
 
-    def _read_previous_init(self, plan: m.Infra.LazyInitPlan) -> str | None:
+    def _read_previous_init(self, plan: p.Infra.LazyInitPlan) -> str | None:
         """Read existing initializer content when present."""
         return self._read_generated_file(plan.context.init_path)
 
@@ -40,7 +40,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
             raise OSError(message)
         self._modified_files.add(str(path))
 
-    def _write_artifact_set(self, plan: m.Infra.LazyInitPlan) -> int:
+    def _write_artifact_set(self, plan: p.Infra.LazyInitPlan) -> int:
         """Render and write one canonical Python initializer."""
         generated = FlextInfraCodegenGeneration.render_init(plan)
         previous = self._read_previous_init(plan)
@@ -49,7 +49,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         return cleanup_exit
 
     def _check_remove_init(
-        self, plan: m.Infra.LazyInitPlan
+        self, plan: p.Infra.LazyInitPlan
     ) -> t.Infra.LazyInitWriteResult:
         """Record generated artifact removals without writing."""
         init_path = plan.context.init_path
@@ -58,7 +58,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         self._cleanup_generated_support_files(plan, check_only=True)
         return (0, dict(plan.lazy_map))
 
-    def _remove_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
+    def _remove_init(self, plan: p.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
         """Remove the initializer and every obsolete generated sidecar."""
         init_path = plan.context.init_path
         try:
@@ -73,7 +73,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
             return (-1, dict(plan.lazy_map))
         return (0, dict(plan.lazy_map))
 
-    def _write_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
+    def _write_init(self, plan: p.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
         """Write one initializer after removing obsolete generated sidecars."""
         init_path = plan.context.init_path
         try:
@@ -87,7 +87,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         return (0, dict(plan.lazy_map))
 
     def _check_write_init(
-        self, plan: m.Infra.LazyInitPlan
+        self, plan: p.Infra.LazyInitPlan
     ) -> t.Infra.LazyInitWriteResult:
         """Compare the initializer and obsolete sidecars without mutating them."""
         init_path = plan.context.init_path

@@ -27,7 +27,7 @@ def _create_test_project(tmp_path: Path, *, with_all_modules: bool = True) -> Pa
 def _project_info(
     project: Path, *, package_name: str = "test_project"
 ) -> p.Infra.ProjectInfo:
-    project_info: m.Infra.ProjectInfo = u.Tests.create_project_info(
+    project_info: p.Infra.ProjectInfo = u.Tests.create_project_info(
         project, name=project.name, package_name=package_name
     )
     return project_info

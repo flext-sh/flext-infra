@@ -87,7 +87,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         u.Cli.header(message)
 
     @staticmethod
-    def _print_violation_summary(analysis: m.Infra.ViolationAnalysisReport) -> None:
+    def _print_violation_summary(analysis: p.Infra.ViolationAnalysisReport) -> None:
         """Print high-level violation analysis summary."""
         u.Cli.header("Violation Analysis")
         u.Cli.info(f"Files scanned: {analysis.files_scanned}")

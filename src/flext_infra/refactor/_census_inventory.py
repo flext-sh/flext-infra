@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import m, p, t, u
+from flext_infra import p, t, u
 
 
 class FlextInfraRefactorCensusInventoryMixin:
@@ -82,7 +82,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
     @classmethod
     def parent_alias_collisions(
-        cls, report: m.Infra.Census.WorkspaceReport, *, workspace_root: Path
+        cls, report: p.Infra.Census.WorkspaceReport, *, workspace_root: Path
     ) -> tuple[tuple[p.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 

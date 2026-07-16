@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -17,7 +17,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.ClassPlacementViolation]:
         """Detect classes and class-level constants outside canonical families."""
         if u.Infra.matches_root_namespace_file(ctx.file_path.name):
@@ -129,8 +129,8 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _violation_for_class(
         *,
-        ctx: m.Infra.DetectorContext,
-        ci: m.Infra.ClassInfo,
+        ctx: p.Infra.DetectorContext,
+        ci: p.Infra.ClassInfo,
         family: str,
         fixable: bool,
     ) -> p.Infra.ClassPlacementViolation:
@@ -148,7 +148,7 @@ class FlextInfraClassPlacementDetector:
         )
 
     @staticmethod
-    def _family_for_class(ci: m.Infra.ClassInfo) -> str | None:
+    def _family_for_class(ci: p.Infra.ClassInfo) -> str | None:
         """Return the canonical family letter for a class, or None if not governed."""
         terminal_bases = {
             base_name.rsplit(".", maxsplit=1)[-1] for base_name in ci.bases
@@ -201,7 +201,7 @@ class FlextInfraClassPlacementDetector:
         }.get(family, "Move class to canonical family location")
 
     @staticmethod
-    def _target_facade(ctx: m.Infra.DetectorContext, family: str) -> str:
+    def _target_facade(ctx: p.Infra.DetectorContext, family: str) -> str:
         """Return the canonical facade class name for a family and project."""
         stem = u.derive_class_stem(ctx.project_name) if ctx.project_name else ""
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")

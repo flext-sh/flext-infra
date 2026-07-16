@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import flext_infra
 import pytest
-from flext_infra import c, m, u as infra_u
+from flext_infra import c, m, p, u as infra_u
 from flext_tests import tm
 
 from tests import u

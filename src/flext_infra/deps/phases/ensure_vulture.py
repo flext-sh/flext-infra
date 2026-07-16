@@ -9,7 +9,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsureVultureConfigPhase:
     """Propagate the validated Vulture policy to every project."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store the canonical tooling document."""
         self._tool_config = tool_config
 

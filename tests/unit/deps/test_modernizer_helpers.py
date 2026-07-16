@@ -14,7 +14,7 @@ from pathlib import Path
 
 from tomlkit.toml_document import TOMLDocument
 
-from tests import t
+from tests import p, t
 
 
 

@@ -11,7 +11,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from tests import t
+from tests import p, t
 from tests import u
 
 from pathlib import Path
@@ -24,7 +24,7 @@ class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
     def test_ensure_pyrefly_config_sets_fields_root(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify root projects receive the canonical Pyrefly fields."""
         doc = tomlkit.document()
@@ -33,7 +33,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = phase.apply(doc, is_root=True)
 
     def test_ensure_pyrefly_config_non_root(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify child projects receive Pyrefly configuration changes."""
         doc = tomlkit.document()
@@ -44,7 +44,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(changes, empty=False)
 
     def test_ensure_pyrefly_config_removes_fallback_interpreter_name(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify the obsolete fallback interpreter setting is removed."""
         doc = tomlkit.document()
@@ -71,7 +71,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     def test_ensure_pyrefly_config_phase_apply_python_version(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Python version is written."""
         doc = tomlkit.document()
@@ -87,7 +87,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(u.Cli.toml_unwrap_item(pyrefly["python-version"]), eq="3.13")
 
     def test_ensure_pyrefly_config_phase_apply_ignore_errors(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify generated-code error handling follows canonical policy."""
         doc = tomlkit.document()
@@ -105,7 +105,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     def test_ensure_pyrefly_config_phase_apply_search_path(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify the default Pyrefly search path is written."""
         doc = tomlkit.document()
@@ -121,7 +121,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify project context contributes existing source directories."""
         project_dir = tmp_path / "flext-core"
@@ -151,7 +151,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(search_path, eq=[".", "src"])
 
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify Pyright include paths feed project-scoped Pyrefly config."""
         project_dir = tmp_path / "flext-core"
@@ -181,7 +181,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(project_includes, eq=["src/**/*.py*", "tests/**/*.py*"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify root context includes workspace dependency source paths."""
         for directory in ("src", "tests"):
@@ -228,7 +228,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(search_path, eq=[".", "flext-core/src", "src"])
 
     def test_ensure_pyrefly_config_phase_apply_errors(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Pyrefly error table is populated."""
         doc = tomlkit.document()
@@ -246,7 +246,7 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(len(errors), gt=0)
 
     def test_ensure_pyrefly_config_phase_removes_stale_error_keys(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify stale error keys are removed from TOML documents."""
         doc = tomlkit.document()
@@ -275,7 +275,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     def test_ensure_pyrefly_config_payload_removes_stale_error_keys(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify stale error keys are removed from plain payloads."""
         errors: t.JsonDict = {"annotation-mismatch": "error"}
@@ -300,7 +300,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
     def test_ensure_pyrefly_config_phase_is_idempotent(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Verify a second Pyrefly phase run produces no changes."""
         doc = tomlkit.document()

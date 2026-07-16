@@ -9,7 +9,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsureFormattingToolingPhase:
     """Ensure safe default settings for TOML/YAML formatting tools."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool settings used when enforcing formatting-related tables."""
         self._tool_config = tool_config
 

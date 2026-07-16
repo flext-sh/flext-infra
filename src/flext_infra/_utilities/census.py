@@ -62,7 +62,7 @@ class FlextInfraUtilitiesRefactorCensus:
         )
 
     @staticmethod
-    def export_pydantic_json(model_payload: m.BaseModel, export_path: Path) -> None:
+    def export_pydantic_json(model_payload: p.BaseModel, export_path: Path) -> None:
         """Serialize any Pydantic model payload to a JSON file."""
         export_path.write_text(
             model_payload.model_dump_json(indent=2), encoding=c.Cli.ENCODING_DEFAULT
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def plan_simple_removal_edits(
         rope: p.Infra.RopeWorkspaceDsl,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, tuple[t.IntPair, ...]] | None:
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesRefactorCensus:
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         source: str,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         sites: tuple[p.Infra.Census.ReferenceSite, ...],
     ) -> tuple[t.IntPair, ...] | None:
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def _supports_simple_removal_candidate(
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
     ) -> bool:
         """Whether ``candidate`` is eligible for the simple-removal pipeline."""
         return (
@@ -234,7 +234,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _simple_removal_sources_result(
         cls,
         rope: p.Infra.RopeWorkspaceDsl,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
     ) -> p.Result[t.MappingKV[Path, str]]:
@@ -257,7 +257,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def build_simple_removal_sources(
         rope: p.Infra.RopeWorkspaceDsl,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
@@ -394,7 +394,7 @@ class FlextInfraUtilitiesRefactorCensus:
     @staticmethod
     def build_facade_base_cascade_updates(
         rope: p.Infra.RopeWorkspaceDsl,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         source_cache: dict[Path, str] | None = None,
     ) -> t.MappingKV[Path, str] | None:
@@ -639,7 +639,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def _cleanup_written_paths(
         rope: p.Infra.RopeWorkspaceDsl,
         *,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         file_paths: t.SequenceOf[Path],
     ) -> None:
         """Run one centralized post-write Rope cleanup for touched files."""
@@ -662,7 +662,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def preview_simple_removal_candidate(
         rope: p.Infra.RopeWorkspaceDsl,
         workspace: Path,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
         source_cache: dict[Path, str] | None = None,
@@ -724,7 +724,7 @@ class FlextInfraUtilitiesRefactorCensus:
     def apply_simple_removal_candidate(
         rope: p.Infra.RopeWorkspaceDsl,
         workspace: Path,
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
         *,
         gates: t.StrSequence,
         post_apply_hook: _CensusCallable[[Path], None] | None = None,
@@ -851,14 +851,14 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def _supporting_reference_sites(
-        candidate: m.Infra.Census.RemovalCandidate,
+        candidate: p.Infra.Census.RemovalCandidate,
     ) -> tuple[p.Infra.Census.ReferenceSite, ...]:
         """Supporting reference sites."""
         return (*candidate.example_reference_sites, *candidate.script_reference_sites)
 
     @staticmethod
     def _definition_line_range(
-        source: str, candidate: m.Infra.Census.RemovalCandidate
+        source: str, candidate: p.Infra.Census.RemovalCandidate
     ) -> t.IntPair | None:
         """Definition line range."""
         block = FlextInfraUtilitiesRopeHelpers.extract_definition(
@@ -870,7 +870,7 @@ class FlextInfraUtilitiesRefactorCensus:
 
     @staticmethod
     def _reference_line_range(
-        source: str, site: m.Infra.Census.ReferenceSite
+        source: str, site: p.Infra.Census.ReferenceSite
     ) -> t.IntPair | None:
         """Compute the line range for a reference site."""
         return FlextInfraUtilitiesRefactorCensus._reference_line_range_for_line(

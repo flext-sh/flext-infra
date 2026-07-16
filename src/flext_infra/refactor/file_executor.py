@@ -6,7 +6,7 @@ import sys
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
@@ -22,7 +22,7 @@ class FlextInfraClassNestingPostCheckGate:
     """Run post-transform validation gates for direct class-nesting execution."""
 
     def validate(
-        self, result: m.Infra.Result, expected: t.Infra.ContainerDict
+        self, result: p.Infra.Result, expected: t.Infra.ContainerDict
     ) -> t.Pair[bool, t.StrSequence]:
         """Validate post-check expectations against one transformed file result."""
         if not result.success:

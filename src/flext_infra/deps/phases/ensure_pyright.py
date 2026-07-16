@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
@@ -12,7 +12,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePyrightConfigPhase:
     """Ensure standard Pyright configuration for strict type checking."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Initialize the phase with the canonical tool configuration."""
         self._tool_config = tool_config
 
@@ -20,7 +20,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         env_dir: str,
         *,
-        rules: m.Infra.PyrightConfig.PathRulesConfig | None = None,
+        rules: p.Infra.PyrightConfig.PathRulesConfig | None = None,
     ) -> str:
         """Only ``source_dir`` (src/) is strict; all auto-discovered dirs relax."""
         effective_rules = rules or self._tool_config.tools.pyright.path_rules
@@ -36,7 +36,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         root: str,
         extra_paths: t.StrSequence,
-        rules: m.Infra.PyrightConfig.PathRulesConfig,
+        rules: p.Infra.PyrightConfig.PathRulesConfig,
     ) -> p.Infra.PyrightConfig.ExecutionEnvironment:
         """Env entry."""
         return m.Infra.PyrightConfig.ExecutionEnvironment(
@@ -63,7 +63,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dirs: t.StrSequence,
         source_path: str,
         project_root: str,
-        rules: m.Infra.PyrightConfig.PathRulesConfig,
+        rules: p.Infra.PyrightConfig.PathRulesConfig,
     ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
         """Envs for dirs."""
         return [
@@ -239,7 +239,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def _environment_payload(
-        self, environment: m.Infra.PyrightConfig.ExecutionEnvironment
+        self, environment: p.Infra.PyrightConfig.ExecutionEnvironment
     ) -> t.JsonDict:
         """Render one environment with its closed, scope-specific diagnostics."""
         rules = self._tool_config.tools.pyright.path_rules

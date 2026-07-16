@@ -40,7 +40,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply AST-based fixers for auto-fixable smell findings.
 
         Runs the same scan as ``check()``, then attempts a registered fixer
@@ -83,7 +83,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _is_auto_fixable(issue: m.Infra.Issue) -> bool:
+    def _is_auto_fixable(issue: p.Infra.Issue) -> bool:
         """Return True when flext-core marks this smell tag as auto-fixable."""
         tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
         strategy = c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
@@ -91,7 +91,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """One cached full-workspace qlty scan, filtered to ``project_dir``."""
         _ = ctx
@@ -117,7 +117,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Full-workspace scan command (check() bypasses per-project dirs)."""
         _ = project_dir, ctx, check_dirs
@@ -126,7 +126,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx

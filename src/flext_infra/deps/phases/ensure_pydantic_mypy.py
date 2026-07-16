@@ -9,7 +9,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePydanticMypyConfigPhase:
     """Ensure standard pydantic-mypy configuration for strict model typing."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to populate pydantic-mypy settings."""
         self._tool_config = tool_config
 

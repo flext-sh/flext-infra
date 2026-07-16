@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import p, t
 
 
 class _GrpcCodegenModel(m.ContractModel):

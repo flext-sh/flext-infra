@@ -17,7 +17,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
     """
 
     @staticmethod
-    def render_text(report: m.Infra.MROMigrationReport) -> str:
+    def render_text(report: p.Infra.MROMigrationReport) -> str:
         """Render migration report in CLI-friendly plain text."""
         lines = [
             f"Workspace: {report.workspace}",
@@ -52,7 +52,7 @@ class FlextInfraRefactorMigrateMroReportMixin:
 
     @staticmethod
     def _report_to_results(
-        *, report: m.Infra.MROMigrationReport, dry_run: bool
+        *, report: p.Infra.MROMigrationReport, dry_run: bool
     ) -> t.SequenceOf[p.Infra.Result]:
         """Convert MRO migration report into rope-compatible Result sequence."""
         per_file_changes: MutableMapping[Path, t.MutableSequenceOf[str]] = {}

@@ -9,7 +9,7 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePytestConfigPhase:
     """Ensure canonical pytest policy while preserving extension declarations."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to compose canonical pytest defaults."""
         self._tool_config = tool_config
 

@@ -79,7 +79,7 @@ class TestsEnforcementFixerOrchestrator:
         """Project file enumeration failure is not hidden as zero work."""
 
         def fake_iter_python_files(
-            request: m.Infra.SourceScanRequest,
+            request: p.Infra.SourceScanRequest,
         ) -> p.Result[t.SequenceOf[Path]]:
             _ = request
             return r[t.SequenceOf[Path]].fail("enumeration failed")
@@ -327,7 +327,7 @@ class TestsEnforcementFixerOrchestrator:
                 self.workspace_root = workspace_root
 
             def check(
-                self, project_dir: Path, ctx: m.Infra.GateContext
+                self, project_dir: Path, ctx: p.Infra.GateContext
             ) -> p.Infra.GateExecution:
                 _ = self.workspace_root
                 tm.that(ctx.check_only, eq=True)
@@ -351,7 +351,7 @@ class TestsEnforcementFixerOrchestrator:
                 )
 
             def fix(
-                self, project_dir: Path, ctx: m.Infra.GateContext
+                self, project_dir: Path, ctx: p.Infra.GateContext
             ) -> p.Infra.GateExecution:
                 _ = project_dir, ctx
                 FakeGate.fixed = True

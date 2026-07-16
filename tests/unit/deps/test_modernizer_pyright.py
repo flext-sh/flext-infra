@@ -21,7 +21,7 @@ class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
     def test_root_config_sets_expected_execution_environments(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Render configured root and member analyzer environments."""
         pyright_rules = tool_config_document.tools.pyright
@@ -129,7 +129,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
     def test_subproject_config_sets_expected_execution_environments(
-        self, tool_config_document: m.Infra.ToolConfigDocument
+        self, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Render every configured standalone analyzer environment."""
         pyright_rules = tool_config_document.tools.pyright
@@ -190,7 +190,7 @@ class TestsFlextInfraDepsModernizerPyright:
         )
 
     def test_subproject_config_uses_workspace_typings_and_fixture_excludes(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Render typed paths and config-owned fixture exclusions."""
         rules = tool_config_document.tools.pyright.path_rules
@@ -236,7 +236,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(exclude, has="**/tests/fixtures/**")
 
     def test_pyright_phase_is_idempotent(
-        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+        self, tmp_path: Path, tool_config_document: p.Infra.ToolConfigDocument
     ) -> None:
         """Produce no changes after the first canonical phase application."""
         project_dir = tmp_path / "flext-sample"

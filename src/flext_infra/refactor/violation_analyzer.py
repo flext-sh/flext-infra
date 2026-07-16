@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.refactor._violation_helper_classifier import (
     FlextInfraRefactorViolationHelperClassifierMixin,
 )

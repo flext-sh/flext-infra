@@ -32,7 +32,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         )
 
     @staticmethod
-    def iter_scope_markdown_files(scope: m.Infra.DocScope) -> t.SequenceOf[Path]:
+    def iter_scope_markdown_files(scope: p.Infra.DocScope) -> t.SequenceOf[Path]:
         """Collect markdown files governed by one docs scope."""
         scope_root = scope.path
         files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)

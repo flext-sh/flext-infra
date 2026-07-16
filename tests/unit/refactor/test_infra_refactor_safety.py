@@ -13,7 +13,7 @@ from tests import u
 
 from collections.abc import MutableSequence
 
-from flext_infra import t
+from flext_infra import p, t
 from tests import p
 
 

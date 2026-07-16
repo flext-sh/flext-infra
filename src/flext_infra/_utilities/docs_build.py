@@ -56,7 +56,7 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_run_mkdocs(
-        scope: m.Infra.DocScope, *, runner: p.Cli.CommandRunner
+        scope: p.Infra.DocScope, *, runner: p.Cli.CommandRunner
     ) -> p.Infra.DocsPhaseReport:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
         settings = scope.path / "mkdocs.yml"
@@ -173,7 +173,7 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_serve_mkdocs(
-        scope: m.Infra.DocScope, *, dev_addr: str, livereload: bool, strict: bool
+        scope: p.Infra.DocScope, *, dev_addr: str, livereload: bool, strict: bool
     ) -> p.Infra.DocsPhaseReport:
         """Serve one scope through the MkDocs Python serve API (blocking)."""
         settings = scope.path / "mkdocs.yml"
@@ -217,7 +217,7 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_write_build_reports(
-        scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
+        scope: p.Infra.DocScope, report: p.Infra.DocsPhaseReport
     ) -> None:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(

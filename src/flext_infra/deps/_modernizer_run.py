@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 
 
 class FlextInfraPyprojectModernizerRunMixin:
@@ -36,7 +36,7 @@ class FlextInfraPyprojectModernizerRunMixin:
 
         def _process_document_state(
             self,
-            state: m.Infra.PyprojectDocumentState,
+            state: p.Infra.PyprojectDocumentState,
             *,
             canonical_dev: t.StrSequence,
             dry_run: bool,

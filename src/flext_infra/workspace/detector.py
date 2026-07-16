@@ -80,7 +80,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         )
 
     @staticmethod
-    def _validate_local_repository(repository: m.Infra.RepositoryRef) -> p.Result[bool]:
+    def _validate_local_repository(repository: p.Infra.RepositoryRef) -> p.Result[bool]:
         """Validate the role/profile invariants for a local manifest owner."""
         if repository.path.as_posix() != ".":
             return r[bool].fail("local repository manifest path must be '.'")
@@ -106,7 +106,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
 
     @staticmethod
     def _unattached_mode(
-        workspace_spec: m.Infra.WorkspaceSpec | None,
+        workspace_spec: p.Infra.WorkspaceSpec | None,
     ) -> c.Infra.WorkspaceMode:
         """Classify a repository that Git proves has no superproject."""
         if (
@@ -175,7 +175,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         cls,
         project_root: Path,
         superproject_root: Path,
-        workspace_spec: m.Infra.WorkspaceSpec | None,
+        workspace_spec: p.Infra.WorkspaceSpec | None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Validate a real submodule against the parent and local manifests."""
         member_root_result = u.Cli.capture(
@@ -300,7 +300,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 f"project root is not a directory: {resolved_project_root}"
             )
 
-        workspace_spec: m.Infra.WorkspaceSpec | None = None
+        workspace_spec: p.Infra.WorkspaceSpec | None = None
         local_manifest = self._manifest_path(resolved_project_root)
         if local_manifest.is_file():
             local_result = self.load_workspace_spec(resolved_project_root)

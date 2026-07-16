@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import p, t
 
 
 class FlextInfraModelsCodegenRender:

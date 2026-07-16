@@ -18,7 +18,7 @@ class FlextInfraTypesAdapters(FlextInfraConstantsAdapters):
 
     Usage::
 
-        from flext_infra import t
+        from flext_infra import p, t
 
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
     """

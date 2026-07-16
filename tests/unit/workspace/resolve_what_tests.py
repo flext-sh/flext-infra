@@ -12,7 +12,7 @@ from flext_tests import tm
 
 from flext_infra import u
 
-from tests import t
+from tests import p, t
 
 
 

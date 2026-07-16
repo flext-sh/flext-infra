@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_project_generated_files(
-        scope: m.Infra.DocScope, *, apply: bool
+        scope: p.Infra.DocScope, *, apply: bool
     ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Generate the managed docs artifacts for one FLEXT project."""
         contract = FlextInfraUtilitiesDocsApi.public_contract(
@@ -141,7 +141,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_project_guides_files(
-        scope: m.Infra.DocScope, *, workspace_root: Path, apply: bool
+        scope: p.Infra.DocScope, *, workspace_root: Path, apply: bool
     ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Return project guide files managed by generation.
 
@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_project_mkdocs_files(
-        scope: m.Infra.DocScope, *, apply: bool
+        scope: p.Infra.DocScope, *, apply: bool
     ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Return the managed mkdocs settings file when it does not exist yet."""
         path = scope.path / "mkdocs.yml"
@@ -350,7 +350,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_sanitize_scope_fences(
-        scope: m.Infra.DocScope, *, apply: bool
+        scope: p.Infra.DocScope, *, apply: bool
     ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Remove unsupported ``notest`` qualifiers from code fence info lines."""
         changed: t.MutableSequenceOf[p.Infra.GeneratedFile] = []
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_generate_scope(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         apply: bool,
         workspace_root: Path,

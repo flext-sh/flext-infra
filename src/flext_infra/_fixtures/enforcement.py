@@ -73,7 +73,7 @@ class FlextInfraEnforcementPytestPlugin(tests_p.Tests.EnforcementBuilder):
 
     @classmethod
     def group_violations(
-        cls, rule: m.EnforcementRuleSpec, report: p.AttributeProbe
+        cls, rule: p.EnforcementRuleSpec, report: p.AttributeProbe
     ) -> dict[str, list[p.AttributeProbe]]:
         """Group detector violations by owning project."""
         source = rule.source

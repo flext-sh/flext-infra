@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_fix_python_codeblocks(
-        scope: m.Infra.DocScope, *, apply: bool
+        scope: p.Infra.DocScope, *, apply: bool
     ) -> t.SequenceOf[p.Infra.GeneratedFile]:
         """Auto-fix ``python`` fenced code blocks using ``ruff check --fix``.
 
@@ -125,7 +125,7 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_write_fix_reports(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         items: t.SequenceOf[p.Infra.DocsPhaseItemModel],
         apply: bool,

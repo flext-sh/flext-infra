@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import config, m, t, u
+from flext_infra import config, m, p, t, u
 
 
 class FlextInfraPrivateImportBypassDetector:
@@ -14,7 +14,7 @@ class FlextInfraPrivateImportBypassDetector:
 
     @classmethod
     def detect_file(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.PrivateImportBypassViolation]:
         """Return private-import bypass violations for one file."""
         rules = tuple(

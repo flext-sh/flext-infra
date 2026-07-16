@@ -132,7 +132,7 @@ class FlextInfraRefactorCensus(
         """Collect the final report and the pre-apply impact-map report."""
         started = time.monotonic()
         applied = frozenset[str]()
-        impact_map_report: m.Infra.Census.WorkspaceReport | None = None
+        impact_map_report: p.Infra.Census.WorkspaceReport | None = None
         with FlextInfraRopeWorkspace.open_workspace(self.root) as rope:
             _ = rope.workspace_index
 

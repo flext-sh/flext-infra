@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from typing import ClassVar
 
 from flext_core._models.enforcement import FlextModelsEnforcement as me
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -69,7 +69,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def detect(
-        cls, rule: me.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
+        cls, rule: me.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for violations of ``rule`` inside ``ctx.file_path``."""
         rule_id = cls._rule_id_short(rule.id)
@@ -102,7 +102,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_stub_files(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return a probe for ``ctx.file_path`` when it is a prohibited ``.pyi``."""
         file_path = ctx.file_path
@@ -112,7 +112,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_magic_literals(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for magic numbers/strings in executable code."""
         res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
@@ -155,7 +155,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_classvar_constants(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate ClassVar-outside-_constants detection to the canonical scanner."""
         try:
@@ -180,7 +180,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_loose_test_functions(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate loose-test-function detection to the canonical scanner."""
         try:
@@ -198,7 +198,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_mro_shape(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate MRO-shape detection to the canonical rope scanner."""
         try:
@@ -235,7 +235,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def _detect_foreign_canonical_aliases(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
+        cls, ctx: p.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Delegate foreign-canonical-alias detection to the canonical scanner."""
         try:

@@ -57,7 +57,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply rope fixes grouped by target."""
         if not violations:
@@ -224,7 +224,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         *,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
         detector: Callable[[p.Infra.DetectorContext], t.SequenceOf[V]],
         filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
         rewrite: Callable[[t.SequenceOf[V]], None],
@@ -320,7 +320,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Rewrite deterministic silent-failure sentinels to failed Results."""
         rule_id = self._rule_id(violations)
@@ -394,7 +394,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
 
@@ -426,7 +426,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Remove source ``.pyi`` stubs when apply mode is enabled."""
         rule_id = self._rule_id(violations)
@@ -499,7 +499,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Hoist detector-approved FLEXT library imports to module scope."""
         return self._fix_inline_import_action(
@@ -514,7 +514,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Hoist detector-approved inline stdlib imports to module scope."""
         return self._fix_inline_import_action(
@@ -529,7 +529,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
         *,
         target_action: str,
         empty_reason: str,
@@ -717,7 +717,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Move class-level constants to canonical _constants modules."""
         rule_id = self._rule_id(violations)
@@ -858,7 +858,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         project_dir: Path,
         violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-        ctx: m.Infra.FixEnforcementCommand,
+        ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Move extra governed classes to their own canonical modules."""
         rule_id = self._rule_id(violations)

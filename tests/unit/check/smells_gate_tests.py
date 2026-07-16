@@ -19,10 +19,10 @@ import pytest
 from flext_tests import tm
 
 from flext_core import e as core_e
-from flext_infra import c, m, u
+from flext_infra import c, m, p, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
-from tests import t
+from tests import p, t
 
 _SMELL_CODES: t.StrSequence = tuple(sorted(c.Infra.SMELLS_RULE_TAGS))
 

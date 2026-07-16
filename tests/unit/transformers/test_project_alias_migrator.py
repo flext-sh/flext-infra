@@ -16,14 +16,14 @@ class TestsFlextInfraRefactorProjectAliasMigrator:
     def test_migrates_owned_aliases_to_local_facades(self) -> None:
         source = (
             "from __future__ import annotations\n\n"
-            "from flext_core import c, m, t, u\n\n"
+            "from flext_core import c, m, p, t, u\n\n"
             "x: t.StrSequence = ()\n"
         )
         transformer = FlextInfraRefactorProjectAliasMigrator(
             current_project="flext_infra",
         )
         updated, changes = transformer.apply_to_source(source)
-        tm.that(updated, lacks="from flext_core import c, m, t, u")
+        tm.that(updated, lacks="from flext_core import c, m, p, t, u")
         tm.that(updated, has="from flext_infra.constants import c")
         tm.that(updated, has="from flext_infra.models import m")
         tm.that(updated, has="from flext_infra.typings import t")

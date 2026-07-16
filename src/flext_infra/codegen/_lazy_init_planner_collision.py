@@ -9,13 +9,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
+        lazy_init: p.Infra.LazyInitConfig
 
         def _module_file(self, module_path: str) -> Path | None: ...
 

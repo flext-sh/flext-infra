@@ -430,7 +430,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def execute_worktree_transaction(
-        cls, request: m.Infra.WorktreeTransactionRequest
+        cls, request: p.Infra.WorktreeTransactionRequest
     ) -> p.Result[p.Infra.WorktreeTransactionReport]:
         """Execute, validate, optionally apply, and always remove one worktree."""
         workspace_root = request.workspace_root.resolve()
@@ -472,7 +472,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _execute_isolated(
         cls,
-        request: m.Infra.WorktreeTransactionRequest,
+        request: p.Infra.WorktreeTransactionRequest,
         *,
         transaction_id: str,
         worktree_root: Path,
@@ -581,7 +581,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def render_worktree_transaction_report(
-        report: m.Infra.WorktreeTransactionReport,
+        report: p.Infra.WorktreeTransactionReport,
     ) -> str:
         """Render command evidence, lint deltas, and generated patches."""
         lines: t.MutableSequenceOf[str] = [

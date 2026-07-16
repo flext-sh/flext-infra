@@ -95,7 +95,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
         *,
-        convention: m.Infra.RopeModuleConvention | None = None,
+        convention: p.Infra.RopeModuleConvention | None = None,
         parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
         | None = None,
     ) -> p.Infra.DetectorContext:

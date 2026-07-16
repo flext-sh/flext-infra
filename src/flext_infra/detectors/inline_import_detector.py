@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraInlineImportDetector:
@@ -28,7 +28,7 @@ class FlextInfraInlineImportDetector:
 
     @classmethod
     def detect_file(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.InlineImportViolation]:
         """Return Rope-resolved inline imports and dynamic import calls."""
         file_path = ctx.file_path
@@ -172,7 +172,7 @@ class FlextInfraInlineImportDetector:
         *,
         source: str,
         source_lines: t.StrSequence,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         local_name: str,
     ) -> int:
         """Return a Rope-recognized import binding offset."""

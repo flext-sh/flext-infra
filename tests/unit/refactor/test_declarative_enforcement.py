@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_core import m as m, u
-from flext_infra import m, u
+from flext_core import m as m, p, u
+from flext_infra import m, p, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -19,7 +19,7 @@ from flext_tests import tm
 
 from pathlib import Path
 
-from flext_infra.typings import t
+from flext_infra.typings import p, t
 
 
 
@@ -178,7 +178,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         source.write_text("from typing import ClassVar\n", encoding="utf-8")
 
         def _fail(
-            ctx: m.Infra.DetectorContext,
+            ctx: p.Infra.DetectorContext,
         ) -> t.SequenceOf[p.Infra.ClassPlacementViolation]:
             _ = ctx
             msg = "class placement exploded"

@@ -6,7 +6,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraRefactorViolationHelperClassifierMixin:

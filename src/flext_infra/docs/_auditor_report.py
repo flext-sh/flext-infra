@@ -10,7 +10,7 @@ class FlextInfraDocAuditorReportMixin:
 
     @staticmethod
     def _audit_passed(
-        *, issue_count: int, params: m.Infra.AuditScopeParams, scope_budget: int | None
+        *, issue_count: int, params: p.Infra.AuditScopeParams, scope_budget: int | None
     ) -> bool:
         """Return strict/non-strict audit pass decision."""
         if not params.strict:
@@ -19,12 +19,12 @@ class FlextInfraDocAuditorReportMixin:
 
     def _audit_report(
         self,
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         *,
         issues: t.SequenceOf[p.Infra.AuditIssue],
         checks: t.StrSequence,
-        params: m.Infra.AuditScopeParams,
-        docstring_coverage: m.Infra.DocstringCoverage | None = None,
+        params: p.Infra.AuditScopeParams,
+        docstring_coverage: p.Infra.DocstringCoverage | None = None,
     ) -> p.Infra.DocsPhaseReport:
         """Build the standard docs audit phase report."""
         default_budget, per_scope_budget = params.budgets or (None, {})

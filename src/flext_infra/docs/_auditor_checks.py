@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from flext_infra import m, t, u
+from flext_infra import p, t, u
 
 
 class FlextInfraDocAuditorChecksMixin:
@@ -12,7 +12,7 @@ class FlextInfraDocAuditorChecksMixin:
 
     @staticmethod
     def _policy_token_issues(
-        scope: m.Infra.DocScope, *, policy_key: str, issue_type: str
+        scope: p.Infra.DocScope, *, policy_key: str, issue_type: str
     ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return text-token issues for one scope using the named policy list."""
         issues: t.SequenceOf[p.Infra.AuditIssue] = u.Infra.docs_text_token_issues(
@@ -24,7 +24,7 @@ class FlextInfraDocAuditorChecksMixin:
 
     @staticmethod
     def forbidden_term_issues(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
     ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return forbidden-term issues configured for one scope."""
         return FlextInfraDocAuditorChecksMixin._policy_token_issues(
@@ -32,14 +32,14 @@ class FlextInfraDocAuditorChecksMixin:
         )
 
     @staticmethod
-    def placeholder_issues(scope: m.Infra.DocScope) -> t.SequenceOf[p.Infra.AuditIssue]:
+    def placeholder_issues(scope: p.Infra.DocScope) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Return placeholder-text issues for one scope."""
         return FlextInfraDocAuditorChecksMixin._policy_token_issues(
             scope, policy_key="placeholder_terms", issue_type="placeholder"
         )
 
     def _collect_issues(
-        self, scope: m.Infra.DocScope, checks: t.StrSequence
+        self, scope: p.Infra.DocScope, checks: t.StrSequence
     ) -> t.SequenceOf[p.Infra.AuditIssue]:
         """Collect issues for the requested check set in canonical order."""
         handlers: tuple[

@@ -76,7 +76,7 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         def __init__(
             self,
             runner: TestsFlextInfraInfraWorkspaceOrchestrator.ProjectRunner,
-            project: m.Infra.ProjectInfo,
+            project: p.Infra.ProjectInfo,
         ) -> None:
             """Initialize an executable orchestrator for one resolved project."""
             super().__init__(runner, verb="check")

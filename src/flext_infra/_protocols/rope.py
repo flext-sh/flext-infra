@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import TracebackType
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 @runtime_checkable
@@ -150,7 +150,7 @@ class FlextInfraProtocolsRope(Protocol):
             self,
             file_path: Path,
             *,
-            export_options: m.Infra.ExportOptions | None = None,
+            export_options: p.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
 
     @runtime_checkable

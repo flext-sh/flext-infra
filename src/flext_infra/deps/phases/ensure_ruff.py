@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to build canonical Ruff settings."""
         self._tool_config = tool_config
 

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import p, t
 
 
 @runtime_checkable
@@ -244,7 +244,7 @@ class FlextInfraProtocolsBase(Protocol):
             _target: str | None = None,
             *,
             workspace_root: Path | None = None,
-            settings: m.Infra.BaseMkConfig | None = None,
+            settings: p.Infra.BaseMkConfig | None = None,
             canonical_root: Path | None = None,
         ) -> p.Result[p.Infra.SyncResult]:
             """Synchronize generated workspace or project artifacts."""
@@ -255,7 +255,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for artifact and documentation generation services."""
 
         def generate(
-            self, request: m.Infra.DocsGenerateRequest
+            self, request: p.Infra.DocsGenerateRequest
         ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
@@ -312,8 +312,8 @@ class FlextInfraProtocolsBase(Protocol):
     class WorkspaceReport(Protocol):
         """Protocol for workspace dependency report model contract."""
 
-        pip_check: m.Infra.PipCheckReport | None
-        dependency_limits: m.Infra.DependencyLimitsInfo | None
+        pip_check: p.Infra.PipCheckReport | None
+        dependency_limits: p.Infra.DependencyLimitsInfo | None
 
         def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Serialize report model payload."""
@@ -418,7 +418,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for template renderers."""
 
         def render_all(
-            self, settings: m.Infra.BaseMkConfig | None = None
+            self, settings: p.Infra.BaseMkConfig | None = None
         ) -> p.Result[str]:
             """Render all templates with given configuration."""
             ...
@@ -559,25 +559,25 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for GitHub CLI handler mixins."""
 
         def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
+            self, params: p.Infra.GithubWorkflowSyncRequest
         ) -> p.Result[p.Infra.GithubWorkflowSyncReport]:
             """Sync GitHub workflow files."""
             ...
 
         def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
+            self, params: p.Infra.GithubWorkflowLintRequest
         ) -> p.Result[p.Infra.GithubWorkflowLintOutcome]:
             """Lint GitHub workflow files."""
             ...
 
         def run_github_pull_request(
-            self, params: m.Infra.GithubPullRequestRequest
+            self, params: p.Infra.GithubPullRequestRequest
         ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
             """Manage pull request for a single project."""
             ...
 
         def run_github_workspace_pull_requests(
-            self, params: m.Infra.GithubPullRequestWorkspaceRequest
+            self, params: p.Infra.GithubPullRequestWorkspaceRequest
         ) -> p.Result[p.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...

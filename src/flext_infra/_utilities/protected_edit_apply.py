@@ -36,7 +36,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     @staticmethod
     def _protected_write_test_failure(
         path: Path,
-        request: m.Infra.ProtectedSourceWritesRequest,
+        request: p.Infra.ProtectedSourceWritesRequest,
         new_errors: t.Infra.LintSnapshot,
     ) -> str | None:
         """Protected write test failure."""
@@ -55,7 +55,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         updates: t.MappingKV[Path, str],
         before_sources: t.MappingKV[Path, str | None],
         before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
-        request: m.Infra.ProtectedSourceWritesRequest,
+        request: p.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports."""
         reports: list[str] = []
@@ -187,7 +187,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_file_edit(
-        py_file: Path, *, request: m.Infra.ProtectedFileEditRequest
+        py_file: Path, *, request: p.Infra.ProtectedFileEditRequest
     ) -> t.Infra.EditResult:
         """Apply one edit, validate lint deltas, and restore on failure."""
         rel = FlextInfraUtilitiesProtectedEditApply._relative_path(
@@ -259,7 +259,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_source_write(
-        py_file: Path, *, request: m.Infra.ProtectedSourceWriteRequest
+        py_file: Path, *, request: p.Infra.ProtectedSourceWriteRequest
     ) -> t.Infra.EditResult:
         """Write validated source content with protected validation and rollback."""
         original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -290,7 +290,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def protected_source_writes(
         updates: t.MappingKV[Path, str],
         *,
-        request: m.Infra.ProtectedSourceWritesRequest,
+        request: p.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Write multiple files transactionally with lint delta validation."""
         if not updates:

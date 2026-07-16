@@ -11,7 +11,7 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import ClassVar, Final
 
-from flext_infra import m, t
+from flext_infra import p, t
 
 
 class FlextInfraSmellFixer:
@@ -29,13 +29,13 @@ class FlextInfraSmellFixer:
         self._on_change = on_change
         self.changes: list[str] = []
 
-    def can_fix(self, issue: m.Infra.Issue) -> bool:
+    def can_fix(self, issue: p.Infra.Issue) -> bool:
         """Return True when this fixer handles the given issue code."""
         issue_code: str = issue.code
         return issue_code == self.tag
 
     @abstractmethod
-    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
+    def fix(self, project_dir: Path, issue: p.Infra.Issue) -> tuple[bool, list[str]]:
         """Attempt to fix ``issue`` in ``project_dir / issue.file``.
 
         Returns ``(fixed, changes)``. ``fixed`` is True only when the source

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import override
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 
@@ -162,7 +162,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
 
     def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:
         """Check policy for a specific propagation mode."""
-        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
+        policy: p.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,
@@ -182,7 +182,7 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
 
     def _blocked_by_prefix(self, symbol_name: str) -> bool:
         """Check if symbol is blocked by prefix policy."""
-        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
+        policy: p.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
             policy_context=self._policy_context,
             symbol_families=self._class_families,
             symbol_name=symbol_name,

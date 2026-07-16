@@ -193,7 +193,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_family(
-        cls, file_path: Path, settings: m.Infra.LazyInitConfig
+        cls, file_path: Path, settings: p.Infra.LazyInitConfig
     ) -> tuple[str | None, str | None, str | None, t.StrSequence]:
         """Return (family_alias, expected_family, expected_alias, family_tokens)."""
         family_alias = next(
@@ -232,7 +232,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         family_alias: str | None,
         expected_alias: str | None,
         expected_family: str | None,
-        settings: m.Infra.LazyInitConfig,
+        settings: p.Infra.LazyInitConfig,
     ) -> tuple[bool, bool, bool, bool, bool, bool, str | None]:
         """Return all is_* booleans and resolved surface_name.
 
@@ -288,7 +288,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def _resolve_project_prefix(
-        cls, file_path: Path, settings: m.Infra.LazyInitConfig
+        cls, file_path: Path, settings: p.Infra.LazyInitConfig
     ) -> str:
         """Derive the class-stem prefix for one file inside a project."""
         project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
@@ -457,7 +457,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def normalize_canonical_facades(
-        cls, *, pkg_dir: Path, ctx: m.Infra.FixContext
+        cls, *, pkg_dir: Path, ctx: p.Infra.FixContext
     ) -> None:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
@@ -482,7 +482,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         base_import: str,
         base_name: str,
-        ctx: m.Infra.FixContext,
+        ctx: p.Infra.FixContext,
     ) -> None:
         """Add the canonical flext-core base to a *baseless* facade class only.
 
@@ -629,7 +629,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     def _build_violation_key(
         cls,
         *,
-        violation: m.Infra.CensusViolation,
+        violation: p.Infra.CensusViolation,
         project_path: Path,
         source_cache: MutableMapping[str, t.StrSequence],
     ) -> p.Infra.ViolationKey:

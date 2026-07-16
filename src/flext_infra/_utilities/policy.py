@@ -101,7 +101,7 @@ class FlextInfraUtilitiesRefactorPolicy:
 
     @staticmethod
     def target_allowed(
-        *, policy: m.Infra.ClassNestingPolicy, target_namespace: str
+        *, policy: p.Infra.ClassNestingPolicy, target_namespace: str
     ) -> bool:
         """Check whether policy allows writing the symbol to target namespace."""
         allowed_targets = tuple(policy.allowed_targets)
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def _class_nesting_violation(
         *,
-        request: m.Infra.ClassNestingViolationRequest,
+        request: p.Infra.ClassNestingViolationRequest,
         policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy],
     ) -> t.StrMapping | None:
         """Build a policy violation payload when class nesting is forbidden."""

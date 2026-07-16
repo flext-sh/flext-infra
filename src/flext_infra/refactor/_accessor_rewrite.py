@@ -8,7 +8,7 @@ from pathlib import Path
 from tokenize import NAME, generate_tokens
 from typing import ClassVar
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraAccessorMigrationRewriteMixin:

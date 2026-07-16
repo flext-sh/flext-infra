@@ -52,7 +52,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         return result
 
     def generate_basemk(
-        self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
+        self, settings: p.Infra.BaseMkConfig | t.ScalarMapping | None = None
     ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
         config_result = FlextInfraBaseMkTemplateRenderer.normalize_config(settings)

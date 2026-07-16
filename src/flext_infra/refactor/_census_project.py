@@ -29,12 +29,12 @@ class FlextInfraRefactorCensusProjectMixin:
             selected_rules: frozenset[str] | None = None,
         ) -> bool: ...
         @staticmethod
-        def _is_unused(item: m.Infra.Census.Object) -> bool: ...
+        def _is_unused(item: p.Infra.Census.Object) -> bool: ...
         @staticmethod
-        def _object_key(item: m.Infra.Census.Object) -> str: ...
+        def _object_key(item: p.Infra.Census.Object) -> str: ...
         @staticmethod
         def _violation(
-            item: m.Infra.Census.Object,
+            item: p.Infra.Census.Object,
             *,
             kind: str,
             description: str,
@@ -43,7 +43,7 @@ class FlextInfraRefactorCensusProjectMixin:
         ) -> p.Infra.Census.Violation: ...
         @classmethod
         def _removal_candidate(
-            cls, item: m.Infra.Census.Object, *, include_unused: bool
+            cls, item: p.Infra.Census.Object, *, include_unused: bool
         ) -> p.Infra.Census.RemovalCandidate | None: ...
 
     def _handle_rope_stage_failure(

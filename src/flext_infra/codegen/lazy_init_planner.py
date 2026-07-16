@@ -40,7 +40,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         p.Infra.RopeWorkspaceDsl,
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
-    lazy_init: m.Infra.LazyInitConfig = m.Field(
+    lazy_init: p.Infra.LazyInitConfig = m.Field(
         description="Validated lazy-init policy document"
     )
 

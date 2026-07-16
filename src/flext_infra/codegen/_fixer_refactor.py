@@ -13,7 +13,7 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
     """Private refactor-service pass for codegen fixer composition."""
 
     @staticmethod
-    def _run_refactor_service(ctx: m.Infra.FixContext, project_path: Path) -> None:
+    def _run_refactor_service(ctx: p.Infra.FixContext, project_path: Path) -> None:
         """Load refactor rules and run the service; record fixed/skipped violations."""
         service = FlextInfraRefactorService()
         config_result = service.load_config()

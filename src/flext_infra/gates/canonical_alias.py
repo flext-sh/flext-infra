@@ -45,7 +45,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Scan one project's Python sources for ENFORCE-080 violations."""
         _ = ctx
@@ -125,7 +125,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         )
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply ENFORCE-080 rewrites for the selected project."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -210,7 +210,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         file_path: Path,
         message: str,
         started: float,
-        ctx: m.Infra.GateContext,
+        ctx: p.Infra.GateContext,
     ) -> p.Infra.GateExecution:
         """Build a failed fix result for local rewrite failures."""
         issue = m.Infra.Issue(
@@ -236,7 +236,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """No external tool — execution happens in ``check``."""
         _ = project_dir, ctx, check_dirs
@@ -244,7 +244,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx

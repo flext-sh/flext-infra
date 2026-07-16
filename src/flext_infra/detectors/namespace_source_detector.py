@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraNamespaceSourceDetector:
@@ -14,7 +14,7 @@ class FlextInfraNamespaceSourceDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.NamespaceSourceViolation]:
         """Detect runtime aliases imported from a different flext package root."""
         result: t.SequenceOf[p.Infra.NamespaceSourceViolation] = []

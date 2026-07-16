@@ -10,7 +10,7 @@ from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInvento
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c
-from tests import t
+from tests import p, t
 from tests import u
 from flext_tests import tm
 
@@ -1068,7 +1068,7 @@ class TestsFlextInfraRefactorMainCli:
 
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,
-            candidate: m.Infra.Census.RemovalCandidate,
+            candidate: p.Infra.Census.RemovalCandidate,
             *,
             source_cache: dict[Path, str] | None = None,
         ) -> object:
@@ -1111,7 +1111,7 @@ class TestsFlextInfraRefactorMainCli:
 
         def _broken_build(
             rope: p.Infra.RopeWorkspaceDsl,
-            candidate: m.Infra.Census.RemovalCandidate,
+            candidate: p.Infra.Census.RemovalCandidate,
             *,
             source_cache: dict[Path, str] | None = None,
         ) -> object:

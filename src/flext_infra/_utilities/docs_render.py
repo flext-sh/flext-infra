@@ -129,7 +129,7 @@ class FlextInfraUtilitiesDocsRender:
     """Relative path from ``<project>/README.md`` to workspace root."""
 
     @staticmethod
-    def _public_surface_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
+    def _public_surface_lines(scope: p.Infra.DocScope) -> t.SequenceOf[str]:
         """Return the canonical public-surface block — mkdocstrings autodoc.
 
         Replaces the prior hardcoded four-bullet summary (frozen snapshot of
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _collection_rules_lines(
-        scope: m.Infra.DocScope, *, link_prefix: str
+        scope: p.Infra.DocScope, *, link_prefix: str
     ) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Collection Rules.
 
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_index(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
+        scope: p.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page."""
         data = contract
@@ -265,7 +265,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_readme(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
+        scope: p.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
@@ -353,7 +353,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_guides_index(scope: m.Infra.DocScope) -> str:
+    def docs_guides_index(scope: p.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
         return "\n".join([
             c.Infra.GENERATED_HEADER,
@@ -372,7 +372,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_api_readme(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
+        scope: p.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the standard API readme for a project."""
         data = contract
@@ -445,7 +445,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_mkdocs(
-        scope: m.Infra.DocScope,
+        scope: p.Infra.DocScope,
         contract: t.Infra.ContainerDict,
         modules: t.SequenceOf[str],
     ) -> str:
@@ -484,7 +484,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_overview_page(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
+        scope: p.Infra.DocScope, contract: t.Infra.ContainerDict
     ) -> str:
         """Return the generated overview page for a project API."""
         data = contract
@@ -539,7 +539,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_modules_index(scope: m.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
+    def docs_modules_index(scope: p.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
         """Return the generated module index page for one project."""
         lines: t.MutableSequenceOf[str] = [
             c.Infra.GENERATED_HEADER,

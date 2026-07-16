@@ -59,7 +59,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
 
     @staticmethod
     def normalize_config(
-        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None,
+        settings: p.Infra.BaseMkConfig | t.ScalarMapping | None,
     ) -> p.Result[p.Infra.BaseMkConfig]:
         """Normalize user-provided config to the canonical BaseMk model."""
         if settings is None:
@@ -91,13 +91,13 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: p.Infra.BaseMkConfig | t.Infra.InfraValue | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
         return rendered
 
-    def render_all(self, settings: m.Infra.BaseMkConfig | None = None) -> p.Result[str]:
+    def render_all(self, settings: p.Infra.BaseMkConfig | None = None) -> p.Result[str]:
         """Render all base.mk templates into a single output string."""
         active_config = settings or self.default_config()
         lint_gates_csv = ",".join(active_config.lint_gates)
@@ -122,7 +122,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: p.Infra.BaseMkConfig | t.Infra.InfraValue | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

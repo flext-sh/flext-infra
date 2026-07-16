@@ -14,7 +14,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
-from tests import t, u
+from tests import p, t, u
 
 _OVER_CAP = (
     "from __future__ import annotations\n\n"

@@ -35,7 +35,7 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def check(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Template method: timing + dirs + skip + run + parse + result."""
         started = time.monotonic()
@@ -63,7 +63,7 @@ class FlextInfraGate(ABC):
         )
 
     def check_files(
-        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Check specific files instead of whole directory.
 
@@ -100,7 +100,7 @@ class FlextInfraGate(ABC):
         )
 
     def _filter_check_files(
-        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.SequenceOf[Path]:
         """Keep existing files owned by the selected project."""
         _ = ctx
@@ -113,7 +113,7 @@ class FlextInfraGate(ABC):
         return tuple(selected)
 
     def _file_targets(
-        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Return project-relative tool targets after gate-specific filtering."""
         project_root = project_dir.resolve()
@@ -127,7 +127,7 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def _get_check_dirs(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Return directories to check. Default: discover + filter for .py files."""
         _ = ctx
@@ -135,7 +135,7 @@ class FlextInfraGate(ABC):
 
     @abstractmethod
     def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build the tool CLI command."""
         ...
@@ -143,19 +143,19 @@ class FlextInfraGate(ABC):
     @abstractmethod
     # mro-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
         """Parse tool output into (passed, issues)."""
         ...
 
-    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
         """Timeout for the check command. Override for long-running tools."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_DEFAULT
         return timeout
 
     def _check_env(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrMapping | None:
         """Return a custom environment for the check command. Default: None (inherit)."""
         _ = project_dir, ctx
@@ -165,7 +165,7 @@ class FlextInfraGate(ABC):
     # Template method: fix
     # ------------------------------------------------------------------
 
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: p.Infra.GateContext) -> p.Infra.GateExecution:
         """Template method: timing + targets + skip + run fix + result."""
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -200,7 +200,7 @@ class FlextInfraGate(ABC):
         )
 
     def fix_files(
-        self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
+        self, files: t.SequenceOf[Path], project_dir: Path, ctx: p.Infra.GateContext
     ) -> p.Infra.GateExecution:
         """Apply a supported fix only to explicitly selected files."""
         if ctx.check_only or not ctx.apply_fixes:
@@ -255,13 +255,13 @@ class FlextInfraGate(ABC):
     # ------------------------------------------------------------------
 
     def _get_fix_targets(
-        self, project_dir: Path, ctx: m.Infra.GateContext
+        self, project_dir: Path, ctx: p.Infra.GateContext
     ) -> t.StrSequence:
         """Targets for fix. Default: same as check dirs."""
         return self._get_check_dirs(project_dir, ctx)
 
     def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
+        self, project_dir: Path, ctx: p.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build the fix CLI command. Must override if can_fix is True."""
         _ = project_dir, ctx, targets
@@ -294,10 +294,10 @@ class FlextInfraGate(ABC):
     def _build_gate_result(
         self,
         *,
-        result: m.Infra.GateResult,
+        result: p.Infra.GateResult,
         issues: t.SequenceOf[p.Infra.Issue],
         raw_output: str = "",
-        ctx: m.Infra.GateContext | None = None,
+        ctx: p.Infra.GateContext | None = None,
     ) -> p.Infra.GateExecution:
         """Build gate result.
 

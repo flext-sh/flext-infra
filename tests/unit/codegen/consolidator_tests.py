@@ -13,7 +13,7 @@ from flext_tests import tm
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
-from tests import t, u
+from tests import p, t, u
 
 
 class _ConsolidatorFilePayload(cli_m.ContractModel):

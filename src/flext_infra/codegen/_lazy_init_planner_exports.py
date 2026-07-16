@@ -15,7 +15,7 @@ from flext_infra import c, m, p, t, u
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
+        lazy_init: p.Infra.LazyInitConfig
         _module_exports_cache: dict[
             tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
@@ -37,7 +37,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
-        self, context: m.Infra.LazyInitPackageContext
+        self, context: p.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
         package_entry = self._package_entry(context.pkg_dir)
@@ -125,7 +125,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         py_file: Path,
         module_path: str,
         *,
-        export_options: m.Infra.ExportOptions | None = None,
+        export_options: p.Infra.ExportOptions | None = None,
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for one Python module (cache-backed)."""
         resolved_export_options = export_options or m.Infra.ExportOptions()

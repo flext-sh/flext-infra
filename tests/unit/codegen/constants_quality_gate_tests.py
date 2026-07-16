@@ -15,7 +15,7 @@ from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from tests import t, u
+from tests import p, t, u
 
 
 class TestConstantsQualityGateCLIDispatch:

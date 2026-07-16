@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import c, t, u
 from flext_infra.codegen._lazy_init_generation_io import (
     FlextInfraCodegenLazyInitGenerationIOMixin,
 )
@@ -115,7 +115,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         return result
 
     def _process_plan(
-        self, plan: m.Infra.LazyInitPlan, *, check_only: bool
+        self, plan: p.Infra.LazyInitPlan, *, check_only: bool
     ) -> t.Infra.LazyInitProcessResult:
         """Process a resolved lazy-init plan."""
         if plan.action == c.Infra.LazyInitAction.SKIP:

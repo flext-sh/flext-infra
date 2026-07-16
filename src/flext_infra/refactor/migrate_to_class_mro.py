@@ -134,7 +134,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
 
     @classmethod
     def execute_command(
-        cls, params: m.Infra.RefactorMigrateMroInput
+        cls, params: p.Infra.RefactorMigrateMroInput
     ) -> p.Result[p.Infra.MROMigrationReport]:
         """Execute MRO migration directly from the canonical refactor payload."""
         report = cls(workspace_root=params.workspace_path).run(

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
@@ -103,7 +103,7 @@ class FlextInfraUtilitiesDocsValidate:
         )
 
     @staticmethod
-    def docs_missing_required_paths(scope: m.Infra.DocScope) -> t.StrSequence:
+    def docs_missing_required_paths(scope: p.Infra.DocScope) -> t.StrSequence:
         """Return required docs paths that are still missing from one scope."""
         if scope.name == c.Infra.RK_ROOT:
             required = [
@@ -127,7 +127,7 @@ class FlextInfraUtilitiesDocsValidate:
         return missing
 
     @staticmethod
-    def docs_contract_messages(scope: m.Infra.DocScope) -> t.StrSequence:
+    def docs_contract_messages(scope: p.Infra.DocScope) -> t.StrSequence:
         """Return public API contract problems for one governed project scope."""
         if scope.name == c.Infra.RK_ROOT or not scope.package_name:
             return []
@@ -149,7 +149,7 @@ class FlextInfraUtilitiesDocsValidate:
         return messages
 
     @staticmethod
-    def docs_write_todo(scope: m.Infra.DocScope, *, apply_mode: bool) -> p.Result[bool]:
+    def docs_write_todo(scope: p.Infra.DocScope, *, apply_mode: bool) -> p.Result[bool]:
         """Write the standard ``TODOS.md`` helper file when requested.
 
         ``r.ok(True)`` when a TODO file was written, ``r.ok(False)`` when
@@ -176,7 +176,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_write_validate_reports(
-        scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
+        scope: p.Infra.DocScope, report: p.Infra.DocsPhaseReport
     ) -> None:
         """Persist the standard validate summary and markdown report."""
         _ = u.Cli.json_write(

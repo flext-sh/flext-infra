@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraInternalImportDetector:
@@ -71,7 +71,7 @@ class FlextInfraInternalImportDetector:
 
     @classmethod
     def _project_whitebox_test_exempt(
-        cls, ctx: m.Infra.DetectorContext, fqn: str
+        cls, ctx: p.Infra.DetectorContext, fqn: str
     ) -> bool:
         """Return whether a pytest test module imports its own package internals."""
         if not cls._is_pytest_test_module(ctx.file_path):
@@ -86,7 +86,7 @@ class FlextInfraInternalImportDetector:
 
     @staticmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
     ) -> t.SequenceOf[p.Infra.InternalImportViolation]:
         """Detect private module/symbol imports in a single file."""
         res = u.Infra.fetch_python_resource(

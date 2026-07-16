@@ -9,7 +9,7 @@ from flext_infra import c
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 from flext_tests import tm
 
-from tests import t
+from tests import p, t
 
 
 

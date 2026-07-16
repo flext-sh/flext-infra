@@ -11,7 +11,7 @@ from flext_infra import c, m, p, t, u
 class FlextInfraCodegenLazyInitPlannerAliasesMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
+        lazy_init: p.Infra.LazyInitConfig
         _parent_package_cache: dict[str, t.StrSequence]
 
         def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
@@ -21,7 +21,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             py_file: Path,
             module_path: str,
             *,
-            export_options: m.Infra.ExportOptions | None = None,
+            export_options: p.Infra.ExportOptions | None = None,
         ) -> t.MutableLazyAliasMap: ...
 
         def _package_entry(

@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from tests import c, m, u
+from tests import c, m, p, u
 
 
 class TestsFlextInfraInfraWorkspaceDetector:
@@ -42,7 +42,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
     @staticmethod
     def _write_manifest(
         repository_root: Path,
-        repository: m.Infra.RepositoryRef,
+        repository: p.Infra.RepositoryRef,
         *,
         members: tuple[p.Infra.RepositoryRef, ...] = (),
     ) -> None:

@@ -26,7 +26,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
             rope: p.Infra.RopeWorkspaceDsl,
             file_path: Path,
             *,
-            convention: m.Infra.RopeModuleConvention | None = None,
+            convention: p.Infra.RopeModuleConvention | None = None,
             parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation]
             | None = None,
         ) -> p.Infra.DetectorContext: ...
@@ -51,12 +51,12 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         ) -> p.Infra.Census.Object | None: ...
         @staticmethod
         def _runtime_alias_target(
-            convention: m.Infra.RopeModuleConvention,
+            convention: p.Infra.RopeModuleConvention,
             objects: tuple[p.Infra.Census.Object, ...] | None,
         ) -> p.Infra.Census.Object | None: ...
         @staticmethod
         def _runtime_alias_target_name(
-            convention: m.Infra.RopeModuleConvention,
+            convention: p.Infra.RopeModuleConvention,
         ) -> str: ...
 
     def _rule_runtime_alias(
@@ -69,7 +69,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         applied: frozenset[str],
         selected_kinds: frozenset[str],
         symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for runtime-alias re-export violations."""
         ctx = self._detector_context(rope, file_path, convention=convention)
@@ -136,7 +136,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         objects: tuple[p.Infra.Census.Object, ...] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        convention: m.Infra.RopeModuleConvention,
+        convention: p.Infra.RopeModuleConvention,
     ) -> tuple[list[p.Infra.Census.Violation], list[p.Infra.Census.Fix]]:
         """Detect + plan fixes for manual typing-alias violations."""
         manual_ctx = self._detector_context(rope, file_path, convention=convention)

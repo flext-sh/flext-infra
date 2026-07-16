@@ -65,7 +65,7 @@ class FlextInfraUtilitiesRopeStructure:
 
     @classmethod
     def detect_static_rules(
-        cls, ctx: m.Infra.DetectorContext, rules: t.SequenceOf[p.Infra.StaticRuleSpec]
+        cls, ctx: p.Infra.DetectorContext, rules: t.SequenceOf[p.Infra.StaticRuleSpec]
     ) -> t.SequenceOf[p.Infra.PatternSmellViolation]:
         """Resolve one detector context and evaluate the configured Rope policy."""
         resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
@@ -109,7 +109,7 @@ class FlextInfraUtilitiesRopeStructure:
     @classmethod
     def detect_private_root_imports(
         cls,
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
         rules: t.SequenceOf[p.Infra.StaticPrivateRootImportRule],
     ) -> t.SequenceOf[p.Infra.PrivateImportBypassViolation]:
         """Detect imports resolved to a project's package-root config/settings file."""
@@ -241,9 +241,9 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _definition_file_for_import(
         *,
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
         attributes: t.MappingKV[str, t.Infra.RopePyName],
-        fact: m.Infra.ImportFact,
+        fact: p.Infra.ImportFact,
     ) -> Path:
         """Resolve one import binding to its exact definition resource."""
         pyname = attributes.get(fact.local_name)
@@ -277,9 +277,9 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _private_root_import_exempt(
         *,
-        ctx: m.Infra.DetectorContext,
-        rule: m.Infra.StaticPrivateRootImportRule,
-        statement: m.Infra.LogicalStatement,
+        ctx: p.Infra.DetectorContext,
+        rule: p.Infra.StaticPrivateRootImportRule,
+        statement: p.Infra.LogicalStatement,
         source: str,
         package_dir: Path,
     ) -> bool:
@@ -303,11 +303,11 @@ class FlextInfraUtilitiesRopeStructure:
     @staticmethod
     def _validate_public_singleton(
         *,
-        ctx: m.Infra.DetectorContext,
+        ctx: p.Infra.DetectorContext,
         rope: p.Infra.RopeWorkspaceDsl,
         package_dir: Path,
         package_name: str,
-        rule: m.Infra.StaticPrivateRootImportRule,
+        rule: p.Infra.StaticPrivateRootImportRule,
         expected_target: Path,
     ) -> None:
         """Fail loud unless the public package singleton resolves to the same owner."""
@@ -405,8 +405,8 @@ class FlextInfraUtilitiesRopeStructure:
     def _rule_matches(
         cls,
         *,
-        rule: m.Infra.StaticRuleSpec,
-        statement: m.Infra.LogicalStatement,
+        rule: p.Infra.StaticRuleSpec,
+        statement: p.Infra.LogicalStatement,
         facts: t.SequenceOf[p.Infra.ImportFact],
         regions: t.SequenceOf[p.Infra.IgnoredRegion],
         source: str,
@@ -475,7 +475,7 @@ class FlextInfraUtilitiesRopeStructure:
     def _primary_offsets(
         source: str,
         lines: codeanalyze.SourceLinesAdapter,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         primary: str,
         regions: t.SequenceOf[p.Infra.IgnoredRegion],
         word_finder: p.Infra.RopeWorder,
@@ -575,7 +575,7 @@ class FlextInfraUtilitiesRopeStructure:
 
     @staticmethod
     def _string_assignment(
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         lines: codeanalyze.SourceLinesAdapter,
         regions: t.SequenceOf[p.Infra.IgnoredRegion],
     ) -> bool:
@@ -628,7 +628,7 @@ class FlextInfraUtilitiesRopeStructure:
             ))
 
     @staticmethod
-    def header_name(statement: m.Infra.LogicalStatement) -> str:
+    def header_name(statement: p.Infra.LogicalStatement) -> str:
         """Return the declared name from a ``class``/``def`` statement header."""
         return FlextInfraUtilitiesRopeStructure._header_name(statement.text)
 
@@ -698,7 +698,7 @@ class FlextInfraUtilitiesRopeStructure:
         return None
 
     @staticmethod
-    def target_name(statement: m.Infra.LogicalStatement) -> str:
+    def target_name(statement: p.Infra.LogicalStatement) -> str:
         """Return a simple assignment/annotation target name, or empty."""
         head = FlextInfraUtilitiesRopeStructure._assignment_head(statement.text.strip())
         source = head if head is not None else statement.text.strip()
@@ -706,7 +706,7 @@ class FlextInfraUtilitiesRopeStructure:
         return name if name.isidentifier() else ""
 
     @staticmethod
-    def annotation_contains(statement: m.Infra.LogicalStatement, name: str) -> bool:
+    def annotation_contains(statement: p.Infra.LogicalStatement, name: str) -> bool:
         """Return whether an annotation contains one identifier token."""
         annotation = FlextInfraUtilitiesRopeStructure._annotation_source(statement.text)
         return name in FlextInfraUtilitiesRopeStructure._identifiers(annotation)
@@ -721,7 +721,7 @@ class FlextInfraUtilitiesRopeStructure:
         return annotation.strip() if separator else ""
 
     @staticmethod
-    def call_callee_name(statement: m.Infra.LogicalStatement) -> str:
+    def call_callee_name(statement: p.Infra.LogicalStatement) -> str:
         """Return the trailing identifier of an assignment call, or empty."""
         head = FlextInfraUtilitiesRopeStructure._assignment_head(statement.text.strip())
         if head is None:
@@ -735,7 +735,7 @@ class FlextInfraUtilitiesRopeStructure:
         )
 
     @staticmethod
-    def class_base_names(statement: m.Infra.LogicalStatement) -> t.Infra.StrSet:
+    def class_base_names(statement: p.Infra.LogicalStatement) -> t.Infra.StrSet:
         """Return terminal base-class names from a class header."""
         stripped = statement.text.strip()
         open_paren = stripped.find("(")

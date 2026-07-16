@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureMypyConfigPhase:
     """Ensure standard mypy configuration with pydantic plugin across all projects."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to generate the canonical mypy section."""
         self._tool_config = tool_config
 

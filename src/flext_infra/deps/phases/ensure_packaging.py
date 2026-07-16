@@ -16,14 +16,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
         """Store tool configuration providing the packaged data-dir policy."""
         self._tool_config = tool_config
 

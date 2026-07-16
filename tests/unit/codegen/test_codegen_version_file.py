@@ -11,7 +11,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests import c, t
+from tests import c, p, t
 
 _WORKSPACE_PYPROJECT = """\
 [project]

@@ -20,7 +20,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     """Render the two canonical generated initializer forms."""
 
     @staticmethod
-    def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
+    def _type_checking_filtered(plan: p.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Return public static imports with local facade classes as aliases."""
         source = plan.type_checking_map or plan.lazy_map
         public_exports = frozenset(plan.exports)
@@ -46,14 +46,14 @@ class FlextInfraCodegenGenerationStandardMixin(
         return filtered
 
     @classmethod
-    def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
+    def _runtime_import_lines(cls, plan: p.Infra.LazyInitPlan) -> str:
         """Render explicit eager runtime imports."""
         return "\n".join(
             cls._generate_import_lines(cls._group_imports(plan.eager_dunders))
         )
 
     @classmethod
-    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> p.Infra.LazyInitRootRender:
+    def _root_context(cls, plan: p.Infra.LazyInitPlan) -> p.Infra.LazyInitRootRender:
         """Build one inline lazy context for a public package root."""
         current_pkg = plan.context.current_pkg
         # mro-wkii.17.26 (codex): rendering is a second fail-closed boundary;
@@ -93,7 +93,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _static_imports(cls, plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
+    def _static_imports(cls, plan: p.Infra.LazyInitPlan) -> t.LazyAliasMap:
         """Select direct siblings plus declared aliases at a wrapper root."""
         current_pkg = plan.context.current_pkg
         prefix = f"{current_pkg}."
@@ -168,7 +168,7 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _static_context(
-        cls, plan: m.Infra.LazyInitPlan
+        cls, plan: p.Infra.LazyInitPlan
     ) -> p.Infra.StaticPackageInitRender:
         """Build an explicit static subpackage context."""
         static_imports = cls._static_imports(plan)
@@ -184,7 +184,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
+    def _render_root(cls, plan: p.Infra.LazyInitPlan) -> str:
         """Render one inline lazy public-root initializer."""
         return cls._render_model(
             c.Infra.TEMPLATE_ROOT_INIT,
@@ -193,7 +193,7 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
 
     @classmethod
-    def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:
+    def _render_static(cls, plan: p.Infra.LazyInitPlan) -> str:
         """Render one explicit static or empty subpackage initializer."""
         return cls._render_model(
             c.Infra.TEMPLATE_STATIC_INIT,

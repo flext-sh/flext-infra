@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, p, u
+from flext_infra import c, p, u
 
 logger = u.fetch_logger(__name__)
 
@@ -20,14 +20,14 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     if TYPE_CHECKING:
 
         def _generate_notes(
-            self, ctx: m.Infra.ReleasePhaseDispatchConfig, output_path: Path
+            self, ctx: p.Infra.ReleasePhaseDispatchConfig, output_path: Path
         ) -> p.Result[bool]: ...
 
         def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
 
         def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
 
-    def phase_publish(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+    def phase_publish(self, ctx: p.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
         workspace_root = ctx.workspace_root
         tag = ctx.tag

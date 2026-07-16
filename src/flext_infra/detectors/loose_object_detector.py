@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 
 
 class FlextInfraLooseObjectDetector:
@@ -17,7 +17,7 @@ class FlextInfraLooseObjectDetector:
 
     @classmethod
     def detect_file(
-        cls, ctx: m.Infra.DetectorContext
+        cls, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.Infra.LooseObjectViolation]:
         """Detect loose top-level objects in a single file."""
         if ctx.project_root is not None and not cls._is_src_file(
@@ -55,7 +55,7 @@ class FlextInfraLooseObjectDetector:
             if violation.kind == "logger"
         }
 
-        def _add(symbol: m.Infra.SymbolInfo, kind: str, suffix: str) -> None:
+        def _add(symbol: p.Infra.SymbolInfo, kind: str, suffix: str) -> None:
             """Add."""
             violations.append(
                 m.Infra.LooseObjectViolation(
@@ -211,7 +211,7 @@ class FlextInfraLooseObjectDetector:
     def _inspect_statement(
         cls,
         *,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         file_path: Path,
         class_bases: t.MappingKV[str, t.Infra.StrSet],
         add: Callable[[int, str, str, str], None],
@@ -240,7 +240,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _check_loose_final(
         cls,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag bare ``X: Final = ...`` outside canonical constants files."""
@@ -253,7 +253,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _check_loose_collection_or_typevar(
         cls,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag collection/TypeVar assignments outside canonical files."""
@@ -274,7 +274,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _check_loose_typealias(
         cls,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         add: Callable[[int, str, str, str], None],
     ) -> None:
         """Flag bare PEP 695 ``type X = ...`` outside typings.py."""
@@ -285,7 +285,7 @@ class FlextInfraLooseObjectDetector:
     @classmethod
     def _check_loose_enum(
         cls,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         file_path: Path,
         add: Callable[[int, str, str, str], None],
     ) -> None:
@@ -303,7 +303,7 @@ class FlextInfraLooseObjectDetector:
     def _check_loose_classvar(
         cls,
         *,
-        statement: m.Infra.LogicalStatement,
+        statement: p.Infra.LogicalStatement,
         file_path: Path,
         class_bases: t.MappingKV[str, t.Infra.StrSet],
         add: Callable[[int, str, str, str], None],
@@ -333,7 +333,7 @@ class FlextInfraLooseObjectDetector:
         add(statement.line, target, "classvar", "Constants")
 
     @classmethod
-    def _classvar_value_permitted(cls, statement: m.Infra.LogicalStatement) -> bool:
+    def _classvar_value_permitted(cls, statement: p.Infra.LogicalStatement) -> bool:
         """Return True when a ClassVar default is a literal/canonical constant.
 
         Permits literals, names, attributes, and collection literals (no call),

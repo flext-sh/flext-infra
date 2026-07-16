@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 
 
 class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     """Publish only symbols owned by direct root modules."""
 
     if TYPE_CHECKING:
-        lazy_init: m.Infra.LazyInitConfig
+        lazy_init: p.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
     def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:
@@ -25,7 +25,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     def _filter_public_root_exports(
         self,
         *,
-        context: m.Infra.LazyInitPackageContext,
+        context: p.Infra.LazyInitPackageContext,
         export_names: set[str],
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],

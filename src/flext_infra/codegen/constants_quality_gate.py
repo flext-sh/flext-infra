@@ -166,7 +166,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def after_metrics(
-        *, census_report: m.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
+        *, census_report: p.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Build post-run metrics summary used by quality checks."""
         by_kind: t.MutableIntMapping = {}
@@ -263,7 +263,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def project_findings(
-        census_report: m.Infra.Census.WorkspaceReport,
+        census_report: p.Infra.Census.WorkspaceReport,
     ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
         """Convert census reports into sorted per-project findings."""
         return [

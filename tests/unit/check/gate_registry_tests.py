@@ -17,7 +17,7 @@ from flext_tests import tm
 from flext_infra import c, m, p, r, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.canonical_alias import FlextInfraCanonicalAliasGate
-from tests import t
+from tests import p, t
 
 
 class TestGateRegistry:

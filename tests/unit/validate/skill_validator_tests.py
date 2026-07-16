@@ -18,7 +18,7 @@ from tests import u
 from pathlib import Path
 
 from tests import m
-from tests import t
+from tests import p, t
 
 
 
@@ -81,7 +81,7 @@ class TestSkillValidatorCore:
         validator = FlextInfraSkillValidator(skill="test-skill")
         skills = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skills.mkdir(parents=True)
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill")
         )
         tm.that(not report.passed, eq=True)
@@ -111,7 +111,7 @@ class TestSkillValidatorCore:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("rules:\n  - not_a_dict\n  - another_string")
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill")
         )
         tm.that(report.passed, eq=True)
@@ -124,7 +124,7 @@ class TestSkillValidatorCore:
         skill = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
         skill.mkdir(parents=True)
         (skill / "rules.yml").write_text("just a plain string")
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(tmp_path, "test-skill")
         )
         tm.that(report.passed, eq=True)

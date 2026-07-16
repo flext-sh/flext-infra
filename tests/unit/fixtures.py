@@ -18,7 +18,7 @@ from tests import u
 from flext_tests import tm
 
 from tests import m
-from tests import t
+from tests import p, t
 
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"

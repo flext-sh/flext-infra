@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from flext_infra import main as infra_main
 from flext_tests import tm
 
-from tests import t
+from tests import p, t
 
 
 
