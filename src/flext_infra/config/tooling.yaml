@@ -336,11 +336,16 @@ Infra:
             - "**/.mypy_cache"
             - "**/.ruff_cache"
             - "**/.pytest_cache"
+            - "**/tests/fixtures"
+            - "**/tests/fixtures/**"
             - "**/.*"
             - "**/legado"
             - "**/legado/**"
             - "**/tests/fixtures"
             - "**/tests/fixtures/**"
+            - .git
+            - .reports
+            - vendor
             - .venv
             - "**/.venv"
             - "**/.venv/**"
@@ -350,7 +355,6 @@ Infra:
             - "**/site-packages/**"
             - "**/dist-packages"
             - "**/dist-packages/**"
-          dynamic-exclude-dirs: [.git, .reports, vendor]
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []

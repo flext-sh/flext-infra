@@ -220,12 +220,23 @@ class FlextInfraEnsurePyrightConfigPhase:
         """Render configured environments for Python roots declared before writes."""
         rules = self._tool_config.tools.pyright.path_rules
         environments = self._envs_for_dirs(
-            env_dirs=env_dirs,
+            env_dirs=self._declared_environment_dirs(env_dirs),
             source_path=self._project_source_path(),
             project_root=rules.project_root,
             rules=rules,
         )
         return tuple(self._environment_payload(item) for item in environments)
+
+    @staticmethod
+    def _declared_environment_dirs(env_dirs: t.StrSequence) -> t.StrSequence:
+        """Apply canonical Python discovery exclusions to pre-write declarations."""
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): declared and on-disk roots must
+        # select the same first-class analyzer environments in the first pass.
+        return tuple(
+            env_dir
+            for env_dir in env_dirs
+            if env_dir not in c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
+        )
 
     def _environment_payload(
         self, environment: m.Infra.PyrightConfig.ExecutionEnvironment
@@ -267,9 +278,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(self) -> t.StrSequence:
-        """Build pyright exclude list from discovered workspace/project dirs."""
+        """Return the complete config-owned Pyright exclude list."""
         rules = self._tool_config.tools.pyright.path_rules
-        return sorted({*rules.default_excludes, *rules.dynamic_exclude_dirs})
+        return sorted(set(rules.default_excludes))
 
     def _existing_paths(
         self, base_dir: Path | None, configured_paths: t.StrSequence
@@ -371,7 +382,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
         expected_envs = (
             self._envs_for_dirs(
-                env_dirs=declared_python_dirs,
+                env_dirs=self._declared_environment_dirs(declared_python_dirs),
                 source_path=self._project_source_path(),
                 project_root=stub_rules.project_root,
                 rules=stub_rules,

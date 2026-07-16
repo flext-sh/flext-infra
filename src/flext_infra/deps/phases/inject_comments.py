@@ -264,30 +264,37 @@ class FlextInfraInjectCommentsPhase:
             msg = "managed comment injection requires non-empty TOML"
             raise ValueError(msg)
         changes: t.MutableSequenceOf[str] = []
-        if self._remove_legacy_group(document):
-            changes.append("broken [group.dev.dependencies] section removed")
-        expected_mapping = u.Cli.toml_as_mapping(document)
-        if not expected_mapping:
-            msg = "managed comment injection cannot remove all TOML data"
-            raise ValueError(msg)
-        tables, containers = self._collect_structure(document)
-        self._remove_managed_comments(document, containers)
-        self._inject_structural_comments(tables, changes)
-        first_item = self._first_rendered_item(document)
-        if first_item is None:
-            msg = "managed comment injection requires one TOML item"
-            raise ValueError(msg)
-        first_item.trivia.indent = f"{c.Infra.BANNER}{first_item.trivia.indent}"
-        if not rendered.startswith(c.Infra.BANNER):
+        lines = rendered.splitlines()
+        cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
+        changes.extend(cleanup_changes)
+        banner_lines = c.Infra.BANNER.splitlines()
+        out: t.MutableSequenceOf[str] = [*banner_lines]
+        if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
-        updated = u.Cli.toml_dumps(document)
-        if not updated.endswith("\n"):
-            updated = f"{updated}\n"
-        actual_mapping = u.Cli.toml_mapping_from_text(updated)
-        if actual_mapping != expected_mapping:
-            msg = "managed comment injection changed TOML semantic data"
-            raise ValueError(msg)
-        original = rendered if rendered.endswith("\n") else f"{rendered}\n"
+        emitted_markers: set[str] = set()
+        for line in cleaned_lines:
+            stripped = line.strip()
+            marker = self._marker_for_section(stripped)
+            if marker and marker not in emitted_markers:
+                out.append(marker)
+                changes.append(f"marker injected for {stripped}")
+                emitted_markers.add(marker)
+            if stripped == "[project.optional-dependencies]" or stripped.startswith(
+                "optional-dependencies.dev"
+            ):
+                self._inject_dev_markers(out, changes, emitted_markers)
+            out.append(line)
+            if stripped == "[tool.mypy]":
+                out.extend(self._mypy_rationale_lines())
+                changes.append("Mypy suppression rationales injected")
+            elif stripped == "[tool.ruff.lint]":
+                out.extend(self._ruff_rationale_lines())
+                changes.append("Ruff suppression rationales injected")
+            elif stripped == "[tool.pyright]":
+                out.extend(self._pyright_rationale_lines())
+                changes.append("Pyright suppression rationales injected")
+        updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
+        original = rendered.rstrip() + "\n"
         if updated == original:
             return (updated, [])
         return (updated, changes)

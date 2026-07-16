@@ -145,6 +145,7 @@ class FlextInfraConstantsCodegenLazy:
             "p": "Protocols",
             "m": "Models",
             "u": "Utilities",
+            "s": "ServiceBase",
         })
     )
     "Named local facade suffixes used by generated TYPE_CHECKING aliases."

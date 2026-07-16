@@ -92,6 +92,7 @@ class TestsFlextInfraDepsModernizerComments:
 
     def test_inject_comments_phase_apply_broken_group_section(self) -> None:
         """Report removal of an invalid dependency-group section."""
+        """Report removal of an invalid dependency-group section."""
         rendered = '[group.dev.dependencies]\nrequests = "*"\n[project]\n'
         result, changes = FlextInfraInjectCommentsPhase().apply(rendered)
         tm.that("[group.dev.dependencies]" not in result, eq=True)
@@ -192,3 +193,12 @@ minversion = "8.0"
         tm.that(first_result, has=description)
         tm.that(second_result, eq=first_result)
         tm.that(second_changes, empty=True)
+
+    def test_inject_comments_normalizes_leading_parse_trivia(self) -> None:
+        """Keep the managed banner byte-identical after TOML parse/render."""
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): the banner owns exactly one
+        # separator regardless of leading whitespace supplied by the parser.
+        phase = FlextInfraInjectCommentsPhase()
+        with_trivia, _changes = phase.apply('\n[project]\nname = "test"\n')
+        without_trivia, _changes = phase.apply('[project]\nname = "test"\n')
+        tm.that(with_trivia, eq=without_trivia)
