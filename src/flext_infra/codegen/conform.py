@@ -165,6 +165,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
+        surface = c.Infra.CodegenConformSurface(request.what)
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -192,6 +193,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository=repository,
                     workspace=workspace,
                     codegen=config_spec,
+                    surface=surface,
                 )
             else:
                 repository_plan = self._plan_existing_repository(
@@ -200,6 +202,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository=repository,
                     workspace=workspace,
                     codegen=config_spec,
+                    surface=surface,
                 )
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -313,6 +316,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
+        surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         if repository.profile is None:
@@ -365,6 +369,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
+            if (
+                surface
+                in {
+                    c.Infra.CodegenConformSurface.DEPENDENCIES,
+                    c.Infra.CodegenConformSurface.PYPROJECT,
+                }
+                and entry.destination != c.Infra.PYPROJECT_FILENAME
+            ):
+                continue
             source = (templates_root / entry.source).resolve()
             if not source.is_relative_to(templates_root) or not source.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -397,6 +410,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
+                continue
+            if surface in {
+                c.Infra.CodegenConformSurface.DEPENDENCIES,
+                c.Infra.CodegenConformSurface.PYPROJECT,
+            }:
                 continue
             # mro-i6nq.10: One formatted path governs validation and planning.
             destination = entry.destination.format(
@@ -528,6 +546,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
+        surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
         pyproject = root / c.Infra.PYPROJECT_FILENAME
@@ -541,6 +560,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
+        if surface is c.Infra.CodegenConformSurface.DEPENDENCIES:
+            dependency_result = u.Infra.pyproject_dependencies_conform(
+                pyproject_read.value,
+                repositories=codegen.repositories,
+                workspace=workspace,
+            )
+            if dependency_result.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    dependency_result.error
+                    or f"pyproject dependency conform failed: {pyproject}"
+                )
+            dependency_plan = self._file_plan(
+                root, c.Infra.PYPROJECT_FILENAME, dependency_result.value
+            )
+            if dependency_plan.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    dependency_plan.error
+                    or f"pyproject dependency planning failed: {pyproject}"
+                )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
@@ -593,6 +632,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
         planned = [pyproject_plan.value]
+        if surface is c.Infra.CodegenConformSurface.PYPROJECT:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
         # NOTE(mro-p68a.5, agent codex): managed_files is the existing-tree
         # ownership SSOT; templates.entries remains the single render manifest.
         managed_result = self._plan_existing_templates(

@@ -243,6 +243,8 @@ class TestCodegenConform:
                     "conform",
                     "--root",
                     str(root),
+                    "--what",
+                    "all",
                     "--scope",
                     "self",
                     "--mode",
@@ -259,6 +261,69 @@ class TestCodegenConform:
             )
         )
         tm.that(after, eq=before)
+
+    def test_dependency_surface_excludes_unowned_managed_files(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Plan only dependency metadata when another managed surface is invalid."""
+        root = infra_git_repo
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "custom.mk", ".PHONY: public-handler\npublic-handler:\n\t@true\n"
+            )
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
+            )
+        )
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.DEPENDENCIES,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
+            request
+        )
+        tm.ok(planned)
+        tm.that(
+            tuple(file.path.name for file in planned.value.files),
+            eq=("pyproject.toml",),
+        )
+        process = u.Cli.capture(
+            [
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "codegen",
+                "conform",
+                "--root",
+                str(root),
+                "--what",
+                "dependencies",
+                "--scope",
+                "self",
+                "--mode",
+                "check",
+            ],
+            timeout=60,
+        )
+        tm.ok(process)
 
 
 __all__: list[str] = []
