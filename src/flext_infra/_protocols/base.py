@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     # mro-wkii.17.26.2 (codex): these names are annotation-only reverse
     # edges; runtime imports create the proven p -> m/t facade cycle.
     from collections.abc import Iterator
+    from datetime import datetime
     from pathlib import Path
 
     from flext_cli import p
@@ -161,6 +162,53 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def requirements(self) -> t.StrSequence:
             """Build-system requirements."""
+            ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the lazy-init policy config
+    # (m.Infra.LazyInitConfig). Consumed at runtime by the lazy-init planner
+    # pydantic field and by namespace policy utilities.
+    @runtime_checkable
+    class LazyInitConfig(Protocol):
+        """Declarative lazy-init generation policy consumed by codegen."""
+
+        @property
+        def root_namespace_files(self) -> t.StrSequence:
+            """Governed root facade filenames enforced by gen-init."""
+            ...
+
+        @property
+        def public_file_aliases(self) -> t.StrMapping:
+            """Canonical alias by governed root facade filename."""
+            ...
+
+        @property
+        def public_file_suffixes(self) -> t.StrMapping:
+            """Canonical class suffix by governed root facade filename."""
+            ...
+
+        @property
+        def private_family_tokens(self) -> t.StrSequenceMapping:
+            """Accepted family markers for private namespace packages."""
+            ...
+
+        @property
+        def surface_prefixes(self) -> t.StrMapping:
+            """Class prefixes by wrapper surface such as tests/examples/scripts."""
+            ...
+
+        @property
+        def inherited_exports(self) -> t.StrSequenceMapping:
+            """Allowed inherited exports from parent package by root surface."""
+            ...
+
+        @property
+        def main_export_files(self) -> t.StrSequence:
+            """Root files allowed to export module-level main()."""
+            ...
+
+        @property
+        def side_effect_free_packages(self) -> t.StrSequence:
+            """Package basenames whose generated initializer must not import siblings."""
             ...
 
     @runtime_checkable
@@ -581,3 +629,527 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[p.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...
+
+    # mro-qc84 (fix-forward): protocol-of-model namespace mirroring the census
+    # model namespace (m.Infra.Census). Consumed at runtime by the census
+    # service base ``s[p.Infra.Census.WorkspaceReport]`` and quality gates.
+    @runtime_checkable
+    class Census(Protocol):
+        """Structural namespace for workspace census report contracts."""
+
+        @runtime_checkable
+        class ReferenceSite(Protocol):
+            """Single reference site for a workspace object."""
+
+            @property
+            def line(self) -> int: ...
+
+            @property
+            def file_path(self) -> str: ...
+
+            @property
+            def surface(self) -> str: ...
+
+        @runtime_checkable
+        class Object(Protocol):
+            """Single workspace object with tier and reference metadata."""
+
+            @property
+            def class_path(self) -> str: ...
+
+            @property
+            def project(self) -> str: ...
+
+            @property
+            def line(self) -> int: ...
+
+            @property
+            def file_path(self) -> str: ...
+
+            @property
+            def name(self) -> str: ...
+
+            @property
+            def kind(self) -> str: ...
+
+            @property
+            def module_name(self) -> str: ...
+
+            @property
+            def scope_path(self) -> str: ...
+
+            @property
+            def actual_tier(self) -> str: ...
+
+            @property
+            def expected_tier(self) -> str: ...
+
+            @property
+            def is_facade_member(self) -> bool: ...
+
+            @property
+            def references_count(self) -> int: ...
+
+            @property
+            def runtime_references_count(self) -> int: ...
+
+            @property
+            def example_references_count(self) -> int: ...
+
+            @property
+            def script_references_count(self) -> int: ...
+
+            @property
+            def runtime_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def example_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def script_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def fingerprint(self) -> str: ...
+
+        @runtime_checkable
+        class Violation(Protocol):
+            """Single namespace or tier violation for an object."""
+
+            @property
+            def project(self) -> str: ...
+
+            @property
+            def object_name(self) -> str: ...
+
+            @property
+            def object_kind(self) -> str: ...
+
+            @property
+            def kind(self) -> str: ...
+
+            @property
+            def severity(self) -> str: ...
+
+            @property
+            def file_path(self) -> str: ...
+
+            @property
+            def line(self) -> int: ...
+
+            @property
+            def fixable(self) -> bool: ...
+
+            @property
+            def fix_action(self) -> str: ...
+
+            @property
+            def description(self) -> str: ...
+
+        @runtime_checkable
+        class Fix(Protocol):
+            """Single applied or planned fix for a workspace object."""
+
+            @property
+            def object_name(self) -> str: ...
+
+            @property
+            def action(self) -> str: ...
+
+            @property
+            def source_file(self) -> str: ...
+
+            @property
+            def target_file(self) -> str: ...
+
+            @property
+            def files_changed(self) -> int: ...
+
+            @property
+            def applied(self) -> bool: ...
+
+            @property
+            def dry_run_diff(self) -> str: ...
+
+        @runtime_checkable
+        class RemovalCandidate(Protocol):
+            """Single dead-code removal candidate object."""
+
+            @property
+            def project(self) -> str: ...
+
+            @property
+            def line(self) -> int: ...
+
+            @property
+            def file_path(self) -> str: ...
+
+            @property
+            def object_name(self) -> str: ...
+
+            @property
+            def object_kind(self) -> str: ...
+
+            @property
+            def scope_path(self) -> str: ...
+
+            @property
+            def reason(self) -> str: ...
+
+            @property
+            def suggested_action(self) -> str: ...
+
+            @property
+            def runtime_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def example_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def script_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+        @runtime_checkable
+        class DuplicateGroup(Protocol):
+            """Group of duplicate object definitions sharing one name."""
+
+            @property
+            def name(self) -> str: ...
+
+            @property
+            def kind(self) -> str: ...
+
+            @property
+            def definitions(self) -> t.SequenceOf[p.Infra.Census.Object]: ...
+
+            @property
+            def canonical(self) -> str: ...
+
+            @property
+            def value_identical(self) -> bool: ...
+
+        @runtime_checkable
+        class ScanConfig(Protocol):
+            """Selection policy applied to a census scan."""
+
+            @property
+            def kind_names(self) -> t.StrSequence | None: ...
+
+            @property
+            def rule_names(self) -> t.StrSequence | None: ...
+
+            @property
+            def selected_families(self) -> frozenset[str]: ...
+
+            @property
+            def selected_kinds(self) -> frozenset[str] | None: ...
+
+            @property
+            def selected_rules(self) -> frozenset[str] | None: ...
+
+            @property
+            def collect_object_inventory(self) -> bool: ...
+
+            @property
+            def include_object_references(self) -> bool: ...
+
+            @property
+            def include_local_scopes(self) -> bool: ...
+
+            @property
+            def applied(self) -> frozenset[str]: ...
+
+        @runtime_checkable
+        class ProjectReport(Protocol):
+            """Per-project census aggregate."""
+
+            @property
+            def project(self) -> str: ...
+
+            @property
+            def objects(self) -> t.SequenceOf[p.Infra.Census.Object]: ...
+
+            @property
+            def objects_total(self) -> int: ...
+
+            @property
+            def objects_by_kind(self) -> t.IntMapping: ...
+
+            @property
+            def violations(self) -> t.SequenceOf[p.Infra.Census.Violation]: ...
+
+            @property
+            def fixes(self) -> t.SequenceOf[p.Infra.Census.Fix]: ...
+
+            @property
+            def violations_total(self) -> int: ...
+
+            @property
+            def fixes_applied(self) -> int: ...
+
+            @property
+            def unused_count(self) -> int: ...
+
+            @property
+            def removal_candidate_count(self) -> int: ...
+
+            @property
+            def removal_candidates(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.RemovalCandidate]: ...
+
+        @runtime_checkable
+        class WorkspaceReport(Protocol):
+            """Workspace-wide census aggregate report."""
+
+            @property
+            def projects(self) -> t.SequenceOf[p.Infra.Census.ProjectReport]: ...
+
+            @property
+            def total_objects(self) -> int: ...
+
+            @property
+            def total_violations(self) -> int: ...
+
+            @property
+            def total_fixable(self) -> int: ...
+
+            @property
+            def fixes_total(self) -> int: ...
+
+            @property
+            def duplicates(self) -> t.SequenceOf[p.Infra.Census.DuplicateGroup]: ...
+
+            @property
+            def unused_count(self) -> int: ...
+
+            @property
+            def removal_candidate_count(self) -> int: ...
+
+            @property
+            def removal_candidates(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.RemovalCandidate]: ...
+
+            @property
+            def scan_duration_seconds(self) -> float: ...
+
+            @property
+            def parse_errors(self) -> int: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for a workspace sync outcome
+    # (m.Infra.SyncResult). Consumed at runtime by ``s[p.Infra.SyncResult]``.
+    @runtime_checkable
+    class SyncResult(Protocol):
+        """Result payload for workspace sync operations."""
+
+        @property
+        def files_changed(self) -> int: ...
+
+        @property
+        def source(self) -> Path: ...
+
+        @property
+        def target(self) -> Path: ...
+
+        @property
+        def timestamp(self) -> datetime: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for a workspace migration
+    # outcome (m.Infra.MigrationResult). Consumed at runtime by the migrator
+    # service ``s[t.SequenceOf[p.Infra.MigrationResult]]``.
+    @runtime_checkable
+    class MigrationResult(Protocol):
+        """Migration operation outcome with applied changes and errors."""
+
+        @property
+        def project(self) -> str: ...
+
+        @property
+        def changes(self) -> t.StrSequence: ...
+
+        @property
+        def errors(self) -> t.StrSequence: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for one accessor-migration file
+    # entry (m.Infra.AccessorMigrationFile).
+    @runtime_checkable
+    class AccessorMigrationFile(Protocol):
+        """Per-file accessor-migration outcome entry."""
+
+        @property
+        def path(self) -> str: ...
+
+        @property
+        def automated_changes(self) -> int: ...
+
+        @property
+        def warnings(self) -> t.StrSequence: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the accessor-migration
+    # workspace report (m.Infra.AccessorMigrationReport). Consumed at runtime by
+    # ``FlextInfraProjectSelectionServiceBase[p.Infra.AccessorMigrationReport]``.
+    @runtime_checkable
+    class AccessorMigrationReport(Protocol):
+        """Workspace-scale accessor-migration orchestration report."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def dry_run(self) -> bool: ...
+
+        @property
+        def files_scanned(self) -> int: ...
+
+        @property
+        def files_with_changes(self) -> int: ...
+
+        @property
+        def automated_change_count(self) -> int: ...
+
+        @property
+        def warning_count(self) -> int: ...
+
+        @property
+        def lint_tools(self) -> t.SequenceOf[str]: ...
+
+        @property
+        def lint_before_totals(self) -> t.IntMapping: ...
+
+        @property
+        def lint_after_totals(self) -> t.IntMapping: ...
+
+        @property
+        def new_lint_error_totals(self) -> t.IntMapping: ...
+
+        @property
+        def files(self) -> t.SequenceOf[p.Infra.AccessorMigrationFile]: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the canonical Make contract
+    # embedded in a codegen plan (m.Infra.MakeSpec).
+    @runtime_checkable
+    class MakeSpec(Protocol):
+        """Canonical Make contract fields consumed by codegen conformance."""
+
+        @property
+        def selector(self) -> str: ...
+
+        @property
+        def apply_variable(self) -> str: ...
+
+        @property
+        def apply_value(self) -> str: ...
+
+        @property
+        def verbs(self) -> t.StrSequence: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for a per-project uv plan
+    # (m.Infra.UvEnvironmentPlan).
+    @runtime_checkable
+    class UvEnvironmentPlan(Protocol):
+        """uv environment plan paired with one selected repository."""
+
+        @property
+        def project_root(self) -> Path: ...
+
+        @property
+        def environment_root(self) -> Path: ...
+
+        @property
+        def lock_path(self) -> Path: ...
+
+        @property
+        def python_version(self) -> str: ...
+
+        @property
+        def uv_version(self) -> str: ...
+
+        @property
+        def groups(self) -> t.StrSequence: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for a single managed-file render
+    # plan (m.Infra.CodegenFilePlan).
+    @runtime_checkable
+    class CodegenFilePlan(Protocol):
+        """Validated render result for one managed file."""
+
+        @property
+        def path(self) -> Path: ...
+
+        @property
+        def operation(self) -> str: ...
+
+        @property
+        def source_path(self) -> Path | None: ...
+
+        @property
+        def rendered(self) -> str: ...
+
+        @property
+        def expected_sha256(self) -> str: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the public codegen conform
+    # request (m.Infra.CodegenConformRequest).
+    @runtime_checkable
+    class CodegenConformRequest(Protocol):
+        """Validated public request governing a conformance run."""
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def scope(self) -> str: ...
+
+        @property
+        def mode(self) -> str: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the fully validated codegen
+    # plan (m.Infra.CodegenPlan).
+    @runtime_checkable
+    class CodegenPlan(Protocol):
+        """Fully validated plan produced before any managed-file write."""
+
+        @property
+        def request(self) -> p.Infra.CodegenConformRequest: ...
+
+        @property
+        def repositories(self) -> t.SequenceOf[p.Infra.RepositoryRef]: ...
+
+        @property
+        def workspace(self) -> p.Infra.WorkspaceSpec: ...
+
+        @property
+        def make_spec(self) -> p.Infra.MakeSpec: ...
+
+        @property
+        def uv_environments(self) -> t.SequenceOf[p.Infra.UvEnvironmentPlan]: ...
+
+        @property
+        def files(self) -> t.SequenceOf[p.Infra.CodegenFilePlan]: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for the codegen conformance
+    # outcome (m.Infra.CodegenResult). Consumed at runtime by the conform
+    # service base ``s[p.Infra.CodegenResult]``.
+    @runtime_checkable
+    class CodegenResult(Protocol):
+        """Public conformance outcome for check and apply modes."""
+
+        @property
+        def plan(self) -> p.Infra.CodegenPlan: ...
+
+        @property
+        def written_files(self) -> t.SequenceOf[Path]: ...
+
+        @property
+        def errors(self) -> t.StrSequence: ...

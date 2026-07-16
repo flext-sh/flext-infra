@@ -328,69 +328,10 @@ _boot_default: ## Install all projects into workspace .venv
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	# mro-wkii.17.26 (codex): setup never mutates source; codegen/sync runs only after a checkpoint.
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
-	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
-	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
-	failed=0; prepared=0; installed=0; step=1; failed_projects=""; \
-	for proj in $(SELECTED_PROJECTS); do \
-		if [ -d "$$proj" ] && [ -f "$$proj/pyproject.toml" ]; then \
-			log_file="/tmp/flext-setup-$$proj.log"; \
-			start_ts=$$(date +%s); \
-			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			printf "     lock  ... "; \
-			if $(UV_BIN) lock --directory "$$proj" >"$$log_file" 2>&1; then \
-				echo "ok"; \
-			else \
-				echo "failed"; \
-				cat "$$log_file"; \
-				failed=$$((failed + 1)); \
-				failed_projects="$$failed_projects $$proj"; \
-				step=$$((step + 1)); \
-				continue; \
-			fi; \
-			printf "     install ... "; \
-			elapsed=$$(( $$(date +%s) - start_ts )); \
-			echo "deferred to workspace sync ($${elapsed}s)"; \
-			prepared=$$((prepared + 1)); \
-			rm -f "$$log_file"; \
-			step=$$((step + 1)); \
-		fi; \
-	done; \
-	log_file="/tmp/flext-setup-root.log"; \
-	start_ts=$$(date +%s); \
-	root_lock_ok=0; \
-	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	printf "     lock  ... "; \
-	if $(UV_BIN) lock >"$$log_file" 2>&1; then \
-		echo "ok"; \
-		root_lock_ok=1; \
-	else \
-		echo "failed"; \
-		cat "$$log_file"; \
-		failed=$$((failed + 1)); \
-		failed_projects="$$failed_projects root"; \
-	fi; \
-	if [ $$root_lock_ok -eq 1 ]; then \
-		printf "     install ... "; \
-		if $(UV_BIN) sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
-			elapsed=$$(( $$(date +%s) - start_ts )); \
-			echo "ok ($${elapsed}s)"; \
-			installed=$$((installed + 1)); \
-		else \
-			echo "failed"; \
-			cat "$$log_file"; \
-			failed=$$((failed + 1)); \
-			failed_projects="$$failed_projects root"; \
-		fi; \
-	else \
-		printf "     install ... skipped\n"; \
-	fi; \
-	rm -f "$$log_file"; \
-	echo "Setup summary: Prepared=$$prepared Installed=$$installed Failed=$$failed Total=$$total_steps"; \
-	if [ $$failed -ne 0 ]; then \
-		echo "Failed projects:$$failed_projects"; \
-		echo "FAIL: boot ($$failed projects)"; \
-		exit 1; \
-	fi
+	# mro-qc84 (fix-forward): ENSURE_WORKSPACE_RUNTIME already locks + syncs the
+	# whole workspace (uv sync --all-packages); the previous per-project uv lock
+	# loop and the duplicate root lock/sync were redundant and slow. One sync.
+	$(Q)echo "Workspace .venv synchronized ($(words $(SELECTED_PROJECTS)) projects + root)."
 	# mro-wkii.17.26 (codex): prove imports and mark the synced venv ready first.
 	$(Q)$(VERIFY_WORKSPACE_VENV)
 	# mro-wkii.17.26 (codex): setup ends after environment/import proof; validation is an explicit next verb.

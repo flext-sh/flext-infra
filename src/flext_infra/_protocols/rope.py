@@ -153,6 +153,23 @@ class FlextInfraProtocolsRope(Protocol):
             export_options: p.Infra.ExportOptions | None = None,
         ) -> t.StrSequence: ...
 
+    # mro-qc84 (fix-forward): protocol-of-model for the Rope workspace session
+    # snapshot (m.Infra.RopeWorkspaceSession). Consumed at runtime by the
+    # workspace service base class ``s[p.Infra.RopeWorkspaceSession]`` and by the
+    # DSL refresh/reload return contracts above.
+    @runtime_checkable
+    class RopeWorkspaceSession(Protocol):
+        """Public structural view of one materialized Rope workspace session."""
+
+        @property
+        def workspace_root(self) -> Path: ...
+
+        @property
+        def rope_workspace_root(self) -> Path: ...
+
+        @property
+        def workspace_index(self) -> p.Infra.RopeWorkspaceIndex: ...
+
     @runtime_checkable
     class RopePostHook(Protocol):
         """Contract for post-processing hooks invoked after Rope refactoring."""
