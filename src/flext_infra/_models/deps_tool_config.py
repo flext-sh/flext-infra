@@ -6,17 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Annotated
 
+from annotated_types import Len
+
 from flext_cli import m
-from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
 )
 from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )
+
+# Local non-empty string contract (external annotated_types only; no facade).
+type NonEmptyStr = Annotated[str, Len(1)]
 
 
 class FlextInfraModelsDepsToolSettings(
@@ -28,14 +33,14 @@ class FlextInfraModelsDepsToolSettings(
         """Deptry namespace and dependency-group policy."""
 
         known_first_party: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="known-first-party",
                 description="Base first-party namespaces extended by project metadata.",
             ),
         ]
         pep621_dev_dependency_groups: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="pep621-dev-dependency-groups",
                 description="PEP 735 groups treated as development dependencies.",
@@ -53,7 +58,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         packaged_data_dirs: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="packaged-data-dirs",
                 default_factory=tuple,
@@ -69,18 +74,18 @@ class FlextInfraModelsDepsToolSettings(
 
         # mro-j47u (codex): every rendered pytest value is validated config data.
         min_version: Annotated[
-            t.NonEmptyStr,
+            NonEmptyStr,
             m.Field(alias="min-version", description="Minimum pytest version."),
         ]
         python_classes: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="python-classes",
                 description="Canonical pytest test class patterns.",
             ),
         ]
         python_files: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="python-files",
                 description="Canonical pytest test module patterns.",
@@ -88,28 +93,28 @@ class FlextInfraModelsDepsToolSettings(
         ]
         # mro-wkii.17 (codex): collection roots are validated config, not local state.
         test_paths: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="test-paths",
                 description="Canonical tracked roots collected by pytest.",
             ),
         ]
         filter_warnings: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 alias="filter-warnings", description="Canonical pytest warning filters."
             ),
         ]
 
         standard_markers: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="standard-markers",
                 description="Standard pytest markers enforced by modernizer.",
             ),
         ]
         standard_addopts: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="standard-addopts",
                 description="Standard pytest addopts enforced by modernizer.",
@@ -122,7 +127,7 @@ class FlextInfraModelsDepsToolSettings(
         all: Annotated[bool, m.Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, m.Field(description="Apply TOML sorting in place.")]
         sort_first: Annotated[
-            t.StrSequence, m.Field(description="Top-level TOML sections ordered first.")
+            Sequence[str], m.Field(description="Top-level TOML sections ordered first.")
         ]
 
     class YamlfixConfig(m.ArbitraryTypesModel):
@@ -166,7 +171,7 @@ class FlextInfraModelsDepsToolSettings(
 
         # mro-p68a.5 (codex): production coverage is limited to declared sources.
         source: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 default_factory=tuple,
                 description="Production source roots measured by coverage.",
@@ -193,7 +198,7 @@ class FlextInfraModelsDepsToolSettings(
             int, m.Field(description="Decimal precision for coverage percentages.")
         ] = 2
         exclude_also: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="exclude-also",
                 default_factory=tuple,
@@ -203,7 +208,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         omit: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 default_factory=tuple,
                 description="Glob patterns excluded from coverage collection.",
@@ -215,7 +220,7 @@ class FlextInfraModelsDepsToolSettings(
 
         # NOTE (multi-agent, mro-j47u): keep dead-code scope fully config-owned.
         exclude: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(
                 description="Declaration-only path patterns excluded from Vulture."
             ),
@@ -228,7 +233,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         paths: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(description="Production roots scanned for unreachable code."),
         ]
         verbose: bool = m.Field(
@@ -282,7 +287,7 @@ class FlextInfraModelsDepsToolSettings(
         """Per-project-type override settings."""
 
         pyright: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(description="Pyright override settings for this project type."),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
@@ -309,35 +314,35 @@ class FlextInfraModelsDepsToolSettings(
         """Declarative policy for ``__init__.py`` lazy export generation."""
 
         root_namespace_files: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="root-namespace-files",
                 description="Governed root facade filenames enforced by gen-init.",
             ),
         ]
         public_file_aliases: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="public-file-aliases",
                 description="Canonical alias by governed root facade filename.",
             ),
         ]
         public_file_suffixes: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="public-file-suffixes",
                 description="Canonical class suffix by governed root facade filename.",
             ),
         ]
         private_family_tokens: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(
                 alias="private-family-tokens",
                 description="Accepted family markers for private namespace packages.",
             ),
         ]
         surface_prefixes: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="surface-prefixes",
                 description=(
@@ -346,7 +351,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         inherited_exports: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(
                 alias="inherited-exports",
                 description=(
@@ -355,14 +360,14 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         main_export_files: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="main-export-files",
                 description="Root files allowed to export module-level main().",
             ),
         ]
         side_effect_free_packages: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="side-effect-free-packages",
                 description=(
@@ -392,7 +397,7 @@ class FlextInfraModelsDepsToolSettings(
     class ToolingScalarSetting(m.ArbitraryTypesModel):
         """One validated scalar setting rendered into an explicit TOML table."""
 
-        name: Annotated[t.NonEmptyStr, m.Field(description="TOML setting name")]
+        name: Annotated[NonEmptyStr, m.Field(description="TOML setting name")]
         value: Annotated[
             str, m.Field(description="Validated Pyright diagnostic severity")
         ]
@@ -400,9 +405,9 @@ class FlextInfraModelsDepsToolSettings(
     class ToolingPyrightEnvironment(m.ArbitraryTypesModel):
         """One resolved Pyright execution environment."""
 
-        root: Annotated[t.NonEmptyStr, m.Field(description="Environment root")]
+        root: Annotated[NonEmptyStr, m.Field(description="Environment root")]
         extra_paths: Annotated[
-            t.StrTuple, m.Field(description="Resolved environment import paths")
+            tuple[str, ...], m.Field(description="Resolved environment import paths")
         ]
         settings: Annotated[
             tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
@@ -414,44 +419,44 @@ class FlextInfraModelsDepsToolSettings(
         """Resolved project/workspace values consumed by the complete template."""
 
         project_kind: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved project classification")
+            NonEmptyStr, m.Field(description="Resolved project classification")
         ]
         coverage_fail_under: Annotated[
             int, m.Field(ge=0, le=100, description="Resolved coverage threshold")
         ]
         first_party: Annotated[
-            t.StrTuple, m.Field(description="Resolved first-party namespaces")
+            tuple[str, ...], m.Field(description="Resolved first-party namespaces")
         ]
         mypy_path: Annotated[
-            t.StrTuple, m.Field(description="Resolved Mypy search paths")
+            tuple[str, ...], m.Field(description="Resolved Mypy search paths")
         ]
         pyrefly_interpreter_path: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
+            NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
         ]
         pyrefly_search_path: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyrefly search paths")
+            tuple[str, ...], m.Field(description="Resolved Pyrefly search paths")
         ]
         pyrefly_project_includes: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyrefly production includes")
+            tuple[str, ...], m.Field(description="Resolved Pyrefly production includes")
         ]
         pyright_exclude: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyright exclusions")
+            tuple[str, ...], m.Field(description="Resolved Pyright exclusions")
         ]
         pyright_ignore: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyright ignored paths")
+            tuple[str, ...], m.Field(description="Resolved Pyright ignored paths")
         ] = ()
         pyright_include: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyright production roots")
+            tuple[str, ...], m.Field(description="Resolved Pyright production roots")
         ]
         pyright_extra_paths: Annotated[
-            t.StrTuple, m.Field(description="Resolved Pyright import paths")
+            tuple[str, ...], m.Field(description="Resolved Pyright import paths")
         ]
         pyright_venv: Annotated[
-            t.NonEmptyStr,
+            NonEmptyStr,
             m.Field(description="Resolved Pyright virtual environment name"),
         ]
         pyright_venv_path: Annotated[
-            t.NonEmptyStr,
+            NonEmptyStr,
             m.Field(description="Resolved Pyright virtual environment base"),
         ]
         pyright_settings: Annotated[
@@ -463,10 +468,10 @@ class FlextInfraModelsDepsToolSettings(
             m.Field(description="Resolved Pyright environments"),
         ]
         ruff_src: Annotated[
-            t.StrTuple, m.Field(description="Resolved Ruff source roots")
+            tuple[str, ...], m.Field(description="Resolved Ruff source roots")
         ]
         ruff_ignore: Annotated[
-            t.StrTuple,
+            tuple[str, ...],
             m.Field(description="Resolved ordinary and justified Ruff ignores"),
         ]
 

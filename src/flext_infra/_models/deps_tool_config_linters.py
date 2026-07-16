@@ -10,7 +10,7 @@ from types import MappingProxyType
 from typing import Annotated, Literal
 
 from flext_cli import m
-from flext_infra import t
+from collections.abc import Mapping, Sequence
 
 
 class FlextInfraModelsDepsToolConfigLinters:
@@ -125,13 +125,13 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Ruff lint settings loaded from YAML."""
 
         select: Annotated[
-            t.StrSequence, m.Field(description="Ruff lint rule selectors.")
+            Sequence[str], m.Field(description="Ruff lint rule selectors.")
         ] = m.Field(default_factory=tuple)
         ignore: Annotated[
-            t.StrSequence, m.Field(description="Ruff lint rule ignore list.")
+            Sequence[str], m.Field(description="Ruff lint rule ignore list.")
         ] = m.Field(default_factory=tuple)
         ignored_rule_rationales: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="ignored-rule-rationales",
                 description=(
@@ -140,7 +140,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         banned_api: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="banned-api",
                 description="Forbidden direct APIs and their canonical alternatives.",
@@ -156,7 +156,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             m.Field(description="Ruff pydocstyle configuration")
         )
         per_file_ignores: Annotated[
-            t.MappingKV[str, t.StrSequence],
+            Mapping[str, Sequence[str]],
             m.Field(
                 alias="per-file-ignores",
                 description=(
@@ -169,7 +169,7 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Ruff top-level settings loaded from YAML."""
 
         exclude: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Directory/file globs excluded from ruff checks."),
         ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
@@ -191,7 +191,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
         src: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(description="Source roots used by ruff import analysis."),
         ] = m.Field(default_factory=tuple)
         target_version: Annotated[
@@ -211,10 +211,10 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Single [[tool.mypy.overrides]] entry."""
 
         modules: Annotated[
-            t.StrSequence, m.Field(description="Module patterns for this override.")
+            Sequence[str], m.Field(description="Module patterns for this override.")
         ]
         disable_error_codes: Annotated[
-            t.StrSequence,
+            Sequence[str],
             m.Field(
                 alias="disable-error-codes",
                 description="Error codes disabled for these modules.",
@@ -235,7 +235,7 @@ class FlextInfraModelsDepsToolConfigLinters:
     class MypyConfig(m.ArbitraryTypesModel):
         """Mypy baseline settings loaded from YAML."""
 
-        plugins: Annotated[t.StrSequence, m.Field(description="Mypy plugins list.")] = (
+        plugins: Annotated[Sequence[str], m.Field(description="Mypy plugins list.")] = (
             m.Field(default_factory=tuple)
         )
         exclude: Annotated[
@@ -247,7 +247,7 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ] = ""
         disabled_error_codes: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="disabled-error-codes",
                 description=(
@@ -256,14 +256,14 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
         boolean_settings: Annotated[
-            t.BoolMapping,
+            Mapping[str, bool],
             m.Field(
                 alias="boolean-settings",
                 description="Mypy boolean settings keyed by option name.",
             ),
         ]
         string_settings: Annotated[
-            t.StrMapping,
+            Mapping[str, str],
             m.Field(
                 alias="string-settings",
                 description=(

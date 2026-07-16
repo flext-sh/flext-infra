@@ -355,6 +355,7 @@ Infra:
             - "**/site-packages/**"
             - "**/dist-packages"
             - "**/dist-packages/**"
+          dynamic-exclude-dirs: [.git, .reports, vendor]
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []

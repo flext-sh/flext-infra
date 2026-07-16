@@ -6,24 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import FlextCliConfig
 from flext_infra._models.config import FlextInfraConfigModels
 
 
-class _FlextInfraConfig(FlextCliConfig):
-    """Declarative flext-infra config loaded and validated once."""
+class FlextInfraConfig(FlextCliConfig):
+    """Auto-loaded, validated flext-infra config; access via ``config.Infra.*``."""
 
-    # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
-    # config.Infra is the only codegen information surface; no accessor method.
-    # NOTE (mro-wkii.17.26, agent codex): flext-core resolves this canonical
-    # relative root in both installed-package and editable-project layouts.
-    CONFIG_DIR: ClassVar[str] = "config"
+    # Canonical [project-root]/config resolution (cosmos-main pattern): overrides
+    # the package-anchored CONFIG_DIR inherited from FlextCliConfig so the infra
+    # YAML SSOT loads, composing config.Infra beside the inherited config.Cli.
+    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
     Infra: FlextInfraConfigModels.Infra
 
 
-config: _FlextInfraConfig = _FlextInfraConfig()
+config: FlextInfraConfig = FlextInfraConfig.fetch_global()
 """Pre-instantiated frozen config singleton — ``from flext_infra import config``."""
 
-__all__: list[str] = ["config"]
+__all__: list[str] = ["FlextInfraConfig", "config"]

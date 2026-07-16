@@ -16,30 +16,22 @@ from flext_core import FlextSettings
 from flext_infra._models.settings import FlextInfraSettingsModels
 
 
-# NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
-# complete the workspace settings migration (mro-d421); flext_cli dropped its
-# public FlextCliSettings export. Canonical pattern per flext-api/flext-auth.
-class _FlextInfraSettings(FlextSettings):
+class FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
     model_config = SettingsConfigDict(
         env_prefix="FLEXT_INFRA_",
         env_nested_delimiter="__",
         extra="ignore",
-        frozen=True,
     )
 
-    # mro-wkii.4.15: composition only; declaration and env validation stay private.
     Infra: FlextInfraSettingsModels.Infra = Field(
         default_factory=FlextInfraSettingsModels.Infra,
         description="Namespaced infra settings.",
     )
 
 
-settings: _FlextInfraSettings = _FlextInfraSettings()
-(
-    """Pre-instantiated project settings singleton — ``from flext_infra import """
-    """settings``."""
-)
+settings: FlextInfraSettings = FlextInfraSettings.fetch_global()
+"""Pre-instantiated project settings singleton — ``from flext_infra import settings``."""
 
-__all__: list[str] = ["settings"]
+__all__: list[str] = ["FlextInfraSettings", "settings"]

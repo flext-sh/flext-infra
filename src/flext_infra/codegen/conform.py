@@ -10,15 +10,9 @@ import re
 from pathlib import Path
 from typing import Annotated, override
 
-from flext_core import r
-from flext_infra import config
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base import s
-from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import p, t
-from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
