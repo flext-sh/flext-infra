@@ -90,6 +90,14 @@ class FlextInfraModelsCodegenRender:
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
+        runtime_import_lines: str = m.Field(
+            default_factory=str,
+            description="Eager runtime imports for the static subpackage.",
+        )
+        exports: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Published ``__all__`` names for the static subpackage.",
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsCodegenRender"]

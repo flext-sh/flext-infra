@@ -6,15 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import FlextCliConfig
 
-if TYPE_CHECKING:
-    from flext_infra._models.config import (
-        FlextInfraConfigModels,  # mro-itcd.1: runtime type required by Pydantic for Infra annotation.
-    )
+from flext_infra._models.config import FlextInfraConfigModels
 
 
 class FlextInfraConfig(FlextCliConfig):
@@ -24,7 +22,14 @@ class FlextInfraConfig(FlextCliConfig):
     # the package-anchored CONFIG_DIR inherited from FlextCliConfig so the infra
     # YAML SSOT loads, composing config.Infra beside the inherited config.Cli.
     CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
-    Infra: FlextInfraConfigModels.Infra
+
+    @cached_property
+    def Infra(self) -> FlextInfraConfigModels.Infra:  # noqa: N802
+        """Validated ``Infra`` business-rule config namespace."""
+        root = FlextInfraConfigModels.Root.model_validate(
+            dict(self.model_extra or {}),
+        )
+        return root.Infra
 
 
 config: FlextInfraConfig = FlextInfraConfig.fetch_global()
