@@ -3,6 +3,9 @@
 Flags imports of canonical short aliases (c/m/p/t/u) from ``flext_core`` inside
 projects that re-export those aliases locally. Auto-fix rewrites them to the
 project's own facade modules.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

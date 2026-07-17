@@ -26,6 +26,9 @@ subpackage so the root ``pyproject.toml`` can scope
 ``reportPrivateUsage = "none"`` to this intentional monkeypatch surface —
 rope 1.14 exposes no public API to register patched-AST handlers, and the
 FLEXT typing law forbids the getattr-dispatch/Any workaround.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

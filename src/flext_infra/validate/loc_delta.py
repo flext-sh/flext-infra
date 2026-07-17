@@ -3,6 +3,9 @@
 A commit whose subject is labelled ``refactor``/``deduplicate``/``cleanup``/
 ``yagni``/``simplify`` MUST show ``insertions - deletions <= 0``. Non-labelled
 commits (feat/fix/docs/…) are exempt — they may legitimately add lines.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

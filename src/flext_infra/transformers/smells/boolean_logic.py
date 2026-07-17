@@ -4,6 +4,9 @@ Rewrites long chains of ``or``/``and`` into ``any()``/``all()`` when every
 operand is a simple, side-effect-free expression. The transformation is
 provably equivalent and preserves short-circuit semantics for the rewritten
 chain itself (``any``/``all`` short-circuit on iterables).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

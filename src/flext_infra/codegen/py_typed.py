@@ -36,8 +36,8 @@ class FlextInfraCodegenPyTyped(s[bool]):
         Args:
             check_only: If True, only report changes without writing.
 
-        Returns the number of marker files created or removed.
-
+        Returns:
+            Number of marker files created or removed.
         """
         dirs_to_scan: t.SequenceOf[Path] = [
             self.workspace_root / pattern.split("/*")[0]

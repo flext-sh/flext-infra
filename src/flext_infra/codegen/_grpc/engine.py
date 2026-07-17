@@ -1,4 +1,8 @@
-"""Compile canonical Python gRPC modules with ``grpc_tools.protoc``."""
+"""Compile canonical Python gRPC modules with ``grpc_tools.protoc``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

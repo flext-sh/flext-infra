@@ -2,6 +2,9 @@
 
 Replaces the legacy ``ban-direct-*.yml`` ast-grep rules with the
 OWNERS-driven ``FlextInfraValidateTierWhitelist`` rope detector.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

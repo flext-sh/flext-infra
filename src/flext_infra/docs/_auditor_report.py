@@ -1,4 +1,8 @@
-"""Report construction helpers for FlextInfraDocAuditor."""
+"""Report construction helpers for FlextInfraDocAuditor.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

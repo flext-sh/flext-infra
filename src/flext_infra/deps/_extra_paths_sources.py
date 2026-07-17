@@ -1,4 +1,8 @@
-"""Resolve uv source dependencies for FlextInfraExtraPathsManager."""
+"""Resolve uv source dependencies for FlextInfraExtraPathsManager.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

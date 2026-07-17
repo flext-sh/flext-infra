@@ -2,6 +2,9 @@
 
 Detects and fixes circular self-imports in internal modules by redirecting
 aliases to their correct sources (core, submodule, or TYPE_CHECKING block).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

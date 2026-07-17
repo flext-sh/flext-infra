@@ -1,6 +1,9 @@
 """Violation analysis and helper classification for refactor reports.
 
 Uses rope-based analysis and regex source scanning instead of CST visitors.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

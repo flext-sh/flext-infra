@@ -1,4 +1,8 @@
-"""Class nesting transformer — rope-based implementation."""
+"""Class nesting transformer — rope-based implementation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

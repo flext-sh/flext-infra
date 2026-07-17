@@ -1,4 +1,8 @@
-"""Refactor orchestration scope mixin (project/workspace + safety flow)."""
+"""Refactor orchestration scope mixin (project/workspace + safety flow).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

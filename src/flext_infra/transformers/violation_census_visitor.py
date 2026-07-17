@@ -2,6 +2,9 @@
 
 Replaces CST visitor with regex-based detection for governance violations
 (Any usage, bare object, type:ignore, cast, Literal, StrEnum, etc.).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

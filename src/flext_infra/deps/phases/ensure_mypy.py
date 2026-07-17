@@ -1,4 +1,8 @@
-"""Phase: Ensure standard mypy configuration with pydantic plugin across all projects."""
+"""Phase: Ensure standard mypy configuration with pydantic plugin across all projects.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

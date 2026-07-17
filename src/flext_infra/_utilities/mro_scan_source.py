@@ -1,4 +1,8 @@
-"""Bootstrap-safe AST source scanner for MRO migration candidates."""
+"""Bootstrap-safe AST source scanner for MRO migration candidates.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

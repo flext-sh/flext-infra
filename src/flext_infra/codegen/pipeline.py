@@ -1,4 +1,8 @@
-"""Direct codegen pipeline command service."""
+"""Direct codegen pipeline command service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -82,6 +86,10 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         builds the output payload from the action's return value. Any
         exception is captured and returned as ``r.fail_op(stage_id, exc)``
         so the DAG runner can fail-fast — never silenced, never demoted.
+
+        Returns:
+            ``r.ok`` with the stage result on success, or ``r.fail`` carrying
+            the captured exception and stage identifier.
         """
         return r[p.Cli.PipelineStageResult].create_from_callable(
             lambda: cli.stage_result(stage_id, output=emit(action())),

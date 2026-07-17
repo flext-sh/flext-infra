@@ -1,4 +1,8 @@
-"""MRO redeclaration remover transformer — rope-based implementation."""
+"""MRO redeclaration remover transformer — rope-based implementation.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

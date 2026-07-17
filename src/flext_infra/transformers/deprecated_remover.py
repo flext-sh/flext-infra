@@ -2,6 +2,9 @@
 
 Removes classes marked as deprecated by name pattern or deprecation
 warning usage in __init__, using regex analysis on source text.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

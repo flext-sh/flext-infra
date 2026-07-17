@@ -13,6 +13,9 @@ Two responsibilities:
 
 ``execute`` is a drift gate: the live ``.pre-commit-config.yaml`` MUST equal the
 rendered canonical template.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

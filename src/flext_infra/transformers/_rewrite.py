@@ -3,6 +3,9 @@
 Provides a small, dependency-free helper layer for transformers that need to
 record byte-range replacements in a source string and apply them safely from
 bottom-right to top-left so earlier offsets remain valid.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

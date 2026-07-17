@@ -5,6 +5,9 @@ function-parameters, return-statements, nested-control-flow, boolean-logic)
 is reported per project and ALSO emitted as a ``FlextMroViolation`` warning on
 every run — warnings fire for all findings, always, regardless of gate mode.
 ``c.Infra.SMELLS_GATE_MODE`` only decides pass/fail: WARN is report-only.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -49,6 +52,10 @@ class FlextInfraSmellsGate(FlextInfraGate):
         Runs the same scan as ``check()``, then attempts a registered fixer
         for every issue whose code has ``auto=true`` in flext-core metadata.
         Only rewrites files when a fixer actually changes the source.
+
+        Returns:
+            Gate execution result containing the generated ``GateResult`` and
+            all issues found during the scan.
         """
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
@@ -197,6 +204,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
         Pure function over a literal qlty SARIF payload (unit-testable, no
         subprocess) — same strategy as ``loc_cap._files_over_cap``.
+
+        Returns:
+            Tuple of ``Issue`` objects whose URI belongs to ``project_name``.
         """
         parsed = u.Cli.json_parse(sarif_json or "{}")
         data = u.Cli.json_as_mapping(parsed.unwrap_or(None))

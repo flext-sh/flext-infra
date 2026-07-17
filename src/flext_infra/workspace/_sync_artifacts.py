@@ -1,4 +1,8 @@
-"""Workspace artifact sync steps — extracted concern of FlextInfraSyncService."""
+"""Workspace artifact sync steps — extracted concern of FlextInfraSyncService.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -161,6 +165,11 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
 
         The canonical ``base.mk`` now lives only in ``flext-infra``; other
         projects include it via the generated Makefile bootstrap.
+
+        Returns:
+            ``r.ok(True)`` when the file was written or updated,
+            ``r.ok(False)`` when no change was needed, or ``r.fail`` on
+            generation or write errors.
         """
         _ = canonical_root
         generator = self._get_generator()

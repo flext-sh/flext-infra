@@ -10,7 +10,6 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core import u
 from flext_infra import m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 

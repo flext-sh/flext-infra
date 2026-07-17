@@ -1,4 +1,8 @@
-"""Per-project text-file migration (base.mk, .gitignore, Makefile) — extracted."""
+"""Per-project text-file migration (base.mk, .gitignore, Makefile) — extracted.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -45,6 +49,10 @@ class FlextInfraProjectMigratorArtifactsMixin:
 
         The canonical base.mk now lives only in flext-infra. Other projects
         must not keep a local copy.
+
+        Returns:
+            ``r.ok`` with a human-readable action description, or ``r.fail``
+            when generation, read, or write fails.
         """
         target = project_root / c.Infra.BASE_MK
         is_canonical = self._is_flext_infra_root(project_root)

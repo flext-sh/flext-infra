@@ -1,4 +1,8 @@
-"""Rope-semantic parent resolution for the lazy-init planner."""
+"""Rope-semantic parent resolution for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -28,6 +32,10 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         imports. Both class-defining and thin-facade modules go through
         the same path; the recursion handles ``constants.py`` ->
         ``_constants/base.py`` -> ... chains until external packages surface.
+
+        Returns:
+            Ordered tuple of upstream package names the constants module
+            depends on, with duplicates removed.
         """
         seen = visited if visited is not None else set()
         seen.add(str(module_path.resolve()))
@@ -83,6 +91,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         paths -- for ``from pkg.sub import FooBar`` the value is
         ``pkg.sub.FooBar``. Drop the last segment when it starts with an
         uppercase letter (class convention).
+
+        Returns:
+            Module path with any trailing class segment removed.
         """
         if "." not in target:
             return target

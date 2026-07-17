@@ -4,6 +4,9 @@
 livereload). It is intentionally single-scope: a dev server binds one
 address, so when several governed scopes carry an ``mkdocs.yml`` the
 caller narrows the selection with ``--project``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

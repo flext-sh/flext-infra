@@ -1,4 +1,8 @@
-"""Safety management for refactor operations: backup, validate, rollback."""
+"""Safety management for refactor operations: backup, validate, rollback.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -66,6 +70,10 @@ class FlextInfraRefactorSafetyManager:
         The current safety flow relies on copy-on-write backups, so saving
         checkpoint state is intentionally a no-op hook used by integrations
         and tests to observe lifecycle sequencing.
+
+        Returns:
+            ``r.ok(True)`` since checkpoint state is preserved by the backup
+            mechanism itself.
         """
         _ = workspace_root, status, checkpoint_ref, processed_targets
         return r[bool].ok(True)

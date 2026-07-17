@@ -1,4 +1,8 @@
-"""Static namespace-rule quality gate (NS-000..003)."""
+"""Static namespace-rule quality gate (NS-000..003).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

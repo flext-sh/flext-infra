@@ -3,6 +3,9 @@
 libcst-based transformer implementing ENFORCE-080: when a project re-exports a
 canonical alias locally (c/m/p/t/u), consumers inside that project must import
 it from the local facade instead of from flext_core.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -193,7 +196,7 @@ class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
 
     @override
     def leave_ImportFrom(
-        self, original_node: cst.ImportFrom, p, updated_node: cst.ImportFrom
+        self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
     ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
         _ = original_node
         module = _CstImportHelpers.dotted_name(updated_node.module)

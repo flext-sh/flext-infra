@@ -2,6 +2,9 @@
 
 Imports every ``flext_*`` module in the selected project and runs
 ``FlextUtilitiesEnforcement.check()`` against every locally-defined class.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

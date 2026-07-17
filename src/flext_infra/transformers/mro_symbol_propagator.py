@@ -1,4 +1,8 @@
-"""Symbol propagation transformer for MRO-migrated imports — rope-based."""
+"""Symbol propagation transformer for MRO-migrated imports — rope-based.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

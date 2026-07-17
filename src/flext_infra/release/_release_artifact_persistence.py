@@ -1,4 +1,8 @@
-"""Atomic persistence for complete validated release artifact sets."""
+"""Atomic persistence for complete validated release artifact sets.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

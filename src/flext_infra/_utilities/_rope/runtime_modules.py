@@ -1,4 +1,8 @@
-"""Construct Rope projects, modules, and imports behind typed protocols."""
+"""Construct Rope projects, modules, and imports behind typed protocols.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,8 @@
-"""Constants-consolidation steps for FlextInfraCodegenConsolidator."""
+"""Constants-consolidation steps for FlextInfraCodegenConsolidator.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -28,6 +32,10 @@ class FlextInfraCodegenConsolidatorStepsMixin:
 
         Missing file → empty map (nothing to consolidate); an existing-but-unreadable
         file is surfaced as a failure (never silently treated as empty).
+
+        Returns:
+            ``r.ok`` mapping from raw literal value to canonical constant reference,
+            or ``r.fail`` when the file exists but cannot be read.
         """
         if not constants_file.is_file():
             return r[t.StrMapping].ok({})

@@ -1,4 +1,8 @@
-"""Per-project pyproject.toml flext-core dependency migration — extracted concern."""
+"""Per-project pyproject.toml flext-core dependency migration — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

@@ -157,6 +157,9 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         """Walk up from ``file`` to the first dir with .git+Makefile+pyproject.
 
         Raises RuntimeError when no such workspace root exists (fail-loud).
+
+        Returns:
+            Resolved workspace root directory containing the marker files.
         """
         current = Path(file).resolve()
         if current.is_file():

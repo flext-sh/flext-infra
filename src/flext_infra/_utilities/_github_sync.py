@@ -1,4 +1,8 @@
-"""GitHub workflow sync helpers: template render + per-project ci.yml."""
+"""GitHub workflow sync helpers: template render + per-project ci.yml.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

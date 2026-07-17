@@ -1,4 +1,8 @@
-"""Census parent-package facade-alias inventory + collision detection."""
+"""Census parent-package facade-alias inventory + collision detection.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -33,10 +37,6 @@ class FlextInfraRefactorCensusInventoryMixin:
         package and walks dynamic facade aliases at depth 1
         (top-level facade attributes such as ``flext_core.c.Result``).
 
-        Returns ``{symbol_name: (parent_path, ...)}`` so a consumer-defined
-        symbol with the same name can be cross-referenced against every
-        parent that declares it.
-
         Only ``type`` instances (classes) are inventoried; method names
         inherited from ABCs (``clear``, ``get``, …) are skipped — every
         mapping class shares them, so they are not collision candidates.
@@ -47,6 +47,11 @@ class FlextInfraRefactorCensusInventoryMixin:
         Read-only runtime introspection — NO Rope, NO source-tree walking,
         NO subprocess. Skips packages that fail to import (sub-repo
         environments may not have every flext-* installed).
+
+        Returns:
+            Mapping from each top-level symbol name to the tuple of parent
+            facade paths that expose it (for example
+            ``flext_core.c.Result``).
         """
         projects_result = u.Infra.projects(workspace_root)
         if projects_result.failure:

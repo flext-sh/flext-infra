@@ -12,6 +12,9 @@ Conservative AST rewrites:
 - ``__fields__`` / ``__field_defaults__`` → ``model_fields`` / ``model_config``.
 
 The transformer only rewrites when the result is unambiguous.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

@@ -1,4 +1,8 @@
-"""Immutable release artifact construction from committed source snapshots."""
+"""Immutable release artifact construction from committed source snapshots.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,8 @@
-"""Phase: Ensure standard pydantic-mypy configuration for strict model typing."""
+"""Phase: Ensure standard pydantic-mypy configuration for strict model typing.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

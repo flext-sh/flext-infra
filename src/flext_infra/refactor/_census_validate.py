@@ -1,4 +1,8 @@
-"""Census dry-run preview validation of removal candidates — extracted concern."""
+"""Census dry-run preview validation of removal candidates — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -51,6 +55,10 @@ class FlextInfraRefactorCensusValidateMixin:
         Gate rejections are surfaced as explicit ``preview_rejected``
         violations so the census still completes with actionable output
         instead of aborting on the first rejected candidate.
+
+        Returns:
+            Tuple of project reports with filtered removal candidates and
+            any ``preview_rejected`` violations appended.
         """
         validated_reports: list[p.Infra.Census.ProjectReport] = []
         # Preview writes are restored before the next candidate, so one shared

@@ -1,4 +1,8 @@
-"""Helper-function classification — extracted concern of FlextInfraRefactorViolationAnalyzer."""
+"""Helper-function classification — extracted concern of FlextInfraRefactorViolationAnalyzer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

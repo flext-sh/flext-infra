@@ -2,6 +2,9 @@
 
 Removes forbidden imports, replaces symbol usages with runtime alias paths,
 and adds missing runtime alias imports to the module header.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

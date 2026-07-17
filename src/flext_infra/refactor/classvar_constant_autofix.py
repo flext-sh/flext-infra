@@ -103,7 +103,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
     ) -> dict[str, object]:
         """Move the constant and rewrite all internal references.
 
-        Returns a summary dict with ``touched_files`` and ``constant_module``.
+        Returns:
+            Summary dict with ``touched_files`` and ``constant_module`` keys.
         """
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
@@ -564,6 +565,10 @@ def _ensure_constants_import(
     Computes a relative import from ``class_module`` to ``constants_module``.
     The import binds the module itself so consumers write
     ``_constants.NAME``.
+
+    Returns:
+        Source text with the relative _constants import added, or the
+        original source when the import is already present or unnecessary.
     """
     if constants_module == class_module:
         return source
@@ -684,6 +689,10 @@ def _rewrite_class_access_in_source(
     Rope's occurrence finder binds ``ClassName.NAME`` and ``cls.NAME`` but not
     ``self.__class__.NAME``.  We perform a fast textual pass over the source
     (after the declaration was removed) and rewrite the known patterns.
+
+    Returns:
+        Source text with class-qualified constant accesses rewritten to use
+        the _constants alias.
     """
     patterns = (
         f"{class_name}.{constant_name}",

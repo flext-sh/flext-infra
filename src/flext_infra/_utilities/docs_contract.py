@@ -1,4 +1,8 @@
-"""Reusable docs contract helpers exposed through ``u.Infra``."""
+"""Reusable docs contract helpers exposed through ``u.Infra``.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

@@ -4,6 +4,9 @@ Enforces silent-failure detection across every Python project the workspace
 discovers. Per-project opt-out is expressed via the absence of Python
 sources (``iter_python_files`` returning empty), not via a hand-curated
 project-name allowlist.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

@@ -1,4 +1,8 @@
-"""Release publish phase: notes, changelog, tag, optional push — extracted concern."""
+"""Release publish phase: notes, changelog, tag, optional push — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

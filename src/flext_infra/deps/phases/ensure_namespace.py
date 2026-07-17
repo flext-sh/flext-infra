@@ -1,4 +1,8 @@
-"""Phase: Ensure namespace discovery is reflected across project tooling tables."""
+"""Phase: Ensure namespace discovery is reflected across project tooling tables.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

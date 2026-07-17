@@ -1,4 +1,8 @@
-"""Isolated command execution and strict record construction for releases."""
+"""Isolated command execution and strict record construction for releases.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

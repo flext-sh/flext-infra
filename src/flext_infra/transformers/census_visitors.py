@@ -2,6 +2,9 @@
 
 Replaces CST visitors with rope's get_module_imports for import discovery
 and regex-based attribute access detection for usage collection.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

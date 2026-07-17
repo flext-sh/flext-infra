@@ -8,6 +8,9 @@ this class is the thin, data-driven scanner. For every project except
 in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
 ``flext-infra``, direct ``json.``/``yaml.``/``csv.`` use, top-level ``print(``/
 ``sys.exit(``, and concrete ``FlextCli<X>`` imports outside src extension files.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

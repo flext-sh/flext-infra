@@ -1,4 +1,8 @@
-"""Enforcement phase methods for namespace enforcer."""
+"""Enforcement phase methods for namespace enforcer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

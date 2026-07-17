@@ -1,4 +1,8 @@
-"""Validate silent failure sentinels across governed Python projects."""
+"""Validate silent failure sentinels across governed Python projects.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -79,6 +83,10 @@ class FlextInfraSilentFailureValidator(s[bool]):
 
         Failure details honor ``--output-format`` (json emits the full report
         model) and always carry ALL findings — no display truncation.
+
+        Returns:
+            ``r.ok(True)`` when no silent-failure patterns are found, or
+            ``r.fail`` with the full report payload.
         """
         report_result = self.build_report()
         if report_result.failure:

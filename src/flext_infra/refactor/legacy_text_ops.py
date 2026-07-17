@@ -5,6 +5,9 @@ Pure rope + ``c.Infra.*_RE`` constants — no direct ``import ast`` or
 ``parse_string_module`` + ``walk_ast_nodes`` to locate passthrough
 function definitions; pattern matching of node shapes uses
 ``node_kind`` and plain attribute access.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

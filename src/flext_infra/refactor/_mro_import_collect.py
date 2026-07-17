@@ -1,4 +1,8 @@
-"""MRO import-rewrite rope file-ops: occurrence collection + protected writes."""
+"""MRO import-rewrite rope file-ops: occurrence collection + protected writes.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

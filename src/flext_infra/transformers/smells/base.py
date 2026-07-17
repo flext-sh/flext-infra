@@ -3,6 +3,9 @@
 Every fixer is AST-based, opt-in, and records every change it makes.
 Fixers never silently change semantics: they only rewrite patterns that
 are provably equivalent under FLEXT law.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

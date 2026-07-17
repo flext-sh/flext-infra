@@ -1,4 +1,8 @@
-"""Census duplicate-grouping, object/rule filters, and runtime-alias helpers."""
+"""Census duplicate-grouping, object/rule filters, and runtime-alias helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -65,6 +69,9 @@ class FlextInfraRefactorCensusFiltersMixin:
         omitted it is rebuilt from ``kind_names`` (kept for back-compat). Hot
         callers must pass the precomputed set to avoid per-object frozenset
         construction.
+
+        Returns:
+            True when the object matches the selected kinds and tier families.
         """
         kinds = (
             selected_kinds
@@ -91,6 +98,9 @@ class FlextInfraRefactorCensusFiltersMixin:
 
         ``selected_rules`` is a precomputed frozenset of ``rule_names``;
         callers in hot loops MUST pass it to avoid per-call set construction.
+
+        Returns:
+            True when ``rule`` is in the selected rule set (or no filter set).
         """
         if selected_rules is None:
             return rule_names is None or rule in frozenset(rule_names)

@@ -1,4 +1,8 @@
-"""Apply, backup, and pytest flows for protected edit workflows."""
+"""Apply, backup, and pytest flows for protected edit workflows.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

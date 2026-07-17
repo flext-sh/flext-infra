@@ -1,4 +1,8 @@
-"""Codegen pipeline stage handlers — extracted concern of FlextInfraCodegenPipeline."""
+"""Codegen pipeline stage handlers — extracted concern of FlextInfraCodegenPipeline.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -41,6 +45,10 @@ class FlextInfraCodegenPipelineStagesMixin:
         Failure to enumerate projects propagates as a stage failure — no
         silent empty-tuple fallback, since downstream stages depend on the
         actual workspace inventory.
+
+        Returns:
+            Pipeline stage result wrapping the discovered project tuple, or
+            ``r.fail`` when project discovery fails.
         """
 
         def _action() -> tuple[p.Infra.ProjectInfo, ...]:

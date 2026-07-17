@@ -15,6 +15,9 @@ constants — no ``ast`` parsing or tree walking is required:
 - **Canonical ``t`` import injection**: adds ``from <pkg> import t``
   after the last import line when ``t.`` is used but the import is
   missing.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations

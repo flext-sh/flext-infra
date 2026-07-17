@@ -125,6 +125,9 @@ class FlextInfraNamespaceRules:
         validated loosely: every public class must use the right prefix, but
         multiple classes, helper functions, and module-level assignments are
         permitted.
+
+        Returns:
+            Sequence of formatted violation messages for this rule.
         """
         outer_classes = self._outer_classes(tree)
         public_classes = [

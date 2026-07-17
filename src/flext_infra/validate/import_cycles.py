@@ -96,6 +96,11 @@ class FlextInfraValidateImportCycles(s[bool]):
         Falls back to a single graph over ``workspace_root`` when no governed
         project roots are discoverable, preserving behaviour for bare synthetic
         trees used by unit tests.
+
+        Returns:
+            List of ``(label, graph)`` pairs, where ``label`` is the project
+            name (or empty string for the fallback workspace root) and
+            ``graph`` maps module names to their imported module sets.
         """
         roots = u.Infra.discover_project_roots(workspace_root)
         if not roots:
@@ -127,6 +132,10 @@ class FlextInfraValidateImportCycles(s[bool]):
         ``r.ok(name)`` when rope identifies the module or its on-disk
         path can be projected onto a dotted name. ``r.fail(reason)`` for
         rope runtime/type errors or paths that do not yield a name.
+
+        Returns:
+            ``r.ok`` with the dotted module name, or ``r.fail`` when the name
+            cannot be resolved.
         """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
@@ -155,6 +164,9 @@ class FlextInfraValidateImportCycles(s[bool]):
 
         Rope's parser already excludes ``if TYPE_CHECKING:`` blocks and
         resolves relative imports to absolute module names.
+
+        Returns:
+            Sequence of absolute imported module names.
         """
         return u.Infra.imported_module_paths(module_imports)
 

@@ -1,4 +1,8 @@
-"""Generate canonical Python gRPC modules from package-owned proto schemas."""
+"""Generate canonical Python gRPC modules from package-owned proto schemas.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 

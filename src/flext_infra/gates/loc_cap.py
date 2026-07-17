@@ -3,6 +3,9 @@
 Enforces the per-module logical-LOC ceiling using tokei's code-line count.
 Per-class / per-method / per-function caps require AST and are out of scope
 for this tool-driven gate (tokei reports at file granularity only).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -47,6 +50,10 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
         Pure function (no subprocess) so the cap logic is unit-testable against
         a literal tokei fixture.
+
+        Returns:
+            Tuple of ``Issue`` objects for every module whose code LOC exceeds
+            the supplied cap.
         """
         parsed = u.Cli.json_parse(tokei_json or "{}")
         empty: t.JsonValue = {}

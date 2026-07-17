@@ -144,6 +144,12 @@ Infra:
           per-file-ignores:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
+            # mro-wkii.17.26.25 (agent:kimi): production package root uses PEP 562
+            # lazy export machinery mandated by U20; RUF067 does not apply.
+            "**/__init__.py": [RUF067]
+            # mro-wkii.17.26.25 (agent:kimi): rope internals patch legitimately
+            # accesses private rope APIs; SLF001 does not apply.
+            "**/_utilities/rope_patch/pep695_patch.py": [SLF001]
           #  "**/*dispatcher*": []
           #  "**/*docs*": [INP001, S404, S603, T201]
           #  "**/*exceptions*": [A001, S105, SLF001]
