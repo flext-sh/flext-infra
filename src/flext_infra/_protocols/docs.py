@@ -14,7 +14,7 @@ class FlextInfraProtocolsDocs(Protocol):
     """Documentation model protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
-    class DocsRepositoryRef(cli_p.Model, Protocol):
+    class DocsRepositoryRef(cli_p.BaseModel, Protocol):
         """Repository catalog fields consumed by documentation."""
 
         @property
@@ -30,7 +30,7 @@ class FlextInfraProtocolsDocs(Protocol):
         def provider(self) -> str: ...
 
     @runtime_checkable
-    class DocsProviderSpec(cli_p.Model, Protocol):
+    class DocsProviderSpec(cli_p.BaseModel, Protocol):
         """Git provider fields consumed by documentation."""
 
         @property
@@ -46,7 +46,7 @@ class FlextInfraProtocolsDocs(Protocol):
         def branch(self) -> str: ...
 
     @runtime_checkable
-    class DocsExportBinding(cli_p.Model, Protocol):
+    class DocsExportBinding(cli_p.BaseModel, Protocol):
         """Public export binding fields."""
 
         @property
@@ -56,7 +56,7 @@ class FlextInfraProtocolsDocs(Protocol):
         def module_name(self) -> str: ...
 
     @runtime_checkable
-    class DocsPublicContract(cli_p.Model, Protocol):
+    class DocsPublicContract(cli_p.BaseModel, Protocol):
         """Exact source objects and derived public documentation facts."""
 
         @property
