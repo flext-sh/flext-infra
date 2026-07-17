@@ -15,6 +15,7 @@ from typing import Protocol, runtime_checkable
 from flext_cli import p
 from flext_infra._protocols.base import FlextInfraProtocolsBase
 from flext_infra._protocols.check import FlextInfraProtocolsCheck
+from flext_infra._protocols.deps import FlextInfraProtocolsDeps
 from flext_infra._protocols.docs import FlextInfraProtocolsDocs
 from flext_infra._protocols.rope import FlextInfraProtocolsRope
 from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
@@ -31,6 +32,7 @@ class FlextInfraProtocols(p):
     @runtime_checkable
     class Infra(
         FlextInfraProtocolsCheck,
+        FlextInfraProtocolsDeps,
         FlextInfraProtocolsDocs,
         FlextInfraProtocolsRopeRuntime,
         FlextInfraProtocolsRope,

@@ -1,3 +1,5 @@
+"""Test extra paths uv sources behavior."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -11,9 +13,12 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraExtraPathsUvSources:
+    """Test flext infra extra paths uv sources behavior."""
+
     def test_pyrefly_search_paths_include_uv_source_path_dependencies_at_root(
         self, tmp_path: Path
     ) -> None:
+        """Verify pyrefly search paths include uv source path dependencies at root."""
         consumer = tmp_path / "ai-hub"
         consumer.mkdir()
         (consumer / ".git").mkdir()

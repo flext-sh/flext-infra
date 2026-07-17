@@ -10,7 +10,6 @@ _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
-    "FlextInfraEnforcementPytestPlugin",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",

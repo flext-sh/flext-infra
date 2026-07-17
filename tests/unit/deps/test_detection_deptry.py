@@ -1,3 +1,5 @@
+"""Test detection deptry behavior."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,7 +16,10 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraDepsDetectionDeptry:
+    """Test flext infra deps detection deptry behavior."""
+
     def test_success(self, tmp_path: Path) -> None:
+        """Verify dependency project discovery succeeds."""
         project = u.Tests.create_project_info(tmp_path / "test-project")
         project.path.mkdir()
         (project.path / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -28,11 +33,13 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(result.value, eq=[project.path])
 
     def test_failure(self, tmp_path: Path) -> None:
+        """Verify project selection failures propagate."""
         service = u.Tests.create_deptry_service(selection_error="selector failed")
 
         tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(self, tmp_path: Path) -> None:
+        """Verify filters without pyproject."""
         project = u.Tests.create_project_info(
             tmp_path / "empty-project", name="empty-project"
         )
@@ -47,6 +54,7 @@ class TestsFlextInfraDepsDetectionDeptry:
     def test_success_with_issues(
         self, tmp_path: Path, deptry_report_payload: t.JsonPayload
     ) -> None:
+        """Verify success with issues."""
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
@@ -69,6 +77,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(len(issues), eq=1)
 
     def test_no_config_file(self, tmp_path: Path) -> None:
+        """Verify no config file."""
         service = u.Tests.create_deptry_service()
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
@@ -81,6 +90,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         tm.that(result.value, eq=([], 0))
 
     def test_runner_failure(self, tmp_path: Path) -> None:
+        """Verify runner failure."""
         service = u.Tests.create_deptry_service(run_error="runner failed")
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
@@ -119,6 +129,7 @@ class TestsFlextInfraDepsDetectionDeptry:
             tm.that(result.failure, eq=True)
 
     def test_with_extend_exclude_and_cleanup(self, tmp_path: Path) -> None:
+        """Verify with extend exclude and cleanup."""
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )

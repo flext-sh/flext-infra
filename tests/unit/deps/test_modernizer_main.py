@@ -20,12 +20,14 @@ class TestsFlextInfraDepsModernizerMain:
     def test_initialization_uses_explicit_workspace(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify initialization uses explicit workspace."""
         modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
     def test_process_file_returns_invalid_toml(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify process file returns invalid toml."""
         pyproject = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
         changes = FlextInfraPyprojectModernizer(
@@ -34,6 +36,7 @@ class TestsFlextInfraDepsModernizerMain:
         tm.that(changes, has="invalid TOML")
 
     def test_run_apply_updates_root_pyproject(self, modernizer_workspace: Path) -> None:
+        """Verify run apply updates root pyproject."""
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace,
             apply_changes=True,
@@ -52,6 +55,7 @@ class TestsFlextInfraDepsModernizerMain:
     def test_run_rejects_unknown_selected_project(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify run rejects unknown selected project."""
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace, selected_projects=["missing-project"]
         )
@@ -60,6 +64,7 @@ class TestsFlextInfraDepsModernizerMain:
     def test_cli_reports_pending_changes_in_audit_mode(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify cli reports pending changes in audit mode."""
         tm.that(
             main([
                 "deps",

@@ -42,6 +42,16 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
         tm.that(rendered, lacks="rm -rf .venv")
 
+    def test_render_all_builds_with_canonical_uv_command(self) -> None:
+        """Build distributions without unrelated codegen or Poetry commands."""
+        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
+
+        tm.that(
+            rendered, has='mise exec -- uv build --project "$(CURDIR)" --no-sources &&'
+        )
+        tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
+        tm.that(rendered, lacks="$(POETRY) build")
+
     def test_render_all_with_config_override(self) -> None:
         """Render validated project-specific settings."""
         settings = m.Infra.BaseMkConfig(

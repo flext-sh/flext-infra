@@ -118,6 +118,15 @@ PYRIGHT_LOG := .pyright/daemon.log
 export PROJECT_NAME PYTHON_VERSION
 export FLEXT_ROOT := $(WORKSPACE_ROOT)
 
+# === MYPY RESOURCE LIMIT ===
+# mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
+MYPY_MEMORY_LIMIT_MB ?= 6144
+MYPY_TIMEOUT_SECONDS ?= 600
+MYPY_BOUNDED = timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --
+VALIDATE_MYPY_LIMITS = case "$(MYPY_MEMORY_LIMIT_MB)" in ""|*[!0-9]*) echo "ERROR: MYPY_MEMORY_LIMIT_MB must be a positive integer"; exit 2;; esac; [ "$(MYPY_MEMORY_LIMIT_MB)" -gt 0 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be greater than zero"; exit 2; }; [ "$(MYPY_MEMORY_LIMIT_MB)" -le 6144 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144"; exit 2; }; case "$(MYPY_TIMEOUT_SECONDS)" in ""|*[!0-9]*) echo "ERROR: MYPY_TIMEOUT_SECONDS must be a positive integer"; exit 2;; esac; [ "$(MYPY_TIMEOUT_SECONDS)" -gt 0 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be greater than zero"; exit 2; }; [ "$(MYPY_TIMEOUT_SECONDS)" -le 600 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be less than or equal to 600"; exit 2; }; command -v timeout >/dev/null 2>&1 || { echo "ERROR: required executable not found: timeout"; exit 2; }; command -v prlimit >/dev/null 2>&1 || { echo "ERROR: required executable not found: prlimit"; exit 2; }
+REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signal=$$(( $$code - 128 )); fi; echo "ERROR: bounded Mypy execution failed: memory_limit=$(MYPY_MEMORY_LIMIT_MB) MiB; timeout=$(MYPY_TIMEOUT_SECONDS)s; exit=$$code; signal=$$signal" >&2
+export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
+
 # === SILENT MODE ===
 Q := @
 ifdef VERBOSE
@@ -237,6 +246,10 @@ help: ## Show commands
 
 	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
 
+	$(Q)echo "  MYPY_MEMORY_LIMIT_MB=6144  Mypy address-space cap"
+
+	$(Q)echo "  MYPY_TIMEOUT_SECONDS=600  Mypy wall-time cap"
+
 	$(Q)echo "  VALIDATE_GATES=complexity,docstring"
 
 	$(Q)echo "  FILE=src/foo.py             Single file for check/fmt/test"
@@ -290,7 +303,6 @@ help: ## Show commands
 boot: ## Complete setup
 	# mro-j47u: generated boot consumes the sole public extra-paths route.
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
-	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
 	$(Q)uv lock
 	$(Q)uv sync --all-extras --all-groups
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
@@ -307,10 +319,8 @@ boot: ## Complete setup
 	fi
 
 build: ## Build distributable artifacts
-	# mro-wkii.17.26 (codex): package real gRPC modules generated from proto SSOTs.
-	$(Q)$(PROJECT_INFRA_CODEGEN) grpc --workspace "$(CURDIR)" --apply
-	$(Q)build_start=$$(date +%s); \
-	$(POETRY) build; \
+	$(Q)build_start=$$(date +%s) && \
+	mise exec -- uv build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
 check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
@@ -361,7 +371,7 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyrefly check $$_files || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,mypy,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run mypy $$_files || status=$$?;; \
+			*,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) env -u PYTHONPATH -u MYPYPATH $(POETRY) run mypy $$_files || { $(REPORT_MYPY_FAILURE); status=$$code; };; \
 		esac; \
 		exit $$status; \
 	fi; \
@@ -586,22 +596,22 @@ val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1
 
 daemon-start-mypy: ## Start dmypy daemon for this project
 	$(Q)mkdir -p .dmypy
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status >/dev/null 2>&1; then \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status >/dev/null 2>&1; then \
 		echo "dmypy already running for $(PROJECT_NAME) at $(DMPY_SOCKET)"; \
 	else \
-		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start -- --config-file "$(WORKSPACE_ROOT)/pyproject.toml"; \
+		$(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start --timeout "$(MYPY_TIMEOUT_SECONDS)" -- --config-file "$(WORKSPACE_ROOT)/pyproject.toml" || { $(REPORT_MYPY_FAILURE); exit $$code; }; \
 	fi
 
 daemon-stop-mypy: ## Stop dmypy daemon for this project
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
-		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop; \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
+		$(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop || { $(REPORT_MYPY_FAILURE); exit $$code; }; \
 	else \
 		echo "dmypy daemon is not running"; \
 	fi
 	$(Q)rm -f "$(DMPY_SOCKET)"
 
 daemon-status-mypy: ## Show dmypy daemon status for this project
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
 		: ; \
 	else \
 		echo "dmypy daemon is not running"; \

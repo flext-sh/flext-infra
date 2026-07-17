@@ -215,6 +215,26 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             makefile_text, ["$(WORKSPACE_INFRA_MAINTENANCE) --check-only || exit 1"]
         )
 
+    def test_workspace_sync_regenerates_each_test_facade_explicitly(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep generated test facades synchronized without indexing test classes."""
+        workspace_root = _write_workspace_root(tmp_path)
+
+        result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+        tm.ok(result)
+        makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
+
+        tm.that(makefile_text.count("--module tests --apply || exit 1"), eq=2)
+        _assert_contains_all(
+            makefile_text,
+            [
+                'if [ -d "$(CURDIR)/$$proj/tests" ]; then',
+                'init --workspace "$(CURDIR)/$$proj" --module tests --apply',
+                "for proj in $(ALL_PROJECTS); do",
+            ],
+        )
+
     def test_workspace_validation_is_read_only_and_venv_guard_is_fail_closed(
         self, tmp_path: Path
     ) -> None:

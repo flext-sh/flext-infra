@@ -59,7 +59,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if not limits_data:
             return r[bool].ok(False)
         python_payload = limits_data.get(c.Infra.PYTHON)
-        python_cfg: t.Infra.ContainerDict = (
+        python_cfg: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(python_payload)
             if isinstance(python_payload, Mapping)
             else {}

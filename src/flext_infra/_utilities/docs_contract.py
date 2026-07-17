@@ -16,7 +16,7 @@ class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def docs_workspace_contract(workspace_root: Path) -> t.Infra.ContainerDict:
+    def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
@@ -24,13 +24,13 @@ class FlextInfraUtilitiesDocsContract:
             workspace_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.Infra.ContainerDict = (
+        project_meta: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
             if isinstance(project_meta_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
         project_urls_value = project_meta.get("urls")
-        project_urls: t.Infra.ContainerDict = (
+        project_urls: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
             if isinstance(project_urls_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})

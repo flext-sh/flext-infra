@@ -30,17 +30,23 @@ class TestsFlextInfraDepsModernizerTooling:
     ) -> None:
         """Keep every tracked Python surface visible to all four analyzers."""
         tools = tool_config_document.tools
-        tracked_surfaces = {"examples", "scripts", "src", "tests"}
-        hidden_globs = {"**/examples", "**/examples/**", "**/tests", "**/tests/**"}
+        tracked_surfaces = frozenset({"examples", "scripts", "src", "tests"})
+        hidden_globs = frozenset({
+            "**/examples",
+            "**/examples/**",
+            "**/tests",
+            "**/tests/**",
+        })
 
-        tm.that(set(tools.ruff.src), eq=tracked_surfaces)
+        tm.that(frozenset(tools.ruff.src), eq=tracked_surfaces)
+        tm.that(frozenset(tools.ruff.namespace_packages), eq=frozenset({"tests"}))
         tm.that(tracked_surfaces.isdisjoint(tools.ruff.exclude), eq=True)
         tm.that(tools.mypy.exclude, eq=r"^legado(?:/|$)")
-        tm.that(set(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(frozenset(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
         tm.that(
             hidden_globs.isdisjoint(tools.pyright.path_rules.default_excludes), eq=True
         )
-        tm.that(set(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(frozenset(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
         tm.that(hidden_globs.isdisjoint(tools.pyrefly.project_exclude_globs), eq=True)
 
     def test_formatting_phase_sets_expected_state(
@@ -202,8 +208,12 @@ select = ["E501"]
         tm.that(root, lacks="lint")
         ruff = u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])
         tm.that(
-            set(u.Tests.toml_strings(ruff["exclude"])),
-            eq=set(tool_config_document.tools.ruff.exclude),
+            frozenset(u.Tests.toml_strings(ruff["exclude"])),
+            eq=frozenset(tool_config_document.tools.ruff.exclude),
+        )
+        tm.that(
+            frozenset(u.Tests.toml_strings(ruff["namespace-packages"])),
+            eq=frozenset(tool_config_document.tools.ruff.namespace_packages),
         )
         tm.that(ruff["fix"], eq=tool_config_document.tools.ruff.fix)
         tm.that(ruff["line-length"], eq=tool_config_document.tools.ruff.line_length)
@@ -216,7 +226,10 @@ select = ["E501"]
         tm.that(
             ruff["target-version"], eq=tool_config_document.tools.ruff.target_version
         )
-        tm.that(set(u.Tests.toml_strings(ruff["src"])), eq={"src", "tests"})
+        tm.that(
+            frozenset(u.Tests.toml_strings(ruff["src"])),
+            eq=frozenset(tool_config_document.tools.ruff.src),
+        )
         format_section = u.Tests.toml_mapping(ruff["format"])
         tm.that(
             format_section["docstring-code-format"],
@@ -224,12 +237,16 @@ select = ["E501"]
         )
         lint_section = u.Tests.toml_mapping(ruff["lint"])
         tm.that(
-            set(u.Tests.toml_strings(lint_section["select"])),
-            eq=set(tool_config_document.tools.ruff.lint.select),
+            frozenset(u.Tests.toml_strings(lint_section["select"])),
+            eq=frozenset(tool_config_document.tools.ruff.lint.select),
         )
         tm.that(
-            set(u.Tests.toml_strings(lint_section["ignore"])),
-            eq=set(tool_config_document.tools.ruff.lint.ignore),
+            frozenset(u.Tests.toml_strings(lint_section["ignore"]))
+            == frozenset({
+                *tool_config_document.tools.ruff.lint.ignore,
+                *tool_config_document.tools.ruff.lint.ignored_rule_rationales,
+            }),
+            eq=True,
         )
         isort = u.Tests.toml_mapping(lint_section["isort"])
         tm.that(

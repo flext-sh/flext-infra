@@ -56,7 +56,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
 
     def _classify_project(
-        self, project_dir: Path, *, payload: t.Infra.ContainerDict | None = None
+        self, project_dir: Path, *, payload: t.JsonMapping | None = None
     ) -> p.Result[str]:
         """Classify project kind for pyright/coverage settings selection."""
         classifier = FlextInfraProjectClassifier(project_dir, pyproject_payload=payload)

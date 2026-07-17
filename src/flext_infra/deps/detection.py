@@ -18,21 +18,19 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
-        self.selector: u.Infra | None = None
+        self.selector: p.Infra.ProjectSelector | None = None
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
 
     @override
-    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Read plain."""
         if self.toml is not None:
             return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
-            return r[t.Infra.ContainerDict].fail(
-                plain_result.error or f"failed to read {path}"
-            )
-        return r[t.Infra.ContainerDict].ok(
+            return r[t.JsonMapping].fail(plain_result.error or f"failed to read {path}")
+        return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value)
         )
 
@@ -52,7 +50,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     @staticmethod
     def classify_issues(
-        issues: t.SequenceOf[t.Infra.ContainerDict],
+        issues: t.SequenceOf[t.JsonMapping],
     ) -> m.Infra.DeptryIssueGroups:
         """Classify deptry issues by error code (DEP001-DEP004)."""
         groups = m.Infra.DeptryIssueGroups(dep001=[], dep002=[], dep003=[], dep004=[])
@@ -82,7 +80,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         return groups
 
     def build_project_report(
-        self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
+        self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
     ) -> m.Infra.ProjectDependencyReport:
         """Build a project dependency report from classified deptry issues."""
         classified = self.classify_issues(deptry_issues)

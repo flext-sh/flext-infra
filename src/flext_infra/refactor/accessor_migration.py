@@ -120,8 +120,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         )
 
     @classmethod
-    @override
-    def execute_command(
+    def execute_payload(
         cls, params: m.Infra.AccessorMigrationInput
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""

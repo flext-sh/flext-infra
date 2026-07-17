@@ -1,3 +1,5 @@
+"""Test detection pip check behavior."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -38,6 +40,7 @@ class TestsFlextInfraDepsDetectionPipCheck:
     def test_run_pip_check(
         self,
         tmp_path: Path,
+        *,
         create_pip: bool,
         runner: p.Cli.CommandRunner | None,
         expected_lines: t.StrSequence,

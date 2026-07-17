@@ -18,7 +18,10 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.transformers.smells import smell_fixer_for
+
+# mro-0ftd.3.5: the empty package initializer is not a compatibility export;
+# consume the declaration at its canonical owner after the lazy-init cutover.
+from flext_infra.transformers.smells.base import smell_fixer_for
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 
 if TYPE_CHECKING:

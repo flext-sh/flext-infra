@@ -48,30 +48,9 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         )
 
     @staticmethod
-    def _public_alias_rank(export_name: str) -> int:
-        """Return the semantic c-t-p-m-u rank for one public export."""
-        order = c.Infra.PUBLIC_ROOT_ALIAS_ORDER
-        return order.index(export_name) if export_name in order else len(order)
-
-    @staticmethod
-    def _type_checking_sort_key(
-        mod: str, items: t.StrPairSequence, local_package_root: str | None
-    ) -> t.StrPair:
-        """Return a stable TYPE_CHECKING import sort key."""
-        top = mod.split(".", maxsplit=1)[0]
-        alias_rank = min(
-            (
-                FlextInfraCodegenGenerationTypeCheckingMixin._public_alias_rank(
-                    export_name
-                )
-                for export_name, _attr_name in items
-            ),
-            default=len(c.Infra.PUBLIC_ROOT_ALIAS_ORDER),
-        )
-        if local_package_root == "tests":
-            test_order = {"flext_tests": "0", "flext_infra": "1", "tests": "2"}
-            return (f"{test_order.get(top, '1')}:{alias_rank:03d}", mod.lower())
-        return (f"{alias_rank:03d}", mod.lower())
+    def _type_checking_sort_key(mod: str) -> t.StrPair:
+        """Order absolute imports before relative imports, then by module path."""
+        return ("1" if mod.startswith(".") else "0", mod.lower())
 
     @staticmethod
     def _type_checking_sort_owner(mod: str, items: t.StrPairSequence) -> str:
@@ -123,13 +102,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
         for export_name, attr_name in sorted(
             items,
-            key=lambda item: (
-                FlextInfraCodegenGenerationTypeCheckingMixin._public_alias_rank(
-                    item[0]
-                ),
-                item[1] or item[0],
-                item[0] != (item[1] or item[0]),
-            ),
+            key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
         ):
             if FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
                 mod, export_name, attr_name, root_name
@@ -204,19 +177,22 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
                     FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
                         mod, collapsed[mod]
-                    ),
-                    collapsed[mod],
-                    root_name,
+                    )
                 )
             ),
         )
         bound_exports: t.MutableSequenceOf[str] = []
+        previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
+            is_relative = mod.startswith(".")
+            if previous_is_relative is False and is_relative:
+                lines.append("")
             bound_exports.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
                     mod, collapsed[mod], root_name, lines
                 )
             )
+            previous_is_relative = is_relative
         if bound_exports:
             lines.append("    _ = (")
             lines.extend(

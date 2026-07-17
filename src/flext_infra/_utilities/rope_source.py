@@ -185,7 +185,7 @@ class FlextInfraUtilitiesRopeSource:
         raw_items = u.Cli.json_as_mapping_list(value)
         if not raw_items:
             return []
-        normalized: t.SequenceOf[t.Infra.ContainerDict] = [
+        normalized: t.SequenceOf[t.JsonMapping] = [
             {
                 "module": item.get("module", ""),
                 "symbol_mapping": item.get("symbol_mapping", {}),

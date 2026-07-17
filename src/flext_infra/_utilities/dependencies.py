@@ -217,7 +217,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def declared_dependency_names_from_payload(
-        cls, payload: t.Infra.ContainerDict
+        cls, payload: t.JsonMapping
     ) -> t.StrSequence:
         """Return normalized dependency names across supported dependency tables."""
         names: set[str] = set()
@@ -228,7 +228,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_project_dependency_names(
-        cls, *, payload: t.Infra.ContainerDict, names: set[str]
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append project dependency names."""
         project = payload.get(c.Infra.PROJECT)
@@ -247,7 +247,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_dependency_group_names(
-        cls, *, payload: t.Infra.ContainerDict, names: set[str]
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append dependency group names."""
         dependency_groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
@@ -260,7 +260,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_poetry_dependency_names(
-        cls, *, payload: t.Infra.ContainerDict, names: set[str]
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append poetry dependency names."""
         tool = payload.get(c.Infra.TOOL)
@@ -310,10 +310,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def local_dependency_names_from_payload(
-        cls,
-        payload: t.Infra.ContainerDict,
-        *,
-        workspace_project_names: t.StrSequence = (),
+        cls, payload: t.JsonMapping, *, workspace_project_names: t.StrSequence = ()
     ) -> t.StrSequence:
         """Return workspace-local dependency names from one payload."""
         declared = set(cls.declared_dependency_names_from_payload(payload))
@@ -324,7 +321,7 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def project_dev_groups_from_payload(
-        payload: t.Infra.ContainerDict,
+        payload: t.JsonMapping,
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one normalized payload."""
         project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
@@ -360,7 +357,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def canonical_dev_dependencies_from_payload(
-        cls, payload: t.Infra.ContainerDict
+        cls, payload: t.JsonMapping
     ) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one normalized payload."""
         groups = cls.project_dev_groups_from_payload(payload)

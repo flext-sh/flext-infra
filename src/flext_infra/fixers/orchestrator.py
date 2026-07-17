@@ -58,8 +58,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     ] = True
 
     @classmethod
-    @override
-    def execute_command(cls, params: m.Infra.FixEnforcementCommand) -> p.Result[str]:
+    def execute_payload(cls, params: m.Infra.FixEnforcementCommand) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
         instance = cls(
             workspace_root=params.workspace_path,

@@ -24,7 +24,10 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         init_path = pkg_dir / c.Infra.INIT_PY
         if self.rope_workspace.resource(init_path) is None:
             return frozenset()
-        return frozenset(self.rope_workspace.exports(init_path))
+        source = u.Cli.files_read_text(init_path).unwrap()
+        return frozenset(
+            u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
+        )
 
     def _filter_public_root_exports(
         self,
@@ -34,8 +37,12 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
-        """Keep only direct public facades in one generated root contract."""
-        explicit_exports = self._root_public_contract_exports(context.pkg_dir)
+        """Keep only direct facades in one generated root contract."""
+        explicit_exports = (
+            frozenset()
+            if context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
+            else self._root_public_contract_exports(context.pkg_dir)
+        )
         if explicit_exports:
             missing_owners = explicit_exports.difference(export_names)
             if missing_owners:
@@ -87,6 +94,8 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if not attr_name:
             return name in c.Infra.PUBLIC_ROOT_MODULE_EXPORTS
         if name in c.Infra.ALIAS_NAMES:
+            return True
+        if name in c.Infra.TEST_RUNTIME_ALIAS_TARGETS:
             return True
         # NOTE (multi-agent): mro-i6nq.10 keeps private descendants out of root ABI.
         prefix = f"{root_pkg}."

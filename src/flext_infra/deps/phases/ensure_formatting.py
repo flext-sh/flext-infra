@@ -20,7 +20,6 @@ class FlextInfraEnsureFormattingToolingPhase:
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,
-        m.Infra.Deps.Toml.PhaseConfig,
     ]:
         """Build the canonical formatting phases."""
         codespell_builder = (
@@ -34,17 +33,6 @@ class FlextInfraEnsureFormattingToolingPhase:
                 "ignore-words-list", self._tool_config.tools.codespell.ignore_words_list
             )
         codespell_phase = codespell_builder.build()
-        deptry_phase = (
-            m.Infra.Deps.Toml.PhaseConfig
-            .Builder("deptry")
-            .table("deptry")
-            .list("known_first_party", self._tool_config.tools.deptry.known_first_party)
-            .list(
-                "pep621_dev_dependency_groups",
-                self._tool_config.tools.deptry.pep621_dev_dependency_groups,
-            )
-            .build()
-        )
         hatch_phase = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("hatch")
@@ -77,13 +65,7 @@ class FlextInfraEnsureFormattingToolingPhase:
             .value("explicit_start", self._tool_config.tools.yamlfix.explicit_start)
             .build()
         )
-        return (
-            codespell_phase,
-            deptry_phase,
-            hatch_phase,
-            tomlsort_phase,
-            yamlfix_phase,
-        )
+        return (codespell_phase, hatch_phase, tomlsort_phase, yamlfix_phase)
 
     @staticmethod
     def _remove_codespell_skip_doc(doc: t.Cli.TomlDocument) -> t.StrSequence:

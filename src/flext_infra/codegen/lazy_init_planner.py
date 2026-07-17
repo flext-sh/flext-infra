@@ -86,10 +86,18 @@ class FlextInfraCodegenLazyInitPlanner(
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
+        is_test_child_package = (
+            context.surface == c.Infra.DIR_TESTS
+            and context.current_pkg != c.Infra.DIR_TESTS
+        )
         empty_action: c.Infra.LazyInitAction = (
-            c.Infra.LazyInitAction.REMOVE
-            if context.generated_init
-            else c.Infra.LazyInitAction.SKIP
+            c.Infra.LazyInitAction.WRITE
+            if is_test_child_package
+            else (
+                c.Infra.LazyInitAction.REMOVE
+                if context.generated_init
+                else c.Infra.LazyInitAction.SKIP
+            )
         )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
@@ -128,8 +136,14 @@ class FlextInfraCodegenLazyInitPlanner(
             and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        is_facade_root = is_public_project_root or is_test_facade_root
         export_names = {*lazy_map, *eager_dunders}
-        if is_public_project_root:
+        if is_facade_root:
             # mro-pulj (codex) + ulw follow-up: __all__ is the one public
             # contract (dir()/star-import/docs already respect it). Do NOT
             # narrow lazy_map/_LAZY_MODULES to match -- internal fragments across
@@ -148,7 +162,7 @@ class FlextInfraCodegenLazyInitPlanner(
             child_lazy = ()
             excluded_lazy_names = ()
         preserve_manual_init = (
-            not is_public_project_root
+            not is_facade_root
             and context.init_path.is_file()
             and not context.generated_init
             and bool(

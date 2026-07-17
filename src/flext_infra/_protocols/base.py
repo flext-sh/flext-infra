@@ -112,6 +112,31 @@ class FlextInfraProtocolsBase(Protocol):
             """Generated Make profile when the repository is active."""
             ...
 
+        @property
+        def checkout(self) -> str:
+            """Physical checkout topology."""
+            ...
+
+        @property
+        def codegen(self) -> str:
+            """Repository code-generation policy."""
+            ...
+
+        @property
+        def package(self) -> bool:
+            """Whether the repository publishes a Python package."""
+            ...
+
+        @property
+        def editable(self) -> bool:
+            """Whether the repository is overlaid as editable."""
+            ...
+
+        @property
+        def read_only(self) -> bool:
+            """Whether generated mutations are forbidden."""
+            ...
+
     @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""
@@ -239,7 +264,7 @@ class FlextInfraProtocolsBase(Protocol):
     class TomlReader(Protocol):
         """Contract for TOML file readers used by dependency services."""
 
-        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
             """Read and parse a TOML file as a plain dict with r error handling."""
             ...
 
@@ -314,12 +339,12 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run_deptry(
             self, project_path: Path, venv_bin: Path
-        ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
+        ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
-            self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
+            self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...

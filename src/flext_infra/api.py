@@ -43,7 +43,7 @@ class FlextInfra(s[t.JsonDict]):
         return r[t.JsonDict].ok(report)
 
 
-infra = FlextInfra.fetch_global()
+infra: FlextInfra = FlextInfra.fetch_global()
 """Shared FlextInfra facade instance."""
 
 

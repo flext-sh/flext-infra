@@ -292,16 +292,6 @@ _boot_default: ## Install all projects into workspace .venv
 			log_file="/tmp/flext-setup-$$proj.log"; \
 			start_ts=$$(date +%s); \
 			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			if $(WORKSPACE_INFRA_DEPS) internal-sync --workspace "$$proj" >>"$$log_file" 2>&1; then \
-				:; \
-			else \
-				echo "     sync  ... failed"; \
-				cat "$$log_file"; \
-				failed=$$((failed + 1)); \
-				failed_projects="$$failed_projects $$proj"; \
-				step=$$((step + 1)); \
-				continue; \
-			fi; \
 			printf "     lock  ... "; \
 			if uv lock --directory "$$proj" >"$$log_file" 2>&1; then \
 				echo "ok"; \
@@ -325,12 +315,6 @@ _boot_default: ## Install all projects into workspace .venv
 	start_ts=$$(date +%s); \
 	root_lock_ok=0; \
 	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	if ! $(WORKSPACE_INFRA_DEPS) internal-sync --workspace . >"$$log_file" 2>&1; then \
-		echo "     sync  ... failed"; \
-		cat "$$log_file"; \
-		failed=$$((failed + 1)); \
-		failed_projects="$$failed_projects root"; \
-	fi; \
 	printf "     lock  ... "; \
 	if uv lock >"$$log_file" 2>&1; then \
 		echo "ok"; \
@@ -998,17 +982,25 @@ ifneq ($(HAS_EXPLICIT_PROJECT_SELECTION),)
 			--canonical-root "$(CURDIR)" \
 			--apply || exit 1; \
 	done
-	$(Q)echo "==> Regenerating __init__.py lazy imports for selected projects..."
+	$(Q)echo "==> Regenerating production and test-facade __init__.py files for selected projects..."
 	$(Q)for proj in $(SELECTED_PROJECTS); do \
 		$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)/$$proj" --apply || exit 1; \
+		if [ -d "$(CURDIR)/$$proj/tests" ]; then \
+			$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)/$$proj" --module tests --apply || exit 1; \
+		fi; \
 	done
 else
 	$(Q)echo "==> Syncing workspace and discovered projects..."
 	$(Q)$(WORKSPACE_INFRA_WORKSPACE) sync \
 		--workspace "$(CURDIR)" \
 		--apply
-	$(Q)echo "==> Regenerating __init__.py lazy imports..."
+	$(Q)echo "==> Regenerating production and test-facade __init__.py files..."
 	$(Q)$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)"
+	$(Q)for proj in $(ALL_PROJECTS); do \
+		if [ -d "$(CURDIR)/$$proj/tests" ]; then \
+			$(WORKSPACE_INFRA_CODEGEN) init --workspace "$(CURDIR)/$$proj" --module tests --apply || exit 1; \
+		fi; \
+	done
 endif
 	$(Q)echo "==> Sync complete."
 

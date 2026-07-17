@@ -60,10 +60,10 @@ class FlextInfraModelsWorkspace:
         project_root: Annotated[Path, m.Field(description="Project root path")]
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         payload: Annotated[
-            t.Infra.ContainerDict, m.Field(description="Parsed pyproject payload")
+            t.JsonMapping, m.Field(description="Parsed pyproject payload")
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         docs_meta: Annotated[
-            t.Infra.ContainerDict, m.Field(description="Parsed tool.flext.docs payload")
+            t.JsonMapping, m.Field(description="Parsed tool.flext.docs payload")
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""

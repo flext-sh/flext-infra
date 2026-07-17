@@ -44,7 +44,7 @@ class FlextInfraRefactorOrchestrator(
         """Initialize the orchestrator with a loader and optional safety service."""
         self.loader = loader
         self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
-        self._class_nesting_config: t.Infra.ContainerDict | None = None
+        self._class_nesting_config: t.JsonMapping | None = None
         self._class_nesting_policy_by_family: (
             t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
         ) = None

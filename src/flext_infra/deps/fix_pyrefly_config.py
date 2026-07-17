@@ -19,13 +19,17 @@ logger = u.fetch_logger(__name__)
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
+    _workspace_root: Path = u.PrivateAttr()
+
     def __init__(
         self, workspace_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize pyrefly settings fixer."""
-        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
             workspace_root or workspace
         )
+        super().__init__(workspace_root=resolved_workspace)
+        self._workspace_root = self.workspace_root
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -33,8 +37,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
-    @override
-    def execute_command(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
+    def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
         fixer = cls(workspace_root=params.workspace_path)
         fix_result = fixer.run(
@@ -72,7 +75,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
-        original_pyrefly: t.Infra.ContainerDict = dict(pyrefly)
+        original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root

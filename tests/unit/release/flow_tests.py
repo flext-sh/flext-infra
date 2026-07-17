@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main as infra_main
 from tests import c
 from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
@@ -13,131 +12,164 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def run_release_main(workspace: Path, *extra: str) -> int:
-    return infra_main(["release", "run", "--workspace", str(workspace), *extra])
+class TestsFlextInfraReleaseFlow:
+    """Behavior contract for complete public release CLI flows."""
 
+    class TestsValidation:
+        """Validation flow behavior."""
 
-def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+        @staticmethod
+        def test_main_validate_apply_succeeds(tmp_path: Path) -> None:
+            """Validate one selected committed project through the public CLI."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                project_names=(c.Tests.RELEASE_PROJECTS[0],),
+                initialize_project_git=True,
+            )
 
-    result = run_release_main(
-        workspace,
-        "--phase",
-        c.Tests.RELEASE_PHASE_VALIDATE,
-        "--interactive",
-        "0",
-        "--create-branches",
-        "0",
-        "--apply",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VALIDATE,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    tm.that(result, eq=0)
+            tm.that(result, eq=0)
 
+    class TestsVersioning:
+        """Version flow behavior."""
 
-def test_main_version_apply_updates_root_and_selected_project(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path, project_names=c.Tests.RELEASE_PROJECTS
-    )
+        @staticmethod
+        def test_main_version_apply_updates_root_and_selected_project(
+            tmp_path: Path,
+        ) -> None:
+            """Update only the root and selected project through the public CLI."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=c.Tests.RELEASE_PROJECTS
+            )
 
-    result = run_release_main(
-        workspace,
-        "--phase",
-        c.Tests.RELEASE_PHASE_VERSION,
-        "--version",
-        c.Tests.RELEASE_VERSION_SELECTED,
-        "--projects",
-        c.Tests.RELEASE_PROJECTS[0],
-        "--interactive",
-        "0",
-        "--create-branches",
-        "0",
-        "--apply",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_SELECTED,
+                "--projects",
+                c.Tests.RELEASE_PROJECTS[0],
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    tm.that(result, eq=0)
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_SELECTED}"'
-        in (workspace / "pyproject.toml").read_text()
-    )
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_SELECTED}"'
-        in (workspace / c.Tests.RELEASE_PROJECTS[0] / "pyproject.toml").read_text()
-    )
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_BASE}"'
-        in (workspace / c.Tests.RELEASE_PROJECTS[1] / "pyproject.toml").read_text()
-    )
+            tm.that(result, eq=0)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_SELECTED}"',
+            )
+            tm.that(
+                (
+                    workspace / c.Tests.RELEASE_PROJECTS[0] / "pyproject.toml"
+                ).read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_SELECTED}"',
+            )
+            tm.that(
+                (
+                    workspace / c.Tests.RELEASE_PROJECTS[1] / "pyproject.toml"
+                ).read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
+            )
 
+    class TestsBuild:
+        """Build flow behavior."""
 
-def test_main_build_with_bump_uses_resolved_version_in_report_dir(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+        @staticmethod
+        def test_main_build_with_bump_uses_resolved_report_version(
+            tmp_path: Path,
+        ) -> None:
+            """Use the resolved bumped version as the build report directory."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                project_names=(c.Tests.RELEASE_PROJECTS[0],),
+                initialize_project_git=True,
+            )
 
-    result = run_release_main(
-        workspace,
-        "--phase",
-        c.Tests.RELEASE_PHASE_BUILD,
-        "--bump",
-        c.Tests.RELEASE_BUMP_MINOR,
-        "--interactive",
-        "0",
-        "--create-branches",
-        "0",
-        "--apply",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--bump",
+                c.Tests.RELEASE_BUMP_MINOR,
+                "--projects",
+                c.Tests.RELEASE_PROJECTS[0],
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    tm.that(result, eq=0)
-    assert (
-        workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
-    ).is_file()
+            tm.that(result, eq=0)
+            tm.that(
+                (
+                    u.Tests.release_report_dir(workspace, "0.2.0") / "build-report.json"
+                ).is_file(),
+                eq=True,
+            )
 
+    class TestsCompleteFlow:
+        """Multi-phase flow behavior."""
 
-def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path, project_names=(c.Tests.RELEASE_PROJECTS[0],)
-    )
+        @staticmethod
+        def test_main_all_dry_run_writes_release_artifacts(tmp_path: Path) -> None:
+            """Write reports and notes without persisting package artifacts."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                project_names=(c.Tests.RELEASE_PROJECTS[0],),
+                initialize_root_git=True,
+                initialize_project_git=True,
+            )
 
-    result = run_release_main(
-        workspace,
-        "--phase",
-        c.Infra.RELEASE_PHASE_ALL,
-        "--interactive",
-        "0",
-        "--dry-run",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Infra.RELEASE_PHASE_ALL,
+                "--interactive",
+                "0",
+                "--dry-run",
+            )
 
-    tm.that(result, eq=0)
-    assert (
-        workspace
-        / ".reports"
-        / "release"
-        / f"v{c.Tests.RELEASE_VERSION_BASE}"
-        / "build-report.json"
-    ).is_file()
-    assert (
-        workspace
-        / ".reports"
-        / "release"
-        / f"v{c.Tests.RELEASE_VERSION_BASE}"
-        / c.Tests.RELEASE_NOTES_FILENAME
-    ).is_file()
+            tm.that(result, eq=0)
+            report_dir = u.Tests.release_report_dir(
+                workspace, c.Tests.RELEASE_VERSION_BASE
+            )
+            tm.that((report_dir / "build-report.json").is_file(), eq=True)
+            tm.that((report_dir / c.Tests.RELEASE_NOTES_FILENAME).is_file(), eq=True)
 
+    class TestsInvalidInput:
+        """Fail-closed input behavior."""
 
-def test_main_invalid_version_returns_failure(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+        @staticmethod
+        def test_main_invalid_version_returns_failure(tmp_path: Path) -> None:
+            """Return a public CLI failure for invalid release metadata."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
-    result = run_release_main(
-        workspace,
-        "--phase",
-        c.Tests.RELEASE_PHASE_VERSION,
-        "--version",
-        "invalid",
-        "--interactive",
-        "0",
-        "--create-branches",
-        "0",
-        "--apply",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                "invalid",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    tm.that(result, eq=1)
+            tm.that(result, eq=1)

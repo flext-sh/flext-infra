@@ -78,6 +78,22 @@ class FlextInfraConstantsCodegenProject:
         EXCLUDED = "excluded"
 
     @unique
+    class CheckoutKind(StrEnum):
+        """Physical checkout topology for one repository."""
+
+        ROOT = "root"
+        SUBMODULE = "submodule"
+        INDEPENDENT = "independent"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
     class ProjectKind(StrEnum):
         """New-project kind; drives deps, Makefile mode, and registration."""
 
@@ -86,6 +102,7 @@ class FlextInfraConstantsCodegenProject:
 
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
+    WORKSPACE_MANIFEST_VERSION: Final[int] = 2
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"

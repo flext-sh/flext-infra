@@ -2,15 +2,5 @@
 {{ docstring }}
 
 from __future__ import annotations
-{% if runtime_import_lines %}
-{{ runtime_import_lines }}
-{% endif %}
-{% if exports %}
-__all__: tuple[str, ...] = (
-{% for export_name in exports %}
-    "{{ export_name }}",
-{% endfor %}
-)
-{% else %}
+
 __all__: tuple[str, ...] = ()
-{% endif %}

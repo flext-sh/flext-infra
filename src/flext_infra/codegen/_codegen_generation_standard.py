@@ -139,8 +139,6 @@ class FlextInfraCodegenGenerationStandardMixin(
             docstring=cls._format_root_package_docstring(
                 plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
             ),
-            runtime_import_lines="",
-            exports=(),
         )
 
     @classmethod

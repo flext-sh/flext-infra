@@ -44,10 +44,6 @@ class FlextInfraConstantsWorkspace:
             "python -m flext_infra workspace sync --apply",
         ),
         (
-            'python3 "$(WORKSPACE_ROOT)/scripts/dependencies/sync_internal_deps.py"',
-            "python -m flext_infra deps internal-sync",
-        ),
-        (
             'python "$(WORKSPACE_ROOT)/scripts/check/fix_pyrefly_config.py"',
             "python -m flext_infra check fix-pyrefly-settings",
         ),

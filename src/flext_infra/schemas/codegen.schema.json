@@ -655,7 +655,12 @@
         "branch",
         "path",
         "role",
-        "state"
+        "state",
+        "checkout",
+        "codegen",
+        "package",
+        "editable",
+        "read_only"
       ],
       "properties": {
         "name": {
@@ -715,6 +720,29 @@
             "standalone",
             null
           ]
+        },
+        "checkout": {
+          "enum": [
+            "root",
+            "submodule",
+            "independent"
+          ]
+        },
+        "codegen": {
+          "enum": [
+            "conform",
+            "python",
+            "none"
+          ]
+        },
+        "package": {
+          "type": "boolean"
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
         }
       },
       "allOf": [

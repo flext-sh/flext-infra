@@ -142,6 +142,18 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, lacks="from .demo import Demo")
+        tm.that(
+            init_content,
+            contains=(
+                "from __future__ import annotations\n\n__all__: tuple[str, ...] = ()"
+            ),
+        )
+        tm.that(
+            init_content,
+            lacks=(
+                "from __future__ import annotations\n\n\n__all__: tuple[str, ...] = ()"
+            ),
+        )
         tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="Demo")
         tm.that(init_content, lacks="Nested")
@@ -164,21 +176,82 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
         tm.that(init_content, lacks="install_lazy_exports")
 
-    def test_non_public_surface_uses_empty_initializer(self) -> None:
-        """Tests, examples, and scripts remain side-effect-free namespaces."""
+    def test_tests_root_renders_only_its_facade_contract(self) -> None:
+        """Render test facades without importing collected test classes."""
         plan = self._plan(
             "tests",
-            ("TestsDemo",),
-            MappingProxyType({"TestsDemo": ("tests.demo", "TestsDemo")}),
+            (
+                "TestsDemoConstants",
+                "TestsDemoModels",
+                "TestsDemoProtocols",
+                "TestsDemoServiceBase",
+                "TestsDemoSettings",
+                "TestsDemoTypes",
+                "TestsDemoUtilities",
+                "c",
+                "m",
+                "p",
+                "s",
+                "t",
+                "tm",
+                "u",
+            ),
+            MappingProxyType({
+                "TestsDemoCase": ("tests.unit.test_demo", "TestsDemoCase"),
+                "TestsDemoConstants": ("tests.constants", "TestsDemoConstants"),
+                "TestsDemoModels": ("tests.models", "TestsDemoModels"),
+                "TestsDemoProtocols": ("tests.protocols", "TestsDemoProtocols"),
+                "TestsDemoServiceBase": ("tests.base", "TestsDemoServiceBase"),
+                "TestsDemoSettings": ("tests.settings", "TestsDemoSettings"),
+                "TestsDemoTypes": ("tests.typings", "TestsDemoTypes"),
+                "TestsDemoUtilities": ("tests.utilities", "TestsDemoUtilities"),
+                "c": ("tests.constants", "c"),
+                "m": ("tests.models", "m"),
+                "p": ("tests.protocols", "p"),
+                "s": ("tests.base", "s"),
+                "t": ("tests.typings", "t"),
+                "tm": ("flext_tests", "tm"),
+                "u": ("tests.utilities", "u"),
+            }),
         )
 
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, lacks="from .demo import TestsDemo")
-        tm.that(init_content, lacks="TestsDemo")
-        tm.that(init_content, contains="__all__: tuple[str, ...] = ()")
-        tm.that(init_content, lacks="install_lazy_exports")
+        tm.that(init_content, contains="from flext_tests import tm")
+        tm.that(
+            init_content,
+            contains=(
+                "from .constants import TestsDemoConstants, TestsDemoConstants as c"
+            ),
+        )
+        tm.that(init_content, contains="TestsDemoUtilities as u")
+        type_checking_block = init_content.split("if TYPE_CHECKING:", maxsplit=1)[1]
+        module_offsets = tuple(
+            type_checking_block.index(module)
+            for module in (
+                "from .base import",
+                "from .constants import",
+                "from .models import",
+                "from .protocols import",
+                "from .settings import",
+                "from .typings import",
+                "from .utilities import",
+            )
+        )
+        tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
+        tm.that(type_checking_block, contains="from flext_tests import tm\n\n")
+        tm.that(
+            init_content,
+            contains=(
+                "from flext_core.lazy import build_lazy_import_map, "
+                "install_lazy_exports\n\nif TYPE_CHECKING:"
+            ),
+        )
+        tm.that(init_content, lacks="install_lazy_exports\n\n\nif TYPE_CHECKING:")
+        tm.that(init_content, contains="install_lazy_exports")
+        tm.that(init_content, lacks="TestsDemoCase")
+        tm.that(init_content, lacks=".unit.test_demo")
 
     def test_root_type_checking_alias_uses_named_local_facade(self) -> None:
         """Static analyzers receive the local facade class behind short aliases."""

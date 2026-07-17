@@ -18,7 +18,6 @@ from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 
@@ -39,19 +38,19 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run workspace quality gates",
             model_cls=m.Infra.RunCommand,
-            handler=FlextInfraWorkspaceChecker.execute_command,
+            handler=FlextInfraWorkspaceChecker.execute_payload,
         ),
         m.Cli.ResultCommandRoute(
             name="fix-pyrefly-settings",
             help_text="Repair [tool.pyrefly] blocks",
             model_cls=m.Infra.FixPyreflyConfigCommand,
-            handler=FlextInfraConfigFixer.execute_command,
+            handler=FlextInfraConfigFixer.execute_payload,
         ),
         m.Cli.ResultCommandRoute(
             name="fix-enforcement",
             help_text="Auto-fix enforcement-catalog violations",
             model_cls=m.Infra.FixEnforcementCommand,
-            handler=FlextInfraEnforcementFixerOrchestrator.execute_command,
+            handler=FlextInfraEnforcementFixerOrchestrator.execute_payload,
         ),
     ),
     c.Infra.CLI_GROUP_CODEGEN: tuple(
@@ -141,11 +140,6 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                     "extra-paths",
                     "Synchronize pyright/mypy extraPaths",
                     FlextInfraExtraPathsManager,
-                ),
-                (
-                    "internal-sync",
-                    "Synchronize internal FLEXT dependencies",
-                    FlextInfraInternalDependencySyncService,
                 ),
                 (
                     "modernize",

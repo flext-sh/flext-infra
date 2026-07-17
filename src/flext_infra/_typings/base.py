@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
@@ -32,13 +32,11 @@ class FlextInfraTypesBase:
 
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
-    type ContainerDict = t.JsonMapping
-    "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str
     "Expected MRO base: a class or its qualified name."
-    type PolicyContext = t.MappingKV[str, ContainerDict]
+    type PolicyContext = t.MappingKV[str, t.JsonMapping]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
@@ -56,7 +54,7 @@ class FlextInfraTypesBase:
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
 
-    type InfraMapping = ContainerDict
+    type InfraMapping = t.JsonMapping
     "Read-only validated infra payload mapping."
     type MutableInfraMapping = MutableMapping[str, InfraValue]
     "Mutable validated infra payload mapping."
@@ -87,3 +85,17 @@ class FlextInfraTypesBase:
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
+    type ReleaseArtifactKind = Literal["sdist", "wheel"]
+    "Closed artifact kind emitted by a release build."
+    type ReleaseAbsolutePath = Annotated[
+        str, t.StringConstraints(min_length=1, pattern=r"^(?:/|[A-Za-z]:[\\/])")
+    ]
+    "Absolute POSIX or Windows path serialized in a release report."
+    type ReleaseArtifactSha256 = Annotated[
+        str, t.StringConstraints(pattern=r"^[0-9a-f]{64}$")
+    ]
+    "Lowercase SHA-256 digest serialized in a release report."
+    type ReleaseCommitOid = Annotated[
+        str, t.StringConstraints(pattern=r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+    ]
+    "Lowercase Git SHA-1 or SHA-256 commit object identifier."

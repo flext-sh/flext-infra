@@ -53,6 +53,54 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((unrelated_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=(str(selected_root / c.Infra.INIT_PY),))
 
+    def test_selected_root_reads_its_own_declared_public_contract(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep distinct root ABI declarations isolated across source roots."""
+        workspace_root, selected_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-selected",
+            package_name="flext_test_selected",
+        )
+        _, unrelated_root = u.Tests.create_lazy_init_workspace(
+            tmp_path,
+            project_name="flext-test-unrelated",
+            package_name="flext_test_unrelated",
+        )
+        selected_root.joinpath(c.Infra.INIT_PY).write_text(
+            '__all__ = ["FlextTestsSelectedModels", "m"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        unrelated_init = unrelated_root / c.Infra.INIT_PY
+        unrelated_init.write_text(
+            '__all__ = ["FlextTestsUnrelatedModels", "m"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            selected_root / "models.py",
+            class_name="FlextTestsSelectedModels",
+            alias="m",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            unrelated_root / "models.py",
+            class_name="FlextTestsUnrelatedModels",
+            alias="m",
+        )
+        unrelated_before = unrelated_init.read_bytes()
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = "flext_test_selected"
+        service.apply_changes = True
+
+        result = service.execute()
+        selected_generated = selected_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        tm.that(result.success, eq=True)
+        tm.that(selected_generated, contains="FlextTestsSelectedModels")
+        tm.that(selected_generated, lacks="FlextTestsUnrelatedModels")
+        tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
+
     def test_target_plans_private_children_without_writing_them(
         self, tmp_path: Path
     ) -> None:
@@ -132,6 +180,56 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(generated, contains="__all__: tuple[str, ...] = ()")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
+
+    def test_explicit_tests_target_generates_only_facade_exports(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep test aliases while excluding collected test classes."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        tests_root = workspace_root / c.Infra.DIR_TESTS
+        tests_root.mkdir()
+        tests_init = tests_root / c.Infra.INIT_PY
+        tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        u.Tests.write_lazy_init_namespace_module(
+            tests_root / "constants.py",
+            class_name="TestsFlextTestsConstants",
+            alias="c",
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            tests_root / "utilities.py",
+            class_name="TestsFlextTestsUtilities",
+            alias="u",
+        )
+        unit_root = tests_root / "unit"
+        unit_root.mkdir()
+        unit_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        unit_root.joinpath("test_noise.py").write_text(
+            'class TestsCollectedNoise:\n    """Collected test class."""\n\n'
+            '__all__ = ["TestsCollectedNoise"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = c.Infra.DIR_TESTS
+        service.apply_changes = True
+
+        result = service.execute()
+        generated = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+
+        tm.that(result.success, eq=True)
+        tm.that(generated, contains="TestsFlextTestsConstants")
+        tm.that(generated, contains="TestsFlextTestsUtilities")
+        tm.that(generated, contains="install_lazy_exports")
+        tm.that(generated, contains='"tm"')
+        tm.that(generated, lacks="TestsCollectedNoise")
+        tm.that(generated, lacks=".unit.test_noise")
+        child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        tm.that(child_generated, contains="__all__: tuple[str, ...] = ()")
+        tm.that(child_generated, lacks="TestsCollectedNoise")
+        tm.that(child_generated, lacks="install_lazy_exports")
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""

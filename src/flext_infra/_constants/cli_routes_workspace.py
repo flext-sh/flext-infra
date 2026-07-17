@@ -61,12 +61,13 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
                     "Run a Rope-only workspace census for Python objects",
                     FlextInfraRefactorCensus,
                 ),
-                (
-                    "accessor-migrate",
-                    "Preview or apply automated get_/set_/is_ migration",
-                    FlextInfraAccessorMigrationOrchestrator,
-                ),
             )
+        ),
+        m.Cli.ResultCommandRoute(
+            name="accessor-migrate",
+            help_text="Preview or apply automated get_/set_/is_ migration",
+            model_cls=m.Infra.AccessorMigrationInput,
+            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",

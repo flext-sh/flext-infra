@@ -106,6 +106,18 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 "local repository role/profile mismatch: "
                 f"{repository.role.value}/{repository.profile}"
             )
+        expected_checkout = {
+            c.Infra.RepositoryRole.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
+            c.Infra.RepositoryRole.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
+            c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
+        }[repository.role]
+        if repository.checkout is not expected_checkout:
+            return r[bool].fail(
+                "local repository role/checkout mismatch: "
+                f"{repository.role.value}/{repository.checkout.value}"
+            )
+        if repository.read_only:
+            return r[bool].fail("local repository cannot be read-only")
         return r[bool].ok(True)
 
     @staticmethod
@@ -121,11 +133,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return c.Infra.WorkspaceMode.STANDALONE
 
     @staticmethod
-    def _gitmodule_contract(superproject_root: Path, member_path: str) -> p.Result[str]:
-        """Read the exact URL for one declared Git submodule path."""
+    def _gitmodule_contract(
+        superproject_root: Path, member_path: str
+    ) -> p.Result[tuple[str, str]]:
+        """Read the exact URL and branch for one declared Git submodule path."""
         gitmodules_path = superproject_root / c.Infra.GITMODULES
         if not gitmodules_path.is_file():
-            return r[str].fail(
+            return r[tuple[str, str]].fail(
                 f"Git superproject has no {c.Infra.GITMODULES}: {superproject_root}"
             )
         entries = u.Cli.capture(
@@ -140,7 +154,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=superproject_root,
         )
         if entries.failure:
-            return r[str].fail(entries.error or "unable to read Git submodule paths")
+            return r[tuple[str, str]].fail(
+                entries.error or "unable to read Git submodule paths"
+            )
         matching_keys: t.MutableSequenceOf[str] = []
         for line in entries.value.splitlines():
             if not line.strip():
@@ -151,9 +167,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 case [_, _]:
                     continue
                 case _:
-                    return r[str].fail("malformed Git submodule path entry")
+                    return r[tuple[str, str]].fail("malformed Git submodule path entry")
         if len(matching_keys) != 1:
-            return r[str].fail(
+            return r[tuple[str, str]].fail(
                 f"Git submodule path must be declared exactly once: {member_path}"
             )
         section = matching_keys[0].removesuffix(".path")
@@ -169,10 +185,25 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=superproject_root,
         )
         if url.failure or not url.value:
-            return r[str].fail(
+            return r[tuple[str, str]].fail(
                 url.error or f"Git submodule URL is missing: {member_path}"
             )
-        return r[str].ok(url.value)
+        branch = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "config",
+                "--file",
+                c.Infra.GITMODULES,
+                "--get",
+                f"{section}.branch",
+            ],
+            cwd=superproject_root,
+        )
+        if branch.failure or not branch.value:
+            return r[tuple[str, str]].fail(
+                branch.error or f"Git submodule branch is missing: {member_path}"
+            )
+        return r[tuple[str, str]].ok((url.value, branch.value))
 
     @classmethod
     def _detect_attached(
@@ -226,9 +257,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             declared.state != c.Infra.RepositoryState.ACTIVE
             or declared.role != c.Infra.RepositoryRole.WORKSPACE_MEMBER
             or declared.profile != c.Infra.MakeProfile.WORKSPACE_MEMBER
+            or declared.checkout != c.Infra.CheckoutKind.SUBMODULE
+            or declared.read_only
         ):
             return r[c.Infra.WorkspaceMode].fail(
-                f"workspace member role/state/profile mismatch: {member_path}"
+                f"workspace member role/state/profile/checkout mismatch: {member_path}"
             )
 
         local_spec = workspace_spec
@@ -249,6 +282,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 local_repository.role,
                 local_repository.state,
                 local_repository.profile,
+                local_repository.checkout,
+                local_repository.codegen,
+                local_repository.package,
+                local_repository.editable,
+                local_repository.read_only,
             )
             comparable_declared = (
                 declared.name,
@@ -259,6 +297,11 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 declared.role,
                 declared.state,
                 declared.profile,
+                declared.checkout,
+                declared.codegen,
+                declared.package,
+                declared.editable,
+                declared.read_only,
             )
             if comparable_local != comparable_declared:
                 return r[c.Infra.WorkspaceMode].fail(
@@ -268,7 +311,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         gitmodule_result = cls._gitmodule_contract(superproject_root, member_path)
         if gitmodule_result.failure:
             return r[c.Infra.WorkspaceMode].fail(gitmodule_result.error)
-        gitmodule_url = gitmodule_result.value
+        gitmodule_url, gitmodule_branch = gitmodule_result.value
         origin = u.Cli.capture(
             [c.Infra.GIT, "config", "--get", "remote.origin.url"], cwd=member_root
         )
@@ -287,7 +330,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )
-        if branch.value != declared.branch:
+        if gitmodule_branch != declared.branch or branch.value != declared.branch:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
             )

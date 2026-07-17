@@ -188,6 +188,56 @@ class FlextInfraConstantsBase(
     # CLI tool binary names
     GIT: Final[str] = "git"
     "Git version control binary."
+    UV: Final[str] = "uv"
+    "uv package manager binary."
+    GITLEAKS: Final[str] = "gitleaks"
+    "Gitleaks secret scanner binary."
+    GITLEAKS_LEAK_EXIT_CODE: Final[int] = 42
+    "Gitleaks exit code reserved for detected secrets."
+    GITLEAKS_POLICY_ENV_KEYS: Final[t.StrSequence] = (
+        "GITLEAKS_CONFIG",
+        "GITLEAKS_CONFIG_TOML",
+    )
+    "Ambient Gitleaks policy variables removed from release scans."
+    SOURCE_DATE_EPOCH: Final[str] = "SOURCE_DATE_EPOCH"
+    "Reproducible-build timestamp environment variable."
+    RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
+    "Workspace-relative hashed build-backend constraint file."
+    RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
+        "hatchling",
+        "packaging",
+        "pathspec",
+        "pluggy",
+        "trove-classifiers",
+    })
+    "Complete registry package set required by the isolated Hatch build backend."
+    RELEASE_GITLEAKS_CONFIG_PATH: Final[str] = "config/gitleaks-release.toml"
+    "Workspace-relative trusted release secret-scan configuration."
+    PYPI_SIMPLE_INDEX_URL: Final[str] = "https://pypi.org/simple"
+    "Canonical public package index used by isolated release builds."
+    UV_HTTP_CONNECT_TIMEOUT: Final[str] = "UV_HTTP_CONNECT_TIMEOUT"
+    "uv HTTP connection timeout environment key."
+    UV_HTTP_TIMEOUT: Final[str] = "UV_HTTP_TIMEOUT"
+    "uv HTTP read timeout environment key."
+    UV_HTTP_RETRIES: Final[str] = "UV_HTTP_RETRIES"
+    "uv HTTP retry-count environment key."
+    UV_RELEASE_HTTP_CONNECT_TIMEOUT: Final[str] = "10"
+    "Release-build connection timeout in seconds."
+    UV_RELEASE_HTTP_TIMEOUT: Final[str] = "30"
+    "Release-build read timeout in seconds."
+    UV_RELEASE_HTTP_RETRIES: Final[str] = "3"
+    "Release-build HTTP retry count."
+    UV_RELEASE_POLICY_ENV_KEYS: Final[t.StrSequence] = (
+        "UV_BUILD_CONSTRAINT",
+        "UV_CONFIG_FILE",
+        "UV_EXTRA_INDEX_URL",
+        "UV_FIND_LINKS",
+        "UV_INDEX",
+        "UV_INDEX_URL",
+        "UV_NO_BUILD_ISOLATION",
+        "UV_NO_VERIFY_HASHES",
+    )
+    "Ambient uv variables removed before a policy-bound release build."
     SG: Final[str] = "sg"
     "ast-grep (sg) binary."
     BANDIT: Final[str] = "bandit"

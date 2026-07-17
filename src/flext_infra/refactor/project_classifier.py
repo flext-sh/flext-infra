@@ -23,10 +23,7 @@ class FlextInfraProjectClassifier(
     """Classify a project by kind and discover MRO family chains."""
 
     def __init__(
-        self,
-        project_root: Path,
-        *,
-        pyproject_payload: t.Infra.ContainerDict | None = None,
+        self, project_root: Path, *, pyproject_payload: t.JsonMapping | None = None
     ) -> None:
         """Initialize classifier for the given project root."""
         self._project_root = project_root.resolve()
@@ -67,7 +64,7 @@ class FlextInfraProjectClassifier(
         )
 
     def _project_metadata_from_payload(
-        self, parsed: t.Infra.ContainerDict
+        self, parsed: t.JsonMapping
     ) -> t.Infra.TransformResult:
         """Project metadata from payload."""
         raw_project = self._as_mapping(parsed.get(c.Infra.PROJECT))

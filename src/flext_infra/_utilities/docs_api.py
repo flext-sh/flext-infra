@@ -404,7 +404,7 @@ class FlextInfraUtilitiesDocsApi:
             return tuple(dict.fromkeys(symbols))
 
     @staticmethod
-    def public_contract(project_root: Path, package_name: str) -> t.Infra.ContainerDict:
+    def public_contract(project_root: Path, package_name: str) -> t.JsonMapping:
         """Build the public API contract from pyproject, exports, and Rope validation."""
         # mro-j47u: retain flext-core's validated metadata object; no shadow DTO.
         metadata_result = u.read_project_metadata(project_root)
@@ -538,7 +538,7 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def _iter_docstring_checks(
-        project_root: Path, contract: t.Infra.ContainerDict
+        project_root: Path, contract: t.JsonMapping
     ) -> t.SequenceOf[tuple[str, str, bool]]:
         """Evaluate every public docstring target once (SSOT).
 
@@ -605,7 +605,7 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def docstring_issues(
-        project_root: Path, contract: t.Infra.ContainerDict
+        project_root: Path, contract: t.JsonMapping
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
         """Return audit issues for public modules and exports missing docstrings."""
         return [
@@ -625,7 +625,7 @@ class FlextInfraUtilitiesDocsApi:
 
     @staticmethod
     def docstring_coverage(
-        project_root: Path, contract: t.Infra.ContainerDict
+        project_root: Path, contract: t.JsonMapping
     ) -> m.Infra.DocstringCoverage:
         """Aggregate docstring coverage over every public target.
 

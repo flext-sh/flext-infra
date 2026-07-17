@@ -54,6 +54,7 @@ from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
@@ -98,6 +99,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,

@@ -112,6 +112,13 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
+                    mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+                    mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                    mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                    prlimit_command=c.Infra.PRLIMIT_COMMAND,
+                    prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
+                    timeout_command=c.Infra.TIMEOUT_COMMAND,
+                    timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

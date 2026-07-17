@@ -192,7 +192,12 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         """Analyze one project after path resolution."""
         _ = workspace_root
         proj = project_dir.resolve()
-        mypy_hints = self._run_mypy_hints(proj)
+        mypy_result = self._run_mypy_hints(proj)
+        if mypy_result.failure:
+            return r[m.Infra.StubAnalysisReport].fail(
+                mypy_result.error or "bounded Mypy analysis failed"
+            )
+        mypy_hints = mypy_result.value
         missing_imports = self._run_pyrefly_missing(proj)
         internal, unresolved = self._classify_missing_imports(
             missing_imports, proj.name
@@ -269,11 +274,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
-    def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
+    def _run_mypy_hints(self, project_dir: Path) -> p.Result[t.StrSequence]:
         """Run mypy and extract install-package hints."""
         runner = self.runner or u.Cli()
-        result = runner.run(
-            [
+        result = runner.run_raw(
+            u.Infra.mypy_limited_command((
                 c.Infra.POETRY,
                 c.Infra.VERB_RUN,
                 c.Infra.MYPY,
@@ -281,18 +286,26 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
                 "--config-file",
                 c.Infra.PYPROJECT_FILENAME,
                 "--no-error-summary",
-            ],
+            )),
             cwd=project_dir,
+            timeout=u.Infra.mypy_runner_timeout(),
         )
-        output = ""
-        if result.success:
-            cmd_output: p.Cli.CommandOutput = result.value
-            output = cmd_output.stdout
-        return sorted({
-            m.group(1).strip()
-            for m in c.Infra.MYPY_HINT_RE.finditer(output)
-            if m.group(1).strip()
-        })
+        if result.failure:
+            return r[t.StrSequence].fail(
+                u.Infra.mypy_launch_failure_diagnostic(
+                    result.error or "Mypy process launch failed"
+                )
+            )
+        cmd_output: p.Cli.CommandOutput = result.value
+        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(cmd_output):
+            return r[t.StrSequence].fail(resource_diagnostic)
+        return r[t.StrSequence].ok(
+            sorted({
+                match.group(1).strip()
+                for match in c.Infra.MYPY_HINT_RE.finditer(cmd_output.stdout)
+                if match.group(1).strip()
+            })
+        )
 
     def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
         """Run pyrefly check and extract missing imports."""

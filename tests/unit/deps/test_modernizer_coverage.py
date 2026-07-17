@@ -30,6 +30,7 @@ class TestsFlextInfraDepsModernizerCoverage:
     """Tests coverage settings phase behavior."""
 
     def test_apply_sets_report_and_run_state(self) -> None:
+        """Verify apply sets report and run state."""
         tool_config = config.Infra.tooling
         doc = tomlkit.document()
 
@@ -56,6 +57,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         )
 
     def test_apply_is_idempotent(self) -> None:
+        """Verify apply is idempotent."""
         tool_config = config.Infra.tooling
         phase = FlextInfraEnsureCoverageConfigPhase(tool_config)
         doc = tomlkit.document()

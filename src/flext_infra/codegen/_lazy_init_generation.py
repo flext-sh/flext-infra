@@ -59,6 +59,12 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 process=(
                     target_package_dir is None
                     or pkg_dir.resolve() == target_package_dir.resolve()
+                    or (
+                        target_package_dir.name == c.Infra.DIR_TESTS
+                        and pkg_dir.resolve().is_relative_to(
+                            target_package_dir.resolve()
+                        )
+                    )
                 ),
             )
             if exports:

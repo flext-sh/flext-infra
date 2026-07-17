@@ -104,17 +104,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         """Project name for a module entry."""
         layout = convention.project_layout
         if layout is not None:
-            project_name = layout.project_name
-            if not isinstance(project_name, str):
-                msg = f"invalid layout project name for {module.file_path}"
-                raise RuntimeError(msg)
-            return project_name
+            return layout.project_name
         if module.project_root is not None:
-            project_name = module.project_root.name
-            if not isinstance(project_name, str):
-                msg = f"invalid project root name for {module.file_path}"
-                raise RuntimeError(msg)
-            return project_name
+            return module.project_root.name
         return ""
 
     @staticmethod

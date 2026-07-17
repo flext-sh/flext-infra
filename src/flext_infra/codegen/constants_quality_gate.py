@@ -32,7 +32,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             return r[bool].ok(True)
         return r[bool].fail(f"quality gate verdict: {verdict}")
 
-    def build_report(self) -> p.Result[t.Infra.ContainerDict]:
+    def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
         FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
         census_report = FlextInfraRefactorCensus(
@@ -79,11 +79,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
             render_text=self.render_text(report),
         )
         if artifacts.failure:
-            return r[t.Infra.ContainerDict].fail(
+            return r[t.JsonMapping].fail(
                 artifacts.error or "quality gate artifact write failed"
             )
         report_data["artifacts"] = artifacts.value
-        return r[t.Infra.ContainerDict].ok(
+        return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
         )
 
@@ -291,8 +291,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def write_artifacts(
-        workspace_root: Path, report: t.Infra.ContainerDict, render_text: str
-    ) -> p.Result[t.Infra.ContainerDict]:
+        workspace_root: Path, report: t.JsonMapping, render_text: str
+    ) -> p.Result[t.JsonMapping]:
         """Persist quality gate artifacts to the report directory."""
         report_dir = workspace_root / c.Infra.QG_REPORT_DIR
         report_dir.mkdir(parents=True, exist_ok=True)
@@ -305,21 +305,21 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ),
         )
         if json_write.failure:
-            return r[t.Infra.ContainerDict].fail(
+            return r[t.JsonMapping].fail(
                 json_write.error or f"cannot write {report_json}"
             )
         txt_write = u.Cli.atomic_write_text_file(report_txt, render_text)
         if txt_write.failure:
-            return r[t.Infra.ContainerDict].fail(
+            return r[t.JsonMapping].fail(
                 txt_write.error or f"cannot write {report_txt}"
             )
-        return r[t.Infra.ContainerDict].ok({
+        return r[t.JsonMapping].ok({
             "report_json": str(report_json),
             "report_text": str(report_txt),
         })
 
     @classmethod
-    def render_text(cls, report: t.Infra.ContainerDict) -> str:
+    def render_text(cls, report: t.JsonMapping) -> str:
         """Render compact human-readable summary."""
         checks = u.Cli.json_deep_mapping_list(report, "checks")
         after = u.Cli.json_deep_mapping(report, "after")

@@ -27,7 +27,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         self._class_nesting_gate = None
 
     @override
-    def _load_class_nesting_config(self) -> t.Infra.ContainerDict:
+    def _load_class_nesting_config(self) -> t.JsonMapping:
         return u.Cli.yaml_load_mapping(self._config_path)
 
 

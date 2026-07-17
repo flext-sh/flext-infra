@@ -21,13 +21,14 @@ class TestsFlextInfraDepsModernizerMainExtra:
         ("content", "expected"),
         [
             pytest.param(None, 2, id="missing-root-pyproject"),
-            pytest.param("", 0, id="empty-root-pyproject"),
+            pytest.param("", 2, id="empty-root-pyproject"),
             pytest.param("[invalid toml {", 2, id="invalid-root-pyproject"),
         ],
     )
     def test_run_handles_root_edge_cases(
         self, tmp_path: Path, content: str | None, expected: int
     ) -> None:
+        """Fail loud for missing, empty, or invalid root project contracts."""
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
         if content is not None:
@@ -40,6 +41,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_audit_returns_zero_after_workspace_is_canonical(
         self, modernizer_workspace: Path
     ) -> None:
+        """Reach a fixed point after one canonical apply."""
         apply_exit = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace,
             apply_changes=True,
@@ -55,6 +57,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_fails_when_selected_project_has_invalid_toml(
         self, modernizer_workspace_with_projects: Path
     ) -> None:
+        """Report invalid TOML from an explicitly selected declared member."""
         selected_pyproject = (
             modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
         )
@@ -70,6 +73,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_rewrite_constraints_requires_uv_lock(
         self, modernizer_workspace: Path
     ) -> None:
+        """Reject constraint rewriting when the lock SSOT is unavailable."""
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace,
             apply_changes=True,
@@ -83,6 +87,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
         self, modernizer_workspace: Path
     ) -> None:
+        """Rewrite registry constraints while preserving internal dependencies."""
         (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -127,6 +132,13 @@ class TestsFlextInfraDepsModernizerMainExtra:
             ),
             encoding="utf-8",
         )
+        member = modernizer_workspace / "flext-core"
+        package = member / "src" / "flext_core"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
+        )
 
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace,
@@ -149,6 +161,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_apply_rewrites_constraints_with_compatible_policy(
         self, modernizer_workspace: Path
     ) -> None:
+        """Honor the compatible constraint policy selected by the caller."""
         (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -188,9 +201,10 @@ class TestsFlextInfraDepsModernizerMainExtra:
             has='"requests~=2.32.4"',
         )
 
-    def test_run_reports_external_workspace_pyproject_without_relative_error(
+    def test_run_scopes_default_audit_to_root_without_external_siblings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        """Keep default modernization inside the declared workspace boundary."""
         workspace = tmp_path / "flext"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -210,5 +224,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         tm.that(modernizer.run(), eq=1)
         output = capsys.readouterr().out
-        tm.that(output, has=str(external_pyproject.resolve()))
+        tm.that(output, has="pyproject.toml:")
+        tm.that(output, lacks=str(external_pyproject.resolve()))
         tm.that(output, lacks="not in the subpath")

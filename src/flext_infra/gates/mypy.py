@@ -54,16 +54,14 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
-        # NOTE (multi-agent): mypy aborts the whole gate when a positional dir
-        # resolves to zero checkable modules — either the flext-law section-8
-        # placeholder (tests/ with only __init__.py) or a dir the mypy config
-        # exclude regex empties out (tests/examples/legado). Skip both so
-        # only real, non-excluded roots reach mypy. (mro-i6nq.11)
+        # NOTE (multi-agent): Mypy also owns typed tests, including PEP 420 test
+        # roots without __init__.py. Empty or explicitly excluded roots are
+        # still omitted because Mypy aborts when they are passed positionally.
         exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
-                project_dir, c.Infra.CHECK_DIRS_SUBPROJECT
+                project_dir, (*c.Infra.CHECK_DIRS_SUBPROJECT, c.Infra.DIR_TESTS)
             )
             if self._has_real_module(project_dir / directory)
             and (exclude is None or not exclude.match(f"{directory}/"))
@@ -78,7 +76,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         return []
 
     def _resolve_config(self, project_dir: Path, ctx: m.Infra.GateContext) -> Path:
-        """Resolve mypy settings: project-local if it has [tool.mypy], else workspace."""
+        """Resolve Mypy settings from the project, then the workspace."""
         pyproject_name: str = c.Infra.PYPROJECT_FILENAME
         proj_py = project_dir / pyproject_name
         doc = u.Cli.toml_read(proj_py)
@@ -98,7 +96,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         cfg = self._resolve_config(project_dir, ctx)
-        return [
+        return u.Infra.mypy_limited_command((
             sys.executable,
             "-m",
             c.Infra.MYPY,
@@ -107,14 +105,13 @@ class FlextInfraMypyGate(FlextInfraGate):
             str(cfg),
             "--output",
             c.Infra.OUTPUT_JSON,
-        ]
+        ))
 
     @override
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
-        """Allow large projects enough time for a full mypy graph walk."""
+        """Keep the outer runner alive through the controlled Mypy deadline."""
         _ = project_dir, ctx
-        timeout: int = c.Infra.TIMEOUT_LONG
-        return timeout
+        return u.Infra.mypy_runner_timeout()
 
     @override
     def _check_env(
@@ -137,6 +134,20 @@ class FlextInfraMypyGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(result):
+            return (
+                False,
+                (
+                    m.Infra.Issue(
+                        file=c.Infra.PYPROJECT_FILENAME,
+                        line=1,
+                        column=1,
+                        code="mypy-resource-limit",
+                        message=resource_diagnostic,
+                        severity=c.Infra.ERROR,
+                    ),
+                ),
+            )
         for raw_line in (result.stdout or "").splitlines():
             stripped = raw_line.strip()
             if not stripped:

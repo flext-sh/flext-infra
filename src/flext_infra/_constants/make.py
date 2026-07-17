@@ -37,6 +37,17 @@ class FlextInfraConstantsMake:
     CLI_GROUP_VALIDATE: Final[str] = "validate"
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
+    MYPY_MEMORY_LIMIT_MB_ENV: Final[str] = "MYPY_MEMORY_LIMIT_MB"
+    MYPY_MEMORY_LIMIT_MB_DEFAULT: Final[int] = 6144
+    MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
+    MYPY_TIMEOUT_SECONDS_DEFAULT: Final[int] = 600
+    MYPY_TIMEOUT_GRACE_SECONDS: Final[int] = 10
+    MYPY_TIMEOUT_EXIT_CODE: Final[int] = 124
+    MYPY_SIGNAL_EXIT_OFFSET: Final[int] = 128
+    PRLIMIT_COMMAND: Final[str] = "prlimit"
+    PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
+    TIMEOUT_COMMAND: Final[str] = "timeout"
+    TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
     )
@@ -123,6 +134,8 @@ class FlextInfraConstantsMake:
         ("FAIL_FAST", ""),
         ("JOBS", ""),
         ("CHECK_GATES", ""),
+        ("MYPY_MEMORY_LIMIT_MB", str(MYPY_MEMORY_LIMIT_MB_DEFAULT)),
+        ("MYPY_TIMEOUT_SECONDS", str(MYPY_TIMEOUT_SECONDS_DEFAULT)),
         ("VALIDATE_GATES", ""),
         ("SCOPE", "project"),
         ("NAMESPACE", ""),
@@ -188,6 +201,8 @@ class FlextInfraConstantsMake:
     )
     PROJECT_OPTION_LINES: Final[t.StrSequence] = (
         f"CHECK_GATES={PROJECT_CHECK_GATES_ALLOWED}",
+        f"MYPY_MEMORY_LIMIT_MB={MYPY_MEMORY_LIMIT_MB_DEFAULT}  Mypy address-space cap",
+        f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
         f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
         "FILE=src/foo.py             Single file for check/fmt/test",
         'FILES="a.py b.py"          Multiple files for check/fmt/test',

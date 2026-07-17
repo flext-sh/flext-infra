@@ -22,13 +22,19 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
+    _workspace_root: Path = u.PrivateAttr()
+    _registry: FlextInfraGateRegistry = u.PrivateAttr()
+    _default_reports_dir: Path = u.PrivateAttr()
+
     def __init__(
         self, workspace_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize workspace checker services and paths."""
-        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
             workspace_root or workspace
         )
+        super().__init__(workspace_root=resolved_workspace)
+        self._workspace_root = self.workspace_root
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Cli.resolve_report_dir(
             self._workspace_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
@@ -69,8 +75,7 @@ class FlextInfraWorkspaceChecker(
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
-    @override
-    def execute_command(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
+    def execute_payload(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
         checker = cls(workspace_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)

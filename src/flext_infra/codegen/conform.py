@@ -268,17 +268,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Resolve self/members/all from the governing topology manifest."""
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
-            return r[tuple[m.Infra.RepositoryRef, ...]].ok((current_repository,))
-        if scope is c.Infra.CodegenConformScope.MEMBERS:
+            selected = (current_repository,)
+        elif scope is c.Infra.CodegenConformScope.MEMBERS:
             if not workspace.members:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "members scope requires a workspace-root manifest"
                 )
-            return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(workspace.members))
-        return r[tuple[m.Infra.RepositoryRef, ...]].ok((
-            workspace.repository,
-            *workspace.members,
-        ))
+            selected = tuple(workspace.members)
+        else:
+            selected = (workspace.repository, *workspace.members)
+        mutable = tuple(
+            repository
+            for repository in selected
+            if repository.codegen is not c.Infra.CodegenKind.NONE
+            and not repository.read_only
+        )
+        if not mutable:
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                "selected repositories do not permit code generation"
+            )
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok(mutable)
 
     @staticmethod
     def _repository_root(
@@ -786,6 +795,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 scaffold=codegen.scaffold,
                 dependency_profile=dependency_profile,
                 make=codegen.make,
+                mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+                mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                prlimit_command=c.Infra.PRLIMIT_COMMAND,
+                prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
+                timeout_command=c.Infra.TIMEOUT_COMMAND,
+                timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling=config.Infra.tooling,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
@@ -819,6 +835,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,
+                workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                workspace_repository=repository,
                 year=project.year,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
@@ -1005,7 +1023,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
         if workspace_environment:
             groups = (*groups, "workspace")
-            editable_repositories = (workspace.repository, *workspace.members)
+            editable_repositories = tuple(
+                item
+                for item in (workspace.repository, *workspace.members)
+                if item.package and item.editable and not item.read_only
+            )
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=environment_root,

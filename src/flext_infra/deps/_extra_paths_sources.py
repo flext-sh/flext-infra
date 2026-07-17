@@ -35,7 +35,7 @@ class FlextInfraExtraPathsSourceMixin:
         return ()
 
     def _uv_source_paths(
-        self, payload: t.Infra.ContainerDict, *, project_dir: Path
+        self, payload: t.JsonMapping, *, project_dir: Path
     ) -> t.StrSequence:
         """Resolve ``[tool.uv.sources]`` path/editable dependencies to source roots."""
         declared = set(u.Infra.declared_dependency_names_from_payload(payload))

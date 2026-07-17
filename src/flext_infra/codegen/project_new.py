@@ -135,9 +135,18 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             role=role,
             state=c.Infra.RepositoryState.ACTIVE,
             profile=profile,
+            checkout=(
+                c.Infra.CheckoutKind.SUBMODULE
+                if kind is c.Infra.ProjectKind.INTERNAL
+                else c.Infra.CheckoutKind.INDEPENDENT
+            ),
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=kind is c.Infra.ProjectKind.INTERNAL,
+            read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=1,
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=self.name,
             repository=repository,
             project=m.Infra.ProjectSpec(

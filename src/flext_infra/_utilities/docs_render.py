@@ -22,7 +22,7 @@ class FlextInfraUtilitiesDocsRender:
         return isinstance(value, list)
 
     @staticmethod
-    def as_string_sequence(data: t.Infra.ContainerDict, key: str) -> t.SequenceOf[str]:
+    def as_string_sequence(data: t.JsonMapping, key: str) -> t.SequenceOf[str]:
         """Return one contract field as a normalized string sequence."""
         value = data.get(key)
         if not isinstance(value, list):
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesDocsRender:
         return f"{prefix}/{path}"
 
     @staticmethod
-    def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
+    def _exclude_plugin_lines(data: t.JsonMapping) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(
             data, "exclude_docs"
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _exclude_docs_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
+    def _exclude_docs_lines(data: t.JsonMapping) -> t.SequenceOf[str]:
         """Render native ``exclude_docs`` lines for early MkDocs filtering.
 
         ``exclude_docs`` is gitignore-style (``pathspec.GitIgnoreSpec``): a bare
@@ -202,9 +202,7 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def docs_project_index(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
-    ) -> str:
+    def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page."""
         data = contract
         version = str(data.get("version", "")).strip() or "unknown"
@@ -246,9 +244,7 @@ class FlextInfraUtilitiesDocsRender:
         )
 
     @staticmethod
-    def docs_project_readme(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
-    ) -> str:
+    def docs_project_readme(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
         Auto-generated from ``pyproject.toml`` + package exports + the canonical
@@ -327,9 +323,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_api_readme(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
-    ) -> str:
+    def docs_api_readme(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the standard API readme for a project."""
         data = contract
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
@@ -393,9 +387,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_mkdocs(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-        modules: t.SequenceOf[str],
+        scope: m.Infra.DocScope, contract: t.JsonMapping, modules: t.SequenceOf[str]
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
@@ -432,9 +424,7 @@ class FlextInfraUtilitiesDocsRender:
         return u.Cli.template_render(template_path, context).unwrap()
 
     @staticmethod
-    def docs_overview_page(
-        scope: m.Infra.DocScope, contract: t.Infra.ContainerDict
-    ) -> str:
+    def docs_overview_page(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the generated overview page for a project API."""
         data = contract
         aliases = FlextInfraUtilitiesDocsRender._preview(
@@ -504,7 +494,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_mkdocs(
-        contract: t.Infra.ContainerDict, src_paths: t.SequenceOf[str] = ()
+        contract: t.JsonMapping, src_paths: t.SequenceOf[str] = ()
     ) -> str:
         """Return the managed mkdocs.yml for the workspace root.
 
@@ -539,7 +529,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_root_overview_page(
-        contract: t.Infra.ContainerDict,
+        contract: t.JsonMapping,
         *,
         project_count: int,
         class_counts: t.MappingKV[str, int],

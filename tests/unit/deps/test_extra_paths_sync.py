@@ -1,3 +1,5 @@
+"""Test extra paths sync behavior."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,6 +14,7 @@ from tests import u
 
 @pytest.fixture
 def pyright_content() -> str:
+    """Provide minimal Pyright configuration content."""
     return "[tool.pyright]\nextraPaths = []\n"
 
 
@@ -49,11 +52,13 @@ class TestsFlextInfraDepsExtraPathsSync:
         tmp_path: Path,
         pyright_content: str,
         mode: str,
+        *,
         dry_run: bool,
         project_dirs: t.StrSequence | None,
         expect_fail: bool,
         expect_has: str | None,
     ) -> None:
+        """Verify sync extra paths success modes."""
         project_dirs_arg: t.SequenceOf[Path] | None = None
         if mode == "project":
             project = tmp_path / "proj"
@@ -84,9 +89,11 @@ class TestsFlextInfraDepsExtraPathsSync:
         tm.ok(result)
 
     def test_sync_extra_paths_missing_root_pyproject(self, tmp_path: Path) -> None:
+        """Verify sync extra paths missing root pyproject."""
         tm.fail(_manager(tmp_path).sync_extra_paths(), has="Missing")
 
     def test_sync_extra_paths_sync_failure(self, tmp_path: Path) -> None:
+        """Verify sync extra paths sync failure."""
         project = tmp_path / "proj"
         project.mkdir()
         tm.fail(
@@ -112,6 +119,7 @@ class TestsFlextInfraDepsExtraPathsSync:
         argv: t.StrSequence,
         expected_exit: int,
     ) -> None:
+        """Verify main success modes."""
         if mode == "root":
             _ = _create_pyproject(tmp_path, pyright_content)
         if mode == "project":
@@ -145,10 +153,12 @@ class TestsFlextInfraDepsExtraPathsSync:
         tmp_path: Path,
         pyright_content: str,
         mode: str,
+        *,
         dry_run: bool,
         expected_ok: bool,
         expect_fail: bool,
     ) -> None:
+        """Verify sync one edge cases."""
         if mode == "nonexistent":
             tm.that(
                 not _manager(tmp_path)
