@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
-from flext_cli import p as cli_p
+from flext_cli import p
 
 
 # NOTE (multi-agent, mro-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
@@ -14,7 +14,7 @@ class FlextInfraProtocolsDocs(Protocol):
     """Documentation model protocols exposed through ``p.Infra``."""
 
     @runtime_checkable
-    class DocsRepositoryRef(cli_p.Model, Protocol):
+    class DocsRepositoryRef(p.BaseModel, Protocol):
         """Repository catalog fields consumed by documentation."""
 
         @property
@@ -30,7 +30,7 @@ class FlextInfraProtocolsDocs(Protocol):
         def provider(self) -> str: ...
 
     @runtime_checkable
-    class DocsProviderSpec(cli_p.Model, Protocol):
+    class DocsProviderSpec(p.BaseModel, Protocol):
         """Git provider fields consumed by documentation."""
 
         @property
@@ -46,7 +46,7 @@ class FlextInfraProtocolsDocs(Protocol):
         def branch(self) -> str: ...
 
     @runtime_checkable
-    class DocsExportBinding(cli_p.Model, Protocol):
+    class DocsExportBinding(p.BaseModel, Protocol):
         """Public export binding fields."""
 
         @property
@@ -56,11 +56,11 @@ class FlextInfraProtocolsDocs(Protocol):
         def module_name(self) -> str: ...
 
     @runtime_checkable
-    class DocsPublicContract(cli_p.Model, Protocol):
+    class DocsPublicContract(p.BaseModel, Protocol):
         """Exact source objects and derived public documentation facts."""
 
         @property
-        def metadata(self) -> cli_p.ProjectMetadata: ...
+        def metadata(self) -> p.ProjectMetadata: ...
 
         @property
         def repository(self) -> FlextInfraProtocolsDocs.DocsRepositoryRef | None: ...

@@ -639,7 +639,7 @@ msg = "Use cli.print with c.Cli.MessageStyles."
 msg = "Use cli.prompt_password from flext_cli."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.orjson]
-msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps from flext_cli."
+msg = "Use cli.json_read_file / cli.json_write_file / u.Cli.json_dumps from flext_cli."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.prompt_toolkit]
 msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."
@@ -648,7 +648,7 @@ msg = "Use cli.prompt / cli.confirm / cli.prompt_choice / cli.prompt_password."
 msg = "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.simplejson]
-msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
+msg = "Use cli.json_read_file / cli.json_write_file / u.Cli.json_dumps."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.tabulate]
 msg = "Use cli.format_table / cli.show_table from flext_cli."
@@ -660,7 +660,7 @@ msg = "Use cli.display_progress from flext_cli."
 msg = "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api.ujson]
-msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
+msg = "Use cli.json_read_file / cli.json_write_file / u.Cli.json_dumps."
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

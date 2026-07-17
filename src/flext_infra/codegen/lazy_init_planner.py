@@ -176,5 +176,36 @@ class FlextInfraCodegenLazyInitPlanner(
         """Return the lazy-init package context for the requested package directory."""
         return self.rope_workspace.package_context(pkg_dir)
 
+    def facade_alias_allowlist(
+        self, context: p.Infra.LazyInitPackageContext, *, canonical: frozenset[str]
+    ) -> frozenset[str]:
+        """Return a package's real facade-alias allowlist from the SSOT.
+
+        allowlist = expected_alias(P) UNION (raw exports(P) INTERSECT the
+        canonical single-letter alias vocabulary). Both terms are SSOT-derived
+        (this planner's own module policy plus the caller's canonical constant);
+        never a hardcoded per-package list. Consumed by the import-facade gate.
+        """
+        package_entry = self._package_entry(context.pkg_dir)
+        if package_entry is None:
+            return frozenset()
+        expected: set[str] = set()
+        for module_entry in package_entry.modules:
+            convention = self.rope_workspace.convention(
+                module_entry.file_path,
+                rel_path=module_entry.file_path.relative_to(context.pkg_dir),
+            )
+            alias = convention.module_policy.expected_alias
+            if alias:
+                expected.add(alias)
+        # A governed root without explicit ``__all__`` cannot enumerate raw
+        # exports; fall back to the module-policy expected aliases alone rather
+        # than failing the whole allowlist collection.
+        try:
+            raw = frozenset(self._package_exports(context))
+        except ValueError:
+            return frozenset(expected)
+        return frozenset(expected | (raw & canonical))
+
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlanner"]
