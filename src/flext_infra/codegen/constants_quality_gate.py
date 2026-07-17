@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
@@ -41,11 +42,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
             kinds=("constant",),
         ).build_report()
         modified_files = self.modified_python_files(self.workspace_root)
-        pyrefly_check = self.run_static_check(
-            self.workspace_root, modified_files, c.Infra.PYREFLY
-        )
-        ruff_check = self.run_static_check(
-            self.workspace_root, modified_files, c.Infra.RUFF
+        pyrefly_check, ruff_check = self._run_static_checks(
+            self.workspace_root, modified_files
         )
         after_metrics = self.after_metrics(
             census_report=census_report, modified_files=modified_files
@@ -167,6 +165,41 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "detail": " | ".join(lines[:5]) if lines else "ok",
             "exit_code": run.value.exit_code,
         }
+
+    @classmethod
+    def _run_static_checks(
+        cls, workspace_root: Path, modified_files: t.StrSequence
+    ) -> tuple[
+        t.MappingKV[str, t.Infra.InfraValue], t.MappingKV[str, t.Infra.InfraValue]
+    ]:
+        """Run pyrefly and ruff checks in parallel over the same file set.
+
+        Both tools operate on the unmodified ``modified_files`` list and are
+        independent, so they can execute concurrently. When no files changed,
+        the empty-result payload is reused for both tools without spawning
+        subprocesses.
+        """
+        empty_result: t.MappingKV[str, t.Infra.InfraValue] = {
+            "passed": True,
+            "detail": "no modified python files detected",
+            "exit_code": 0,
+        }
+        if not modified_files:
+            return (empty_result, empty_result)
+
+        tools = (c.Infra.PYREFLY, c.Infra.RUFF)
+        results: dict[str, t.MappingKV[str, t.Infra.InfraValue]] = {}
+        with ThreadPoolExecutor(max_workers=len(tools)) as executor:
+            futures: dict[Future[t.MappingKV[str, t.Infra.InfraValue]], str] = {
+                executor.submit(
+                    cls.run_static_check, workspace_root, modified_files, tool
+                ): tool
+                for tool in tools
+            }
+            for future, tool in futures.items():
+                results[tool] = future.result()
+
+        return (results[c.Infra.PYREFLY], results[c.Infra.RUFF])
 
     @staticmethod
     def after_metrics(
