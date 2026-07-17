@@ -7,7 +7,10 @@ Infra:
         ignore-words-list: crate,nd
       # mro-j47u (codex): non-linter tool sections are config-owned as well.
       deptry:
-        known-first-party: [flext_core]
+        # mro-6kq8 (kimi): seed first-party namespaces from the FLEXT SSOT
+        # triad (core runtime, CLI surface, infra tooling); detection phases
+        # merge these with discovered src/ namespaces and declared flext-* deps.
+        known-first-party: [flext_core, flext_cli, flext_infra]
         pep621-dev-dependency-groups: [dev]
       hatch:
         allow-direct-references: true
