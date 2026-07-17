@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra import p, r, t, u
 from flext_infra.base import s
 from flext_infra.codegen._grpc.engine import FlextInfraCodegenGrpcEngineMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # mro-wkii.17.26 (codex): thin facade applies only validated compiler artifacts.

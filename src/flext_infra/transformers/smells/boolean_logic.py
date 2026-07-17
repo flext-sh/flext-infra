@@ -12,14 +12,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import p
 from flext_infra.transformers.smells.base import (
     FlextInfraSmellFixer,
     register_smell_fixer,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class _BooleanSimplifier(ast.NodeTransformer):

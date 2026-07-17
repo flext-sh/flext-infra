@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import inspect
+from typing import TYPE_CHECKING
 
-from flext_infra import p, t
 from flext_infra.codegen._protocol_model_annotations import (
     FlextInfraCodegenProtocolModelAnnotations,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenProtocolModelRender:

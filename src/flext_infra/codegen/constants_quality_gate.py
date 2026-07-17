@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import shutil
 import sys
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.census import FlextInfraRefactorCensus
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenQualityGate(s[bool]):

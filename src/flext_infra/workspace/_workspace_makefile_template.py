@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from jinja2.environment import Environment
 from jinja2.exceptions import TemplateError
@@ -16,6 +16,9 @@ from jinja2.utils import select_autoescape
 
 from flext_core import r
 from flext_infra import c, p, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraWorkspaceMakefileTemplateMixin:

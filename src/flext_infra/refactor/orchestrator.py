@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.refactor._orchestrator_dispatch import (
@@ -20,9 +19,13 @@ from flext_infra.refactor.file_executor import (
     FlextInfraClassNestingPostCheckGate,
     FlextInfraRefactorFileExecutor,
 )
-from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 
 _log = u.fetch_logger(__name__)
 

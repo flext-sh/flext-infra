@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t, u
 from flext_infra._enforcement.collection_base import (
@@ -18,7 +19,9 @@ from flext_infra._enforcement.collection_tests import (
 )
 from flext_infra._enforcement.metadata import FlextInfraEnforcementMetadata
 from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
-from flext_infra.fixers.result import FlextInfraFixersResult as fr
+
+if TYPE_CHECKING:
+    from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
 
 class FlextInfraEnforcementSourceCollectors(

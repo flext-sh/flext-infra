@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from enum import StrEnum, unique
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsWorkspace:

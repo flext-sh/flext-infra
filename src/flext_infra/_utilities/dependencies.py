@@ -7,10 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 from types import MappingProxyType
-
-from tomlkit import TOMLDocument
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra import c, t
@@ -18,6 +16,11 @@ from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tomlkit import TOMLDocument
 
 
 class FlextInfraUtilitiesDependencies:

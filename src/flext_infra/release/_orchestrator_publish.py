@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, p, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = u.fetch_logger(__name__)
 

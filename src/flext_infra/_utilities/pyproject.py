@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
-
-from tomlkit import TOMLDocument
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra import c, t
+
+if TYPE_CHECKING:
+    from tomlkit import TOMLDocument
 
 
 def _validate_infra_payload(payload: object) -> t.JsonMapping | None:

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, u
 from flext_infra.codegen._fixer_lint import FlextInfraCodegenFixerLintMixin
@@ -15,6 +15,9 @@ from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _log = u.fetch_logger(__name__)
 

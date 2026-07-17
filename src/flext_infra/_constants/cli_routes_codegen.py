@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import p
+from typing import TYPE_CHECKING
+
 from flext_infra import c, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
@@ -27,6 +28,9 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
+
+if TYPE_CHECKING:
+    from flext_cli import p
 
 # NOTE (multi-agent, mro-wkii.17.9): deps no longer exposes path-sync;
 # codegen consumes the pure u.Infra pyproject renderer internally.

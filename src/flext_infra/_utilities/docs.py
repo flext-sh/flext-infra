@@ -6,8 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -16,6 +15,10 @@ from flext_infra._utilities._docs_scope_build import (
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):

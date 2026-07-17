@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p, t, u
@@ -17,7 +15,12 @@ from flext_infra.codegen._lazy_init_generation_io import (
 from flext_infra.codegen._lazy_init_generation_registry import (
     FlextInfraCodegenLazyInitGenerationRegistryMixin,
 )
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 
 # mro-i6nq.10: Root manifests and initializers are synchronized as one artifact set.

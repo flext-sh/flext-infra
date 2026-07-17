@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from time import perf_counter
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 from flext_core import r, u
@@ -23,6 +22,9 @@ from flext_infra.refactor.mro_migration_validator import (
     FlextInfraRefactorMROMigrationValidator,
 )
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixin):

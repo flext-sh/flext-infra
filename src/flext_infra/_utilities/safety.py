@@ -10,12 +10,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shutil
-from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, p, t
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FlextInfraUtilitiesSafety:

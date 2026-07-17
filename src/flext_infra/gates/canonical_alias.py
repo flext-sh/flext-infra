@@ -11,8 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.detectors.compatibility_alias_detector import (
@@ -22,6 +21,9 @@ from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):

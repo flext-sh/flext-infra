@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p, t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin:
@@ -25,7 +27,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
     def _parents_from_constants_module(
         self, module_path: Path, current_pkg: str, visited: set[str] | None = None
     ) -> t.StrSequence:
-        """Extract upstream package parents from a constants module.
+        """Extract upstream package parents from a module.
 
         Single rule: collect external packages from (1) class bases,
         (2) declared imports, and (3) recursive walks into same-package

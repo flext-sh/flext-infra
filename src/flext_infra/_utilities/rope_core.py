@@ -7,9 +7,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import warnings
-from collections.abc import Generator
 from contextlib import contextmanager
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import config, t
 
@@ -25,6 +24,10 @@ from flext_infra._utilities.rope_patch.pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRopeCore(

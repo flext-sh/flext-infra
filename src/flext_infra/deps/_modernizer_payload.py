@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
+from typing import TYPE_CHECKING
 
 from flext_infra import c, t, u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraPyprojectModernizerPayloadMixin:

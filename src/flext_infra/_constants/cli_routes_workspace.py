@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import p
+from typing import TYPE_CHECKING
+
 from flext_infra import c, m
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -38,6 +39,9 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
+
+if TYPE_CHECKING:
+    from flext_cli import p
 
 WORKSPACE_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_REFACTOR: (

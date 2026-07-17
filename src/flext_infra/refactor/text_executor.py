@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t, u
 from flext_infra.refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
@@ -29,6 +29,9 @@ from flext_infra.transformers.tier0_import_fixer import (
     FlextInfraTransformerTier0ImportFixer,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):

@@ -14,10 +14,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraEnsurePackagingPhase:

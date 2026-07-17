@@ -7,10 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_cli import p
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+
+if TYPE_CHECKING:
+    from flext_cli import p
 
 
 class FlextInfraConstantsRope:

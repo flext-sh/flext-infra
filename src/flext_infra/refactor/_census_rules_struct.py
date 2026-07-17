@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t
@@ -27,6 +26,9 @@ from flext_infra.detectors.private_import_bypass_detector import (
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraRefactorCensusRulesStructMixin:

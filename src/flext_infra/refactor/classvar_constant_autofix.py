@@ -11,11 +11,14 @@ import re
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra import t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 _DOCSTRING_DELIMITER_COUNT = 2
 _CLASSVAR_DECLARATION_PATTERN = re.compile(

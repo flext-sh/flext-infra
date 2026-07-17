@@ -11,10 +11,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from abc import abstractmethod
-from pathlib import Path
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_infra import p, t
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraSmellFixer:

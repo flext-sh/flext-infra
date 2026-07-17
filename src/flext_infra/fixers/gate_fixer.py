@@ -6,13 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):

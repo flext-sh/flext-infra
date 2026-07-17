@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -33,6 +31,10 @@ from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:

@@ -6,15 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from annotated_types import Len
-from pydantic import ConfigDict
 
 from flext_cli import m
 from flext_infra._constants.base import FlextInfraConstantsBase
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from pydantic import ConfigDict
 
 # Local non-empty string contract (external annotated_types only; no facade).
 type NonEmptyStr = Annotated[str, Len(1)]

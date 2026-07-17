@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t, u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class FlextInfraNamespaceEnforcerPhasesMixin:

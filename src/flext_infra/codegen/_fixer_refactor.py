@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p
 from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
 from flext_infra.refactor.service import FlextInfraRefactorService
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):

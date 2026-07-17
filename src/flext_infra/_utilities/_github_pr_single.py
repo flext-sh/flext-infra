@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, p
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesGithubPrSingleMixin:

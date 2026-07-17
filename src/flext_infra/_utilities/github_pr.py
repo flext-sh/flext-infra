@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -15,6 +15,9 @@ from flext_infra._utilities._github_pr_single import (
     FlextInfraUtilitiesGithubPrSingleMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):

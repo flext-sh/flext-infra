@@ -7,12 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import MutableMapping, MutableSequence, MutableSet
-from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m, u
-from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
@@ -20,6 +17,12 @@ from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
 )
 from flext_infra._models.refactor_violations import FlextInfraModelsRefactorViolations
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping, MutableSequence, MutableSet
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraModelsRefactor(

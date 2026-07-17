@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 from flext_infra import c, m, p, r, s, t, u
 from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _log = u.fetch_logger(__name__)
 

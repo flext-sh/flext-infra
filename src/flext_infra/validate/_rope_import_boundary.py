@@ -12,12 +12,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import m, p, t, u
 from flext_infra.base import s
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _RopeImportBoundaryBase(s[bool]):

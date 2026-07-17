@@ -60,7 +60,7 @@ rule:
 _CASE_B_RULE = r"""id: flext-deep-module-import
 language: python
 severity: error
-message: "Import the facade from the package root, never a deep submodule path. Use `from flext_<ns> import r`, never `from flext_core.result import r`."
+message: "Import the facade from the package root, never a deep submodule path. Use `from flext_<ns> import r`, never `from flext_core import r`."
 rule:
   kind: import_from_statement
   has: { field: module_name, regex: '^flext_[a-z0-9_]+\.' }

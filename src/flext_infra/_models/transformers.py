@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraModelsTransformers:

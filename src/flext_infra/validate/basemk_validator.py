@@ -9,13 +9,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraBaseMkValidator(s[bool]):

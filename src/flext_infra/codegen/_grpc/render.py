@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, r, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # mro-wkii.17.26 (codex): normalization never replaces protoc semantics.

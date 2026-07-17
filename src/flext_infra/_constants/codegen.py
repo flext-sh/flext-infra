@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum, unique
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_infra import t
 from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
 from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
 from flext_infra._constants.codegen_render_names import (
     FlextInfraConstantsCodegenRenderNames,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraConstantsCodegen(

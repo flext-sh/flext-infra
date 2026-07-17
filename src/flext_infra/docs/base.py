@@ -12,13 +12,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_core import e, r
 from flext_infra import c, m, p, t
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC):

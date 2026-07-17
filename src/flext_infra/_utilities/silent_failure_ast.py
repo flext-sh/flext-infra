@@ -7,8 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping
-from typing import NamedTuple, override
+from typing import TYPE_CHECKING, NamedTuple, override
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class _SilentFailureFinding(NamedTuple):

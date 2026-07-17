@@ -10,13 +10,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import Iterator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra import c, m, p, t
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRefactorDiscovery:

@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 from flext_infra import c, p
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,13 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import shlex
-from collections.abc import MutableMapping
 from pathlib import Path
-from typing import Annotated, ClassVar
+from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_cli import FlextCliModels as m, u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraModelsCheck:

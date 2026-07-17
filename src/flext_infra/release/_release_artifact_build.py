@@ -8,16 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.release._release_artifact_execution import (
     FlextInfraReleaseArtifactExecutionMixin,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixin):

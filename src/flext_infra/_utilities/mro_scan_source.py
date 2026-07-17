@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import t
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesMroScanSource:

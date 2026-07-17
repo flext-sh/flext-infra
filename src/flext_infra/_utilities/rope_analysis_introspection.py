@@ -6,14 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRopeAnalysisIntrospection:

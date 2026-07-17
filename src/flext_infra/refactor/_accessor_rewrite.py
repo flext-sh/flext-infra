@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import io
 from operator import itemgetter
-from pathlib import Path
 from tokenize import NAME, generate_tokens
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraAccessorMigrationRewriteMixin:

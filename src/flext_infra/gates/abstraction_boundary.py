@@ -16,11 +16,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):

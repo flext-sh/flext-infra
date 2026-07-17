@@ -7,10 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra import t
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorHardcodedVersion(FlextInfraRopeTransformer):

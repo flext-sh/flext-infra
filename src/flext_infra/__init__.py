@@ -7,8 +7,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+from flext_cli import d, e, h, r, x
 from flext_core.lazy import (
     build_lazy_import_map as _build_lazy_import_map,
     install_lazy_exports as _install_lazy_exports,
@@ -24,23 +23,21 @@ from flext_infra.__version__ import (
     __version_info__,
 )
 
+from . import basemk
+from ._config import config
+from ._settings import settings
+from .api import FlextInfra, infra
+from .base import FlextInfraServiceBase, FlextInfraServiceBase as s
+from .base_selection import FlextInfraProjectSelectionServiceBase
+from .cli import FlextInfraCli, docs_main, main
+from .constants import FlextInfraConstants, FlextInfraConstants as c
+from .models import FlextInfraModels, FlextInfraModels as m
+from .protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
+from .typings import FlextInfraTypes, FlextInfraTypes as t
+from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
+
 # mro-wkii.17.26.2 (codex): root PEP 562 exports need static declarations,
 # while runtime resolution must remain lazy to prevent facade import cycles.
-if TYPE_CHECKING:
-    from flext_cli import d, e, h, r, x
-
-    from . import basemk
-    from ._config import config
-    from ._settings import settings
-    from .api import FlextInfra, infra
-    from .base import FlextInfraServiceBase, FlextInfraServiceBase as s
-    from .base_selection import FlextInfraProjectSelectionServiceBase
-    from .cli import FlextInfraCli, docs_main, main
-    from .constants import FlextInfraConstants, FlextInfraConstants as c
-    from .models import FlextInfraModels, FlextInfraModels as m
-    from .protocols import FlextInfraProtocols, FlextInfraProtocolsBase, p
-    from .typings import FlextInfraTypes, FlextInfraTypes as t
-    from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
 
 _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     "._config": ("config",),

@@ -7,8 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from importlib import import_module
-from pathlib import Path
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from flext_infra import c, p, t
 from flext_infra._utilities._rope.bracket_balance import (
@@ -17,6 +16,9 @@ from flext_infra._utilities._rope.bracket_balance import (
 from flext_infra._utilities._rope.method_order import (
     FlextInfraUtilitiesRopeMethodOrderMixin,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesRopeHelpers(

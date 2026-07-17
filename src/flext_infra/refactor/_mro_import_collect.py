@@ -6,10 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import m, t, u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraRefactorMROImportRewriterFileOpsMixin:

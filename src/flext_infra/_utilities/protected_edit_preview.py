@@ -7,13 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
-from collections.abc import Callable, MutableMapping
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, MutableMapping
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):

@@ -9,12 +9,14 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from time import perf_counter
-from types import TracebackType
-from typing import Annotated, ClassVar, Self, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, Self, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base import s
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 class FlextInfraRopeWorkspace(s[p.Infra.RopeWorkspaceSession]):

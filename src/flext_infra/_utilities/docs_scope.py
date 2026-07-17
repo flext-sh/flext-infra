@@ -11,7 +11,7 @@ from functools import cache
 from pathlib import Path
 
 from flext_cli import FlextCliUtilities as u
-from flext_core.result import FlextResult as r
+from flext_core import FlextResult as r
 from flext_infra import (
     FlextInfraConstants as c,
     FlextInfraProtocols as p,

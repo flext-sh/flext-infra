@@ -8,15 +8,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_cli import m
-from flext_infra import p, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.refactor_namespace_enforcer import (
-    FlextInfraModelsNamespaceEnforcer,
-)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
+    from flext_infra._models.refactor_namespace_enforcer import (
+        FlextInfraModelsNamespaceEnforcer,
+    )
 
 
 class FlextInfraModelsScan:

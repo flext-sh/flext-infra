@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
-from collections.abc import Callable as _CensusCallable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
@@ -21,6 +21,9 @@ from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+
+if TYPE_CHECKING:
+    from collections.abc import Callable as _CensusCallable
 
 _log = u.fetch_logger(__name__)
 

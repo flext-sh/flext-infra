@@ -6,14 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, p, t, u
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class FlextInfraProjectMigratorArtifactsMixin:

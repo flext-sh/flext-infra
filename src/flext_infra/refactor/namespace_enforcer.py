@@ -6,9 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 from flext_core import r
@@ -20,6 +18,10 @@ from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 
 class FlextInfraNamespaceEnforcer(

@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import config, m, t
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
-from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
 class FlextInfraUtilitiesMroScanCatalog:

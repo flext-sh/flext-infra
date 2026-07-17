@@ -8,19 +8,15 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.release._orchestrator_publish import (
     FlextInfraReleaseOrchestratorPublishMixin,
 )
 from flext_infra.release._release_artifact_build import (
     FlextInfraReleaseArtifactBuildMixin,
 )
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 logger = u.fetch_logger(__name__)
 

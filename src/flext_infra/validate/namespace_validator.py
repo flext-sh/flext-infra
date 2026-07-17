@@ -12,14 +12,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.base import s
 from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):

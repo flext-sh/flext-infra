@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, p, t, u
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # mro-wkii.17.26 (codex): IO owns one initializer and removes obsolete sidecars.

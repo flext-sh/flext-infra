@@ -19,14 +19,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.base import s
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraValidateImportCycles(s[bool]):

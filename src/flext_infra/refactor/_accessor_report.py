@@ -7,10 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import difflib
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraAccessorMigrationReportMixin:

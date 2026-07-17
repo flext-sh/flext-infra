@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, r, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenConsolidatorStepsMixin:
@@ -28,7 +30,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     def _build_value_map_from_constants_file(
         cls, constants_file: Path
     ) -> p.Result[t.StrMapping]:
-        """Build value map from a constants file.
+        """Build value map from a file.
 
         Missing file → empty map (nothing to consolidate); an existing-but-unreadable
         file is surfaced as a failure (never silently treated as empty).

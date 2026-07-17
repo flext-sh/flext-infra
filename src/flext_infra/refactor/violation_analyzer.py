@@ -9,9 +9,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import MutableMapping
 from operator import itemgetter
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t, u
 from flext_infra.refactor._violation_helper_classifier import (
@@ -23,6 +22,10 @@ from flext_infra.refactor.class_nesting_analyzer import (
 from flext_infra.transformers.violation_census_visitor import (
     FlextInfraViolationCensusVisitor,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
 
 
 class FlextInfraRefactorViolationAnalyzer(

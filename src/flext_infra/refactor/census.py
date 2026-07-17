@@ -7,8 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_cli import cli
 from flext_core import r
@@ -38,6 +37,9 @@ from flext_infra.refactor._census_rules_struct import (
 from flext_infra.refactor._census_symbols import FlextInfraRefactorCensusSymbolsMixin
 from flext_infra.refactor._census_validate import FlextInfraRefactorCensusValidateMixin
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraRefactorCensus(

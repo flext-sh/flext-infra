@@ -7,14 +7,17 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra import t
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraRefactorTypingDictImport(

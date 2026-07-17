@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_cli import t
+if TYPE_CHECKING:
+    from flext_cli import t
 
 
 class FlextInfraConstantsDeps:

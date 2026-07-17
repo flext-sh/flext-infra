@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, config, m, p, u
 from flext_infra.base import s
 from flext_infra.workspace._sync_artifacts import FlextInfraWorkspaceSyncArtifactsMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraSyncService(

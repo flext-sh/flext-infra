@@ -9,13 +9,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_infra import c, config, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sources import FlextInfraExtraPathsSourceMixin
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraExtraPathsManager(

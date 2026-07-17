@@ -6,16 +6,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from annotated_types import Len
-from pydantic import HttpUrl
 
 from flext_cli import m
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from pydantic import HttpUrl
+
+    from flext_infra._models.deps_tool_config import (
+        FlextInfraModelsDepsToolSettings,  # mro-itcd.1: runtime type required by Infra tooling fields.
+    )
 
 # Local non-empty string contract (external annotated_types only; no facade).
 type NonEmptyStr = Annotated[str, Len(1)]

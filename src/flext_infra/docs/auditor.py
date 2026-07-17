@@ -6,14 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import m, p, r, t, u
 from flext_infra.docs._auditor_checks import FlextInfraDocAuditorChecksMixin
 from flext_infra.docs._auditor_report import FlextInfraDocAuditorReportMixin
 from flext_infra.docs.auditor_mixin import FlextInfraDocAuditorMixin
 from flext_infra.docs.base import FlextInfraDocServiceBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraDocAuditor(

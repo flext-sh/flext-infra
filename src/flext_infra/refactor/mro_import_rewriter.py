@@ -6,9 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import m, p, t, u
 from flext_infra.refactor._mro_import_collect import (
@@ -17,6 +16,9 @@ from flext_infra.refactor._mro_import_collect import (
 from flext_infra.transformers.mro_symbol_propagator import (
     FlextInfraRefactorMROSymbolPropagator,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 
 class FlextInfraRefactorMROImportRewriter(

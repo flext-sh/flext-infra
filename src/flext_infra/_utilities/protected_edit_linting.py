@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import concurrent.futures
 import hashlib
-from collections.abc import MutableMapping
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, p, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesProtectedEditLinting:

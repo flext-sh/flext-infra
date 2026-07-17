@@ -9,12 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
 from flext_infra import c, p, t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _DiagResult:

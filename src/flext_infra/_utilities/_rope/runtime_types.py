@@ -6,12 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TypeGuard
-
-from flext_infra import p, t
+from typing import TYPE_CHECKING, TypeGuard
 
 # mro-wkii.17.26 (codex): runtime parts share the private Rope base.
 from flext_infra._utilities._rope.runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):

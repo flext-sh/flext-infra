@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraGate(ABC):

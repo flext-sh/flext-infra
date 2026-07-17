@@ -7,11 +7,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from operator import itemgetter
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t, u
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraRefactorCensusSymbolsMixin:

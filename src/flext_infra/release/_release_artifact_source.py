@@ -14,15 +14,13 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.release._release_artifact_metadata import (
     FlextInfraReleaseArtifactMetadataMixin,
 )
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import p
 
 
 class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixin):
