@@ -122,8 +122,10 @@ class FlextInfraUtilitiesRopeStructure:
         resource = rope.resource(ctx.file_path)
         module_entry = rope.module(ctx.file_path)
         if resource is None or module_entry is None:
-            msg = f"private-root import resource is not indexed: {ctx.file_path}"
-            raise RuntimeError(msg)
+            # mro-qc84 (fix-forward): a file outside the shared Rope index cannot
+            # be analyzed for private-root imports; skip it as detect_static_rules
+            # does, rather than aborting the whole workspace fix.
+            return ()
         project_root = ctx.project_root or module_entry.project_root
         if project_root is None:
             msg = f"private-root import project owner is unknown: {ctx.file_path}"
