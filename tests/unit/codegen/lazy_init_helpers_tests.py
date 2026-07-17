@@ -503,7 +503,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         core_root = tmp_path / "flext-core" / c.Infra.DEFAULT_SRC_DIR / "flext_core"
         core_root.mkdir(parents=True)
-        core_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+        core_root.parent.parent.joinpath(c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-core"\nversion = "0.1.0"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
@@ -525,7 +525,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
         cli_root = tmp_path / "flext-cli" / c.Infra.DEFAULT_SRC_DIR / "flext_cli"
         cli_root.mkdir(parents=True)
-        cli_root.parent.parent.joinpath(c.Infra.PYPROJECT_FILENAME).write_text(
+        cli_root.parent.parent.joinpath(c.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "flext-cli"\nversion = "0.1.0"\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )

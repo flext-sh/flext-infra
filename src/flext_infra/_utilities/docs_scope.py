@@ -38,7 +38,7 @@ class FlextInfraUtilitiesDocsScope:
         silent fallback to directory-name.
         """
         root = Path(project_root)
-        pyproject_path = root / c.Infra.PYPROJECT_FILENAME
+        pyproject_path = root / c.PYPROJECT_FILENAME
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
@@ -137,7 +137,7 @@ class FlextInfraUtilitiesDocsScope:
         entry: Path, *, workspace_members: t.Infra.StrSet
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
-        pyproject = entry / c.Infra.PYPROJECT_FILENAME
+        pyproject = entry / c.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.

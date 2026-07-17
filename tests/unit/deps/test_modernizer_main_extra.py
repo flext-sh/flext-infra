@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -11,7 +10,6 @@ from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests import c
 
 from pathlib import Path
-
 
 
 class TestsFlextInfraDepsModernizerMainExtra:
@@ -31,7 +29,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
         if content is not None:
-            (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            (workspace / c.PYPROJECT_FILENAME).write_text(
                 content, encoding="utf-8"
             )
         modernizer = FlextInfraPyprojectModernizer(workspace_root=workspace)
@@ -56,7 +54,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         self, modernizer_workspace_with_projects: Path
     ) -> None:
         selected_pyproject = (
-            modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
+            modernizer_workspace_with_projects / "selected" / c.PYPROJECT_FILENAME
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
         modernizer = FlextInfraPyprojectModernizer(
@@ -83,7 +81,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
         self, modernizer_workspace: Path
     ) -> None:
-        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+        (modernizer_workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 'name = "workspace"\n'
@@ -137,7 +135,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
 
         tm.that(modernizer.run(), eq=0)
-        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+        rendered = (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(
             encoding="utf-8"
         )
         tm.that(rendered, has='"requests>=2.32.4"')
@@ -149,7 +147,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     def test_run_apply_rewrites_constraints_with_compatible_policy(
         self, modernizer_workspace: Path
     ) -> None:
-        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+        (modernizer_workspace / c.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
                 'name = "workspace"\n'
@@ -182,7 +180,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         tm.that(modernizer.run(), eq=0)
         tm.that(
-            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(
                 encoding="utf-8"
             ),
             has='"requests~=2.32.4"',
@@ -193,12 +191,12 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         workspace = tmp_path / "flext"
         workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+        (workspace / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext'\n", encoding="utf-8"
         )
         external = tmp_path / "projeto_b-data"
         (external / "src" / "projeto_b_data").mkdir(parents=True)
-        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
+        external_pyproject = external / c.PYPROJECT_FILENAME
         external_pyproject.write_text(
             "[project]\nname='projeto_b-data'\ndependencies=['flext-core']\n",
             encoding="utf-8",

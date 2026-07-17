@@ -65,7 +65,7 @@ class FlextInfraUtilitiesPyproject:
     def tool_flext_meta(project_root: Path) -> t.Infra.ContainerDict:
         """Return the normalized ``tool.flext`` table from a project root."""
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-            project_root / c.Infra.PYPROJECT_FILENAME
+            project_root / c.PYPROJECT_FILENAME
         )
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -143,7 +143,7 @@ class FlextInfraUtilitiesPyproject:
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project root."""
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
-            project_root / c.Infra.PYPROJECT_FILENAME
+            project_root / c.PYPROJECT_FILENAME
         )
         docs_meta = FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
         return FlextInfraUtilitiesPyproject.package_name_from_payload(
@@ -159,7 +159,7 @@ class FlextInfraUtilitiesPyproject:
         ``[tool.flext.workspace] members`` and ``[tool.uv.workspace] members``
         are honoured (first non-empty wins).
         """
-        pyproject_path = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject_path = workspace_root / c.PYPROJECT_FILENAME
         if not pyproject_path.is_file():
             return ()
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)

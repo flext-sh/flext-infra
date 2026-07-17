@@ -95,7 +95,7 @@ class FlextInfraMypyGate(FlextInfraGate):
 
     def _resolve_config(self, project_dir: Path, ctx: p.Infra.GateContext) -> Path:
         """Resolve mypy settings: project-local if it has [tool.mypy], else workspace."""
-        pyproject_name: str = c.Infra.PYPROJECT_FILENAME
+        pyproject_name: str = c.PYPROJECT_FILENAME
         proj_py = project_dir / pyproject_name
         doc = u.Cli.toml_read(proj_py)
         if doc is not None:
@@ -186,7 +186,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                 )
             issues.append(
                 m.Infra.Issue(
-                    file=c.Infra.PYPROJECT_FILENAME,
+                    file=c.PYPROJECT_FILENAME,
                     line=1,
                     column=1,
                     code="mypy-exec",

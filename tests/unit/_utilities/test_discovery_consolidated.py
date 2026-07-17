@@ -10,7 +10,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c, m, p, u
+from tests import c, m, u
 
 
 class TestsFlextInfraUtilitiesdiscoveryconsolidated:
@@ -45,7 +45,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         project = tmp_path / "demo-project"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             "[tool.poetry]\nname='demo'\n", encoding="utf-8"
         )
 
@@ -56,12 +56,12 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     def test_discover_project_roots_includes_attached_project(
         self, tmp_path: Path
     ) -> None:
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname="workspace"\nversion="0.1.0"\n', encoding="utf-8"
         )
         attached = tmp_path / "attached-project"
         (attached / c.Infra.DEFAULT_SRC_DIR / "attached_project").mkdir(parents=True)
-        (attached / c.Infra.PYPROJECT_FILENAME).write_text(
+        (attached / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname="attached-project"\nversion="0.1.0"\n'
             "[tool.flext.workspace]\nattached=true\n",
             encoding="utf-8",
@@ -76,12 +76,12 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     ) -> None:
         workspace = tmp_path / "flext"
         workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+        (workspace / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname="flext"\nversion="0.1.0"\n', encoding="utf-8"
         )
         external = tmp_path / ".ai-hub"
         (external / c.Infra.DEFAULT_SRC_DIR / "ai_hub").mkdir(parents=True)
-        (external / c.Infra.PYPROJECT_FILENAME).write_text(
+        (external / c.PYPROJECT_FILENAME).write_text(
             '[project]\nname="ai-hub"\nversion="0.1.0"\ndependencies=["flext-core"]\n',
             encoding="utf-8",
         )
@@ -96,7 +96,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         workspace_src = tmp_path / c.Infra.DEFAULT_SRC_DIR
         workspace_src.mkdir(parents=True)
         (tmp_path / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n\n"
             "[tool.flext.workspace]\n"
             "members = ['beta', 'alpha']\n",
@@ -108,7 +108,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             (project_root / c.Infra.MAKEFILE_FILENAME).write_text(
                 "all:\n", encoding="utf-8"
             )
-            (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            (project_root / c.PYPROJECT_FILENAME).write_text(
                 f"[project]\nname='{project_name}'\n", encoding="utf-8"
             )
 
@@ -122,12 +122,12 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         self._init_git_repo(tmp_path)
         tracked_project = tmp_path / "tracked"
         (tracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (tracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tracked_project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='tracked'\n", encoding="utf-8"
         )
         untracked_project = tmp_path / "untracked"
         (untracked_project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (untracked_project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (untracked_project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='untracked'\n", encoding="utf-8"
         )
         add_result = u.Cli.run_raw(
@@ -189,7 +189,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             parents=True
         )
         (project / c.Infra.MAKEFILE_FILENAME).write_text("all:\n", encoding="utf-8")
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n", encoding="utf-8"
         )
         legit_file = project / c.Infra.DEFAULT_SRC_DIR / "mod.py"
@@ -236,8 +236,8 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         second = tmp_path / "second"
         first.mkdir()
         second.mkdir()
-        first_pyproject = first / c.Infra.PYPROJECT_FILENAME
-        second_pyproject = second / c.Infra.PYPROJECT_FILENAME
+        first_pyproject = first / c.PYPROJECT_FILENAME
+        second_pyproject = second / c.PYPROJECT_FILENAME
         first_pyproject.write_text("[project]\nname='first'\n", encoding="utf-8")
         second_pyproject.write_text("[project]\nname='second'\n", encoding="utf-8")
 
@@ -253,8 +253,8 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         skipped = tmp_path / ".flext-deps"
         included.mkdir()
         skipped.mkdir()
-        included_file = included / c.Infra.PYPROJECT_FILENAME
-        skipped_file = skipped / c.Infra.PYPROJECT_FILENAME
+        included_file = included / c.PYPROJECT_FILENAME
+        skipped_file = skipped / c.PYPROJECT_FILENAME
         included_file.write_text("[project]\nname='ok'\n", encoding="utf-8")
         skipped_file.write_text("[project]\nname='skip'\n", encoding="utf-8")
 
@@ -272,8 +272,8 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         hidden = tmp_path / ".claude" / "worktrees" / "agent" / "project"
         included.mkdir()
         hidden.mkdir(parents=True)
-        included_file = included / c.Infra.PYPROJECT_FILENAME
-        hidden_file = hidden / c.Infra.PYPROJECT_FILENAME
+        included_file = included / c.PYPROJECT_FILENAME
+        hidden_file = hidden / c.PYPROJECT_FILENAME
         included_file.write_text("[project]\nname='ok'\n", encoding="utf-8")
         hidden_file.write_text("[project]\nname='hidden'\n", encoding="utf-8")
 
@@ -288,12 +288,12 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     ) -> None:
         workspace = tmp_path / "flext"
         workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+        (workspace / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='flext'\n", encoding="utf-8"
         )
         external = tmp_path / "projeto_b-data"
         (external / "src" / "projeto_b_data").mkdir(parents=True)
-        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
+        external_pyproject = external / c.PYPROJECT_FILENAME
         external_pyproject.write_text(
             "[project]\nname='projeto_b-data'\ndependencies=['flext-core']\n",
             encoding="utf-8",
@@ -318,7 +318,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         project = tmp_path / "alpha"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
         (project / c.Infra.DIR_TESTS).mkdir(parents=True)
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='alpha'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
@@ -337,13 +337,13 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     def test_discover_projects_includes_workspace_members_without_core_dep(
         self, tmp_path: Path
     ) -> None:
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers = ['alpha']\n",
             encoding="utf-8",
         )
         project = tmp_path / "alpha"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
-        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='alpha'\n", encoding="utf-8"
         )
 
@@ -364,7 +364,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             "", encoding="utf-8"
         )
         (tmp_path / c.Infra.DIR_TESTS).mkdir()
-        (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
             "[project]\nname='demo-project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )

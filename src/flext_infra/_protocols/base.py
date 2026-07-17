@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from datetime import datetime
     from pathlib import Path
 
-    from flext_cli import p
+    from flext_cli import p as pc
     from flext_infra import p, t
 
 
@@ -447,7 +447,7 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> p.Result[p.Cli.CommandOutput]:
+        ) -> p.Result[pc.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
@@ -490,7 +490,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[pc.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 
@@ -1107,6 +1107,9 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def root(self) -> Path: ...
+
+        @property
+        def what(self) -> str: ...
 
         @property
         def scope(self) -> str: ...

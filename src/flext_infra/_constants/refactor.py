@@ -573,17 +573,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "__version_info__",
     })
     "Names to skip during compatibility alias detection."
-    ENFORCEMENT_CANONICAL_ALIASES: Final[frozenset[str]] = (
-        c.ENFORCEMENT_CANONICAL_ALIASES
-    )
-    "Canonical short aliases exposed by FLEXT facades (SSOT: flext-core)."
-    ENFORCEMENT_PROJECT_ALIAS_OWNERS: Final[t.StrSequenceMapping] = (
-        c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-    )
-    "Project package → canonical aliases it re-exports locally (SSOT: flext-core)."
-    # mro-j47u: consume core enforcement data through its exact canonical alias.
-    ENFORCEMENT_LIBRARY_OWNERS: Final[t.StrMapping] = c.ENFORCEMENT_LIBRARY_OWNERS
-    "External library → project that owns its abstraction facade (SSOT: flext-core)."
     FUTURE_ANNOTATIONS_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+__future__\s+import\s+annotations\b", re.MULTILINE
     )

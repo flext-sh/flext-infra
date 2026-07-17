@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
-from typing import TYPE_CHECKING
 
 import tomlkit
 from flext_tests import tm
@@ -15,9 +14,6 @@ from tests import p, t
 from tests import u
 
 from pathlib import Path
-
-from tests import m
-
 
 
 class TestsFlextInfraModernizerPyrefly:
@@ -158,7 +154,7 @@ class TestsFlextInfraModernizerPyrefly:
         project_dir.mkdir()
         for directory in ("src", "tests"):
             (project_dir / directory).mkdir()
-        (project_dir / c.Infra.PYPROJECT_FILENAME).write_text(
+        (project_dir / c.PYPROJECT_FILENAME).write_text(
             "[tool.pyright]\ninclude = ['src']\n", encoding="utf-8"
         )
 

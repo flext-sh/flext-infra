@@ -213,7 +213,7 @@ class FlextInfraUtilitiesDiscovery:
             if child != project_root
             and child.is_dir()
             and (child / c.Infra.DEFAULT_SRC_DIR).is_dir()
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
+            and (child / c.PYPROJECT_FILENAME).is_file()
         )
 
     @staticmethod
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesDiscovery:
             for child in workspace_root.iterdir()
             if child.is_dir()
             and not child.name.startswith(".")
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
+            and (child / c.PYPROJECT_FILENAME).is_file()
         )
 
     @staticmethod
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDiscovery:
         has_project_marker = any(
             candidate.is_file()
             for candidate in (
-                resolved_root / c.Infra.PYPROJECT_FILENAME,
+                resolved_root / c.PYPROJECT_FILENAME,
                 resolved_root / c.Infra.MAKEFILE_FILENAME,
             )
         )
@@ -286,10 +286,10 @@ class FlextInfraUtilitiesDiscovery:
         all_files: list[Path] = []
         for scan_root in scan_roots:
             if scan_root.is_file():
-                if scan_root.name != c.Infra.PYPROJECT_FILENAME:
+                if scan_root.name != c.PYPROJECT_FILENAME:
                     return r[t.SequenceOf[Path]].fail(
                         "explicit project file must be "
-                        f"{c.Infra.PYPROJECT_FILENAME}: {scan_root}"
+                        f"{c.PYPROJECT_FILENAME}: {scan_root}"
                     )
                 all_files.append(scan_root)
                 continue
@@ -301,7 +301,7 @@ class FlextInfraUtilitiesDiscovery:
                 all_files.extend(
                     sorted(
                         path
-                        for path in scan_root.rglob(c.Infra.PYPROJECT_FILENAME)
+                        for path in scan_root.rglob(c.PYPROJECT_FILENAME)
                         if not any(
                             part.startswith(".") or part in effective_skip
                             for part in path.relative_to(scan_root).parts[:-1]
@@ -414,7 +414,7 @@ class FlextInfraUtilitiesDiscovery:
             if file_path.is_relative_to(package_dir / family_dir):
                 return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         if file_path.name in {"base.py", c.Infra.NAMESPACE_PRIVATE_BASE_MODULE}:
-            return dict.fromkeys(c.Infra.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
+            return dict.fromkeys(c.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
             return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         return {}

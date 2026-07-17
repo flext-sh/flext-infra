@@ -60,11 +60,11 @@ class FlextInfraReleaseOrchestrator(
         self, workspace_root: Path, project_names: t.StrSequence
     ) -> t.SequenceOf[Path]:
         """Resolve candidate pyproject files for version updates."""
-        files: t.MutableSequenceOf[Path] = [workspace_root / c.Infra.PYPROJECT_FILENAME]
+        files: t.MutableSequenceOf[Path] = [workspace_root / c.PYPROJECT_FILENAME]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.success:
             for project in projects_result.value:
-                pyproject = project.path / c.Infra.PYPROJECT_FILENAME
+                pyproject = project.path / c.PYPROJECT_FILENAME
                 if pyproject.exists():
                     files.append(pyproject)
         return sorted({path.resolve() for path in files if path.exists()})

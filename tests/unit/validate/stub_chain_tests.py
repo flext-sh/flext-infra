@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -14,8 +13,7 @@ from tests import u
 
 from pathlib import Path
 
-from tests import p, t
-
+from tests import t
 
 
 class TestStubChain:
@@ -101,7 +99,7 @@ class TestStubChain:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
-        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
+        (hidden_dir / c.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
         valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)

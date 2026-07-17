@@ -36,7 +36,7 @@ class FlextInfraExtraPathsSyncMixin:
                 continue
             # mro-wkii.17.26 (codex): transitive lookup uses the canonical
             # distribution-to-member map, never directory-name assumptions.
-            dep_pyproject = dep_dir / c.Infra.PYPROJECT_FILENAME
+            dep_pyproject = dep_dir / c.PYPROJECT_FILENAME
             if not dep_pyproject.exists():
                 continue
             dep_payload = u.Infra.pyproject_payload(dep_pyproject)
@@ -142,7 +142,7 @@ class FlextInfraExtraPathsSyncMixin:
         """Synchronize extraPaths and mypy_path across projects."""
         if project_dirs:
             for project_dir in project_dirs:
-                pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+                pyproject = project_dir / c.PYPROJECT_FILENAME
                 sync_result = self.sync_one(
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
@@ -153,7 +153,7 @@ class FlextInfraExtraPathsSyncMixin:
                 if sync_result.value and (not dry_run):
                     u.Cli.info(f"Updated {pyproject}")
             return r[int].ok(0)
-        pyproject = self.root / c.Infra.PYPROJECT_FILENAME
+        pyproject = self.root / c.PYPROJECT_FILENAME
         if not pyproject.exists():
             return r[int].fail(f"Missing {pyproject}")
         sync_result = self.sync_one(pyproject, dry_run=dry_run, is_root=True)

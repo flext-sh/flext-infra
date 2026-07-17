@@ -116,7 +116,7 @@ class FlextInfraUtilitiesVersioning:
             r[str] with the version string.
 
         """
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = workspace_root / c.PYPROJECT_FILENAME
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesVersioning:
             r[bool] with True on success.
 
         """
-        pyproject = project_path / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_path / c.PYPROJECT_FILENAME
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:

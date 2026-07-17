@@ -67,7 +67,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         project_root = (workspace_root / name).resolve()
         if not (
             project_root.is_dir()
-            and (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            and (project_root / c.PYPROJECT_FILENAME).is_file()
         ):
             return None
         return FlextInfraUtilitiesDocsScopeSelectionMixin._governed_scope(

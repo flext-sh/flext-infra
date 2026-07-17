@@ -97,7 +97,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         files: t.SequenceOf[Path] = (
             [] if files_result.failure else sorted(files_result.unwrap())
         )
-        root_pyproject_path = self.root / c.Infra.PYPROJECT_FILENAME
+        root_pyproject_path = self.root / c.PYPROJECT_FILENAME
         if (
             include_root
             and root_pyproject_path.is_file()

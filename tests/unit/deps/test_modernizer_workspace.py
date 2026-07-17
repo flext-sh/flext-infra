@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
@@ -12,7 +11,6 @@ from tests import c
 from tests import u
 
 from pathlib import Path
-
 
 
 class TestsFlextInfraDepsModernizerWorkspace:
@@ -53,10 +51,10 @@ class TestsFlextInfraDepsModernizerWorkspace:
         self, modernizer_workspace_with_projects: Path
     ) -> None:
         selected_pyproject = (
-            modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
+            modernizer_workspace_with_projects / "selected" / c.PYPROJECT_FILENAME
         )
         ignored_pyproject = (
-            modernizer_workspace_with_projects / "ignored" / c.Infra.PYPROJECT_FILENAME
+            modernizer_workspace_with_projects / "ignored" / c.PYPROJECT_FILENAME
         )
         tm.that(
             main([

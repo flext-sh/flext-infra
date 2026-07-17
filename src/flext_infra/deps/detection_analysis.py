@@ -78,7 +78,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
 
     def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
         """Extract currently declared typing packages from project pyproject.toml."""
-        pyproject = project_path / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_path / c.PYPROJECT_FILENAME
         read_result = self._read_plain(pyproject)
         if read_result.failure:
             return []

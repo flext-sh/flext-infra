@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -11,7 +10,6 @@ from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests import c
 
 from pathlib import Path
-
 
 
 class TestsFlextInfraDepsModernizerMain:
@@ -26,7 +24,7 @@ class TestsFlextInfraDepsModernizerMain:
     def test_process_file_returns_invalid_toml(
         self, modernizer_workspace: Path
     ) -> None:
-        pyproject = modernizer_workspace / c.Infra.PYPROJECT_FILENAME
+        pyproject = modernizer_workspace / c.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
         changes = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace
@@ -43,7 +41,7 @@ class TestsFlextInfraDepsModernizerMain:
         exit_code = modernizer.run()
         tm.that(exit_code, eq=0)
         tm.that(
-            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(
                 encoding="utf-8"
             ),
             has='build-backend = "hatchling.build"',

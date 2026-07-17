@@ -61,7 +61,7 @@ class FlextInfraExtraPathsManager(
         project_dirs: dict[str, Path] = {}
         for member in u.Infra.workspace_member_names(workspace_root):
             project_dir = (workspace_root / member).resolve()
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+            pyproject = project_dir / c.PYPROJECT_FILENAME
             payload = u.Infra.pyproject_payload(pyproject)
             project = payload.get(c.Infra.PROJECT)
             raw_name = (
@@ -151,7 +151,7 @@ class FlextInfraExtraPathsManager(
         ]
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         if rules.include_path_dependencies_in_search_path:
-            pyproject = project_dir / c.Infra.PYPROJECT_FILENAME
+            pyproject = project_dir / c.PYPROJECT_FILENAME
             if pyproject.exists():
                 payload = u.Infra.pyproject_payload(pyproject)
                 paths.update(self._dep_paths(payload, project_dir=project_dir))
@@ -200,7 +200,7 @@ class FlextInfraExtraPathsManager(
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
-            if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
+            if not child.is_dir() or not (child / c.PYPROJECT_FILENAME).exists():
                 continue
             child_dirs = u.Infra.discover_python_dirs(child)
             includes.update(

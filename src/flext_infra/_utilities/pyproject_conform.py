@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from flext_cli import u
@@ -49,9 +50,6 @@ class FlextInfraUtilitiesPyprojectConform:
         if metadata_result.failure:
             return r[str].fail(metadata_result.error or "PEP 621 metadata is invalid")
 
-        normalized = cls._normalize_requirements(source)
-        if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
         cls._sync_dependency_groups(
             source, project_name=project_name, workspace=workspace
         )
@@ -561,13 +559,13 @@ class FlextInfraUtilitiesPyprojectConform:
             if not workspace_root and not tuple(uv):
                 u.Cli.toml_remove_key_if_present(tool, "uv")
             return r[bool].ok(True)
-        {member.distribution for member in workspace.members}
+        workspace_names = {member.distribution for member in workspace.members}
         for source_name in tuple(sources):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
-            if (
-                source_name.startswith("flext-") or source_name in managed_names
-            ) and source_name not in resolved_names:
+            if source_name.startswith("flext-") and (
+                not workspace_root or source_name not in workspace_names
+            ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
             for member in workspace.members:

@@ -156,13 +156,13 @@ class FlextInfraWorkspaceEnvironment:
     @staticmethod
     def has_pyproject(workspace_root: Path) -> bool:
         """Return whether the workspace declares Python project metadata."""
-        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
+        pyproject_filename: str = c.PYPROJECT_FILENAME
         return (workspace_root / pyproject_filename).is_file()
 
     @staticmethod
     def workspace_python_version(workspace_root: Path) -> p.Result[str]:
         """Resolve the required Python minor version or fail with source context."""
-        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
+        pyproject_filename: str = c.PYPROJECT_FILENAME
         pyproject = workspace_root / pyproject_filename
         if not pyproject.is_file():
             return r[str].fail(f"{pyproject}: missing project metadata")

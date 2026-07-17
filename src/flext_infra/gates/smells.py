@@ -171,7 +171,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> p.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
         return m.Infra.Issue(
-            file=c.Infra.PYPROJECT_FILENAME,
+            file=c.PYPROJECT_FILENAME,
             line=1,
             column=0,
             code=self.gate_id,

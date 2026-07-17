@@ -53,7 +53,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         infra_project = workspace_root / c.Infra.PACKAGE_IMPORT_NAME.replace("_", "-")
         owner = (
             infra_project
-            if (infra_project / c.Infra.PYPROJECT_FILENAME).is_file()
+            if (infra_project / c.PYPROJECT_FILENAME).is_file()
             else workspace_root
         )
         return owner / c.Infra.BASE_MK

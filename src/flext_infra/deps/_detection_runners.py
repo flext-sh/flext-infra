@@ -50,7 +50,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
         """Run deptry analysis on a project and parse JSON output."""
-        settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
+        settings = config_path or project_path / c.PYPROJECT_FILENAME
         if not settings.exists():
             return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
@@ -114,7 +114,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             c.Infra.MYPY,
             c.Infra.DEFAULT_SRC_DIR,
             "--config-file",
-            c.Infra.PYPROJECT_FILENAME,
+            c.PYPROJECT_FILENAME,
             "--no-error-summary",
         ]
         result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)

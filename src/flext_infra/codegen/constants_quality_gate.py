@@ -129,7 +129,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 c.Infra.CHECK,
                 *modified_files,
                 "--config",
-                c.Infra.PYPROJECT_FILENAME,
+                c.PYPROJECT_FILENAME,
                 "--summary=none",
             ]
         elif tool == c.Infra.RUFF:

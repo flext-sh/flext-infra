@@ -32,7 +32,7 @@ class FlextInfraProjectMigrator(
     def _workspace_root_project(workspace_root: Path) -> p.Infra.ProjectInfo | None:
         """Detect workspace root as a project if it has Makefile, pyproject.toml, and .git."""
         has_makefile = (workspace_root / c.Infra.MAKEFILE_FILENAME).is_file()
-        has_pyproject = (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file()
+        has_pyproject = (workspace_root / c.PYPROJECT_FILENAME).is_file()
         has_git = (workspace_root / c.Infra.GIT_DIR).exists()
         if not (has_makefile and has_pyproject and has_git):
             return None

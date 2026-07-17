@@ -169,7 +169,7 @@ class FlextInfraUtilitiesCodegenNamespace:
                 resolved_root,
                 FlextInfraUtilitiesDocsScope.project_payload(resolved_root),
             )
-            if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            if (resolved_root / c.PYPROJECT_FILENAME).is_file()
             else resolved_root.name
         )
         class_name_source = (
@@ -423,7 +423,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         selected = tuple(
             project
             for project in discovered
-            if (project.path / c.Infra.PYPROJECT_FILENAME).exists()
+            if (project.path / c.PYPROJECT_FILENAME).exists()
         )
         return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
 

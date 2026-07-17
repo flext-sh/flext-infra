@@ -219,7 +219,10 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                     or f"repository planning failed: {repository_root}"
                 )
             files.extend(repository_plan.value)
-            if repository.name == config.Infra.name:
+            if (
+                surface is c.Infra.CodegenConformSurface.ALL
+                and repository.name == config.Infra.name
+            ):
                 # NOTE (multi-agent, mro-wkii.17.26.2.21 / agent: codex): the
                 # owner schema participates in the same checked atomic file plan.
                 rendered_schema = self.render_config_schema()
@@ -356,7 +359,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 f"scaffold workspace has no project metadata: {workspace.name}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
-        pyproject = root / c.Infra.PYPROJECT_FILENAME
+        pyproject = root / c.PYPROJECT_FILENAME
         template_roots = {
             Path(entry.destination).parts[0]
             for entry in codegen.templates.entries
@@ -412,7 +415,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                     c.Infra.CodegenConformSurface.DEPENDENCIES,
                     c.Infra.CodegenConformSurface.PYPROJECT,
                 }
-                and entry.destination != c.Infra.PYPROJECT_FILENAME
+                and entry.destination != c.PYPROJECT_FILENAME
             ):
                 continue
             source = (templates_root / entry.source).resolve()
@@ -487,7 +490,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 continue
             if entry.delegate != "render":
                 continue
-            if destination == c.Infra.PYPROJECT_FILENAME:
+            if destination == c.PYPROJECT_FILENAME:
                 continue
             rendered = u.Cli.template_render(templates_root / entry.source, context)
             if rendered.failure:
@@ -507,7 +510,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
             (
                 item
                 for item in codegen.templates.entries
-                if item.destination == c.Infra.PYPROJECT_FILENAME
+                if item.destination == c.PYPROJECT_FILENAME
                 and profile in item.profiles
                 and item.delegate == "render"
             ),
@@ -573,10 +576,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 pyproject_result.error or f"pyproject conform failed: {pyproject}"
             )
         pyproject_plan = self._file_plan(
-            root,
-            c.Infra.PYPROJECT_FILENAME,
-            pyproject_result.value,
-            block_existing=True,
+            root, c.PYPROJECT_FILENAME, pyproject_result.value, block_existing=True
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
@@ -596,7 +596,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[t.SequenceOf[p.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
-        pyproject = root / c.Infra.PYPROJECT_FILENAME
+        pyproject = root / c.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
                 f"existing repository has no pyproject.toml: {root}; "
@@ -627,19 +627,19 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 workspace=workspace,
             )
             if dependency_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
                     dependency_result.error
                     or f"pyproject dependency conform failed: {pyproject}"
                 )
             dependency_plan = self._file_plan(
-                root, c.Infra.PYPROJECT_FILENAME, dependency_result.value
+                root, c.PYPROJECT_FILENAME, dependency_result.value
             )
             if dependency_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
                     dependency_plan.error
                     or f"pyproject dependency planning failed: {pyproject}"
                 )
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
+            return r[t.SequenceOf[p.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
@@ -700,7 +700,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 pyproject_result.error or f"pyproject conform failed: {pyproject}"
             )
         pyproject_plan = self._file_plan(
-            root, c.Infra.PYPROJECT_FILENAME, pyproject_result.value
+            root, c.PYPROJECT_FILENAME, pyproject_result.value
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
@@ -708,7 +708,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
             )
         planned = [*resource_plans.value, pyproject_plan.value]
         if surface is c.Infra.CodegenConformSurface.PYPROJECT:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+            return r[t.SequenceOf[p.Infra.CodegenFilePlan]].ok(tuple(planned))
         # NOTE(mro-wkii.17.26, agent codex): retain the 0.12 managed-file
         # contract alongside the 0.20 resource/wheel conformance pipeline.
         managed_result = self._plan_existing_templates(
@@ -758,9 +758,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         ).resolve()
         planned: list[p.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
-            if not managed.overwrite or managed.path == Path(
-                c.Infra.PYPROJECT_FILENAME
-            ):
+            if not managed.overwrite or managed.path == Path(c.PYPROJECT_FILENAME):
                 continue
             entries = tuple(
                 entry

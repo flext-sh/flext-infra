@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -17,7 +16,6 @@ from tests import c
 from tests import u
 from flext_tests import tm
 
-from tests import m
 from tests import p, t
 
 
@@ -138,7 +136,7 @@ def real_workspace(tmp_path: Path) -> Path:
 def modernizer_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
-    (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
     return workspace
@@ -146,7 +144,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
-    (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+    (modernizer_workspace / c.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject("selected", "ignored"), encoding="utf-8"
     )
     _ = u.Tests.mk_project(

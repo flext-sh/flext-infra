@@ -141,7 +141,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         ].replace("_", "-")
         sibling_package_root = sibling_project_root / c.Infra.DEFAULT_SRC_DIR / parts[0]
         if (
-            sibling_project_root.joinpath(c.Infra.PYPROJECT_FILENAME).is_file()
+            sibling_project_root.joinpath(c.PYPROJECT_FILENAME).is_file()
             and sibling_package_root.joinpath(c.Infra.INIT_PY).is_file()
         ):
             return parts[0]

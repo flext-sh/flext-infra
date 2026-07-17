@@ -28,7 +28,7 @@ class FlextInfraProjectMigratorPyprojectMixin:
         self, project_root: Path, *, project_name: str, dry_run: bool
     ) -> p.Result[str]:
         """Migrate pyproject."""
-        pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
+        pyproject_path = project_root / c.PYPROJECT_FILENAME
         if not pyproject_path.exists():
             return self._no_change_result("pyproject.toml not found", dry_run=dry_run)
         if project_name == c.Infra.PKG_CORE:

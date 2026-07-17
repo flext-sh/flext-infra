@@ -38,7 +38,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
                     or "workspace Makefile generation failed"
                 )
             return r[int].ok(1 if workspace_makefile_result.value else 0)
-        if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
+        if (resolved / c.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
                 resolved, effective_root or resolved, apply=apply
             )

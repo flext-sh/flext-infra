@@ -132,7 +132,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
         )
         for env_dir in u.Infra.discover_python_dirs(workspace_root):
-            if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
+            if (workspace_root / env_dir / c.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
                 self._env_entry(

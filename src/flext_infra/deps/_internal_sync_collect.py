@@ -39,7 +39,7 @@ class FlextInfraInternalSyncCollectMixin:
         self, project_root: Path
     ) -> p.Result[t.MappingKV[str, Path]]:
         """Collect internal path dependencies from pyproject metadata."""
-        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_root / c.PYPROJECT_FILENAME
         if not pyproject.exists():
             return r[t.MappingKV[str, Path]].ok({})
         data_result = self._read_plain(pyproject)

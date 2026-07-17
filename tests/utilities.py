@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from flext_tests import FlextTestsUtilities, r, tm
 
@@ -22,12 +22,11 @@ from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import c
 from tests import m
 from tests import p
-from tests import p, t
+from tests import t
 
 from tomlkit import TOMLDocument
 
 from flext_infra.gates.base_gate import FlextInfraGate
-
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):
@@ -904,7 +903,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace_root / "Makefile").write_text(
                 "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
-            (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            (workspace_root / c.PYPROJECT_FILENAME).write_text(
                 (f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
@@ -994,7 +993,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (project_root / "Makefile").write_text(
                 "test:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
-            (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            (project_root / c.PYPROJECT_FILENAME).write_text(
                 "[project]\nname = 'flext-demo'\nversion = '0.1.0'\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
