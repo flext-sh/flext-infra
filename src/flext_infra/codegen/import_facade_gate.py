@@ -229,7 +229,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
             parsed = u.Cli.json_parse(stripped)
             if parsed.failure:
                 continue
-            entry = parsed.value
+            entry = u.Cli.json_as_mapping(parsed.value)
             findings.append({
                 "case": case,
                 "package": pkg,
