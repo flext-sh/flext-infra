@@ -22,20 +22,18 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "defusedxml>=0.7.1",
-  "flext-cli",
-  "flext-core",
-  "gitpython>=3.1.49",
-  "grpcio-tools>=1.80.0",
-  "libcst>=1.8.6",
-  "mkdocs-exclude>=1.0.2",
-  "mkdocs-material>=9.7.6",
-  "mkdocs-section-index>=0.3.12",
-  "mkdocs>=1.6.1",
-  "mkdocstrings-python>=2.0.3",
-  "mkdocstrings>=1.0.4",
-  "protobuf>=6.33.6",
-  "rope>=1.14.0",
+    "defusedxml>=0.7.1",
+    "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.20.0-dev",
+    "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.20.0-dev",
+    "gitpython>=3.1.49",
+    "libcst>=1.8.6",
+    "mkdocs-exclude>=1.0.2",
+    "mkdocs-material>=9.7.6",
+    "mkdocs-section-index>=0.3.12",
+    "mkdocs>=1.6.1",
+    "mkdocstrings-python>=2.0.3",
+    "mkdocstrings>=1.0.4",
+    "rope>=1.14.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = [ "automation", "codegen", "flext", "infrastructure", "tooling" ]
@@ -43,8 +41,7 @@ license = "MIT"
 name = "flext-infra"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
-# NOTE(mro-wkii.17.26, agent codex): keep package metadata on the 0.20 test-release line.
-version = "0.20.0-dev0"
+version = "0.20.0.dev0"
 
 [[project.authors]]
 email = "team@flext.sh"

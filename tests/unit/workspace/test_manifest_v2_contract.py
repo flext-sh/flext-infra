@@ -47,7 +47,7 @@ def _v2_repository(
         "distribution": name,
         "provider": "flext-sh",
         "url": f"https://github.com/flext-sh/{name}.git",
-        "branch": "0.12.0-dev",
+        "branch": "0.20.0-dev",
         "path": path,
         "role": role,
         "state": state,

@@ -45,3 +45,24 @@ class TestsDocsRenderExcludeDocs:
         # README.md would also hide every nested section README from MkDocs.
         tm.that(patterns, has="/README.md")
         tm.that(patterns, lacks="README.md")
+
+    def test_project_mkdocs_excludes_generated_api_from_revision_dates(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not derive Git revision dates for generated API pages."""
+        scope = m.Infra.DocScope(
+            name="flext-demo", path=tmp_path, report_dir=tmp_path / ".reports/docs"
+        )
+
+        rendered = u.Infra.docs_project_mkdocs(scope, {}, [])
+
+        tm.that(
+            rendered,
+            has=(
+                "  - git-revision-date-localized:\n"
+                "      enable_creation_date: true\n"
+                "      type: date\n"
+                "      exclude:\n"
+                "        - api-reference/generated/**\n"
+            ),
+        )

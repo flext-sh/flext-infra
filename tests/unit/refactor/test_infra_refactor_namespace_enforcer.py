@@ -24,6 +24,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_creates_missing_facades_and_rewrites_imports(
         self, tmp_path: Path
     ) -> None:
+        """Create missing facades and rewrite imports during enforcement."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -60,6 +61,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_detects_manual_typings_and_compat_aliases(
         self, tmp_path: Path
     ) -> None:
+        """Detect manual typings and compatibility aliases."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -151,6 +153,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_detects_manual_protocol_outside_canonical_files(
         self, tmp_path: Path
     ) -> None:
+        """Detect manual protocols outside canonical protocol modules."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -181,6 +184,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_detects_internal_private_imports(
         self, tmp_path: Path
     ) -> None:
+        """Detect imports that cross an internal private boundary."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -206,6 +210,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_manual_protocol_detector_sanctions_private_protocols_directory(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Allow protocols declared in the private protocols directory."""
         proto_dir = tmp_path / "_protocols"
         proto_dir.mkdir(parents=True)
         target = proto_dir / "base.py"
@@ -226,6 +231,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_manual_protocol_detector_sanctions_canonical_protocols_file(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Allow protocols declared in the canonical protocols module."""
         target = tmp_path / "protocols.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -244,6 +250,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_manual_protocol_detector_flags_protocol_in_service_module(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Flag a protocol declared in a service module."""
         target = tmp_path / "service.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -263,6 +270,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_exempts_same_package_facade_assembly_imports(
         self, tmp_path: Path
     ) -> None:
+        """Allow same-package imports used to assemble a facade."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -310,16 +318,17 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_internal_import_violations, eq=0)
 
-    def test_namespace_enforcer_flags_cross_package_private_import_from_tests_tree(
+    def test_namespace_enforcer_flags_cross_package_private_import_from_scripts_tree(
         self, tmp_path: Path
     ) -> None:
+        """Flag cross-package private imports originating in a scripts tree."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
         parts_pkg = pkg / "_parts"
-        tests_dir = project / "tests"
+        scripts_dir = project / "scripts"
         parts_pkg.mkdir(parents=True)
-        tests_dir.mkdir(parents=True)
+        scripts_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
             "[project]\n"
             "name='sample'\n"
@@ -334,7 +343,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
             encoding="utf-8",
         )
-        _ = (tests_dir / "helper.py").write_text(
+        _ = (scripts_dir / "helper.py").write_text(
             "from __future__ import annotations\n"
             "from sample_pkg._parts.impl import PartsImpl\n\n"
             "_ = PartsImpl\n",
@@ -347,11 +356,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_internal_import_violations, eq=1)
         violation = report.projects[0].internal_import_violations[0]
-        tm.that(violation.file.replace("\\", "/"), has="tests/helper.py")
+        tm.that(violation.file.replace("\\", "/"), has="scripts/helper.py")
 
     def test_namespace_enforcer_allows_pytest_whitebox_project_private_import(
         self, tmp_path: Path
     ) -> None:
+        """Allow pytest white-box imports within the same project."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -388,11 +398,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that(report.total_internal_import_violations, eq=0)
 
     def test_namespace_enforce_does_not_expose_in_place_diff(self) -> None:
+        """Keep in-place diff outside the namespace-enforce input contract."""
         tm.that(m.Infra.RefactorNamespaceEnforceInput.model_fields, lacks="diff")
 
     def test_loose_object_detector_detects_module_logger_assignment(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Detect a loose module logger assignment."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -416,6 +428,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_flags_private_function_as_loose(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Flag a private module function as a loose object."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -441,6 +454,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_enforces_single_class_pattern(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Enforce one public class per canonical module."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n\nVALUE = 1\n", encoding="utf-8"
@@ -458,6 +472,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_private_base_module_mro_contract(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip the private base-module MRO contract exception."""
         target = tmp_path / "_base.py"
         target.write_text(
             "from __future__ import annotations\n\n"
@@ -479,6 +494,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_pytest_module_functions(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip pytest module functions in test files."""
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
         target = tests_dir / "test_sample.py"
@@ -504,6 +520,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_typings_module_exception(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip the canonical typings-module exception."""
         target = tmp_path / "typings.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -524,6 +541,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_canonical_alias_module_exception(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip aliases declared in a canonical facade module."""
         target = tmp_path / "cli.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -544,13 +562,14 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_flags_classvar_outside_constants_class(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Flag a public ClassVar outside a constants class."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
             "from pathlib import Path\n"
             "from typing import ClassVar\n\n"
             "class ServiceConfig:\n"
-            "    HOME: ClassVar[Path] = Path.home()\n"
+            "    HOME: ClassVar[Path] = Path('/home')\n"
             "    AI_HUB: ClassVar[Path] = Path('.ai-hub')\n",
             encoding="utf-8",
         )
@@ -569,6 +588,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_classvar_in_constants_class(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Allow ClassVar declarations inside a constants class."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -590,6 +610,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_classvar_in_constants_module(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Allow ClassVar declarations in a private constants module."""
         target = tmp_path / "_constants" / "service.py"
         target.parent.mkdir(parents=True)
         target.write_text(
@@ -612,6 +633,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_flags_typing_classvar(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Flag ClassVar imported through the typing module."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -634,6 +656,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_private_classvar(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip private ClassVar declarations."""
         target = tmp_path / "target.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -654,6 +677,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_init_module_exception(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Skip the package initializer module exception."""
         target = tmp_path / "__init__.py"
         target.write_text(
             "from __future__ import annotations\n\n_LAZY_IMPORTS = {}\n",
@@ -671,6 +695,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_loose_object_detector_skips_canonical_class_alias_in_single_class_count(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
+        """Exclude a canonical class alias from the public-class count."""
         target = tmp_path / "protocols.py"
         target.write_text(
             "from __future__ import annotations\n"
@@ -693,6 +718,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_apply_moves_manual_protocol_to_protocols_file(
         self, tmp_path: Path
     ) -> None:
+        """Move a manual protocol into the canonical protocols module."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -724,6 +750,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_apply_keeps_autofixes_when_other_violations_remain(
         self, tmp_path: Path
     ) -> None:
+        """Keep applied fixes when unrelated violations remain."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -762,27 +789,25 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
             lacks="class ServiceContract(Protocol):",
         )
 
-    def test_namespace_enforcer_detects_cyclic_imports_in_tests_directory(
+    def test_namespace_enforcer_detects_cyclic_imports_in_source_package(
         self, tmp_path: Path
     ) -> None:
+        """Detect cyclic imports inside the production source package."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
-        test_pkg = project / "tests"
         pkg.mkdir(parents=True)
-        test_pkg.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
             "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        _ = (test_pkg / "__init__.py").write_text("", encoding="utf-8")
-        _ = (test_pkg / "a.py").write_text(
-            "from __future__ import annotations\nfrom tests.b import value_b\nvalue_a = value_b\n",
+        _ = (pkg / "a.py").write_text(
+            "from __future__ import annotations\nfrom sample_pkg.b import value_b\nvalue_a = value_b\n",
             encoding="utf-8",
         )
-        _ = (test_pkg / "b.py").write_text(
-            "from __future__ import annotations\nfrom tests.a import value_a\nvalue_b = value_a\n",
+        _ = (pkg / "b.py").write_text(
+            "from __future__ import annotations\nfrom sample_pkg.a import value_a\nvalue_b = value_a\n",
             encoding="utf-8",
         )
 
@@ -795,6 +820,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_skips_mro_completeness_for_tests_typings(
         self, tmp_path: Path
     ) -> None:
+        """Skip MRO completeness for a tests typings facade."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -831,18 +857,19 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_detects_missing_runtime_alias_outside_src(
         self, tmp_path: Path
     ) -> None:
+        """Detect a missing runtime alias outside the src tree."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
-        examples_dir = project / "examples"
+        scripts_dir = project / "scripts"
         pkg.mkdir(parents=True)
-        examples_dir.mkdir(parents=True)
+        scripts_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
             "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        _ = (examples_dir / "constants.py").write_text(
+        _ = (scripts_dir / "constants.py").write_text(
             "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
             encoding="utf-8",
         )
@@ -856,6 +883,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_respects_tool_flext_namespace_scan_dirs(
         self, tmp_path: Path
     ) -> None:
+        """Respect configured namespace scan directories."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -882,6 +910,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_skips_dynamic_dirs_by_default(
         self, tmp_path: Path
     ) -> None:
+        """Skip dynamic directories when no scan override is declared."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -907,6 +936,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_apply_keeps_script_shebang_when_adding_future(
         self, tmp_path: Path
     ) -> None:
+        """Preserve a script shebang while adding the future import."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -934,18 +964,19 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_apply_inserts_future_after_single_line_module_docstring(
         self, tmp_path: Path
     ) -> None:
+        """Insert the future import after a one-line module docstring."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
-        tests_dir = project / "tests"
+        scripts_dir = project / "scripts"
         pkg.mkdir(parents=True)
-        tests_dir.mkdir(parents=True)
+        scripts_dir.mkdir(parents=True)
         _ = (project / "pyproject.toml").write_text(
             "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        target_file = tests_dir / "base_improved.py"
+        target_file = scripts_dir / "base_improved.py"
         _ = target_file.write_text(
             '"""Improved test base with high automation and real functionality."""\n'
             "from pathlib import Path\n"
@@ -965,6 +996,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_does_not_rewrite_indented_import_aliases(
         self, tmp_path: Path
     ) -> None:
+        """Leave indented import aliases unchanged."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"
@@ -991,6 +1023,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
     def test_namespace_enforcer_does_not_rewrite_multiline_import_alias_blocks(
         self, tmp_path: Path
     ) -> None:
+        """Leave multiline import alias blocks unchanged."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"

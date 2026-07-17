@@ -37,6 +37,14 @@ class FlextInfraConstantsCodegenProject:
         ALL = "all"
 
     @unique
+    class CodegenConformSurface(StrEnum):
+        """Managed file selection accepted by ``codegen conform``."""
+
+        ALL = "all"
+        DEPENDENCIES = "dependencies"
+        PYPROJECT = "pyproject"
+
+    @unique
     class CodegenConformMode(StrEnum):
         """Read-only or write mode accepted by ``codegen conform``."""
 

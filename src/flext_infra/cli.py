@@ -335,6 +335,10 @@ class FlextInfraCli(type(cli_facade)):
             if what not in valid_names:
                 return r[list[str]].fail(f"unknown validator '{what}'")
             return r[list[str]].ok([what, *remaining])
+        if group == c.Infra.CLI_GROUP_CODEGEN and remaining[:1] == ["conform"]:
+            # mro-qb4y: conform owns a typed managed-surface selector;
+            # every other codegen route keeps the shared phase flag forbidden.
+            return r[list[str]].ok([*remaining, "--what", what])
         return r[list[str]].fail(f"--what is not supported for group '{group}'")
 
     def _run_group(self, group: str, args: t.StrSequence) -> int:

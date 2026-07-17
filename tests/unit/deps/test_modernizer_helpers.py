@@ -262,7 +262,7 @@ class TestsFlextInfraDepsModernizerHelpers:
                 'source = { registry = "https://pypi.org/simple" }\n'
                 "[[package]]\n"
                 'name = "flext-core"\n'
-                'version = "0.12.0-dev"\n'
+                'version = "0.20.0-dev"\n'
                 'source = { editable = "." }\n'
             ),
             encoding="utf-8",
