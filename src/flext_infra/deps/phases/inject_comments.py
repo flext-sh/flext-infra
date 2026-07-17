@@ -75,6 +75,90 @@ class FlextInfraInjectCommentsPhase:
         return markers
 
     @staticmethod
+    def _is_section_header(line: str) -> bool:
+        """Return whether a line is a TOML section header."""
+        stripped = line.strip()
+        return stripped.startswith("[") and stripped.endswith("]")
+
+    # mro-qc84 (fix-forward): restore the managed-line stripper removed by an
+    # incomplete refactor while its call site (execute) still consumes it.
+    @classmethod
+    def _strip_managed_lines(
+        cls, lines: t.StrSequence
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
+        """Strip previously-managed banner/marker lines before re-injection."""
+        changes: t.MutableSequenceOf[str] = []
+        managed_lines = cls._managed_marker_lines()
+        cleaned: t.MutableSequenceOf[str] = []
+        skip_broken_group_section = False
+        broken_removed = False
+        for line in lines:
+            stripped = line.strip()
+            if skip_broken_group_section:
+                if cls._is_section_header(line):
+                    skip_broken_group_section = False
+                else:
+                    continue
+            # Remove legacy banner variants so the canonical banner re-injects.
+            if stripped.startswith("# Sections with [MANAGED] are enforced"):
+                continue
+            if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
+                continue
+            if stripped.startswith("# FLEXT mypy["):
+                continue
+            if stripped.startswith("# FLEXT ruff["):
+                continue
+            if stripped.startswith("# FLEXT pyright["):
+                continue
+            if stripped == "[group.dev.dependencies]":
+                skip_broken_group_section = True
+                broken_removed = True
+                continue
+            if stripped in managed_lines:
+                continue
+            cleaned.append(line)
+        if broken_removed:
+            changes.append("broken [group.dev.dependencies] section removed")
+        return cleaned, changes
+
+    # mro-qc84 (fix-forward): restore the marker/dev/blank helpers removed by the
+    # same incomplete refactor; apply() still consumes them.
+    @staticmethod
+    def _marker_for_section(section_header: str) -> str | None:
+        """Return the configured marker for a section header, if any."""
+        for section_prefix, marker_text in c.Infra.COMMENT_MARKERS:
+            if section_header.startswith(section_prefix):
+                marker: str = marker_text
+                return marker
+        return None
+
+    @staticmethod
+    def _inject_dev_markers(
+        out: t.MutableSequenceOf[str],
+        changes: t.MutableSequenceOf[str],
+        emitted_markers: t.Infra.StrSet,
+    ) -> None:
+        """Inject the dev optional-dependencies marker once."""
+        managed_marker = c.Infra.DEV_OPTIONAL_DEPS_MARKER
+        if managed_marker not in emitted_markers:
+            out.append(managed_marker)
+            changes.append("marker injected for optional-dependencies.dev")
+            emitted_markers.add(managed_marker)
+
+    @staticmethod
+    def _collapse_blank_lines(lines: t.StrSequence) -> t.StrSequence:
+        """Collapse repeated blank lines into a single canonical separator."""
+        normalized: t.MutableSequenceOf[str] = []
+        previous_blank = False
+        for line in lines:
+            is_blank = not line.strip()
+            if is_blank and previous_blank:
+                continue
+            normalized.append(line)
+            previous_blank = is_blank
+        return normalized
+
+    @staticmethod
     def _is_managed_comment(
         item: t.Cli.TomlItem, managed_lines: t.Infra.StrSet
     ) -> bool:
