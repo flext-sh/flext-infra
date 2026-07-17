@@ -356,8 +356,65 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(rendered, has="MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144")
         tm.that(rendered, has="MYPY_TIMEOUT_SECONDS must be a positive integer")
         tm.that(rendered, has="MYPY_TIMEOUT_SECONDS must be less than or equal to 600")
-        tm.that(rendered, has="exit=$$code; signal=$$signal")
+        tm.that(rendered, has='if [ "$$code" -eq 124 ]')
+        tm.that(rendered, has="Mypy $$reason")
         tm.that(rendered.count("$(MYPY_BOUNDED)"), eq=6)
+
+    def test_make_mypy_semantic_failure_is_not_reported_as_resource_limit(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep an ordinary Mypy diagnostic distinct from a resource failure."""
+        log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        _write_stubs(bin_dir, log_path)
+        _write_executable(
+            bin_dir / "poetry",
+            "#!/usr/bin/env bash\n"
+            "echo 'demo.py:1: error: incompatible type' >&2\n"
+            "exit 1\n",
+        )
+        _write_project(tmp_path)
+        _write_venv_python_stub(tmp_path, log_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+        result = _run_make(
+            tmp_path,
+            "check",
+            "FILE=src/demo.py",
+            "CHECK_GATES=mypy",
+            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+        )
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has="Mypy type check failed under enforced limits")
+        tm.that("Mypy resource limit triggered" in output, eq=False)
+
+    def test_make_mypy_timeout_is_reported_as_resource_limit(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify the timeout wrapper's exit code as a resource failure."""
+        log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        _write_stubs(bin_dir, log_path)
+        _write_executable(bin_dir / "poetry", "#!/usr/bin/env bash\nexit 124\n")
+        _write_project(tmp_path)
+        _write_venv_python_stub(tmp_path, log_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+
+        result = _run_make(
+            tmp_path,
+            "check",
+            "FILE=src/demo.py",
+            "CHECK_GATES=mypy",
+            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+        )
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has="Mypy resource limit triggered")
 
     def test_make_daemon_start_dry_run_sets_server_timeout(
         self, tmp_path: Path

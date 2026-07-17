@@ -391,6 +391,9 @@ class FlextInfraConfigModels:
         mypy_timeout_seconds: Annotated[
             int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
         ]
+        mypy_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
         mypy_signal_exit_offset: Annotated[
             int, m.Field(gt=0, description="Shell signal exit-code offset")
         ]
