@@ -208,20 +208,12 @@ Infra:
         # mro-j47u: every retained global exclusion carries its tested rationale;
         # generated pyprojects receive this evidence as managed comments.
         disabled-error-codes:
-          arg-type: Public p.Result values widen only in Mypy; Pyright and Pyrefly retain
-            T.
           assignment: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
           attr-defined: PEP 562 facade members inherited through MRO are invisible to Mypy.
           call-arg: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
           misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
           name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.
-          no-any-return: Facade returns widen to Any only in Mypy; Pyright and Pyrefly resolve
-            them.
-          no-redef: Canonical c-t-p-m-u facades intentionally rebind their inherited short
-            alias.
           prop-decorator: Mypy loses Pydantic computed-field descriptors across composed MRO.
-          type-var: Mypy 1.20 drops T from inherited p.ResultLike; the direct owner passes.
-          unreachable: Mypy over-narrows facade values and rejects live defensive guards.
           valid-type: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
         boolean-settings:
           # Discovery + namespace (retained)
