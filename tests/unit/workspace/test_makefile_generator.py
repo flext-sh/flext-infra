@@ -22,7 +22,38 @@ def _write_workspace_root(tmp_path: Path) -> Path:
     (workspace_root / "pyproject.toml").write_text(
         "[project]\nname='workspace-root'\nversion='0.1.0'\n", encoding="utf-8"
     )
+    _write_workspace_manifest(workspace_root)
     return workspace_root
+
+
+def _write_workspace_manifest(workspace_root: Path, members: str = "") -> None:
+    config_dir = workspace_root / "config"
+    config_dir.mkdir(exist_ok=True)
+    (config_dir / "workspace.yaml").write_text(
+        (
+            "version: 2\n"
+            "name: workspace-root\n"
+            "repository:\n"
+            "  name: workspace-root\n"
+            "  distribution: workspace-root\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/workspace-root.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            f"members:{members or ' []'}\n"
+            "content_only: []\n"
+            "exclusions: []\n"
+        ),
+        encoding="utf-8",
+    )
 
 
 def _assert_contains_all(text: str, parts: list[str]) -> None:
@@ -251,10 +282,53 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
                 "define CHECK_SYNC_ALL_PROJECTS",
                 'sync --workspace "$(CURDIR)" --dry-run || exit 1',
                 "project-local .venv directories violate",
+                'WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment --workspace "$(CURDIR)"',
+                "$(WORKSPACE_VERIFY_ENVIRONMENT) || exit 1",
                 "$(Q)$(CHECK_SYNC_ALL_PROJECTS)",
             ],
         )
+        tm.that(makefile_text.count("$(WORKSPACE_VERIFY_ENVIRONMENT)"), eq=2)
         tm.that(makefile_text, lacks="for venv_path in $$local_venvs; do rm -rf")
+
+    def test_workspace_runtime_reinstalls_exact_manifest_editables(
+        self, tmp_path: Path
+    ) -> None:
+        """Render targeted reinstall flags from distributions, not member paths."""
+        workspace_root = _write_workspace_root(tmp_path)
+        _write_workspace_manifest(
+            workspace_root,
+            members=(
+                "\n"
+                "  - name: member-path\n"
+                "    distribution: canonical-distribution\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/member-path.git\n"
+                "    branch: main\n"
+                "    path: member-path\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false"
+            ),
+        )
+
+        result = FlextInfraWorkspaceMakefileGenerator().generate(workspace_root)
+        tm.ok(result)
+        makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
+
+        _assert_contains_all(
+            makefile_text,
+            [
+                'WORKSPACE_EDITABLE_REINSTALL_FLAGS := --reinstall-package "canonical-distribution"',
+                "uv sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS)",
+            ],
+        )
+        tm.that(makefile_text.count("$(WORKSPACE_EDITABLE_REINSTALL_FLAGS)"), eq=1)
+        tm.that(makefile_text, lacks='--reinstall-package "member-path"')
 
     def test_workspace_makefile_generator_limits_absolute_path_scan_to_sources(
         self, tmp_path: Path

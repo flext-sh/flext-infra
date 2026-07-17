@@ -73,10 +73,6 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Number of references from runtime/source modules"),
             ] = 0
-            example_references_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Number of references from example modules"),
-            ] = 0
             script_references_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(description="Number of references from script modules"),
@@ -86,9 +82,6 @@ class FlextInfraModelsCensus:
             ] = m.Field(
                 default_factory=tuple, description="Runtime/source reference sites"
             )
-            example_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
-            ] = m.Field(default_factory=tuple, description="Example reference sites")
             script_reference_sites: tuple[
                 FlextInfraModelsCensus.Census.ReferenceSite, ...
             ] = m.Field(default_factory=tuple, description="Script reference sites")
@@ -122,12 +115,6 @@ class FlextInfraModelsCensus:
             ] = m.Field(
                 default_factory=tuple,
                 description="Runtime/source references blocking full deletion",
-            )
-            example_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite, ...
-            ] = m.Field(
-                default_factory=tuple,
-                description="Example references supporting this candidate",
             )
             script_reference_sites: tuple[
                 FlextInfraModelsCensus.Census.ReferenceSite, ...

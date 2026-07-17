@@ -9,9 +9,6 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
-from flext_cli import p
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-
 
 class FlextInfraConstantsRope:
     """Rope Project configuration constants — accessed via c.Infra.*."""
@@ -63,64 +60,9 @@ class FlextInfraConstantsRope:
         OTHER = "other"
         "Any statement not matched by a more specific category."
 
-    SYNTAX_ERRORS: Final[tuple[type[BaseException], ...]] = (
-        SyntaxError,
-        FlextInfraUtilitiesRopeRuntime.module_syntax_error_type(),
-    )
-    "Exception types that signal unparseable Python source during Rope operations."
-
-    RUNTIME_ERRORS: Final[tuple[type[BaseException], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.refactoring_error_type(),
-        FlextInfraUtilitiesRopeRuntime.resource_not_found_error_type(),
-        AttributeError,
-    )
-    "Exception types that signal recoverable Rope runtime failures."
-
-    ROPE_ERROR_TYPES: Final[tuple[type[BaseException], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.rope_error_type(),
-    )
-    "Generic Rope exception types surfaced by semantic inventory operations."
-
-    MODULE_NOT_FOUND_ERROR_TYPES: Final[tuple[type[BaseException], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.module_not_found_error_type(),
-    )
-    "Rope exception types raised when an importable module cannot be resolved."
-
-    ABSTRACT_CLASS_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.abstract_class_type(),
-    )
-    "Rope pyobject classes treated as abstract class shapes."
-
-    PY_FUNCTION_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.py_function_type(),
-    )
-    "Rope pyobject classes treated as function shapes."
-
-    DEFINED_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.runtime_type("rope.base.pynames", "DefinedName"),
-    )
-    "Rope pyname classes treated as defined-name shapes."
-
-    IMPORTED_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.runtime_type(
-            "rope.base.pynames", "ImportedName"
-        ),
-    )
-    "Rope pyname classes treated as imported-name shapes."
-
-    ASSIGNED_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.runtime_type(
-            "rope.base.pynamesdef", "AssignedName"
-        ),
-    )
-    "Rope pyname classes treated as assigned-name shapes."
-
-    PARAMETER_NAME_TYPES: Final[tuple[type[p.AttributeProbe], ...]] = (
-        FlextInfraUtilitiesRopeRuntime.runtime_type(
-            "rope.base.pynamesdef", "ParameterName"
-        ),
-    )
-    "Rope pyname classes treated as parameter-name shapes."
+    # NOTE (mro-0ftd.3.10.2.4): runtime engine types and exception-boundary
+    # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
+    # constants layer, to keep c.Infra declarative and cycle-free.
 
     ROPE_IGNORED_RESOURCES: Final[tuple[str, ...]] = (
         ".venv",

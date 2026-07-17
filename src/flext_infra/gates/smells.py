@@ -204,9 +204,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """
         parsed = u.Cli.json_parse(sarif_json or "{}")
         empty_json: t.JsonValue = {}
-        data = u.Cli.json_as_mapping(
-            parsed.unwrap() if parsed.success else empty_json
-        )
+        data = u.Cli.json_as_mapping(parsed.unwrap() if parsed.success else empty_json)
         prefix = f"{project_name}/"
         return tuple(
             cls._issue_from_result(result, prefix)

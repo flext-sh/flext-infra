@@ -7,13 +7,17 @@ import difflib
 import shutil
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_core import r
+from flext_infra import c, m, t
 from flext_infra._utilities.protected_edit_preview import (
     FlextInfraUtilitiesProtectedEditPreview,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):

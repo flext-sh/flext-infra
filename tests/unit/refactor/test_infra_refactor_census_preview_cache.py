@@ -72,9 +72,9 @@ class TestsFlextInfraRefactorCensusPreview:
             "from __future__ import annotations\n\nclass Shared:\n    pass\n",
             encoding="utf-8",
         )
-        tests_dir = workspace_root / c.Infra.DIR_TESTS
-        tests_dir.mkdir(parents=True, exist_ok=True)
-        consumer_path = tests_dir / "constants.py"
+        scripts_dir = workspace_root / c.Infra.DIR_SCRIPTS
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        consumer_path = scripts_dir / "constants.py"
         consumer_path.write_text(
             (
                 "from __future__ import annotations\n\n"
@@ -97,18 +97,18 @@ class TestsFlextInfraRefactorCensusPreview:
             object_name="Shared",
             object_kind="class",
             scope_path="Shared",
-            reason="test_only",
+            reason="script_only",
             suggested_action="remove",
-            test_reference_sites=(
+            script_reference_sites=(
                 m.Infra.Census.ReferenceSite(
                     file_path=str(consumer_path.resolve()),
                     line=3,
-                    surface=c.Infra.DIR_TESTS,
+                    surface=c.Infra.DIR_SCRIPTS,
                 ),
                 m.Infra.Census.ReferenceSite(
                     file_path=str(consumer_path.resolve()),
                     line=11,
-                    surface=c.Infra.DIR_TESTS,
+                    surface=c.Infra.DIR_SCRIPTS,
                 ),
             ),
         )

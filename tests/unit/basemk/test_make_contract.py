@@ -110,6 +110,32 @@ def _write_venv_python_stub(
     _write_executable(venv_bin / "python", body)
 
 
+def _write_pytest_diag_python_stub(
+    project_root: Path, *, payload: str, exit_code: int
+) -> None:
+    venv_bin = project_root / ".venv" / "bin"
+    venv_bin.mkdir(parents=True, exist_ok=True)
+    body = (
+        "#!/usr/bin/env bash\n"
+        "junit_file=''\n"
+        'for argument in "$@"; do\n'
+        '  case "$argument" in --junitxml=*) junit_file="${argument#--junitxml=}" ;; esac\n'
+        "done\n"
+        'if [[ "$*" == *"-m pytest"* ]]; then\n'
+        '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
+        "  exit 0\n"
+        "fi\n"
+        'if [[ "$*" == *"-m flext_infra validate pytest-diag"* ]]; then\n'
+        "  cat <<'FLEXT_PYTEST_DIAG_COUNTS'\n"
+        f"{payload.rstrip()}\n"
+        "FLEXT_PYTEST_DIAG_COUNTS\n"
+        f"  exit {exit_code}\n"
+        "fi\n"
+        "exit 97\n"
+    )
+    _write_executable(venv_bin / "python", body)
+
+
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
     if include_parent:
         (project_root.parent / "base.mk").write_text(
@@ -232,6 +258,58 @@ class TestsFlextInfraBasemkMakeContract:
             rendered,
             has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
         )
+
+    def test_make_pytest_diag_accepts_exact_numeric_counts(
+        self, tmp_path: Path
+    ) -> None:
+        """Accept the four-key machine-output contract before sourcing it."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+        )
+
+        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has="DIAG COMPLETED | failed=0 errors=0 warnings=0 skipped=0",
+        )
+
+    def test_make_pytest_diag_preserves_producer_failure(self, tmp_path: Path) -> None:
+        """Stop with the producer status and its exact stdout evidence."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path, payload="diagnostic producer failed", exit_code=23
+        )
+
+        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has="pytest diagnostic extraction failed (exit=23)")
+        tm.that(output, has="diagnostic producer failed")
+
+    def test_make_pytest_diag_rejects_payload_before_sourcing(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject shell text from a successful producer without executing it."""
+        marker = tmp_path / "injected-marker"
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=(f"failed_count=0\nerror_count=0\ntouch {marker}\nskipped_count=0"),
+            exit_code=0,
+        )
+
+        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has="invalid pytest diagnostic counts contract")
+        tm.that(marker.exists(), eq=False)
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
         """Verify changed-only discovery includes live tracked and untracked files."""

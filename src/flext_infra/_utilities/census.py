@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -341,22 +341,22 @@ class FlextInfraUtilitiesRefactorCensus:
             attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
                 rope.rope_project, resource
             ).get_attributes()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return ()
         except (RecursionError, SyntaxError, ValueError, TypeError):
             return ()
         target_pyname = attributes.get(target_name)
-        if target_pyname is None or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
+        if target_pyname is None or FlextInfraUtilitiesRopeRuntime.is_imported_name(
             target_pyname
         ):
             return ()
         try:
             target_object = target_pyname.get_object()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return ()
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
-            if name == target_name or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
+            if name == target_name or FlextInfraUtilitiesRopeRuntime.is_imported_name(
                 pyname
             ):
                 continue
@@ -369,7 +369,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 continue
             try:
                 alias_object = pyname.get_object()
-            except FlextInfraConstantsRope.RUNTIME_ERRORS:
+            except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
                 continue
             if id(alias_object) == id(target_object):
                 alias_names.add(name)
@@ -814,7 +814,7 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
         """Supporting reference sites."""
-        return (*candidate.example_reference_sites, *candidate.script_reference_sites)
+        return candidate.script_reference_sites
 
     @staticmethod
     def _definition_line_range(

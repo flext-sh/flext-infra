@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
@@ -35,7 +34,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
                 if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
                 else None
             )
-        except (*FlextInfraConstantsRope.RUNTIME_ERRORS, ValueError):
+        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), ValueError):
             return None
 
     @staticmethod

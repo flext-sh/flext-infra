@@ -105,7 +105,6 @@ class FlextInfraRefactorCensusObjectsMixin:
             reason=reason,
             suggested_action=suggested_action,
             runtime_reference_sites=item.runtime_reference_sites,
-            example_reference_sites=item.example_reference_sites,
             script_reference_sites=item.script_reference_sites,
         )
 
@@ -163,11 +162,7 @@ class FlextInfraRefactorCensusObjectsMixin:
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
         """Return all reference sites for a removal candidate."""
-        return (
-            *candidate.runtime_reference_sites,
-            *candidate.example_reference_sites,
-            *candidate.script_reference_sites,
-        )
+        return (*candidate.runtime_reference_sites, *candidate.script_reference_sites)
 
     @staticmethod
     def _is_flext_owned(value: p.ModuleOwned) -> bool:

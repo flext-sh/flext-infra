@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TypeGuard
 
-from flext_infra import p, t
 from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
@@ -55,27 +56,65 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     ) -> TypeGuard[t.Infra.RopePyObject]:
         return isinstance(value, cls.runtime_type("rope.base.pyobjects", "PyClass"))
 
-    module_syntax_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleSyntaxError")
-    )
-    refactoring_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "RefactoringError")
-    )
-    resource_not_found_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "ResourceNotFoundError")
-    )
-    module_not_found_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "ModuleNotFoundError")
-    )
-    rope_error_type = classmethod(
-        lambda cls: cls._exception_type("rope.base.exceptions", "RopeError")
-    )
-    abstract_class_type = classmethod(
-        lambda cls: cls.runtime_type("rope.base.pyobjects", "AbstractClass")
-    )
-    py_function_type = classmethod(
-        lambda cls: cls.runtime_type("rope.base.pyobjectsdef", "PyFunction")
-    )
+    @classmethod
+    def is_abstract_class(
+        cls, value: p.AttributeProbe
+    ) -> TypeGuard[t.Infra.RopePyObject]:
+        """Return whether ``value`` is a Rope abstract class object."""
+        return isinstance(
+            value, cls.runtime_type("rope.base.pyobjects", "AbstractClass")
+        )
+
+    @classmethod
+    def is_py_function(cls, value: p.AttributeProbe) -> TypeGuard[t.Infra.RopePyObject]:
+        """Return whether ``value`` is a Rope Python function object."""
+        return isinstance(
+            value, cls.runtime_type("rope.base.pyobjectsdef", "PyFunction")
+        )
+
+    @classmethod
+    def is_defined_name(cls, value: p.AttributeProbe) -> bool:
+        """Return whether ``value`` is a Rope defined name."""
+        return isinstance(value, cls.runtime_type("rope.base.pynames", "DefinedName"))
+
+    @classmethod
+    def is_imported_name(cls, value: p.AttributeProbe) -> bool:
+        """Return whether ``value`` is a Rope imported name."""
+        return isinstance(value, cls.runtime_type("rope.base.pynames", "ImportedName"))
+
+    @classmethod
+    def is_parameter_name(cls, value: p.AttributeProbe) -> bool:
+        """Return whether ``value`` is a Rope parameter name."""
+        return isinstance(
+            value, cls.runtime_type("rope.base.pynamesdef", "ParameterName")
+        )
+
+    @classmethod
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return exceptions that signal unparseable Python source."""
+        return (
+            SyntaxError,
+            cls._exception_type("rope.base.exceptions", "ModuleSyntaxError"),
+        )
+
+    @classmethod
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return recoverable exceptions raised by Rope operations."""
+        return (
+            cls._exception_type("rope.base.exceptions", "RefactoringError"),
+            cls._exception_type("rope.base.exceptions", "ResourceNotFoundError"),
+            AttributeError,
+        )
+
+    @classmethod
+    def rope_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return the generic Rope exception boundary."""
+        return (cls._exception_type("rope.base.exceptions", "RopeError"),)
+
+    @classmethod
+    def rope_module_not_found_error_types(cls) -> tuple[type[BaseException], ...]:
+        """Return Rope exceptions for unresolved importable modules."""
+        return (cls._exception_type("rope.base.exceptions", "ModuleNotFoundError"),)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeTypes"]

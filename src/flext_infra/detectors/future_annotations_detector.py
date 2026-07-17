@@ -37,8 +37,8 @@ class FlextInfraFutureAnnotationsDetector:
                 pymodule.get_attributes()
             )
         except (
-            *c.Infra.RUNTIME_ERRORS,
-            *c.Infra.SYNTAX_ERRORS,
+            *u.Infra.rope_runtime_errors(),
+            *u.Infra.rope_syntax_errors(),
             TypeError,
             ValueError,
         ) as exc:

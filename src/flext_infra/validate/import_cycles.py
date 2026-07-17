@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -134,7 +133,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+        except u.Infra.rope_runtime_errors() as exc:
             return r[str].fail(f"get_pymodule rope error: {exc!s}")
         except TypeError as exc:
             return r[str].fail(f"get_pymodule type error: {exc!s}")

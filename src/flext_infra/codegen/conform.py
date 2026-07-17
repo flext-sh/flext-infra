@@ -296,7 +296,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Resolve one selected checkout without sibling discovery."""
         if repository.name == workspace.repository.name:
             return root
-        return (root / repository.path).resolve()
+        resolved: Path = (root / repository.path).resolve()
+        return resolved
 
     @staticmethod
     def _scaffold_python_dirs(

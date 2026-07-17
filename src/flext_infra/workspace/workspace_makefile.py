@@ -26,6 +26,7 @@ from flext_infra import c, t, u
 from flext_infra.workspace._workspace_makefile_template import (
     FlextInfraWorkspaceMakefileTemplateMixin,
 )
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -55,12 +56,28 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
 
         """
         makefile = workspace_root / c.Infra.MAKEFILE_FILENAME
+        workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root.resolve()
+        )
+        if workspace_result.failure:
+            return r[bool].fail(
+                workspace_result.error or "workspace manifest validation failed"
+            )
+        editable_distributions = tuple(
+            repository.distribution
+            for repository in workspace_result.value.members
+            if repository.package and repository.editable
+        )
 
         if not self.template_path.exists():
-            return self._bootstrap_template(makefile, apply=apply)
+            return self._bootstrap_template(
+                makefile, apply=apply, editable_distributions=editable_distributions
+            )
 
         pr_branch = self._current_branch(workspace_root)
-        render_result = self._render_template(pr_branch=pr_branch)
+        render_result = self._render_template(
+            pr_branch=pr_branch, editable_distributions=editable_distributions
+        )
         if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         content = render_result.value
@@ -76,7 +93,9 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
             return r[bool].ok(True)
         return u.Cli.atomic_write_text_file(makefile, content)
 
-    def _bootstrap_template(self, makefile: Path, *, apply: bool) -> p.Result[bool]:
+    def _bootstrap_template(
+        self, makefile: Path, *, apply: bool, editable_distributions: t.StrSequence
+    ) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
         result: p.Result[bool]
         if not makefile.exists():
@@ -101,6 +120,7 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
                             makefile=makefile,
                             pr_branch=pr_branch,
                             template_content=template_content,
+                            editable_distributions=editable_distributions,
                         )
                     except OSError as exc:
                         result = r[bool].fail_op("template bootstrap", exc)

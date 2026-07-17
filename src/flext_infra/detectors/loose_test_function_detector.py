@@ -15,8 +15,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import c, m, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
@@ -70,11 +69,11 @@ class FlextInfraLooseTestFunctionDetector:
             return []
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except u.Infra.rope_runtime_errors():
             return []
         violations: list[m.Infra.LooseTestFunctionViolation] = []
         for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
-            if definition.kind != FlextInfraConstantsRope.RopeScopeKind.FUNCTION:
+            if definition.kind != c.Infra.RopeScopeKind.FUNCTION:
                 continue
             if not definition.is_module_level:
                 continue

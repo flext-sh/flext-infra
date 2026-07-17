@@ -6,9 +6,8 @@ from time import perf_counter
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
-from flext_core import r, u
-from flext_infra import c, m
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_core import r
+from flext_infra import c, m, u
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
 from flext_infra.refactor._migrate_mro_report import (
     FlextInfraRefactorMigrateMroReportMixin,
@@ -157,7 +156,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
+            *u.Infra.rope_syntax_errors(),
             OSError,
             ValueError,
             KeyError,

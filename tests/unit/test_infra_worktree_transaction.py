@@ -1,0 +1,160 @@
+"""Real Git behavior tests for isolated workspace transactions."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
+
+from tests import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _git_status(repository_root: Path) -> bytes:
+    result = u.Infra.git_capture_bytes(
+        repository_root, ("status", "--porcelain=v1", "-z")
+    )
+    tm.ok(result)
+    return result.value
+
+
+def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    artifact = source_root / "artifact.txt"
+    artifact.write_bytes(b"before\n")
+    u.Tests.initialize_git_repo(source_root)
+    worktree_root = tmp_path / "isolated"
+    add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
+    tm.ok(add_result)
+    (worktree_root / artifact.name).write_bytes(b"after\n")
+    delta_result = u.Infra.git_repository_delta(
+        m.Infra.RepositoryWorktree(
+            relative_path=".",
+            source_root=source_root,
+            worktree_root=worktree_root,
+            checkpoint_sha=add_result.value,
+        )
+    )
+    tm.ok(delta_result)
+    return source_root, worktree_root, delta_result.value
+
+
+def _workspace(tmp_path: Path) -> Path:
+    workspace_root = tmp_path / "workspace"
+    package_root = workspace_root / "src" / "transaction_fixture"
+    package_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text("", encoding="utf-8")
+    (workspace_root / "pyproject.toml").write_text(
+        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
+        encoding="utf-8",
+    )
+    (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
+    config_root = workspace_root / "config"
+    config_root.mkdir()
+    (config_root / "workspace.yaml").write_text(
+        (
+            "version: 2\n"
+            "name: transaction-fixture\n"
+            "repository:\n"
+            "  name: transaction-fixture\n"
+            "  distribution: transaction-fixture\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/transaction-fixture.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            "members: []\n"
+            "content_only: []\n"
+            "exclusions: []\n"
+        ),
+        encoding="utf-8",
+    )
+    u.Tests.initialize_git_repo(workspace_root)
+    return workspace_root
+
+
+class TestsFlextInfraWorktreeTransaction:
+    """Exercise transaction invariants through real Git state."""
+
+    def test_preview_validates_isolated_target_without_touching_source(
+        self, tmp_path: Path
+    ) -> None:
+        """Reverse-check the isolated final state and preserve source bytes/status."""
+        source_root, _worktree_root, delta = _operation_delta(tmp_path)
+        artifact = source_root / "artifact.txt"
+        before_bytes = artifact.read_bytes()
+        before_status = _git_status(source_root)
+
+        tm.ok(u.Infra.git_check_isolated_patch(delta))
+
+        tm.that(artifact.read_bytes(), eq=before_bytes)
+        tm.that(_git_status(source_root), eq=before_status)
+
+    def test_apply_accepts_concurrent_same_target_convergence(
+        self, tmp_path: Path
+    ) -> None:
+        """Treat an identical cooperative source update as successful convergence."""
+        source_root, _worktree_root, delta = _operation_delta(tmp_path)
+        artifact = source_root / "artifact.txt"
+        artifact.write_bytes(b"after\n")
+        converged_status = _git_status(source_root)
+
+        tm.ok(u.Infra.git_apply_patch(delta))
+
+        tm.that(artifact.read_bytes(), eq=b"after\n")
+        tm.that(_git_status(source_root), eq=converged_status)
+
+    def test_apply_is_repeatable(self, tmp_path: Path) -> None:
+        """Apply the same real patch twice without a second mutation or failure."""
+        source_root, _worktree_root, delta = _operation_delta(tmp_path)
+        artifact = source_root / "artifact.txt"
+        tm.ok(u.Infra.git_apply_patch(delta))
+        applied_status = _git_status(source_root)
+
+        tm.ok(u.Infra.git_apply_patch(delta))
+
+        tm.that(artifact.read_bytes(), eq=b"after\n")
+        tm.that(_git_status(source_root), eq=applied_status)
+
+    def test_public_dry_run_materializes_inner_patch_without_source_mutation(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep request.apply_patch false while the isolated command runs apply."""
+        workspace_root = _workspace(tmp_path)
+        before_status = _git_status(workspace_root)
+        before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
+
+        transaction_result = u.Infra.execute_worktree_transaction(
+            m.Infra.WorktreeTransactionRequest(
+                workspace_root=workspace_root,
+                command=(
+                    "workspace",
+                    "sync",
+                    "--workspace",
+                    str(workspace_root),
+                    "--apply",
+                ),
+                apply_patch=False,
+                timeout_seconds=120,
+            )
+        )
+        report = tm.ok(transaction_result)
+        output = u.Infra.render_worktree_transaction_report(report)
+        lint_output = "\n".join(item.output for item in report.lint_after)
+
+        tm.that(report.breakage_detected, eq=False, msg=lint_output)
+        tm.that(output, has="diff -- repository .")
+        tm.that(output, has="applied=no")
+        tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
+        tm.that(_git_status(workspace_root), eq=before_status)
+        tm.that((workspace_root / "Makefile").exists(), eq=False)

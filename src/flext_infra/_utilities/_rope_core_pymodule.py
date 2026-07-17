@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
@@ -56,7 +55,8 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
         if not FlextInfraUtilitiesRopeRuntime.is_pymodule(pymodule):
             msg = "rope project returned non-PyModule"
             raise TypeError(msg)
-        return pymodule
+        result: t.Infra.RopePyModule = pymodule
+        return result
 
     @staticmethod
     def get_module_imports(
@@ -70,9 +70,10 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
                     rope_project, resource
                 ),
             )
-        except (*FlextInfraConstantsRope.RUNTIME_ERRORS, TypeError):
+        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError):
             return None
-        return module_imports
+        result: t.Infra.RopeModuleImports | None = module_imports
+        return result
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCorePyModuleMixin"]

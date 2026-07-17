@@ -10,7 +10,6 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import m, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,8 +50,8 @@ class FlextInfraMROShapeDetector:
         try:
             pymodule = u.Infra.get_pymodule(rope_project, res)
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
+            *u.Infra.rope_runtime_errors(),
+            *u.Infra.rope_syntax_errors(),
             TypeError,
             AttributeError,
             ValueError,
@@ -506,21 +505,18 @@ class FlextInfraMROShapeDetector:
             if u.Infra.node_kind(statement) not in {"FunctionDef", "AsyncFunctionDef"}:
                 continue
             for child in u.Infra.walk_ast_nodes(statement):
-                if (
-                    u.Infra.node_kind(child) == "Name"
-                    and getattr(child, "id", "") == name
-                ):
-                    return True
-                if u.Infra.node_kind(child) == "Attribute" and getattr(
-                    child, "attr", ""
-                ):
-                    value = getattr(child, "value", None)
-                    if (
-                        value is not None
-                        and u.Infra.node_kind(value) == "Name"
-                        and getattr(value, "id", "") == name
-                    ):
+                if u.Infra.node_kind(child) == "Name":
+                    child_id = getattr(child, "id", None)
+                    if isinstance(child_id, str) and child_id == name:
                         return True
+                if u.Infra.node_kind(child) == "Attribute":
+                    attr_name = getattr(child, "attr", None)
+                    if isinstance(attr_name, str) and attr_name:
+                        value = getattr(child, "value", None)
+                        if value is not None and u.Infra.node_kind(value) == "Name":
+                            value_id = getattr(value, "id", None)
+                            if isinstance(value_id, str) and value_id == name:
+                                return True
         return False
 
 

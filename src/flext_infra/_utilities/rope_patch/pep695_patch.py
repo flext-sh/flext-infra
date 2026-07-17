@@ -31,10 +31,12 @@ FLEXT typing law forbids the getattr-dispatch/Any workaround.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import p
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopePep695Patch:

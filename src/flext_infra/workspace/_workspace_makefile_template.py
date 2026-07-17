@@ -87,7 +87,12 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         )
 
     def _write_bootstrap_template(
-        self, *, makefile: Path, pr_branch: str, template_content: str
+        self,
+        *,
+        makefile: Path,
+        pr_branch: str,
+        template_content: str,
+        editable_distributions: t.StrSequence,
     ) -> p.Result[bool]:
         """Persist the generated template and rendered workspace Makefile."""
         _ = u.Cli.ensure_dir(Path(__file__).parent.parent / "templates")
@@ -97,26 +102,38 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
         if template_write.failure:
             return template_write
         render_result = self._render_template(
-            pr_branch=pr_branch, template_text=template_content
+            pr_branch=pr_branch,
+            editable_distributions=editable_distributions,
+            template_text=template_content,
         )
         if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         return u.Cli.atomic_write_text_file(makefile, render_result.value)
 
     def _render_template(
-        self, *, pr_branch: str, template_text: str | None = None
+        self,
+        *,
+        pr_branch: str,
+        editable_distributions: t.StrSequence,
+        template_text: str | None = None,
     ) -> p.Result[str]:
         """Render the workspace Makefile template with canonical make metadata."""
         try:
             rendered = self._render_template_unchecked(
-                pr_branch=pr_branch, template_text=template_text
+                pr_branch=pr_branch,
+                editable_distributions=editable_distributions,
+                template_text=template_text,
             )
         except (OSError, TemplateError, TypeError, ValueError) as exc:
             return r[str].fail_op("template render", exc)
         return r[str].ok(rendered)
 
     def _render_template_unchecked(
-        self, *, pr_branch: str, template_text: str | None
+        self,
+        *,
+        pr_branch: str,
+        editable_distributions: t.StrSequence,
+        template_text: str | None,
     ) -> str:
         """Render the workspace Makefile template without exception wrapping."""
         environment = Environment(
@@ -132,14 +149,25 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
             if template_text is None
             else environment.from_string(template_text)
         )
-        return self._render_template_content(template_obj, pr_branch=pr_branch)
+        return self._render_template_content(
+            template_obj,
+            pr_branch=pr_branch,
+            editable_distributions=editable_distributions,
+        )
 
     @staticmethod
     def _render_template_content(
-        template: p.Infra.RenderableTemplate, *, pr_branch: str
+        template: p.Infra.RenderableTemplate,
+        *,
+        pr_branch: str,
+        editable_distributions: t.StrSequence,
     ) -> str:
         """Render a validated template object into the final Makefile text."""
-        rendered: str = template.render(pr_branch=pr_branch, make=c.Infra)
+        rendered: str = template.render(
+            pr_branch=pr_branch,
+            make=c.Infra,
+            editable_distributions=editable_distributions,
+        )
         return rendered
 
 

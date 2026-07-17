@@ -20,6 +20,31 @@ class FlextInfraModelsWorkspace:
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
+    class WorkspaceEnvironmentRequest(m.ContractModel):
+        """Read-only request for validating the active workspace environment."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        workspace_root: Annotated[
+            Path, m.Field(alias="workspace", description="Workspace root path")
+        ]
+
+    class DirectUrlDirectoryInfo(m.ContractModel):
+        """PEP 610 directory metadata for one installed distribution."""
+
+        editable: Annotated[
+            bool, m.Field(description="Distribution is installed as editable")
+        ]
+
+    class EditableDirectUrl(m.ContractModel):
+        """Validated PEP 610 editable provenance payload."""
+
+        url: Annotated[t.NonEmptyStr, m.Field(description="Editable source URL")]
+        dir_info: Annotated[
+            FlextInfraModelsWorkspace.DirectUrlDirectoryInfo,
+            m.Field(description="Editable directory metadata"),
+        ]
+
     class ProjectInfo(mm.ProjectEntryNameMixin, m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ def _rope_module_ast(
     try:
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-    except (*c.Infra.SYNTAX_ERRORS,):
+    except (*u.Infra.rope_syntax_errors(),):
         return None
     return tree if isinstance(tree, ast.Module) else None
 

@@ -5,12 +5,15 @@ from __future__ import annotations
 from collections.abc import MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self, TYPE_CHECKING
 
 from flext_cli import m, u
-from flext_infra import c, p, t
+from flext_infra import c, t
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):

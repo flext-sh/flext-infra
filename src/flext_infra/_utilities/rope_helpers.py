@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from importlib import import_module
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m, t
 from flext_infra._utilities._rope_bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
 )
 from flext_infra._utilities._rope_method_order import (
     FlextInfraUtilitiesRopeMethodOrderMixin,
 )
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopeHelpers(

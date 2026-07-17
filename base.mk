@@ -541,11 +541,28 @@ test: ## Run pytest only
 		echo "duration_seconds=0" >> "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	$(PROJECT_INFRA_VALIDATE) pytest-diag \
+	if $(PROJECT_INFRA_VALIDATE) pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
-		--skips "$$skips_file" 2>&1 | grep -v '^\[TYPER-DEBUG\]' > "$$counts_file"; \
+		--skips "$$skips_file" > "$$counts_file"; then \
+		:; \
+	else \
+		counts_status=$$?; \
+		echo "ERROR: pytest diagnostic extraction failed (exit=$$counts_status)" >&2; \
+		cat "$$counts_file" >&2; \
+		exit "$$counts_status"; \
+	fi; \
+	if ! awk ' \
+		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
+		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
+		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
+		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
+	' "$$counts_file"; then \
+		echo "ERROR: invalid pytest diagnostic counts contract; expected exactly four unique nonnegative decimal assignments" >&2; \
+		cat "$$counts_file" >&2; \
+		exit 2; \
+	fi; \
 	. "$$counts_file"; \
 	diag_strict=0; \
 	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || [ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \

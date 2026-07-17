@@ -29,6 +29,52 @@ def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
+    config_dir = workspace_root / "config"
+    config_dir.mkdir()
+    member_records = "".join(
+        (
+            f"\n  - name: {project_name}\n"
+            f"    distribution: {project_name}\n"
+            "    provider: flext-sh\n"
+            f"    url: https://github.com/flext-sh/{project_name}.git\n"
+            "    branch: main\n"
+            f"    path: {project_name}\n"
+            "    role: workspace-member\n"
+            "    state: active\n"
+            "    profile: workspace-member\n"
+            "    checkout: submodule\n"
+            "    codegen: conform\n"
+            "    package: true\n"
+            "    editable: true\n"
+            "    read_only: false"
+        )
+        for project_name in ("demo-a", "demo-b")
+    )
+    (config_dir / "workspace.yaml").write_text(
+        (
+            "version: 2\n"
+            "name: workspace-root\n"
+            "repository:\n"
+            "  name: workspace-root\n"
+            "  distribution: workspace-root\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/workspace-root.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            f"members:{member_records}\n"
+            "content_only: []\n"
+            "exclusions: []\n"
+        ),
+        encoding="utf-8",
+    )
     for project_name in ("demo-a", "demo-b"):
         project_root = workspace_root / project_name
         project_root.mkdir()

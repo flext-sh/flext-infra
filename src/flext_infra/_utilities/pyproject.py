@@ -22,9 +22,12 @@ def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
     to surface on failure.
     """
     try:
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            payload
+        )
     except (c.ValidationError, ValueError):
         return None
+    return result
 
 
 class FlextInfraUtilitiesPyproject:

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -45,8 +44,8 @@ class FlextInfraCyclicImportDetector:
             try:
                 module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
             except (
-                *FlextInfraConstantsRope.RUNTIME_ERRORS,
-                *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                *u.Infra.rope_runtime_errors(),
+                *u.Infra.rope_syntax_errors(),
                 TypeError,
             ):
                 continue

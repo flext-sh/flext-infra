@@ -9,7 +9,6 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, m, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -437,8 +436,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     resources=(resource,),
                 )
             except (
-                *FlextInfraConstantsRope.RUNTIME_ERRORS,
-                *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+                *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
                 TypeError,
                 ValueError,
             ):
@@ -895,8 +894,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         rope_project, target_resource
                     ).get_name()
                 except (
-                    *FlextInfraConstantsRope.RUNTIME_ERRORS,
-                    *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                    *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
+                    *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
                     TypeError,
                 ):
                     continue

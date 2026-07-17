@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
@@ -251,7 +250,7 @@ class FlextInfraClassPlacementDetector:
         """
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except u.Infra.rope_runtime_errors():
             return ()
         tree = pymodule.get_ast()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
@@ -325,7 +324,7 @@ class FlextInfraClassPlacementDetector:
         """Return module-level type aliases as (name, line) pairs."""
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except u.Infra.rope_runtime_errors():
             return ()
         tree = pymodule.get_ast()
         aliases: list[tuple[str, int]] = []

@@ -157,6 +157,15 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class WorkspaceEnvironmentRequest(Protocol):
+        """Read-only workspace environment validation request."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Workspace whose active interpreter provenance must be validated."""
+            ...
+
+    @runtime_checkable
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance."""
 

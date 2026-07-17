@@ -13,9 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -70,13 +69,13 @@ class FlextInfraRefactorClassvarConstantAutofix:
         constants_module: str,
     ) -> ClassvarConstantAutofixPlan:
         class_module, class_name = class_full_name.rsplit(".", maxsplit=1)
-        source_mod = project.get_module(class_module)
+        source_mod = project.get_module(class_module, project.root)
         source_resource = source_mod.get_resource()
-        if not FlextInfraUtilitiesRopeRuntime.is_resource(source_resource):
+        if not u.Infra.is_resource(source_resource):
             msg = f"{class_module} did not resolve to a file resource"
             raise TypeError(msg)
         pyclass = source_mod.get_attribute(class_name).get_object()
-        if not FlextInfraUtilitiesRopeRuntime.is_runtime_pyclass(pyclass):
+        if not u.Infra.is_runtime_pyclass(pyclass):
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
         source_text = source_resource.read()
@@ -84,7 +83,12 @@ class FlextInfraRefactorClassvarConstantAutofix:
         declaration_line = _extract_declaration_line(
             source_text, class_name, constant_name, class_lineno
         )
-        target_resource = _target_resource_for_module(project, constants_module)
+        target_resource = _target_resource_for_module(
+            project,
+            constants_module,
+            class_module=class_module,
+            source_resource=source_resource,
+        )
         return ClassvarConstantAutofixPlan(
             class_module=class_module,
             class_name=class_name,
@@ -158,10 +162,10 @@ class FlextInfraRefactorClassvarConstantAutofix:
 
         # 3. Rewrite internal references from ClassName.NAME / cls.NAME /
         # self.__class__.NAME to the canonical constants module access.
-        class_module_obj = project.get_module(plan.class_module)
+        class_module_obj = project.get_module(plan.class_module, project.root)
         pyclass = class_module_obj.get_attribute(plan.class_name).get_object()
         pyname = pyclass.get_attribute(plan.constant_name)
-        finder = FlextInfraUtilitiesRopeRuntime.create_occurrence_finder(
+        finder = u.Infra.create_occurrence_finder(
             project, plan.constant_name, pyname, imports=True, in_hierarchy=False
         )
         rewrites: dict[str, list[tuple[int, int, str]]] = {}
@@ -174,14 +178,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 prefix = _attribute_prefix(source, offset)
                 if _should_rewrite_prefix(prefix, plan.class_name):
                     try:
-                        start, end = FlextInfraUtilitiesRopeRuntime.word_primary_range(
-                            source, offset
-                        )
-                    except (
-                        *FlextInfraConstantsRope.RUNTIME_ERRORS,
-                        TypeError,
-                        ValueError,
-                    ):
+                        start, end = u.Infra.word_primary_range(source, offset)
+                    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
                         start, end = occurrence.get_word_range()
                     replacement = (
                         f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
@@ -249,40 +247,49 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 
 
 def _target_resource_for_module(
-    project: t.Infra.RopeProject, constants_module: str
+    project: t.Infra.RopeProject,
+    constants_module: str,
+    *,
+    class_module: str,
+    source_resource: t.Infra.RopeResource,
 ) -> t.Infra.RopeResource:
     """Return the existing canonical constants module resource."""
-    try:
-        target_mod = project.get_module(constants_module)
-    except FlextInfraConstantsRope.MODULE_NOT_FOUND_ERROR_TYPES:
-        msg = f"constants module {constants_module} does not exist"
-        raise TypeError(msg) from None
-    target_resource = target_mod.get_resource()
-    if not FlextInfraUtilitiesRopeRuntime.is_resource(target_resource):
-        target_resource = _target_package_init_resource(project, constants_module)
-        if target_resource is None:
-            msg = (
-                f"constants module {constants_module} did not resolve "
-                "to a file resource"
-            )
-            raise TypeError(msg)
-    if not Path(target_resource.real_path).is_file():
+    source_path = Path(source_resource.real_path).resolve()
+    class_path = Path(*class_module.split("."))
+    source_suffix = next(
+        (
+            suffix
+            for suffix in (class_path.with_suffix(".py"), class_path / "__init__.py")
+            if source_path.parts[-len(suffix.parts) :] == suffix.parts
+        ),
+        None,
+    )
+    if source_suffix is None:
+        msg = f"{class_module} did not resolve inside its import root"
+        raise TypeError(msg)
+    import_root = source_path
+    for _part in source_suffix.parts:
+        import_root = import_root.parent
+    constants_path = Path(*constants_module.split("."))
+    candidates = tuple(
+        candidate
+        for candidate in (
+            import_root / constants_path.with_suffix(".py"),
+            import_root / constants_path / "__init__.py",
+        )
+        if candidate.is_file()
+    )
+    if not candidates:
         msg = f"constants module {constants_module} does not exist"
         raise TypeError(msg)
+    if len(candidates) != 1:
+        msg = f"constants module {constants_module} has multiple canonical owners"
+        raise TypeError(msg)
+    target_resource = u.Infra.get_resource_from_path(project, candidates[0])
+    if target_resource is None:
+        msg = f"constants module {constants_module} is outside the Rope project"
+        raise TypeError(msg)
     return target_resource
-
-
-def _target_package_init_resource(
-    project: t.Infra.RopeProject, constants_module: str
-) -> t.Infra.RopeResource | None:
-    """Return ``__init__.py`` for a package-backed constants module."""
-    root_real_path = getattr(getattr(project, "root", None), "real_path", None)
-    if not isinstance(root_real_path, str):
-        return None
-    init_path = Path(root_real_path).joinpath(
-        *constants_module.split("."), "__init__.py"
-    )
-    return FlextInfraUtilitiesRopeCore.get_resource_from_path(project, init_path)
 
 
 def _extract_declaration_line(
@@ -550,8 +557,8 @@ def _attribute_prefix(source: str, offset: int) -> str:
     ``"self.__class__"``.  For bare ``BAR`` returns the empty string.
     """
     try:
-        return FlextInfraUtilitiesRopeRuntime.word_primary_at(source, offset)
-    except (*FlextInfraConstantsRope.RUNTIME_ERRORS, TypeError, ValueError):
+        return u.Infra.word_primary_at(source, offset)
+    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
         return ""
 
 

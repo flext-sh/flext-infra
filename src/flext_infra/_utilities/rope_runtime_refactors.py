@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import p, t
 from flext_infra._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase):
@@ -117,7 +118,8 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         if not callable(worder_factory):
             msg = "rope Worder factory is not callable"
             raise TypeError(msg)
-        return worder_factory(source, True)
+        finder: p.AttributeProbe = worder_factory(source, True)
+        return finder
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeRuntimeRefactors"]

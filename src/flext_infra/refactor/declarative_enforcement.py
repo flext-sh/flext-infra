@@ -10,8 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import c, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.detectors.class_placement_detector import (
@@ -130,7 +129,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
             tree = pymodule.get_ast()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+        except u.Infra.rope_runtime_errors() as exc:
             msg = (
                 f"declarative enforcement {ctx.file_path} failed: "
                 f"unable to parse rope AST: {type(exc).__name__}: {exc}"

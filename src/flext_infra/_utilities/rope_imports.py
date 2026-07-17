@@ -8,7 +8,6 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, m, p, r, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.transformers.project_alias_migrator import (
@@ -87,7 +86,7 @@ class FlextInfraUtilitiesRopeImports:
                 in_hierarchy=in_hierarchy,
             )
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
             RecursionError,
         ) as exc:
@@ -193,8 +192,8 @@ class FlextInfraUtilitiesRopeImports:
             organizer = FlextInfraUtilitiesRopeRuntime.import_organizer(rope_project)
             changes = organizer.organize_imports(resource)
         except (
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
         ) as exc:
             return r[bool].fail(f"rope organize_imports raised: {exc!s}")

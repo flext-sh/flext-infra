@@ -9,7 +9,6 @@ from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c
 from tests import t
 from tests import u
 from flext_tests import tm
@@ -592,7 +591,7 @@ class TestsFlextInfraRefactorMainCli:
         rope_error_message = "boom"
 
         def _explode(*args: object, **kwargs: object) -> object:
-            raise c.Infra.ROPE_ERROR_TYPES[0](rope_error_message)
+            raise u.Infra.rope_error_types()[0](rope_error_message)
 
         monkeypatch.setattr(
             FlextInfraUtilitiesRopeInventory, "_reference_sites", staticmethod(_explode)

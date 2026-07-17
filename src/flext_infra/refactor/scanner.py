@@ -92,7 +92,7 @@ class FlextInfraRefactorLooseClassScanner:
         required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
             targets_found
         )
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,
             "classes_scanned": classes_scanned,
@@ -101,6 +101,7 @@ class FlextInfraRefactorLooseClassScanner:
             "required_targets": required_targets_infra,
             c.Infra.RK_VIOLATIONS: violations_infra,
         })
+        return result
 
     def _build_violation(
         self, rel_path: Path, occ: m.Infra.ClassOccurrence

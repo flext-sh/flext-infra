@@ -96,6 +96,8 @@ WORKSPACE_INFRA_REFACTOR := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_REFACTOR 
 WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_ROUTE_RELEASE }}
 WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_VALIDATE }}
 WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_WORKSPACE }}
+WORKSPACE_EDITABLE_REINSTALL_FLAGS :={% for distribution in editable_distributions %} --reinstall-package "{{ distribution }}"{% endfor %}
+WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment --workspace "$(CURDIR)"
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := $(SELECTED_PROJECT_FLAGS)
 
@@ -201,7 +203,8 @@ if [ ! -x "$(PY)" ]; then \
 	echo "    Run '{{ make.WORKSPACE_BOOT_HINT }}' first to create the environment."; \
 	echo ""; \
 	exit 1; \
-fi
+fi; \
+$(WORKSPACE_VERIFY_ENVIRONMENT) || exit 1
 mkdir -p "$(UV_CACHE_DIR)"
 endef
 
@@ -214,12 +217,13 @@ else \
 	cat "$$log_file"; \
 	exit 1; \
 fi; \
-if uv sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
+if uv sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS) >>"$$log_file" 2>&1; then \
 	:; \
 else \
 	cat "$$log_file"; \
 	exit 1; \
 fi; \
+$(WORKSPACE_VERIFY_ENVIRONMENT) || { cat "$$log_file"; exit 1; }; \
 rm -f "$$log_file"
 endef
 

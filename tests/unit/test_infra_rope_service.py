@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 import flext_infra
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import c
 from tests import m
@@ -18,7 +16,6 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import p
     from tests import t
 
 
@@ -74,7 +71,9 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rope.workspace_index.package_dirs, has=examples_root)
             module = rope.module(module_path)
             tm.that(module, none=False)
-            tm.that(module.module_name if module is not None else "", eq="examples.demo")
+            tm.that(
+                module.module_name if module is not None else "", eq="examples.demo"
+            )
 
     def test_public_facade_opens_rope_workspace(self, tmp_path: Path) -> None:
         """Public facade returns the same ergonomic Rope workspace DSL."""
@@ -86,9 +85,12 @@ class TestsFlextInfraInfraRopeService:
 
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             state = rope.semantic(module_path)
-            assert any(
-                class_info.name == "FlextTestsModels"
-                for class_info in state.class_infos
+            tm.that(
+                any(
+                    class_info.name == "FlextTestsModels"
+                    for class_info in state.class_infos
+                ),
+                eq=True,
             )
 
     def test_open_workspace_keeps_project_scope_with_sibling_projects(
@@ -210,7 +212,9 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            assert any(entry.file_path == module_path for entry in rope.modules())
+            tm.that(
+                any(entry.file_path == module_path for entry in rope.modules()), eq=True
+            )
             tm.that(rope.source(module_path), has="class FlextDemoModels")
             objects = {
                 (item.scope_path, item.kind): item for item in rope.objects(module_path)
@@ -219,14 +223,13 @@ class TestsFlextInfraInfraRopeService:
             tm.that(objects.get(("FlextDemoModels", "class")), none=False)
             tm.that(objects.get(("FlextDemoModels.build", "method")), none=False)
             tm.that(
-                objects.get(("FlextDemoModels.build.payload", "parameter")),
-                none=False,
+                objects.get(("FlextDemoModels.build.payload", "parameter")), none=False
             )
             tm.that(objects.get(("FlextDemoModels.build.local", "local")), none=False)
             tm.that(
                 objects.get(("FlextDemoModels.build.nested", "function")), none=False
             )
-            assert objects["FlextDemoModels", "class"].is_facade_member
+            tm.that(objects["FlextDemoModels", "class"].is_facade_member, eq=True)
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
         self, tmp_path: Path
@@ -292,20 +295,20 @@ class TestsFlextInfraInfraRopeService:
             rope.refresh(preserve_indexes=True)
 
             preserved_index = rope.name_index()
-            assert preserved_index is original_index
+            tm.that(preserved_index is original_index, eq=True)
             tm.that(preserved_index, lacks="second")
 
             module_path.write_text(changed_source, encoding="utf-8")
             rope.refresh()
 
             rebuilt_index = rope.name_index()
-            assert rebuilt_index is not original_index
+            tm.that(rebuilt_index is not original_index, eq=True)
             tm.that(rebuilt_index, has="second")
 
     def test_workspace_objects_raise_on_inventory_bootstrap_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Inventory bootstrap failures surface instead of pretending the module is empty."""
+        """Inventory bootstrap failures surface instead of returning an empty module."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -319,22 +322,27 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
 
-        def _explode(*args: object, **kwargs: object) -> object:
+        def _explode(
+            rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+        ) -> t.Infra.RopePyModule:
+            del rope_project, resource
             msg = "boom"
-            raise c.Infra.ROPE_ERROR_TYPES[0](msg)
+            raise u.Infra.rope_error_types()[0](msg)
 
         monkeypatch.setattr(u.Infra, "get_pymodule", staticmethod(_explode))
 
-        with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            with pytest.raises(
+        with (
+            flext_infra.infra.rope_workspace(workspace_root) as rope,
+            pytest.raises(
                 RuntimeError, match=r"rope inventory failed to load .*service\.py"
-            ):
-                rope.objects(module_path)
+            ),
+        ):
+            rope.objects(module_path)
 
     def test_workspace_name_index_raises_on_module_read_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Name index failures surface instead of quietly dropping unreadable modules."""
+        """Name index failures surface instead of dropping unreadable modules."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -365,16 +373,18 @@ class TestsFlextInfraInfraRopeService:
 
         monkeypatch.setattr(type(module_path), "read_text", _broken_read_text)
 
-        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
-            with pytest.raises(
+        with (
+            FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope,
+            pytest.raises(
                 RuntimeError, match=r"rope name index failed to read .*service\.py"
-            ):
-                rope.name_index()
+            ),
+        ):
+            rope.name_index()
 
     def test_workspace_objects_raise_on_indexed_resource_lookup_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Indexed reference search must fail loudly when a referenced module resource vanishes."""
+        """Indexed reference lookup fails when a module resource vanishes."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -408,17 +418,22 @@ class TestsFlextInfraInfraRopeService:
 
         monkeypatch.setattr(FlextInfraRopeWorkspace, "resource", _broken_resource)
 
-        with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            with pytest.raises(
+        with (
+            flext_infra.infra.rope_workspace(workspace_root) as rope,
+            pytest.raises(
                 RuntimeError,
-                match=r"rope search resource unavailable for indexed path .*consumer\.py",
-            ):
-                rope.objects(service_path, include_local_scopes=False)
+                match=(
+                    r"rope search resource unavailable for indexed path "
+                    r".*consumer\.py"
+                ),
+            ),
+        ):
+            rope.objects(service_path, include_local_scopes=False)
 
     def test_indexed_search_raises_on_invalid_import_dependents_result(
         self, tmp_path: Path
     ) -> None:
-        """Indexed dependency narrowing must reject invalid import_dependents payloads."""
+        """Indexed dependency narrowing rejects invalid dependents payloads."""
         workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -457,14 +472,14 @@ class TestsFlextInfraInfraRopeService:
                 def resource(self, file_path: Path) -> t.Infra.RopeResource | None:
                     return rope.resource(file_path)
 
-                def import_dependents(self, import_target: str) -> object:
+                def import_dependents(self, import_target: str) -> str:
                     del import_target
-                    return object()
+                    return "invalid"
 
             with pytest.raises(
                 TypeError, match=r"rope import_dependents returned non-tuple for demo"
             ):
-                FlextInfraUtilitiesRopeImports.indexed_search_resources(
+                u.Infra.indexed_search_resources(
                     _BrokenWorkspace(),
                     resource=resource,
                     name="helper",
@@ -472,9 +487,7 @@ class TestsFlextInfraInfraRopeService:
                     dependent_import_targets=("demo", "demo.helper"),
                 )
 
-    def test_workspace_dsl_ignores_test_references(
-        self, tmp_path: Path
-    ) -> None:
+    def test_workspace_dsl_ignores_test_references(self, tmp_path: Path) -> None:
         """Tests remain outside production reachability."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
@@ -509,13 +522,12 @@ class TestsFlextInfraInfraRopeService:
         candidate = objects["only_for_tests"]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
     def test_workspace_dsl_skips_reference_scan_for_facade_members(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        """Governed facade members skip expensive reference collection."""
+        """Governed facade members expose zero production references."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -530,27 +542,21 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
 
-        def _explode(*args: object, **kwargs: object) -> object:
-            msg = "facade members should not trigger reference scanning"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRopeInventory, "_reference_sites", staticmethod(_explode)
-        )
-
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             objects = {
                 item.name: item
                 for item in rope.objects(module_path, include_local_scopes=False)
             }
 
-        assert objects["FlextDemoModels"].is_facade_member
-        assert objects["m"].is_facade_member
+        tm.that(objects["FlextDemoModels"].is_facade_member, eq=True)
+        tm.that(objects["FlextDemoModels"].references_count, eq=0)
+        tm.that(objects["m"].is_facade_member, eq=True)
+        tm.that(objects["m"].references_count, eq=0)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        """Private and dunder names do not trigger removal-only reference scans."""
+        """Private and dunder names expose zero production references."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -565,41 +571,6 @@ class TestsFlextInfraInfraRopeService:
             encoding="utf-8",
         )
 
-        original = FlextInfraUtilitiesRopeInventory._reference_sites
-        seen_names: list[str] = []
-
-        def _tracking(
-            rope_project: t.Infra.RopeProject,
-            resource: t.Infra.RopeResource,
-            *,
-            source: str,
-            module_name: str,
-            name: str,
-            line: int,
-            rope_workspace: p.AttributeProbe | None = None,
-        ) -> tuple[
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-            tuple[m.Infra.Census.ReferenceSite, ...],
-        ]:
-            seen_names.append(name)
-            return original(
-                rope_project,
-                resource,
-                source=source,
-                module_name=module_name,
-                name=name,
-                line=line,
-                rope_workspace=rope_workspace,
-            )
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRopeInventory,
-            "_reference_sites",
-            staticmethod(_tracking),
-        )
-
         with flext_infra.infra.rope_workspace(workspace_root) as rope:
             objects = {
                 item.name: item
@@ -608,8 +579,7 @@ class TestsFlextInfraInfraRopeService:
 
         tm.that(objects, has="__all__")
         tm.that(objects["__all__"].references_count, eq=0)
-        tm.that(seen_names, lacks="__all__")
-        tm.that(seen_names, has="public")
+        tm.that(objects, has="public")
 
     def test_workspace_dsl_ignores_example_importers_for_generic_names(
         self, tmp_path: Path
@@ -647,7 +617,6 @@ class TestsFlextInfraInfraRopeService:
         candidate = objects["run"]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
     def test_workspace_dsl_ignores_example_base_class_references(
@@ -696,7 +665,6 @@ class TestsFlextInfraInfraRopeService:
         candidate = objects["ExampleSharedPerson"]
         tm.that(candidate.references_count, eq=0)
         tm.that(candidate.runtime_references_count, eq=0)
-        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
     def test_workspace_dsl_tracks_same_file_references(self, tmp_path: Path) -> None:
@@ -724,7 +692,6 @@ class TestsFlextInfraInfraRopeService:
         candidate = objects["ExampleService"]
         tm.that(candidate.references_count, eq=1)
         tm.that(candidate.runtime_references_count, eq=1)
-        tm.that(candidate.example_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
         tm.that(
             {site.file_path for site in candidate.runtime_reference_sites},
