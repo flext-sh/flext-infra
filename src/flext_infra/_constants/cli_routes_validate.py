@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra._constants.cli_routes_validate_commands import VALIDATE_COMMAND_ROUTES
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
@@ -11,6 +11,17 @@ from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+
+
+def _as_route_value(value: t.Cli.ResultValue) -> t.Cli.ResultValue:
+    """Widen a specific result payload to the CLI route contract value.
+
+    Used as the mapper for ``Result.map`` so handlers returning concrete
+    ``Result[T]`` satisfy ``t.Cli.ResultRouteHandler`` without any runtime
+    change.
+    """
+    return value
+
 
 VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_DOCS: tuple(
@@ -65,25 +76,33 @@ VALIDATE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name="workflows",
             help_text="Sync GitHub workflow files across workspace",
             model_cls=m.Infra.GithubWorkflowSyncRequest,
-            handler=u.Infra.sync_github_workflows,
+            handler=lambda params: u.Infra.sync_github_workflows(params).map(
+                _as_route_value
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name=c.Infra.LINT_SECTION,
             help_text="Lint GitHub workflow files",
             model_cls=m.Infra.GithubWorkflowLintRequest,
-            handler=u.Infra.lint_github_workflows,
+            handler=lambda params: u.Infra.lint_github_workflows(params).map(
+                _as_route_value
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name=c.Infra.PR,
             help_text="Manage pull requests for a single project",
             model_cls=m.Infra.GithubPullRequestRequest,
-            handler=u.Infra.run_github_pull_request,
+            handler=lambda params: u.Infra.run_github_pull_request(params).map(
+                _as_route_value
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="pr-workspace",
             help_text="Manage pull requests across workspace projects",
             model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-            handler=u.Infra.run_github_workspace_pull_requests,
+            handler=lambda params: u.Infra.run_github_workspace_pull_requests(
+                params
+            ).map(_as_route_value),
         ),
     ),
     c.Infra.CLI_GROUP_MAINTENANCE: (

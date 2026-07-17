@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -34,19 +34,34 @@ from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 
+
+def _as_route_value(value: t.Cli.ResultValue) -> t.Cli.ResultValue:
+    """Widen a specific result payload to the CLI route contract value.
+
+    Used as the mapper for ``Result.map`` so handlers returning concrete
+    ``Result[T]`` satisfy ``t.Cli.ResultRouteHandler`` without any runtime
+    change.
+    """
+    return value
+
+
 WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
     c.Infra.CLI_GROUP_REFACTOR: (
         m.Cli.ResultCommandRoute(
             name="migrate-mro",
             help_text="Migrate loose declarations into MRO facade classes",
             model_cls=m.Infra.RefactorMigrateMroInput,
-            handler=FlextInfraRefactorMigrateToClassMRO.execute_command,
+            handler=lambda params: FlextInfraRefactorMigrateToClassMRO.execute_command(
+                params
+            ).map(_as_route_value),
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=FlextInfraNamespaceEnforcer.execute_command,
+            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(
+                params
+            ).map(_as_route_value),
         ),
         *(
             m.Cli.ResultCommandRoute(
@@ -67,7 +82,11 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
+            handler=lambda params: (
+                FlextInfraAccessorMigrationOrchestrator.execute_payload(params).map(
+                    _as_route_value
+                )
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",
@@ -141,7 +160,9 @@ WORKSPACE_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run release orchestration CLI flow",
             model_cls=FlextInfraReleaseOrchestrator,
-            handler=FlextInfraReleaseOrchestrator.execute_command,
+            handler=lambda params: FlextInfraReleaseOrchestrator.execute_command(
+                params
+            ).map(_as_route_value),
             success_message="Release completed successfully",
         ),
     ),

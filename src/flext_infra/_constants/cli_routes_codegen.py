@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra import c, m
+from flext_infra import c, m, t
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
@@ -21,6 +21,17 @@ from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 
+
+def _as_route_value(value: t.Cli.ResultValue) -> t.Cli.ResultValue:
+    """Widen a specific result payload to the CLI route contract value.
+
+    Used as the mapper for ``Result.map`` so handlers returning concrete
+    ``Result[T]`` satisfy ``t.Cli.ResultRouteHandler`` without any runtime
+    change.
+    """
+    return value
+
+
 # NOTE (multi-agent, mro-wkii.17.9): deps no longer exposes path-sync;
 # codegen consumes the pure u.Infra pyproject renderer internally.
 CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
@@ -38,19 +49,27 @@ CODEGEN_ROUTES: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = {
             name=c.Infra.VERB_RUN,
             help_text="Run workspace quality gates",
             model_cls=m.Infra.RunCommand,
-            handler=FlextInfraWorkspaceChecker.execute_payload,
+            handler=lambda params: FlextInfraWorkspaceChecker.execute_payload(
+                params
+            ).map(_as_route_value),
         ),
         m.Cli.ResultCommandRoute(
             name="fix-pyrefly-settings",
             help_text="Repair [tool.pyrefly] blocks",
             model_cls=m.Infra.FixPyreflyConfigCommand,
-            handler=FlextInfraConfigFixer.execute_payload,
+            handler=lambda params: FlextInfraConfigFixer.execute_payload(params).map(
+                _as_route_value
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="fix-enforcement",
             help_text="Auto-fix enforcement-catalog violations",
             model_cls=m.Infra.FixEnforcementCommand,
-            handler=FlextInfraEnforcementFixerOrchestrator.execute_payload,
+            handler=lambda params: (
+                FlextInfraEnforcementFixerOrchestrator.execute_payload(params).map(
+                    _as_route_value
+                )
+            ),
         ),
     ),
     c.Infra.CLI_GROUP_CODEGEN: tuple(

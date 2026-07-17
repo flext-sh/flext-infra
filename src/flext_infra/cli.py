@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra._constants.cli_routes import (
     CODEGEN_ROUTES as _ROUTES_CODEGEN,
     VALIDATE_ROUTES as _ROUTES_VALIDATE,
@@ -16,9 +16,22 @@ from flext_infra._constants.cli_routes import (
 )
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace.environment_provenance import (
+    FlextInfraWorkspaceEnvironmentProvenance,
+)
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
+
+
+def _as_route_value(value: t.Cli.ResultValue) -> t.Cli.ResultValue:
+    """Widen a specific result payload to the CLI route contract value.
+
+    Used as the mapper for ``Result.map`` so handlers returning concrete
+    ``Result[T]`` satisfy ``t.Cli.ResultRouteHandler`` without any runtime
+    change.
+    """
+    return value
 
 
 class FlextInfraCli(type(cli_facade)):
@@ -43,6 +56,20 @@ class FlextInfraCli(type(cli_facade)):
                 success_message="project conformance complete",
             ),
             *_ROUTES_CODEGEN[c.Infra.CLI_GROUP_CODEGEN],
+        ),
+        c.Infra.CLI_GROUP_WORKSPACE: (
+            m.Cli.ResultCommandRoute(
+                name="verify-environment",
+                help_text="Verify live workspace editable provenance",
+                model_cls=m.Infra.WorkspaceEnvironmentRequest,
+                handler=lambda params: (
+                    FlextInfraWorkspaceEnvironmentProvenance.execute_request(
+                        params
+                    ).map(_as_route_value)
+                ),
+                success_message="workspace editable provenance verified",
+            ),
+            *_ROUTES_WORKSPACE[c.Infra.CLI_GROUP_WORKSPACE],
         ),
     }
 
@@ -194,7 +221,10 @@ class FlextInfraCli(type(cli_facade)):
             if report.breakage_detected or check_failed
             else c.Cli.MessageTypes.INFO
         )
-        self.display_message(rendered, message_type)
+        if len(rendered) > c.Cli.OUTPUT_PLAIN_MESSAGE_THRESHOLD:
+            self.display_message_plain(rendered, message_type)
+        else:
+            self.display_message(rendered, message_type)
         if (
             report.breakage_detected
             or check_failed
