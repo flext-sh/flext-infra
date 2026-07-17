@@ -18,7 +18,7 @@ from flext_infra import c, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 if TYPE_CHECKING:
-    from flext_infra import m, p
+    from flext_infra import p
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -99,7 +99,7 @@ class FlextInfraProjectMakefileUpdater:
         return result
 
     @staticmethod
-    def _tests_dir(project_root: Path, meta: m.ProjectMetadata) -> str:
+    def _tests_dir(project_root: Path, meta: p.ProjectMetadata) -> str:
         """Return the project test directory used by generated Makefiles."""
         src_dir: str = c.Infra.DEFAULT_SRC_DIR
         tests_dir: str = c.Infra.DIR_TESTS
@@ -111,7 +111,7 @@ class FlextInfraProjectMakefileUpdater:
 
     @staticmethod
     def _build_makefile(
-        meta: m.ProjectMetadata, bootstrap: str, *, tests_dir: str
+        meta: p.ProjectMetadata, bootstrap: str, *, tests_dir: str
     ) -> str:
         """Build the fully-generated Makefile content."""
         title = f"# {meta.project.name}"

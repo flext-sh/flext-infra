@@ -141,20 +141,11 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[fr.SkippedViolation] = []
         failed: list[fr.FailedFix] = []
         if execution.result.passed:
-            message = (
-                f"gate {fix_action.target} fix "
-                f"{'applied' if ctx.apply else 'previewed'}"
+            message = f"gate {fix_action.target} fix applied"
+            fixed_violation: fr.FixedViolation = fr.FixedViolation(
+                rule_id=rule.id, file_path=str(project_dir), message=message
             )
-            if ctx.apply:
-                fixed_violation: fr.FixedViolation = fr.FixedViolation(
-                    rule_id=rule.id, file_path=str(project_dir), message=message
-                )
-                fixed = [fixed_violation]
-            else:
-                previewed_violation: fr.PreviewedViolation = fr.PreviewedViolation(
-                    rule_id=rule.id, file_path=str(project_dir), message=message
-                )
-                previewed = [previewed_violation]
+            fixed = [fixed_violation]
         else:
             failed = [
                 fr.FailedFix(

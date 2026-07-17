@@ -105,38 +105,44 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             elif action == "rewrite_manual_typing_alias":
                 if ctx.project_root is None:
                     continue
-                violations = tuple(
+                manual_typing_violations: tuple[
+                    m.Infra.ManualTypingAliasViolation, ...
+                ] = tuple(
                     violation
                     for violation in FlextInfraManualTypingAliasDetector.detect_file(
                         ctx
                     )
                     if violation.name in object_names
                 )
-                if not violations:
+                if not manual_typing_violations:
                     continue
                 u.Infra.rewrite_manual_typing_alias_violations(
                     project_root=ctx.project_root,
-                    violations=violations,
+                    violations=manual_typing_violations,
                     parse_failures=parse_failures,
                     gates=self.dry_run_gate_names,
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
-                violations = tuple(
+                compatibility_violations: tuple[
+                    m.Infra.CompatibilityAliasViolation, ...
+                ] = tuple(
                     violation
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                         ctx
                     )
                     if violation.alias_name in object_names
                 )
-                if not violations:
+                if not compatibility_violations:
                     continue
                 u.Infra.rewrite_compatibility_alias_violations(
-                    violations=violations, parse_failures=parse_failures
+                    violations=compatibility_violations, parse_failures=parse_failures
                 )
                 changed = True
             elif action == "rewrite_private_import_bypass":
-                violations = tuple(
+                private_import_violations: tuple[
+                    m.Infra.PrivateImportBypassViolation, ...
+                ] = tuple(
                     violation
                     for violation in FlextInfraPrivateImportBypassDetector.detect_file(
                         ctx
@@ -144,24 +150,24 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     if violation.imported_symbol in object_names
                     and violation.symbol_exported
                 )
-                if not violations:
+                if not private_import_violations:
                     continue
                 u.Infra.rewrite_private_import_bypass_violations(
                     rope_project=ctx.rope_project,
-                    violations=violations,
+                    violations=private_import_violations,
                     parse_failures=parse_failures,
                 )
                 changed = True
             elif action == "rewrite_mro_completeness":
-                violations = tuple(
+                mro_violations: tuple[m.Infra.MROCompletenessViolation, ...] = tuple(
                     violation
                     for violation in FlextInfraMROCompletenessDetector.detect_file(ctx)
                     if violation.facade_class in object_names
                 )
-                if not violations:
+                if not mro_violations:
                     continue
                 u.Infra.rewrite_mro_completeness_violations(
-                    violations=violations, parse_failures=parse_failures
+                    violations=mro_violations, parse_failures=parse_failures
                 )
                 changed = True
             elif action in {"hoist_inline_import", "rewrite_library_abstraction"}:
@@ -172,7 +178,9 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     action=action,
                 )
             elif action == "rewrite_foreign_canonical_alias":
-                violations = tuple(
+                foreign_canonical_violations: tuple[
+                    m.Infra.CompatibilityAliasViolation, ...
+                ] = tuple(
                     violation
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                         ctx
@@ -184,11 +192,11 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     )
                     == "rewrite_foreign_canonical_alias"
                 )
-                if not violations:
+                if not foreign_canonical_violations:
                     continue
                 u.Infra.rewrite_foreign_canonical_alias_violations(
                     rope_project=ctx.rope_project,
-                    violations=violations,
+                    violations=foreign_canonical_violations,
                     parse_failures=parse_failures,
                 )
                 changed = True
@@ -249,10 +257,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 touched_paths.add(Path(candidate.file_path).resolve())
                 touched_paths.update(
                     Path(site.file_path).resolve()
-                    for site in (
-                        *candidate.example_reference_sites,
-                        *candidate.script_reference_sites,
-                    )
+                    for site in candidate.script_reference_sites
                 )
         stub_only = (
             applied_actions == {"remove_stub_file"} and not report.removal_candidates
@@ -297,7 +302,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         try:
             pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
             tree = pymodule.get_ast()
-        except (*c.Infra.RUNTIME_ERRORS, TypeError):
+        except (*u.Infra.rope_runtime_errors(), TypeError):
             return False
         if not isinstance(tree, ast.Module):
             return False
@@ -464,7 +469,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             return False
         try:
             mover = u.Infra.create_move(rope.rope_project, source_resource, offset)
-        except (*c.Infra.RUNTIME_ERRORS, TypeError):
+        except (*u.Infra.rope_runtime_errors(), TypeError):
             return False
         try:
             changes = mover.get_changes(target_resource)

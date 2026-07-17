@@ -203,7 +203,10 @@ class FlextInfraSmellsGate(FlextInfraGate):
         subprocess) — same strategy as ``loc_cap._files_over_cap``.
         """
         parsed = u.Cli.json_parse(sarif_json or "{}")
-        data = u.Cli.json_as_mapping(parsed.unwrap_or(None))
+        empty_json: t.JsonValue = {}
+        data = u.Cli.json_as_mapping(
+            parsed.unwrap() if parsed.success else empty_json
+        )
         prefix = f"{project_name}/"
         return tuple(
             cls._issue_from_result(result, prefix)
