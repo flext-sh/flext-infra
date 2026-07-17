@@ -58,9 +58,7 @@ class FlextInfraUtilitiesDocsValidate:
             case list() as configured:
                 return r[t.JsonList].ok(configured)
             case _:
-                return r[t.JsonList].fail(
-                    "required_skills missing or not a list"
-                )
+                return r[t.JsonList].fail("required_skills missing or not a list")
 
     @staticmethod
     def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:
@@ -89,9 +87,7 @@ class FlextInfraUtilitiesDocsValidate:
         )
 
     @staticmethod
-    def _validate_required_skills(
-        raw: t.JsonList,
-    ) -> p.Result[t.StrSequence]:
+    def _validate_required_skills(raw: t.JsonList) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
         return (
             r[t.StrSequence]

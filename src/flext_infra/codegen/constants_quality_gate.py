@@ -178,9 +178,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             census_report.projects, lambda project: project.violations_total == 0
         )
         modified_python_files: list[t.JsonValue] = list(modified_files)
-        violations_by_rule: dict[str, t.JsonValue] = dict(
-            sorted(by_kind.items())
-        )
+        violations_by_rule: dict[str, t.JsonValue] = dict(sorted(by_kind.items()))
         summary: dict[str, t.JsonValue] = {
             "total_violations": census_report.total_violations,
             "violations_by_rule": violations_by_rule,
@@ -251,9 +249,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         return [check.model_dump() for check in checks]
 
     @staticmethod
-    def compute_verdict(
-        checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]],
-    ) -> str:
+    def compute_verdict(checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]]) -> str:
         """Return PASS only when all checks passed."""
         return (
             "PASS"

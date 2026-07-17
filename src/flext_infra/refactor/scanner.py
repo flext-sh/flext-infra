@@ -85,9 +85,7 @@ class FlextInfraRefactorLooseClassScanner:
             v.model_dump() for v in violations
         ]
         confidence_counts: t.MappingKV[str, t.JsonValue] = dict(counters)
-        required_targets_infra: t.MappingKV[str, t.JsonValue] = dict(
-            targets_found
-        )
+        required_targets_infra: t.MappingKV[str, t.JsonValue] = dict(targets_found)
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,

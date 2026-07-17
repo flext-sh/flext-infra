@@ -120,9 +120,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             return r[str].fail_op("base.mk template render", exc)
 
     def render_single(
-        self,
-        template_name: str,
-        **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type,
+        self, template_name: str, **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

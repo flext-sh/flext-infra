@@ -85,9 +85,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         return result.exit_code == 0, issues
 
     @staticmethod
-    def _parse_bandit_payload(
-        stdout: str,
-    ) -> p.Result[t.MappingKV[str, t.JsonValue]]:
+    def _parse_bandit_payload(stdout: str) -> p.Result[t.MappingKV[str, t.JsonValue]]:
         """Parse Bandit JSON stdout into a typed payload mapping."""
         parsed_result = u.Cli.json_parse(stdout or "{}")
         if parsed_result.failure:
@@ -98,9 +96,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         if not isinstance(raw_payload, Mapping):
             empty_mapping: t.MappingKV[str, t.JsonValue] = {}
             return r[t.MappingKV[str, t.JsonValue]].ok(empty_mapping)
-        return r[t.MappingKV[str, t.JsonValue]].ok(
-            u.Cli.json_as_mapping(raw_payload)
-        )
+        return r[t.MappingKV[str, t.JsonValue]].ok(u.Cli.json_as_mapping(raw_payload))
 
     @staticmethod
     def _bandit_issues(

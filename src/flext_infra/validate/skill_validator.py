@@ -125,9 +125,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         return include_globs, exclude_globs
 
     @staticmethod
-    def _rules_list(
-        rules: t.MappingKV[str, t.JsonValue],
-    ) -> p.Result[t.JsonList]:
+    def _rules_list(rules: t.MappingKV[str, t.JsonValue]) -> p.Result[t.JsonList]:
         """Validate the rules.yml rules payload."""
         rules_list_obj = rules.get(c.Infra.RK_RULES, [])
         if not isinstance(rules_list_obj, list):

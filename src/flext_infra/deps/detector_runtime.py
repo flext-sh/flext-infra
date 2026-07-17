@@ -38,9 +38,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             return r[bool].fail(env_result.error or "environment validation failed")
         projects, limits_path = env_result.value
         do_typings = params.typings or params.apply_typings
-        projects_report: MutableMapping[
-            str, MutableMapping[str, t.JsonValue]
-        ] = {}
+        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
             projects=projects_report,

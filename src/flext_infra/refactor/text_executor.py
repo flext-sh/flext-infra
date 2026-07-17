@@ -162,10 +162,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return modernizer.apply_to_source(source)
 
     def _apply_pattern_corrections(
-        self,
-        settings: t.MappingKV[str, t.JsonValue],
-        source: str,
-        file_path: Path,
+        self, settings: t.MappingKV[str, t.JsonValue], source: str, file_path: Path
     ) -> t.Infra.TransformResult:
         """Apply pattern corrections."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
@@ -203,10 +200,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
 
     def _apply_typing_annotation_fix(
-        self,
-        settings: t.MappingKV[str, t.JsonValue],
-        source: str,
-        file_path: Path,
+        self, settings: t.MappingKV[str, t.JsonValue], source: str, file_path: Path
     ) -> t.Infra.TransformResult:
         """Apply typing annotation fix."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
@@ -267,10 +261,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
 
     def _apply_tier0_import_fix(
-        self,
-        settings: t.MappingKV[str, t.JsonValue],
-        source: str,
-        file_path: Path,
+        self, settings: t.MappingKV[str, t.JsonValue], source: str, file_path: Path
     ) -> t.Infra.TransformResult:
         """Apply tier0 import fix."""
         analyzer = FlextInfraTransformerTier0ImportFixer.Analyzer(

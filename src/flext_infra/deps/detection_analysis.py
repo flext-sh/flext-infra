@@ -70,9 +70,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             converted_map[key] = conv
         return t.json_dict_adapter().validate_python(converted_map)
 
-    def _mapping_from_value(
-        self, value: t.JsonValue | None
-    ) -> t.Infra.ContainerDict:
+    def _mapping_from_value(self, value: t.JsonValue | None) -> t.Infra.ContainerDict:
         """Build a mapping from a value."""
         if not isinstance(value, Mapping):
             return {}
@@ -169,9 +167,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         result = self._read_plain(path)
         if result.failure:
             return {}
-        config: t.MappingKV[str, t.JsonValue] = self._to_toml_config(
-            result.value
-        )
+        config: t.MappingKV[str, t.JsonValue] = self._to_toml_config(result.value)
         return config
 
     def module_to_types_package(
