@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -212,16 +213,37 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
 
     @classmethod
+    def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
+        """Bind lint tools to the transaction interpreter before cwd mutation."""
+        executable_root = Path(sys.executable).parent
+        commands: t.MutableSequenceOf[t.StrSequencePair] = []
+        for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
+            executable = executable_root / command[0]
+            if not executable.is_file():
+                return r[t.StrSequencePairTuple].fail(
+                    f"required transaction lint executable not found: {executable}"
+                )
+            commands.append((tool, (str(executable), *command[1:])))
+        return r[t.StrSequencePairTuple].ok(tuple(commands))
+
+    @classmethod
     def _lint_snapshots(
-        cls, worktree_root: Path, environment: t.StrMapping, timeout_seconds: int
+        cls,
+        worktree_root: Path,
+        environment: t.StrMapping,
+        timeout_seconds: int,
+        commands: t.StrSequencePairTuple,
     ) -> t.VariadicTuple[m.Infra.LintSnapshot]:
-        """Capture every canonical transaction lint command."""
-        return tuple(
-            cls._lint_snapshot(
-                worktree_root, tool, command, environment, timeout_seconds
+        """Capture every canonical transaction lint command in parallel."""
+        with ThreadPoolExecutor(thread_name_prefix="lint_") as executor:
+            return tuple(
+                executor.map(
+                    lambda item: cls._lint_snapshot(
+                        worktree_root, item[0], item[1], environment, timeout_seconds
+                    ),
+                    commands,
+                )
             )
-            for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
-        )
 
     @classmethod
     def _import_probe(
@@ -302,9 +324,9 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _check_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
-        """Dry-run every patch before any source worktree mutation."""
+        """Validate every patch from the isolated final state without source access."""
         for delta in deltas:
-            result = FlextInfraUtilitiesGitScope.git_check_patch(delta)
+            result = FlextInfraUtilitiesGitScope.git_check_isolated_patch(delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch check failed'}"
@@ -313,7 +335,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @staticmethod
     def _apply_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
-        """Apply every previously checked patch, deepest repositories first."""
+        """Forward-check and apply every patch, deepest repositories first."""
         ordered = sorted(
             deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
         )
@@ -399,9 +421,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
         repositories: t.SequenceOf[m.Infra.RepositoryWorktree],
     ) -> p.Result[m.Infra.WorktreeTransactionReport]:
         """Run and evaluate the command inside an already checkpointed worktree."""
+        lint_commands_result = cls._lint_commands()
+        if lint_commands_result.failure:
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                lint_commands_result.error
+                or "failed to resolve transaction lint executables"
+            )
+        lint_commands = lint_commands_result.value
         environment = cls._transaction_environment(worktree_root)
         lint_before = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds
+            worktree_root, environment, request.timeout_seconds, lint_commands
         )
         relocated = cls._relocate_command(
             request.command, request.workspace_root.resolve(), worktree_root
@@ -420,12 +449,23 @@ class FlextInfraUtilitiesWorktreeTransaction:
         else:
             command_output = command_result.value
         lint_after = cls._lint_snapshots(
-            worktree_root, environment, request.timeout_seconds
+            worktree_root, environment, request.timeout_seconds, lint_commands
         )
-        import_probe = cls._import_probe(
-            worktree_root, environment, request.timeout_seconds
-        )
-        deltas_result = cls._repository_deltas(repositories)
+
+        def _run_import_probe() -> p.Cli.CommandOutput:
+            return cls._import_probe(
+                worktree_root, environment, request.timeout_seconds
+            )
+
+        def _run_deltas() -> p.Result[t.SequenceOf[m.Infra.RepositoryDelta]]:
+            return cls._repository_deltas(repositories)
+
+        with ThreadPoolExecutor(thread_name_prefix="post_") as executor:
+            import_probe_future = executor.submit(_run_import_probe)
+            deltas_future = executor.submit(_run_deltas)
+            import_probe = import_probe_future.result()
+            deltas_result = deltas_future.result()
+
         if deltas_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
                 deltas_result.error or "failed to capture repository deltas"
