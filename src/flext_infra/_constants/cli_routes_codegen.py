@@ -12,6 +12,7 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
+from flext_infra.codegen.import_facade_gate import FlextInfraCodegenImportFacadeGate
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.grpc import FlextInfraCodegenGrpc
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
@@ -119,6 +120,12 @@ CODEGEN_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
                 "Run constants migration quality gate",
                 FlextInfraCodegenQualityGate,
                 "constants quality gate passed",
+            ),
+            (
+                "import-facade-gate",
+                "Validate flext facade imports across all packages",
+                FlextInfraCodegenImportFacadeGate,
+                "import facade gate passed",
             ),
             (
                 "consolidate",

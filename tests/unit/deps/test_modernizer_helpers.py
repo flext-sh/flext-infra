@@ -103,7 +103,7 @@ class TestsFlextInfraDepsModernizerHelpers:
         [("test", "test"), (None, None), ({"key": "value"}, {"key": "value"})],
     )
     def test_unwrap_item(
-        self, value: t.Cli.TomlMappingSource | None, expected: t.Infra.InfraValue
+        self, value: t.Cli.TomlMappingSource | None, expected: t.JsonValue
     ) -> None:
         actual = None if value is None else u.Cli.toml_unwrap_item(value)
         tm.that(actual, eq=expected)

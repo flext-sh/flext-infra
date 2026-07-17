@@ -101,7 +101,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
                 rope_workspace=rope, lazy_init=config.Infra.tooling.lazy_init
             )
             allowlists = self.package_allowlists(rope, planner)
-        findings: list[t.Infra.InfraValue] = []
+        findings: list[t.JsonValue] = []
         for pkg, aliases in sorted(allowlists.items()):
             if not aliases:
                 continue
@@ -112,7 +112,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
         findings.extend(self.run_rule(_CASE_B_RULE, targets, case="B", pkg=""))
         findings.extend(self.run_rule(_CASE_C_RULE, targets, case="C", pkg=""))
         verdict = "PASS" if not findings else "FAIL"
-        report_data: dict[str, t.Infra.InfraValue] = {
+        report_data: dict[str, t.JsonValue] = {
             "workspace": str(self.workspace_root),
             "generated_at": u.now().isoformat(),
             "verdict": verdict,
@@ -127,9 +127,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
 
     @classmethod
     def package_allowlists(
-        cls,
-        rope: p.Infra.RopeWorkspaceDsl,
-        planner: FlextInfraCodegenLazyInitPlanner,
+        cls, rope: p.Infra.RopeWorkspaceDsl, planner: FlextInfraCodegenLazyInitPlanner
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return each package's real facade-alias allowlist from the SSOT.
 
@@ -172,7 +170,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
                 for pyproject in pyproject_result.value
                 if (pyproject.parent / c.Infra.DEFAULT_SRC_DIR).is_dir()
             )
-        external_parent = monorepo_root.parent
+        external_parent = cls._externals_parent(monorepo_root)
         roots.extend(
             candidate
             for name in _EXTERNAL_SIBLING_NAMES
@@ -187,9 +185,28 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
         return tuple(targets.values())
 
     @staticmethod
+    def _externals_parent(monorepo_root: Path) -> Path:
+        """Return the directory that holds the declared external consumers.
+
+        The externals live beside the main checkout of the flext monorepo. When
+        run from a git worktree, ``monorepo_root`` is the worktree, so the main
+        checkout is resolved from the shared git common dir (``.../flext/.git``
+        -> ``.../flext`` -> parent). Falls back to the workspace parent.
+        """
+        run = u.Cli.run_raw(
+            [c.Infra.GIT, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=monorepo_root,
+        )
+        if run.success and run.value.exit_code == 0:
+            common_dir = run.value.stdout.strip()
+            if common_dir:
+                return Path(common_dir).parent.parent
+        return monorepo_root.parent
+
+    @staticmethod
     def run_rule(
         rule: str, targets: t.SequenceOf[Path], *, case: str, pkg: str
-    ) -> t.SequenceOf[t.Infra.InfraValue]:
+    ) -> t.SequenceOf[t.JsonValue]:
         """Run one ast-grep inline rule over all targets and parse findings."""
         if not targets:
             return []
@@ -204,7 +221,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
         run = u.Cli.run_raw(cmd, timeout=c.Infra.TIMEOUT_DEFAULT)
         if run.failure or run.value.exit_code not in {0, 1}:
             return []
-        findings: list[t.Infra.InfraValue] = []
+        findings: list[t.JsonValue] = []
         for line in (run.value.stdout or "").splitlines():
             stripped = line.strip()
             if not stripped:

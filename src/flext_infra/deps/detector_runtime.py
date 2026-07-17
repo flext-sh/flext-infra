@@ -39,7 +39,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         projects, limits_path = env_result.value
         do_typings = params.typings or params.apply_typings
         projects_report: MutableMapping[
-            str, MutableMapping[str, t.Infra.InfraValue]
+            str, MutableMapping[str, t.JsonValue]
         ] = {}
         report_model = self._workspace_report_factory(
             workspace=str(root),
@@ -96,7 +96,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         params: p.Infra.DetectCommand,
         root: Path,
         report_model: p.Infra.WorkspaceReport,
-        projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]],
+        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
     ) -> p.Result[Path]:
         """Render and persist the canonical workspace dependency report JSON."""
         out_path: Path = params.output_path or u.Cli.resolve_report_path(
@@ -126,7 +126,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
     def _summarize_run(
         self,
         projects: t.SequenceOf[Path],
-        projects_report: Mapping[str, Mapping[str, t.Infra.InfraValue]],
+        projects_report: Mapping[str, Mapping[str, t.JsonValue]],
         *,
         pip_ok: bool,
         params: p.Infra.DetectCommand,

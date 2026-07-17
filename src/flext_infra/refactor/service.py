@@ -21,7 +21,7 @@ class FlextInfraRefactorService:
             self.rule_loader, safety_manager=FlextInfraRefactorSafetyManager()
         )
 
-    def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[t.MappingKV[str, t.JsonValue]]:
         """Delegate config loading to the dedicated refactor loader."""
         return self.rule_loader.load_config()
 

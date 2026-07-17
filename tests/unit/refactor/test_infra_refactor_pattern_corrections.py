@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def _apply_rule(
-    tmp_path: Path, source: str, settings: t.Infra.InfraMapping
+    tmp_path: Path, source: str, settings: t.JsonMapping
 ) -> tuple[str, list[str]]:
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)

@@ -60,14 +60,14 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         tool_data = doc_data.get(c.Infra.TOOL)
         if not isinstance(tool_data, Mapping):
             return r[t.StrSequence].ok(())
-        typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = (
+        typed_tool_data: MutableMapping[str, t.JsonValue] = (
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(tool_data)
         )
         pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
         if not isinstance(pyrefly_data, Mapping):
             return r[t.StrSequence].ok(())
         try:
-            pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
+            pyrefly: MutableMapping[str, t.JsonValue] = (
                 t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
         except c.ValidationError as err:

@@ -71,7 +71,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[p.Infra.Issue] = []
-        empty: t.MappingKV[str, t.Infra.InfraValue] = {}
+        empty: t.MappingKV[str, t.JsonValue] = {}
         parsed_result = u.Cli.json_parse(result.stdout or "{}")
         parsed = parsed_result.unwrap() if parsed_result.success else empty
         data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty

@@ -33,7 +33,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
     def _apply_text_rule_selection(
         self,
         kind: c.Infra.RefactorRuleKind,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -118,7 +118,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
 
     def _apply_import_modernizer(
-        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        self, settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply import modernizer."""
         settings_mapping = t.Cli.JSON_MAPPING_ADAPTER.validate_python(settings)
@@ -163,7 +163,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_pattern_corrections(
         self,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -204,7 +204,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_typing_annotation_fix(
         self,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -268,7 +268,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     def _apply_tier0_import_fix(
         self,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         source: str,
         file_path: Path,
     ) -> t.Infra.TransformResult:
@@ -309,7 +309,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         )
 
     def _apply_symbol_propagation(
-        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        self, settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply symbol propagation."""
         transformer = FlextInfraRefactorSymbolPropagator(
@@ -324,7 +324,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return self._apply_change_tracker_transformer(transformer, source)
 
     def _apply_signature_propagation(
-        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        self, settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply signature propagation."""
         try:
@@ -345,7 +345,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return (transformer.apply_to_source(source), list(transformer.changes))
 
     def _apply_class_reconstructor(
-        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        self, settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply class reconstructor."""
         try:
@@ -363,7 +363,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _tuple_setting(
-        settings: t.MappingKV[str, t.Infra.InfraValue], key: str, default: t.StrTuple
+        settings: t.MappingKV[str, t.JsonValue], key: str, default: t.StrTuple
     ) -> t.StrTuple:
         """Return tuple-valued setting."""
         value = settings.get(key, list(default))
@@ -375,7 +375,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
 
     @staticmethod
     def _mapping_setting(
-        settings: t.MappingKV[str, t.Infra.InfraValue], key: str
+        settings: t.MappingKV[str, t.JsonValue], key: str
     ) -> t.StrMapping:
         """Return a normalized string mapping setting."""
         mapping_value = u.Cli.json_as_mapping(settings.get(key, {}))

@@ -21,7 +21,7 @@ class FlextInfraConfigFixerSteps:
 
     def _sync_search_path(
         self,
-        pyrefly: MutableMapping[str, t.Infra.InfraValue],
+        pyrefly: MutableMapping[str, t.JsonValue],
         project_dir: Path,
         *,
         is_root: bool,
@@ -49,7 +49,7 @@ class FlextInfraConfigFixerSteps:
 
     def _sync_project_includes(
         self,
-        pyrefly: MutableMapping[str, t.Infra.InfraValue],
+        pyrefly: MutableMapping[str, t.JsonValue],
         project_dir: Path,
         *,
         is_root: bool,
@@ -78,23 +78,23 @@ class FlextInfraConfigFixerSteps:
         return r[t.StrSequence].ok(())
 
     def _strip_ignored_sub_configs(
-        self, pyrefly: MutableMapping[str, t.Infra.InfraValue]
+        self, pyrefly: MutableMapping[str, t.JsonValue]
     ) -> p.Result[tuple[t.StrSequence, bool]]:
         """Drop ignore=true entries from tool.pyrefly.sub-config."""
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):
             return r[tuple[t.StrSequence, bool]].ok(((), False))
         try:
-            configs: t.SequenceOf[t.Infra.InfraValue] = (
+            configs: t.SequenceOf[t.JsonValue] = (
                 t.Infra.INFRA_SEQ_ADAPTER.validate_python(sub_configs)
             )
         except c.ValidationError as err:
             return r[tuple[t.StrSequence, bool]].fail_op("validate-sub-configs", err)
         fixes: t.MutableSequenceOf[str] = []
         removed_ignore = False
-        new_configs: t.MutableSequenceOf[t.Infra.InfraValue] = []
+        new_configs: t.MutableSequenceOf[t.JsonValue] = []
         for conf in configs:
-            conf_out: t.Infra.InfraValue = conf
+            conf_out: t.JsonValue = conf
             if isinstance(conf, Mapping):
                 try:
                     conf_map = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(conf)
@@ -119,7 +119,7 @@ class FlextInfraConfigFixerSteps:
         return r[tuple[t.StrSequence, bool]].ok((fixes, removed_ignore))
 
     def _sync_project_excludes(
-        self, pyrefly: MutableMapping[str, t.Infra.InfraValue]
+        self, pyrefly: MutableMapping[str, t.JsonValue]
     ) -> p.Result[t.StrSequence]:
         """Synchronize tool.pyrefly.project-excludes from YAML rules."""
         current_excludes: t.StrSequence = []

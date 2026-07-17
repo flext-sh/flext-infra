@@ -28,12 +28,12 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def parse_audit_gate(
-        audit_gate: t.MappingKV[str, t.Infra.InfraValue],
+        audit_gate: t.MappingKV[str, t.JsonValue],
     ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
         """Extract default budget and per-scope budgets from an audit_gate mapping."""
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
-        by_scope_raw: t.MappingKV[str, t.Infra.InfraValue] = {}
+        by_scope_raw: t.MappingKV[str, t.JsonValue] = {}
         if by_scope_raw_value is not None:
             if not isinstance(by_scope_raw_value, Mapping):
                 return r[t.Pair[int | None, t.IntMapping]].fail(

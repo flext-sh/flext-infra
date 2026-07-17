@@ -151,16 +151,16 @@ class FlextInfraUtilitiesDependencies:
     def rewrite_poetry_constraint(
         cls,
         dependency_name: str,
-        raw_value: t.Infra.InfraValue,
+        raw_value: t.JsonValue,
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
         policy: c.Infra.DependencyConstraintPolicy = (
             c.Infra.DependencyConstraintPolicy.FLOOR
         ),
-    ) -> t.Infra.InfraValue | None:
+    ) -> t.JsonValue | None:
         """Rewrite one Poetry dependency value using the locked version policy."""
-        result: t.Infra.InfraValue | None = None
+        result: t.JsonValue | None = None
         normalized_name = cls.dep_name(dependency_name)
         internal_set = set(internal_names)
         if (
@@ -254,7 +254,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_runtime_mapping_dependency_names(
-        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
+        cls, *, raw_mapping: t.JsonValue, names: set[str]
     ) -> None:
         """Append non-optional Poetry runtime dependency names."""
         if not isinstance(raw_mapping, Mapping):
@@ -326,7 +326,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_requirement_names(
-        cls, *, raw_requirements: t.Infra.InfraValue, names: set[str]
+        cls, *, raw_requirements: t.JsonValue, names: set[str]
     ) -> None:
         """Append requirement names."""
         if not isinstance(raw_requirements, list):
@@ -339,7 +339,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_mapping_dependency_names(
-        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
+        cls, *, raw_mapping: t.JsonValue, names: set[str]
     ) -> None:
         """Append mapping dependency names."""
         if not isinstance(raw_mapping, Mapping):
@@ -436,7 +436,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def flext_dependency_namespaces_from_payload(
-        cls, payload: t.MappingKV[str, t.Infra.InfraValue]
+        cls, payload: t.MappingKV[str, t.JsonValue]
     ) -> t.StrSequence:
         """Extract every declared ``flext-*`` dependency as a Python namespace."""
         # mro-j47u (codex): FLEXT dependencies are first-party contracts even

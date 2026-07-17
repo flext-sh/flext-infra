@@ -158,7 +158,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             if not stripped:
                 continue
             try:
-                line_data: t.MappingKV[str, t.Infra.InfraValue] = (
+                line_data: t.MappingKV[str, t.JsonValue] = (
                     t.Infra.INFRA_MAPPING_ADAPTER.validate_json(stripped)
                 )
             except c.ValidationError:

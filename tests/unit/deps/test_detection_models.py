@@ -91,7 +91,7 @@ class TestsFlextInfraDepsDetectionModels:
     def test_list_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", [Path("/tmp")])
+                cast("t.JsonValue", [Path("/tmp")])
             )
             is None
         )
@@ -107,7 +107,7 @@ class TestsFlextInfraDepsDetectionModels:
     def test_mapping_with_unconvertible(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", {"key": Path("/tmp")})
+                cast("t.JsonValue", {"key": Path("/tmp")})
             )
             is None
         )
@@ -115,7 +115,7 @@ class TestsFlextInfraDepsDetectionModels:
     def test_unsupported_type(self) -> None:
         assert (
             FlextInfraDependencyDetectionService.to_infra_value(
-                cast("t.Infra.InfraValue", Path("/tmp"))
+                cast("t.JsonValue", Path("/tmp"))
             )
             is None
         )

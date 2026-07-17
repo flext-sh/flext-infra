@@ -24,7 +24,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def _resolve_refactor_config(
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
     ) -> p.Infra.RefactorConfig:
         """Resolve the typed refactor config through the shared CLI DSL."""
         return m.Infra.RefactorConfig.model_validate(
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def collect_refactor_project_files(
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         project: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def collect_refactor_workspace_files(
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         workspace_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -148,7 +148,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def discover_refactor_projects(
-        settings: t.MappingKV[str, t.Infra.InfraValue], workspace_root: Path
+        settings: t.MappingKV[str, t.JsonValue], workspace_root: Path
     ) -> t.SequenceOf[Path]:
         """Discover workspace projects using the typed refactor config."""
         root = workspace_root.resolve()

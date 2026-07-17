@@ -91,7 +91,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: p.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -122,7 +122,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: p.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

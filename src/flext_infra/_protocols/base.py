@@ -363,7 +363,7 @@ class FlextInfraProtocolsBase(Protocol):
         pip_check: p.Infra.PipCheckReport | None
         dependency_limits: p.Infra.DependencyLimitsInfo | None
 
-        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
             """Serialize report model payload."""
             ...
 
@@ -372,7 +372,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for JSON serialization and persistence."""
 
         def write_json(
-            self, path: Path, payload: t.MappingKV[str, t.Infra.InfraValue]
+            self, path: Path, payload: t.MappingKV[str, t.JsonValue]
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
@@ -381,7 +381,7 @@ class FlextInfraProtocolsBase(Protocol):
     class ProjectReportLike(Protocol):
         """Protocol for project-level dependency report contracts."""
 
-        def model_dump(self) -> t.MappingKV[str, t.Infra.InfraValue]:
+        def model_dump(self) -> t.MappingKV[str, t.JsonValue]:
             """Serialize project report payload."""
             ...
 
@@ -413,7 +413,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def load_dependency_limits(
             self, limits_path: Path | None = None
-        ) -> t.MappingKV[str, t.Infra.InfraValue]:
+        ) -> t.MappingKV[str, t.JsonValue]:
             """Load dependency limits from TOML file."""
             ...
 
@@ -1153,3 +1153,28 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def errors(self) -> t.StrSequence: ...
+
+    # mro-qc84 (fix-forward): protocol-of-model for one lazy-init package context
+    # (m.Infra.LazyInitPackageContext). Consumed by the lazy-init planner and the
+    # import-facade gate; annotation-only, resolves a pre-existing missing-attr.
+    @runtime_checkable
+    class LazyInitPackageContext(Protocol):
+        """Declarative package context for one lazy-init directory."""
+
+        @property
+        def pkg_dir(self) -> Path: ...
+
+        @property
+        def init_path(self) -> Path: ...
+
+        @property
+        def current_pkg(self) -> str: ...
+
+        @property
+        def surface(self) -> str: ...
+
+        @property
+        def generated_init(self) -> bool: ...
+
+        @property
+        def importable(self) -> bool: ...

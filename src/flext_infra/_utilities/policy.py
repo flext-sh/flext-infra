@@ -34,15 +34,15 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def load_validated_policy_document(
         policy_path: Path,
-    ) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
+    ) -> p.Result[t.MappingKV[str, t.JsonValue]]:
         """Load and validate a YAML policy document."""
         raw = u.Cli.yaml_load_mapping(policy_path)
         if not raw:
-            return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
+            return r[t.MappingKV[str, t.JsonValue]].fail(
                 f"Failed to load policy {policy_path}"
             )
         validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw)
-        return r[t.MappingKV[str, t.Infra.InfraValue]].ok(validated)
+        return r[t.MappingKV[str, t.JsonValue]].ok(validated)
 
     @staticmethod
     def class_nesting_policy_by_family(

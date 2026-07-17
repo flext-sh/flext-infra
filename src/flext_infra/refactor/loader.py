@@ -22,7 +22,7 @@ class FlextInfraRefactorRuleLoader:
         # mapping to u.Infra.collect_refactor_*_files; it is populated by
         # load_config() and must stay on the loader (commit 0d1e1b7d dropped
         # it and broke those call sites).
-        self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
+        self.settings: t.MappingKV[str, t.JsonValue] = {}
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
@@ -31,7 +31,7 @@ class FlextInfraRefactorRuleLoader:
         ] = []
         self.rule_filters: t.MutableSequenceOf[str] = []
 
-    def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
+    def load_config(self) -> p.Result[t.MappingKV[str, t.JsonValue]]:
         """Load YAML configuration for this refactor session."""
         result = u.Cli.rules_load_scoped_config(
             self.settings_path,

@@ -65,7 +65,7 @@ class FlextInfraRuntimeDevDependencyDetector(
     @override
     def execute(self) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report."""
-        payload: dict[str, t.Infra.InfraValue] = {
+        payload: dict[str, t.JsonValue] = {
             "workspace": str(self.root),
             "apply": self.apply_changes,
             "format": self.output_format,

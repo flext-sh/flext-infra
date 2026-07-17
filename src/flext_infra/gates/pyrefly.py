@@ -139,24 +139,24 @@ class FlextInfraPyreflyGate(FlextInfraGate):
 
     @classmethod
     def _error_items_from_output(
-        cls, parsed_value: t.Infra.InfraValue
-    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        cls, parsed_value: t.JsonValue
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.JsonValue]]]:
         """Return pyrefly error items from either object or list JSON output."""
         if isinstance(parsed_value, Mapping):
             return cls._error_items_from_mapping(parsed_value)
         if isinstance(parsed_value, list):
             return cls._error_items_from_list(parsed_value)
-        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(())
+        return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].ok(())
 
     @staticmethod
     def _error_items_from_mapping(
-        parsed_value: t.Infra.InfraValue,
-    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        parsed_value: t.JsonValue,
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.JsonValue]]]:
         """Return error items from object-shaped pyrefly JSON output."""
         try:
             parsed_mapping = u.Cli.json_as_mapping(parsed_value)
         except c.EXC_VALIDATION_TYPE as err:
-            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+            return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].fail(
                 f"Tool output parsing failed: {type(err).__name__}"
             )
         try:
@@ -164,27 +164,27 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                 parsed_mapping, c.Infra.PYREFLY_ERRORS_KEY
             )
         except c.EXC_VALIDATION_TYPE as err:
-            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+            return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].fail(
                 f"Tool output parsing failed: {type(err).__name__}"
             )
-        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
+        return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].ok(error_items)
 
     @staticmethod
     def _error_items_from_list(
-        parsed_value: t.Infra.InfraValue,
-    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]]:
+        parsed_value: t.JsonValue,
+    ) -> p.Result[t.SequenceOf[t.MappingKV[str, t.JsonValue]]]:
         """Return error items from list-shaped pyrefly JSON output."""
         try:
             error_items = u.Cli.json_as_mapping_list(parsed_value)
         except c.EXC_VALIDATION_TYPE as err:
-            return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].fail(
+            return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].fail(
                 f"Tool output parsing failed: {type(err).__name__}"
             )
-        return r[t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]].ok(error_items)
+        return r[t.SequenceOf[t.MappingKV[str, t.JsonValue]]].ok(error_items)
 
     @staticmethod
     def _issues_from_error_items(
-        error_items: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+        error_items: t.SequenceOf[t.MappingKV[str, t.JsonValue]],
     ) -> t.SequenceOf[p.Infra.Issue]:
         """Convert validated pyrefly error items to gate issues."""
         return tuple(

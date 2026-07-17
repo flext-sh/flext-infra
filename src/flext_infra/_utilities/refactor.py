@@ -26,7 +26,7 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> t.SequenceOf[t.StrMapping]:
+    def entry_list(value: t.JsonValue | None) -> t.SequenceOf[t.StrMapping]:
         """Normalize class-nesting settings entries to a strict list."""
         if value is None:
             return []
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRefactor:
             raise ValueError(msg) from None
 
     @staticmethod
-    def string_list(value: t.Infra.InfraValue | None) -> t.StrSequence:
+    def string_list(value: t.JsonValue | None) -> t.StrSequence:
         """Normalize policy fields that should contain string collections."""
         if value is None:
             return []

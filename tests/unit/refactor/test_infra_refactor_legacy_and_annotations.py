@@ -15,7 +15,7 @@ from tests import p, t
 
 class _TextRuleHarness:
     def __init__(
-        self, kind: c.Infra.RefactorRuleKind, settings: t.Infra.InfraMapping
+        self, kind: c.Infra.RefactorRuleKind, settings: t.JsonMapping
     ) -> None:
         self._executor = FlextInfraRefactorTextExecutor()
         self._kind = kind

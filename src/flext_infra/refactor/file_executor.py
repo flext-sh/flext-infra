@@ -95,7 +95,7 @@ class FlextInfraRefactorFileExecutor:
     def _apply_file_rule_selection(
         self,
         kind: c.Infra.RefactorFileRuleKind,
-        settings: t.MappingKV[str, t.Infra.InfraValue],
+        settings: t.MappingKV[str, t.JsonValue],
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
         *,
@@ -230,7 +230,7 @@ class FlextInfraRefactorFileExecutor:
         loaded = u.Cli.yaml_load_mapping(
             rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME
         )
-        settings: MutableMapping[str, t.Infra.InfraValue] = {}
+        settings: MutableMapping[str, t.JsonValue] = {}
         threshold = loaded.get(c.Infra.RK_CONFIDENCE_THRESHOLD)
         if isinstance(threshold, str):
             settings[c.Infra.RK_CONFIDENCE_THRESHOLD] = threshold
@@ -352,7 +352,7 @@ class FlextInfraRefactorFileExecutor:
 
     @staticmethod
     def _coerce_class_nesting_entries(
-        entries: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+        entries: t.SequenceOf[t.MappingKV[str, t.JsonValue]],
     ) -> t.SequenceOf[t.StrMapping]:
         """Coerce class nesting entries."""
         result: t.MutableSequenceOf[t.StrMapping] = []

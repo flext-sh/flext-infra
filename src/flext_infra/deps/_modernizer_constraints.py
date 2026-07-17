@@ -14,7 +14,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
 
     @staticmethod
     def _rewrite_requirement_group(
-        raw_requirements: t.Infra.InfraValue,
+        raw_requirements: t.JsonValue,
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,

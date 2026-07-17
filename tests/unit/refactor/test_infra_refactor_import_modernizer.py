@@ -15,7 +15,7 @@ from tests import p, t
 
 
 class _ImportModernizerHarness:
-    def __init__(self, settings: t.Infra.InfraMapping) -> None:
+    def __init__(self, settings: t.JsonMapping) -> None:
         self._settings = settings
         self._executor = FlextInfraRefactorTextExecutor()
 

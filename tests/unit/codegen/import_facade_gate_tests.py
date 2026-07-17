@@ -34,7 +34,7 @@ class TestImportFacadeGateCLIDispatch:
             "import-facade-gate",
             "--workspace",
             str(tmp_path),
-            "--format",
+            "--output-format",
             "json",
         ])
         tm.that(result, is_=int)

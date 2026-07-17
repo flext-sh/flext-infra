@@ -81,11 +81,11 @@ class FlextInfraRefactorLooseClassScanner:
     ) -> t.Infra.ContainerDict:
         """Build report."""
         counters = Counter(v.confidence for v in violations)
-        violations_infra: t.SequenceOf[t.Infra.InfraValue] = [
+        violations_infra: t.SequenceOf[t.JsonValue] = [
             v.model_dump() for v in violations
         ]
-        confidence_counts: t.MappingKV[str, t.Infra.InfraValue] = dict(counters)
-        required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
+        confidence_counts: t.MappingKV[str, t.JsonValue] = dict(counters)
+        required_targets_infra: t.MappingKV[str, t.JsonValue] = dict(
             targets_found
         )
         return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({

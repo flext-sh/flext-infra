@@ -18,7 +18,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         # Conversion helper provided by the concrete analyzer; declared for static
         # resolution only (runtime impl lives on the concrete via MRO).
         def _to_toml_config(
-            self, payload: t.MappingKV[str, t.Infra.InfraValue]
+            self, payload: t.MappingKV[str, t.JsonValue]
         ) -> t.Infra.ContainerDict: ...
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:

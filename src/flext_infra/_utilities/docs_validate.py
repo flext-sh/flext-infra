@@ -30,8 +30,8 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def docs_extract_required_skills(
-        payload: t.JsonPayload | t.MappingKV[str, t.Infra.InfraValue],
-    ) -> p.Result[t.Infra.InfraSequence]:
+        payload: t.JsonPayload | t.MappingKV[str, t.JsonValue],
+    ) -> p.Result[t.JsonList]:
         """Extract the configured required skills list from architecture settings.
 
         ``r.ok(list)`` when the configuration block is present and well
@@ -46,19 +46,19 @@ class FlextInfraUtilitiesDocsValidate:
             case Mapping() as outer:
                 pass
             case _:
-                return r[t.Infra.InfraSequence].fail("payload is not a mapping")
+                return r[t.JsonList].fail("payload is not a mapping")
         match outer.get("docs_validation"):
             case Mapping() as inner:
                 pass
             case _:
-                return r[t.Infra.InfraSequence].fail(
+                return r[t.JsonList].fail(
                     "docs_validation block missing or not a mapping"
                 )
         match inner.get("required_skills"):
             case list() as configured:
-                return r[t.Infra.InfraSequence].ok(configured)
+                return r[t.JsonList].ok(configured)
             case _:
-                return r[t.Infra.InfraSequence].fail(
+                return r[t.JsonList].fail(
                     "required_skills missing or not a list"
                 )
 
@@ -90,7 +90,7 @@ class FlextInfraUtilitiesDocsValidate:
 
     @staticmethod
     def _validate_required_skills(
-        raw: t.Infra.InfraSequence,
+        raw: t.JsonList,
     ) -> p.Result[t.StrSequence]:
         """Validate ``required_skills`` payload against the canonical adapter."""
         return (

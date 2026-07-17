@@ -113,7 +113,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def run_static_check(
         workspace_root: Path, modified_files: t.StrSequence, tool: str
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.JsonValue]:
         """Run a targeted static tool on modified files and normalize result."""
         if not modified_files:
             return {
@@ -167,7 +167,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def after_metrics(
         *, census_report: p.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.JsonValue]:
         """Build post-run metrics summary used by quality checks."""
         by_kind: t.MutableIntMapping = {}
         for project in census_report.projects:
@@ -177,11 +177,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
         passed = u.count(
             census_report.projects, lambda project: project.violations_total == 0
         )
-        modified_python_files: list[t.Infra.InfraValue] = list(modified_files)
-        violations_by_rule: dict[str, t.Infra.InfraValue] = dict(
+        modified_python_files: list[t.JsonValue] = list(modified_files)
+        violations_by_rule: dict[str, t.JsonValue] = dict(
             sorted(by_kind.items())
         )
-        summary: dict[str, t.Infra.InfraValue] = {
+        summary: dict[str, t.JsonValue] = {
             "total_violations": census_report.total_violations,
             "violations_by_rule": violations_by_rule,
             "duplicate_groups": len(census_report.duplicates),
@@ -198,10 +198,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def build_checks(
         *,
-        after_metrics: t.MappingKV[str, t.Infra.InfraValue],
-        pyrefly_check: t.MappingKV[str, t.Infra.InfraValue],
-        ruff_check: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
+        after_metrics: t.MappingKV[str, t.JsonValue],
+        pyrefly_check: t.MappingKV[str, t.JsonValue],
+        ruff_check: t.MappingKV[str, t.JsonValue],
+    ) -> t.SequenceOf[t.MappingKV[str, t.JsonValue]]:
         """Build quality gate check entries from metrics and tool results."""
         # Metric-driven checks share the shape ``(name, value==0, "label=value")``.
         # Each row maps to a single ``QualityGateCheck`` via Pydantic v2 batch
@@ -252,7 +252,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def compute_verdict(
-        checks: t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]],
+        checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]],
     ) -> str:
         """Return PASS only when all checks passed."""
         return (
@@ -264,7 +264,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     @staticmethod
     def project_findings(
         census_report: p.Infra.Census.WorkspaceReport,
-    ) -> t.SequenceOf[t.MappingKV[str, t.Infra.InfraValue]]:
+    ) -> t.SequenceOf[t.MappingKV[str, t.JsonValue]]:
         """Convert census reports into sorted per-project findings."""
         return [
             item.model_dump()

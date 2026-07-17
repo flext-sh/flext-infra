@@ -12,7 +12,7 @@ from tests import p, t
 
 
 class FlextInfraRefactorTypingUnificationRule:
-    def __init__(self, settings: t.Infra.InfraMapping) -> None:
+    def __init__(self, settings: t.JsonMapping) -> None:
         self._settings = settings
 
     def apply(

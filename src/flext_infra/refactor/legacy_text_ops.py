@@ -17,7 +17,7 @@ class FlextInfraRefactorLegacyTextOps:
     """Execute legacy-removal text operations directly from declarative settings."""
 
     def _apply_legacy_removal(
-        self, settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        self, settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Apply legacy removal."""
         changes: t.MutableSequenceOf[str] = []
@@ -42,7 +42,7 @@ class FlextInfraRefactorLegacyTextOps:
 
     @staticmethod
     def _remove_aliases(
-        settings: t.MappingKV[str, t.Infra.InfraValue], source: str
+        settings: t.MappingKV[str, t.JsonValue], source: str
     ) -> t.Infra.TransformResult:
         """Remove module-level ``X = Y`` aliases unless allow-listed."""
         allow_aliases = set(

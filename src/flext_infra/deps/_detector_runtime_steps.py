@@ -81,7 +81,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         limits_path: Path,
         params: p.Infra.DetectCommand,
         do_typings: bool,
-        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
+        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
     ) -> p.Result[bool]:
         """Run deptry + optional typings detection/apply for one project."""
         detector = self._detector
@@ -118,7 +118,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         venv_bin: Path,
         limits_path: Path,
         params: p.Infra.DetectCommand,
-        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
+        projects_report: MutableMapping[str, MutableMapping[str, t.JsonValue]],
     ) -> p.Result[bool]:
         """Detect required typings for a project and optionally add them via poetry."""
         detector = self._detector

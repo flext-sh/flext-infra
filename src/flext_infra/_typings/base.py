@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import Callable
 from pathlib import Path as _Path
 from typing import Literal
 
@@ -30,8 +30,6 @@ class FlextInfraTypesBase:
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
 
-    type InfraValue = t.JsonValue
-    "Canonical infrastructure payload contract from flext-cli JSON typing."
     type ContainerDict = t.JsonMapping
     "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
@@ -56,12 +54,6 @@ class FlextInfraTypesBase:
     type CensusRecord = t.HeaderMapping
     "Single census record: string keys with str|int values (name, type, usages)."
 
-    type InfraMapping = ContainerDict
-    "Read-only validated infra payload mapping."
-    type MutableInfraMapping = MutableMapping[str, InfraValue]
-    "Mutable validated infra payload mapping."
-    type InfraSequence = t.JsonList
-    "Read-only validated infra payload sequence."
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
     type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
@@ -69,7 +61,7 @@ class FlextInfraTypesBase:
         t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
     ]
     "Loaded text-rule + file-rule selections from one declarative rules directory."
-    type DomainResult = m.BaseModel | InfraValue
+    type DomainResult = m.BaseModel | t.JsonValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."

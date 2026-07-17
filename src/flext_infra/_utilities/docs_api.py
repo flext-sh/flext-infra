@@ -32,7 +32,7 @@ class FlextInfraUtilitiesDocsApi:
     )
 
     @staticmethod
-    def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:
+    def _string_values(value: t.JsonValue | None) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesDocsApi:
         return [str(item) for item in items]
 
     @staticmethod
-    def _string_mapping(value: t.Infra.InfraValue | None) -> t.StrMapping:
+    def _string_mapping(value: t.JsonValue | None) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
         try:
             items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)

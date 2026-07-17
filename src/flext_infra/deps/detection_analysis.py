@@ -18,10 +18,10 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
 
     @override
     def _to_toml_config(
-        self, payload: t.MappingKV[str, t.Infra.InfraValue]
+        self, payload: t.MappingKV[str, t.JsonValue]
     ) -> t.Infra.ContainerDict:
         """To toml config."""
-        normalized: MutableMapping[str, t.Infra.InfraValue] = {}
+        normalized: MutableMapping[str, t.JsonValue] = {}
         for key, value in payload.items():
             if value is None:
                 normalized[key] = None
@@ -33,7 +33,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return normalized
 
     @staticmethod
-    def to_infra_value(value: t.Infra.InfraValue | None) -> t.Infra.InfraValue | None:
+    def to_infra_value(value: t.JsonValue | None) -> t.JsonValue | None:
         """Convert container value to namespaced infra value."""
         if value is None:
             return None
@@ -45,7 +45,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
                 sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             except c.ValidationError:
                 return None
-            converted: t.MutableSequenceOf[t.Infra.InfraValue] = []
+            converted: t.MutableSequenceOf[t.JsonValue] = []
             for item in sequence:
                 if item is None:
                     converted.append(None)
@@ -59,7 +59,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         except c.ValidationError:
             return None
-        converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
+        converted_map: MutableMapping[str, t.JsonValue] = {}
         for key, map_item in mapping_value.items():
             if map_item is None:
                 converted_map[key] = None
@@ -71,7 +71,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         return t.json_dict_adapter().validate_python(converted_map)
 
     def _mapping_from_value(
-        self, value: t.Infra.InfraValue | None
+        self, value: t.JsonValue | None
     ) -> t.Infra.ContainerDict:
         """Build a mapping from a value."""
         if not isinstance(value, Mapping):
@@ -163,19 +163,19 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
 
     def load_dependency_limits(
         self, limits_path: Path | None = None
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
+    ) -> t.MappingKV[str, t.JsonValue]:
         """Load dependency limits configuration from TOML file."""
         path = limits_path or Path(__file__).resolve().parent / "dependency_limits.toml"
         result = self._read_plain(path)
         if result.failure:
             return {}
-        config: t.MappingKV[str, t.Infra.InfraValue] = self._to_toml_config(
+        config: t.MappingKV[str, t.JsonValue] = self._to_toml_config(
             result.value
         )
         return config
 
     def module_to_types_package(
-        self, module_name: str, limits: t.MappingKV[str, t.Infra.InfraValue]
+        self, module_name: str, limits: t.MappingKV[str, t.JsonValue]
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]

@@ -85,18 +85,18 @@ class FlextInfraProjectClassifier(
 
     @override
     def _as_mapping(
-        self, raw_value: t.Infra.InfraValue | None
-    ) -> t.MappingKV[str, t.Infra.InfraValue]:
+        self, raw_value: t.JsonValue | None
+    ) -> t.MappingKV[str, t.JsonValue]:
         """As mapping."""
         if isinstance(raw_value, Mapping):
-            validated: t.MappingKV[str, t.Infra.InfraValue] = (
+            validated: t.MappingKV[str, t.JsonValue] = (
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(raw_value)
             )
             return validated
         return {}
 
     def _normalized_name_from_mapping(
-        self, raw_mapping: t.MappingKV[str, t.Infra.InfraValue]
+        self, raw_mapping: t.MappingKV[str, t.JsonValue]
     ) -> str:
         """Return the normalized name from a mapping."""
         raw_name = raw_mapping.get(c.Infra.NAME)

@@ -59,7 +59,7 @@ class TestsFlextInfraExtraPathsManager:
         ],
     )
     def test_sync_one_success_cases(
-        self, tmp_path: Path, tool_doc: t.MappingKV[str, t.Infra.InfraValue]
+        self, tmp_path: Path, tool_doc: t.MappingKV[str, t.JsonValue]
     ) -> None:
         pyproject = tmp_path / "pyproject.toml"
         doc = tomlkit.document()

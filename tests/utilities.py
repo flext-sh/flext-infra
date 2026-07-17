@@ -313,13 +313,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
 
         @staticmethod
-        def infra_mapping(value: t.Infra.InfraMapping) -> t.Infra.ContainerDict:
+        def infra_mapping(value: t.JsonMapping) -> t.Infra.ContainerDict:
             """Provide the typed test helper `infra_mapping`."""
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
         @staticmethod
         def infra_mapping_result(
-            value: t.Infra.InfraMapping,
+            value: t.JsonMapping,
         ) -> p.Result[t.Infra.ContainerDict]:
             """Provide the typed test helper `infra_mapping_result`."""
             return r[t.Infra.ContainerDict].ok(
@@ -1104,7 +1104,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def detect_command(
-            workspace_root: Path, **overrides: t.Infra.InfraValue
+            workspace_root: Path, **overrides: t.JsonValue
         ) -> p.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
             return m.Infra.DetectCommand.model_validate({
