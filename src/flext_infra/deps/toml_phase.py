@@ -12,10 +12,8 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_infra import m, t, u, r, s
+from flext_infra import m, p, r, s, t, u
 from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
-
-from flext_infra import p
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):

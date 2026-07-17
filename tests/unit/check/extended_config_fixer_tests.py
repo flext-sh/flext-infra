@@ -204,9 +204,12 @@ class TestConfigFixerRun:
         tm.that(len(result.value), gte=0)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
-        """Ignore nonexistent project selections without mutation."""
+        """Fail closed when an explicit project selection is inaccessible."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        tm.ok(fixer.run(["nonexistent"]))
+        result = fixer.run(["nonexistent"])
+
+        tm.fail(result)
+        tm.that(result.error, has="explicit project path is not accessible")
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Execute the workspace runner in dry-run mode."""

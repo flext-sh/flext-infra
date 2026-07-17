@@ -5,6 +5,8 @@ Infra:
     roots:
       - src
       - scripts
+    # Root wrappers are excluded by roots; basename ignores must not hide
+    # legitimate production packages such as src/tests or src/examples.
     # NOTE (multi-agent, mro-wkii.17.24): resource names are rejected before indexing.
     ignored_resources:
       - .cache
@@ -23,11 +25,9 @@ Infra:
       - conftest.py
       - dist
       - dist-packages
-      - examples
       - legado
       - node_modules
       - site-packages
-      - tests
       - vendor
       - venv
   # mro-j47u (codex): every static rule is validated data; the detector owns no policy.

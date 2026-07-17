@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import MutableSet
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar, Literal, Self, TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, t

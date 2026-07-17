@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from typing import ClassVar
+
+from flext_infra import m, t, u
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_infra import u, m, t
 
 
 class FlextInfraEnforcementSelection:

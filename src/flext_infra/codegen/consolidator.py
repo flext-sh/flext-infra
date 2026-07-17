@@ -54,7 +54,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                 if not value_map:
                     continue
 
-                project_files = self._project_python_files(project.path)
+                project_files = self._project_python_files(rope, project.path)
                 if project_files.failure:
                     return r[str].fail(
                         project_files.error or "project python file discovery failed"
@@ -68,7 +68,10 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     rel_path = python_file.relative_to(self.workspace_root)
                     if self.dry_run:
                         output_lines.extend(
-                            f"  {rel_path}:{symbol.line}  {symbol.name} = {value} -> {ref}"
+                            (
+                                f"  {rel_path}:{symbol.line}  {symbol.name} = "
+                                f"{value} -> {ref}"
+                            )
                             for symbol, ref, value in matches
                         )
                         continue
@@ -110,23 +113,32 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))
 
-    def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
-        """Return governed Python files for one project consolidation pass."""
-        files_result = u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_root,))
-        )
-        if files_result.failure:
-            return r[t.SequenceOf[Path]].fail(
-                files_result.error or "project python file discovery failed"
-            )
+    def _project_python_files(
+        self, rope_workspace: p.Infra.RopeWorkspaceDsl, project_root: Path
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Return indexed Python wrapper files for one consolidation pass."""
+        resolved_root = project_root.resolve()
         constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
-        return r[t.SequenceOf[Path]].ok(
-            tuple(
-                path
-                for path in files_result.value
-                if constants_directory not in path.parts
-            )
-        )
+        indexed_files: t.MutableSequenceOf[Path] = []
+        for module in rope_workspace.modules():
+            if (
+                module.project_root is None
+                or module.project_root.resolve() != resolved_root
+            ):
+                continue
+            file_path = module.file_path.resolve()
+            if not file_path.is_relative_to(resolved_root):
+                continue
+            relative_path = file_path.relative_to(resolved_root)
+            if (
+                file_path.suffix != c.Infra.EXT_PYTHON
+                or not relative_path.parts
+                or relative_path.parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+                or constants_directory in relative_path.parts
+            ):
+                continue
+            indexed_files.append(file_path)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(indexed_files)))
 
     def _selected_projects(
         self, rope_workspace: p.Infra.RopeWorkspaceDsl

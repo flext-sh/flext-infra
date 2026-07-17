@@ -7,7 +7,7 @@ import difflib
 import shutil
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_core import r

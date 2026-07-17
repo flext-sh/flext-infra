@@ -16,7 +16,7 @@ from flext_infra import c, r, t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, m
+    from flext_infra import m, p
 
 
 class FlextInfraDocAuditorMixin:

@@ -46,10 +46,12 @@ class TestFlextInfraConfigFixer:
         tm.that(result.value, is_=list)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
-        """Test that run() handles nonexistent projects gracefully."""
+        """Test that run() fails closed for an inaccessible explicit project."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run(["nonexistent"])
-        tm.ok(result)
+
+        tm.fail(result)
+        tm.that(result.error, has="explicit project path is not accessible")
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Test that run() respects dry_run flag."""
@@ -70,7 +72,7 @@ class TestFlextInfraConfigFixer:
         result = fixer.process_file(missing_file)
         tm.fail(result)
         tm.that(result.error, is_=str)
-        tm.that(result.error, matches=r"not found|failed to read")
+        tm.that(result.error, has="not found")
 
     def test_process_file_with_valid_toml(self, tmp_path: Path) -> None:
         """Test that process_file handles valid TOML without pyrefly section."""

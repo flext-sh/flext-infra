@@ -24,7 +24,8 @@ class TestsFlextInfraInfraMaintenanceInit:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""
         tm.that(FlextInfraPythonVersionEnforcer, none=False)
 
-    def test_dir_returns_all_exports(self) -> None:
-        """Test dir() returns all exported symbols."""
+    def test_package_does_not_reexport_leaf_implementations(self) -> None:
+        """Keep maintenance implementations available only from leaf owners."""
         exports = dir(flext_infra.maintenance)
-        tm.that(exports, has="FlextInfraPythonVersionEnforcer")
+        tm.that(flext_infra.maintenance.__all__, eq=())
+        tm.that(exports, lacks="FlextInfraPythonVersionEnforcer")

@@ -52,18 +52,59 @@ def _write_workspace(workspace_root: Path) -> tuple[Path, Path]:
     demo_b = workspace_root / "demo-b"
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "pyproject.toml").write_text(
+        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
+    )
+    member_records = "".join(
         (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-            "\n"
-            "[tool.flext.workspace]\n"
-            'members = ["demo-a", "demo-b"]\n'
+            f"  - name: {name}\n"
+            f"    distribution: {name}\n"
+            "    provider: flext-sh\n"
+            f"    url: https://github.com/flext-sh/{name}.git\n"
+            "    branch: main\n"
+            f"    path: {name}\n"
+            "    role: workspace-member\n"
+            "    state: active\n"
+            "    profile: workspace-member\n"
+            "    checkout: submodule\n"
+            "    codegen: conform\n"
+            "    package: true\n"
+            "    editable: true\n"
+            "    read_only: false\n"
+        )
+        for name in ("demo-a", "demo-b")
+    )
+    config_dir = workspace_root / "config"
+    config_dir.mkdir()
+    (config_dir / "workspace.yaml").write_text(
+        (
+            "version: 2\n"
+            "name: workspace-root\n"
+            "repository:\n"
+            "  name: workspace-root\n"
+            "  distribution: workspace-root\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/workspace-root.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            f"members:\n{member_records}"
+            "content_only: []\n"
+            "exclusions: []\n"
         ),
         encoding="utf-8",
     )
-    _write_project(demo_a, "demo-a")
-    _write_project(demo_b, "demo-b")
+    for project_root, distribution in ((demo_a, "demo-a"), (demo_b, "demo-b")):
+        _write_project(project_root, distribution)
+        package_root = project_root / "src" / distribution.replace("-", "_")
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
     return demo_a, demo_b
 
 

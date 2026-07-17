@@ -25,7 +25,7 @@ from flext_infra.transformers.smells.base import smell_fixer_for
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 
 if TYPE_CHECKING:
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraSmellsGate(FlextInfraGate):

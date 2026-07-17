@@ -16,7 +16,7 @@ from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraTierWhitelistGate(FlextInfraGate):

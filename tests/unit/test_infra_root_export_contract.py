@@ -13,7 +13,6 @@ _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
-    "FlextInfraProtocolsBase",
     "FlextInfraServiceBase",
     "FlextInfraTypes",
     "FlextInfraUtilities",
@@ -65,4 +64,4 @@ class TestsFlextInfraRootExportContract:
         )
         for name in internal_names:
             tm.that(flext_infra.__all__, lacks=name)
-            assert not hasattr(flext_infra, name)
+            tm.that(hasattr(flext_infra, name), eq=False)

@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
@@ -34,9 +34,10 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     if TYPE_CHECKING:
 
         @staticmethod
-        def _selected_families(
-            family_names: t.StrSequence | None,
-        ) -> frozenset[str]: ...
+        def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
+            """Resolve selected families through the composed object mixin."""
+            ...
+
         def _scan_module(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -47,7 +48,10 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             project_violations: dict[str, list[m.Infra.Census.Violation]],
             project_fixes: dict[str, list[m.Infra.Census.Fix]],
             report_projects: set[str],
-        ) -> None: ...
+        ) -> None:
+            """Scan through the composed census collection mixin."""
+            ...
+
         def _assemble_report(
             self,
             rope: p.Infra.RopeWorkspaceDsl,
@@ -58,7 +62,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             report_projects: set[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None,
-        ) -> m.Infra.Census.WorkspaceReport: ...
+        ) -> m.Infra.Census.WorkspaceReport:
+            """Assemble through the composed census collection mixin."""
+            ...
 
     @staticmethod
     def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
@@ -119,6 +125,22 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             if family in families
         )
 
+    @staticmethod
+    def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
+        """Return whether a module belongs to one configured production root."""
+        project_root = module.project_root
+        if project_root is None:
+            return False
+        try:
+            relative_path = module.file_path.resolve().relative_to(
+                project_root.resolve()
+            )
+        except ValueError:
+            return False
+        return bool(relative_path.parts) and (
+            relative_path.parts[0] in config.Infra.source_scan.roots
+        )
+
     def _modules_for_rules(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
@@ -128,7 +150,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rule_names: t.StrSequence | None,
     ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
         """Modules for rules."""
-        modules = tuple(rope.modules(project_names=project_names))
+        modules = tuple(
+            module
+            for module in rope.modules(project_names=project_names)
+            if self._is_production_module(module)
+        )
         declarative_rules = self._declarative_rules_for_selection(rule_names)
         if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
             modules = (*modules, *self._stub_modules(rope, modules, project_names))

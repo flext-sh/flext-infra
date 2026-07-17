@@ -150,13 +150,20 @@ class TestImportCyclesPerProjectScope:
     ) -> None:
         """Opposite one-way edges in two projects must not merge into a cycle."""
         self._seed_project(
-            tmp_path, "alpha", {"a.py": "from tests.b import Y\n", "b.py": "Y = 1\n"}
+            tmp_path,
+            "alpha",
+            {"a.py": "from examples.b import Y\n", "b.py": "Y = 1\n"},
+            pkg="examples",
         )
         self._seed_project(
-            tmp_path, "beta", {"b.py": "from tests.a import X\n", "a.py": "X = 1\n"}
+            tmp_path,
+            "beta",
+            {"b.py": "from examples.a import X\n", "a.py": "X = 1\n"},
+            pkg="examples",
         )
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
+        tm.that(report.summary, has="scanned 6 modules")
 
     def test_cycle_is_attributed_to_owning_project_only(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles

@@ -12,11 +12,11 @@ from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConf
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
 )
-from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )

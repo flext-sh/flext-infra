@@ -150,6 +150,32 @@ class TestsFlextInfraModernizerPyrefly:
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
         tm.that(search_path, eq=[".", "src"])
 
+    def test_ensure_pyrefly_config_uses_declared_future_source_root(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Keep pre-write import roots identical to post-write discovery."""
+        project_dir = tmp_path / "flext-core"
+        project_dir.mkdir()
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
+            doc,
+            is_root=False,
+            project_dir=project_dir,
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            declared_python_dirs=("src", "tests"),
+        )
+
+        tool = doc["tool"]
+        tm.that(tool, is_=MutableMapping)
+        pyrefly = tool["pyrefly"]
+        tm.that(pyrefly, is_=MutableMapping)
+        tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=[".", "src"])
+        tm.that(
+            u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
+            eq=["src/**/*.py*", "tests/**/*.py*"],
+        )
+
     def test_ensure_pyrefly_config_uses_pyright_include_when_available(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:

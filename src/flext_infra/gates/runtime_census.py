@@ -16,7 +16,7 @@ from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraRuntimeCensusGate(FlextInfraGate):

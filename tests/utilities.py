@@ -562,7 +562,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_names: t.StrSequence = (),
             root_validate_exit_code: str = "0",
             project_validate_exit_codes: t.StrMapping | None = None,
-            initialize_root_git: bool = False,
+            initialize_root_git: bool = True,
             initialize_project_git: bool = False,
         ) -> Path:
             """Create a release workflow workspace fixture."""

@@ -635,8 +635,6 @@ class FlextInfraConstantsSourceCode:
     # --- Semantic versioning (was: class Versioning) ---
     SEMVER_PROJECT_SECTION: Final[str] = "[project]"
     "TOML section header for project metadata."
-    SEMVER_RE: Final[t.RegexPattern] = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:-dev)?$")
-    "Regex pattern for parsing semantic version strings."
     # --- Reporting paths (was: class Reporting) ---
     REPORTS_DIR_NAME: Final[str] = ".reports"
     "Standard directory name for report output."

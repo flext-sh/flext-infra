@@ -20,7 +20,7 @@ from flext_infra.gates.base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraSilentFailureGate(FlextInfraGate):

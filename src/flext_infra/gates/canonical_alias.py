@@ -22,7 +22,7 @@ from flext_infra.transformers.project_alias_migrator import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraCanonicalAliasGate(FlextInfraGate):

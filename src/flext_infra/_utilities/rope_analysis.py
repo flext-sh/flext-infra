@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util as _importlib_util
 from pathlib import Path
-from typing import ClassVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, settings, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore

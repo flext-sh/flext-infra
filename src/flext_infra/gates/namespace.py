@@ -12,7 +12,7 @@ from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidato
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t, p
+    from flext_infra import p, t
 
 
 class FlextInfraNamespaceGate(FlextInfraGate):
