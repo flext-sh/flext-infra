@@ -47,7 +47,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     @staticmethod
     def class_nesting_policy_by_family(
         policy_path: Path | None = None,
-    ) -> t.MappingKV[str, m.Infra.ClassNestingPolicy]:
+    ) -> t.MappingKV[str, p.Infra.ClassNestingPolicy]:
         """Load the class-nesting policy matrix keyed by module family."""
         resolved_path = (
             policy_path
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesRefactorPolicy:
         loaded = FlextInfraUtilitiesRefactorPolicy.load_validated_policy_document(
             resolved_path
         )
-        by_family: dict[str, m.Infra.ClassNestingPolicy] = {}
+        by_family: dict[str, p.Infra.ClassNestingPolicy] = {}
         if loaded.failure:
             return by_family
         for raw in u.Cli.json_as_mapping_list(loaded.value.get("policy_matrix")):
@@ -120,7 +120,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     def _class_nesting_violation(
         *,
         request: p.Infra.ClassNestingViolationRequest,
-        policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy],
+        policy_by_family: t.MappingKV[str, p.Infra.ClassNestingPolicy],
     ) -> t.StrMapping | None:
         """Build a policy violation payload when class nesting is forbidden."""
         policy = policy_by_family.get(request.family)
@@ -172,7 +172,7 @@ class FlextInfraUtilitiesRefactorPolicy:
     def validate_class_nesting_entry(
         entry: t.StrMapping,
         *,
-        policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None = None,
+        policy_by_family: t.MappingKV[str, p.Infra.ClassNestingPolicy] | None = None,
         policy_path: Path | None = None,
     ) -> t.Pair[bool, t.StrMapping | None]:
         """Validate one class/helper nesting entry against the family policy."""

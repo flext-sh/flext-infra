@@ -43,10 +43,10 @@ class FlextInfraFutureAnnotationsDetector:
             return []
         if c.Infra.FUTURE_ANNOTATIONS_RE.search(source):
             return []
-        return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
+        return [p.Infra.FutureAnnotationsViolation(file=str(file_path))]
 
     @staticmethod
-    def _record_parse_failure(ctx: m.Infra.DetectorContext, exc: BaseException) -> None:
+    def _record_parse_failure(ctx: p.Infra.DetectorContext, exc: BaseException) -> None:
         """Record a Rope parse failure, or fail loud without a collector."""
         detail = str(exc)
         if ctx.parse_failures is None:

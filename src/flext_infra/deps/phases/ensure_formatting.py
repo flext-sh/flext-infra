@@ -1,4 +1,8 @@
-"""Phase: Ensure safe default settings for TOML/YAML formatting tools."""
+"""Phase: Ensure safe default settings for TOML/YAML formatting tools.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -16,11 +20,11 @@ class FlextInfraEnsureFormattingToolingPhase:
     def _phases(
         self,
     ) -> tuple[
-        m.Cli.TomlPhaseConfig,
-        m.Cli.TomlPhaseConfig,
-        m.Cli.TomlPhaseConfig,
-        m.Cli.TomlPhaseConfig,
-        m.Cli.TomlPhaseConfig,
+        p.Cli.TomlPhaseConfig,
+        p.Cli.TomlPhaseConfig,
+        p.Cli.TomlPhaseConfig,
+        p.Cli.TomlPhaseConfig,
+        p.Cli.TomlPhaseConfig,
     ]:
         """Build the canonical formatting phases."""
         codespell_builder = (

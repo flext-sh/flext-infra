@@ -1,3 +1,5 @@
+"""Test detection discover behavior."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,7 +16,10 @@ from pathlib import Path
 
 
 class TestsFlextInfraDepsDetectionDiscover:
+    """Test flext infra deps detection discover behavior."""
+
     def test_success(self, tmp_path: Path) -> None:
+        """Verify dependency discovery returns declared projects."""
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(name="proj", path=tmp_path / "proj", stack="py")
         proj.path.mkdir()
@@ -26,11 +31,13 @@ class TestsFlextInfraDepsDetectionDiscover:
             tm.that(len(result.value), eq=1)
 
     def test_failure(self, tmp_path: Path) -> None:
+        """Verify dependency discovery propagates failures."""
         service = FlextInfraDependencyDetectionService()
         service.selector = u.Tests.DeptrySelector(r.fail("failed"))
         tm.fail(service.discover_project_paths(tmp_path))
 
     def test_filters_without_pyproject(self, tmp_path: Path) -> None:
+        """Verify filters without pyproject."""
         service = FlextInfraDependencyDetectionService()
         proj = m.Infra.ProjectInfo(
             name="no-pyproject", path=tmp_path / "no-pyproject", stack="py"

@@ -10,7 +10,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import ClassVar
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -54,7 +53,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
     })
 
     @classmethod
-    def supports(cls, rule: me.EnforcementRuleSpec) -> bool:
+    def supports(cls, rule: p.EnforcementRuleSpec) -> bool:
         """Return whether this engine can evaluate ``rule`` from source metadata."""
         source = rule.source
         if source.kind == "flext_infra_detector":
@@ -69,7 +68,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def detect(
-        cls, rule: me.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
+        cls, rule: p.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for violations of ``rule`` inside ``ctx.file_path``."""
         rule_id = cls._rule_id_short(rule.id)

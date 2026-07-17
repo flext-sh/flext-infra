@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path as _Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
@@ -73,3 +73,17 @@ class FlextInfraTypesBase:
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
+    type ReleaseArtifactKind = Literal["sdist", "wheel"]
+    "Closed artifact kind emitted by a release build."
+    type ReleaseAbsolutePath = Annotated[
+        str, t.StringConstraints(min_length=1, pattern=r"^(?:/|[A-Za-z]:[\\/])")
+    ]
+    "Absolute POSIX or Windows path serialized in a release report."
+    type ReleaseArtifactSha256 = Annotated[
+        str, t.StringConstraints(pattern=r"^[0-9a-f]{64}$")
+    ]
+    "Lowercase SHA-256 digest serialized in a release report."
+    type ReleaseCommitOid = Annotated[
+        str, t.StringConstraints(pattern=r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+    ]
+    "Lowercase Git SHA-1 or SHA-256 commit object identifier."

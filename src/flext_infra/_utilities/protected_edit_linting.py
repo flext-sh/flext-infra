@@ -11,6 +11,7 @@ from typing import ClassVar
 from flext_cli import u
 from flext_infra import c, m, p, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -213,17 +214,42 @@ class FlextInfraUtilitiesProtectedEditLinting:
         template: t.StrSequence,
     ) -> p.Infra.LintGateResult:
         """Run one lint gate and return a validated result model."""
-        cmd = [
+        command: t.StrSequence = (
             *cls._workspace_tool_command(workspace, template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
-        ]
+        )
+        cmd = (
+            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
+            if tool_name == c.Infra.MYPY
+            else command
+        )
         run_result = u.Cli.run_raw(
-            cmd, cwd=command_cwd, env=command_env, timeout=gate_timeout
+            cmd,
+            cwd=command_cwd,
+            env=command_env,
+            timeout=FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
+            if tool_name == c.Infra.MYPY
+            else gate_timeout,
         )
         if run_result.failure:
-            gate_errors: t.StrSequence = (run_result.error or f"{tool_name} failed",)
+            error = run_result.error or f"{tool_name} failed"
+            gate_errors: t.StrSequence = (
+                FlextInfraUtilitiesResourceLimits.mypy_launch_failure_diagnostic(error)
+                if tool_name == c.Infra.MYPY
+                else error,
+            )
         elif run_result.success and run_result.value.exit_code != 0:
-            output = (run_result.value.stdout + run_result.value.stderr).strip()
+            resource_diagnostic = (
+                FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(
+                    run_result.value
+                )
+                if tool_name == c.Infra.MYPY
+                else None
+            )
+            output = (
+                resource_diagnostic
+                or (run_result.value.stdout + run_result.value.stderr).strip()
+            )
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
         else:
             gate_errors = ()

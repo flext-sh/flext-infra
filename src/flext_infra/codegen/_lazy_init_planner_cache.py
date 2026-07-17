@@ -17,7 +17,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         _package_exports_cache: dict[str, frozenset[str]]
         _source_exports_cache: dict[str, frozenset[str]]
-        _source_plan_cache: dict[str, m.Infra.LazyInitPlan]
+        _source_plan_cache: dict[str, p.Infra.LazyInitPlan]
         _source_exports_visiting: set[str]
         _module_file_by_name: dict[str, Path]
         _registered_imports_cache: frozenset[tuple[str, str]] | None

@@ -1,4 +1,8 @@
-"""Runtime execution for dependency detector CLI."""
+"""Runtime execution for dependency detector CLI.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, p, t, u
 from flext_infra.deps._detector_runtime_steps import (
     FlextInfraDependencyDetectorRuntimeSteps,
 )
@@ -19,8 +23,8 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self,
         detector: p.Infra.DetectorRuntime,
         workspace_report_factory: Callable[..., p.Infra.WorkspaceReport],
-        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
-        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
+        dependency_limits_factory: Callable[..., p.Infra.DependencyLimitsInfo],
+        pip_check_factory: Callable[..., p.Infra.PipCheckReport],
     ) -> None:
         """Store runtime collaborators used by dependency detection orchestration."""
         self._detector = detector

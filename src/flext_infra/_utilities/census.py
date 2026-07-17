@@ -577,51 +577,30 @@ class FlextInfraUtilitiesRefactorCensus:
         def _rewrite_single(match: t.RegexMatch) -> str:
             """Rewrite single."""
             body = match.group("body")
-            if not isinstance(body, str):
-                msg = "regex body capture did not produce text"
-                raise TypeError(msg)
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
             if len(remaining) == len(entries):
                 original_text = match.group(0)
-                if not isinstance(original_text, str):
-                    msg = "regex full match did not produce text"
-                    raise TypeError(msg)
                 result = original_text
             else:
                 prefix = match.group("prefix")
-                if not isinstance(prefix, str):
-                    msg = "regex prefix capture did not produce text"
-                    raise TypeError(msg)
                 result = f"{prefix}[{', '.join(remaining)}]"
             return result
 
         def _rewrite_multi(match: t.RegexMatch) -> str:
             """Rewrite multi."""
             body = match.group("body")
-            if not isinstance(body, str):
-                msg = "regex body capture did not produce text"
-                raise TypeError(msg)
             if "\n" not in body:
                 original_text = match.group(0)
-                if not isinstance(original_text, str):
-                    msg = "regex full match did not produce text"
-                    raise TypeError(msg)
                 result = original_text
             else:
                 entries = [entry.strip() for entry in body.split(",") if entry.strip()]
                 remaining = [entry for entry in entries if entry not in quoted_target]
                 if len(remaining) == len(entries):
                     original_text = match.group(0)
-                    if not isinstance(original_text, str):
-                        msg = "regex full match did not produce text"
-                        raise TypeError(msg)
                     result = original_text
                 else:
                     prefix = match.group("prefix")
-                    if not isinstance(prefix, str):
-                        msg = "regex prefix capture did not produce text"
-                        raise TypeError(msg)
                     if not remaining:
                         result = f"{prefix}[]"
                     else:

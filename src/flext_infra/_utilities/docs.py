@@ -1,4 +1,8 @@
-"""Documentation shared utilities for the u.Infra MRO chain."""
+"""Documentation shared utilities for the u.Infra MRO chain.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,7 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 from flext_infra._utilities._docs_scope_build import (
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
@@ -120,7 +124,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         *,
         projects: t.StrSequence | None,
         output_dir: Path | str,
-        handler: Callable[[p.Infra.DocScope], m.Infra.DocsPhaseReport],
+        handler: Callable[[p.Infra.DocScope], p.Infra.DocsPhaseReport],
     ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(

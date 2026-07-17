@@ -1,20 +1,10 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Smells package."""
+"""Smells package.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from .base import (
-    FlextInfraSmellFixer as FlextInfraSmellFixer,
-    auto_fixable_smell_tags as auto_fixable_smell_tags,
-    register_smell_fixer as register_smell_fixer,
-    smell_fixer_for as smell_fixer_for,
-)
-from .boolean_logic import FlextInfraBooleanLogicFixer as FlextInfraBooleanLogicFixer
-
-__all__: tuple[str, ...] = (
-    "FlextInfraBooleanLogicFixer",
-    "FlextInfraSmellFixer",
-    "auto_fixable_smell_tags",
-    "register_smell_fixer",
-    "smell_fixer_for",
-)
+__all__: tuple[str, ...] = ()

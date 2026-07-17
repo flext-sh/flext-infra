@@ -115,6 +115,34 @@ class FlextInfraModelsCheck:
             """Build a target from the public run_projects name contract."""
             return cls(name=project_name, path=workspace_root / project_name)
 
+    class MypyResourceLimit(m.ContractModel):
+        """Validated memory and wall-time limits for every Mypy process."""
+
+        model_config: ClassVar[p.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        memory_limit_mb: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+                description="Positive Mypy address-space limit in MiB",
+            ),
+        ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                le=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                description="Positive Mypy wall-time limit in seconds",
+            ),
+        ] = c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT
+
+        @m.computed_field()
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Validated limit converted to bytes for prlimit."""
+            return self.memory_limit_mb * 1024 * 1024
+
     class FixPyreflyConfigCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
 

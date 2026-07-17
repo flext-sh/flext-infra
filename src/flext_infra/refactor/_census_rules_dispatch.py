@@ -1,11 +1,14 @@
-"""Census per-module rule dispatch — extracted concern."""
+"""Census per-module rule dispatch — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import m, p, t
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
@@ -324,7 +327,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         return (tuple(violations), tuple(fixes))
 
     @staticmethod
-    def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
+    def _declarative_catalog_rules() -> tuple[p.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative engine."""
         return FlextInfraEnforcementEngine.declarative_rules()
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import p, t
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
@@ -27,14 +26,14 @@ class FlextInfraFixerAdapter:
         """Bind the workspace root used during fix execution."""
         self._workspace_root = workspace_root
 
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: p.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind
 
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply fixes for the given violations in ``project_dir``."""
@@ -43,10 +42,10 @@ class FlextInfraFixerAdapter:
 
     @staticmethod
     def _group_by_target(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-    ) -> dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]]:
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
+    ) -> dict[str, list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]]]:
         """Group violations by the fix target declared in their catalog action."""
-        grouped: dict[str, list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]] = {}
+        grouped: dict[str, list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]]] = {}
         for rule, probe in violations:
             fix_action = rule.fix_action
             if fix_action is None:
@@ -57,7 +56,7 @@ class FlextInfraFixerAdapter:
     @staticmethod
     def _collect_file_paths(
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
     ) -> tuple[Path, ...]:
         """Extract unique existing file paths from violation probes."""
         seen: set[Path] = set()
@@ -77,7 +76,7 @@ class FlextInfraFixerAdapter:
 
     @staticmethod
     def _rule_id(
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
     ) -> str:
         """Return the first rule id in a grouped violation batch."""
         return violations[0][0].id if violations else ""

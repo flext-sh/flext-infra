@@ -251,7 +251,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         gate_instance: FlextInfraGate,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        gates_sink: MutableMapping[str, m.Infra.GateExecution],
+        gates_sink: MutableMapping[str, p.Infra.GateExecution],
     ) -> t.Cli.PipelineHandler:
         """Build a pipeline stage handler that executes a single gate.
 

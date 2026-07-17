@@ -22,7 +22,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
-        self.selector: u.Infra | None = None
+        self.selector: p.Infra.ProjectSelector | None = None
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
 

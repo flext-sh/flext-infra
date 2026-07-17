@@ -1,4 +1,8 @@
-"""Census collection-gate + module-selection helpers — extracted concern."""
+"""Census collection-gate + module-selection helpers — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, m, p, t
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
@@ -85,12 +88,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     @staticmethod
     def _declarative_rules_for_selection(
         rule_names: t.StrSequence | None,
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[p.EnforcementRuleSpec, ...]:
         """Return catalog declarative rules selected by the census request."""
         return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
     @staticmethod
-    def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
+    def _rule_requires_stub_file(rule: p.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
         return FlextInfraEnforcementEngine.rule_requires_stub_file(rule)
 
@@ -101,17 +104,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         """Project name for a module entry."""
         layout = convention.project_layout
         if layout is not None:
-            project_name = layout.project_name
-            if not isinstance(project_name, str):
-                msg = f"invalid layout project name for {module.file_path}"
-                raise RuntimeError(msg)
-            return project_name
+            return layout.project_name
         if module.project_root is not None:
-            project_name = module.project_root.name
-            if not isinstance(project_name, str):
-                msg = f"invalid project root name for {module.file_path}"
-                raise RuntimeError(msg)
-            return project_name
+            return module.project_root.name
         return ""
 
     @staticmethod

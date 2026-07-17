@@ -1,114 +1,147 @@
-"""Public execute() tests for release version and tag resolution."""
+"""Public release version and tag resolution tests."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests import c
+from tests import u
 from flext_tests import tm
 
 from pathlib import Path
 
 
 
-def make_command(
-    workspace_root: Path, **overrides: object
-) -> FlextInfraReleaseOrchestrator:
-    command: FlextInfraReleaseOrchestrator = (
-        FlextInfraReleaseOrchestrator.model_validate({
-            "workspace_root": workspace_root,
-            "phase": c.Tests.RELEASE_PHASE_VERSION,
-            "interactive": 0,
-            "create_branches": 0,
-            "apply_changes": True,
-            **overrides,
-        })
-    )
-    return command
+class TestsFlextInfraReleaseVersionResolution:
+    """Behavior contract for public release identity resolution."""
 
+    class TestsExplicitVersion:
+        """Explicit version behavior."""
 
-def test_execute_with_explicit_version_updates_workspace_file(tmp_path: Path) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
+        @staticmethod
+        def test_explicit_version_updates_workspace_file(tmp_path: Path) -> None:
+            """Write an explicit release version to the workspace manifest."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
-    result = make_command(workspace, version=c.Tests.RELEASE_VERSION_TARGET).execute()
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    tm.ok(result)
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
-        in (workspace / "pyproject.toml").read_text()
-    )
+            tm.that(result, eq=0)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}"',
+            )
 
+        @staticmethod
+        def test_dev_suffix_appends_development_version(tmp_path: Path) -> None:
+            """Append the requested development suffix to the release version."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
-def test_execute_with_dev_suffix_appends_dev_version(tmp_path: Path) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--dev-suffix",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    result = make_command(
-        workspace, version=c.Tests.RELEASE_VERSION_TARGET, dev_suffix=True
-    ).execute()
+            tm.that(result, eq=0)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}-dev"',
+            )
 
-    tm.ok(result)
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_TARGET}-dev"'
-        in (workspace / "pyproject.toml").read_text()
-    )
+    class TestsBump:
+        """Semantic bump behavior."""
 
+        @staticmethod
+        def test_bump_uses_current_workspace_version(tmp_path: Path) -> None:
+            """Resolve a bump from the current version before a real build."""
+            project_name = c.Tests.RELEASE_PROJECTS[0]
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=(project_name,), initialize_project_git=True
+            )
 
-def test_execute_with_bump_uses_current_workspace_version(tmp_path: Path) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "Makefile").write_text("build:\n\t@exit 0\n", encoding="utf-8")
-    (workspace / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-            'dependencies = ["flext-core>=0.1.0"]\n'
-        ),
-        encoding="utf-8",
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--bump",
+                c.Tests.RELEASE_BUMP_MINOR,
+                "--projects",
+                project_name,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    result = make_command(
-        workspace, phase=c.Tests.RELEASE_PHASE_BUILD, bump=c.Tests.RELEASE_BUMP_MINOR
-    ).execute()
+            tm.that(result, eq=0)
+            tm.that(
+                (
+                    u.Tests.release_report_dir(workspace, "0.2.0") / "build-report.json"
+                ).is_file(),
+                eq=True,
+            )
 
-    tm.ok(result)
-    assert (
-        workspace / ".reports" / "release" / "v0.2.0" / "build-report.json"
-    ).is_file()
+    class TestsInvalidIdentity:
+        """Fail-closed version and tag behavior."""
 
+        @staticmethod
+        def test_invalid_explicit_version_fails(tmp_path: Path) -> None:
+            """Fail when the explicit version is not valid release metadata."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
-def test_execute_with_invalid_explicit_version_fails(tmp_path: Path) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                "invalid",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    result = make_command(workspace, version="invalid").execute()
+            tm.that(result, eq=1)
 
-    tm.fail(result)
+        @staticmethod
+        def test_invalid_tag_prefix_fails(tmp_path: Path) -> None:
+            """Fail when the release tag omits its required prefix."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--tag",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-def test_execute_with_invalid_tag_prefix_fails(tmp_path: Path) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    (workspace / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
-
-    result = make_command(
-        workspace,
-        version=c.Tests.RELEASE_VERSION_TARGET,
-        tag=c.Tests.RELEASE_VERSION_TARGET,
-    ).execute()
-
-    tm.fail(result)
+            tm.that(result, eq=1)

@@ -1,4 +1,8 @@
-"""Root public-export decisions for the lazy-init planner."""
+"""Root public-export decisions for the lazy-init planner.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -20,7 +24,10 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         init_path = pkg_dir / c.Infra.INIT_PY
         if self.rope_workspace.resource(init_path) is None:
             return frozenset()
-        return frozenset(self.rope_workspace.exports(init_path))
+        source = u.Cli.files_read_text(init_path).unwrap()
+        return frozenset(
+            u.Infra.module_assignment_strings_source(source, c.Infra.DUNDER_ALL)
+        )
 
     def _filter_public_root_exports(
         self,

@@ -1,4 +1,8 @@
-"""Phase: Ensure standard Pyright configuration for strict type checking."""
+"""Phase: Ensure standard Pyright configuration for strict type checking.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -89,7 +93,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             return ()
         rules = self._tool_config.tools.pyright.path_rules
         environments: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
+            p.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         for override in rules.diagnostic_path_overrides:
             if not (project_dir / override.root).is_dir():
@@ -120,7 +124,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             return self._expected_envs_for_project(project_dir=project_dir)
         rules = self._tool_config.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
-            m.Infra.PyrightConfig.ExecutionEnvironment
+            p.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
         # mro-j47u (codex): specific roots precede the broad source environment.
@@ -262,7 +266,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> p.Infra.ProjectTypeOverrideConfig | None:
         """Return the project-type override settings for the given kind."""
         overrides = self._tool_config.project_type_overrides
-        kind_map: t.MappingKV[str, m.Infra.ProjectTypeOverrideConfig] = {
+        kind_map: t.MappingKV[str, p.Infra.ProjectTypeOverrideConfig] = {
             "core": overrides.core,
             "domain": overrides.domain,
             "platform": overrides.platform,

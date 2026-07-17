@@ -1,4 +1,8 @@
-"""Rope workspace indexing helpers."""
+"""Rope workspace indexing helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -81,14 +85,14 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _collect_modules(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[
-        dict[str, m.Infra.RopeModuleIndexEntry],
+        dict[str, p.Infra.RopeModuleIndexEntry],
         dict[Path, list[p.Infra.RopeModuleIndexEntry]],
         dict[str, Path],
         dict[str, str],
         set[Path],
     ]:
         """Collect modules."""
-        modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
+        modules_by_path: dict[str, p.Infra.RopeModuleIndexEntry] = {}
         modules_by_dir: dict[Path, list[p.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}
         project_package_by_root: dict[str, str] = {}
@@ -179,7 +183,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     continue
                 if ancestor_dir in package_dir_set:
                     descendants_by_dir[ancestor_dir].append(package_dir)
-        packages_by_dir: dict[str, m.Infra.RopePackageIndexEntry] = {}
+        packages_by_dir: dict[str, p.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
             dir_modules = tuple(
                 sorted(

@@ -7,6 +7,4 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from .tests_cli import TestWorkspaceCheckCli as TestWorkspaceCheckCli
-
-__all__: tuple[str, ...] = ("TestWorkspaceCheckCli",)
+__all__: tuple[str, ...] = ()

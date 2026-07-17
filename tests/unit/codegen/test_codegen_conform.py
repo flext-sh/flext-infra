@@ -158,7 +158,7 @@ class TestCodegenConform:
             if item.name == "flext-core"
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=1,
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="flext",
             repository=root_repository,
             project=m.Infra.ProjectSpec(
@@ -198,7 +198,7 @@ class TestCodegenConform:
         tm.that(environment.groups, eq=("dev", "codegen", "workspace"))
         tm.that(
             tuple(item.name for item in environment.editable_repositories),
-            eq=("flext", "flext-core"),
+            eq=("flext-core",),
         )
 
     def test_public_cli_routes_check_and_apply_to_one_handler(

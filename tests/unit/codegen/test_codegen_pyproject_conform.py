@@ -25,6 +25,11 @@ class TestsFlextInfraCodegenPyprojectConform:
             role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
             provider="flext-sh",
             profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            checkout=c.Infra.CheckoutKind.ROOT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=False,
+            editable=False,
+            read_only=False,
         )
         core = m.Infra.RepositoryRef(
             name="flext-core",
@@ -35,6 +40,11 @@ class TestsFlextInfraCodegenPyprojectConform:
             role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
             provider="flext-sh",
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
         )
         infra = m.Infra.RepositoryRef(
             name="flext-infra",
@@ -45,6 +55,11 @@ class TestsFlextInfraCodegenPyprojectConform:
             role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
             provider="flext-sh",
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
         )
         tests = m.Infra.RepositoryRef(
             name="flext-tests",
@@ -55,6 +70,11 @@ class TestsFlextInfraCodegenPyprojectConform:
             role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
             provider="flext-sh",
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
         )
         web = m.Infra.RepositoryRef(
             name="flext-web",
@@ -65,9 +85,17 @@ class TestsFlextInfraCodegenPyprojectConform:
             role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
             provider="flext-sh",
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=1, name="flext", repository=root, members=(core, infra, tests, web)
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="flext",
+            repository=root,
+            members=(core, infra, tests, web),
         )
         toolchain = m.Infra.ToolchainSpec(
             python_version="3.13.11",

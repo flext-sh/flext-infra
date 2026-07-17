@@ -1,3 +1,5 @@
+"""Test detection typings flow behavior."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,7 +12,10 @@ from tests import u
 
 
 class TestsFlextInfraDepsDetectionTypingsFlow:
+    """Test flext infra deps detection typings flow behavior."""
+
     def test_module_to_types_package(self) -> None:
+        """Verify module to types package."""
         service = FlextInfraDependencyDetectionService()
         tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")
         tm.that(service.module_to_types_package("flext_core", {}), eq=None)
@@ -29,6 +34,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
 
     def test_get_current_typings_from_pyproject(self) -> None:
+        """Verify get current typings from pyproject."""
         service = FlextInfraDependencyDetectionService()
         service.toml = u.Tests.TomlReaderSequence([
             u.Tests.infra_mapping_result({
@@ -52,6 +58,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         tm.that(got, empty=True)
 
     def test_get_current_typings_from_pyproject_variants(self) -> None:
+        """Verify get current typings from pyproject variants."""
         service = FlextInfraDependencyDetectionService()
         service.toml = u.Tests.TomlReaderSequence([
             u.Tests.infra_mapping_result({
@@ -77,6 +84,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
         tm.that(service.get_current_typings_from_pyproject(path), empty=True)
 
     def test_get_required_typings_paths(self, tmp_path: Path) -> None:
+        """Verify get required typings paths."""
         command_output = u.Tests.create_command_output()
         service = u.Tests.create_deptry_service(command_output=command_output)
         service.toml = u.Tests.TomlReaderSequence([

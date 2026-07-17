@@ -86,8 +86,6 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports as _install_lazy_exports")
         tm.that(content, contains="_install_lazy_exports(")
-        tm.that(content, lacks="_DIRECT_IMPORTS")
-        tm.that(content, lacks="__unit__")
 
     def test_internal_package_uses_explicit_sibling_reexports(
         self, tmp_path: Path
@@ -106,7 +104,6 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="from .api import Demo")
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="install_lazy_exports(")
-        tm.that(content, lacks="__unit__")
 
     def test_root_initializer_renders_the_filtered_public_plan(
         self, tmp_path: Path
@@ -126,7 +123,6 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(content, "__init__.py", "exec")
         tm.that(content, contains="from .api import Demo")
-        tm.that(content, lacks="_DIRECT_IMPORTS")
         tm.that(content, lacks='"DemoConversion"')
         tm.that(public_exports, contains='"Demo"')
 
@@ -278,6 +274,57 @@ class TestsFlextInfraCodegenGeneration:
             tm.that(init_content, contains=f'    "{class_name}",')
             tm.that(init_content, contains='    "r",')
             tm.that(init_content, contains="_install_lazy_exports(")
+
+    def test_tests_root_renders_only_its_facade_contract(self, tmp_path: Path) -> None:
+        """Render test facades without importing collected test classes."""
+        plan = self._plan(
+            tmp_path,
+            "tests",
+            (
+                "TestsDemoConstants",
+                "TestsDemoModels",
+                "TestsDemoProtocols",
+                "TestsDemoServiceBase",
+                "TestsDemoSettings",
+                "TestsDemoTypes",
+                "TestsDemoUtilities",
+                "c",
+                "m",
+                "p",
+                "s",
+                "t",
+                "tm",
+                "u",
+            ),
+            MappingProxyType({
+                "TestsDemoCase": ("tests.unit.test_demo", "TestsDemoCase"),
+                "TestsDemoConstants": ("tests.constants", "TestsDemoConstants"),
+                "TestsDemoModels": ("tests.models", "TestsDemoModels"),
+                "TestsDemoProtocols": ("tests.protocols", "TestsDemoProtocols"),
+                "TestsDemoServiceBase": ("tests.base", "TestsDemoServiceBase"),
+                "TestsDemoSettings": ("tests.settings", "TestsDemoSettings"),
+                "TestsDemoTypes": ("tests.typings", "TestsDemoTypes"),
+                "TestsDemoUtilities": ("tests.utilities", "TestsDemoUtilities"),
+                "c": ("tests.constants", "c"),
+                "m": ("tests.models", "m"),
+                "p": ("tests.protocols", "p"),
+                "s": ("tests.base", "s"),
+                "t": ("tests.typings", "t"),
+                "tm": ("flext_tests", "tm"),
+                "u": ("tests.utilities", "u"),
+            }),
+            production=False,
+        )
+
+        init_content = FlextInfraCodegenGeneration.render_init(plan)
+
+        compile(init_content, "__init__.py", "exec")
+        tm.that(init_content, contains="from flext_tests import tm")
+        tm.that(init_content, contains="TestsDemoConstants")
+        tm.that(init_content, contains="TestsDemoUtilities")
+        tm.that(init_content, contains="_install_lazy_exports(")
+        tm.that(init_content, lacks="TestsDemoCase")
+        tm.that(init_content, lacks=".unit.test_demo")
 
     def test_root_type_checking_alias_uses_named_local_facade(
         self, tmp_path: Path

@@ -23,7 +23,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
     _governance_cache: ClassVar[
-        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
+        MutableMapping[str, p.Infra.ConstantsGovernanceConfig]
     ] = {}
     _governance_file: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"

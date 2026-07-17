@@ -1,4 +1,8 @@
-"""Direct file-rule execution for the refactor service."""
+"""Direct file-rule execution for the refactor service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -89,7 +93,7 @@ class FlextInfraRefactorFileExecutor:
     """Execute declarative Rope-backed file rules directly from kind + settings."""
 
     _class_nesting_config: t.JsonMapping | None
-    _class_nesting_policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
+    _class_nesting_policy_by_family: t.MappingKV[str, p.Infra.ClassNestingPolicy] | None
     _class_nesting_gate: FlextInfraClassNestingPostCheckGate | None
 
     def _apply_file_rule_selection(
@@ -246,7 +250,7 @@ class FlextInfraRefactorFileExecutor:
         self._class_nesting_config = settings
         return settings
 
-    def _class_nesting_policy(self) -> t.MappingKV[str, m.Infra.ClassNestingPolicy]:
+    def _class_nesting_policy(self) -> t.MappingKV[str, p.Infra.ClassNestingPolicy]:
         """Class nesting policy."""
         if self._class_nesting_policy_by_family is None:
             rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES

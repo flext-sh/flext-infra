@@ -348,7 +348,7 @@ git commit -m "feat(codegen): declaration-only protocol_gen spec models" src/fle
 **Interfaces:**
 
 - Consumes: `m.Infra.ProtocolFieldSpec/ProtocolMethodSpec/ProtocolClassPlan` (Task 2); `FlextInfraUtilitiesRopeAnalysis.get_class_methods(rope_project, resource, class_name, include_private=False) -> t.StrMapping`; `FlextInfraUtilitiesRopeStructure.logical_statements(source) -> tuple[p.Infra.LogicalStatement, ...]` + `target_name`.
-- Produces: `FlextInfraUtilitiesProtocolExtract.extract_class(project_root: Path, file_path: Path, class_name: str) -> r[m.Infra.ProtocolClassPlan]` — fields from class-enclosed `ANN_ASSIGN` statements, methods from `get_class_methods`, `kind="unclassified"`.
+- Produces: `FlextInfraUtilitiesProtocolExtract.extract_class(project_root: Path, file_path: Path, class_name: str) -> r[p.Infra.ProtocolClassPlan]` — fields from class-enclosed `ANN_ASSIGN` statements, methods from `get_class_methods`, `kind="unclassified"`.
 
 - [ ] **Step 1: Write the fixture**
 
@@ -443,10 +443,10 @@ class FlextInfraUtilitiesProtocolExtract:
     @classmethod
     def extract_class(
         cls, project_root: Path, file_path: Path, class_name: str
-    ) -> r[m.Infra.ProtocolClassPlan]:
+    ) -> r[p.Infra.ProtocolClassPlan]:
         """Return an unclassified plan of one class's protocol surface."""
         source = file_path.read_text(encoding="utf-8")
-        return r[m.Infra.ProtocolClassPlan].ok(
+        return r[p.Infra.ProtocolClassPlan].ok(
             m.Infra.ProtocolClassPlan(
                 class_name=class_name,
                 module=file_path.name,
@@ -459,9 +459,9 @@ class FlextInfraUtilitiesProtocolExtract:
     @staticmethod
     def _extract_fields(
         source: str, class_name: str
-    ) -> tuple[m.Infra.ProtocolFieldSpec, ...]:
+    ) -> tuple[p.Infra.ProtocolFieldSpec, ...]:
         """Return annotated fields declared directly in ``class_name``'s body."""
-        specs: list[m.Infra.ProtocolFieldSpec] = []
+        specs: list[p.Infra.ProtocolFieldSpec] = []
         for stmt in FlextInfraUtilitiesRopeStructure.logical_statements(source):
             if (
                 stmt.enclosing_kind == c.Infra.RopeScopeKind.CLASS
@@ -489,7 +489,7 @@ class FlextInfraUtilitiesProtocolExtract:
     @staticmethod
     def _extract_methods(
         project_root: Path, file_path: Path, class_name: str
-    ) -> tuple[m.Infra.ProtocolMethodSpec, ...]:
+    ) -> tuple[p.Infra.ProtocolMethodSpec, ...]:
         """Return public methods of ``class_name`` via rope PyObject attributes."""
         with FlextInfraUtilitiesRopeCore.open_project(project_root) as rope_proj:
             resource = FlextInfraUtilitiesRopeCore.fetch_python_resource(
@@ -540,7 +540,7 @@ git commit -m "feat(codegen): rope-semantic protocol extractor (LAW-2)" src/flex
 **Interfaces:**
 
 - Consumes: `m.Infra.ProtocolClassPlan` (unclassified), `m.Infra.ProtocolGenWarning`, Task-1 config mapping.
-- Produces: `FlextInfraUtilitiesProtocolClassify.classify(plan: m.Infra.ProtocolClassPlan, config: t.JsonMapping) -> tuple[m.Infra.ProtocolClassPlan, tuple[m.Infra.ProtocolGenWarning, ...]]` — banned annotation → `out_of_contract`+warning; public methods > `field_only_max_methods` → `behavior`; else `field_only`.
+- Produces: `FlextInfraUtilitiesProtocolClassify.classify(plan: p.Infra.ProtocolClassPlan, config: t.JsonMapping) -> tuple[p.Infra.ProtocolClassPlan, tuple[p.Infra.ProtocolGenWarning, ...]]` — banned annotation → `out_of_contract`+warning; public methods > `field_only_max_methods` → `behavior`; else `field_only`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -634,8 +634,8 @@ class FlextInfraUtilitiesProtocolClassify:
 
     @classmethod
     def classify(
-        cls, plan: m.Infra.ProtocolClassPlan, config: t.JsonMapping
-    ) -> tuple[m.Infra.ProtocolClassPlan, tuple[m.Infra.ProtocolGenWarning, ...]]:
+        cls, plan: p.Infra.ProtocolClassPlan, config: t.JsonMapping
+    ) -> tuple[p.Infra.ProtocolClassPlan, tuple[p.Infra.ProtocolGenWarning, ...]]:
         """Return (classified_plan, warnings) for one extracted class."""
         banned = set(config["banned_annotations"])
         max_methods = int(config["field_only_max_methods"])
@@ -821,7 +821,7 @@ git commit -m "feat(codegen): generic field + method protocol templates" src/fle
 **Interfaces:**
 
 - Consumes: `u.Infra.ProtocolExtract.extract_class`, `u.Infra.ProtocolClassify.classify`, Task-1 config; class discovery via `FlextInfraUtilitiesRopeAnalysis.get_module_classes` (LAW-2) unioned with `u.Infra.RopeAnalysisIntrospection.extract_public_methods_from_dir`.
-- Produces: `FlextInfraCodegenProtocolGen.run(package_dir: Path, *, apply: bool) -> r[m.Infra.ProtocolGenReport]` — dry-run by default (Safe-by-Default); writes only when `apply=True`.
+- Produces: `FlextInfraCodegenProtocolGen.run(package_dir: Path, *, apply: bool) -> r[p.Infra.ProtocolGenReport]` — dry-run by default (Safe-by-Default); writes only when `apply=True`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -884,7 +884,7 @@ class FlextInfraProtocolsProtocolGen:
 
         def run(
             self, package_dir: Path, *, apply: bool
-        ) -> p.Result[m.Infra.ProtocolGenReport]:
+        ) -> p.Result[p.Infra.ProtocolGenReport]:
             """Run the pipeline and return the aggregate report."""
             ...
 
@@ -919,20 +919,20 @@ if TYPE_CHECKING:
 class FlextInfraCodegenProtocolGen(s[str]):
     """Drive protocol generation and validation for one package directory."""
 
-    def run(self, package_dir: Path, *, apply: bool) -> r[m.Infra.ProtocolGenReport]:
+    def run(self, package_dir: Path, *, apply: bool) -> r[p.Infra.ProtocolGenReport]:
         """Discover, extract, classify, (optionally) render, and report."""
         config = self._load_config()
         if config.failure:
-            return r[m.Infra.ProtocolGenReport].fail(
+            return r[p.Infra.ProtocolGenReport].fail(
                 config.error or "config load failed"
             )
         project_root = FlextInfraUtilitiesDiscovery.project_root(package_dir / "foo.py")
         if project_root is None:
-            return r[m.Infra.ProtocolGenReport].fail(
+            return r[p.Infra.ProtocolGenReport].fail(
                 f"no project root for {package_dir}"
             )
-        plans: list[m.Infra.ProtocolClassPlan] = []
-        warnings: list[m.Infra.ProtocolGenWarning] = []
+        plans: list[p.Infra.ProtocolClassPlan] = []
+        warnings: list[p.Infra.ProtocolGenWarning] = []
         for py_file in sorted(package_dir.glob(c.Infra.EXT_PYTHON_GLOB)):
             if py_file.name == c.Infra.INIT_PY or py_file.name.startswith("_"):
                 continue
@@ -950,7 +950,7 @@ class FlextInfraCodegenProtocolGen(s[str]):
         generated = tuple(p for p in plans if p.kind in {"field_only", "behavior"})
         if apply:
             self._render_field_only(package_dir, generated)
-        return r[m.Infra.ProtocolGenReport].ok(
+        return r[p.Infra.ProtocolGenReport].ok(
             m.Infra.ProtocolGenReport(
                 generated=generated,
                 validated=tuple(
@@ -983,7 +983,7 @@ class FlextInfraCodegenProtocolGen(s[str]):
 
     @staticmethod
     def _render_field_only(
-        package_dir: Path, plans: tuple[m.Infra.ProtocolClassPlan, ...]
+        package_dir: Path, plans: tuple[p.Infra.ProtocolClassPlan, ...]
     ) -> None:
         # Idempotent writer implemented in Task 7. Dry-run path is complete here.
         _ = (package_dir, plans)
@@ -1061,7 +1061,7 @@ Replace `_render_field_only` with:
 ```python
 @staticmethod
 def _render_field_only(
-    package_dir: Path, plans: tuple[m.Infra.ProtocolClassPlan, ...]
+    package_dir: Path, plans: tuple[p.Infra.ProtocolClassPlan, ...]
 ) -> None:
     """Write one field-only protocol file per plan, byte-idempotently."""
     out_dir = package_dir / "_protocols"

@@ -115,6 +115,31 @@ class FlextInfraProtocolsBase(Protocol):
             """Generated Make profile when the repository is active."""
             ...
 
+        @property
+        def checkout(self) -> str:
+            """Physical checkout topology."""
+            ...
+
+        @property
+        def codegen(self) -> str:
+            """Repository code-generation policy."""
+            ...
+
+        @property
+        def package(self) -> bool:
+            """Whether the repository publishes a Python package."""
+            ...
+
+        @property
+        def editable(self) -> bool:
+            """Whether the repository is overlaid as editable."""
+            ...
+
+        @property
+        def read_only(self) -> bool:
+            """Whether generated mutations are forbidden."""
+            ...
+
     @runtime_checkable
     class WorkspaceSpec(Protocol):
         """Workspace topology fields consumed by repository selection."""

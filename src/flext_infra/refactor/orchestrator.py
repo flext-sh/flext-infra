@@ -1,4 +1,8 @@
-"""Refactor orchestration layer for file/project/workspace execution."""
+"""Refactor orchestration layer for file/project/workspace execution.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -42,7 +46,7 @@ class FlextInfraRefactorOrchestrator(
         self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
         self._class_nesting_config: t.JsonMapping | None = None
         self._class_nesting_policy_by_family: (
-            t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
+            t.MappingKV[str, p.Infra.ClassNestingPolicy] | None
         ) = None
         self._class_nesting_gate: FlextInfraClassNestingPostCheckGate | None = None
 
@@ -104,7 +108,7 @@ class FlextInfraRefactorOrchestrator(
         workspace_root: Path,
         current: str,
         all_changes: t.MutableSequenceOf[str],
-    ) -> tuple[str, m.Infra.Result | None]:
+    ) -> tuple[str, p.Infra.Result | None]:
         """Apply Rope-backed file rules and collect changes."""
         if not self.loader.file_rules:
             return current, None

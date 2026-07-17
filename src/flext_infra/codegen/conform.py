@@ -24,11 +24,11 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
     # flext-cli; Git-source TOML policy and attached detection are composed from
     # their separately owned u.Infra/workspace services.
     request: Annotated[
-        m.Infra.CodegenConformRequest | None,
+        p.Infra.CodegenConformRequest | None,
         m.Field(default=None, exclude=True, description="Validated conform request"),
     ] = None
     initial_workspace: Annotated[
-        m.Infra.WorkspaceSpec | None,
+        p.Infra.WorkspaceSpec | None,
         m.Field(
             default=None,
             exclude=True,
@@ -859,6 +859,13 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 scaffold=codegen.scaffold,
                 dependency_profile=dependency_profile,
                 make=codegen.make,
+                mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+                mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                prlimit_command=c.Infra.PRLIMIT_COMMAND,
+                prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
+                timeout_command=c.Infra.TIMEOUT_COMMAND,
+                timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling=config.Infra.tooling,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
@@ -892,6 +899,8 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,
+                workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                workspace_repository=repository,
                 year=project.year,
                 project_resources=project.resources,
                 workspace_members=tuple(
@@ -1136,7 +1145,11 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         editable_repositories: tuple[p.Infra.RepositoryRef, ...] = ()
         if workspace_environment:
             groups = (*groups, "workspace")
-            editable_repositories = (workspace.repository, *workspace.members)
+            editable_repositories = tuple(
+                item
+                for item in (workspace.repository, *workspace.members)
+                if item.package and item.editable and not item.read_only
+            )
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=environment_root,

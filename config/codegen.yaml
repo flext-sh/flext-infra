@@ -455,6 +455,11 @@ Infra:
         role: workspace-root
         state: active
         profile: workspace-root
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
       - name: flext-api
         distribution: flext-api
         provider: flext-sh
@@ -464,6 +469,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-auth
         distribution: flext-auth
         provider: flext-sh
@@ -473,6 +483,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-cli
         distribution: flext-cli
         provider: flext-sh
@@ -482,6 +497,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-core
         distribution: flext-core
         provider: flext-sh
@@ -491,6 +511,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-db-oracle
         distribution: flext-db-oracle
         provider: flext-sh
@@ -500,6 +525,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-dbt-ldap
         distribution: flext-dbt-ldap
         provider: flext-sh
@@ -509,6 +539,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-dbt-ldif
         distribution: flext-dbt-ldif
         provider: flext-sh
@@ -518,6 +553,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-dbt-oracle
         distribution: flext-dbt-oracle
         provider: flext-sh
@@ -527,6 +567,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-dbt-oracle-wms
         distribution: flext-dbt-oracle-wms
         provider: flext-sh
@@ -536,6 +581,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-grpc
         distribution: flext-grpc
         provider: flext-sh
@@ -545,6 +595,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-infra
         distribution: flext-infra
         provider: flext-sh
@@ -554,6 +609,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-ldap
         distribution: flext-ldap
         provider: flext-sh
@@ -563,6 +623,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-ldif
         distribution: flext-ldif
         provider: flext-sh
@@ -572,6 +637,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-meltano
         distribution: flext-meltano
         provider: flext-sh
@@ -581,6 +651,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-observability
         distribution: flext-observability
         provider: flext-sh
@@ -590,6 +665,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-oracle-oic
         distribution: flext-oracle-oic
         provider: flext-sh
@@ -599,6 +679,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-oracle-wms
         distribution: flext-oracle-wms
         provider: flext-sh
@@ -608,6 +693,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-plugin
         distribution: flext-plugin
         provider: flext-sh
@@ -617,6 +707,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-quality
         distribution: flext-quality
         provider: flext-sh
@@ -626,6 +721,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tap-ldap
         distribution: flext-tap-ldap
         provider: flext-sh
@@ -635,6 +735,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tap-ldif
         distribution: flext-tap-ldif
         provider: flext-sh
@@ -644,6 +749,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tap-oracle
         distribution: flext-tap-oracle
         provider: flext-sh
@@ -653,6 +763,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tap-oracle-oic
         distribution: flext-tap-oracle-oic
         provider: flext-sh
@@ -662,6 +777,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tap-oracle-wms
         distribution: flext-tap-oracle-wms
         provider: flext-sh
@@ -671,6 +791,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-target-ldap
         distribution: flext-target-ldap
         provider: flext-sh
@@ -680,6 +805,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-target-ldif
         distribution: flext-target-ldif
         provider: flext-sh
@@ -689,6 +819,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-target-oracle
         distribution: flext-target-oracle
         provider: flext-sh
@@ -698,6 +833,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-target-oracle-oic
         distribution: flext-target-oracle-oic
         provider: flext-sh
@@ -707,6 +847,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-target-oracle-wms
         distribution: flext-target-oracle-wms
         provider: flext-sh
@@ -716,6 +861,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-tests
         distribution: flext-tests
         provider: flext-sh
@@ -725,6 +875,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: flext-web
         distribution: flext-web
         provider: flext-sh
@@ -734,6 +889,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: cosmos-main
         distribution: cosmos-main
         provider: datacosmos-br
@@ -743,6 +903,11 @@ Infra:
         role: workspace-root
         state: active
         profile: workspace-root
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
       - name: cosmos-charts
         distribution: cosmos-charts
         provider: datacosmos-br
@@ -752,6 +917,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: cosmos-gitops
         distribution: cosmos-gitops
         provider: datacosmos-br
@@ -761,6 +931,11 @@ Infra:
         role: workspace-member
         state: active
         profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
       - name: cosmos-old
         distribution: cosmos-old
         provider: datacosmos-br
@@ -769,6 +944,11 @@ Infra:
         path: apps/cosmos-old
         role: content-only
         state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
       - name: ai-hub
         distribution: ai-hub
         provider: datacosmos-br
@@ -778,6 +958,11 @@ Infra:
         role: standalone
         state: active
         profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
       - name: projeto_a
         distribution: projeto_a
         provider: datacosmos-br
@@ -787,6 +972,11 @@ Infra:
         role: standalone
         state: active
         profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
       - name: projeto_b
         distribution: projeto_b
         provider: datacosmos-br
@@ -796,6 +986,11 @@ Infra:
         role: standalone
         state: active
         profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
       - name: cosmos-docgen
         distribution: cosmos-docgen
         provider: datacosmos-br
@@ -805,6 +1000,11 @@ Infra:
         role: standalone
         state: active
         profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
 
     workspaces:
       - name: flext

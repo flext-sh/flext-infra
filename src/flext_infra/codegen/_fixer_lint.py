@@ -1,4 +1,8 @@
-"""Rope-verified lint remediation pass for the canonical codegen fixer."""
+"""Rope-verified lint remediation pass for the canonical codegen fixer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -115,7 +119,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         """Group configured diagnostics by file and apply each file once."""
         grouped: t.MutableMappingKV[
             Path,
-            t.MutableSequenceOf[t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]],
+            t.MutableSequenceOf[t.Pair[p.Infra.Issue, p.Infra.StaticRuffIssueRule]],
         ] = {}
         for issue in issues:
             rule = next((item for item in rules if item.code == issue.code), None)
@@ -164,7 +168,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx: p.Infra.FixContext,
         file_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-        entries: t.SequenceOf[t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]],
+        entries: t.SequenceOf[t.Pair[p.Infra.Issue, p.Infra.StaticRuffIssueRule]],
     ) -> None:
         """Render all insertions against one stable Rope/source snapshot."""
         source = rope_workspace.source(file_path)
@@ -173,7 +177,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
         )
         insertions: t.MutableSequenceOf[t.Pair[int, str]] = []
         fixed: t.MutableSequenceOf[
-            t.Pair[p.Infra.Issue, m.Infra.StaticRuffIssueRule]
+            t.Pair[p.Infra.Issue, p.Infra.StaticRuffIssueRule]
         ] = []
         for issue, rule in entries:
             semantic_object = next(

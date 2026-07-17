@@ -1,3 +1,9 @@
+"""Test detection typings behavior.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,7 +11,7 @@ from unittest.mock import patch
 
 from flext_tests import tm
 
-from flext_infra import m, p, r as tr
+from flext_infra import m, r as tr
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from tests import p, t
 
@@ -24,30 +30,32 @@ class _StubToml:
 
 
 class TestsFlextInfraDepsDetectionTypings:
+    """Test flext infra deps detection typings behavior."""
+
     def test_success(self) -> None:
+        """Verify dependency limit loading succeeds."""
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([
-            tr[t.JsonMapping].ok({"key": "value", "num": 42})
-        ])
+        service.toml = _StubToml([tr[t.JsonMapping].ok({"key": "value", "num": 42})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         tm.that(result.get("key"), eq="value")
         tm.that(result.get("num"), eq=42)
 
     def test_failure_returns_empty(self) -> None:
+        """Verify failure returns empty."""
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([tr[t.JsonMapping].fail("not found")])
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), empty=True)
 
     def test_unconvertible_values_skipped(self) -> None:
+        """Verify unconvertible values skipped."""
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([
-            tr[t.JsonMapping].ok({"good": "val", "bad": ["x"]})
-        ])
+        service.toml = _StubToml([tr[t.JsonMapping].ok({"good": "val", "bad": ["x"]})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         tm.that(result, has="good")
         tm.that(result, has="bad")
 
     def test_none_value_preserved(self) -> None:
+        """Verify none value preserved."""
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([tr[t.JsonMapping].ok({"key": None})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
@@ -55,6 +63,7 @@ class TestsFlextInfraDepsDetectionTypings:
         tm.that(result["key"], eq=None)
 
     def test_run_mypy_stub_hints_empty_output(self, tmp_path: Path) -> None:
+        """Verify run mypy stub hints empty output."""
         service = FlextInfraDependencyDetectionService()
         with patch.object(
             service,
@@ -66,6 +75,7 @@ class TestsFlextInfraDepsDetectionTypings:
             tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path)), eq=([], []))
 
     def test_parses_hints(self, tmp_path: Path) -> None:
+        """Verify parses hints."""
         service = FlextInfraDependencyDetectionService()
         with patch.object(
             service,

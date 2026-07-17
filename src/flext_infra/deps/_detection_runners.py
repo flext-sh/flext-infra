@@ -1,4 +1,8 @@
-"""Cohesive external-tool-runner mixin (deptry, mypy stubs, pip-check) for detection."""
+"""Cohesive external-tool-runner mixin (deptry, mypy stubs, pip-check).
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -108,7 +112,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         self, project_path: Path
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy via the command runner to detect missing stubs and hint packages."""
-        cmd: t.StrSequence = [
+        cmd = u.Infra.mypy_limited_command((
             sys.executable,
             "-m",
             c.Infra.MYPY,
@@ -116,13 +120,19 @@ class FlextInfraDependencyDetectionRunnersMixin:
             "--config-file",
             c.PYPROJECT_FILENAME,
             "--no-error-summary",
-        ]
-        result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
+        ))
+        result = self._run_raw(
+            cmd, cwd=project_path, timeout=u.Infra.mypy_runner_timeout()
+        )
         if result.failure:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                result.error or "mypy execution failed"
+                u.Infra.mypy_launch_failure_diagnostic(
+                    result.error or "Mypy process launch failed"
+                )
             )
         command_output: p.Cli.CommandOutput = result.value
+        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(command_output):
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(resource_diagnostic)
         output = f"{command_output.stdout}\n{command_output.stderr}"
         hinted = {
             match.group(1).strip()

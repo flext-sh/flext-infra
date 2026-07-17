@@ -10,15 +10,15 @@ from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, t
+from flext_infra import c, p, t
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
     """Mixin holding environment setup and per-project detection steps."""
 
     _detector: p.Infra.DetectorRuntime
-    _dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo]
-    _pip_check_factory: Callable[..., m.Infra.PipCheckReport]
+    _dependency_limits_factory: Callable[..., p.Infra.DependencyLimitsInfo]
+    _pip_check_factory: Callable[..., p.Infra.PipCheckReport]
 
     def _validate_environment(
         self, params: p.Infra.DetectCommand, root: Path, venv_bin: Path

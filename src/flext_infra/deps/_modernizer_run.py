@@ -80,15 +80,68 @@ class FlextInfraPyprojectModernizerRunMixin:
             if project_names
             else list(u.Infra.workspace_member_names(self.root))
         )
-        project_paths: t.SequenceOf[Path] = []
-        if selected_names:
-            selected_projects = u.Infra.resolve_projects(self.root, selected_names)
-            if selected_projects.failure:
-                u.Cli.error(
-                    selected_projects.error or "failed to resolve selected projects"
+        configured_member_paths = {
+            member_name: self.root / member_name
+            for member_name in u.Infra.workspace_member_names(self.root)
+        }
+        resolved_root = self.root.resolve()
+        outside_member_names = [
+            member_name
+            for member_name, member_path in configured_member_paths.items()
+            if not member_path.resolve().is_relative_to(resolved_root)
+        ]
+        if outside_member_names:
+            u.Cli.error(
+                "workspace members outside root: "
+                f"{', '.join(sorted(outside_member_names))}"
+            )
+            return 2
+        basename_aliases: dict[str, list[Path]] = {}
+        declared_name_aliases: dict[str, list[Path]] = {}
+        for configured_path in configured_member_paths.values():
+            basename_aliases.setdefault(configured_path.name, []).append(
+                configured_path
+            )
+            state_result = self._read_document_state(
+                configured_path / c.PYPROJECT_FILENAME
+            )
+            if state_result.failure:
+                continue
+            state = state_result.value
+            try:
+                declared_name = u.Infra.project_name_from_payload(
+                    state.pyproject_path, state.payload
                 )
-                return 2
-            project_paths = [project.path for project in selected_projects.value]
+            except c.EXC_TYPE_VALIDATION:
+                continue
+            declared_name_aliases.setdefault(declared_name, []).append(configured_path)
+        project_paths: t.MutableSequenceOf[Path] = []
+        missing_names: t.MutableSequenceOf[str] = []
+        ambiguous_names: t.MutableSequenceOf[str] = []
+        for project_name in selected_names:
+            project_path = configured_member_paths.get(project_name)
+            if project_path is None:
+                alias_matches: t.MutableSequenceOf[Path] = []
+                for alias_path in (
+                    *basename_aliases.get(project_name, []),
+                    *declared_name_aliases.get(project_name, []),
+                ):
+                    if alias_path not in alias_matches:
+                        alias_matches.append(alias_path)
+                if len(alias_matches) > 1:
+                    ambiguous_names.append(project_name)
+                    continue
+                project_path = alias_matches[0] if alias_matches else None
+            if project_path is None or not project_path.is_dir():
+                missing_names.append(project_name)
+                continue
+            project_paths.append(project_path)
+        if ambiguous_names:
+            u.Cli.error(f"ambiguous projects: {', '.join(sorted(ambiguous_names))}")
+            return 2
+        if missing_names:
+            u.Cli.error(f"unknown projects: {', '.join(sorted(missing_names))}")
+            return 2
         files_result = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
@@ -108,23 +161,28 @@ class FlextInfraPyprojectModernizerRunMixin:
         if root_state_result.failure:
             return 2
         root_state = root_state_result.value
-        canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
-        )
-        locked_versions: t.MappingKV[str, str] = {}
-        internal_names: t.StrSequence = ()
-        if self.rewrite_constraints:
-            lock_path = self.root / "uv.lock"
-            locked_versions = u.Infra.locked_dependency_versions(lock_path)
-            if not locked_versions:
-                u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
-                return 2
+        root_project_name: str | None = None
+        if include_root or self.rewrite_constraints:
             try:
                 root_project_name = u.Infra.project_name_from_payload(
                     root_state.pyproject_path, root_state.payload
                 )
             except c.EXC_TYPE_VALIDATION as exc:
                 u.Cli.error(str(exc))
+                return 2
+        canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
+        )
+        locked_versions: t.MappingKV[str, str] = {}
+        internal_names: t.StrSequence = ()
+        if self.rewrite_constraints:
+            if root_project_name is None:
+                u.Cli.error("root project name required for constraint rewriting")
+                return 2
+            lock_path = self.root / "uv.lock"
+            locked_versions = u.Infra.locked_dependency_versions(lock_path)
+            if not locked_versions:
+                u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
                 return 2
             internal_names = tuple(
                 sorted(

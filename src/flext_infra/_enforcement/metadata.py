@@ -1,10 +1,13 @@
-"""Declarative enforcement metadata helpers."""
+"""Declarative enforcement metadata helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import p, t
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
@@ -16,13 +19,13 @@ class FlextInfraEnforcementMetadata:
 
     @staticmethod
     def detect_declarative(
-        rule: me.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
+        rule: p.EnforcementRuleSpec, ctx: p.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Detect one declarative rule for one detector context."""
         return FlextInfraRefactorDeclarativeEnforcement.detect(rule, ctx)
 
     @staticmethod
-    def violation_kind(rule: me.EnforcementRuleSpec) -> str:
+    def violation_kind(rule: p.EnforcementRuleSpec) -> str:
         """Return the normalized violation kind declared by catalog metadata."""
         source = rule.source
         if source.kind == "flext_infra_detector":
@@ -57,7 +60,7 @@ class FlextInfraEnforcementMetadata:
 
     @staticmethod
     def description(
-        rule: me.EnforcementRuleSpec, probe: p.AttributeProbe, object_name: str
+        rule: p.EnforcementRuleSpec, probe: p.AttributeProbe, object_name: str
     ) -> str:
         """Return a human-readable description for a declarative violation."""
         base = rule.description

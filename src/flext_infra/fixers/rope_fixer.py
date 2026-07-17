@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_core import r
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, m, p, t, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -45,7 +44,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         super().__init__(workspace_root)
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: p.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return (
             fix_action.kind == self.kind
@@ -56,7 +55,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply rope fixes grouped by target."""
@@ -101,8 +100,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         Callable[
             [
                 Path,
-                t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
-                m.Infra.FixEnforcementCommand,
+                t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
+                p.Infra.FixEnforcementCommand,
             ],
             fr.ProjectFixResult,
         ],
@@ -223,7 +222,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         *,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
         detector: Callable[[p.Infra.DetectorContext], t.SequenceOf[V]],
         filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
@@ -319,7 +318,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _rope_fix_silent_failure_sentinels(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Rewrite deterministic silent-failure sentinels to failed Results."""
@@ -393,7 +392,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_compatibility_alias(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
@@ -425,7 +424,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_remove_stub_file(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Remove source ``.pyi`` stubs when apply mode is enabled."""
@@ -498,7 +497,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_library_abstraction(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Hoist detector-approved FLEXT library imports to module scope."""
@@ -513,7 +512,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_hoist_inline_import(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Hoist detector-approved inline stdlib imports to module scope."""
@@ -528,7 +527,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_inline_import_action(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
         *,
         target_action: str,
@@ -716,7 +715,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_classvar_relocation(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Move class-level constants to canonical _constants modules."""
@@ -857,7 +856,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_one_class_per_module(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Move extra governed classes to their own canonical modules."""

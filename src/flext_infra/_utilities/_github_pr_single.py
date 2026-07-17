@@ -1,4 +1,8 @@
-"""GitHub single-repo pull-request execution — extracted concern."""
+"""GitHub single-repo pull-request execution — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -41,7 +45,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
+            p.Infra.GithubPullRequestRequest | p.Infra.GithubPullRequestWorkspaceRequest
         ),
     ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
@@ -89,7 +93,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
+            p.Infra.GithubPullRequestRequest | p.Infra.GithubPullRequestWorkspaceRequest
         ),
     ) -> list[str]:
         """Build the CLI command list for a single pull-request operation."""

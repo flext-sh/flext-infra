@@ -1,3 +1,5 @@
+"""Test detection uncovered behavior."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,7 +16,10 @@ from tests import m
 
 
 class TestsFlextInfraDepsDetectionUncovered:
+    """Test flext infra deps detection uncovered behavior."""
+
     def test_run_deptry_with_non_dict_issue(self, tmp_path: Path) -> None:
+        """Verify run deptry with non dict issue."""
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         project = tmp_path / "project"
@@ -37,6 +42,7 @@ class TestsFlextInfraDepsDetectionUncovered:
         tm.that(exit_code, eq=0)
 
     def test_run_pip_check_with_empty_output(self, tmp_path: Path) -> None:
+        """Verify run pip check with empty output."""
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "pip").write_text("", encoding="utf-8")
@@ -51,6 +57,7 @@ class TestsFlextInfraDepsDetectionUncovered:
         tm.that(exit_code, eq=0)
 
     def test_get_required_typings_with_limits_applied(self, tmp_path: Path) -> None:
+        """Verify get required typings with limits applied."""
         venv_bin = tmp_path / "venv" / "bin"
         venv_bin.mkdir(parents=True)
         (venv_bin / "mypy").write_text("", encoding="utf-8")

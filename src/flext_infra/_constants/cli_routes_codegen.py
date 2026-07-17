@@ -24,7 +24,6 @@ from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from flext_infra.deps.internal_sync import FlextInfraInternalDependencySyncService
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 
@@ -159,11 +158,6 @@ CODEGEN_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
                     "extra-paths",
                     "Synchronize pyright/mypy extraPaths",
                     FlextInfraExtraPathsManager,
-                ),
-                (
-                    "internal-sync",
-                    "Synchronize internal FLEXT dependencies",
-                    FlextInfraInternalDependencySyncService,
                 ),
                 (
                     "modernize",

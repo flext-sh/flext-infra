@@ -1,15 +1,17 @@
-"""Project-selection service base for flext-infra command services."""
+"""Project-selection service base for flext-infra command services.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from flext_infra import m, t
+from flext_infra import m, p, t
 from flext_infra._base_projects import FlextInfraProjectSelectionMixin
 from flext_infra.base import FlextInfraServiceBase
 
-type _InfraResultValue = t.Cli.ResultValue
 
-
-class FlextInfraProjectSelectionServiceBase[TDomainResult: _InfraResultValue](
+class FlextInfraProjectSelectionServiceBase[TDomainResult: p.Base](
     FlextInfraServiceBase[TDomainResult], FlextInfraProjectSelectionMixin
 ):
     """Shared service foundation for commands that target workspace projects."""

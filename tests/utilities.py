@@ -1,4 +1,8 @@
-"""Test utilities for flext-infra."""
+"""Test utilities for flext-infra.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -10,7 +14,7 @@ from typing import override
 from flext_tests import FlextTestsUtilities, r, tm
 
 from flext_cli import cli as cli_facade
-from flext_infra import config, u
+from flext_infra import config, main, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -35,14 +39,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
 
-        class DeptrySelector(u.Infra):
+        class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
 
             def __init__(self, result: p.Result[Sequence[p.Infra.ProjectInfo]]) -> None:
                 """Store the typed project-selection result."""
                 self._result = result
 
-            @override
             def resolve_projects(
                 self,
                 workspace_root: Path,
@@ -50,6 +53,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 *,
                 include_attached: bool = False,
             ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
+                """Return the configured project-selection result."""
                 del workspace_root, names, include_attached
                 return self._result
 
@@ -197,9 +201,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
 
-            def __init__(
-                self, values: t.SequenceOf[p.Result[t.JsonMapping]]
-            ) -> None:
+            def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
                 """Store the ordered TOML results for replay."""
                 self._values = list(values)
                 self._index = 0
@@ -210,9 +212,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 current = self._index
                 self._index = current + 1
                 if not self._values:
-                    return r[t.JsonMapping].fail(
-                        "toml reader sequence is empty"
-                    )
+                    return r[t.JsonMapping].fail("toml reader sequence is empty")
                 return (
                     self._values[current]
                     if current < len(self._values)
@@ -317,9 +317,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
         @staticmethod
-        def infra_mapping_result(
-            value: t.JsonMapping,
-        ) -> p.Result[t.JsonMapping]:
+        def infra_mapping_result(value: t.JsonMapping) -> p.Result[t.JsonMapping]:
             """Provide the typed test helper `infra_mapping_result`."""
             return r[t.JsonMapping].ok(
                 TestsFlextInfraUtilities.Tests.infra_mapping(value)
@@ -564,9 +562,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             project_names: t.StrSequence = (),
             root_validate_exit_code: str = "0",
-            root_build_exit_code: str = "0",
             project_validate_exit_codes: t.StrMapping | None = None,
-            project_build_exit_codes: t.StrMapping | None = None,
             initialize_root_git: bool = False,
             initialize_project_git: bool = False,
         ) -> Path:
@@ -583,41 +579,63 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 encoding="utf-8",
             )
             (workspace / "Makefile").write_text(
-                (
-                    "val:\n"
-                    f"\t@exit {root_validate_exit_code}\n"
-                    "build:\n"
-                    f"\t@exit {root_build_exit_code}\n"
-                ),
-                encoding="utf-8",
+                f"val:\n\t@exit {root_validate_exit_code}\n", encoding="utf-8"
             )
+            policy_paths = (
+                c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+                c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+            )
+            for policy_path in policy_paths:
+                policy_source = Path(__file__).resolve().parents[2] / policy_path
+                policy_target = workspace / policy_path
+                policy_target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(policy_source, policy_target)
             validate_exit_codes = dict(project_validate_exit_codes or {})
-            build_exit_codes = dict(project_build_exit_codes or {})
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
+                package_name = name.replace("-", "_")
                 (project / "pyproject.toml").write_text(
                     (
+                        "[build-system]\n"
+                        'build-backend = "hatchling.build"\n'
+                        'requires = ["hatchling"]\n'
+                        "\n"
+                        "[dependency-groups]\n"
+                        'dev = ["flext-tests @ '
+                        'git+https://github.com/flext-sh/flext-tests.git@0.20.0-dev"]\n'
+                        "\n"
                         "[project]\n"
                         f'name = "{name}"\n'
                         'version = "0.1.0"\n'
-                        'dependencies = ["flext-core>=0.1.0"]\n'
+                        'license = "MIT"\n'
+                        'dependencies = ["flext-core @ '
+                        'git+https://github.com/flext-sh/flext-core.git@0.20.0-dev"]\n'
+                        "\n"
+                        "[project.optional-dependencies]\n"
+                        'dev = ["flext-tests @ '
+                        'git+https://github.com/flext-sh/flext-tests.git@0.20.0-dev"]\n'
+                        "\n"
+                        "[tool.hatch.build.targets.sdist]\n"
+                        'include = ["/LICENSE", "/pyproject.toml", "/src"]\n'
+                        "\n"
+                        "[tool.hatch.build.targets.wheel]\n"
+                        f'packages = ["src/{package_name}"]\n'
+                        "\n"
+                        "[tool.hatch.metadata]\n"
+                        "allow-direct-references = true\n"
                     ),
                     encoding="utf-8",
                 )
-                src_dir = project / "src" / name.replace("-", "_")
+                (project / "LICENSE").write_text(
+                    "MIT License\n\nCopyright (c) FLEXT Tests\n", encoding="utf-8"
+                )
+                src_dir = project / "src" / package_name
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
                 validate_exit_code = validate_exit_codes.get(name, "0")
-                build_exit_code = build_exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
-                    (
-                        "val:\n"
-                        f"\t@exit {validate_exit_code}\n"
-                        "build:\n"
-                        f"\t@exit {build_exit_code}\n"
-                    ),
-                    encoding="utf-8",
+                    f"val:\n\t@exit {validate_exit_code}\n", encoding="utf-8"
                 )
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
@@ -627,6 +645,96 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 for name in project_names:
                     TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace / name)
             return workspace
+
+        @staticmethod
+        def run_release_main(workspace_root: Path, *arguments: str) -> int:
+            """Run the public release CLI against one real test workspace."""
+            return main([
+                "release",
+                "run",
+                "--workspace",
+                str(workspace_root),
+                *arguments,
+            ])
+
+        @staticmethod
+        def release_report_dir(workspace_root: Path, version: str) -> Path:
+            """Return the public release report directory for one version."""
+            return workspace_root / ".reports" / "release" / f"v{version}"
+
+        @staticmethod
+        def release_build_log(
+            workspace_root: Path, version: str, project_name: str
+        ) -> Path:
+            """Return one release project's observable build log path."""
+            return (
+                TestsFlextInfraUtilities.Tests.release_report_dir(
+                    workspace_root, version
+                )
+                / f"build-{project_name}.log"
+            )
+
+        @staticmethod
+        def release_artifact_dir(
+            workspace_root: Path, version: str, project_name: str
+        ) -> Path:
+            """Return one release project's immutable artifact-set directory."""
+            return (
+                TestsFlextInfraUtilities.Tests.release_report_dir(
+                    workspace_root, version
+                )
+                / "artifacts"
+                / project_name
+            )
+
+        @staticmethod
+        def commit_git_changes(repo_root: Path, message: str) -> None:
+            """Commit the current real fixture changes with deterministic identity."""
+            tm.ok(cli_facade.run_checked([c.Infra.GIT, "add", "-A"], cwd=repo_root))
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "commit", "-m", message], cwd=repo_root
+                )
+            )
+
+        @staticmethod
+        def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
+            """Return whether a real Git fixture contains the exact ref."""
+            return cli_facade.capture(
+                [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+            ).success
+
+        @staticmethod
+        def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
+            """Attach and seed a local bare origin for push behavior tests."""
+            bare_remote = remote_root / "origin.git"
+            tm.ok(
+                cli_facade.run_checked([
+                    c.Infra.GIT,
+                    "init",
+                    "--bare",
+                    str(bare_remote),
+                ])
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "remote",
+                        "add",
+                        c.Infra.GIT_ORIGIN,
+                        str(bare_remote),
+                    ],
+                    cwd=repo_root,
+                )
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
+                    cwd=repo_root,
+                )
+            )
+            return bare_remote
 
         @staticmethod
         def create_path_sync_workspace(
@@ -810,6 +918,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             Centralized SSOT replacing the 6-line scaffold previously
             duplicated across migrator test modules. Pass ``None`` for any
             file kwarg to skip that file (used by ``*_not_found`` tests).
+
+            Returns:
+                The created project root.
             """
             root = tmp_path / name
             root.mkdir(parents=True)
@@ -1255,7 +1366,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 """Store the raw dependency count."""
                 self._raw_count = raw_count
 
-            def model_dump(self) -> MutableMapping[str, t.IntMapping]:
+            def model_dump(self) -> t.JsonMapping:
                 """Return the dependency-report payload."""
                 return {"deptry": {"raw_count": self._raw_count}}
 
@@ -1290,13 +1401,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     return r[t.Pair[Sequence[t.JsonMapping], int]].fail(
                         self.deptry_failure
                     )
-                return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
+                return r[t.Pair[Sequence[t.JsonMapping], int]].ok(((), 0))
 
             @override
             def build_project_report(
-                self,
-                project_name: str,
-                deptry_issues: t.SequenceOf[t.JsonMapping],
+                self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
             ) -> TestsFlextInfraUtilities.Tests.DetectorReportStub:
                 del project_name, deptry_issues
                 return TestsFlextInfraUtilities.Tests.DetectorReportStub(0)

@@ -37,6 +37,15 @@ class TestsFlextInfraInfraWorkspaceDetector:
             role=role,
             state=c.Infra.RepositoryState.ACTIVE,
             profile=profile,
+            checkout=(
+                c.Infra.CheckoutKind.ROOT
+                if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+                else c.Infra.CheckoutKind.SUBMODULE
+            ),
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            read_only=False,
         )
 
     @staticmethod
@@ -48,7 +57,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
     ) -> None:
         """Write one schema-shaped manifest through the public YAML facade."""
         spec = m.Infra.WorkspaceSpec(
-            version=1,
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=repository.name,
             repository=repository,
             members=members,
@@ -169,6 +178,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         return member_root
 
     def test_root_manifest_declares_workspace(self, tmp_path: Path) -> None:
+        """Classify a repository with a root manifest as a workspace."""
         root_repository = self._repository(
             name="workspace-root",
             path=".",
@@ -183,6 +193,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_ancestor_gitmodules_does_not_attach_project(self, tmp_path: Path) -> None:
+        """Ignore an ancestor .gitmodules file without real Git attachment."""
         project_root = tmp_path / "nested" / "project"
         project_root.mkdir(parents=True)
         (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
@@ -193,6 +204,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_independent_member_clone_is_standalone(self, tmp_path: Path) -> None:
+        """Classify an independently cloned member as standalone."""
         project_root = tmp_path / "flext-member"
         self._initialize_repository(project_root)
         member_repository = self._repository(
@@ -209,6 +221,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_declared_real_submodule_is_workspace(self, tmp_path: Path) -> None:
+        """Classify a declared and attached Git submodule as a workspace member."""
         member_root = self._attached_member(tmp_path)
 
         tm.ok(
@@ -217,6 +230,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
+        """Reject an attached submodule absent from the parent manifest."""
         member_root = self._attached_member(tmp_path, declare_member=False)
 
         tm.fail(
@@ -225,16 +239,18 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_member_profile_mismatch_fails_closed(self, tmp_path: Path) -> None:
+        """Reject a member whose declared profile conflicts with its role."""
         member_root = self._attached_member(
             tmp_path, member_profile=c.Infra.MakeProfile.STANDALONE
         )
 
         tm.fail(
             FlextInfraWorkspaceDetector().detect(member_root),
-            has="role/state/profile mismatch",
+            has="role/state/profile/checkout mismatch",
         )
 
     def test_gitmodule_url_mismatch_fails_closed(self, tmp_path: Path) -> None:
+        """Reject a Git submodule whose configured URL differs from the manifest."""
         member_root = self._attached_member(tmp_path)
         workspace_root = member_root.parents[1]
         tm.ok(
@@ -254,6 +270,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="URL mismatch")
 
     def test_gitmodule_branch_mismatch_fails_closed(self, tmp_path: Path) -> None:
+        """Reject a Git submodule whose configured branch differs from the manifest."""
         member_root = self._attached_member(tmp_path)
         workspace_root = member_root.parents[1]
         tm.ok(
@@ -275,6 +292,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_malformed_parent_manifest_fails(self, tmp_path: Path) -> None:
+        """Reject an attached member when the parent manifest is malformed."""
         member_root = self._attached_member(tmp_path)
         parent_manifest = member_root.parents[1] / "config" / "workspace.yaml"
         parent_manifest.write_text("version: malformed\n", encoding="utf-8")
@@ -282,6 +300,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="workspace")
 
     def test_malformed_local_manifest_fails(self, tmp_path: Path) -> None:
+        """Reject a malformed repository-local manifest."""
         manifest = tmp_path / "config" / "workspace.yaml"
         manifest.parent.mkdir()
         manifest.write_text("version: malformed\n", encoding="utf-8")
@@ -289,12 +308,14 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.fail(FlextInfraWorkspaceDetector().detect(tmp_path), has="workspace")
 
     def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
+        """Execute detection against the detector's configured workspace root."""
         tm.ok(
             FlextInfraWorkspaceDetector(workspace_root=tmp_path).execute(),
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_invalid_path_returns_failure(self) -> None:
+        """Return a typed failure for an invalid filesystem path."""
         tm.fail(
             FlextInfraWorkspaceDetector().detect(Path("\0")),
             has="Workspace detection failed",

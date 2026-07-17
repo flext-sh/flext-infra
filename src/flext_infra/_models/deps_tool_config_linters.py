@@ -172,6 +172,13 @@ class FlextInfraModelsDepsToolConfigLinters:
             Sequence[str],
             m.Field(description="Directory/file globs excluded from ruff checks."),
         ] = m.Field(default_factory=tuple)
+        namespace_packages: Annotated[
+            Sequence[str],
+            m.Field(
+                alias="namespace-packages",
+                description="Intentional PEP 420 namespace roots checked by Ruff.",
+            ),
+        ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
             int, m.Field(alias="line-length", description="Maximum line length.")

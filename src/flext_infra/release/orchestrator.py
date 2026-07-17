@@ -1,16 +1,24 @@
-"""Release orchestration service."""
+"""Release orchestration service.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
+from flext_core import r
 from flext_infra import c, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.release._orchestrator_dispatch import (
     FlextInfraReleaseOrchestratorDispatchMixin,
 )
 from flext_infra.release.orchestrator_phases import FlextInfraReleaseOrchestratorPhases
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraReleaseOrchestrator(
@@ -38,14 +46,19 @@ class FlextInfraReleaseOrchestrator(
     @override
     def _build_targets(
         self, workspace_root: Path, project_names: t.StrSequence
-    ) -> t.SequenceOf[t.Pair[str, Path]]:
+    ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
         """Resolve release build targets."""
-        targets: t.MutableSequenceOf[t.Pair[str, Path]] = [
-            (c.Infra.RK_ROOT, workspace_root)
-        ]
+        targets: t.MutableSequenceOf[t.Pair[str, Path]] = []
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.success:
-            targets.extend((p.name, p.path) for p in projects_result.value)
+        if projects_result.failure:
+            return r[t.SequenceOf[t.Pair[str, Path]]].fail(
+                projects_result.error or "release project resolution failed"
+            )
+        targets.extend(
+            (project.name, project.path)
+            for project in projects_result.value
+            if project.name.startswith("flext-")
+        )
         seen: t.Infra.StrSet = set()
         unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
         for name, path in targets:
@@ -53,21 +66,26 @@ class FlextInfraReleaseOrchestrator(
                 continue
             seen.add(name)
             unique.append((name, path))
-        return unique
+        return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
 
     @override
     def _version_files(
         self, workspace_root: Path, project_names: t.StrSequence
-    ) -> t.SequenceOf[Path]:
+    ) -> p.Result[t.SequenceOf[Path]]:
         """Resolve candidate pyproject files for version updates."""
         files: t.MutableSequenceOf[Path] = [workspace_root / c.PYPROJECT_FILENAME]
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.success:
-            for project in projects_result.value:
-                pyproject = project.path / c.PYPROJECT_FILENAME
-                if pyproject.exists():
-                    files.append(pyproject)
-        return sorted({path.resolve() for path in files if path.exists()})
+        if projects_result.failure:
+            return r[t.SequenceOf[Path]].fail(
+                projects_result.error or "version project resolution failed"
+            )
+        for project in projects_result.value:
+            pyproject = project.path / c.PYPROJECT_FILENAME
+            if pyproject.exists():
+                files.append(pyproject)
+        return r[t.SequenceOf[Path]].ok(
+            sorted({path.resolve() for path in files if path.exists()})
+        )
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestrator"]

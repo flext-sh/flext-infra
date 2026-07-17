@@ -1,11 +1,14 @@
-"""flext-tests backed enforcement collectors."""
+"""flext-tests backed enforcement collectors.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 import importlib
 from pathlib import Path
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, p
 from flext_infra._enforcement.collection_base import FlextInfraEnforcementCollectionBase
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
@@ -15,9 +18,9 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
     """Collect violations from flext-tests validator methods."""
 
     def collect_tests_validator(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
+        self, project_dir: Path, rule: p.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
     ]:
         """Run the flext-tests validator method declared by ``rule``."""
         source = rule.source
@@ -63,7 +66,7 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
                 project_dir, rule, "validator returned empty scan payload"
             )
         wanted_ids = frozenset(source.rule_ids)
-        out: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        out: list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]] = []
         for violation in getattr(scan, "violations", ()):
             if wanted_ids and getattr(violation, "rule_id", "") not in wanted_ids:
                 continue

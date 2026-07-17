@@ -80,7 +80,6 @@ class FlextInfraConstantsCheck:
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
-
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
     BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
         "flext-cli",

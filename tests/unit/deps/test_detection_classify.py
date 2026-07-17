@@ -9,7 +9,7 @@ from __future__ import annotations
 from flext_tests import tm
 
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import p, t
+from tests import t
 
 
 class TestsFlextInfraDepsDetectionClassify:
@@ -50,9 +50,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_non_dict_error_skipped(self) -> None:
         """Ignore a diagnostic whose error payload is not a mapping."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.JsonMapping] = [
-            {"error": "not-a-dict", "module": "foo"}
-        ]
+        issues: t.SequenceOf[t.JsonMapping] = [{"error": "not-a-dict", "module": "foo"}]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
 
     def test_missing_code_skipped(self) -> None:

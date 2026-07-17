@@ -77,9 +77,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings):
     class ExtraPathsCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps extra-paths``."""
 
-    class InternalSyncCommand(mm.ScopeMixin, m.ContractModel):
-        """Canonical CLI payload for ``flext-infra deps internal-sync``."""
-
     class ModernizeCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps modernize``."""
 

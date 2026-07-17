@@ -1,14 +1,10 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Basemk package."""
+"""Basemk package.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
-from .generator import FlextInfraBaseMkGenerator as FlextInfraBaseMkGenerator
-from .renderer import (
-    FlextInfraBaseMkTemplateRenderer as FlextInfraBaseMkTemplateRenderer,
-)
-
-__all__: tuple[str, ...] = (
-    "FlextInfraBaseMkGenerator",
-    "FlextInfraBaseMkTemplateRenderer",
-)
+__all__: tuple[str, ...] = ()

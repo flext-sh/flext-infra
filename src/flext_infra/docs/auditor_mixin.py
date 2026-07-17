@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, p, r, t, u
 
 
 class FlextInfraDocAuditorMixin:
@@ -129,9 +129,9 @@ class FlextInfraDocAuditorMixin:
         docstring_coverage: p.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
-                m.Infra.DocScope,
+                p.Infra.DocScope,
                 t.SequenceOf[p.Infra.AuditIssue],
-                m.Infra.DocstringCoverage | None,
+                p.Infra.DocstringCoverage | None,
             ],
             t.StrSequence,
         ],

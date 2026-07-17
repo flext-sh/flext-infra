@@ -1,4 +1,8 @@
-"""Class reconstructor transformer for method ordering — rope-based."""
+"""Class reconstructor transformer for method ordering — rope-based.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -116,7 +120,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         """Collect ``(MethodInfo, start_offset, end_offset, source_chunk)`` ordered by line."""
         line_offsets = self._line_offsets(lines)
         source = "".join(lines)
-        raw: list[tuple[int, int, m.Infra.MethodInfo]] = []
+        raw: list[tuple[int, int, p.Infra.MethodInfo]] = []
         for method_name, method_pyname in class_obj.get_attributes().items():
             method_obj = method_pyname.get_object()
             if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):

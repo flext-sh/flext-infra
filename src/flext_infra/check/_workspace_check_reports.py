@@ -1,4 +1,8 @@
-"""Workspace check report rendering: markdown + SARIF + summary — extracted concern."""
+"""Workspace check report rendering: markdown + SARIF + summary — extracted concern.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -55,7 +59,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         results: t.SequenceOf[p.Infra.ProjectResult], gates: t.StrSequence
     ) -> p.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
-        rules_by_id: dict[str, m.Infra.SarifRule] = {}
+        rules_by_id: dict[str, p.Infra.SarifRule] = {}
         sarif_results: list[p.Infra.SarifResult] = []
         for project in results:
             for gate in gates:

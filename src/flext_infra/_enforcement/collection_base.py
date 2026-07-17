@@ -1,4 +1,8 @@
-"""Shared enforcement collection primitives."""
+"""Shared enforcement collection primitives.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, p
 from flext_infra.fixers.result import FlextInfraFixersResult as fr
 
@@ -15,7 +18,7 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 class FlextInfraEnforcementEvaluation:
     """Collected rule probes and collection failures for one project."""
 
-    violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]
+    violations: list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]]
     failures: list[fr.FailedFix]
 
 
@@ -24,8 +27,8 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collect_project_probe(
-        project_dir: Path, rule: me.EnforcementRuleSpec
-    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
+        project_dir: Path, rule: p.EnforcementRuleSpec
+    ) -> list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]]:
         """Return one project-level probe for gate-backed rules."""
         return [(rule, FlextInfraEnforcementCollectionBase.probe_for_path(project_dir))]
 
@@ -49,15 +52,15 @@ class FlextInfraEnforcementCollectionBase:
 
     @staticmethod
     def collection_failure(
-        project_dir: Path, rule: me.EnforcementRuleSpec, message: str
+        project_dir: Path, rule: p.EnforcementRuleSpec, message: str
     ) -> fr.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
         return fr.FailedFix(rule_id=rule.id, file_path=str(project_dir), error=message)
 
     def _empty_failure(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec, message: str
+        self, project_dir: Path, rule: p.EnforcementRuleSpec, message: str
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
+        list[tuple[p.EnforcementRuleSpec, p.AttributeProbe]], list[fr.FailedFix]
     ]:
         """Return a typed empty collection plus one structured failure."""
         return [], [self.collection_failure(project_dir, rule, message)]

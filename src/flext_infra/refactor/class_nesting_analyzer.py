@@ -1,4 +1,8 @@
-"""Class-nesting analysis for refactor violation reporting."""
+"""Class-nesting analysis for refactor violation reporting.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -34,7 +38,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             )
         scanner = FlextInfraRefactorLooseClassScanner()
         mapping_result = cls._load_mapping_index()
-        mapping_index: t.MappingKV[t.StrPair, m.Infra.ClassNestingMapping] = (
+        mapping_index: t.MappingKV[t.StrPair, p.Infra.ClassNestingMapping] = (
             mapping_result.unwrap() if mapping_result.success else {}
         )
         confidence_counts: Counter[str] = Counter()
@@ -124,7 +128,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(
         cls,
-    ) -> p.Result[t.MappingKV[t.StrPair, m.Infra.ClassNestingMapping]]:
+    ) -> p.Result[t.MappingKV[t.StrPair, p.Infra.ClassNestingMapping]]:
         """Load mapping index."""
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
@@ -147,7 +151,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc)
             )
-        index: MutableMapping[t.StrPair, m.Infra.ClassNestingMapping] = {}
+        index: MutableMapping[t.StrPair, p.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = u.Infra.normalize_module_path(entry.current_file)

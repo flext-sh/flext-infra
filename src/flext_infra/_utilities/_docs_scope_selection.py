@@ -1,4 +1,8 @@
-"""Docs scope selection helpers."""
+"""Docs scope selection helpers.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -35,7 +39,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     def _selected_scope(
         workspace_root: Path,
         name: str,
-        project_by_name: dict[str, m.Infra.ProjectInfo],
+        project_by_name: dict[str, p.Infra.ProjectInfo],
         output_dir: Path | str,
     ) -> p.Infra.DocScope | None:
         """Build one selected scope from discovery or a local path."""
@@ -51,9 +55,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
     @staticmethod
     def _project_by_name(
         discovered: t.SequenceOf[p.Infra.ProjectInfo],
-    ) -> dict[str, m.Infra.ProjectInfo]:
+    ) -> dict[str, p.Infra.ProjectInfo]:
         """Index discovered projects by canonical and directory names."""
-        project_by_name: dict[str, m.Infra.ProjectInfo] = {}
+        project_by_name: dict[str, p.Infra.ProjectInfo] = {}
         for project in discovered:
             project_by_name.setdefault(project.name, project)
             project_by_name.setdefault(project.path.name, project)

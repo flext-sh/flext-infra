@@ -1,4 +1,8 @@
-"""Phase: Ensure coverage configuration in pyproject.toml."""
+"""Phase: Ensure coverage configuration in pyproject.toml.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -15,7 +19,7 @@ class FlextInfraEnsureCoverageConfigPhase:
 
     def _phases(
         self, *, project_kind: str = "core"
-    ) -> tuple[p.Cli.TomlPhaseConfig, m.Cli.TomlPhaseConfig]:
+    ) -> tuple[p.Cli.TomlPhaseConfig, p.Cli.TomlPhaseConfig]:
         """Build the canonical coverage phases for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
         fail_under_map: t.IntMapping = {

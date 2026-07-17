@@ -47,9 +47,6 @@ version = "0.20.0.dev0"
 email = "team@flext.sh"
 name = "FLEXT Team"
 
-[project.entry-points.pytest11]
-flext_infra_enforcement = "flext_infra._fixtures.enforcement"
-
 [[project.maintainers]]
 email = "team@flext.sh"
 name = "FLEXT Team"
@@ -266,7 +263,6 @@ project-excludes = [
   "**/typings/**",
   "**/vendor/**",
   "**/venv/**",
-  ".flext-deps/**",
   ".venv/**",
   "typings/**",
   "vendor/**",

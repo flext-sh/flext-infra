@@ -11,7 +11,7 @@ from flext_tests import tm
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
-from tests import p, t
+from tests import t
 
 
 class TestsFlextInfraIntegrationRefactorNestingProject:

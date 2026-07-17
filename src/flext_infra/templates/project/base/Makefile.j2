@@ -21,6 +21,8 @@ PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src
 
+{% include "base_mypy_limit.mk.j2" %}
+
 {% for verb in make.verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
@@ -163,7 +165,7 @@ _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 	@$(UV_RUN) pyrefly check
-	@$(UV_RUN) mypy $(MYPY_PATHS)
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
 	@$(UV_RUN) vulture

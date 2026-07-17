@@ -28,7 +28,7 @@ class FlextInfraUtilitiesRopeAnalysis:
 
     _parse_project: ClassVar[t.Infra.RopeProject | None] = None
     _SEMANTIC_STATE_CACHE: ClassVar[
-        dict[tuple[str, str, int], m.Infra.ModuleSemanticState]
+        dict[tuple[str, str, int], p.Infra.ModuleSemanticState]
     ] = {}
     _EXPORT_NAMES_CACHE: ClassVar[
         dict[tuple[str, str, int, bool, bool, bool, bool, bool], t.StrSequence]

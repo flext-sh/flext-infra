@@ -1,4 +1,8 @@
-"""Shared service foundation for flext-infra command services."""
+"""Shared service foundation for flext-infra command services.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -10,10 +14,8 @@ from flext_infra import c, m, p, settings, t, u
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
-type _InfraResultValue = t.Cli.ResultValue
 
-
-class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
+class FlextInfraServiceBase[TDomainResult: p.Base](
     s[TDomainResult], FlextInfraCommandPayloadMixin
 ):
     """Domain command context shared by all flext-infra CLI services.

@@ -1,4 +1,8 @@
-"""Migrate projects to unified FLEXT infrastructure."""
+"""Migrate projects to unified FLEXT infrastructure.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -86,7 +90,7 @@ class FlextInfraProjectMigrator(
             return r[t.SequenceOf[p.Infra.MigrationResult]].fail(
                 projects_result.error or "workspace discovery failed"
             )
-        projects_by_path: dict[Path, m.Infra.ProjectInfo] = {
+        projects_by_path: dict[Path, p.Infra.ProjectInfo] = {
             project.path.resolve(): project for project in projects_result.value
         }
         workspace_project = self._workspace_root_project(resolved_root)

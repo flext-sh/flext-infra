@@ -24,6 +24,7 @@ _MAKE_ISOLATION_ENV_KEYS = (
     "WORKSPACE_ROOT",
 )
 _MAKE_TEST_ENV_KEYS = (
+    "BASH_ENV",
     "FILE",
     "FILES",
     "CHANGED_ONLY",
@@ -81,6 +82,16 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
     )
 
 
+def _write_mise_stub(bin_dir: Path, log_path: Path, *, exit_code: int) -> None:
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    _write_executable(
+        bin_dir / "mise",
+        '#!/bin/sh\nprintf \'mise %s\\n\' "$*" >> "'
+        + str(log_path)
+        + f'"\nexit {exit_code}\n',
+    )
+
+
 def _write_venv_python_stub(
     project_root: Path, log_path: Path, *, include_env: bool = False
 ) -> None:
@@ -135,6 +146,26 @@ def _run_make(
 
 class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
+
+    def test_make_build_uses_mise_uv_and_propagates_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail the target when the Mise-managed uv builder fails."""
+        log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        _write_mise_stub(bin_dir, log_path, exit_code=23)
+        _write_project(tmp_path)
+
+        result = _run_make(
+            tmp_path, "build", env={"PATH": f"{bin_dir}:{os.environ['PATH']}"}
+        )
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            log_path.read_text(encoding="utf-8").splitlines(),
+            eq=[f"mise exec -- uv build --project {tmp_path} --no-sources"],
+        )
+        tm.that(result.stdout, lacks="Build complete")
 
     def test_make_help_lists_supported_options(self, tmp_path: Path) -> None:
         """Expose every supported generated Make option through help."""
@@ -294,6 +325,33 @@ class TestsFlextInfraBasemkMakeContract:
             ],
             lacks="run mypy",
         )
+
+    def test_rendered_base_mk_bounds_every_mypy_process(self) -> None:
+        """Verify generated Mypy and dmypy commands inherit the finite cap."""
+        rendered = _render_base_mk()
+        tm.that(rendered, has="MYPY_MEMORY_LIMIT_MB ?= 6144")
+        tm.that(rendered, has="MYPY_TIMEOUT_SECONDS ?= 600")
+        tm.that(
+            rendered,
+            has='timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --',
+        )
+        tm.that(rendered, has="MYPY_MEMORY_LIMIT_MB must be a positive integer")
+        tm.that(rendered, has="MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144")
+        tm.that(rendered, has="MYPY_TIMEOUT_SECONDS must be a positive integer")
+        tm.that(rendered, has="MYPY_TIMEOUT_SECONDS must be less than or equal to 600")
+        tm.that(rendered, has="exit=$$code; signal=$$signal")
+        tm.that(rendered.count("$(MYPY_BOUNDED)"), eq=6)
+
+    def test_make_daemon_start_dry_run_sets_server_timeout(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the persistent dmypy server bounded without starting it."""
+        _write_project(tmp_path)
+
+        result = _run_make(tmp_path, "--dry-run", "daemon-start-mypy")
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stdout, has='start --timeout "600" -- --config-file')
 
     def test_make_check_file_scope_unsets_python_path_env(self, tmp_path: Path) -> None:
         """Remove inherited Python path variables from file-scoped checks."""
@@ -502,9 +560,7 @@ class TestsFlextInfraBasemkMakeContract:
                     "python -m flext_infra validate basemk-validate "
                     f"--workspace {workspace_root}"
                 ),
-                # NOTE (multi-agent, mro-wkii.17.9): path-sync is not part of
-                # the generated Make contract; conform owns pyproject output.
-                "python -m flext_infra deps internal-sync",
+                "run python -m flext_infra deps extra-paths",
                 "uv lock",
                 "uv sync --all-extras --all-groups",
             ],

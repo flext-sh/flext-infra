@@ -33,6 +33,7 @@ Infra:
           - typings
           - vendor
           - venv
+        namespace-packages: [tests]
         fix: false
         line-length: 88
         preview: true
@@ -493,7 +494,6 @@ Infra:
           - "**/venv/**"
           - "**/vendor/**"
           - "**/legado/**"
-          - ".flext-deps/**"
           - ".venv/**"
           - "typings/**"
           - "vendor/**"

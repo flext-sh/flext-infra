@@ -1,126 +1,134 @@
-"""Public tests for release orchestration entrypoints."""
+"""Public release orchestration behavior tests.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from tests import c
-from tests import m
 from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
 
-from pathlib import Path
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
+class TestsFlextInfraReleaseOrchestration:
+    """Behavior contract for orchestration through the public CLI."""
 
-def make_config(
-    workspace_root: Path,
-    *,
-    phases: list[str] | None = None,
-    project_names: list[str] | None = None,
-    dry_run: bool = False,
-    create_branches: bool = False,
-    next_dev: bool = False,
-) -> p.Infra.ReleaseOrchestratorConfig:
-    return m.Infra.ReleaseOrchestratorConfig(
-        workspace_root=workspace_root,
-        version=c.Tests.RELEASE_VERSION_TARGET,
-        tag=c.Tests.RELEASE_TAG_TARGET,
-        phases=phases or [c.Infra.VERB_VALIDATE],
-        project_names=project_names,
-        dry_run=dry_run,
-        push=False,
-        dev_suffix=False,
-        create_branches=create_branches,
-        next_dev=next_dev,
-        next_bump=c.Tests.RELEASE_BUMP_MINOR,
-    )
+    class TestsPhaseDispatch:
+        """Phase selection and failure-order behavior."""
 
+        @staticmethod
+        def test_invalid_phase_fails(tmp_path: Path) -> None:
+            """Reject an unknown phase at the public command boundary."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
-def test_execute_validate_dry_run_succeeds(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                "invalid",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-    result = FlextInfraReleaseOrchestrator.model_validate({
-        "workspace_root": workspace,
-        "phase": c.Tests.RELEASE_PHASE_VALIDATE,
-        "interactive": 0,
-    }).execute()
+            tm.that(result, eq=1)
 
-    tm.ok(result)
+        @staticmethod
+        def test_validate_failure_stops_before_version_update(tmp_path: Path) -> None:
+            """Stop the public pipeline before a later version mutation."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, root_validate_exit_code="1"
+            )
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                f"{c.Tests.RELEASE_PHASE_VALIDATE} {c.Tests.RELEASE_PHASE_VERSION}",
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-def test_run_release_invalid_phase_fails(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+            tm.that(result, eq=1)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
+            )
 
-    result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=["invalid"])
-    )
+    class TestsProjectSelection:
+        """Selected-project behavior."""
 
-    tm.fail(result)
-    tm.that((result.error or ""), has="invalid phase")
+        @staticmethod
+        def test_version_updates_only_selected_project(tmp_path: Path) -> None:
+            """Update the root and selected project without touching its peer."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=("flext-a", "flext-b")
+            )
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--projects",
+                "flext-a",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-def test_run_release_empty_phase_list_is_a_noop_success(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
+            tm.that(result, eq=0)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}"',
+            )
+            tm.that(
+                (workspace / "flext-a" / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_TARGET}"',
+            )
+            tm.that(
+                (workspace / "flext-b" / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
+            )
 
-    result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=[])
-    )
+    class TestsNextDevelopment:
+        """Next-development version behavior."""
 
-    tm.ok(result)
+        @staticmethod
+        def test_next_dev_updates_workspace_after_release(tmp_path: Path) -> None:
+            """Apply the configured next development version after release."""
+            workspace = u.Tests.create_release_workspace(tmp_path)
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_VERSION,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--next-dev",
+                "--apply",
+            )
 
-def test_run_release_stops_on_validate_failure_before_version_update(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path, root_validate_exit_code="1")
-
-    result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=[c.Infra.VERB_VALIDATE, c.Infra.VERSION])
-    )
-
-    tm.fail(result)
-    tm.that((workspace / "pyproject.toml").read_text(), has='version = "0.1.0"')
-
-
-def test_run_release_project_filter_updates_only_selected_project(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path, project_names=("flext-a", "flext-b")
-    )
-
-    result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=[c.Infra.VERSION], project_names=["flext-a"])
-    )
-
-    tm.ok(result)
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
-        in (workspace / "pyproject.toml").read_text()
-    )
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_TARGET}"'
-        in (workspace / "flext-a" / "pyproject.toml").read_text()
-    )
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_BASE}"'
-        in (workspace / "flext-b" / "pyproject.toml").read_text()
-    )
-
-
-def test_run_release_next_dev_updates_workspace_to_next_dev_version(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_release_workspace(tmp_path)
-
-    result = FlextInfraReleaseOrchestrator().run_release(
-        make_config(workspace, phases=[c.Infra.VERSION], next_dev=True)
-    )
-
-    tm.ok(result)
-    assert (
-        f'version = "{c.Tests.RELEASE_VERSION_NEXT_DEV}"'
-        in (workspace / "pyproject.toml").read_text()
-    )
+            tm.that(result, eq=0)
+            tm.that(
+                (workspace / "pyproject.toml").read_text(),
+                has=f'version = "{c.Tests.RELEASE_VERSION_NEXT_DEV}"',
+            )

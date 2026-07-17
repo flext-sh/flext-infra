@@ -113,7 +113,6 @@ class TestsFlextInfraInfraConstantsCore:
     def test_pyproject_skip_dirs_includes_flext_dirs(self) -> None:
         skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
         tm.that(skip_dirs, has=".claude.disabled")
-        tm.that(skip_dirs, has=".flext-deps")
         tm.that(skip_dirs, has="context_test")
         tm.that(skip_dirs, has="rope_ws")
         tm.that(skip_dirs, has="tmp_flow_test")
@@ -122,9 +121,6 @@ class TestsFlextInfraInfraConstantsCore:
         check_excluded = c.Infra.CHECK_EXCLUDED_DIRS
         common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(check_excluded.issuperset(common), eq=True)
-
-    def test_check_excluded_dirs_includes_flext_deps(self) -> None:
-        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, has=".flext-deps")
 
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)

@@ -373,6 +373,23 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile | None,
             m.Field(description="Makefile generation profile"),
         ] = None
+        checkout: Annotated[
+            FlextInfraConstantsCodegenProject.CheckoutKind,
+            m.Field(description="Physical checkout topology"),
+        ]
+        codegen: Annotated[
+            FlextInfraConstantsCodegenProject.CodegenKind,
+            m.Field(description="Repository code-generation policy"),
+        ]
+        package: Annotated[
+            bool, m.Field(description="Repository publishes a Python package")
+        ]
+        editable: Annotated[
+            bool, m.Field(description="Overlay repository as an editable dependency")
+        ]
+        read_only: Annotated[
+            bool, m.Field(description="Repository rejects generated mutations")
+        ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
@@ -434,6 +451,27 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
+        ]
+        mypy_memory_limit_mb: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
+        ]
+        mypy_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
+        ]
+        mypy_signal_exit_offset: Annotated[
+            int, m.Field(gt=0, description="Shell signal exit-code offset")
+        ]
+        prlimit_command: Annotated[
+            NonEmptyStr, m.Field(description="Address-space limiter executable")
+        ]
+        prlimit_address_space_option: Annotated[
+            NonEmptyStr, m.Field(description="Address-space limiter option")
+        ]
+        timeout_command: Annotated[
+            NonEmptyStr, m.Field(description="Wall-time limiter executable")
+        ]
+        timeout_kill_after_seconds: Annotated[
+            int, m.Field(gt=0, description="Forced-termination grace period")
         ]
         tooling: Annotated[
             FlextInfraModelsDepsToolSettings.ToolConfigDocument,
@@ -521,6 +559,18 @@ class FlextInfraConfigModels:
         ]
         repository_branch: Annotated[
             NonEmptyStr, m.Field(description="Canonical repository Git branch")
+        ]
+        workspace_manifest_version: Annotated[
+            int,
+            m.Field(
+                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                description="Workspace manifest schema version",
+            ),
+        ]
+        workspace_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Repository rendered into the workspace manifest"),
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
         project_resources: Annotated[

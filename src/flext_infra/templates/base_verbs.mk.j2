@@ -43,7 +43,6 @@ help: ## Show commands
 boot: ## Complete setup
 	# mro-j47u: generated boot consumes the sole public extra-paths route.
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
-	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
 	$(Q)uv lock
 	$(Q)uv sync --all-extras --all-groups
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
@@ -60,10 +59,8 @@ boot: ## Complete setup
 	fi
 
 build: ## Build distributable artifacts
-	# mro-wkii.17.26 (codex): package real gRPC modules generated from proto SSOTs.
-	$(Q)$(PROJECT_INFRA_CODEGEN) grpc --workspace "$(CURDIR)" --apply
-	$(Q)build_start=$$(date +%s); \
-	$(POETRY) build; \
+	$(Q)build_start=$$(date +%s) && \
+	mise exec -- uv build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
 check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to select)

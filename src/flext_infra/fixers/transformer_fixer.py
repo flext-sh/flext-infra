@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import c, p, t, u
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
@@ -70,7 +69,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     }
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: p.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
@@ -78,7 +77,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
     ) -> fr.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
@@ -148,13 +147,16 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _is_owned_library_exempt(
-        project_dir: Path, fix_action: me.EnforcementFixAction | None, file_path: Path
+        project_dir: Path, fix_action: p.EnforcementFixAction | None, file_path: Path
     ) -> bool:
         """Skip import modernization inside the library's owning project.
 
         Direct imports of pydantic/structlog/oracledb/ldap3 are allowed within
         the project that owns the abstraction facade; consumers must route
         through that facade.
+
+        Returns:
+            Whether the import is exempt from modernization.
         """
         _ = file_path
         if fix_action is None or fix_action.target != "import_modernizer":
@@ -176,6 +178,9 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         Keeps canonical runtime-alias imports (c/m/p/t/u) that Ruff may consider
         unused because they are referenced inside string annotations or via
         lazy exports.
+
+        Returns:
+            Success when all touched files are normalized.
         """
         paths = tuple(Path(path) for path in file_paths)
         with u.Infra.open_project(self._workspace_root) as rope_project:
@@ -187,7 +192,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction | None,
+        fix_action: p.EnforcementFixAction | None,
         ctx: p.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
@@ -270,7 +275,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _build_transformer(
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction,
+        fix_action: p.EnforcementFixAction,
         file_path: Path,
     ) -> FlextInfraRopeTransformer:
         """Instantiate a transformer with params declared in the catalog."""

@@ -1,4 +1,8 @@
-"""Public behavior tests for the pyproject modernizer."""
+"""Public behavior tests for the pyproject modernizer.
+
+Copyright (c) 2025 FLEXT Team. All rights reserved.
+SPDX-License-Identifier: MIT
+"""
 
 from __future__ import annotations
 
@@ -18,12 +22,14 @@ class TestsFlextInfraDepsModernizerMain:
     def test_initialization_uses_explicit_workspace(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify initialization uses explicit workspace."""
         modernizer = FlextInfraPyprojectModernizer(workspace_root=modernizer_workspace)
         tm.that(modernizer.root, eq=modernizer_workspace)
 
     def test_process_file_returns_invalid_toml(
         self, modernizer_workspace: Path
     ) -> None:
+        """Report invalid TOML through the public file processor."""
         pyproject = modernizer_workspace / c.PYPROJECT_FILENAME
         pyproject.write_text("invalid [[[", encoding="utf-8")
         changes = FlextInfraPyprojectModernizer(
@@ -32,6 +38,7 @@ class TestsFlextInfraDepsModernizerMain:
         tm.that(changes, has="invalid TOML")
 
     def test_run_apply_updates_root_pyproject(self, modernizer_workspace: Path) -> None:
+        """Verify run apply updates root pyproject."""
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace,
             apply_changes=True,
@@ -41,15 +48,14 @@ class TestsFlextInfraDepsModernizerMain:
         exit_code = modernizer.run()
         tm.that(exit_code, eq=0)
         tm.that(
-            (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
-            ),
+            (modernizer_workspace / c.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
             has='build-backend = "hatchling.build"',
         )
 
     def test_run_rejects_unknown_selected_project(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify run rejects unknown selected project."""
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=modernizer_workspace, selected_projects=["missing-project"]
         )
@@ -58,6 +64,7 @@ class TestsFlextInfraDepsModernizerMain:
     def test_cli_reports_pending_changes_in_audit_mode(
         self, modernizer_workspace: Path
     ) -> None:
+        """Verify cli reports pending changes in audit mode."""
         tm.that(
             main([
                 "deps",

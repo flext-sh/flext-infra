@@ -41,7 +41,6 @@ class FlextInfraConstantsSourceCode:
     "Directories to exclude when analyzing documentation."
     PYPROJECT_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".claude.disabled",
-        ".flext-deps",
         "context_test",
         "rope_ws",
         "tmp_flow_test",
@@ -50,10 +49,7 @@ class FlextInfraConstantsSourceCode:
         "legado",
     }
     "Directories to skip when scanning pyproject.toml files."
-    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        ".flext-deps",
-        "reports",
-    }
+    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"reports"}
     "Directories to exclude during quality checks."
     ITERATION_EXCLUDED_PARTS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "dist-packages",
