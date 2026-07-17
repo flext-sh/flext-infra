@@ -32,6 +32,10 @@ class FlextInfraCodegenGenerationRenderersMixin(
         ).unwrap()
         # mro-wkii.17 / mro-0ftd.3.5: formatting is explicit; lint never
         # mutates output, so renderer defects fail at their canonical owner.
+        # mro-96j2.4 (agent: claude): Ruff *check* runs once as a batched stage
+        # over the changed artifact set (FlextInfraCodegenLazyInit.
+        # batch_lint_generated), not per rendered template. Only the byte-
+        # canonical format pass stays here so drift comparison is exact.
         compile(rendered, target_filename, "exec")
         format_result = u.Cli.run_raw(
             [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", target_filename, "-"],
@@ -45,27 +49,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             detail = (output.stderr or output.stdout).strip()
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
-        formatted = output.stdout.rstrip() + "\n"
-        check_result = u.Cli.run_raw(
-            [
-                c.Infra.RUFF,
-                c.Infra.CHECK,
-                "--no-fix",
-                "--stdin-filename",
-                target_filename,
-                "-",
-            ],
-            cwd=template_root,
-            input_data=formatted.encode(c.Cli.ENCODING_DEFAULT),
-        )
-        if check_result.failure:
-            raise ValueError(check_result.error or "ruff check failed")
-        checked = check_result.unwrap()
-        if checked.exit_code != 0:
-            detail = (checked.stderr or checked.stdout).strip()
-            msg = f"generated initializer failed Ruff ({checked.exit_code}): {detail}"
-            raise ValueError(msg)
-        return formatted
+        return output.stdout.rstrip() + "\n"
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

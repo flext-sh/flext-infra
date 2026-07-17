@@ -350,5 +350,53 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
 
+    # mro-96j2.4 (agent: claude): the batched lint stage validates the whole
+    # changed set in one Ruff invocation and flags any dirty artifact.
+    def test_batch_lint_flags_dirty_generated_artifact(self, tmp_path: Path) -> None:
+        """Batched lint reports a Ruff-dirty generated file and passes clean ones."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        clean_file = package_root / "clean_generated.py"
+        clean_file.write_text("from __future__ import annotations\n", encoding="utf-8")
+        dirty_file = package_root / "dirty_generated.py"
+        dirty_file.write_text("import os\n", encoding="utf-8")
+
+        clean_errors = service.batch_lint_generated((str(clean_file),))
+        dirty_errors = service.batch_lint_generated((str(dirty_file),))
+        empty_errors = service.batch_lint_generated(())
+
+        tm.that(clean_errors, eq=0)
+        tm.that(dirty_errors, gt=0)
+        tm.that(empty_errors, eq=0)
+
+    # mro-96j2.4 (agent: claude): lint runs as one batched stage at the end of
+    # generation, not per rendered template. Applied initializers must still be
+    # Ruff-clean regardless of where the check executes.
+    def test_applied_initializer_passes_batched_ruff_check(
+        self, tmp_path: Path
+    ) -> None:
+        """An applied lazy-init artifact is Ruff-clean after batched validation."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        init_path = package_root / c.Infra.INIT_PY
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = "flext_test_project"
+        service.apply_changes = True
+
+        result = service.execute()
+
+        tm.that(result.success, eq=True)
+        tm.that(service.modified_files, eq=(str(init_path),))
+        ruff_check = u.Cli.run_raw([
+            c.Infra.RUFF,
+            c.Infra.CHECK,
+            "--no-fix",
+            str(init_path),
+        ])
+        tm.that(ruff_check.success, eq=True)
+        tm.that(ruff_check.value.exit_code, eq=0)
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]
