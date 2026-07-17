@@ -1,16 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
-from tests import m
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
-from tests import p, t
-
+from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
+from tests import m, p, t, u
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:

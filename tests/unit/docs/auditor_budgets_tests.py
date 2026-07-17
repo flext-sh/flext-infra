@@ -6,17 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import u
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import p, t, u
 
 
 class TestLoadAuditBudgets:

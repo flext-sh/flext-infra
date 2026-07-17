@@ -22,9 +22,13 @@ class FlextInfraCodegenProtocolModelRender:
         """Render every validated model field and owned public property."""
         members: list[str] = []
         for field_name, field in model.model_fields.items():
-            annotation = FlextInfraCodegenProtocolModelAnnotations.render(
-                field.annotation
-            )
+            try:
+                annotation = FlextInfraCodegenProtocolModelAnnotations.render(
+                    field.annotation
+                )
+            except TypeError as exc:
+                msg = f"m.Infra.{name}.{field_name}: {exc}"
+                raise TypeError(msg) from exc
             members.extend(cls._property(field_name, annotation))
         for property_name, annotation in cls._owned_properties(model).items():
             if property_name in model.model_fields:
@@ -116,9 +120,13 @@ class FlextInfraCodegenProtocolModelRender:
                 if annotation is inspect.Signature.empty:
                     msg = f"public property lacks a return annotation: {base.__name__}.{name}"
                     raise TypeError(msg)
-                properties[name] = FlextInfraCodegenProtocolModelAnnotations.render(
-                    annotation
-                )
+                try:
+                    properties[name] = FlextInfraCodegenProtocolModelAnnotations.render(
+                        annotation
+                    )
+                except TypeError as exc:
+                    msg = f"m.Infra.{model.__name__}.{name}: {exc}"
+                    raise TypeError(msg) from exc
         return properties
 
     @staticmethod

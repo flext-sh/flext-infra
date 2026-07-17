@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from tests import c
-from tests import u
-
-from pathlib import Path
+from tests import c, u
 
 
 class TestsFlextInfraDepsModernizerWorkspace:

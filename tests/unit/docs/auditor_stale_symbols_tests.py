@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from tests import m
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
+from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
+from tests import m, u
 
 
 def _write(path: Path, content: str) -> None:

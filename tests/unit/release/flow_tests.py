@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests import c
-from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
 
-from pathlib import Path
-
+from tests import TestsFlextInfraUtilities as u, c
 
 
 class TestsFlextInfraReleaseFlow:

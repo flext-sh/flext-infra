@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import p, t, u
 
 
 def _transform_source(

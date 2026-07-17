@@ -8,17 +8,14 @@ integration suite (tests/integration/docs_serve_e2e_tests.py).
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.utilities import u
-from tests import c
-from tests import m
-from tests import u as tu
-from flext_tests import tm
-
-from pathlib import Path
-
+from tests import c, m, u as tu
 
 
 def _write_mkdocs_yml(scope_path: Path) -> None:

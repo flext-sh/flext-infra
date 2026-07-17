@@ -66,6 +66,18 @@ class FlextInfraCodegenProtocolModelAnnotations:
             return " | ".join(cls.render(argument) for argument in arguments)
         if origin is Literal:
             return f"Literal[{', '.join(repr(argument) for argument in arguments)}]"
+        if origin is abc.Callable:
+            parameters, return_type = arguments
+            if parameters is Ellipsis:
+                rendered_parameters = "..."
+            elif isinstance(parameters, list):
+                rendered_parameters = ", ".join(
+                    cls.render(parameter) for parameter in parameters
+                )
+            else:
+                msg = f"unsupported Callable parameters: {parameters!r}"
+                raise TypeError(msg)
+            return f"Callable[[{rendered_parameters}], {cls.render(return_type)}]"
         if origin is not None:
             rendered_origin = cls._ORIGINS.get(origin)
             if rendered_origin is None:

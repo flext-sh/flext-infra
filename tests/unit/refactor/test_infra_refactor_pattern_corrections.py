@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra import c, p, t
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 def _apply_rule(

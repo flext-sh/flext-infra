@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
-from flext_tests import tm
-
-from collections.abc import Sequence
-
 
 
 def _transform(source: str) -> tuple[str, Sequence[str]]:

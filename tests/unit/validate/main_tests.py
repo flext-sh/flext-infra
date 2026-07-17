@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -16,12 +17,7 @@ from flext_infra import main as infra_main
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import c, p, t
 
 
 def _cli(*args: str) -> int:

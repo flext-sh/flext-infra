@@ -8,15 +8,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tf, tm
 
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-
-from pathlib import Path
-
 
 
 @pytest.fixture

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -11,14 +13,7 @@ from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-from tests import c
-from tests import m
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import c, m, p, t
 
 
 class TestsFlextInfraRefactorInfraRefactorClassPlacement:

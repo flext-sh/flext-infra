@@ -201,16 +201,20 @@ class FlextInfraUtilitiesDependencies:
     @staticmethod
     def dedupe_specs(specs: t.StrSequence) -> t.StrSequence:
         """Return deterministic unique dependency specs keyed by normalized name."""
-        selected_by_name: dict[str, str] = {}
+        # mro-6kq8 (kimi): keep deduplication in a typed tuple pair instead of a
+        # model-less dict[str, str] so the helper respects U14/U17.
+        selected: list[tuple[str, str]] = []
+        seen: set[str] = set()
         for raw in specs:
             item = raw.strip()
             if not item:
                 continue
             dependency_name = FlextInfraUtilitiesDependencies.dep_name(item)
-            if dependency_name is None or dependency_name in selected_by_name:
+            if dependency_name is None or dependency_name in seen:
                 continue
-            selected_by_name[dependency_name] = item
-        return tuple(selected_by_name[name] for name in sorted(selected_by_name))
+            seen.add(dependency_name)
+            selected.append((dependency_name, item))
+        return tuple(item for _, item in sorted(selected))
 
     @classmethod
     def declared_dependency_names(cls, document: TOMLDocument) -> t.StrSequence:

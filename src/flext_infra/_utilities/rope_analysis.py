@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import io as _io
 import importlib.util as _importlib_util
+import io as _io
 import tokenize as _tokenize
 from pathlib import Path
 from typing import ClassVar

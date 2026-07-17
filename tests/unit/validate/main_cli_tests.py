@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import main as infra_main
-
-from pathlib import Path
-
 
 
 class TestValidateCli:

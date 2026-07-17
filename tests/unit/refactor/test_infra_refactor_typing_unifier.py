@@ -3,12 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from flext_tests import tm
 
+from flext_infra import c
+from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 from tests import p, t
-
 
 
 class FlextInfraRefactorTypingUnificationRule:

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests import m
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
+from tests import m, u
 
 
 def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:

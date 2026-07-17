@@ -6,14 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from tests import c
-
-from pathlib import Path
 
 
 class TestsFlextInfraDepsModernizerMain:

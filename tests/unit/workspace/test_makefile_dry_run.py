@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_cli import cli, p as cli_p
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 def _write_workspace_makefile_fixture(tmp_path: Path) -> Path:

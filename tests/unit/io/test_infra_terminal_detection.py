@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
+
 from flext_tests import tm
-
-from collections.abc import Generator
-
 
 
 class _Stream:

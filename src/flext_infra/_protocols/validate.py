@@ -17,8 +17,7 @@ from flext_cli import p
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p as ip
-    from flext_infra import t
+    from flext_infra import p as ip, t
 
 
 @runtime_checkable

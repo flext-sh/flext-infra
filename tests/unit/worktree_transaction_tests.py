@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, m, p, u as infra_u
-from flext_infra import main as infra_main
+from flext_infra import config, m, main as infra_main, p, u as infra_u
 from tests import p, t, u
 
 

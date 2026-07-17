@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import MutableMapping
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import tomlkit
 from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
-from tests import u
-
-from pathlib import Path
-
-from tests import m
-
+from tests import m, u
 
 
 class TestsFlextInfraDepsModernizerPyright:

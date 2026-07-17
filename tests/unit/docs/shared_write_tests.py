@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m
-from tests import u
 from flext_tests import tm
+
+from tests import m, u
 
 
 def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:

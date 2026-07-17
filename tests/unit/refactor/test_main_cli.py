@@ -1,24 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c
-from tests import p, t
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import m
-from tests import p
-
+from tests import c, m, p, t, u
 
 
 def _parse_source_ast(source: str) -> object | None:

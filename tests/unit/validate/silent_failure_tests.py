@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -12,12 +13,7 @@ from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
-from tests import m
-from tests import p, t
-from tests import u
-
-from pathlib import Path
-
+from tests import m, p, t, u
 
 
 def _create_silent_failure_project(

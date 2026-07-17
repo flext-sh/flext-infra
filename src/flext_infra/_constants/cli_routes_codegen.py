@@ -5,6 +5,7 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
+
 from flext_cli import p
 from flext_infra import c, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -12,9 +13,9 @@ from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from flext_infra.codegen.import_facade_gate import FlextInfraCodegenImportFacadeGate
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.grpc import FlextInfraCodegenGrpc
+from flext_infra.codegen.import_facade_gate import FlextInfraCodegenImportFacadeGate
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew

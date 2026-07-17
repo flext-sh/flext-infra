@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -10,9 +11,6 @@ from flext_infra import m, p, u
 from flext_infra.detectors.internal_import_detector import (
     FlextInfraInternalImportDetector,
 )
-
-from pathlib import Path
-
 
 
 class TestsFlextInfraInternalImportDetector:

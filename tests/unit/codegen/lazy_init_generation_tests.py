@@ -10,7 +10,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 import pytest
-
 from flext_tests import tm
 
 from flext_infra import c, m, p, t

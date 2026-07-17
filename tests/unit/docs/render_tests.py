@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
-from tests import m
-from tests import u
-
-from pathlib import Path
-
+from tests import m, u
 
 
 class TestsDocsRenderExcludeDocs:

@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from tests import m
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
+from tests import m, u
 
 
 def test_validate_report_model_fields() -> None:

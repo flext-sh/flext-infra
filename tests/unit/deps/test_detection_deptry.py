@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
-
-from pathlib import Path
-
-from tests import t
+from tests import c, t, u
 
 
 class TestsFlextInfraDepsDetectionDeptry:
@@ -57,9 +53,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
         project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         out_file = project / ".deptry-report.json"
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
         tm.ok(write_result)
@@ -94,9 +88,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
         project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.fail(service.run_deptry(project, venv_bin))
 
@@ -115,9 +107,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
         project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         for payload in ("{ invalid json }", ""):
             out_file = project / ".deptry-report.json"
             out_file.write_text(payload, encoding=c.Cli.ENCODING_DEFAULT)
@@ -135,9 +125,7 @@ class TestsFlextInfraDepsDetectionDeptry:
         venv_bin.mkdir(parents=True)
         project = tmp_path / "test-project-dir"
         project.mkdir()
-        (project / c.PYPROJECT_FILENAME).write_text(
-            "", encoding=c.Cli.ENCODING_DEFAULT
-        )
+        (project / c.PYPROJECT_FILENAME).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
         default_out = project / ".deptry-report.json"
         default_out.write_text("[]", encoding=c.Cli.ENCODING_DEFAULT)
 

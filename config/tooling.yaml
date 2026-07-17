@@ -34,7 +34,7 @@ Infra:
           - vendor
           - venv
         namespace-packages: [tests]
-        fix: false
+        fix: true  # mro-6kq8 (kimi): enable ruff --fix so I001 and format run together.
         line-length: 88
         preview: true
         respect-gitignore: true
@@ -77,7 +77,7 @@ Infra:
             - ERA001
             - FBT003
             - G004
-            - I001
+            # mro-6kq8 (kimi): I001 re-enabled; isort organizes imports, ruff format handles layout.
             - N805
             - N816
             - PIE790

@@ -9,12 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import flext_infra as infra_pkg
-from flext_infra import u
 from flext_tests import tm
 
-from flext_infra import p
-
+import flext_infra as infra_pkg
+from flext_infra import p, u
 
 
 class TestsFlextInfraInfraVersionCore:

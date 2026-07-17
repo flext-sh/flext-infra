@@ -75,7 +75,7 @@ class TestImportFacadeGateCaseA:
                 "api.py": (
                     "from __future__ import annotations\n\n"
                     "from flext_demo import not_a_facade_alias\n"
-                ),
+                )
             },
         )
         gate = FlextInfraCodegenImportFacadeGate(workspace_root=tmp_path)
@@ -95,7 +95,7 @@ class TestImportFacadeGateCaseA:
                 "api.py": (
                     "from __future__ import annotations\n\n"
                     "from flext_demo import c, t\n"
-                ),
+                )
             },
         )
         gate = FlextInfraCodegenImportFacadeGate(workspace_root=tmp_path)
@@ -113,7 +113,7 @@ class TestImportFacadeGateCaseA:
                 "api.py": (
                     "from __future__ import annotations\n\n"
                     "from flext_demo import c as constants\n"
-                ),
+                )
             },
         )
         gate = FlextInfraCodegenImportFacadeGate(workspace_root=tmp_path)
@@ -135,7 +135,7 @@ class TestImportFacadeGateUniversalCases:
                 "api.py": (
                     "from __future__ import annotations\n\n"
                     "from flext_demo.services import handler\n"
-                ),
+                )
             },
         )
         gate = FlextInfraCodegenImportFacadeGate(workspace_root=tmp_path)
@@ -150,9 +150,7 @@ class TestImportFacadeGateUniversalCases:
             name="flext-demo",
             pkg_name="flext_demo",
             files={
-                "api.py": (
-                    "from __future__ import annotations\n\nimport flext_demo\n"
-                ),
+                "api.py": ("from __future__ import annotations\n\nimport flext_demo\n")
             },
         )
         gate = FlextInfraCodegenImportFacadeGate(workspace_root=tmp_path)

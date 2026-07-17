@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from tests import c
-from tests import m
-from tests import u
-
-from pathlib import Path
-
-from tests import t
+from tests import c, m, t, u
 
 
 class TestStubChain:

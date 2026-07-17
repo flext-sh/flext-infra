@@ -1,18 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
-from tests import m
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import m, p, t, u
 
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:

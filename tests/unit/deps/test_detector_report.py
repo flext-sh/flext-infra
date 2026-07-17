@@ -10,10 +10,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
-from tests import m
-from tests import p
-from tests import p, t
-from tests import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u, m, p, t
 
 
 class _ReportStub:

@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import u
-
 from tests import p, t
-
 
 
 class TestResolveWhat:

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import u
 from flext_tests import tm
+
+from flext_infra import u
 
 _ROOT = Path(__file__).resolve().parents[3]
 

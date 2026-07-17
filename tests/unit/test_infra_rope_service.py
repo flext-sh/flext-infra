@@ -2,22 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 import flext_infra
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import c
-from tests import m
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import p
-from tests import p, t
-
+from tests import c, m, p, t, u
 
 
 class TestsFlextInfraInfraRopeService:

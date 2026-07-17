@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
 from flext_tests import tm
 
-from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
-
-from pathlib import Path
-
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from tests import p, t
-
+from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
 
 def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:

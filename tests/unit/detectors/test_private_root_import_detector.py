@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 import flext_infra
 from flext_infra import m, p, t
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_tests import tm
 
 
 class TestsFlextInfraPrivateRootImportDetector:

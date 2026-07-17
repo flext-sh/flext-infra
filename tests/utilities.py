@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import override
 
 from flext_tests import FlextTestsUtilities, r, tm
+from tomlkit import TOMLDocument
 
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, u
@@ -21,16 +22,10 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c
-from tests import m
-from tests import p
-from tests import t
-
-from tomlkit import TOMLDocument
-
-from flext_infra.gates.base_gate import FlextInfraGate
+from tests import c, m, p, t
 
 
 class TestsFlextInfraUtilities(FlextTestsUtilities, u):

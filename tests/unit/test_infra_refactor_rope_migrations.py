@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
@@ -10,13 +13,7 @@ from flext_infra.transformers.nested_class_propagation import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import p, t, u
 
 
 def _apply_transformer(
@@ -25,7 +22,9 @@ def _apply_transformer(
     file_path = tmp_path / "src" / file_name
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    updated, changes = u.Infra.rope_apply_transformer_to_source(source, file_path, transform)
+    updated, changes = u.Infra.rope_apply_transformer_to_source(
+        source, file_path, transform
+    )
     return updated, list(changes)
 
 

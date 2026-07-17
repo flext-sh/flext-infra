@@ -74,9 +74,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FAIL: test broken",
             "Total: 2 failed",
         )
-        SCANNER_HELLO_RE: Final[t.RegexPattern] = re.compile(
-            r"hello", re.MULTILINE
-        )
+        SCANNER_HELLO_RE: Final[t.RegexPattern] = re.compile(r"hello", re.MULTILINE)
         LAZY_INIT_EXPORT_NAME_RE: Final[t.RegexPattern] = re.compile(
             r'["\']([^"\']+)["\']'
         )

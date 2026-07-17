@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from types import ModuleType
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import FlextTestsSettings, tm
 
 import flext_infra as infra_pkg
-from tests.base import s
 from tests import c
-
-from types import ModuleType
-
+from tests.base import s
 
 
 class TestsFlextInfraPublicApi:

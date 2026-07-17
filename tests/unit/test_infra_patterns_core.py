@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from tests import c
 from flext_tests import tm
+
+from tests import c
 
 
 class TestsFlextInfraInfraPatternsCore:

@@ -14,7 +14,6 @@ from annotated_types import Len
 from pydantic import HttpUrl
 
 from flext_cli import m
-
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 

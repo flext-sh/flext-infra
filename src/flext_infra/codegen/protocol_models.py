@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, TypeAliasType
+from typing import Annotated, TypeAliasType, get_args, get_origin
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codegen._protocol_model_render import (
@@ -19,7 +19,7 @@ class FlextInfraCodegenProtocolModels:
     """Plan and apply a bounded, deterministic generated protocol layer."""
 
     _REFERENCE = c.Infra.compile(r"\bp\.Infra\.([A-Z][A-Za-z0-9_]*)")
-    _DECLARATION = c.Infra.compile(r"^\s{4}class ([A-Z][A-Za-z0-9_]*)\(")
+    _DECLARATION = c.Infra.compile(r"(?m)^\s{4}class ([A-Z][A-Za-z0-9_]*)\(")
     _MAX_BODY_LINES = 170
 
     @classmethod
@@ -127,11 +127,11 @@ class FlextInfraCodegenProtocolModels:
     def _alias_model_names(cls, alias: TypeAliasType) -> t.StrSequence:
         """Return every Pydantic leaf in a validated model union alias."""
         value = alias.__value__
-        if getattr(value, "__origin__", None) is Annotated:
-            value = value.__args__[0]
+        if get_origin(value) is Annotated:
+            value = get_args(value)[0]
         members = tuple(
             argument.__name__
-            for argument in getattr(value, "__args__", ())
+            for argument in get_args(value)
             if isinstance(argument, type) and issubclass(argument, m.BaseModel)
         )
         if not members:

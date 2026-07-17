@@ -8,17 +8,15 @@ the utility metric and the persisted audit reports.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.utilities import u
 from tests import m
-from flext_tests import tm
-
-from pathlib import Path
-
 
 _PACKAGE_INIT = '''"""Demo package."""
 

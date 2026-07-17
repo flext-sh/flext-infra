@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra import main
 from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 def test_workflows_subcommand_applies_templates(tmp_path: Path) -> None:

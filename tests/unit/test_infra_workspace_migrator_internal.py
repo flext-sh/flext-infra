@@ -9,10 +9,7 @@ from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import u
-
-from tests import m
-
+from tests import m, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 def test_docs_maybe_fix_link_adds_md_suffix_when_target_exists(tmp_path: Path) -> None:

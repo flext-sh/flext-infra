@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main as infra_main
 from flext_tests import tm
 
+from flext_infra import main as infra_main
 from tests import p, t
-
 
 
 def main(argv: t.StrSequence | None = None) -> int:

@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
+import pytest
 from flext_tests import tm
 
-import pytest
-
+from flext_infra import main
 
 
 class TestsFlextInfraInfraMain:

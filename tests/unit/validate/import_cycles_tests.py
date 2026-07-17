@@ -11,18 +11,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-from tests import m
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import m, p, t
 
 
 @pytest.fixture

@@ -6,13 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_tests import tm
 
-from collections.abc import Sequence
-
+from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 
 
 def _transform(source: str) -> tuple[str, Sequence[str]]:

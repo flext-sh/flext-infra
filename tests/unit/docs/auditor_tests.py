@@ -6,18 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import m
-from tests import u
-
-from collections.abc import Callable
-from pathlib import Path
-
+from tests import m, u
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -10,14 +11,7 @@ from flext_tests import tm
 from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c
-from tests import u
-
-from pathlib import Path
-
-from tests import m
-from tests import p, t
-
+from tests import c, m, p, t, u
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:

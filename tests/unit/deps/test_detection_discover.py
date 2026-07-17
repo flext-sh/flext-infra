@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import m
-from tests import u
-
-from pathlib import Path
-
+from tests import m, u
 
 
 class TestsFlextInfraDepsDetectionDiscover:

@@ -5,6 +5,7 @@ SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
+
 from flext_cli import p
 from flext_infra import c, m
 from flext_infra.refactor.accessor_migration import (

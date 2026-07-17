@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from tests import m
-
-from pathlib import Path
-
-from tests import p, t
-
+from tests import m, p, t
 
 
 def _extractor(

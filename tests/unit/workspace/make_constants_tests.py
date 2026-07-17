@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import c
-
 from tests import p, t
-
 
 _PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})
 _RETIRED_VERBS = frozenset({

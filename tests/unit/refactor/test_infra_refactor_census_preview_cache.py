@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-import flext_infra
 import pytest
-from flext_infra import c, m, p, u as infra_u
 from flext_tests import tm
 
+import flext_infra
+from flext_infra import c, m, p, u as infra_u
 from tests import u
-
-from pathlib import Path
-
 
 
 class TestsFlextInfraRefactorCensusPreview:

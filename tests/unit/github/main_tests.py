@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests import m
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
+from tests import m, u
 
 
 class TestsInfraGithub:

@@ -12,10 +12,7 @@ from flext_infra.detectors.manual_protocol_detector import (
     FlextInfraManualProtocolDetector,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
-from tests import m
-
-from tests import p, t
-
+from tests import m, p, t
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:

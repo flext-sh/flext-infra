@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
@@ -10,10 +13,6 @@ from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import u
-from flext_tests import tm
-
-from pathlib import Path
-
 
 
 def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) -> None:

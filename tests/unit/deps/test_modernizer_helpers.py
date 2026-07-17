@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
 import tomlkit.items
 from flext_tests import tm
-
-from tests import c
-from tests import u
-
-from pathlib import Path
-
 from tomlkit.toml_document import TOMLDocument
 
-from tests import p, t
-
+from tests import c, p, t, u
 
 
 @pytest.fixture

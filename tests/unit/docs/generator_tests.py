@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from tests import m
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
+from flext_infra.docs.generator import FlextInfraDocGenerator
+from tests import m, u
 
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:

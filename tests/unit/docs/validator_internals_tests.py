@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tests import c
-from tests import u
 from flext_tests import tm
 
-from pathlib import Path
-
+from tests import c, u
 
 
 def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:

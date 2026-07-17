@@ -6,7 +6,11 @@ flext-infra enforcement pipeline.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -16,23 +20,12 @@ from flext_infra.transformers.hardcoded_version import (
     FlextInfraRefactorHardcodedVersion,
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
-from flext_infra.transformers.pattern import (
-    FlextInfraRefactorPatternTransformer,
-)
-from flext_infra.transformers.typing_dict_attr import (
-    FlextInfraRefactorTypingDictAttr,
-)
+from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
+from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
-from flext_infra.transformers.typing_unifier import (
-    FlextInfraRefactorTypingUnifier,
-)
-from flext_tests import tm
-
-from collections.abc import Sequence
-from pathlib import Path
-
+from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 
 def _transform(
@@ -186,7 +179,7 @@ class TestsFlextInfraTransformersTypingDictImport:
             "def foo(x: Dict[str, int]) -> None:\n    pass\n"
         )
         transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py",
+            file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, lacks="from typing import Dict")
@@ -195,15 +188,12 @@ class TestsFlextInfraTransformersTypingDictImport:
         tm.that(code, has="from flext_core import t")
         assert changes
 
-    def test_typing_dict_import_only_removed_when_empty(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_typing_dict_import_only_removed_when_empty(self, tmp_path: Path) -> None:
         source = (
             "from typing import Dict\n\ndef foo(x: Dict[str, int]) -> None:\n    pass\n"
         )
         transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py",
+            file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, lacks="from typing import")
@@ -217,7 +207,7 @@ class TestsFlextInfraTransformersTypingDictImport:
             "def foo(x: Dict[str, int]) -> None:\n    pass\n"
         )
         transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py",
+            file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code.count("from flext_core import t"), eq=1)
@@ -231,7 +221,7 @@ class TestsFlextInfraTransformersTypingDictImport:
             "    assert result.success\n"
         )
         transformer = FlextInfraRefactorTypingDictImport(
-            file_path=tmp_path / "module.py",
+            file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
@@ -245,9 +235,7 @@ class TestsFlextInfraTransformersTypingDictAttr:
         source = (
             "import typing\n\ndef foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
         )
-        transformer = FlextInfraRefactorTypingDictAttr(
-            file_path=tmp_path / "module.py",
-        )
+        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
         code, changes = transformer.apply_to_source(source)
         tm.that(code, lacks="typing.Dict")
         tm.that(code, has="t.MappingKV[str, int]")
@@ -260,9 +248,7 @@ class TestsFlextInfraTransformersTypingDictAttr:
             "from flext_core import t\n\n"
             "def foo(x: typing.Dict[str, int]) -> None:\n    pass\n"
         )
-        transformer = FlextInfraRefactorTypingDictAttr(
-            file_path=tmp_path / "module.py",
-        )
+        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
         code, changes = transformer.apply_to_source(source)
         tm.that(code.count("from flext_core import t"), eq=1)
         tm.that(code, has="t.MappingKV[str, int]")
@@ -274,9 +260,7 @@ class TestsFlextInfraTransformersTypingDictAttr:
             "def foo(result):\n"
             "    assert result.success\n"
         )
-        transformer = FlextInfraRefactorTypingDictAttr(
-            file_path=tmp_path / "module.py",
-        )
+        transformer = FlextInfraRefactorTypingDictAttr(file_path=tmp_path / "module.py")
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
         tm.that(changes, eq=[])
@@ -291,8 +275,7 @@ class TestsFlextInfraTransformersTypingUnifier:
             "def foo(x: dict[str, int]) -> list[str]:\n    pass\n"
         )
         transformer = FlextInfraRefactorTypingUnifier(
-            canonical_map={},
-            file_path=tmp_path / "module.py",
+            canonical_map={}, file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, has="t.MutableMappingKV[str, int]")
@@ -300,18 +283,14 @@ class TestsFlextInfraTransformersTypingUnifier:
         tm.that(code, has="from flext_core import t")
         assert changes
 
-    def test_no_builtin_annotation_does_not_add_t_import(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_no_builtin_annotation_does_not_add_t_import(self, tmp_path: Path) -> None:
         source = (
             "from __future__ import annotations\n\n"
             "def foo(result):\n"
             "    assert result.success\n"
         )
         transformer = FlextInfraRefactorTypingUnifier(
-            canonical_map={},
-            file_path=tmp_path / "module.py",
+            canonical_map={}, file_path=tmp_path / "module.py"
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
@@ -330,8 +309,8 @@ class TestsFlextInfraTransformersPattern:
                     "replacement": r"\g<indent>except Exception:\g<trail>",
                     "change_message": "Rewrote bare except to except Exception",
                     "flags": ["MULTILINE"],
-                },
-            ],
+                }
+            ]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, has="except Exception:")
@@ -349,8 +328,8 @@ class TestsFlextInfraTransformersPattern:
                     "replacement": r"\g<indent>except Exception:\g<trail>",
                     "change_message": "Rewrote bare except to except Exception",
                     "flags": ["MULTILINE"],
-                },
-            ],
+                }
+            ]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, eq=source)
@@ -372,7 +351,7 @@ class TestsFlextInfraTransformersPattern:
                     "change_message": "Removed debugger statement",
                     "flags": ["MULTILINE"],
                 },
-            ],
+            ]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, lacks="breakpoint()")
@@ -389,8 +368,8 @@ class TestsFlextInfraTransformersPattern:
                     "regex": r"\bopen\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r'open(\g<args>, encoding="utf-8")',
                     "change_message": 'Added encoding="utf-8" to open() call',
-                },
-            ],
+                }
+            ]
         )
         code, changes = transformer.apply_to_source(source)
         tm.that(code, has='open("x.txt", encoding="utf-8")')
@@ -404,7 +383,7 @@ class TestsFlextInfraTransformersPattern:
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
                     "change_message": "Rewrote print() to logger",
-                },
+                }
             ],
             required_alias="u",
             file_path=tmp_path / "module.py",
@@ -422,7 +401,7 @@ class TestsFlextInfraTransformersPattern:
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
                     "change_message": "Rewrote print() to logger",
-                },
+                }
             ],
             required_alias="u",
             file_path=tmp_path / "module.py",
@@ -441,7 +420,7 @@ class TestsFlextInfraTransformersPattern:
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
                     "change_message": "Rewrote print() to logger",
-                },
+                }
             ],
             required_alias="u",
         )
@@ -522,7 +501,7 @@ class TestsFlextInfraTransformersPatternList:
                     "regex": r"\bList\s*\[",
                     "replacement": "t.SequenceOf[",
                     "change_message": "Rewrote List[...] to t.SequenceOf[...]",
-                },
+                }
             ],
             required_alias="t",
             file_path=tmp_path / "module.py",
@@ -545,7 +524,7 @@ class TestsFlextInfraTransformersPatternList:
                     "regex": r"\btyping\s*\.\s*List\s*\[",
                     "replacement": "t.SequenceOf[",
                     "change_message": "Rewrote typing.List[...] to t.SequenceOf[...]",
-                },
+                }
             ],
             required_alias="t",
             file_path=tmp_path / "module.py",
@@ -572,7 +551,7 @@ class TestsFlextInfraTransformersPatternStructlog:
                     "regex": r"\bstructlog\s*\.\s*get_logger\s*\(\s*\)",
                     "replacement": "u.fetch_logger(__name__)",
                     "change_message": "Rewrote structlog.get_logger() to u.fetch_logger()",
-                },
+                }
             ],
             required_alias="u",
             file_path=tmp_path / "module.py",
