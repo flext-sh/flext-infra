@@ -162,11 +162,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
         if current.is_file():
             current = current.parent
         for parent in [current, *list(current.parents)]:
-            markers = {
-                c.Infra.GIT_DIR,
-                c.Infra.MAKEFILE_FILENAME,
-                c.PYPROJECT_FILENAME,
-            }
+            markers = {c.Infra.GIT_DIR, c.Infra.MAKEFILE_FILENAME, c.PYPROJECT_FILENAME}
             if all((parent / marker).exists() for marker in markers):
                 return parent
         msg = f"workspace root not found from {file}"

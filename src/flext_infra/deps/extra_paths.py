@@ -84,9 +84,7 @@ class FlextInfraExtraPathsManager(
             return r[bool].fail(result.error or "extra-path synchronization failed")
         return r[bool].ok(True)
 
-    def _dep_paths(
-        self, payload: t.Infra.ContainerDict, *, project_dir: Path
-    ) -> t.StrSequence:
+    def _dep_paths(self, payload: t.JsonMapping, *, project_dir: Path) -> t.StrSequence:
         """Resolve only productive dependency import roots to relative paths."""
         project_table = payload.get(c.Infra.PROJECT)
         current_project_name = (

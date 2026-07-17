@@ -17,7 +17,7 @@ class FlextInfraUtilitiesNamespaceConfig:
     """Static helpers for reading namespace enforcement configuration."""
 
     @staticmethod
-    def namespace_meta(project_root: Path) -> t.Infra.ContainerDict:
+    def namespace_meta(project_root: Path) -> t.JsonMapping:
         """Return optional ``tool.flext.namespace`` metadata for one project."""
         flext_meta = FlextInfraUtilitiesPyproject.tool_flext_meta(project_root)
         namespace = flext_meta.get("namespace")

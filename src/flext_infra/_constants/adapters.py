@@ -44,7 +44,7 @@ class FlextInfraConstantsAdapters:
     CONTAINER_DICT_SEQ_ADAPTER: Final[p.TypeAdapter[t.SequenceOf[t.JsonMapping]]] = (
         m.TypeAdapter(t.SequenceOf[t.JsonMapping])
     )
-    "Validates t.SequenceOf[ContainerDict]."
+    "Validates t.SequenceOf[t.JsonMapping]."
 
     STR_SEQ_ADAPTER: Final[p.TypeAdapter[t.StrSequence]] = m.TypeAdapter(t.StrSequence)
     "Validates t.StrSequence."

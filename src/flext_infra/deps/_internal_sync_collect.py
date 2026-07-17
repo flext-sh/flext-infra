@@ -19,7 +19,7 @@ class FlextInfraInternalSyncCollectMixin:
 
     if TYPE_CHECKING:
         # Provided by FlextInfraInternalSyncRepoMixin on the composed facade.
-        def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]: ...
+        def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]: ...
 
     @staticmethod
     def resolve_internal_repo_name(raw_path: str) -> str | None:

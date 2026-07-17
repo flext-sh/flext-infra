@@ -29,7 +29,7 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        deptry_result: t.Pair[t.SequenceOf[t.Infra.ContainerDict], int] = tm.ok(
+        deptry_result: t.Pair[t.SequenceOf[t.JsonMapping], int] = tm.ok(
             service.run_deptry(project, venv_bin, json_output_path=out_file)
         )
         issues, exit_code = deptry_result

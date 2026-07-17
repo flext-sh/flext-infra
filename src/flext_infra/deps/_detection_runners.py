@@ -19,9 +19,9 @@ class FlextInfraDependencyDetectionRunnersMixin:
         # resolution only (runtime impl lives on the concrete via MRO).
         def _to_toml_config(
             self, payload: t.MappingKV[str, t.JsonValue]
-        ) -> t.Infra.ContainerDict: ...
+        ) -> t.JsonMapping: ...
 
-    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Read plain; concrete analyzer supplies the real reader."""
         _ = path
         msg = "_read_plain must be implemented by the concrete analyzer"
@@ -48,11 +48,11 @@ class FlextInfraDependencyDetectionRunnersMixin:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         settings = config_path or project_path / c.PYPROJECT_FILENAME
         if not settings.exists():
-            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok(([], 0))
+            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
         cmd: t.MutableSequenceOf[str] = [
             str(venv_bin / c.Infra.DEPTRY),
@@ -68,18 +68,18 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 cmd.extend(["--extend-exclude", excluded])
         result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
         if result.failure:
-            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
+            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                 result.error or "deptry execution failed"
             )
-        issues: t.SequenceOf[t.Infra.ContainerDict] = []
+        issues: t.SequenceOf[t.JsonMapping] = []
         if out_file.exists():
             loaded_result = u.Cli.json_read_files(out_file)
             if loaded_result.failure:
-                return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
+                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                     loaded_result.error or "deptry JSON output unreadable/invalid"
                 )
             if isinstance(loaded_result.value, list):
-                normalized_issues: t.MutableSequenceOf[t.Infra.ContainerDict] = []
+                normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):
                         continue
@@ -95,11 +95,11 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 try:
                     out_file.unlink()
                 except OSError as exc:
-                    return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
+                    return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
                         f"failed to cleanup deptry temp output: {exc}"
                     )
         cmd_result: p.Cli.CommandOutput = result.value
-        return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok((
+        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,
             cmd_result.exit_code,
         ))

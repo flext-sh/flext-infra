@@ -17,11 +17,11 @@ from tests import p
 class _TomlStub:
     """Typed stub implementing TomlReader protocol for testing."""
 
-    def __init__(self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
         self._values = values
         self._index = 0
 
-    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Return next pre-configured result."""
         _ = path
         item = self._values[self._index]
@@ -31,7 +31,7 @@ class _TomlStub:
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.JsonMapping]],
 ) -> None:
     service.toml = _TomlStub(values)
 
@@ -41,6 +41,6 @@ class TestsFlextInfraDepsInternalSyncSyncEdgeMore:
         (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
-            service, [r[t.Infra.ContainerDict].ok({"project": {"name": "test"}})]
+            service, [r[t.JsonMapping].ok({"project": {"name": "test"}})]
         )
         tm.ok(service.sync(tmp_path), eq=0)

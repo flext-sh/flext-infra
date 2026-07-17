@@ -31,7 +31,7 @@ class FlextInfraExtraPathsSourceMixin:
         return ()
 
     def _uv_source_paths(
-        self, payload: t.Infra.ContainerDict, *, project_dir: Path
+        self, payload: t.JsonMapping, *, project_dir: Path
     ) -> t.StrSequence:
         """Resolve ``[tool.uv.sources]`` path/editable dependencies to source roots."""
         # mro-wkii.17.26 (codex): path sources follow productive imports only.

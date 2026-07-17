@@ -72,7 +72,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
-        original_pyrefly: t.Infra.ContainerDict = dict(pyrefly)
+        original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root

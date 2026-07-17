@@ -123,7 +123,7 @@ class FlextInfraUtilitiesDocsScope:
         )
 
     @staticmethod
-    def project_name_from_payload(entry: Path, payload: t.Infra.ContainerDict) -> str:
+    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
         """Return the declared project name from ``[project].name``."""
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
@@ -191,15 +191,15 @@ class FlextInfraUtilitiesDocsScope:
         return workspace_root / dir_docs / docs_config
 
     @staticmethod
-    def project_payload(project_root: Path) -> t.Infra.ContainerDict:
+    def project_payload(project_root: Path) -> t.JsonMapping:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).payload
 
     @staticmethod
-    def load_config(workspace_root: Path) -> t.Infra.ContainerDict:
+    def load_config(workspace_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
-        empty: t.Infra.ContainerDict = {}
+        empty: t.JsonMapping = {}
         if not path.exists():
             return empty
         result = u.Cli.json_read(path)
@@ -222,7 +222,7 @@ class FlextInfraUtilitiesDocsScope:
         return {str(item).strip() for item in excluded if str(item).strip()}
 
     @staticmethod
-    def project_docs_meta(project_root: Path) -> t.Infra.ContainerDict:
+    def project_docs_meta(project_root: Path) -> t.JsonMapping:
         """Return optional ``tool.flext.docs`` metadata from a project pyproject."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).docs_meta
 
@@ -261,14 +261,12 @@ class FlextInfraUtilitiesDocsScope:
         )
 
     @staticmethod
-    def docs_meta_from_payload(payload: t.Infra.ContainerDict) -> t.Infra.ContainerDict:
+    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
 
     @staticmethod
-    def classify_project_from_meta(
-        project_name: str, docs_meta: t.Infra.ContainerDict
-    ) -> str:
+    def classify_project_from_meta(project_name: str, docs_meta: t.JsonMapping) -> str:
         """Classify a project using pre-loaded docs metadata (avoids re-parsing).
 
         Project-prefix heuristics derive from ``c.Infra.INTEGRATION_CLASS_PREFIXES``
@@ -296,9 +294,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def package_name_from_payload(
-        project_root: Path,
-        payload: t.Infra.ContainerDict,
-        docs_meta: t.Infra.ContainerDict,
+        project_root: Path, payload: t.JsonMapping, docs_meta: t.JsonMapping
     ) -> str:
         """Return the primary package name using pre-loaded payload.
 

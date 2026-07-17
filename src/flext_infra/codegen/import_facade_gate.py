@@ -93,7 +93,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
             return r[bool].ok(True)
         return r[bool].fail(f"import facade gate verdict: {verdict}")
 
-    def build_report(self) -> p.Result[t.Infra.ContainerDict]:
+    def build_report(self) -> p.Result[t.JsonMapping]:
         """Collect findings across the three import cases and build the report."""
         targets = self.scan_targets(self.workspace_root)
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
@@ -121,7 +121,7 @@ class FlextInfraCodegenImportFacadeGate(s[bool]):
             "findings_total": len(findings),
             "findings": findings,
         }
-        return r[t.Infra.ContainerDict].ok(
+        return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
         )
 

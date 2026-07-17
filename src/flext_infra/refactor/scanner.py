@@ -12,18 +12,18 @@ from flext_infra import c, m, p, t, u
 class FlextInfraRefactorLooseClassScanner:
     """Scan a project tree using rope and report loose top-level classes."""
 
-    def scan(self, project_root: Path) -> p.Result[t.Infra.ContainerDict]:
+    def scan(self, project_root: Path) -> p.Result[t.JsonMapping]:
         """Scan *project_root*/src and return a violation report dict."""
         src_root = project_root / c.Infra.DEFAULT_SRC_DIR
         if not src_root.is_dir():
-            out: p.Result[t.Infra.ContainerDict] = r[t.Infra.ContainerDict].fail(
+            out: p.Result[t.JsonMapping] = r[t.JsonMapping].fail(
                 f"src not found: {src_root}"
             )
             return out
         violations, targets_found, classes_scanned, files_scanned = (
             self._scan_discovered_files(project_root=project_root)
         )
-        return r[t.Infra.ContainerDict].ok(
+        return r[t.JsonMapping].ok(
             self._build_report(
                 files_scanned=files_scanned,
                 violations=violations,
@@ -78,7 +78,7 @@ class FlextInfraRefactorLooseClassScanner:
         violations: t.SequenceOf[p.Infra.LooseClassViolation],
         targets_found: t.BoolMapping,
         classes_scanned: int,
-    ) -> t.Infra.ContainerDict:
+    ) -> t.JsonMapping:
         """Build report."""
         counters = Counter(v.confidence for v in violations)
         violations_infra: t.SequenceOf[t.JsonValue] = [

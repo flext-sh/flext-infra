@@ -26,13 +26,11 @@ class FlextInfraTypesBase:
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
 
-    type ContainerDict = t.JsonMapping
-    "Validated JSON object for project reports, docs contracts, and rules."
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str
     "Expected MRO base: a class or its qualified name."
-    type PolicyContext = t.MappingKV[str, ContainerDict]
+    type PolicyContext = t.MappingKV[str, t.JsonMapping]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."

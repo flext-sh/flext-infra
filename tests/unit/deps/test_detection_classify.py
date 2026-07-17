@@ -18,7 +18,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_classify_dep001(self) -> None:
         """Classify a DEP001 diagnostic into its dedicated group."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP001"}, "module": "foo"}
         ]
         tm.that(len(service.classify_issues(issues).dep001), eq=1)
@@ -26,7 +26,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_classify_dep002(self) -> None:
         """Classify a DEP002 diagnostic into its dedicated group."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP002"}, "module": "bar"}
         ]
         tm.that(len(service.classify_issues(issues).dep002), eq=1)
@@ -34,7 +34,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_classify_dep003(self) -> None:
         """Classify a DEP003 diagnostic into its dedicated group."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP003"}, "module": "baz"}
         ]
         tm.that(len(service.classify_issues(issues).dep003), eq=1)
@@ -42,7 +42,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_classify_dep004(self) -> None:
         """Classify a DEP004 diagnostic into its dedicated group."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP004"}, "module": "qux"}
         ]
         tm.that(len(service.classify_issues(issues).dep004), eq=1)
@@ -50,7 +50,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_non_dict_error_skipped(self) -> None:
         """Ignore a diagnostic whose error payload is not a mapping."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": "not-a-dict", "module": "foo"}
         ]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
@@ -58,7 +58,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_missing_code_skipped(self) -> None:
         """Ignore a diagnostic whose error payload has no code."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"other": "data"}, "module": "foo"}
         ]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
@@ -66,7 +66,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_unknown_code_skipped(self) -> None:
         """Ignore a diagnostic whose code is not a supported category."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP999"}, "module": "foo"}
         ]
         groups = service.classify_issues(issues)
@@ -78,7 +78,7 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_multiple_issues(self) -> None:
         """Preserve every diagnostic while grouping multiple codes."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP001"}, "module": "a"},
             {"error": {"code": "DEP002"}, "module": "b"},
             {"error": {"code": "DEP001"}, "module": "c"},
@@ -90,13 +90,13 @@ class TestsFlextInfraDepsDetectionClassify:
     def test_classify_issues_with_missing_error_field(self) -> None:
         """Ignore a diagnostic without an error field."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [{"module": "foo"}]
+        issues: t.SequenceOf[t.JsonMapping] = [{"module": "foo"}]
         tm.that(len(service.classify_issues(issues).dep001), eq=0)
 
     def test_builds_report(self) -> None:
         """Build a project report from classified dependency diagnostics."""
         service = FlextInfraDependencyDetectionService()
-        issues: t.SequenceOf[t.Infra.ContainerDict] = [
+        issues: t.SequenceOf[t.JsonMapping] = [
             {"error": {"code": "DEP001"}, "module": "foo"},
             {"error": {"code": "DEP002"}, "module": "bar"},
         ]

@@ -17,9 +17,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
     """Typings analysis + conversion helpers composed with the tool-runner mixin."""
 
     @override
-    def _to_toml_config(
-        self, payload: t.MappingKV[str, t.JsonValue]
-    ) -> t.Infra.ContainerDict:
+    def _to_toml_config(self, payload: t.MappingKV[str, t.JsonValue]) -> t.JsonMapping:
         """To toml config."""
         normalized: MutableMapping[str, t.JsonValue] = {}
         for key, value in payload.items():
@@ -70,7 +68,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             converted_map[key] = conv
         return t.json_dict_adapter().validate_python(converted_map)
 
-    def _mapping_from_value(self, value: t.JsonValue | None) -> t.Infra.ContainerDict:
+    def _mapping_from_value(self, value: t.JsonValue | None) -> t.JsonMapping:
         """Build a mapping from a value."""
         if not isinstance(value, Mapping):
             return {}

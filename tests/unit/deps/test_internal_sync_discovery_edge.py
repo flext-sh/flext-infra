@@ -17,22 +17,22 @@ from tests import p
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.JsonMapping]],
 ) -> None:
     state = {"index": 0}
 
-    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _next(_path: Path) -> p.Result[t.JsonMapping]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
         def __init__(
-            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+            self, fn: Callable[[Path], p.Result[t.JsonMapping]]
         ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_next)
@@ -43,7 +43,7 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
         (tmp_path / "pyproject.toml").write_text("x")
 
         def _collect(
-            value: p.Result[t.Infra.ContainerDict],
+            value: p.Result[t.JsonMapping],
         ) -> p.Result[t.MappingKV[str, Path]]:
             service = FlextInfraInternalDependencySyncService()
             _set_toml_sequence(service, [value])
@@ -52,7 +52,7 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
             return result
 
         one_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {
                     "poetry": {
                         "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -62,13 +62,13 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
             })
         )
         two_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:../flext-core"]},
             })
         )
         three_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {
                     "poetry": {
                         "dependencies": {"external-lib": {"path": "some/nested/path"}}
@@ -78,19 +78,19 @@ class TestsFlextInfraDepsInternalSyncDiscoveryEdge:
             })
         )
         four_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {"poetry": {"dependencies": {"flext-core": {"path": 123}}}},
                 "project": {},
             })
         )
         five_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @"]},
             })
         )
         six_result = _collect(
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {},
                 "project": {"dependencies": ["flext-core @ file:///external/path"]},
             })

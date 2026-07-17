@@ -18,19 +18,19 @@ from tests import p
 class _TomlReaderStub:
     """Test stub satisfying p.Infra.TomlReader protocol."""
 
-    def __init__(self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]) -> None:
+    def __init__(self, fn: Callable[[Path], p.Result[t.JsonMapping]]) -> None:
         self._fn = fn
 
-    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Delegate to the callable provided at construction."""
         return self._fn(path)
 
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    value: p.Result[t.Infra.ContainerDict],
+    value: p.Result[t.JsonMapping],
 ) -> None:
-    def _reader(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _reader(_path: Path) -> p.Result[t.JsonMapping]:
         return value
 
     service.toml = _TomlReaderStub(fn=_reader)
@@ -38,11 +38,11 @@ def _set_toml_stub(
 
 def _set_toml_sequence(
     service: FlextInfraInternalDependencySyncService,
-    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.JsonMapping]],
 ) -> None:
     state = {"index": 0}
 
-    def _next(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _next(_path: Path) -> p.Result[t.JsonMapping]:
         item = values[state["index"]]
         state["index"] += 1
         return item
@@ -89,7 +89,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "repo": {
                     "flext-core": {
                         "ssh_url": "git@github.com:flext-sh/flext-core.git",
@@ -104,24 +104,24 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
 
     def test_parse_repo_map_read_failure(self) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, r[t.Infra.ContainerDict].fail("file not found"))
+        _set_toml_stub(service, r[t.JsonMapping].fail("file not found"))
         tm.fail(service.parse_repo_map(Path("/fake/map.toml")))
 
     def test_parse_repo_map_no_repo_section(self) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"other": "data"}))
+        _set_toml_stub(service, r[t.JsonMapping].ok({"other": "data"}))
         tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_non_dict_repo(self) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, r[t.Infra.ContainerDict].ok({"repo": "not-a-dict"}))
+        _set_toml_stub(service, r[t.JsonMapping].ok({"repo": "not-a-dict"}))
         tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
     def test_parse_repo_map_non_dict_values(self) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({"repo": {"flext-core": "string-value"}}),
+            r[t.JsonMapping].ok({"repo": {"flext-core": "string-value"}}),
         )
         tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
@@ -129,7 +129,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({"repo": {"flext-core": {"other": "val"}}}),
+            r[t.JsonMapping].ok({"repo": {"flext-core": {"other": "val"}}}),
         )
         tm.ok(service.parse_repo_map(Path("/fake/map.toml")), empty=True)
 
@@ -137,7 +137,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "repo": {
                     "flext-core": {"ssh_url": "git@github.com:flext-sh/flext-core.git"}
                 }
@@ -157,7 +157,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {
                     "poetry": {
                         "dependencies": {
@@ -178,7 +178,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
             service,
-            r[t.Infra.ContainerDict].ok({
+            r[t.JsonMapping].ok({
                 "tool": {},
                 "project": {
                     "dependencies": [
@@ -195,7 +195,7 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
 
     def test_read_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, r[t.Infra.ContainerDict].fail("parse error"))
+        _set_toml_stub(service, r[t.JsonMapping].fail("parse error"))
         (tmp_path / "pyproject.toml").write_text("")
         tm.fail(service.collect_internal_deps(tmp_path))
 
@@ -204,8 +204,8 @@ class TestsFlextInfraDepsInternalSyncDiscovery:
         _set_toml_sequence(
             service,
             [
-                r[t.Infra.ContainerDict].ok({"project": {}}),
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({"project": {}}),
+                r[t.JsonMapping].ok({
                     "tool": {"poetry": {"dependencies": "not-a-dict"}},
                     "project": {"dependencies": "not-a-list"},
                 }),

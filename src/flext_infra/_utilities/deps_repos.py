@@ -16,16 +16,14 @@ class FlextInfraInternalSyncRepoMixin:
 
     toml: p.Infra.TomlReader | None
 
-    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Read plain."""
         if self.toml is not None:
             return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
-            return r[t.Infra.ContainerDict].fail(
-                plain_result.error or f"failed to read {path}"
-            )
-        return r[t.Infra.ContainerDict].ok(
+            return r[t.JsonMapping].fail(plain_result.error or f"failed to read {path}")
+        return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(plain_result.value)
         )
 

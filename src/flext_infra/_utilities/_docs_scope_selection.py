@@ -66,8 +66,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         """Build a selected path scope when it is a local pyproject project."""
         project_root = (workspace_root / name).resolve()
         if not (
-            project_root.is_dir()
-            and (project_root / c.PYPROJECT_FILENAME).is_file()
+            project_root.is_dir() and (project_root / c.PYPROJECT_FILENAME).is_file()
         ):
             return None
         return FlextInfraUtilitiesDocsScopeSelectionMixin._governed_scope(

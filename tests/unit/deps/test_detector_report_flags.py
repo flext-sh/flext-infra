@@ -40,14 +40,14 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     @override
     def run_deptry(
         self, project_path: Path, venv_bin: Path
-    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
         del project_path
         del venv_bin
-        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+        return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
 
     @override
     def build_project_report(
-        self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
+        self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
     ) -> _ReportStub:
         del project_name
         del deptry_issues

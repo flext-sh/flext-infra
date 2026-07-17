@@ -19,22 +19,22 @@ from tests import p
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.JsonMapping]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read(_path: Path) -> p.Result[t.JsonMapping]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
         def __init__(
-            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+            self, fn: Callable[[Path], p.Result[t.JsonMapping]]
         ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
@@ -66,7 +66,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -74,7 +74,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
                     },
                     "project": {},
                 }),
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -110,7 +110,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -145,7 +145,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -165,7 +165,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}
@@ -201,7 +201,7 @@ class TestsFlextInfraDepsInternalSyncSyncEdge:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {"flext-core": {"path": "../flext-core"}}

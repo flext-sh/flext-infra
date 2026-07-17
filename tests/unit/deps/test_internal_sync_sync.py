@@ -19,22 +19,22 @@ from tests import p
 
 def _set_toml_stub(
     service: FlextInfraInternalDependencySyncService,
-    values: t.SequenceOf[p.Result[t.Infra.ContainerDict]],
+    values: t.SequenceOf[p.Result[t.JsonMapping]],
 ) -> None:
     state = {"index": 0}
 
-    def _read(_path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read(_path: Path) -> p.Result[t.JsonMapping]:
         item = values[state["index"]]
         state["index"] += 1
         return item
 
     class _TomlReaderStub:
         def __init__(
-            self, fn: Callable[[Path], p.Result[t.Infra.ContainerDict]]
+            self, fn: Callable[[Path], p.Result[t.JsonMapping]]
         ) -> None:
             self._fn = fn
 
-        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
             return self._fn(path)
 
     service.toml = _TomlReaderStub(_read)
@@ -59,14 +59,14 @@ class TestsFlextInfraDepsInternalSyncSync:
     def test_sync_no_deps(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
         _set_toml_stub(
-            service, [r[t.Infra.ContainerDict].ok({"tool": {}, "project": {}})]
+            service, [r[t.JsonMapping].ok({"tool": {}, "project": {}})]
         )
         (tmp_path / "pyproject.toml").write_text("")
         tm.ok(service.sync(tmp_path), eq=0)
 
     def test_sync_collect_failure(self, tmp_path: Path) -> None:
         service = FlextInfraInternalDependencySyncService()
-        _set_toml_stub(service, [r[t.Infra.ContainerDict].fail("read error")])
+        _set_toml_stub(service, [r[t.JsonMapping].fail("read error")])
         (tmp_path / "pyproject.toml").write_text("")
         tm.fail(service.sync(tmp_path))
 
@@ -84,7 +84,7 @@ class TestsFlextInfraDepsInternalSyncSync:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {
@@ -108,7 +108,7 @@ class TestsFlextInfraDepsInternalSyncSync:
         _set_toml_stub(
             service,
             [
-                r[t.Infra.ContainerDict].ok({
+                r[t.JsonMapping].ok({
                     "tool": {
                         "poetry": {
                             "dependencies": {
@@ -118,7 +118,7 @@ class TestsFlextInfraDepsInternalSyncSync:
                     },
                     "project": {},
                 }),
-                r[t.Infra.ContainerDict].ok({"repo": {}}),
+                r[t.JsonMapping].ok({"repo": {}}),
             ],
         )
         with _temporary_env({"FLEXT_STANDALONE": "", "FLEXT_WORKSPACE_ROOT": ""}):

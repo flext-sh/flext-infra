@@ -20,7 +20,7 @@ class FlextInfraUtilitiesDocsGenerate:
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def _module_names(contract: t.Infra.ContainerDict) -> list[str]:
+    def _module_names(contract: t.JsonMapping) -> list[str]:
         """Extract normalized module names from one docs contract payload."""
         try:
             items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(

@@ -39,14 +39,14 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     @override
     def run_deptry(
         self, project_path: Path, venv_bin: Path
-    ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
         _ = project_path
         _ = venv_bin
-        return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+        return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
 
     @override
     def build_project_report(
-        self, project_name: str, deptry_issues: t.SequenceOf[t.Infra.ContainerDict]
+        self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
     ) -> _ReportStub:
         _ = project_name
         _ = deptry_issues
@@ -95,7 +95,7 @@ class TestsFlextInfraDepsDetectorReport:
             eq=True,
         )
         tm.that(default_output.exists(), eq=True)
-        payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
+        payload: t.JsonMapping = u.Cli.json_as_mapping(
             tm.ok(u.Cli.json_read(default_output))
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])
@@ -114,7 +114,7 @@ class TestsFlextInfraDepsDetectorReport:
             eq=True,
         )
         tm.that(custom_output.exists(), eq=True)
-        payload: t.Infra.ContainerDict = u.Cli.json_as_mapping(
+        payload: t.JsonMapping = u.Cli.json_as_mapping(
             tm.ok(u.Cli.json_read(custom_output))
         )
         tm.that(u.Cli.json_as_mapping(payload.get("projects")), keys=["proj-a"])

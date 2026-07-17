@@ -23,7 +23,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
 
     def __init__(
         self,
-        order_config: t.SequenceOf[t.Infra.ContainerDict],
+        order_config: t.SequenceOf[t.JsonMapping],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with rule order settings and optional change callback."""

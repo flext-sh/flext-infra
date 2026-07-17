@@ -11,13 +11,13 @@ from tests import p, t
 
 
 class _StubToml:
-    def __init__(self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]) -> None:
-        self._values: tuple[p.Result[t.Infra.ContainerDict], ...] = tuple(values)
+    def __init__(self, values: t.SequenceOf[p.Result[t.JsonMapping]]) -> None:
+        self._values: tuple[p.Result[t.JsonMapping], ...] = tuple(values)
         self._idx = 0
 
-    def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         _ = path
-        value: p.Result[t.Infra.ContainerDict] = self._values[self._idx]
+        value: p.Result[t.JsonMapping] = self._values[self._idx]
         if self._idx < len(self._values) - 1:
             self._idx += 1
         return value
@@ -27,7 +27,7 @@ class TestsFlextInfraDepsDetectionTypings:
     def test_success(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            tr[t.Infra.ContainerDict].ok({"key": "value", "num": 42})
+            tr[t.JsonMapping].ok({"key": "value", "num": 42})
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         tm.that(result.get("key"), eq="value")
@@ -35,13 +35,13 @@ class TestsFlextInfraDepsDetectionTypings:
 
     def test_failure_returns_empty(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([tr[t.Infra.ContainerDict].fail("not found")])
+        service.toml = _StubToml([tr[t.JsonMapping].fail("not found")])
         tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), empty=True)
 
     def test_unconvertible_values_skipped(self) -> None:
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([
-            tr[t.Infra.ContainerDict].ok({"good": "val", "bad": ["x"]})
+            tr[t.JsonMapping].ok({"good": "val", "bad": ["x"]})
         ])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         tm.that(result, has="good")
@@ -49,7 +49,7 @@ class TestsFlextInfraDepsDetectionTypings:
 
     def test_none_value_preserved(self) -> None:
         service = FlextInfraDependencyDetectionService()
-        service.toml = _StubToml([tr[t.Infra.ContainerDict].ok({"key": None})])
+        service.toml = _StubToml([tr[t.JsonMapping].ok({"key": None})])
         result = service.load_dependency_limits(Path("/fake/limits.toml"))
         tm.that(result, has="key")
         tm.that(result["key"], eq=None)

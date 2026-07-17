@@ -15,7 +15,7 @@ from flext_cli import u
 from flext_infra import c, t
 
 
-def _validate_infra_payload(payload: object) -> t.Infra.ContainerDict | None:
+def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
     """Validate one plain mapping through the infra adapter.
 
     Centralizes the repeated try/except so callers only decide what sentinel
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def pyproject_payload(pyproject_path: Path) -> t.Infra.ContainerDict:
+    def pyproject_payload(pyproject_path: Path) -> t.JsonMapping:
         """Return one parsed ``pyproject.toml`` payload validated against ``t.Infra``.
 
         Disk read is delegated to ``u.Cli.toml_read_json`` (cached at
@@ -53,7 +53,7 @@ class FlextInfraUtilitiesPyproject:
         return validated if validated is not None else {}
 
     @staticmethod
-    def normalized_toml_payload(document: TOMLDocument) -> t.Infra.ContainerDict:
+    def normalized_toml_payload(document: TOMLDocument) -> t.JsonMapping:
         """Return one TOML document normalized through the infra adapter."""
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesPyproject:
         return validated if validated is not None else {}
 
     @staticmethod
-    def tool_flext_meta(project_root: Path) -> t.Infra.ContainerDict:
+    def tool_flext_meta(project_root: Path) -> t.JsonMapping:
         """Return the normalized ``tool.flext`` table from a project root."""
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(
             project_root / c.PYPROJECT_FILENAME
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesPyproject:
         return flext if isinstance(flext, dict) else {}
 
     @staticmethod
-    def docs_meta_from_payload(payload: t.Infra.ContainerDict) -> t.Infra.ContainerDict:
+    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, dict):
@@ -86,7 +86,7 @@ class FlextInfraUtilitiesPyproject:
         return docs if isinstance(docs, dict) else {}
 
     @staticmethod
-    def project_name_from_payload(entry: Path, payload: t.Infra.ContainerDict) -> str:
+    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
         """Return the declared project name from ``[project].name``."""
         project_section = payload.get("project")
         if not isinstance(project_section, dict):
@@ -100,15 +100,13 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def package_name_from_payload(
-        project_root: Path,
-        payload: t.Infra.ContainerDict,
-        docs_meta: t.Infra.ContainerDict,
+        project_root: Path, payload: t.JsonMapping, docs_meta: t.JsonMapping
     ) -> str:
         """Return the primary package name using pre-loaded pyproject payload."""
         configured = docs_meta.get("package_name")
         if isinstance(configured, str) and configured.strip():
             return configured.strip()
-        current: t.Infra.ContainerDict | None = payload
+        current: t.JsonMapping | None = payload
         for key in (c.Infra.TOOL, "hatch", "build", "targets", "wheel"):
             if current is None:
                 break

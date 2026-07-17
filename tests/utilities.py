@@ -198,19 +198,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Protocol-compatible TOML reader that replays typed results."""
 
             def __init__(
-                self, values: t.SequenceOf[p.Result[t.Infra.ContainerDict]]
+                self, values: t.SequenceOf[p.Result[t.JsonMapping]]
             ) -> None:
                 """Store the ordered TOML results for replay."""
                 self._values = list(values)
                 self._index = 0
 
             @override
-            def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+            def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
                 del path
                 current = self._index
                 self._index = current + 1
                 if not self._values:
-                    return r[t.Infra.ContainerDict].fail(
+                    return r[t.JsonMapping].fail(
                         "toml reader sequence is empty"
                     )
                 return (
@@ -312,16 +312,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
 
         @staticmethod
-        def infra_mapping(value: t.JsonMapping) -> t.Infra.ContainerDict:
+        def infra_mapping(value: t.JsonMapping) -> t.JsonMapping:
             """Provide the typed test helper `infra_mapping`."""
             return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
 
         @staticmethod
         def infra_mapping_result(
             value: t.JsonMapping,
-        ) -> p.Result[t.Infra.ContainerDict]:
+        ) -> p.Result[t.JsonMapping]:
             """Provide the typed test helper `infra_mapping_result`."""
-            return r[t.Infra.ContainerDict].ok(
+            return r[t.JsonMapping].ok(
                 TestsFlextInfraUtilities.Tests.infra_mapping(value)
             )
 
@@ -1284,19 +1284,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @override
             def run_deptry(
                 self, project_path: Path, venv_bin: Path
-            ) -> p.Result[t.Pair[Sequence[t.Infra.ContainerDict], int]]:
+            ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
                 del project_path, venv_bin
                 if self.deptry_failure is not None:
-                    return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].fail(
+                    return r[t.Pair[Sequence[t.JsonMapping], int]].fail(
                         self.deptry_failure
                     )
-                return r[t.Pair[Sequence[t.Infra.ContainerDict], int]].ok(([], 0))
+                return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
 
             @override
             def build_project_report(
                 self,
                 project_name: str,
-                deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
+                deptry_issues: t.SequenceOf[t.JsonMapping],
             ) -> TestsFlextInfraUtilities.Tests.DetectorReportStub:
                 del project_name, deptry_issues
                 return TestsFlextInfraUtilities.Tests.DetectorReportStub(0)
