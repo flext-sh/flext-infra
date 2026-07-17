@@ -21,10 +21,6 @@ from flext_cli import m, t
 class FlextInfraTypesBase:
     """Base typings for flext-infra project."""
 
-    type RegexPattern = t.RegexPattern
-    "Compiled regex pattern for string matching."
-    type RegexMatch = t.RegexMatch
-    "Regex match object for string patterns."
     type JinjaEnvironment = _JinjaEnvironment
     "Jinja2 template rendering environment."
     type JinjaTemplate = _JinjaTemplate

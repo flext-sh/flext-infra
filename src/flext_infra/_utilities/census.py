@@ -574,7 +574,7 @@ class FlextInfraUtilitiesRefactorCensus:
         multi_line = c.Infra.DUNDER_ALL_MULTI_LINE_RE
         quoted_target = {f'"{name}"', f"'{name}'"}
 
-        def _rewrite_single(match: t.Infra.RegexMatch) -> str:
+        def _rewrite_single(match: t.RegexMatch) -> str:
             """Rewrite single."""
             body = match.group("body")
             if not isinstance(body, str):
@@ -596,7 +596,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 result = f"{prefix}[{', '.join(remaining)}]"
             return result
 
-        def _rewrite_multi(match: t.Infra.RegexMatch) -> str:
+        def _rewrite_multi(match: t.RegexMatch) -> str:
             """Rewrite multi."""
             body = match.group("body")
             if not isinstance(body, str):

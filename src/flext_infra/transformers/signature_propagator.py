@@ -156,7 +156,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, changed
 
     @staticmethod
-    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[str, int]:
+    def _drop_keyword(text: str, pattern: t.RegexPattern) -> tuple[str, int]:
         """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
         result = text
         drops = 0

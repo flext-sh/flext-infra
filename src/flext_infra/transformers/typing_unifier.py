@@ -65,7 +65,7 @@ class FlextInfraRefactorTypingUnifier(
             if pattern is None:
                 continue
 
-            def replacer(match: t.Infra.RegexMatch, canonical: str = canonical) -> str:
+            def replacer(match: t.RegexMatch, canonical: str = canonical) -> str:
                 """Replace one matched union with the canonical alias."""
                 self._record_change(
                     f"Canonicalized inline union {match.group(0)} -> {canonical}"
@@ -94,7 +94,7 @@ class FlextInfraRefactorTypingUnifier(
         return rewritten
 
     @staticmethod
-    def _union_pattern(members: frozenset[str]) -> t.Infra.RegexPattern | None:
+    def _union_pattern(members: frozenset[str]) -> t.RegexPattern | None:
         """Build regex matching any permutation of a ``A | B | C`` union."""
         if len(members) < c.Infra.MIN_UNION_MEMBERS:
             return None

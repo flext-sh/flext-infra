@@ -64,7 +64,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ("warning: ignoring duplicate", 0),
             ("Success: 5 passed", 0),
         )
-        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
+        LOG_ERROR_PREFIX_RE: ClassVar[t.RegexPattern] = re.compile(
             r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)"
         )
         LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
@@ -74,10 +74,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FAIL: test broken",
             "Total: 2 failed",
         )
-        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = re.compile(
+        SCANNER_HELLO_RE: Final[t.RegexPattern] = re.compile(
             r"hello", re.MULTILINE
         )
-        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
+        LAZY_INIT_EXPORT_NAME_RE: Final[t.RegexPattern] = re.compile(
             r'["\']([^"\']+)["\']'
         )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (

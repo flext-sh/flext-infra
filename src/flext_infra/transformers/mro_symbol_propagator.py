@@ -69,7 +69,7 @@ class FlextInfraRefactorMROSymbolPropagator(FlextInfraRopeTransformer):
         self,
         source: str,
         symbol_paths: t.StrMapping,
-        pattern_fn: Callable[[str, str], t.Infra.RegexPattern],
+        pattern_fn: Callable[[str, str], t.RegexPattern],
         replacement_fn: Callable[[str, str], str],
         message_fn: Callable[[str, str], str],
     ) -> str:

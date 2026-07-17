@@ -21,12 +21,12 @@ class FlextInfraConstantsAdapters:
     INFRA_MAPPING_ADAPTER: Final[p.TypeAdapter[t.JsonMapping]] = (
         t.Cli.JSON_MAPPING_ADAPTER
     )
-    "Validates t.MappingKV[str, InfraValue] - the most common infra adapter."
+    "Validates t.MappingKV[str, t.JsonValue] - the most common infra adapter."
 
     MUTABLE_INFRA_MAPPING_ADAPTER: Final[
         m.TypeAdapter[MutableMapping[str, t.JsonValue]]
     ] = m.TypeAdapter(MutableMapping[str, t.JsonValue])
-    "Validates MutableMapping[str, InfraValue] for in-place mutation."
+    "Validates MutableMapping[str, t.JsonValue] for in-place mutation."
 
     STR_MAPPING_ADAPTER: Final[p.TypeAdapter[t.StrMapping]] = m.TypeAdapter(
         t.StrMapping
@@ -39,7 +39,7 @@ class FlextInfraConstantsAdapters:
     "Validates flat scalar/path mappings (no nested containers)."
 
     INFRA_SEQ_ADAPTER: Final[p.TypeAdapter[t.JsonList]] = t.Cli.JSON_LIST_ADAPTER
-    "Validates t.SequenceOf[InfraValue]."
+    "Validates t.SequenceOf[t.JsonValue]."
 
     CONTAINER_DICT_SEQ_ADAPTER: Final[p.TypeAdapter[t.SequenceOf[t.JsonMapping]]] = (
         m.TypeAdapter(t.SequenceOf[t.JsonMapping])
