@@ -101,6 +101,42 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
                     return Path(argument.removeprefix(prefix)).resolve()
         return Path.cwd().resolve()
 
+    @staticmethod
+    def transaction_scoped_paths(
+        args: t.StrSequence, workspace_root: Path
+    ) -> tuple[Path, ...]:
+        """Derive workspace-relative paths the command can touch.
+
+        Reads ``--output-root``/``--projects`` so the transaction isolates only
+        the targeted project instead of the whole monorepo. Returns an empty
+        tuple (full-workspace isolation, safe default) when no scoping flag is
+        present or a target resolves outside the workspace.
+        """
+        scoped: list[Path] = []
+        value_flags = frozenset({"--output-root", "--projects", "--project"})
+        for index, argument in enumerate(args):
+            raw: str | None = None
+            if argument in value_flags and index + 1 < len(args):
+                raw = args[index + 1]
+            else:
+                for flag in value_flags:
+                    prefix = f"{flag}="
+                    if argument.startswith(prefix):
+                        raw = argument.removeprefix(prefix)
+                        break
+            if raw is None:
+                continue
+            for token in raw.split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                resolved = Path(token).expanduser().resolve()
+                try:
+                    scoped.append(resolved.relative_to(workspace_root))
+                except ValueError:
+                    return ()
+        return tuple(scoped)
+
     def run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""
         if any(argument in self.help_flags for argument in args):
@@ -125,6 +161,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             command=(group, *self.transaction_inner_args(route_key, args)),
             apply_patch=apply_requested,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+            scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),
         )
         result = u.Infra.execute_worktree_transaction(request)
         if result.failure:

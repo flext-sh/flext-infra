@@ -39,11 +39,31 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 exclusions.append(relative_path)
         return tuple(exclusions)
 
+    @staticmethod
+    def _submodule_in_scope(submodule: Path, scoped_paths: t.SequenceOf[Path]) -> bool:
+        """Return whether a submodule falls under any scoped path."""
+        if not scoped_paths:
+            return True
+        return any(
+            submodule == scoped or submodule.is_relative_to(scoped)
+            for scoped in scoped_paths
+        )
+
     @classmethod
     def _create_complete_worktree(
-        cls, workspace_root: Path, worktree_root: Path, transaction_id: str
+        cls,
+        workspace_root: Path,
+        worktree_root: Path,
+        transaction_id: str,
+        scoped_paths: t.SequenceOf[Path] = (),
     ) -> p.Result[t.SequenceOf[m.Infra.RepositoryWorktree]]:
-        """Reproduce all repository and submodule state, then checkpoint it."""
+        """Reproduce root plus in-scope submodule state, then checkpoint it.
+
+        When ``scoped_paths`` is non-empty, only the root repository and the
+        submodules under those paths are isolated; the full workspace is only
+        snapshotted when scope is unknown (empty), so the whole monorepo is
+        never checkpointed for an operation that touches one project.
+        """
         submodules_result = FlextInfraUtilitiesGitScope.git_submodule_paths(
             workspace_root
         )
@@ -51,7 +71,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                 submodules_result.error or "failed to discover workspace repositories"
             )
-        submodule_paths = submodules_result.value
+        submodule_paths = tuple(
+            submodule
+            for submodule in submodules_result.value
+            if cls._submodule_in_scope(submodule, scoped_paths)
+        )
         repository_paths = (Path(), *submodule_paths)
         created: t.MutableSequenceOf[m.Infra.RepositoryWorktree] = []
         for relative_path in repository_paths:
@@ -388,7 +412,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
             / f"transaction-{transaction_id}"
         )
         create_result = cls._create_complete_worktree(
-            workspace_root, worktree_root, transaction_id
+            workspace_root,
+            worktree_root,
+            transaction_id,
+            scoped_paths=tuple(request.scoped_paths),
         )
         if create_result.failure:
             return r[m.Infra.WorktreeTransactionReport].fail(
