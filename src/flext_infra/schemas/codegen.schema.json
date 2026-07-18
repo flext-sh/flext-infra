@@ -267,10 +267,10 @@
           "const": ">=3.13.11,<3.14"
         },
         "uv_version": {
-          "const": "0.11.28"
+          "const": "0.11.29"
         },
         "uv_required_version": {
-          "const": "==0.11.28"
+          "const": "==0.11.29"
         }
       }
     },
