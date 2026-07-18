@@ -23,8 +23,8 @@ classifiers = [
 ]
 dependencies = [
     "defusedxml>=0.7.1",
-    "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-    "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+    "flext-cli",
+    "flext-core",
     "gitpython>=3.1.49",
     "libcst>=1.8.6",
     "mkdocs-exclude>=1.0.2",
@@ -745,3 +745,7 @@ line_length = 88
 preserve_quotes = true
 section_whitelines = 1
 whitelines = 1
+
+[tool.uv.sources]
+flext-cli = { workspace = true }
+flext-core = { workspace = true }
