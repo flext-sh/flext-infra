@@ -104,6 +104,13 @@ Infra:
             - RUF003
             - RUF005
             - S608
+            # ADR-011 Runtime-Forward Annotation Law: names in runtime-evaluated
+            # annotations (Pydantic fields, PEP 526 assignments, beartype-decorated
+            # signatures) MUST be runtime imports; TC001-003 would wrongly move them
+            # into TYPE_CHECKING. Enforcement is runtime (beartype) + rope/ast-grep.
+            - TC001
+            - TC002
+            - TC003
             - TRY003
             - TRY300
             - TRY301
