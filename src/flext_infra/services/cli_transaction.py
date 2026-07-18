@@ -8,6 +8,7 @@ from typing import ClassVar
 from flext_cli import cli as cli_facade
 from flext_infra import c, m, t, u
 from flext_infra.services.cli_routes import CliRouteService
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class CliTransactionService(CliRouteService, type(cli_facade)):
@@ -102,15 +103,36 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         return Path.cwd().resolve()
 
     @staticmethod
+    def _manifest_member_scope(workspace_root: Path) -> tuple[Path, ...]:
+        """Return workspace-member submodule paths from the topology manifest.
+
+        A workspace-scoped route (scaffold/conform) only touches the root plus
+        its declared members, never unrelated sibling submodules. Reading the
+        manifest lets the transaction isolate exactly those repositories. Any
+        load/parse failure returns an empty tuple so the caller falls back to
+        full-workspace isolation (safe default).
+        """
+        spec = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
+        if spec.failure:
+            return ()
+        members: list[Path] = []
+        for member in spec.value.members:
+            member_path = Path(member.path)
+            if member_path != Path():
+                members.append(member_path)
+        return tuple(members)
+
+    @classmethod
     def transaction_scoped_paths(
-        args: t.StrSequence, workspace_root: Path
+        cls, args: t.StrSequence, workspace_root: Path
     ) -> tuple[Path, ...]:
         """Derive workspace-relative paths the command can touch.
 
-        Reads ``--output-root``/``--projects`` so the transaction isolates only
-        the targeted project instead of the whole monorepo. Returns an empty
-        tuple (full-workspace isolation, safe default) when no scoping flag is
-        present or a target resolves outside the workspace.
+        Explicit ``--output-root``/``--projects`` win. Otherwise, for a
+        workspace-scoped route, fall back to the manifest's member paths so the
+        transaction isolates the root plus declared members instead of every
+        sibling submodule. Returns an empty tuple (full-workspace isolation,
+        safe default) only when neither source yields a target.
         """
         scoped: list[Path] = []
         value_flags = frozenset({"--output-root", "--projects", "--project"})
@@ -135,7 +157,9 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
                     scoped.append(resolved.relative_to(workspace_root))
                 except ValueError:
                     return ()
-        return tuple(scoped)
+        if scoped:
+            return tuple(scoped)
+        return cls._manifest_member_scope(workspace_root)
 
     def run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""
