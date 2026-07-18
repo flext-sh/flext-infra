@@ -244,11 +244,50 @@ class FlextInfraCodegenLazyInit(
                 target_package_dir=target_package_dir,
                 target_includes_descendants=target_includes_descendants,
             )
+        # mro-96j2.4 (agent: claude): Ruff check runs once over the changed
+        # artifact set instead of per rendered template, eliminating one cold
+        # Ruff subprocess per generated __init__.py.
+        errors += self.batch_lint_generated(self.modified_files)
         u.Cli.info(
             f"Lazy-init summary: {ok} generated, {errors} errors "
             f"({total} dirs scanned, {perf_counter() - started_at:.2f}s)"
         )
         return errors
+
+    def batch_lint_generated(self, generated_files: t.StrSequence) -> int:
+        """Ruff-check every changed initializer in one invocation.
+
+        mro-96j2.4 (agent: claude): the renderer emits byte-canonical output via
+        ``ruff format`` per template; validation (``ruff check``) is deferred to
+        this single batched stage over the changed artifact set so generation
+        spawns one Ruff check subprocess instead of one per generated file.
+
+        Returns:
+            The number of artifacts that failed the Ruff check.
+
+        """
+        targets = tuple(
+            path
+            for path in generated_files
+            if path.endswith(c.Infra.EXT_PYTHON) and Path(path).is_file()
+        )
+        if not targets:
+            return 0
+        check = u.Cli.run_raw(
+            [c.Infra.RUFF, c.Infra.CHECK, "--no-fix", *targets],
+            cwd=self.workspace_root,
+        )
+        if check.failure:
+            u.Cli.error(f"batched Ruff check failed to run: {check.error}")
+            return len(targets)
+        result = check.value
+        if result.exit_code == 0:
+            return 0
+        detail = (result.stdout or result.stderr).strip()
+        u.Cli.error(
+            f"generated initializers failed Ruff ({result.exit_code}): {detail}"
+        )
+        return 1
 
     @staticmethod
     def _detect_duplicate_class_names(
