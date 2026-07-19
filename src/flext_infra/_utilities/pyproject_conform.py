@@ -64,6 +64,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             required_version=toolchain.uv_required_version,
             link_mode=toolchain.uv_link_mode,
+            constraint_dependencies=(f"uv{toolchain.uv_required_version}",),
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -426,6 +427,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         required_version: str | None = None,
         link_mode: str | None = None,
+        constraint_dependencies: t.SequenceOf[str] | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         if (required_version is None) != (link_mode is None):
@@ -447,6 +449,12 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "required-version", required_version)
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if workspace_root:
+            if constraint_dependencies is not None:
+                u.Cli.toml_sync_string_list(
+                    uv,
+                    "constraint-dependencies",
+                    tuple(constraint_dependencies),
+                )
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")

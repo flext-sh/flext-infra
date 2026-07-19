@@ -163,7 +163,7 @@ python.default_packages_file = ".default-python-packages"
 [tools]
 python = "3.13"
 uv = "0.11.29"
-ruff = "0.15.17"
+ruff = "0.15.22"
 """
 
     MAKEFILE_INCLUDE_OLD: Final[str] = (
