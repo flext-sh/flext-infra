@@ -57,10 +57,12 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         """Build DAG stage specs with linear dependency chain."""
         handlers: t.Cli.PipelineHandlerMap = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
+            c.Infra.PipelineStage.TOOLCHAIN: self._stage_toolchain,
             c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
             c.Infra.PipelineStage.CENSUS_BEFORE: self._stage_census_before,
             c.Infra.PipelineStage.SCAFFOLD: self._stage_scaffold,
             c.Infra.PipelineStage.AUTO_FIX: self._stage_auto_fix,
+            c.Infra.PipelineStage.DEPS: self._stage_deps,
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }

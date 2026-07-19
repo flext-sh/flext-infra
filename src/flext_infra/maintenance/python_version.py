@@ -137,12 +137,52 @@ class FlextInfraPythonVersionEnforcer(s[int]):
                 project=project.name,
             )
             return False
+        if not self._conform_python_version_file(project, required_minor):
+            return False
         if self.verbose:
             logger.info(
                 "python_version_validated",
                 required_minor=required_minor,
                 project=project.name,
             )
+        return True
+
+    def _conform_python_version_file(self, project: Path, required_minor: int) -> bool:
+        """Write ``.python-version`` (``3.<minor>``) from the SSOT minor.
+
+        In check-only mode a missing/stale file is a validation failure; in
+        apply mode the file is created/rewritten so pyenv/asdf/mise select the
+        interpreter that matches the workspace SSOT.
+        """
+        version_file = project / c.Infra.PYTHON_VERSION_FILENAME
+        desired = f"3.{required_minor}\n"
+        current = (
+            u.Cli.files_read_text(version_file).unwrap_or("")
+            if version_file.is_file()
+            else ""
+        )
+        if current == desired:
+            return True
+        if self.check_only:
+            logger.error(
+                "python_version_file_out_of_sync",
+                project=project.name,
+                file=c.Infra.PYTHON_VERSION_FILENAME,
+            )
+            return False
+        write_result = u.Cli.files_write_text(version_file, desired)
+        if write_result.failure:
+            logger.error(
+                "python_version_file_write_failed",
+                project=project.name,
+                error=write_result.error,
+            )
+            return False
+        logger.info(
+            "python_version_file_conformed",
+            project=project.name,
+            version=desired.strip(),
+        )
         return True
 
     def _read_required_minor(self, workspace_root: Path) -> int:

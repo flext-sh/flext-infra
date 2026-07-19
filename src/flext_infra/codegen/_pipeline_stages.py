@@ -10,6 +10,8 @@ from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -58,6 +60,74 @@ class FlextInfraCodegenPipelineStagesMixin:
             return {"projects_discovered": len(discovered)}
 
         return self._run_stage(c.Infra.PipelineStage.DISCOVER, _action, _emit)
+
+    def _stage_toolchain(
+        self, ctx: m.Cli.PipelineStageContext
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Conform every project's toolchain to the codegen SSOT.
+
+        Propagates ``.python-version`` and ``requires-python`` from the single
+        ``codegen.yaml`` toolchain source to the workspace root and all members
+        via the existing enforcer. In apply mode it writes; in dry-run it only
+        validates. Reuses ``FlextInfraPythonVersionEnforcer`` — no duplicate
+        version logic in the pipeline.
+        """
+
+        def _action() -> int:
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            enforcer = FlextInfraPythonVersionEnforcer(
+                workspace_root=ctx.workspace_root,
+                check_only=dry_run,
+                apply_changes=not dry_run,
+            )
+            result = enforcer.execute(check_only=dry_run)
+            if result.failure:
+                msg = result.error or "toolchain conform failed"
+                raise RuntimeError(msg)
+            return result.unwrap()
+
+        return self._run_stage(
+            c.Infra.PipelineStage.TOOLCHAIN,
+            _action,
+            lambda code: {"toolchain_exit": code},
+        )
+
+    def _stage_deps(
+        self, ctx: m.Cli.PipelineStageContext
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Conform dependencies to reality via deptry + typing-stub detection.
+
+        Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004 +
+        ``types-*`` stub hints). In apply mode it adds missing typing packages
+        and applies detected fixes; in dry-run it reports only. No duplicate
+        detection logic in the pipeline.
+        """
+
+        def _action() -> bool:
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            projects = self._state.discovered_projects or None
+            selected = (
+                tuple(project.path.name for project in projects)
+                if projects is not None
+                else None
+            )
+            detector = FlextInfraRuntimeDevDependencyDetector(
+                workspace_root=ctx.workspace_root,
+                apply_changes=not dry_run,
+                apply_typings=not dry_run,
+                selected_projects=selected,
+            )
+            result = detector.execute()
+            if result.failure:
+                msg = result.error or "dependency conform failed"
+                raise RuntimeError(msg)
+            return result.unwrap()
+
+        return self._run_stage(
+            c.Infra.PipelineStage.DEPS,
+            _action,
+            lambda applied: {"deps_conformed": applied},
+        )
 
     def _stage_py_typed(
         self, ctx: m.Cli.PipelineStageContext
