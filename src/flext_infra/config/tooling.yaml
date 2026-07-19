@@ -58,62 +58,62 @@ Infra:
             rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
             typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
           ignore:
-            - B009
-            - B010
-            - B017
-            - BLE001
-            - C901
-            - COM812
-            - CPY001
-            - D203
-            - D213
-            - D401
-            - D417
-            - ANN202
-            - DOC201
-            - DOC202
-            - DOC402
-            - DOC501
-            - DOC502
-            - E501
-            - ERA001
-            - FBT003
-            - G004
-            - N805
-            - N813
-            - N816
-            - PIE790
-            - PLR0904
-            - PLR0911
-            - PLR0912
-            - PLR0913
-            - PLR0914
-            - PLR0915
-            - PLR0917
-            - PLR1702
-            - PLR6301
-            - PLW2901
-            - PLW0108
-            - PLW3201
-            - PYI042
-            - Q000
-            - S608
-            - RUF001
-            - RUF002
-            - RUF003
-            - RUF005
-            - TC001
-            - TC002
-            - TC003
-            - TRY003
-            - TRY300
-            - TRY301
-            - UP040
-            - W293
+            - get-attr-with-constant
+            - set-attr-with-constant
+            - assert-raises-exception
+            - blind-except
+            - complex-structure
+            - missing-trailing-comma
+            - missing-copyright-notice
+            - incorrect-blank-line-before-class
+            - multi-line-summary-second-line
+            - non-imperative-mood
+            - undocumented-param
+            - missing-return-type-private-function
+            - docstring-missing-returns
+            - docstring-extraneous-returns
+            - docstring-missing-yields
+            - docstring-missing-exception
+            - docstring-extraneous-exception
+            - line-too-long
+            - commented-out-code
+            - boolean-positional-value-in-call
+            - logging-f-string
+            - invalid-first-argument-name-for-method
+            - camelcase-imported-as-lowercase
+            - mixed-case-variable-in-global-scope
+            - unnecessary-placeholder
+            - too-many-public-methods
+            - too-many-return-statements
+            - too-many-branches
+            - too-many-arguments
+            - too-many-locals
+            - too-many-statements
+            - too-many-positional-arguments
+            - too-many-nested-blocks
+            - no-self-use
+            - redefined-loop-name
+            - unnecessary-lambda
+            - bad-dunder-method-name
+            - snake-case-type-alias
+            - bad-quotes-inline-string
+            - hardcoded-sql-expression
+            - ambiguous-unicode-character-string
+            - ambiguous-unicode-character-docstring
+            - ambiguous-unicode-character-comment
+            - collection-literal-concatenation
+            - typing-only-first-party-import
+            - typing-only-third-party-import
+            - typing-only-standard-library-import
+            - raise-vanilla-args
+            - try-consider-else
+            - raise-within-try
+            - non-pep695-type-alias
+            - blank-line-with-whitespace
           ignored-rule-rationales:
-            I001: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
+            unsorted-imports: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
               semantic c-t-p-m-u dependency order in FLEXT facades.
-            PLC0415: Public facade models are imported lazily only at validation and
+            import-outside-top-level: Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
           isort:
             combine-as-imports: true
@@ -123,85 +123,85 @@ Infra:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
             "**/*dispatcher*": []
-            "**/*docs*": [INP001, S404, S603, T201]
-            "**/*exceptions*": [A001, S105, SLF001]
+            "**/*docs*": [implicit-namespace-package, suspicious-subprocess-import, subprocess-without-shell-equals-true, print]
+            "**/*exceptions*": [builtin-variable-shadowing, hardcoded-password-string, private-member-access]
             "**/*handlers*": []
-            "**/*instrumentation*": [C901, FBT001, SLF001]
-            "**/*loggings*": [PLW0603, PLR0904]
-            "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
-            "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
-            "**/*oracle*": [DTZ007]
-            "**/*result*": [PLC2701, SLF001]
+            "**/*instrumentation*": [complex-structure, boolean-type-hint-positional-argument, private-member-access]
+            "**/*loggings*": [global-statement, too-many-public-methods]
+            "**/*middleware*": [any-type, boolean-type-hint-positional-argument, boolean-default-value-positional-argument, unnecessary-dunder-call, hardcoded-password-default]
+            "**/*models*": [any-type, boolean-type-hint-positional-argument, import-private-name, property-with-parameters, global-statement]
+            "**/*oracle*": [call-datetime-strptime-without-zone]
+            "**/*result*": [import-private-name, private-member-access]
             "**/*runtime*": []
             "**/*scripts*":
-              - EXE001
-              - FIX002
-              - INP001
-              - PLR0911
-              - PLR0912
-              - PLR0915
-              - PLR2004
-              - PLW2901
-              - S105
-              - S107
-              - S404
-              - S603
-              - T201
-              - TID252
-            "**/*service*": [N815, S404, S603, SLF001, PLC2801]
-            "**/*subprocess_utils*": [S404, S603]
-            "**/*typings*": [ANN401]
-            "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
+              - shebang-not-executable
+              - line-contains-todo
+              - implicit-namespace-package
+              - too-many-return-statements
+              - too-many-branches
+              - too-many-statements
+              - magic-value-comparison
+              - redefined-loop-name
+              - hardcoded-password-string
+              - hardcoded-password-default
+              - suspicious-subprocess-import
+              - subprocess-without-shell-equals-true
+              - print
+              - relative-imports
+            "**/*service*": [mixed-case-variable-in-class-scope, suspicious-subprocess-import, subprocess-without-shell-equals-true, private-member-access, unnecessary-dunder-call]
+            "**/*subprocess_utils*": [suspicious-subprocess-import, subprocess-without-shell-equals-true]
+            "**/*typings*": [any-type]
+            "**/*utilities*": [complex-structure, module-import-not-at-top-of-file, unnecessary-dunder-call, subprocess-run-without-check, suspicious-subprocess-import, subprocess-without-shell-equals-true]
             "**/__init__.py":
-              - A004
-              - ANN401
-              - D107
-              - F401
-              - F403
-              - F405
-              - F822
-              - INP001
-              - N999
-              - PLC2701
-              - RUF067
-              - TC004
-            "**/_utilities/parser.py": [ARG004, FBT001]
-            "**/settings.py": [ANN401, FBT001, SLF001]
-            "**/_constants/*.py": [S105]
-            "**/constants.py": [S105]
-            "**/container.py": [ANN401, SLF001]
+              - builtin-import-shadowing
+              - any-type
+              - undocumented-public-init
+              - unused-import
+              - undefined-local-with-import-star
+              - undefined-local-with-import-star-usage
+              - undefined-export
+              - implicit-namespace-package
+              - invalid-module-name
+              - import-private-name
+              - non-empty-init-module
+              - runtime-import-in-type-checking-block
+            "**/_utilities/parser.py": [unused-static-method-argument, boolean-type-hint-positional-argument]
+            "**/settings.py": [any-type, boolean-type-hint-positional-argument, private-member-access]
+            "**/_constants/*.py": [hardcoded-password-string]
+            "**/constants.py": [hardcoded-password-string]
+            "**/container.py": [any-type, private-member-access]
             "**/context.py": []
-            "**/file_tools.py": [D102]
-            "**/managers.py": [S105]
-            "**/models.py": [PLC2801, S102, S105]
+            "**/file_tools.py": [undocumented-public-method]
+            "**/managers.py": [hardcoded-password-string]
+            "**/models.py": [unnecessary-dunder-call, exec-builtin, hardcoded-password-string]
             "**/output.py":
-              - FBT001
+              - boolean-type-hint-positional-argument
             # FLEXT config/settings namespaces are deliberately PascalCase
             # (config.<Namespace> / settings.<Namespace>). Protocol properties
             # must preserve that exact public member name; N802 models functions,
             # not namespace-shaped protocol attributes.
-            "**/_config.py": [N802]
-            "**/_protocols/*.py": [N802]
-            "**/flext_cli/_protocols/framework.py": [A002]
+            "**/_config.py": [invalid-function-name]
+            "**/_protocols/*.py": [invalid-function-name]
+            "**/flext_cli/_protocols/framework.py": [builtin-argument-shadowing]
             "**/_settings.py":
-              - N802
+              - invalid-function-name
             # flext-cli is the single framework-adapter owner. Direct Click,
             # Typer, and Rich imports stay banned in every consumer while the
             # owning boundary must import those libraries to expose the facade.
-            "**/flext_cli/_utilities/formatters.py": [TID251]
-            "**/flext_cli/_utilities/framework.py": [A002, TID251]
-            "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
-            "**/providers/*.py": [S106, S107]
-            "**/services/prompts.py": [D102, D107]
-            "**/singer/*.py": [S404, S603]
-            "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-            "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-            "**/alert_manager*.py": [S310]
-            "**/external_command*.py": [S404, S603]
-            "**/orchestrator*.py": [S404, S603]
-            "**/protocol_impls/*.py": [SLF001]
-            "**/typings.py": [RUF036]
-            "**/workspace/*.py": [S404, S603, S607]
+            "**/flext_cli/_utilities/formatters.py": [banned-api]
+            "**/flext_cli/_utilities/framework.py": [builtin-argument-shadowing, banned-api]
+            "**/plugins/*.py": [boolean-type-hint-positional-argument, boolean-default-value-positional-argument, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, relative-imports]
+            "**/providers/*.py": [hardcoded-password-func-arg, hardcoded-password-default]
+            "**/services/prompts.py": [undocumented-public-method, undocumented-public-init]
+            "**/singer/*.py": [suspicious-subprocess-import, subprocess-without-shell-equals-true]
+            "**/tools/*.py": [boolean-type-hint-positional-argument, boolean-default-value-positional-argument, invalid-function-name, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, print]
+            "**/tools/**/*.py": [boolean-type-hint-positional-argument, boolean-default-value-positional-argument, invalid-function-name, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, print]
+            "**/alert_manager*.py": [suspicious-url-open-usage]
+            "**/external_command*.py": [suspicious-subprocess-import, subprocess-without-shell-equals-true]
+            "**/orchestrator*.py": [suspicious-subprocess-import, subprocess-without-shell-equals-true]
+            "**/protocol_impls/*.py": [private-member-access]
+            "**/typings.py": [none-not-at-end-of-union]
+            "**/workspace/*.py": [suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path]
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^legado(?:/|$)
