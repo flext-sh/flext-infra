@@ -38,6 +38,9 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
         ),
         encoding="utf-8",
     )
+    (root / ".python-version").write_text(
+        f"3.{minor}\n", encoding="utf-8"
+    )
     return root
 
 
@@ -56,6 +59,9 @@ def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
             'dependencies = ["flext-core>=0"]\n'
         ),
         encoding="utf-8",
+    )
+    (proj / ".python-version").write_text(
+        f"3.{minor}\n", encoding="utf-8"
     )
     return proj
 
@@ -158,9 +164,46 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         (p / "pyproject.toml").write_text(
             f'requires-python = ">=3.{_MINOR}"\n', encoding="utf-8"
         )
+        (p / ".python-version").write_text(
+            f"3.{_MINOR}\n", encoding="utf-8"
+        )
         enforcer.check_only = True
         enforcer.verbose = False
         tm.that(enforcer._ensure_python_version_file(p, required_minor=_MINOR), eq=True)
+
+    def test_check_only_fails_when_python_version_file_is_missing(
+        self, tmp_path: Path
+    ) -> None:
+        ws = _ws(tmp_path / "ws")
+        (ws / ".python-version").unlink()
+
+        tm.fail(_svc(ws).execute(check_only=True, verbose=False))
+
+    def test_check_only_fails_when_python_version_file_is_stale(
+        self, tmp_path: Path
+    ) -> None:
+        ws = _ws(tmp_path / "ws")
+        (ws / ".python-version").write_text(
+            f"3.{_BAD}\n", encoding="utf-8"
+        )
+
+        tm.fail(_svc(ws).execute(check_only=True, verbose=False))
+
+    def test_apply_mode_conforms_python_version_file_and_is_idempotent(
+        self, tmp_path: Path
+    ) -> None:
+        ws = _ws(tmp_path / "ws")
+        version_file = ws / ".python-version"
+        version_file.unlink()
+        svc = _svc(ws)
+
+        tm.ok(svc.execute(check_only=False, verbose=False), eq=0)
+        tm.that(version_file.read_text(encoding="utf-8"), eq=f"3.{_MINOR}\n")
+        version_file.write_text(f"3.{_BAD}\n", encoding="utf-8")
+        tm.ok(svc.execute(check_only=False, verbose=False), eq=0)
+        tm.that(version_file.read_text(encoding="utf-8"), eq=f"3.{_MINOR}\n")
+        tm.ok(svc.execute(check_only=True, verbose=False), eq=0)
+        tm.that(version_file.read_text(encoding="utf-8"), eq=f"3.{_MINOR}\n")
 
     def test_enforce_mode_mismatch(
         self, enforcer: FlextInfraPythonVersionEnforcer, tmp_path: Path

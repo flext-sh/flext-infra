@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, m, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenPipelineStagesMixin:
@@ -64,23 +64,22 @@ class FlextInfraCodegenPipelineStagesMixin:
     def _stage_toolchain(
         self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Conform every project's toolchain to the codegen SSOT.
+        """Conform workspace toolchains through the canonical codegen planner."""
 
-        Propagates ``.python-version`` and ``requires-python`` from the single
-        ``codegen.yaml`` toolchain source to the workspace root and all members
-        via the existing enforcer. In apply mode it writes; in dry-run it only
-        validates. Reuses ``FlextInfraPythonVersionEnforcer`` — no duplicate
-        version logic in the pipeline.
-        """
-
-        def _action() -> int:
+        def _action() -> m.Infra.CodegenResult:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            enforcer = FlextInfraPythonVersionEnforcer(
-                workspace_root=ctx.workspace_root,
-                check_only=dry_run,
-                apply_changes=not dry_run,
+            result = FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=ctx.workspace_root,
+                    what=c.Infra.CodegenConformSurface.ALL,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=(
+                        c.Infra.CodegenConformMode.CHECK
+                        if dry_run
+                        else c.Infra.CodegenConformMode.APPLY
+                    ),
+                )
             )
-            result = enforcer.execute(check_only=dry_run)
             if result.failure:
                 msg = result.error or "toolchain conform failed"
                 raise RuntimeError(msg)
@@ -89,7 +88,10 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(
             c.Infra.PipelineStage.TOOLCHAIN,
             _action,
-            lambda code: {"toolchain_exit": code},
+            lambda result: {
+                "repositories_conformed": len(result.plan.repositories),
+                "files_written": len(result.written_files),
+            },
         )
 
     def _stage_deps(
