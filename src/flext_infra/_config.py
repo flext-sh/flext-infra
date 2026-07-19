@@ -18,7 +18,10 @@ class _FlextInfraConfig(FlextCliConfig):
 
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
     # config.Infra is the only codegen information surface; no accessor method.
-    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parent / "config")
+    # NOTE (mro-sltx / backport from 0.20.0-dev): canonical [project-root]/config
+    # resolution (parents[2]) overrides the package-anchored CONFIG_DIR inherited
+    # from FlextCliConfig, so the infra YAML SSOT loads from the repo-root config/.
+    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
     Infra: FlextInfraConfigModels.Infra
 
 
