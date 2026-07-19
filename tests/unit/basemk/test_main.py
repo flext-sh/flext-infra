@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import tempfile
+from pathlib import Path
 
 from flext_infra import main as infra_main
 from flext_tests import tm
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def basemk_main(argv: list[str]) -> int:
@@ -30,6 +28,25 @@ class TestsFlextInfraBasemkMain:
         tm.that(basemk_main(["generate", "--output", str(output_file)]), eq=0)
         assert output_file.exists()
         assert output_file.read_text(encoding="utf-8")
+
+    def test_basemk_main_with_relative_output_writes_raw_content(self) -> None:
+        workspace_root = Path.cwd()
+        with tempfile.TemporaryDirectory(dir=workspace_root) as temp_dir:
+            output_file = Path(temp_dir) / "nested" / "base.mk"
+            relative_output = output_file.relative_to(workspace_root)
+
+            exit_code = basemk_main([
+                "generate",
+                "--project-name",
+                "ai-hub",
+                "--output",
+                str(relative_output),
+            ])
+
+            tm.that(exit_code, eq=0)
+            generated = output_file.read_text(encoding="utf-8")
+            tm.that(generated, has="PROJECT_NAME ?= ai-hub")
+            tm.that(generated, has="$(if $(wildcard $(VENV_PYTHON))")
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path

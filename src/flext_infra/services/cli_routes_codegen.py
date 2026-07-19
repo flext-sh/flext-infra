@@ -35,7 +35,9 @@ class CodegenRoutes(CliRouteBase):
                 name="generate",
                 help_text="Generate base.mk content from the canonical template",
                 model_cls=FlextInfraBaseMkGenerator,
-                handler=lambda params: params.execute(),
+                handler=lambda params: params.execute().map(
+                    lambda content: True if params.output is not None else content
+                ),
                 success_message="base.mk generation complete",
             ),
         ),

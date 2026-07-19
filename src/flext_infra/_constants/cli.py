@@ -73,7 +73,6 @@ class FlextInfraConstantsCli:
     WORKTREE_TRANSACTION_ROOT: Final[str] = ".claude/worktrees"
     WORKTREE_TRANSACTION_TIMEOUT_SECONDS: Final[int] = 3600
     WORKTREE_TRANSACTION_APPLY_ROUTES: Final[frozenset[str]] = frozenset({
-        "basemk:generate",
         "check:fix-enforcement",
         "check:fix-pyrefly-settings",
         "codegen:auto-fix",
