@@ -11,10 +11,14 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, u
+from flext_infra import c, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -47,7 +51,7 @@ class FlextInfraProjectMakefileUpdater:
         """
         _ = canonical_root  # reserved for future cross-project dependency resolution
         result: p.Result[bool]
-        pyproject = project_root / c.PYPROJECT_FILENAME
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.exists():
             result = r[bool].ok(False)
         else:

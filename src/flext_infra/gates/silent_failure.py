@@ -4,9 +4,6 @@ Enforces silent-failure detection across every Python project the workspace
 discovers. Per-project opt-out is expressed via the absence of Python
 sources (``iter_python_files`` returning empty), not via a hand-curated
 project-name allowlist.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -14,7 +11,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
@@ -22,6 +19,8 @@ from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraSilentFailureGate(FlextInfraGate):
@@ -35,8 +34,8 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def check(
-        self, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> p.Infra.GateExecution:
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
         """Check."""
         _ = ctx
         started = time.monotonic()
@@ -45,7 +44,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
         )
         if files_result.failure:
             issue = m.Infra.Issue(
-                file=c.PYPROJECT_FILENAME,
+                file=c.Infra.PYPROJECT_FILENAME,
                 line=1,
                 column=1,
                 code=self.gate_id,
@@ -93,7 +92,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx, check_dirs
@@ -101,8 +100,8 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = result, project_dir, ctx
         return True, ()

@@ -13,8 +13,8 @@ Infra:
       python_required_version: ">=3.13,<3.14"
       # mro-wkii.17.26 (codex): generated mise pins come from validated config.
       ruff_version: "0.15.17"
-      uv_version: "0.11.28"
-      uv_required_version: "==0.11.28"
+      uv_version: "0.11.29"
+      uv_required_version: "==0.11.29"
       uv_link_mode: copy
 
     providers:
@@ -152,7 +152,7 @@ Infra:
             codegen: [flext-infra]
             dev:
               - flext-tests
-              - mypy>=1.19.1
+              - mypy>=2.3.0
               - pyrefly>=1.1.1,<1.2
               - pyright>=1.1.411,<1.2
               - pytest>=9.0.3,<10
@@ -168,8 +168,8 @@ Infra:
             codegen: [flext-infra]
             dev:
               - flext-tests
-              # mro-45r9: the floor lets uv select 1.19 in DBT workspaces and latest standalone.
-              - mypy>=1.19.1
+              # mro-45r9/mro-wkii.17.30: floor lets uv select latest mypy (2.3.0 verified 0 new errors on flext-core+flext-infra); no upper cap so DBT workspaces stay resolvable.
+              - mypy>=2.3.0
               - pyrefly>=1.1.1,<1.2
               - pyright>=1.1.411,<1.2
               - pytest>=9.0.3,<10

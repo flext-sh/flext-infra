@@ -1,13 +1,10 @@
-"""Workspace, refactor, and release CLI routes for flext-infra.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Refactor CLI route ownership."""
 
 from __future__ import annotations
 
-from flext_cli import p
-from flext_infra import c, m
+from typing import ClassVar
+
+from flext_infra import m
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -20,7 +17,7 @@ from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
 from flext_infra.transformers.logging_modernizer import (
     FlextInfraRefactorLoggingModernizer,
@@ -34,45 +31,42 @@ from flext_infra.transformers.pydantic_modernizer import (
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
 
-WORKSPACE_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
-    c.Infra.CLI_GROUP_REFACTOR: (
+class RefactorRoutes(CliRouteBase):
+    """Own the complete refactor command tuple."""
+
+    refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
         m.Cli.ResultCommandRoute(
             name="migrate-mro",
             help_text="Migrate loose declarations into MRO facade classes",
             model_cls=m.Infra.RefactorMigrateMroInput,
-            handler=FlextInfraRefactorMigrateToClassMRO.execute_command,
+            handler=lambda params: FlextInfraRefactorMigrateToClassMRO.execute_command(
+                params
+            ).map(CliRouteBase.as_route_value),
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=FlextInfraNamespaceEnforcer.execute_command,
+            handler=lambda params: FlextInfraNamespaceEnforcer.execute_command(
+                params
+            ).map(CliRouteBase.as_route_value),
         ),
-        *(
-            m.Cli.ResultCommandRoute(
-                name=route_name,
-                help_text=help_text,
-                model_cls=model_cls,
-                handler=lambda params, mc=model_cls: mc.execute_command(params),
-            )
-            for route_name, help_text, model_cls in (
-                (
-                    "census",
-                    "Run a Rope-only workspace census for Python objects",
-                    FlextInfraRefactorCensus,
-                ),
-            )
+        m.Cli.ResultCommandRoute(
+            name="census",
+            help_text="Run a Rope-only workspace census for Python objects",
+            model_cls=FlextInfraRefactorCensus,
+            handler=lambda params: FlextInfraRefactorCensus.execute_command(params),
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraAccessorMigrationOrchestrator.execute_command,
+            handler=lambda params: (
+                FlextInfraAccessorMigrationOrchestrator.execute_command(params).map(
+                    CliRouteBase.as_route_value
+                )
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",
@@ -141,43 +135,7 @@ WORKSPACE_ROUTES: dict[str, tuple[p.Cli.ResultCommandRoute, ...]] = {
                 description="cli modernizer",
             ),
         ),
-        # mro-j47u: legacy tests are outside production and have no refactor route.
-    ),
-    c.Infra.CLI_GROUP_RELEASE: (
-        m.Cli.ResultCommandRoute(
-            name=c.Infra.VERB_RUN,
-            help_text="Run release orchestration CLI flow",
-            model_cls=FlextInfraReleaseOrchestrator,
-            handler=FlextInfraReleaseOrchestrator.execute_command,
-            success_message="Release completed successfully",
-        ),
-    ),
-    c.Infra.CLI_GROUP_WORKSPACE: tuple(
-        m.Cli.ResultCommandRoute(
-            name=route_name,
-            help_text=help_text,
-            model_cls=model_cls,
-            handler=lambda params, mc=model_cls: mc.execute_command(params),
-        )
-        for route_name, help_text, model_cls in (
-            (
-                "detect",
-                "Detect workspace or standalone mode",
-                FlextInfraWorkspaceDetector,
-            ),
-            ("sync", "Sync base.mk to project root", FlextInfraSyncService),
-            (
-                "orchestrate",
-                "Run make verb across projects",
-                FlextInfraOrchestratorService,
-            ),
-            (
-                "migrate",
-                "Migrate workspace projects to flext_infra tooling",
-                FlextInfraProjectMigrator,
-            ),
-        )
-    ),
-}
+    )
 
-__all__: list[str] = []
+
+__all__: list[str] = ["RefactorRoutes"]

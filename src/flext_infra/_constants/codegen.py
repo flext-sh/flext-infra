@@ -80,21 +80,23 @@ class FlextInfraConstantsCodegen(
         """Canonical codegen pipeline stage identifiers."""
 
         DISCOVER = "discover"
+        TOOLCHAIN = "toolchain"
         PY_TYPED = "py_typed"
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
         AUTO_FIX = "auto_fix"
-        GRPC = "grpc"
+        DEPS = "deps"
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
     PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
         PipelineStage.DISCOVER,
+        PipelineStage.TOOLCHAIN,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
         PipelineStage.AUTO_FIX,
-        PipelineStage.GRPC,
+        PipelineStage.DEPS,
         PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )

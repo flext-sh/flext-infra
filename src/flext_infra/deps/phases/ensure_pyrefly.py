@@ -49,9 +49,15 @@ class FlextInfraEnsurePyreflyConfigPhase:
         # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs:
+            declared_import_roots = (
+                (pyrefly_rules.path_rules.source_dir,)
+                if pyrefly_rules.path_rules.source_dir in declared_python_dirs
+                else ()
+            )
             expected_search = sorted({
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
+                *declared_import_roots,
             })
             # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.

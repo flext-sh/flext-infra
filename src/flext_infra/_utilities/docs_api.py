@@ -424,7 +424,7 @@ class FlextInfraUtilitiesDocsApi:
         site_url = project.urls.documentation or project.urls.homepage
         repo_url = project.urls.repository or project.urls.homepage
         if not package_name:
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+            result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
                 "package_name": "",
                 "description": project.description,
                 "doc_summary": "",
@@ -441,6 +441,7 @@ class FlextInfraUtilitiesDocsApi:
                 "modules": [],
                 "exclude_docs": list(docs.exclude_docs),
             })
+            return result
         init_path = (
             project_root / c.Infra.DEFAULT_SRC_DIR / package_name / c.Infra.INIT_PY
         )
@@ -480,7 +481,7 @@ class FlextInfraUtilitiesDocsApi:
         facades = [
             name for name in public_symbols if name.startswith(metadata.class_stem)
         ]
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+        contract: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "package_name": package_name,
             "description": project.description,
             "doc_summary": FlextInfraUtilitiesRopeAnalysis.module_docstring_summary_source(
@@ -501,6 +502,7 @@ class FlextInfraUtilitiesDocsApi:
             "modules": modules,
             "exclude_docs": list(docs.exclude_docs),
         })
+        return contract
 
     @staticmethod
     def _classify_exports(

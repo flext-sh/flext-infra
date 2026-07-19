@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsContract:
             if isinstance(project_urls_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
             "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
@@ -57,6 +57,7 @@ class FlextInfraUtilitiesDocsContract:
             ).strip(),
             "exclude_docs": list(exclude_docs),
         })
+        return result
 
     @staticmethod
     def docs_write_if_needed(

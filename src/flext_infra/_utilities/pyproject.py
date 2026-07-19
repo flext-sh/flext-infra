@@ -28,9 +28,12 @@ def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
         The validated infra mapping, or ``None`` for invalid input.
     """
     try:
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
+        result: t.JsonMapping | None = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            payload
+        )
     except (c.ValidationError, ValueError):
         return None
+    return result
 
 
 class FlextInfraUtilitiesPyproject:

@@ -66,13 +66,14 @@ class FlextInfraUtilitiesRopeCore(
                 message="Delete once deprecated functions are gone",
                 category=DeprecationWarning,
             )
-            return FlextInfraUtilitiesRopeRuntime.new_project(
+            project: t.Infra.RopeProject = FlextInfraUtilitiesRopeRuntime.new_project(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
                 ignored_resources=sorted(config.Infra.rope_index.ignored_resources),
                 source_folders=source_folders,
             )
+            return project
 
     @staticmethod
     @contextmanager

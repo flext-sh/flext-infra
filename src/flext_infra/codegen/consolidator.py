@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.codegen._consolidator_steps import (
     FlextInfraCodegenConsolidatorStepsMixin,
@@ -58,7 +58,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                 if not value_map:
                     continue
 
-                project_files = self._project_python_files(project.path)
+                project_files = self._project_python_files(rope, project.path)
                 if project_files.failure:
                     return r[str].fail(
                         project_files.error or "project python file discovery failed"
@@ -73,8 +73,8 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     if self.dry_run:
                         output_lines.extend(
                             (
-                                f"  {rel_path}:{symbol.line}  "
-                                f"{symbol.name} = {value} -> {ref}"
+                                f"  {rel_path}:{symbol.line}  {symbol.name} = "
+                                f"{value} -> {ref}"
                             )
                             for symbol, ref, value in matches
                         )
@@ -117,21 +117,32 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
             return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))
 
-    def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
-        """Return governed Python files for one project consolidation pass."""
+    def _project_python_files(
+        self, rope_workspace: p.Infra.RopeWorkspaceDsl, project_root: Path
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Return indexed Python wrapper files for one consolidation pass."""
+        resolved_root = project_root.resolve()
         constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
-        try:
-            files = {
-                path
-                for root_name in config.Infra.rope_index.roots
-                for path in u.Infra.iter_directory_python_files(
-                    project_root / root_name
-                )
-                if constants_directory not in path.parts
-            }
-        except OSError as exc:
-            return r[t.SequenceOf[Path]].fail_op("project python file discovery", exc)
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
+        indexed_files: t.MutableSequenceOf[Path] = []
+        for module in rope_workspace.modules():
+            if (
+                module.project_root is None
+                or module.project_root.resolve() != resolved_root
+            ):
+                continue
+            file_path = module.file_path.resolve()
+            if not file_path.is_relative_to(resolved_root):
+                continue
+            relative_path = file_path.relative_to(resolved_root)
+            if (
+                file_path.suffix != c.Infra.EXT_PYTHON
+                or not relative_path.parts
+                or relative_path.parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+                or constants_directory in relative_path.parts
+            ):
+                continue
+            indexed_files.append(file_path)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(indexed_files)))
 
     def _selected_projects(
         self, rope_workspace: p.Infra.RopeWorkspaceDsl

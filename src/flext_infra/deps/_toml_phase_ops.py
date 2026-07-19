@@ -78,9 +78,6 @@ class FlextInfraTomlPhaseOps:
                 FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
-            case _:
-                msg = f"unsupported TOML operation kind: {operation.kind}"
-                raise ValueError(msg)
 
     @staticmethod
     def _remove_operation(

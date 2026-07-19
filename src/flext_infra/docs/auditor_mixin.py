@@ -11,10 +11,12 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, r, t, u
+from flext_infra import c, r, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import m, p
 
 
 class FlextInfraDocAuditorMixin:
@@ -31,12 +33,12 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def parse_audit_gate(
-        audit_gate: t.MappingKV[str, t.JsonValue],
+        audit_gate: t.MappingKV[str, t.Infra.InfraValue],
     ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
         """Extract default budget and per-scope budgets from an audit_gate mapping."""
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
-        by_scope_raw: t.MappingKV[str, t.JsonValue] = {}
+        by_scope_raw: t.MappingKV[str, t.Infra.InfraValue] = {}
         if by_scope_raw_value is not None:
             if not isinstance(by_scope_raw_value, Mapping):
                 return r[t.Pair[int | None, t.IntMapping]].fail(
@@ -124,17 +126,17 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def write_audit_reports(
-        scope: p.Infra.DocScope,
-        issues: t.SequenceOf[p.Infra.AuditIssue],
+        scope: m.Infra.DocScope,
+        issues: t.SequenceOf[m.Infra.AuditIssue],
         checks: t.Infra.StrSet,
         *,
         strict: bool,
-        docstring_coverage: p.Infra.DocstringCoverage | None = None,
+        docstring_coverage: m.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
             [
-                p.Infra.DocScope,
-                t.SequenceOf[p.Infra.AuditIssue],
-                p.Infra.DocstringCoverage | None,
+                m.Infra.DocScope,
+                t.SequenceOf[m.Infra.AuditIssue],
+                m.Infra.DocstringCoverage | None,
             ],
             t.StrSequence,
         ],

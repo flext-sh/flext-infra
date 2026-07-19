@@ -317,7 +317,8 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
         """Resolve one selected checkout without sibling discovery."""
         if repository.name == workspace.repository.name:
             return root
-        return (root / repository.path).resolve()
+        resolved: Path = (root / repository.path).resolve()
+        return resolved
 
     @staticmethod
     def _scaffold_python_dirs(
@@ -880,6 +881,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
                 mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
                 prlimit_command=c.Infra.PRLIMIT_COMMAND,
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,

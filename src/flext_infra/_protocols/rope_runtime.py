@@ -156,7 +156,9 @@ class FlextInfraProtocolsRopeRuntime(Protocol):
         ) -> FlextInfraProtocolsRopeRuntime.RopeResource | None: ...
 
         def get_module(
-            self, module_name: str
+            self,
+            module_name: str,
+            folder: FlextInfraProtocolsRopeRuntime.RopeRoot | None = None,
         ) -> FlextInfraProtocolsRopeRuntime.RopePyModule: ...
 
         def get_python_files(

@@ -102,6 +102,17 @@ class FlextInfraModelsWorktree:
         timeout_seconds: Annotated[
             t.PositiveInt, m.Field(description="Command and lint timeout in seconds")
         ]
+        scoped_paths: Annotated[
+            t.SequenceOf[Path],
+            m.Field(
+                description=(
+                    "Workspace-relative paths the command can touch. When "
+                    "non-empty, only the root repository and submodules under "
+                    "these paths are isolated/checkpointed; an empty sequence "
+                    "isolates the whole workspace (safe default)."
+                )
+            ),
+        ] = ()
 
     class WorktreeTransactionReport(m.ArbitraryTypesModel):
         """Complete evidence for one isolated worktree transaction."""

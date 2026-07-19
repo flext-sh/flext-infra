@@ -3,9 +3,6 @@
 Enforces the per-module logical-LOC ceiling using tokei's code-line count.
 Per-class / per-method / per-function caps require AST and are out of scope
 for this tool-driven gate (tokei reports at file granularity only).
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
 """
 
 from __future__ import annotations
@@ -13,11 +10,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -31,7 +30,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Run tokei over the project's Python directories, emitting JSON."""
         _ = project_dir, ctx
@@ -39,30 +38,26 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
         issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 
     @classmethod
-    def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[p.Infra.Issue, ...]:
+    def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
         """Extract over-cap modules from a tokei `--output json` payload.
 
         Pure function (no subprocess) so the cap logic is unit-testable against
         a literal tokei fixture.
-
-        Returns:
-            Tuple of ``Issue`` objects for every module whose code LOC exceeds
-            the supplied cap.
         """
         parsed = u.Cli.json_parse(tokei_json or "{}")
         empty: t.JsonValue = {}
         data = parsed.unwrap() if parsed.success else empty
         if not isinstance(data, Mapping):
             return ()
-        issues: t.MutableSequenceOf[p.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for language, payload in data.items():
             if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(
                 payload, Mapping

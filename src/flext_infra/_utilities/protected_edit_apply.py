@@ -1,25 +1,23 @@
-"""Apply, backup, and pytest flows for protected edit workflows.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Apply, backup, and pytest flows for protected edit workflows."""
 
 from __future__ import annotations
 
 import ast
 import difflib
 import shutil
+from collections.abc import MutableMapping
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, p, r, t
+from flext_core import r
+from flext_infra import c, m, t
 from flext_infra._utilities.protected_edit_preview import (
     FlextInfraUtilitiesProtectedEditPreview,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
-    from pathlib import Path
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPreview):
@@ -42,7 +40,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     @staticmethod
     def _protected_write_test_failure(
         path: Path,
-        request: p.Infra.ProtectedSourceWritesRequest,
+        request: m.Infra.ProtectedSourceWritesRequest,
         new_errors: t.Infra.LintSnapshot,
     ) -> str | None:
         """Protected write test failure."""
@@ -61,7 +59,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         updates: t.MappingKV[Path, str],
         before_sources: t.MappingKV[Path, str | None],
         before_lints: t.MappingKV[Path, t.Infra.LintSnapshot],
-        request: p.Infra.ProtectedSourceWritesRequest,
+        request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Protected write reports."""
         reports: list[str] = []
@@ -193,7 +191,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_file_edit(
-        py_file: Path, *, request: p.Infra.ProtectedFileEditRequest
+        py_file: Path, *, request: m.Infra.ProtectedFileEditRequest
     ) -> t.Infra.EditResult:
         """Apply one edit, validate lint deltas, and restore on failure."""
         rel = FlextInfraUtilitiesProtectedEditApply._relative_path(
@@ -265,7 +263,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
 
     @staticmethod
     def protected_source_write(
-        py_file: Path, *, request: p.Infra.ProtectedSourceWriteRequest
+        py_file: Path, *, request: m.Infra.ProtectedSourceWriteRequest
     ) -> t.Infra.EditResult:
         """Write validated source content with protected validation and rollback."""
         original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -296,7 +294,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
     def protected_source_writes(
         updates: t.MappingKV[Path, str],
         *,
-        request: p.Infra.ProtectedSourceWritesRequest,
+        request: m.Infra.ProtectedSourceWritesRequest,
     ) -> t.Infra.EditResult:
         """Write multiple files transactionally with lint delta validation."""
         if not updates:

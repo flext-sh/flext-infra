@@ -100,6 +100,8 @@ WORKSPACE_INFRA_REFACTOR := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_REFACTOR 
 WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_ROUTE_RELEASE }}
 WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_VALIDATE }}
 WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_WORKSPACE }}
+WORKSPACE_EDITABLE_REINSTALL_FLAGS :={% for distribution in editable_distributions %} --reinstall-package "{{ distribution }}"{% endfor %}
+WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment --workspace "$(CURDIR)"
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := $(SELECTED_PROJECT_FLAGS)
 
@@ -253,12 +255,13 @@ else \
 	cat "$$log_file"; \
 	exit 1; \
 fi; \
-if $(UV_BIN) sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
+if uv sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS) >>"$$log_file" 2>&1; then \
 	:; \
 else \
 	cat "$$log_file"; \
 	exit 1; \
 fi; \
+$(WORKSPACE_VERIFY_ENVIRONMENT) || { cat "$$log_file"; exit 1; }; \
 rm -f "$$log_file"
 endef
 

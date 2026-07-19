@@ -71,7 +71,6 @@ class FlextInfraConstantsCli:
     # NOTE (multi-agent, mro-wkii.17.26.2.11 / agent: codex): route membership
     # is structural CLI taxonomy; operator transaction values live in config.
     WORKTREE_TRANSACTION_APPLY_ROUTES: Final[frozenset[str]] = frozenset({
-        "basemk:generate",
         "check:fix-enforcement",
         "check:fix-pyrefly-settings",
         "codegen:auto-fix",

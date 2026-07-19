@@ -1,28 +1,30 @@
-"""Per-package and per-module export resolution for the lazy-init planner.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Per-package and per-module export resolution for the lazy-init planner."""
 
 from __future__ import annotations
 
-import ast
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: p.Infra.LazyInitConfig
+        lazy_init: m.Infra.LazyInitConfig
         _module_exports_cache: dict[
             tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
         _version_module_name: str
+
+        @classmethod
+        def _is_private_test_fixture_package(
+            cls, pkg_dir: Path, surface: str
+        ) -> bool: ...
 
         def _package_entry(
             self, pkg_dir: Path
@@ -32,17 +34,15 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
-        def _is_registered_import(
-            self, project_root: Path | None, module_name: str
-        ) -> bool: ...
-
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
-        self, context: p.Infra.LazyInitPackageContext
+        self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
+        if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
+            return {}
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}
@@ -58,34 +58,29 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            # NOTE (multi-agent, mro-wkii.17.26.2): the validated namespace
-            # convention below owns pytest exclusion; this early guard handles
-            # only generated artifacts and modules shadowed by packages.
-            is_generated_support = (
+            # mro-pulj: test artifacts never enter an installable package ABI.
+            test_only_source_module = (
+                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
+                is not None
+            )
+            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
+            # (>5 boolean expressions); retired/generated/test modules are
+            # never semantic input for the lazy export map.
+            is_generated_or_test = (
                 py_file.name in skip_names
-                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name) is not None
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
                 or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
+                or test_only_source_module
             )
-            shadowed_by_package = child_entry is not None and bool(
-                child_entry.package_name
-            )
-            if is_generated_support or shadowed_by_package:
-                continue
-            if self._is_executable_module(py_file):
-                continue
-            if self._is_registered_import(
-                module_entry.project_root, module_entry.module_name
-            ):
+            is_child_package = child_entry is not None and child_entry.package_name
+            if is_generated_or_test or is_child_package:
                 continue
             convention = self.rope_workspace.convention(
                 py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
             if not policy.include_in_lazy_init or not module_entry.module_name:
-                continue
-            # mro-wkii.17.26 (codex): the declarative namespace policy owns
-            # package ABI; do not rediscover symbols it classified as private.
-            if not policy.export_symbols:
                 continue
             require_explicit_all = (
                 u.Infra.matches_root_namespace_file(py_file.name)
@@ -121,31 +116,15 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                     policy.expected_alias,
                     (module_entry.module_name, policy.expected_alias),
                 )
+            if not targets and (
+                not policy.export_symbols
+                or (not policy.enforce_contract and "." in context.current_pkg)
+            ):
+                self._add(index, py_file.stem, (module_entry.module_name, ""))
+                continue
             for name, target in targets.items():
                 self._add(index, name, target)
         return index
-
-    def _is_executable_module(self, py_file: Path) -> bool:
-        """Return whether a module owns a top-level ``__main__`` entrypoint guard."""
-        module = ast.parse(self.rope_workspace.source(py_file), filename=str(py_file))
-        for statement in module.body:
-            if not isinstance(statement, ast.If):
-                continue
-            test = statement.test
-            if not isinstance(test, ast.Compare) or len(test.ops) != 1:
-                continue
-            if not isinstance(test.ops[0], ast.Eq) or len(test.comparators) != 1:
-                continue
-            left = test.left
-            right = test.comparators[0]
-            if (
-                isinstance(left, ast.Name)
-                and left.id == "__name__"
-                and isinstance(right, ast.Constant)
-                and right.value == "__main__"
-            ):
-                return True
-        return False
 
     def _module_exports(
         self,

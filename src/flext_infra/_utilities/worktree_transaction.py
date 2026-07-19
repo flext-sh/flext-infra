@@ -38,6 +38,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 exclusions.append(relative_path)
         return tuple(exclusions)
 
+    @staticmethod
+    def _submodule_in_scope(submodule: Path, scoped_paths: t.SequenceOf[Path]) -> bool:
+        """Return whether a submodule falls under any scoped path."""
+        if not scoped_paths:
+            return True
+        return any(
+            submodule == scoped or submodule.is_relative_to(scoped)
+            for scoped in scoped_paths
+        )
+
     @classmethod
     def _create_complete_worktree(
         cls,
@@ -54,7 +64,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return r[t.SequenceOf[p.Infra.RepositoryWorktree]].fail(
                 submodules_result.error or "failed to discover workspace repositories"
             )
-        submodule_paths = submodules_result.value
+        submodule_paths = tuple(submodules_result.value)
         repository_paths = (Path(), *submodule_paths)
         selected_paths = (
             tuple(Path(path) for path in selected_repositories)
@@ -429,7 +439,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _check_patches(deltas: t.SequenceOf[p.Infra.RepositoryDelta]) -> p.Result[bool]:
         """Dry-run every patch before any source worktree mutation."""
         for delta in deltas:
-            result = FlextInfraUtilitiesGitScope.git_check_patch(delta)
+            result = FlextInfraUtilitiesGitScope.git_check_isolated_patch(delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch check failed'}"

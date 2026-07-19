@@ -61,6 +61,20 @@ class FlextInfraUtilitiesRefactorDiscovery:
             yield f
 
     @staticmethod
+    def _configured_scan_files(
+        project: Path, scan_dirs: t.StrSequence
+    ) -> t.SequenceOf[Path]:
+        """Return files from the exact refactor-owned project directories."""
+        files: set[Path] = set()
+        for directory_name in scan_dirs:
+            files.update(
+                FlextInfraUtilitiesIteration.iter_directory_python_files(
+                    project / directory_name
+                )
+            )
+        return tuple(sorted(files))
+
+    @staticmethod
     def collect_refactor_project_files(
         settings: t.MappingKV[str, t.JsonValue],
         project: Path,

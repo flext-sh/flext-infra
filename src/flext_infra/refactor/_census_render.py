@@ -48,7 +48,6 @@ class FlextInfraRefactorCensusRenderMixin:
             for candidate in report.removal_candidates[:10]:
                 reference_groups = (
                     candidate.runtime_reference_sites,
-                    candidate.example_reference_sites,
                     candidate.script_reference_sites,
                 )
                 reference_preview = next(

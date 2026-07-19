@@ -1,8 +1,4 @@
-"""Rope-backed import and rename operations.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Rope-backed import and rename operations."""
 
 from __future__ import annotations
 
@@ -11,8 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, p, r, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import c, m, p, r, t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra.transformers.project_alias_migrator import (
@@ -91,7 +86,7 @@ class FlextInfraUtilitiesRopeImports:
                 in_hierarchy=in_hierarchy,
             )
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
             RecursionError,
         ) as exc:
@@ -128,10 +123,6 @@ class FlextInfraUtilitiesRopeImports:
         files that contain ``name`` textually. This helper converts that cheap
         index into concrete Rope resources so callers can still rely on Rope's
         semantic identity checks without scanning the full project.
-
-
-        Returns:
-            The indexed Rope resources, or ``None`` when the search cannot be bounded.
         """
         name_index_getter = getattr(rope_workspace, "name_index", None)
         resource_getter = getattr(rope_workspace, "resource", None)
@@ -195,18 +186,14 @@ class FlextInfraUtilitiesRopeImports:
         change is applied when ``apply`` is set. ``r.ok(False)`` when
         rope produced no changes (already organised). ``r.fail(reason)``
         when rope raised a refactoring/resource/type error.
-
-
-        Returns:
-            A result indicating whether Rope changed the resource imports.
         """
         try:
             original_source = resource.read()
             organizer = FlextInfraUtilitiesRopeRuntime.import_organizer(rope_project)
             changes = organizer.organize_imports(resource)
         except (
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
+            *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
         ) as exc:
             return r[bool].fail(f"rope organize_imports raised: {exc!s}")
@@ -248,10 +235,6 @@ class FlextInfraUtilitiesRopeImports:
         ``flext_core`` / ``flext_infra`` (e.g. ``from flext_core import c, m``)
         are restored after Ruff only when still referenced semantically, including
         forward references that Ruff cannot see inside string annotations.
-
-
-        Returns:
-            A result indicating whether import normalization changed any file.
         """
         existing_paths = tuple(path.resolve() for path in file_paths if path.is_file())
         if not existing_paths:
@@ -554,10 +537,6 @@ class FlextInfraUtilitiesRopeImports:
         Returns ``(target_import_stmt_or_None, moved_aliases_set)``. Mutates
         the source-module statements in place via ``import_info`` reassignment;
         the caller still owns the merge into the target.
-
-
-        Returns:
-            The rewritten target import statement and the set of moved aliases.
         """
         target_import_stmt: t.Infra.RopeImportStatement | None = None
         moved_aliases: t.Infra.StrSet = set()
@@ -806,10 +785,91 @@ class FlextInfraUtilitiesRopeImports:
         return updated
 
     @staticmethod
+    def rewrite_private_import_bypass_violations(
+        rope_project: t.Infra.RopeProject,
+        violations: t.SequenceOf[m.Infra.PrivateImportBypassViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
+        *,
+        apply: bool = True,
+    ) -> None:
+        """Rewrite private-module imports to their canonical facade equivalents.
+
+        Only auto-fixable violations (``symbol_exported=True``) are rewritten;
+        callers already filter the violation list before invoking this helper.
+        """
+        _ = parse_failures
+        removals: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
+        additions: t.MappingKV[tuple[Path, str], set[str]] = defaultdict(set)
+        for violation in violations:
+            file_path = Path(violation.file)
+            removals[file_path, violation.private_module].add(violation.imported_symbol)
+            additions[file_path, violation.suggested_facade].add(
+                violation.imported_symbol
+            )
+        for (file_path, private_module), names in removals.items():
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project, file_path
+            )
+            if resource is None:
+                continue
+            module_imports = FlextInfraUtilitiesRopeCore.get_module_imports(
+                rope_project, resource
+            )
+            if module_imports is None:
+                continue
+            names_to_remove = frozenset(names)
+            changed = False
+            stmts_to_drop: list[t.Infra.RopeImportStatement] = []
+            for import_stmt in FlextInfraUtilitiesRopeImports.import_statements(
+                module_imports
+            ):
+                import_info = import_stmt.import_info
+                if (
+                    not FlextInfraUtilitiesRopeRuntime.is_from_import(import_info)
+                    or import_info.module_name != private_module
+                ):
+                    continue
+                kept = [
+                    (name, alias)
+                    for name, alias in import_info.names_and_aliases
+                    if name not in names_to_remove
+                ]
+                if len(kept) == len(import_info.names_and_aliases):
+                    continue
+                if kept:
+                    import_stmt.import_info = (
+                        FlextInfraUtilitiesRopeRuntime.from_import(
+                            private_module, 0, kept
+                        )
+                    )
+                else:
+                    stmts_to_drop.append(import_stmt)
+                changed = True
+            imports_list = module_imports.imports
+            for import_stmt in stmts_to_drop:
+                imports_list.remove(import_stmt)
+            if not changed:
+                continue
+            module_imports.remove_duplicates()
+            module_imports.sort_imports()
+            updated = module_imports.get_changed_source()
+            if apply and updated != resource.read():
+                resource.write(updated)
+        for (file_path, facade_module), names in additions.items():
+            resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
+                rope_project, file_path
+            )
+            if resource is None:
+                continue
+            FlextInfraUtilitiesRopeImports.add_import(
+                rope_project, resource, facade_module, sorted(names), apply=apply
+            )
+
+    @staticmethod
     def rewrite_foreign_canonical_alias_violations(
         rope_project: t.Infra.RopeProject,
-        violations: t.SequenceOf[p.Infra.CompatibilityAliasViolation],
-        parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation],
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
         """Rewrite foreign canonical alias imports to local project facades.
 

@@ -364,14 +364,17 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         )
 
     @classmethod
-    def git_check_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
-        """Verify one operation patch against the untouched source worktree."""
-        if not delta.patch:
+    def _git_check_patch_at(
+        cls, repository_root: Path, patch: bytes, *, reverse: bool
+    ) -> p.Result[bool]:
+        """Check one patch direction against an explicit repository root."""
+        if not patch:
             return r[bool].ok(True)
+        direction = ("--reverse",) if reverse else ()
         result = cls.git_run(
-            delta.source_root,
-            ("apply", "--check", "--binary", "-"),
-            input_data=delta.patch,
+            repository_root,
+            ("apply", "--check", "--binary", *direction, "-"),
+            input_data=patch,
         )
         if result.failure:
             return r[bool].fail(result.error or "git apply --check failed")
@@ -383,10 +386,33 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[bool].ok(True)
 
     @classmethod
-    def git_apply_patch(cls, delta: p.Infra.RepositoryDelta) -> p.Result[bool]:
-        """Apply one previously checked operation patch to the source worktree."""
+    def git_check_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+        """Forward-check one operation patch against the live source worktree."""
+        return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=False)
+
+    @classmethod
+    def git_check_isolated_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+        """Reverse-check that the isolated worktree contains the patch target."""
+        return cls._git_check_patch_at(delta.worktree_root, delta.patch, reverse=True)
+
+    @classmethod
+    def _git_source_has_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+        """Return success when the live source already contains the patch target."""
+        return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=True)
+
+    @classmethod
+    def git_apply_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
+        """Forward-check and idempotently converge one source operation patch."""
         if not delta.patch:
             return r[bool].ok(True)
+        check_result = cls.git_check_patch(delta)
+        if check_result.failure:
+            converged_result = cls._git_source_has_patch(delta)
+            if converged_result.success:
+                return r[bool].ok(True)
+            return r[bool].fail(
+                check_result.error or "git apply --check failed before apply"
+            )
         result = cls.git_run(
             delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )
@@ -394,6 +420,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bool].fail(result.error or "git apply failed")
         output = result.value
         if output.exit_code != 0:
+            converged_result = cls._git_source_has_patch(delta)
+            if converged_result.success:
+                return r[bool].ok(True)
             return r[bool].fail(
                 (output.stderr or output.stdout).strip() or "git apply failed"
             )

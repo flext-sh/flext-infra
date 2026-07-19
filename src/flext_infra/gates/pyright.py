@@ -1,8 +1,4 @@
-"""FLEXT pyright quality gate.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""FLEXT pyright quality gate."""
 
 from __future__ import annotations
 
@@ -10,11 +6,13 @@ import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
@@ -28,7 +26,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: p.Infra.GateContext
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Use the project pyright config as SSOT when it exists."""
         _ = ctx
@@ -38,7 +36,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
@@ -54,7 +52,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
     @staticmethod
     def _has_project_pyright_config(project_dir: Path) -> bool:
         """Return whether pyproject.toml declares [tool.pyright]."""
-        doc = u.Cli.toml_read(project_dir / c.PYPROJECT_FILENAME)
+        doc = u.Cli.toml_read(project_dir / c.Infra.PYPROJECT_FILENAME)
         if doc is None:
             return False
         tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
@@ -64,7 +62,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         )
 
     @override
-    def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Check timeout."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_LONG
@@ -72,12 +70,12 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[p.Infra.Issue] = []
-        empty: t.MappingKV[str, t.JsonValue] = {}
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        empty: t.MappingKV[str, t.Infra.InfraValue] = {}
         parsed_result = u.Cli.json_parse(result.stdout or "{}")
         parsed = parsed_result.unwrap() if parsed_result.success else empty
         data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty
@@ -118,7 +116,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 )
             issues.append(
                 m.Infra.Issue(
-                    file=c.PYPROJECT_FILENAME,
+                    file=c.Infra.PYPROJECT_FILENAME,
                     line=1,
                     column=1,
                     code="pyright-exec",

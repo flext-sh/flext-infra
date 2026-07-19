@@ -10,42 +10,21 @@ import sys
 from pathlib import Path
 from typing import ClassVar
 
-from flext_cli import cli as cli_facade
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
-from flext_infra._constants.cli_routes import (
-    CODEGEN_ROUTES as _ROUTES_CODEGEN,
-    VALIDATE_ROUTES as _ROUTES_VALIDATE,
-    WORKSPACE_ROUTES as _ROUTES_WORKSPACE,
-)
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.services.cli_dispatch import CliDispatchService
+from flext_infra.services.cli_routes import CliRouteService
 
 
-class FlextInfraCli(type(cli_facade)):
+class FlextInfraCli(CliDispatchService):
     """Single CLI entry surface for every flext-infra command group."""
 
     app_name: ClassVar[str] = "flext-infra"
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
-    _GROUP_COMMANDS: ClassVar[dict[str, tuple[p.Cli.ResultCommandRoute, ...]]] = {
-        **_ROUTES_CODEGEN,
-        **_ROUTES_VALIDATE,
-        **_ROUTES_WORKSPACE,
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): operational route
-        # composition belongs to cli; constants remain declaration-only.
-        c.Infra.CLI_GROUP_CODEGEN: (
-            m.Cli.ResultCommandRoute(
-                name="conform",
-                help_text="Conform generated project and workspace files",
-                model_cls=m.Infra.CodegenConformRequest,
-                handler=FlextInfraCodegenConform.execute_request,
-                success_message="project conformance complete",
-            ),
-            *_ROUTES_CODEGEN[c.Infra.CLI_GROUP_CODEGEN],
-        ),
-    }
+    _GROUP_COMMANDS = CliRouteService.group_commands
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""

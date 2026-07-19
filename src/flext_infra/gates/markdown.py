@@ -1,18 +1,16 @@
-"""FLEXT markdown quality gate.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""FLEXT markdown quality gate."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -44,7 +42,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: p.Infra.GateContext
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Return relative markdown file paths (doubles as check_dirs for _build_check_command)."""
         _ = ctx
@@ -55,7 +53,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = ctx
@@ -67,11 +65,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[p.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         for line in (result.stdout + "\n" + result.stderr).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
@@ -89,7 +87,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _build_fix_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, targets: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = ctx

@@ -1,18 +1,16 @@
-"""Ruff format gate implementation.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Ruff format gate implementation."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, p, t
+from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -26,7 +24,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self, project_dir: Path, ctx: p.Infra.GateContext
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Get check dirs."""
         _ = ctx
@@ -34,7 +32,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, check_dirs: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx
@@ -42,11 +40,11 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: p.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[p.Infra.Issue]]:
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
-        issues: t.MutableSequenceOf[p.Infra.Issue] = []
+        issues: t.MutableSequenceOf[m.Infra.Issue] = []
         if result.exit_code != 0 and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
@@ -74,7 +72,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _build_fix_command(
-        self, project_dir: Path, ctx: p.Infra.GateContext, targets: t.StrSequence
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir, ctx, targets

@@ -198,7 +198,7 @@ project-includes = [
 ]
 python-interpreter-path = {{ tooling_runtime.pyrefly_interpreter_path | tojson }}
 python-version = {{ python_version | tojson }}
-search-path = {{ tooling_runtime.pyrefly_search_path | tojson }}
+search-path = [{% for item in tooling_runtime.pyrefly_search_path %}{{ item | tojson }}{% if not loop.last %}, {% endif %}{% endfor %}]
 use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 
 [tool.pyrefly.errors]

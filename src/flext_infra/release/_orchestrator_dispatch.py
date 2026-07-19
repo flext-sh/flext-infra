@@ -426,7 +426,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         result = self.phase_version(ctx)
         if result.success:
-            self.logger.info("release_next_dev_version", version=f"{next_version}-dev")
+            self.logger.info("release_next_dev_version", version=f"{next_version}.dev0")
         return result
 
     def _generate_notes(

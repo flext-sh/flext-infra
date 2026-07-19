@@ -83,7 +83,7 @@ class FlextInfraUtilitiesRopeStructure:
             module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 ctx.rope_project, pymodule
             )
-        except (*c.Infra.SYNTAX_ERRORS,) as exc:
+        except (*FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),) as exc:
             if ctx.parse_failures is None:
                 raise
             ctx.parse_failures.append(
