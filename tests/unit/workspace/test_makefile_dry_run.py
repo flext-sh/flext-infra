@@ -206,7 +206,7 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
     def test_workspace_makefile_dry_run_constraints_rewrites_dependency_floors(
         self, tmp_path: Path
     ) -> None:
-        """Verify constraint rewrites use the floor policy and project scope."""
+        """Refresh the root lock before rewriting floors for the selected project."""
         workspace_root = _write_workspace_makefile_fixture(tmp_path)
         process = _run_workspace_make_dry_run(
             workspace_root, "_constraints", "PROJECT=demo-a"
@@ -214,13 +214,56 @@ class TestsFlextInfraWorkspaceMakefileDryRun:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0)
+        tm.that(output, has="uv lock --upgrade")
         tm.that(
             output,
             has="modernize --apply --rewrite-constraints --constraint-policy floor",
         )
         tm.that(output, has="--projects demo-a")
+        tm.that(output, lacks="uv lock --directory")
         tm.that(output, lacks="path-sync --mode auto --apply")
         tm.that(output, lacks="taplo format")
+
+    def test_workspace_makefile_dry_run_boot_composes_native_repair_targets(
+        self, tmp_path: Path
+    ) -> None:
+        """Compose submodule repair before locked environment repair."""
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_boot_default")
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0)
+        submodules_position = output.index("make --no-print-directory _boot_submodules")
+        venv_position = output.index("make --no-print-directory _boot_venv")
+        tm.that(submodules_position < venv_position, eq=True)
+        tm.that(output, lacks=["uv lock", "uv lock --directory"])
+
+    def test_workspace_makefile_dry_run_boot_venv_is_native_and_locked(
+        self, tmp_path: Path
+    ) -> None:
+        """Repair the root environment without dispatcher or submodule operations."""
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_boot_venv")
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0)
+        tm.that(
+            output,
+            has="uv sync --locked --all-packages --all-groups --all-extras --reinstall",
+        )
+        tm.that(output, lacks=["uv lock", "submodule", "scripts.dispatch"])
+
+    def test_workspace_makefile_dry_run_boot_submodules_isolated_from_venv(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep submodule repair isolated from environment mutation."""
+        workspace_root = _write_workspace_makefile_fixture(tmp_path)
+        process = _run_workspace_make_dry_run(workspace_root, "_boot_submodules")
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0)
+        tm.that(output, has="git submodule update")
+        tm.that(output, lacks=["uv sync", "uv lock", "scripts.dispatch"])
 
     def test_workspace_makefile_dry_run_gen_forwards_selection(
         self, tmp_path: Path

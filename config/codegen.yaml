@@ -7,6 +7,8 @@ Infra:
       python_version: "3.13"
       python_minor_version: "3.13"
       python_required_version: ">=3.13,<3.14"
+      # mro-sltx (backport 0.20): Ruff pin for the mise toolchain (0.12 canonical 0.15.22)
+      ruff_version: "0.15.22"
       uv_version: "0.11.29"
       uv_required_version: "==0.11.29"
       uv_link_mode: copy
@@ -92,32 +94,54 @@ Infra:
         allow_help_declarations: false
 
     managed_files:
-      # NOTE(mro-p68a.5, agent codex): existing repositories consume the same
-      # declarative template ownership as new-project scaffolds.
+      - path: .env.example
+        owner: codegen
+        policy: create-only
+      - path: .envrc
+        owner: environment
+        policy: create-only
       - path: .gitignore
         owner: codegen
-        overwrite: true
+        policy: merge
       - path: .gitmodules
         owner: codegen
-        overwrite: true
+        policy: full
       - path: .mise.toml
-        owner: codegen
-        overwrite: true
+        owner: environment
+        policy: merge
+      - path: .pre-commit-config.yaml
+        owner: pre-commit
+        policy: full
       - path: .python-version
         owner: codegen
-        overwrite: true
+        policy: full
+      - path: .vscode/settings.json
+        owner: vscode
+        policy: merge
+      - path: LICENSE
+        owner: codegen
+        policy: create-only
       - path: Makefile
+        owner: make
+        policy: delegated
+      - path: README.md
         owner: codegen
-        overwrite: true
-      - path: pyproject.toml
-        owner: codegen
-        overwrite: true
+        policy: create-only
+      - path: base.mk
+        owner: make
+        policy: delegated
+      - path: config/workspace.yaml
+        owner: workspace
+        policy: manual
       - path: custom.mk
         owner: custom
-        overwrite: false
-      - path: uv.lock
-        owner: uv
-        overwrite: false
+        policy: manual
+      - path: pyproject.toml
+        owner: codegen
+        policy: merge
+      - path: workspace_custom.mk
+        owner: custom
+        policy: manual
 
     scaffold:
       build:

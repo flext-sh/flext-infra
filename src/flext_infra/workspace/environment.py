@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
 
     from flext_infra import p, t
 
@@ -39,8 +39,13 @@ class FlextInfraWorkspaceEnvironment:
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
         target_path = workspace_root / c.Infra.ENVRC_FILENAME
+        rendered = cls._render_environment_template(
+            c.Infra.WORKSPACE_ENVRC_TEMPLATE_NAME
+        )
+        if rendered.failure:
+            return r[bool].fail(rendered.error or ".envrc template render failed")
         return cls.write_generated_text(
-            target_path, c.Infra.WORKSPACE_ENVRC_CONTENT, apply=apply, force=force
+            target_path, rendered.value, apply=apply, force=force
         )
 
     @classmethod
@@ -67,7 +72,14 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
-        doc = u.Cli.toml_parse_text(c.Infra.WORKSPACE_MISE_TOML_CONTENT)
+        rendered = cls._render_environment_template(
+            c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
+        )
+        if rendered.failure:
+            return r[str].fail(
+                rendered.error or ".mise.toml template render failed"
+            )
+        doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         python_version = cls.workspace_python_version(workspace_root)
@@ -75,6 +87,14 @@ class FlextInfraWorkspaceEnvironment:
             tools = u.Cli.toml_ensure_table(doc, "tools")
             tools["python"] = python_version
         return r[str].ok(u.Cli.toml_dumps(doc))
+
+    @staticmethod
+    def _render_environment_template(template_name: str) -> p.Result[str]:
+        """Render one workspace environment template from validated toolchain data."""
+        # mro-sltx (backport 0.20): config-driven Jinja render replaces inline
+        # content constants; template dir resolved package-relative (0.12 pattern).
+        template_path = Path(__file__).resolve().parent.parent / "templates" / template_name
+        return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
 
     @classmethod
     def merge_custom_mise_toml(
@@ -119,7 +139,12 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
         """Return canonical mise tool pins for one workspace."""
-        mapping = u.Cli.toml_mapping_from_text(c.Infra.WORKSPACE_MISE_TOML_CONTENT)
+        rendered = cls.render_mise_toml(workspace_root)
+        if rendered.failure:
+            return r[dict[str, str]].fail(
+                rendered.error or "canonical .mise.toml render failed"
+            )
+        mapping = u.Cli.toml_mapping_from_text(rendered.value)
         if mapping is None:
             return r[dict[str, str]].fail("canonical .mise.toml template is invalid")
         tools = u.Cli.toml_mapping_child(mapping, "tools")

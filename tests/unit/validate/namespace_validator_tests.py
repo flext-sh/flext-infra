@@ -601,3 +601,154 @@ class TestFlextInfraNamespaceValidator:
             ),
             eq=False,
         )
+
+    @pytest.mark.parametrize(
+        ("module_path", "module_source"),
+        [
+            (
+                "tests/constants.py",
+                "from tests import m\n\nclass TestsFlextTestConstants:\n    pass\n",
+            ),
+            (
+                "tests/_typings/domain.py",
+                "from tests import u\n\nclass TestsFlextTestTypesDomain:\n    pass\n",
+            ),
+        ],
+    )
+    def test_rule3_test_namespace_runtime_reverse_import_detected(
+        self, tmp_path: Path, module_path: str, module_source: str
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path, module_source=module_source, module_path=module_path
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=False)
+        tm.that(
+            any("runtime namespace import" in v for v in result.value.violations),
+            eq=True,
+        )
+
+    def test_rule3_test_namespace_type_checking_reverse_import_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=(
+                "from typing import TYPE_CHECKING\n\n"
+                "if TYPE_CHECKING:\n"
+                "    from tests import u\n\n"
+                "class TestsFlextTestTypes:\n"
+                "    pass\n"
+            ),
+            module_path="tests/typings.py",
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            any("runtime namespace import" in v for v in result.value.violations),
+            eq=False,
+        )
+
+    @pytest.mark.parametrize(
+        "forbidden_module",
+        ["tests", "tests.conftest", "tests.fixtures", "tests.unit.test_service"],
+    )
+    def test_rule3_test_facade_importing_test_support_detected(
+        self, tmp_path: Path, forbidden_module: str
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=(
+                f"from {forbidden_module} import helper\n\n"
+                "class TestsFlextTestModels:\n"
+                "    pass\n"
+            ),
+            module_path="tests/models.py",
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(result.value.passed, eq=False)
+        tm.that(
+            any("test support module" in v for v in result.value.violations), eq=True
+        )
+
+    @pytest.mark.parametrize(
+        ("module_path", "module_source"),
+        [
+            (
+                "tests/models.py",
+                "from tests import c, t, p\n\nclass TestsFlextTestModels:\n    pass\n",
+            ),
+            (
+                "tests/utilities.py",
+                "from tests import c, t, p, m\n\nclass TestsFlextTestUtilities:\n    pass\n",
+            ),
+        ],
+    )
+    def test_rule3_test_facade_forward_owner_assembly_allowed(
+        self, tmp_path: Path, module_path: str, module_source: str
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path, module_source=module_source, module_path=module_path
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            any("runtime namespace import" in v for v in result.value.violations),
+            eq=False,
+        )
+
+    def test_rule3_test_facade_matching_private_family_assembly_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=(
+                "from tests._models.domain import TestsFlextTestModelsDomain\n\n"
+                "class TestsFlextTestModels:\n"
+                "    pass\n"
+            ),
+            module_path="tests/models.py",
+        )
+        result = validator.validate_project(root)
+        tm.ok(result)
+        tm.that(result.value.passed, eq=True)
+        tm.that(
+            any("test support module" in v for v in result.value.violations),
+            eq=False,
+        )
+
+    def test_rule3_test_private_family_runtime_reverse_import_detected(
+        self, tmp_path: Path
+    ) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module_path(
+            tmp_path,
+            module_source=(
+                "from tests._utilities.domain import TestsFlextTestUtilitiesDomain\n\n"
+                "class TestsFlextTestTypesDomain:\n"
+                "    pass\n"
+            ),
+            module_path="tests/_typings/domain.py",
+        )
+        result = validator.validate_project(root)
+        tm.ok(result)
+        tm.that(result.value.passed, eq=False)
+        tm.that(
+            any("runtime namespace import" in v for v in result.value.violations),
+            eq=True,
+        )

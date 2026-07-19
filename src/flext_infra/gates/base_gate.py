@@ -269,14 +269,9 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Existing check dirs."""
-        has_root_python = any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi")
-        )
-        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
-        if has_root_python or discovered_dirs:
-            return ["."]
-        return []
+        """Return direct project-owned source directories only."""
+        candidates = ("src", "tests")
+        return self._dirs_with_py(project_dir, candidates)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

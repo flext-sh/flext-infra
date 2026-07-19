@@ -151,6 +151,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
                 'gitmodules = root / ".gitmodules"',
                 '$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)"',
                 "Skipping workspace validation (no managed workspace projects selected).",
+                "$(MAKE) --no-print-directory _boot_submodules",
+                "$(MAKE) --no-print-directory _boot_venv",
+                "_boot_venv:",
+                "_boot_submodules:",
             ],
         )
 
@@ -282,6 +286,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
                 "define CHECK_SYNC_ALL_PROJECTS",
                 'sync --workspace "$(CURDIR)" --dry-run || exit 1',
                 "project-local .venv directories violate",
+                "override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)",
                 'WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment --workspace "$(CURDIR)"',
                 "$(WORKSPACE_VERIFY_ENVIRONMENT) || exit 1",
                 "$(Q)$(CHECK_SYNC_ALL_PROJECTS)",

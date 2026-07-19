@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import c
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
 
@@ -87,11 +88,15 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
-        (project_root / c.Infra.ENVRC_FILENAME).write_text(
-            c.Infra.WORKSPACE_ENVRC_CONTENT, encoding="utf-8"
+        _envrc = FlextInfraWorkspaceEnvironment._render_environment_template(
+            c.Infra.WORKSPACE_ENVRC_TEMPLATE_NAME
         )
+        (project_root / c.Infra.ENVRC_FILENAME).write_text(
+            _envrc.value, encoding="utf-8"
+        )
+        _mise = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
         (project_root / c.Infra.MISE_TOML_FILENAME).write_text(
-            c.Infra.WORKSPACE_MISE_TOML_CONTENT, encoding="utf-8"
+            _mise.value, encoding="utf-8"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),

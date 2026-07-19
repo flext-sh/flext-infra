@@ -17,6 +17,7 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import c, m, p, u
 from flext_infra.base import s
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace._sync_artifacts import FlextInfraWorkspaceSyncArtifactsMixin
 
 
@@ -42,19 +43,34 @@ class FlextInfraSyncService(
 
     @override
     def execute(self) -> p.Result[m.Infra.SyncResult]:
-        """Execute the workspace sync flow."""
+        """Delegate the legacy sync route to the canonical conform planner."""
         resolved = self._resolved_workspace_root()
         if not resolved.exists():
             return r[m.Infra.SyncResult].fail(
                 f"workspace_root '{resolved}' does not exist"
             )
-
-        lock_file = resolved / ".flext-sync.lock"
-        try:
-            with lock_file.open("w", encoding=c.Cli.ENCODING_DEFAULT) as handle:
-                return self._execute_with_lock(resolved, handle.fileno())
-        except OSError as exc:
-            return r[m.Infra.SyncResult].fail(f"Could not open lock file: {exc}")
+        conform = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=resolved,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=(
+                    c.Infra.CodegenConformMode.CHECK
+                    if self.effective_dry_run
+                    else c.Infra.CodegenConformMode.APPLY
+                ),
+            )
+        )
+        if conform.failure:
+            return r[m.Infra.SyncResult].fail(
+                conform.error or "workspace conform sync failed"
+            )
+        return r[m.Infra.SyncResult].ok(
+            m.Infra.SyncResult(
+                files_changed=len(conform.value.written_files),
+                source=resolved,
+                target=resolved,
+            )
+        )
 
     def _execute_with_lock(
         self, resolved: Path, descriptor: int

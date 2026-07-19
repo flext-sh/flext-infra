@@ -45,6 +45,10 @@ class FlextInfraConfigModels:
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
+        # mro-sltx (backport 0.20): model the Ruff pin for the mise toolchain.
+        ruff_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Ruff version for mise")
+        ]
         uv_version: Annotated[t.NonEmptyStr, m.Field(description="Exact uv version")]
         uv_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 uv required-version expression")
@@ -142,8 +146,9 @@ class FlextInfraConfigModels:
 
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
-        overwrite: Annotated[
-            bool, m.Field(description="Whether clean committed content may be replaced")
+        policy: Annotated[
+            Literal["full", "merge", "create-only", "delegated", "manual"],
+            m.Field(description="Conform ownership and mutation policy"),
         ]
 
     class TemplateEntrySpec(_ConfigContract):
@@ -806,6 +811,13 @@ class FlextInfraConfigModels:
         expected_sha256: Annotated[
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]
+        owner: Annotated[
+            str, m.Field(description="Canonical artifact owner, empty for scaffold files")
+        ] = ""
+        policy: Annotated[
+            Literal["full", "merge", "create-only", "delegated", "manual"] | None,
+            m.Field(description="Governed root artifact policy"),
+        ] = None
         current_sha256: Annotated[
             str, m.Field(description="SHA-256 of current content, empty when missing")
         ] = ""

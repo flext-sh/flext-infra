@@ -425,6 +425,31 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             description="Class prefix a test function must be nested under"
         )
 
+    class TestImportDagRulesConfig(m.ArbitraryTypesModel):
+        """Validated policy for the strict package-test import DAG."""
+
+        model_config = m.ConfigDict(frozen=True, extra="forbid")
+
+        version: str = m.Field(description="Config version")
+        facet_order: tuple[str, ...] = m.Field(
+            description="Allowed directed order for canonical test facets"
+        )
+        facet_files: t.MappingKV[str, str] = m.Field(
+            description="Canonical test facet module filenames"
+        )
+        fixture_parts: tuple[str, ...] = m.Field(
+            description="Test infrastructure path or module parts"
+        )
+        test_module_prefix: str = m.Field(
+            description="Prefix identifying collected test modules"
+        )
+        shared_package: str = m.Field(
+            description="Package owning shared test infrastructure"
+        )
+        shared_allowed_imports: tuple[str, ...] = m.Field(
+            description="Packages shared test infrastructure may import"
+        )
+
     class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations.
 

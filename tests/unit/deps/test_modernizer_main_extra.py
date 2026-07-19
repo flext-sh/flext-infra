@@ -84,6 +84,35 @@ class TestsFlextInfraDepsModernizerMainExtra:
 
         tm.that(modernizer.run(), eq=2)
 
+    def test_run_rewrite_constraints_rejects_member_local_uv_lock(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Require the workspace root lock to be the only resolution authority."""
+        (modernizer_workspace / "uv.lock").write_text(
+            "version = 1\n[manifest]\nmembers = []\n",
+            encoding="utf-8",
+        )
+        member = modernizer_workspace / "flext-core"
+        member.mkdir()
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n',
+            encoding="utf-8",
+        )
+        (member / "uv.lock").write_text(
+            "version = 1\n[manifest]\nmembers = []\n",
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+
     def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
         self, modernizer_workspace: Path
     ) -> None:

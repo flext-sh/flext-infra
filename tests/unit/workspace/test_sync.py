@@ -386,6 +386,26 @@ class TestsFlextInfraWorkspaceSync:
         tm.that(makefile_text, has="-include custom.mk")
         tm.that((project_root / "custom.mk").exists(), eq=False)
 
+    def test_sync_generated_makefile_requires_flext_workspace_marker(
+        self, tmp_path: Path
+    ) -> None:
+        """Select workspace mode only for a complete FLEXT workspace ancestor."""
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+
+        tm.ok(result)
+        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that(
+            makefile_text,
+            has='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
+        )
+
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""
         target = tmp_path / "test.txt"

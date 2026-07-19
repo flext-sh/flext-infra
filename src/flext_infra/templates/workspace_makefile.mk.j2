@@ -35,7 +35,8 @@ PY := $(WORKSPACE_VENV)/bin/python
 PIPX_BIN := $(WORKSPACE_VENV)/bin/pipx
 UV_BIN := $(WORKSPACE_VENV)/bin/uv
 UV_CACHE_DIR ?= /tmp/uv-cache
-UV_PROJECT_ENVIRONMENT ?= $(WORKSPACE_VENV)
+override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)
+WORKSPACE_BOOT_LOCK ?= /tmp/flext-workspace-boot.lock
 export UV_CACHE_DIR
 export UV_PROJECT_ENVIRONMENT
 {% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
@@ -249,7 +250,22 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help boot _boot_default build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status _status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
+define ENSURE_CLEAN_SUBMODULE_WORKTREES
+dirty_submodules=""; \
+for submodule_path in $$submodule_paths; do \
+	if [ -e "$$submodule_path/.git" ] && [ -n "$$(git -C "$$submodule_path" status --porcelain --untracked-files=all)" ]; then \
+		dirty_submodules="$$dirty_submodules $$submodule_path"; \
+	fi; \
+done; \
+if [ -n "$$dirty_submodules" ]; then \
+	echo "ERROR: boot refused to update dirty submodule worktrees:"; \
+	for submodule_path in $$dirty_submodules; do echo " - $$submodule_path"; done; \
+	echo "Commit or otherwise preserve those changes before rerunning make boot."; \
+	exit 1; \
+fi
+endef
+
+.PHONY: help boot _boot_default _boot_venv _boot_submodules build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status _status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
 
 help: ## Show registry-driven workspace verbs
 	$(Q)$(FLEXT_MAKE_DISPATCH) help
@@ -257,7 +273,7 @@ help: ## Show registry-driven workspace verbs
 boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
 	$(Q)$(FLEXT_MAKE_DISPATCH) boot
 
-_boot_default: ## Install all projects into workspace .venv
+_boot_submodules: ## Initialize declared submodules without touching the environment
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
@@ -265,6 +281,7 @@ _boot_default: ## Install all projects into workspace .venv
 		if [ -z "$$submodule_paths" ]; then \
 			echo "No declared submodules found in .gitmodules."; \
 		else \
+		$(ENSURE_CLEAN_SUBMODULE_WORKTREES); \
 		echo "Initializing and updating submodules..."; \
 		git submodule sync --recursive -- $$submodule_paths; \
 		if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths; then \
@@ -275,83 +292,20 @@ _boot_default: ## Install all projects into workspace .venv
 		echo "Submodules ready."; \
 		fi; \
 	fi
-	$(Q)[ -d ".venv" ] || { \
-		echo "Creating .venv..."; \
-		$(PYTHON_CMD) -m venv .venv; \
-		echo "Installing pipx and uv inside .venv..."; \
-		.venv/bin/pip install -U pip pipx uv; \
-	}
+
+_boot_venv: ## Repair the root workspace environment from the existing lock
+	$(Q)$(PREFLIGHT_CHECK)
+	$(Q)mkdir -p "$(UV_CACHE_DIR)"
+	$(Q)flock -x "$(WORKSPACE_BOOT_LOCK)" uv sync --locked --all-packages --all-groups --all-extras --reinstall
+
+_boot_default: ## Initialize submodules, repair .venv, then complete workspace setup
+	$(Q)$(MAKE) --no-print-directory _boot_submodules
+	$(Q)$(MAKE) --no-print-directory _boot_venv
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)echo "Bootstrapping flext-core runtime dependencies..."; \
-	uv sync --directory flext-core --no-dev || exit 1
-	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
 	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
-	$(Q)total_steps=$$(( $(words $(SELECTED_PROJECTS)) + 1 )); \
-	echo "Starting workspace setup for $$total_steps item(s) ($(words $(SELECTED_PROJECTS)) projects + root)"; \
-	failed=0; prepared=0; installed=0; step=1; failed_projects=""; \
-	for proj in $(SELECTED_PROJECTS); do \
-		if [ -d "$$proj" ] && [ -f "$$proj/pyproject.toml" ]; then \
-			log_file="/tmp/flext-setup-$$proj.log"; \
-			start_ts=$$(date +%s); \
-			printf "[%2d/%2d] boot %s\n" $$step $$total_steps "$$proj"; \
-			printf "     lock  ... "; \
-			if uv lock --directory "$$proj" >"$$log_file" 2>&1; then \
-				echo "ok"; \
-			else \
-				echo "failed"; \
-				cat "$$log_file"; \
-				failed=$$((failed + 1)); \
-				failed_projects="$$failed_projects $$proj"; \
-				step=$$((step + 1)); \
-				continue; \
-			fi; \
-			printf "     install ... "; \
-			elapsed=$$(( $$(date +%s) - start_ts )); \
-			echo "deferred to workspace sync ($${elapsed}s)"; \
-			prepared=$$((prepared + 1)); \
-			rm -f "$$log_file"; \
-			step=$$((step + 1)); \
-		fi; \
-	done; \
-	log_file="/tmp/flext-setup-root.log"; \
-	start_ts=$$(date +%s); \
-	root_lock_ok=0; \
-	printf "[%2d/%2d] boot %s\n" $$step $$total_steps "root"; \
-	printf "     lock  ... "; \
-	if uv lock >"$$log_file" 2>&1; then \
-		echo "ok"; \
-		root_lock_ok=1; \
-	else \
-		echo "failed"; \
-		cat "$$log_file"; \
-		failed=$$((failed + 1)); \
-		failed_projects="$$failed_projects root"; \
-	fi; \
-	if [ $$root_lock_ok -eq 1 ]; then \
-		printf "     install ... "; \
-		if uv sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
-			elapsed=$$(( $$(date +%s) - start_ts )); \
-			echo "ok ($${elapsed}s)"; \
-			installed=$$((installed + 1)); \
-		else \
-			echo "failed"; \
-			cat "$$log_file"; \
-			failed=$$((failed + 1)); \
-			failed_projects="$$failed_projects root"; \
-		fi; \
-	else \
-		printf "     install ... skipped\n"; \
-	fi; \
-	rm -f "$$log_file"; \
-	echo "Setup summary: Prepared=$$prepared Installed=$$installed Failed=$$failed Total=$$total_steps"; \
-	if [ $$failed -ne 0 ]; then \
-		echo "Failed projects:$$failed_projects"; \
-		echo "FAIL: boot ($$failed projects)"; \
-		exit 1; \
-	fi; \
-	if [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
+	$(Q)if [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
 		echo "Validating workspace selection (validate VALIDATE_SCOPE=workspace)..."; \
 		$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }; \
 	else \
@@ -437,6 +391,15 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)echo "Refreshing workspace dependency resolution..."; \
+		log_file="/tmp/flext-constraints-lock.log"; \
+		if uv lock --upgrade >"$$log_file" 2>&1; then \
+			rm -f "$$log_file"; \
+		else \
+			cat "$$log_file"; \
+			rm -f "$$log_file"; \
+			exit 1; \
+		fi
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."; \
 	$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""

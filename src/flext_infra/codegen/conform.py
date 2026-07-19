@@ -209,7 +209,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_plan.error
                     or f"repository planning failed: {repository_root}"
                 )
-            files.extend(repository_plan.value)
+            governed = self._complete_governed_plans(
+                repository_root, repository_plan.value, config_spec
+            )
+            if governed.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    governed.error or f"artifact ownership planning failed: {repository_root}"
+                )
+            files.extend(governed.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -229,6 +236,58 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 files=tuple(files),
             )
         )
+
+    @staticmethod
+    def _complete_governed_plans(
+        root: Path,
+        planned: t.SequenceOf[m.Infra.CodegenFilePlan],
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
+        """Attach ownership metadata and represent every governed root artifact."""
+        governed_by_path = {item.path: item for item in codegen.managed_files}
+        completed: list[m.Infra.CodegenFilePlan] = []
+        represented: set[Path] = set()
+        for file in planned:
+            relative = file.path.relative_to(root)
+            governed = governed_by_path.get(relative)
+            if governed is None:
+                completed.append(file)
+                continue
+            represented.add(relative)
+            completed.append(
+                file.model_copy(
+                    update={"owner": governed.owner, "policy": governed.policy}
+                )
+            )
+        for relative, governed in governed_by_path.items():
+            if relative in represented:
+                continue
+            path = root / relative
+            if path.exists() and not path.is_file():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"governed artifact is not a regular file: {path}"
+                )
+            current = ""
+            if path.is_file():
+                read = u.Cli.files_read_text(path)
+                if read.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        read.error or f"governed artifact read failed: {path}"
+                    )
+                current = read.value
+            digest = u.Cli.sha256_content(current) if path.is_file() else ""
+            completed.append(
+                m.Infra.CodegenFilePlan(
+                    path=path,
+                    owner=governed.owner,
+                    policy=governed.policy,
+                    rendered=current,
+                    expected_sha256=digest or u.Cli.sha256_content(current),
+                    current_sha256=digest,
+                    changed=False,
+                )
+            )
+        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
 
     @staticmethod
     def _package_root() -> Path:
@@ -693,7 +752,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
-            if not managed.overwrite or managed.path == Path(
+            if managed.policy in {"delegated", "manual"} or managed.path == Path(
                 c.Infra.PYPROJECT_FILENAME
             ):
                 continue
@@ -703,6 +762,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if entry.destination == managed.path.as_posix()
                 and entry.delegate == "render"
             )
+            if not entries:
+                continue
             if len(entries) != 1:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed file requires exactly one render template: {managed.path}"
@@ -717,7 +778,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     rendered.error or f"template render failed: {entry.source}"
                 )
-            file_plan = self._file_plan(root, entry.destination, rendered.value)
+            path = root / entry.destination
+            expected = rendered.value
+            if managed.policy == "create-only" and path.is_file():
+                current = u.Cli.files_read_text(path)
+                if current.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        current.error or f"managed file read failed: {path}"
+                    )
+                expected = current.value
+            file_plan = self._file_plan(root, entry.destination, expected)
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error

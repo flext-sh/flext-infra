@@ -188,6 +188,22 @@ class FlextInfraPyprojectModernizerRunMixin:
             if not locked_versions:
                 u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
                 return 2
+            member_lock_paths = tuple(
+                sorted(
+                    member_path / c.Infra.UV_LOCK_FILENAME
+                    for member_path in configured_member_paths.values()
+                    if (member_path / c.Infra.UV_LOCK_FILENAME).is_file()
+                )
+            )
+            if member_lock_paths:
+                relative_paths = ", ".join(
+                    str(path.relative_to(self.root)) for path in member_lock_paths
+                )
+                u.Cli.error(
+                    "package-local uv.lock files conflict with root lock authority: "
+                    f"{relative_paths}"
+                )
+                return 2
             internal_names = tuple(
                 sorted(
                     set(u.Infra.workspace_member_names(self.root)) | {root_project_name}

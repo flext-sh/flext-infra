@@ -52,6 +52,23 @@ class TestRealGateRunners:
         tm.that(not result.result.passed, eq=True)
         tm.that([issue.code for issue in result.issues], has=["E501"])
 
+    def test_ruff_lint_scopes_nested_project_to_owned_source_dirs(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not recurse into nested consumer repositories or worktrees."""
+        project_dir = u.Tests.mk_project(tmp_path, "scoped-project", with_src=True)
+        (project_dir / "tests").mkdir()
+        nested = project_dir / ".claude" / "worktrees" / "nested"
+        nested.mkdir(parents=True)
+        (nested / "pyproject.toml").write_text("[project]\nname='nested'\n", encoding="utf-8")
+        (nested / "bad.py").write_text("import os\n", encoding="utf-8")
+
+        gate = FlextInfraRuffLintGate(tmp_path)
+        check_dirs = gate.check(project_dir, self.make_ctx(tmp_path))
+
+        tm.that(check_dirs.result.passed, eq=True)
+        tm.that(check_dirs.issues, empty=True)
+
     def test_ruff_format_reports_real_reformat(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "format-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text(
