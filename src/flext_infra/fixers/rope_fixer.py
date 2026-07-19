@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
@@ -25,9 +26,6 @@ from flext_infra.fixers.result import FlextInfraFixersResult as fr
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):

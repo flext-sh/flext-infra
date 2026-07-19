@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, p, t, u
@@ -25,7 +26,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
 
         def _package_entry(
             self, pkg_dir: Path
-        ) -> p.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
             self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
@@ -69,6 +70,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 child_entry.package_name
             )
             if is_generated_support or shadowed_by_package:
+                continue
+            if self._is_executable_module(py_file):
                 continue
             if self._is_registered_import(
                 module_entry.project_root, module_entry.module_name
@@ -122,12 +125,34 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 self._add(index, name, target)
         return index
 
+    def _is_executable_module(self, py_file: Path) -> bool:
+        """Return whether a module owns a top-level ``__main__`` entrypoint guard."""
+        module = ast.parse(self.rope_workspace.source(py_file), filename=str(py_file))
+        for statement in module.body:
+            if not isinstance(statement, ast.If):
+                continue
+            test = statement.test
+            if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+                continue
+            if not isinstance(test.ops[0], ast.Eq) or len(test.comparators) != 1:
+                continue
+            left = test.left
+            right = test.comparators[0]
+            if (
+                isinstance(left, ast.Name)
+                and left.id == "__name__"
+                and isinstance(right, ast.Constant)
+                and right.value == "__main__"
+            ):
+                return True
+        return False
+
     def _module_exports(
         self,
         py_file: Path,
         module_path: str,
         *,
-        export_options: p.Infra.ExportOptions | None = None,
+        export_options: m.Infra.ExportOptions | None = None,
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for one Python module (cache-backed)."""
         resolved_export_options = export_options or m.Infra.ExportOptions()

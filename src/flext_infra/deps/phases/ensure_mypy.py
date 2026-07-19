@@ -13,13 +13,13 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsureMypyConfigPhase:
     """Ensure standard mypy configuration with pydantic plugin across all projects."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
+    def __init__(self, mypy_config: p.Infra.MypyConfig) -> None:
         """Store tool configuration used to generate the canonical mypy section."""
-        self._tool_config = tool_config
+        self._mypy_config = mypy_config
 
     def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the canonical mypy phase definition."""
-        configured = self._tool_config.tools.mypy.overrides
+        configured = self._mypy_config.overrides
         expected_overrides: t.SequenceOf[t.JsonDict] = [
             {
                 "module": u.normalize_to_json_value(list(entry.modules)),
@@ -41,26 +41,26 @@ class FlextInfraEnsureMypyConfigPhase:
             )
             .list(
                 c.Infra.PLUGINS,
-                self._tool_config.tools.mypy.plugins,
+                self._mypy_config.plugins,
                 strategy=c.Cli.TomlMergeMode.REPLACE,
             )
             .list(
                 c.Infra.DISABLE_ERROR_CODE,
-                tuple(sorted(self._tool_config.tools.mypy.disabled_error_codes)),
+                tuple(sorted(self._mypy_config.disabled_error_codes)),
                 strategy=c.Cli.TomlMergeMode.REPLACE,
             )
         )
-        if self._tool_config.tools.mypy.exclude:
+        if self._mypy_config.exclude:
             phase_builder = phase_builder.value(
-                c.Infra.EXCLUDE, self._tool_config.tools.mypy.exclude
+                c.Infra.EXCLUDE, self._mypy_config.exclude
             )
         else:
             phase_builder = phase_builder.deprecated(c.Infra.EXCLUDE)
         overrides_payload: t.JsonValueList = list(expected_overrides)
         phase_builder = phase_builder.value("overrides", overrides_payload)
-        for key, value in self._tool_config.tools.mypy.boolean_settings.items():
+        for key, value in self._mypy_config.boolean_settings.items():
             phase_builder = phase_builder.value(key, value)
-        for key, value in self._tool_config.tools.mypy.string_settings.items():
+        for key, value in self._mypy_config.string_settings.items():
             phase_builder = phase_builder.value(key, value)
         return phase_builder.build()
 

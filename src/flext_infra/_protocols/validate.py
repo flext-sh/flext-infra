@@ -639,10 +639,10 @@ class FlextInfraProtocolsValidate(Protocol):
         def name(self) -> str: ...
 
         @property
-        def path(self) -> t.JsonValue: ...
+        def path(self) -> Path: ...
 
     @runtime_checkable
-    class CodespellConfig(p.BaseModel, Protocol):
+    class CodespellConfig(Protocol):
         """Codespell settings loaded from YAML."""
 
         @property
@@ -652,7 +652,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def ignore_words_list(self) -> str: ...
 
     @runtime_checkable
-    class CoverageConfig(p.BaseModel, Protocol):
+    class CoverageConfig(Protocol):
         """Coverage baseline settings loaded from YAML."""
 
         @property
@@ -677,7 +677,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def omit(self) -> t.JsonValue: ...
 
     @runtime_checkable
-    class CoverageFailUnderConfig(p.BaseModel, Protocol):
+    class CoverageFailUnderConfig(Protocol):
         """Coverage fail-under thresholds by layer."""
 
         @property
@@ -696,7 +696,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def app(self) -> int: ...
 
     @runtime_checkable
-    class DeptryConfig(p.BaseModel, Protocol):
+    class DeptryConfig(Protocol):
         """Deptry namespace and dependency-group policy."""
 
         @property
@@ -940,7 +940,7 @@ class FlextInfraProtocolsValidate(Protocol):
         ) -> t.SequenceOf[FlextInfraProtocolsValidate.GrpcGeneratedArtifact]: ...
 
     @runtime_checkable
-    class HatchConfig(p.BaseModel, Protocol):
+    class HatchConfig(Protocol):
         """Hatch metadata policy."""
 
         @property
@@ -1048,19 +1048,19 @@ class FlextInfraProtocolsValidate(Protocol):
         """Mypy baseline settings loaded from YAML."""
 
         @property
-        def plugins(self) -> t.JsonValue: ...
+        def plugins(self) -> t.StrSequence: ...
 
         @property
         def exclude(self) -> str: ...
 
         @property
-        def disabled_error_codes(self) -> t.JsonValue: ...
+        def disabled_error_codes(self) -> t.StrMapping: ...
 
         @property
-        def boolean_settings(self) -> t.JsonValue: ...
+        def boolean_settings(self) -> t.MappingKV[str, bool]: ...
 
         @property
-        def string_settings(self) -> t.JsonValue: ...
+        def string_settings(self) -> t.StrMapping: ...
 
         @property
         def overrides(
@@ -1072,10 +1072,10 @@ class FlextInfraProtocolsValidate(Protocol):
         """Single [[tool.mypy.overrides]] entry."""
 
         @property
-        def modules(self) -> t.JsonValue: ...
+        def modules(self) -> t.StrSequence: ...
 
         @property
-        def disable_error_codes(self) -> t.JsonValue: ...
+        def disable_error_codes(self) -> t.StrSequence: ...
 
         @property
         def justification(self) -> str: ...
@@ -1234,19 +1234,20 @@ class FlextInfraProtocolsValidate(Protocol):
         """Complete typed input consumed by the universal project templates."""
 
         @property
-        def scaffold(self) -> t.JsonValue: ...
+        def scaffold(self) -> FlextInfraProtocolsValidate.ScaffoldSpec: ...
 
         @property
-        def dependency_profile(self) -> t.JsonValue: ...
+        def dependency_profile(
+            self,
+        ) -> FlextInfraProtocolsValidate.ScaffoldDependencyProfileSpec: ...
 
         @property
-        def make(self) -> t.JsonValue: ...
+        def make(self) -> ip.Infra.MakeSpec: ...
 
         @property
-        def tooling(self) -> t.JsonValue: ...
-
-        @property
-        def tooling_runtime(self) -> t.JsonValue: ...
+        def tooling_runtime(
+            self,
+        ) -> FlextInfraProtocolsValidate.ToolingRuntimeContext: ...
 
         @property
         def dist(self) -> str: ...
@@ -1258,7 +1259,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def package_name(self) -> str: ...
 
         @property
-        def packaged_data_dirs(self) -> t.JsonValue: ...
+        def packaged_data_dirs(self) -> t.StrSequence: ...
 
         @property
         def class_stem(self) -> str: ...
@@ -1345,29 +1346,29 @@ class FlextInfraProtocolsValidate(Protocol):
         def year(self) -> int: ...
 
         @property
-        def project_resources(self) -> t.JsonValue: ...
+        def project_resources(self) -> t.SequenceOf[ip.Infra.ResourceSpec]: ...
 
         @property
         def workspace_members(self) -> t.SequenceOf[str]: ...
 
         @property
-        def workspace_repositories(self) -> t.JsonValue: ...
+        def workspace_repositories(self) -> t.SequenceOf[ip.Infra.RepositoryRef]: ...
 
         @property
-        def workspace_content_only(self) -> t.JsonValue: ...
+        def workspace_content_only(self) -> t.SequenceOf[ip.Infra.RepositoryRef]: ...
 
         @property
-        def workspace_exclusions(self) -> t.JsonValue: ...
+        def workspace_exclusions(self) -> t.SequenceOf[p.BaseModel]: ...
 
     @runtime_checkable
-    class ProjectTypeOverrideConfig(p.BaseModel, Protocol):
+    class ProjectTypeOverrideConfig(Protocol):
         """Per-project-type override settings."""
 
         @property
         def pyright(self) -> t.JsonValue: ...
 
     @runtime_checkable
-    class ProjectTypeOverridesConfig(p.BaseModel, Protocol):
+    class ProjectTypeOverridesConfig(Protocol):
         """Project-type-specific override matrix from ``config/tooling.yaml``."""
 
         @property
@@ -1407,20 +1408,13 @@ class FlextInfraProtocolsValidate(Protocol):
     class PyprojectDocumentState(p.BaseModel, Protocol):
         """Centralized normalized TOML state reused across deps workflows."""
 
-        @property
-        def pyproject_path(self) -> t.JsonValue: ...
-
-        @property
-        def original_rendered(self) -> str: ...
-
-        @property
-        def rendered(self) -> str: ...
-
-        @property
-        def payload(self) -> t.JsonValue: ...
+        pyproject_path: Path
+        original_rendered: str
+        rendered: str
+        payload: t.MutableJsonMapping
 
     @runtime_checkable
-    class PyreflyConfig(p.BaseModel, Protocol):
+    class PyreflyConfig(Protocol):
         """Pyrefly strict settings loaded from YAML."""
 
         @property
@@ -1448,7 +1442,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def path_rules(self) -> t.JsonValue: ...
 
     @runtime_checkable
-    class PyrightConfig(p.BaseModel, Protocol):
+    class PyrightConfig(Protocol):
         """Pyright strict settings loaded from YAML."""
 
         @property
@@ -1492,10 +1486,10 @@ class FlextInfraProtocolsValidate(Protocol):
         def filter_warnings(self) -> t.SequenceOf[str]: ...
 
         @property
-        def standard_markers(self) -> t.JsonValue: ...
+        def standard_markers(self) -> t.StrSequence: ...
 
         @property
-        def standard_addopts(self) -> t.JsonValue: ...
+        def standard_addopts(self) -> t.StrSequence: ...
 
     @runtime_checkable
     class PytestDiagnostics(p.BaseModel, Protocol):
@@ -1529,11 +1523,14 @@ class FlextInfraProtocolsValidate(Protocol):
         def slow_entries(self) -> t.StrSequence: ...
 
     @runtime_checkable
-    class RuffConfig(p.BaseModel, Protocol):
+    class RuffConfig(Protocol):
         """Ruff top-level settings loaded from YAML."""
 
         @property
-        def exclude(self) -> t.JsonValue: ...
+        def exclude(self) -> t.StrSequence: ...
+
+        @property
+        def namespace_packages(self) -> t.StrSequence: ...
 
         @property
         def fix(self) -> bool: ...
@@ -1551,7 +1548,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def show_fixes(self) -> bool: ...
 
         @property
-        def src(self) -> t.JsonValue: ...
+        def src(self) -> t.StrSequence: ...
 
         @property
         def target_version(self) -> str: ...
@@ -1563,7 +1560,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def lint(self) -> FlextInfraProtocolsValidate.RuffLintConfig: ...
 
     @runtime_checkable
-    class RuffFormatConfig(p.BaseModel, Protocol):
+    class RuffFormatConfig(Protocol):
         """Ruff format settings loaded from YAML."""
 
         @property
@@ -1582,7 +1579,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def skip_magic_trailing_comma(self) -> bool: ...
 
     @runtime_checkable
-    class RuffIsortConfig(p.BaseModel, Protocol):
+    class RuffIsortConfig(Protocol):
         """Ruff isort settings loaded from YAML."""
 
         @property
@@ -1595,20 +1592,20 @@ class FlextInfraProtocolsValidate(Protocol):
         def split_on_trailing_comma(self) -> bool: ...
 
     @runtime_checkable
-    class RuffLintConfig(p.BaseModel, Protocol):
+    class RuffLintConfig(Protocol):
         """Ruff lint settings loaded from YAML."""
 
         @property
-        def select(self) -> t.JsonValue: ...
+        def select(self) -> t.StrSequence: ...
 
         @property
-        def ignore(self) -> t.JsonValue: ...
+        def ignore(self) -> t.StrSequence: ...
 
         @property
-        def ignored_rule_rationales(self) -> t.JsonValue: ...
+        def ignored_rule_rationales(self) -> t.StrMapping: ...
 
         @property
-        def banned_api(self) -> t.JsonValue: ...
+        def banned_api(self) -> t.StrMapping: ...
 
         @property
         def isort(self) -> FlextInfraProtocolsValidate.RuffIsortConfig: ...
@@ -1620,17 +1617,17 @@ class FlextInfraProtocolsValidate(Protocol):
         def pydocstyle(self) -> FlextInfraProtocolsValidate.RuffPydocstyleConfig: ...
 
         @property
-        def per_file_ignores(self) -> t.JsonValue: ...
+        def per_file_ignores(self) -> t.StrSequenceMapping: ...
 
     @runtime_checkable
-    class RuffPydoclintConfig(p.BaseModel, Protocol):
+    class RuffPydoclintConfig(Protocol):
         """Ruff pydoclint settings loaded from YAML."""
 
         @property
         def ignore_one_line_docstrings(self) -> bool: ...
 
     @runtime_checkable
-    class RuffPydocstyleConfig(p.BaseModel, Protocol):
+    class RuffPydocstyleConfig(Protocol):
         """Ruff pydocstyle settings loaded from YAML."""
 
         @property
@@ -1701,26 +1698,34 @@ class FlextInfraProtocolsValidate(Protocol):
         def keywords(self) -> t.SequenceOf[str]: ...
 
         @property
-        def dependency_profiles(self) -> t.JsonValue: ...
+        def dependency_profiles(
+            self,
+        ) -> t.SequenceOf[
+            FlextInfraProtocolsValidate.ScaffoldDependencyProfileSpec
+        ]: ...
 
     @runtime_checkable
     class ScaffoldSpec(p.BaseModel, Protocol):
         """Complete typed policy consumed only by new-project templates."""
 
         @property
-        def build(self) -> t.JsonValue: ...
+        def build(self) -> ip.Infra.ScaffoldBuildSpec: ...
 
         @property
-        def project(self) -> t.JsonValue: ...
+        def project(self) -> FlextInfraProtocolsValidate.ScaffoldProjectSpec: ...
 
         @property
-        def resources(self) -> t.JsonValue: ...
+        def resources(self) -> t.SequenceOf[ip.Infra.ResourceSpec]: ...
 
         @property
-        def ping_example(self) -> t.JsonValue: ...
+        def ping_example(
+            self,
+        ) -> FlextInfraProtocolsValidate.ScaffoldPingExampleSpec: ...
 
         @property
-        def gitignore_sections(self) -> t.JsonValue: ...
+        def gitignore_sections(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsValidate.ScaffoldGitignoreSectionSpec]: ...
 
     @runtime_checkable
     class StubAnalysisReport(p.BaseModel, Protocol):
@@ -1758,7 +1763,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def required_class_prefix(self) -> str: ...
 
     @runtime_checkable
-    class TomlsortConfig(p.BaseModel, Protocol):
+    class TomlsortConfig(Protocol):
         """tomlsort baseline settings loaded from YAML."""
 
         @property
@@ -1776,14 +1781,6 @@ class FlextInfraProtocolsValidate(Protocol):
 
         @property
         def tools(self) -> FlextInfraProtocolsValidate.ToolConfigTools: ...
-
-        @property
-        def project_type_overrides(
-            self,
-        ) -> FlextInfraProtocolsValidate.ProjectTypeOverridesConfig: ...
-
-        @property
-        def lazy_init(self) -> ip.Infra.LazyInitConfig: ...
 
     @runtime_checkable
     class ToolConfigTools(p.BaseModel, Protocol):
@@ -2026,7 +2023,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def total_files_scanned(self) -> int: ...
 
     @runtime_checkable
-    class WorkspaceExclusionSpec(p.BaseModel, Protocol):
+    class WorkspaceExclusionSpec(Protocol):
         """One explicitly rejected workspace path and its reason."""
 
         @property
@@ -2036,7 +2033,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def reason(self) -> str: ...
 
     @runtime_checkable
-    class YamlfixConfig(p.BaseModel, Protocol):
+    class YamlfixConfig(Protocol):
         """yamlfix baseline settings loaded from YAML."""
 
         @property

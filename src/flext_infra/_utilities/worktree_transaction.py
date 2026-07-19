@@ -183,8 +183,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
+        # mro-qz1m (codex): controller code/config owns generation policy while
+        # detached consumer source roots remain importable for validation.
+        controller_source = Path(__file__).resolve().parents[2]
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
-            str(path) for path in cls._source_roots(worktree_root)
+            str(path)
+            for path in dict.fromkeys((
+                controller_source,
+                *cls._source_roots(worktree_root),
+            ))
         )
         return {
             config.Infra.worktree_transaction.environment_variable: (
@@ -228,8 +235,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
     ) -> p.Infra.LintSnapshot:
         """Capture one lint command without hiding a non-zero exit status."""
+        lint_command = cls._relocate_lint_command(command, worktree_root)
+        if tool == c.Infra.RUFF:
+            lint_command = cls.normalize_ruff_lint_command(
+                lint_command, worktree_root / "pyproject.toml"
+            )
         result = u.Cli.run_raw(
-            command, cwd=worktree_root, env=environment, timeout=timeout_seconds
+            lint_command, cwd=worktree_root, env=environment, timeout=timeout_seconds
         )
         if result.failure:
             return m.Infra.LintSnapshot(
@@ -252,6 +264,44 @@ class FlextInfraUtilitiesWorktreeTransaction:
             warnings=warnings,
             output=combined_output,
         )
+
+    @staticmethod
+    def _relocate_lint_command(
+        command: t.StrSequence, worktree_root: Path
+    ) -> t.StrSequence:
+        """Resolve relative lint config paths against the isolated worktree."""
+        relocated: t.MutableSequenceOf[str] = []
+        config_option = False
+        for argument in command:
+            if config_option:
+                candidate = Path(argument)
+                relocated.append(
+                    str(worktree_root / candidate)
+                    if not candidate.is_absolute()
+                    else argument
+                )
+                config_option = False
+                continue
+            relocated.append(argument)
+            config_option = argument == "--config"
+        return tuple(relocated)
+
+    @staticmethod
+    def normalize_ruff_lint_command(
+        command: t.StrSequence, consumer_config: Path
+    ) -> t.StrSequence:
+        """Use the invoking Ruff module with exactly one consumer config option."""
+        normalized: t.MutableSequenceOf[str] = [sys.executable, "-m", "ruff"]
+        arguments = iter(command[1:])
+        for argument in arguments:
+            if argument == "--config":
+                next(arguments, None)
+                continue
+            if argument.startswith("--config="):
+                continue
+            normalized.append(argument)
+        normalized.append(f"--config={consumer_config}")
+        return tuple(normalized)
 
     @classmethod
     def _lint_snapshots(

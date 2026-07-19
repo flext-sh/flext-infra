@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import tomlkit
+from tomlkit.exceptions import ParseError
+from tomlkit.items import InlineTable, Table
+
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -92,6 +96,43 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload=payload,
             )
         )
+
+    def conform_existing_source(self, source: str, *, path: Path) -> p.Result[str]:
+        """Merge owned Ruff entries while preserving established consumer tooling."""
+        try:
+            doc = tomlkit.parse(source)
+        except ParseError as exc:
+            return r[str].fail_op(f"invalid TOML: {path}", exc)
+        existing = u.Cli.toml_table_path(
+            doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
+        )
+        if existing is None:
+            lint = u.Cli.toml_table_path(
+                doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION)
+            )
+            raw_lint = lint.get("per-file-ignores") if lint is not None else None
+            if isinstance(raw_lint, InlineTable):
+                return r[str].fail(
+                    f"inline Ruff per-file-ignore table is unsupported: {path}"
+                )
+            return r[str].ok(source)
+        if not isinstance(existing, Table):
+            return r[str].fail(f"invalid Ruff per-file-ignore table: {path}")
+        missing = tuple(
+            (pattern, rules)
+            for pattern, rules in config.Infra.tooling.tools.ruff.lint.per_file_ignores.items()
+            if pattern not in existing
+        )
+        if not missing:
+            return r[str].ok(source)
+        for pattern, rules in missing:
+            existing.add(pattern, sorted(rules))
+        rendered = doc.as_string()
+        try:
+            tomlkit.parse(rendered)
+        except ParseError as exc:
+            return r[str].fail_op(f"generated invalid TOML: {path}", exc)
+        return r[str].ok(rendered)
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
@@ -193,14 +234,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
         changes.extend(
-            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
+            FlextInfraEnsurePytestConfigPhase(
+                config.Infra.tooling.tools.pytest
+            ).apply_payload(payload)
         )
         # mro-j47u (codex): Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase().apply_payload(
                 payload,
                 is_root=is_root,
                 workspace_root=self.root,
@@ -211,7 +252,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePyreflyConfigPhase().apply_payload(
                 payload,
                 is_root=is_root,
                 project_dir=path.parent,
@@ -220,39 +261,35 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(payload)
+            FlextInfraEnsureMypyConfigPhase(
+                config.Infra.tooling.tools.mypy
+            ).apply_payload(payload)
         )
         changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
+            FlextInfraEnsurePydanticMypyConfigPhase(
+                config.Infra.tooling.tools.pydantic_mypy
+            ).apply_payload(payload)
         )
-        changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
-        )
+        changes.extend(FlextInfraEnsureFormattingToolingPhase().apply_payload(payload))
         changes.extend(
             FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
         )
         changes.extend(
-            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
-                payload, path=path
-            )
+            FlextInfraEnsureRuffConfigPhase().apply_payload(payload, path=path)
         )
         changes.extend(
-            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePackagingPhase().apply_payload(
                 payload, path=path, is_root=is_root
             )
         )
         # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
-            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
+            FlextInfraEnsureVultureConfigPhase(
+                config.Infra.tooling.tools.vulture
+            ).apply_payload(payload)
         )
         changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsureCoverageConfigPhase().apply_payload(
                 payload, project_kind=project_kind
             )
         )

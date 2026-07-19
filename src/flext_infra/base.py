@@ -15,7 +15,7 @@ from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
 
 
-class FlextInfraServiceBase[TDomainResult: p.BaseModel](
+class FlextInfraServiceBase[TDomainResult = p.BaseModel](
     s[TDomainResult], FlextInfraCommandPayloadMixin
 ):
     """Domain command context shared by all flext-infra CLI services.

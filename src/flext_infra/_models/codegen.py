@@ -6,18 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import MutableSet
+from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, p, t
 from flext_infra._models.codegen_grpc import FlextInfraModelsCodegenGrpc
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-
-if TYPE_CHECKING:
-    from collections.abc import MutableSet
-    from pathlib import Path
 
 
 class FlextInfraModelsCodegen(
@@ -276,6 +274,10 @@ class FlextInfraModelsCodegen(
         excluded_lazy_names: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Names excluded from runtime child lazy import merges.",
+        )
+        static_module_order: t.StrSequence = m.Field(
+            default_factory=tuple,
+            description="Dependency-safe module order for static initializer imports.",
         )
 
     class QualityGateCheck(m.ArbitraryTypesModel):

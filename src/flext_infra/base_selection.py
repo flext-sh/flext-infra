@@ -11,7 +11,7 @@ from flext_infra._base_projects import FlextInfraProjectSelectionMixin
 from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraProjectSelectionServiceBase[TDomainResult: p.BaseModel](
+class FlextInfraProjectSelectionServiceBase[TDomainResult = p.BaseModel](
     FlextInfraServiceBase[TDomainResult], FlextInfraProjectSelectionMixin
 ):
     """Shared service foundation for commands that target workspace projects."""

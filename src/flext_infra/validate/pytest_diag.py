@@ -10,7 +10,8 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
@@ -19,9 +20,6 @@ from flext_infra.validate._pytest_diag_xml import (
     FlextInfraPytestDiagXmlMixin,
     _DiagResult,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):

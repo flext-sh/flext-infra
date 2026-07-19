@@ -6,13 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraSettingsModels:
@@ -40,7 +37,7 @@ class FlextInfraSettingsModels:
             ),
         ]
         workspace_root: Annotated[
-            Path | None,
+            str | None,
             Field(
                 default=None,
                 validation_alias="FLEXT_WORKSPACE_ROOT",

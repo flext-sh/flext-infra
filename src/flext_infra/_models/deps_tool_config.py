@@ -6,8 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from annotated_types import Len
 
@@ -18,9 +19,6 @@ from flext_infra._models.deps_tool_config_linters import (
 from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
 
 # Local non-empty string contract (external annotated_types only; no facade).
 type NonEmptyStr = Annotated[str, Len(1)]

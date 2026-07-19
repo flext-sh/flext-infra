@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_cli import p as pc
+
 # NOTE (multi-agent, mro-wkii.17.9.2.1): declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
@@ -17,7 +19,6 @@ if TYPE_CHECKING:
     from datetime import datetime
     from pathlib import Path
 
-    from flext_cli import p as pc
     from flext_infra import p, t
 
 
@@ -82,7 +83,7 @@ class FlextInfraProtocolsBase(Protocol):
     # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
-    class RepositoryRef(Protocol):
+    class RepositoryRef(pc.BaseModel, Protocol):
         """Repository fields consumed by codegen path and profile selection."""
 
         @property
@@ -140,8 +141,13 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
+        @property
+        def provider(self) -> str:
+            """Configured Git provider key."""
+            ...
+
     @runtime_checkable
-    class WorkspaceSpec(Protocol):
+    class WorkspaceSpec(pc.BaseModel, Protocol):
         """Workspace topology fields consumed by repository selection."""
 
         @property
@@ -159,6 +165,153 @@ class FlextInfraProtocolsBase(Protocol):
             """Declared content-only repositories."""
             ...
 
+        @property
+        def name(self) -> str:
+            """Declared workspace name."""
+            ...
+
+        @property
+        def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
+            """Optional project materialization metadata."""
+            ...
+
+        @property
+        def exclusions(self) -> t.SequenceOf[pc.BaseModel]:
+            """Explicitly excluded workspace paths."""
+            ...
+
+    @runtime_checkable
+    class ProjectSpec(pc.BaseModel, Protocol):
+        """Project metadata consumed while rendering a new repository."""
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def class_stem(self) -> str: ...
+
+        @property
+        def namespace(self) -> str: ...
+
+        @property
+        def constant_name(self) -> str: ...
+
+        @property
+        def namespace_attribute(self) -> str: ...
+
+        @property
+        def alias(self) -> str: ...
+
+        @property
+        def environment_prefix(self) -> str: ...
+
+        @property
+        def description(self) -> str: ...
+
+        @property
+        def version(self) -> str: ...
+
+        @property
+        def license(self) -> str: ...
+
+        @property
+        def author_name(self) -> str: ...
+
+        @property
+        def author_email(self) -> str: ...
+
+        @property
+        def upstream(self) -> str: ...
+
+        @property
+        def homepage(self) -> str: ...
+
+        @property
+        def documentation(self) -> str: ...
+
+        @property
+        def workspace_root_rel(self) -> str: ...
+
+        @property
+        def year(self) -> int: ...
+
+        @property
+        def resources(self) -> t.SequenceOf[FlextInfraProtocolsBase.ResourceSpec]: ...
+
+    @runtime_checkable
+    class ProviderSpec(pc.BaseModel, Protocol):
+        """Provider fields consumed by scaffold rendering."""
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def base_url(self) -> str: ...
+
+        @property
+        def branch(self) -> str: ...
+
+    @runtime_checkable
+    class ManagedFileSpec(pc.BaseModel, Protocol):
+        """Managed-file fields consumed by conformance planning."""
+
+        @property
+        def path(self) -> Path: ...
+
+        @property
+        def overwrite(self) -> bool: ...
+
+    @runtime_checkable
+    class TemplatesSpec(pc.BaseModel, Protocol):
+        """Template catalog consumed by conformance planning."""
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def entries(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.TemplateEntrySpec]: ...
+
+    @runtime_checkable
+    class CodegenConfigSpec(pc.BaseModel, Protocol):
+        """Canonical code-generation configuration consumed by services."""
+
+        @property
+        def toolchain(self) -> FlextInfraProtocolsBase.ToolchainSpec: ...
+
+        @property
+        def providers(self) -> t.SequenceOf[FlextInfraProtocolsBase.ProviderSpec]: ...
+
+        @property
+        def make(self) -> p.Infra.MakeSpec: ...
+
+        @property
+        def managed_files(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.ManagedFileSpec]: ...
+
+        @property
+        def scaffold(self) -> p.Infra.ScaffoldSpec: ...
+
+        @property
+        def templates(self) -> FlextInfraProtocolsBase.TemplatesSpec: ...
+
+        @property
+        def repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]: ...
+
+    @runtime_checkable
+    class CustomHandlerPolicy(pc.BaseModel, Protocol):
+        """Handwritten Make extension policy consumed by conformance checks."""
+
+        @property
+        def filename(self) -> str: ...
+
+        @property
+        def target_pattern(self) -> str: ...
+
     @runtime_checkable
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance."""
@@ -174,6 +327,18 @@ class FlextInfraProtocolsBase(Protocol):
         def uv_required_version(self) -> str:
             """Required uv version expression."""
             ...
+
+        @property
+        def python_minor_version(self) -> str: ...
+
+        @property
+        def python_version(self) -> str: ...
+
+        @property
+        def python_required_version(self) -> str: ...
+
+        @property
+        def uv_version(self) -> str: ...
 
     @runtime_checkable
     class ScaffoldBuildSpec(Protocol):
@@ -265,6 +430,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def source(self) -> Path:
+            """Template source relative to the configured template root."""
+            ...
+
+        @property
         def profiles(self) -> t.StrSequence:
             """Make profiles that consume the template."""
             ...
@@ -332,6 +502,22 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[t.SequenceOf[p.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
+
+    @runtime_checkable
+    class DocsGenerateRequest(pc.BaseModel, Protocol):
+        """Validated documentation generation request."""
+
+        @property
+        def workspace_root(self) -> Path: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def output_dir(self) -> Path | str | None: ...
+
+        @property
+        def apply(self) -> bool: ...
 
     @runtime_checkable
     class Discovery(Protocol):
@@ -636,6 +822,38 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[p.Infra.GithubWorkflowSyncReport]:
             """Sync GitHub workflow files."""
             ...
+
+    @runtime_checkable
+    class GithubWorkflowSyncRequest(pc.BaseModel, Protocol):
+        """Workflow synchronization request contract."""
+
+        project: str | None
+        write: bool
+        report: str | None
+        prune: bool
+
+    @runtime_checkable
+    class GithubWorkflowLintRequest(pc.BaseModel, Protocol):
+        """Workflow lint request contract."""
+
+        project: str | None
+        read: bool
+        strict: bool
+
+    @runtime_checkable
+    class GithubPullRequestRequest(pc.BaseModel, Protocol):
+        """Single-repository pull-request request contract."""
+
+        repo_root: str
+        write: bool
+
+    @runtime_checkable
+    class GithubPullRequestWorkspaceRequest(pc.BaseModel, Protocol):
+        """Workspace pull-request request contract."""
+
+        workspace: Path | None
+        projects: t.StrSequence | None
+        write: bool
 
         def lint_github_workflows(
             self, params: p.Infra.GithubWorkflowLintRequest
@@ -1077,7 +1295,23 @@ class FlextInfraProtocolsBase(Protocol):
         def apply_value(self) -> str: ...
 
         @property
-        def verbs(self) -> t.StrSequence: ...
+        def verbs(self) -> t.SequenceOf[p.Infra.MakeVerbSpec]: ...
+
+        @property
+        def custom_handler_policy(self) -> p.Infra.CustomHandlerPolicy: ...
+
+    @runtime_checkable
+    class MakeVerbSpec(Protocol):
+        """One generated Make verb consumed through the Make contract."""
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def default_what(self) -> str: ...
+
+        @property
+        def apply_guarded(self) -> bool: ...
 
     # mro-qc84 (fix-forward): protocol-of-model for a per-project uv plan
     # (m.Infra.UvEnvironmentPlan).
@@ -1106,7 +1340,7 @@ class FlextInfraProtocolsBase(Protocol):
     # mro-qc84 (fix-forward): protocol-of-model for a single managed-file render
     # plan (m.Infra.CodegenFilePlan).
     @runtime_checkable
-    class CodegenFilePlan(Protocol):
+    class CodegenFilePlan(pc.BaseModel, Protocol):
         """Validated render result for one managed file."""
 
         @property
@@ -1123,6 +1357,18 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def expected_sha256(self) -> str: ...
+
+        @property
+        def current_sha256(self) -> str: ...
+
+        @property
+        def changed(self) -> bool: ...
+
+        @property
+        def blocked(self) -> bool: ...
+
+        @property
+        def reason(self) -> str: ...
 
     # mro-qc84 (fix-forward): protocol-of-model for the public codegen conform
     # request (m.Infra.CodegenConformRequest).
@@ -1145,7 +1391,7 @@ class FlextInfraProtocolsBase(Protocol):
     # mro-qc84 (fix-forward): protocol-of-model for the fully validated codegen
     # plan (m.Infra.CodegenPlan).
     @runtime_checkable
-    class CodegenPlan(Protocol):
+    class CodegenPlan(pc.BaseModel, Protocol):
         """Fully validated plan produced before any managed-file write."""
 
         @property
@@ -1170,7 +1416,7 @@ class FlextInfraProtocolsBase(Protocol):
     # outcome (m.Infra.CodegenResult). Consumed at runtime by the conform
     # service base ``s[p.Infra.CodegenResult]``.
     @runtime_checkable
-    class CodegenResult(Protocol):
+    class CodegenResult(pc.BaseModel, Protocol):
         """Public conformance outcome for check and apply modes."""
 
         @property
@@ -1206,3 +1452,83 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def importable(self) -> bool: ...
+
+    # mro-76mz (Sisyphus-Junior): lazy-init services consume model contracts
+    # through p.Infra without introducing the forbidden p -> m runtime edge.
+    @runtime_checkable
+    class LazyInitPlan(pc.BaseModel, Protocol):
+        """Fully resolved lazy-init action and render payload."""
+
+        @property
+        def context(self) -> p.Infra.LazyInitPackageContext: ...
+
+        @property
+        def action(self) -> str: ...
+
+        @property
+        def exports(self) -> t.StrSequence: ...
+
+        @property
+        def lazy_map(self) -> t.LazyAliasMap: ...
+
+        @property
+        def type_checking_map(self) -> t.LazyAliasMap: ...
+
+        @property
+        def eager_dunders(self) -> t.LazyAliasMap: ...
+
+        @property
+        def inline_constants(self) -> t.StrMapping: ...
+
+        @property
+        def child_packages_for_lazy(self) -> t.StrSequence: ...
+
+        @property
+        def excluded_lazy_names(self) -> t.StrSequence: ...
+
+        @property
+        def static_module_order(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class LazyInitRootRender(pc.BaseModel, Protocol):
+        """Template context for one public root initializer."""
+
+        @property
+        def autogen_header(self) -> str: ...
+
+        @property
+        def docstring(self) -> str: ...
+
+        @property
+        def current_pkg(self) -> str: ...
+
+        @property
+        def runtime_import_lines(self) -> str: ...
+
+        @property
+        def type_checking_lines(self) -> str: ...
+
+        @property
+        def lazy_module_groups(self) -> t.StrSequencePairSequence: ...
+
+        @property
+        def lazy_alias_groups(self) -> t.StrPairSequencePairSequence: ...
+
+        @property
+        def exports(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class StaticPackageInitRender(pc.BaseModel, Protocol):
+        """Template context for one static package initializer."""
+
+        @property
+        def autogen_header(self) -> str: ...
+
+        @property
+        def docstring(self) -> str: ...
+
+        @property
+        def runtime_import_lines(self) -> str: ...
+
+        @property
+        def exports(self) -> t.StrSequence: ...

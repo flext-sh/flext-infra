@@ -6,22 +6,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import m, p, t
+from flext_infra import config, m, p, t
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureCoverageConfigPhase:
     """Ensure coverage report configuration with per-project-type thresholds."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
-        """Capture tool configuration used to build canonical coverage settings."""
-        self._tool_config = tool_config
-
     def _phases(
         self, *, project_kind: str = "core"
     ) -> tuple[p.Cli.TomlPhaseConfig, p.Cli.TomlPhaseConfig]:
         """Build the canonical coverage phases for the selected project kind."""
-        cov_config = self._tool_config.tools.coverage
+        cov_config = config.Infra.tooling.tools.coverage
         fail_under_map: t.IntMapping = {
             "core": cov_config.fail_under.core,
             "domain": cov_config.fail_under.domain,

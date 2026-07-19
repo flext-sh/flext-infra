@@ -121,13 +121,49 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _static_import_lines(
-        cls, current_pkg: str, imports: t.LazyAliasMap
+        cls, current_pkg: str, imports: t.LazyAliasMap, module_order: t.StrSequence
     ) -> t.StrSequence:
         """Render explicit sibling-relative reexports for one subpackage."""
         lines: t.MutableSequenceOf[str] = []
         previous_relative: bool | None = None
         max_line_length = config.Infra.tooling.tools.ruff.line_length
-        for module, entries in sorted(cls._group_imports(imports).items()):
+        alias_order = {
+            alias_name: index
+            for index, alias_name in enumerate(c.Infra.PUBLIC_ROOT_ALIAS_ORDER)
+        }
+        grouped_imports = cls._group_imports(imports)
+        module_order_index = {
+            module: index for index, module in enumerate(module_order)
+        }
+        facade_modules = frozenset(
+            module
+            for alias_name, (module, _attribute) in imports.items()
+            if alias_name in alias_order and module.startswith(f"{current_pkg}.")
+        )
+
+        def import_order(
+            item: tuple[str, t.SequenceOf[t.StrPair]],
+        ) -> tuple[int, int, int, str]:
+            module, entries = item
+            is_local = module.startswith(f"{current_pkg}.")
+            semantic_order = min(
+                (
+                    alias_order.get(export_name, len(alias_order))
+                    for export_name, _ in entries
+                ),
+                default=len(alias_order),
+            )
+            dependency_order = module_order_index.get(module, len(module_order_index))
+            return (
+                int(is_local),
+                int(is_local and module not in facade_modules),
+                dependency_order if is_local else semantic_order,
+                module.lower(),
+            )
+
+        # mro-76mz (Sisyphus-Junior): inherited facades must exist before local
+        # wrapper modules execute imports from their package root.
+        for module, entries in sorted(grouped_imports.items(), key=import_order):
             import_module = (
                 f".{module.removeprefix(f'{current_pkg}.')}"
                 if module.startswith(f"{current_pkg}.")
@@ -178,7 +214,9 @@ class FlextInfraCodegenGenerationStandardMixin(
                 plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
             ),
             runtime_import_lines="\n".join(
-                cls._static_import_lines(plan.context.current_pkg, static_imports)
+                cls._static_import_lines(
+                    plan.context.current_pkg, static_imports, plan.static_module_order
+                )
             ),
             exports=cls._build_published_exports(tuple(static_imports), {}),
         )

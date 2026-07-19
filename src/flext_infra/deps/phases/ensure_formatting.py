@@ -6,16 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import m, p, t, u
+from flext_infra import config, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 
 class FlextInfraEnsureFormattingToolingPhase:
     """Ensure safe default settings for TOML/YAML formatting tools."""
-
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
-        """Store tool settings used when enforcing formatting-related tables."""
-        self._tool_config = tool_config
 
     def _phases(
         self,
@@ -27,25 +23,26 @@ class FlextInfraEnsureFormattingToolingPhase:
         p.Cli.TomlPhaseConfig,
     ]:
         """Build the canonical formatting phases."""
+        tools = config.Infra.tooling.tools
         codespell_builder = (
             m.Cli.TomlPhaseConfig
             .Builder("codespell")
             .table("codespell")
-            .value("check-filenames", self._tool_config.tools.codespell.check_filenames)
+            .value("check-filenames", tools.codespell.check_filenames)
         )
-        if self._tool_config.tools.codespell.ignore_words_list:
+        if tools.codespell.ignore_words_list:
             codespell_builder = codespell_builder.value(
-                "ignore-words-list", self._tool_config.tools.codespell.ignore_words_list
+                "ignore-words-list", tools.codespell.ignore_words_list
             )
         codespell_phase = codespell_builder.build()
         deptry_phase = (
             m.Cli.TomlPhaseConfig
             .Builder("deptry")
             .table("deptry")
-            .list("known_first_party", self._tool_config.tools.deptry.known_first_party)
+            .list("known_first_party", tools.deptry.known_first_party)
             .list(
                 "pep621_dev_dependency_groups",
-                self._tool_config.tools.deptry.pep621_dev_dependency_groups,
+                tools.deptry.pep621_dev_dependency_groups,
             )
             .build()
         )
@@ -53,32 +50,27 @@ class FlextInfraEnsureFormattingToolingPhase:
             m.Cli.TomlPhaseConfig
             .Builder("hatch")
             .table("hatch", "metadata")
-            .value(
-                "allow-direct-references",
-                self._tool_config.tools.hatch.allow_direct_references,
-            )
+            .value("allow-direct-references", tools.hatch.allow_direct_references)
             .build()
         )
         tomlsort_phase = (
             m.Cli.TomlPhaseConfig
             .Builder("tomlsort")
             .table("tomlsort")
-            .value("all", self._tool_config.tools.tomlsort.all)
-            .value("in_place", self._tool_config.tools.tomlsort.in_place)
-            .list("sort_first", self._tool_config.tools.tomlsort.sort_first)
+            .value("all", tools.tomlsort.all)
+            .value("in_place", tools.tomlsort.in_place)
+            .list("sort_first", tools.tomlsort.sort_first)
             .build()
         )
         yamlfix_phase = (
             m.Cli.TomlPhaseConfig
             .Builder("yamlfix")
             .table("yamlfix")
-            .value("line_length", self._tool_config.tools.yamlfix.line_length)
-            .value("preserve_quotes", self._tool_config.tools.yamlfix.preserve_quotes)
-            .value("whitelines", self._tool_config.tools.yamlfix.whitelines)
-            .value(
-                "section_whitelines", self._tool_config.tools.yamlfix.section_whitelines
-            )
-            .value("explicit_start", self._tool_config.tools.yamlfix.explicit_start)
+            .value("line_length", tools.yamlfix.line_length)
+            .value("preserve_quotes", tools.yamlfix.preserve_quotes)
+            .value("whitelines", tools.yamlfix.whitelines)
+            .value("section_whitelines", tools.yamlfix.section_whitelines)
+            .value("explicit_start", tools.yamlfix.explicit_start)
             .build()
         )
         return (

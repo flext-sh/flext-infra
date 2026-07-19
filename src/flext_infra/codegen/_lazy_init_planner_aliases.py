@@ -25,12 +25,12 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             py_file: Path,
             module_path: str,
             *,
-            export_options: p.Infra.ExportOptions | None = None,
+            export_options: m.Infra.ExportOptions | None = None,
         ) -> t.MutableLazyAliasMap: ...
 
         def _package_entry(
             self, pkg_dir: Path
-        ) -> p.Infra.RopePackageIndexEntry | None: ...
+        ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _parents_from_constants_module(
             self, module_path: Path, current_pkg: str, visited: set[str] | None = None
@@ -178,3 +178,55 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         parents = self._parents_from_constants_module(constants_path, current_pkg)
         self._parent_package_cache[cache_key] = parents
         return parents
+
+    def _static_module_order(
+        self, lazy_map: t.LazyAliasMap, *, current_pkg: str, pkg_dir: Path
+    ) -> t.StrSequence:
+        """Topologically order local modules from Rope-resolved root alias imports."""
+        local_prefix = f"{current_pkg}."
+        local_modules = frozenset(
+            module for module, _ in lazy_map.values() if module.startswith(local_prefix)
+        )
+        alias_provider = {
+            alias_name: module
+            for alias_name, (module, _attribute) in lazy_map.items()
+            if module in local_modules
+        }
+        dependencies: dict[str, set[str]] = {module: set() for module in local_modules}
+        for module in local_modules:
+            module_path = pkg_dir / f"{module.removeprefix(local_prefix)}.py"
+            if not module_path.is_file():
+                continue
+            for target in self.rope_workspace.semantic(
+                module_path
+            ).semantic_imports.values():
+                direct_provider = next(
+                    (
+                        provider
+                        for provider in local_modules
+                        if target == provider or target.startswith(f"{provider}.")
+                    ),
+                    None,
+                )
+                if direct_provider is not None and direct_provider != module:
+                    dependencies[module].add(direct_provider)
+                    continue
+                root_prefix = f"{current_pkg}."
+                if not target.startswith(root_prefix):
+                    continue
+                alias_name = target.removeprefix(root_prefix).split(".", maxsplit=1)[0]
+                provider = alias_provider.get(alias_name)
+                if provider is not None and provider != module:
+                    dependencies[module].add(provider)
+
+        ordered: list[str] = []
+        remaining = set(local_modules)
+        while remaining:
+            ready = sorted(
+                module for module in remaining if not (dependencies[module] & remaining)
+            )
+            if not ready:
+                ready = [min(remaining)]
+            ordered.extend(ready)
+            remaining.difference_update(ready)
+        return tuple(ordered)

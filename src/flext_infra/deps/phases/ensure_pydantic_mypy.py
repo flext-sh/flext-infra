@@ -13,9 +13,9 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePydanticMypyConfigPhase:
     """Ensure standard pydantic-mypy configuration for strict model typing."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
+    def __init__(self, pydantic_mypy: p.Infra.PydanticMypyConfig) -> None:
         """Store tool configuration used to populate pydantic-mypy settings."""
-        self._tool_config = tool_config
+        self._pydantic_mypy = pydantic_mypy
 
     def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pydantic-mypy phase definition."""
@@ -23,19 +23,13 @@ class FlextInfraEnsurePydanticMypyConfigPhase:
             m.Cli.TomlPhaseConfig
             .Builder("pydantic-mypy")
             .table("pydantic-mypy")
-            .value(
-                "init_forbid_extra",
-                self._tool_config.tools.pydantic_mypy.init_forbid_extra,
-            )
-            .value("init_typed", self._tool_config.tools.pydantic_mypy.init_typed)
+            .value("init_forbid_extra", self._pydantic_mypy.init_forbid_extra)
+            .value("init_typed", self._pydantic_mypy.init_typed)
             .value(
                 "warn_required_dynamic_aliases",
-                self._tool_config.tools.pydantic_mypy.warn_required_dynamic_aliases,
+                self._pydantic_mypy.warn_required_dynamic_aliases,
             )
-            .value(
-                "warn_untyped_fields",
-                self._tool_config.tools.pydantic_mypy.warn_untyped_fields,
-            )
+            .value("warn_untyped_fields", self._pydantic_mypy.warn_untyped_fields)
             .build()
         )
 

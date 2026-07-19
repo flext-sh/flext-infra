@@ -6,22 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal
+from pathlib import Path
+from typing import Annotated, Literal
 
 from annotated_types import Len
+from pydantic import HttpUrl
 
 from flext_cli import m
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from pathlib import Path
-
-    from pydantic import HttpUrl
-
-    from flext_infra._models.deps_tool_config import (
-        FlextInfraModelsDepsToolSettings,  # mro-itcd.1: runtime type required by Infra tooling fields.
-    )
+from flext_infra._models.deps_tool_config import (
+    FlextInfraModelsDepsToolSettings,  # mro-itcd.1: runtime type required by Infra tooling fields.
+)
 
 # Local non-empty string contract (external annotated_types only; no facade).
 type NonEmptyStr = Annotated[str, Len(1)]
@@ -495,7 +490,7 @@ class FlextInfraConfigModels:
             NonEmptyStr, m.Field(description="Python import package name")
         ]
         packaged_data_dirs: Annotated[
-            Sequence[str],
+            tuple[str, ...],
             m.Field(description="Generated root data directories shipped in wheels"),
         ]
         class_stem: Annotated[
@@ -976,6 +971,12 @@ class FlextInfraConfigModels:
 
     class Root(_ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
+
+        # Canonical config Root ignores keys owned by sibling standalone
+        # config/*.yaml files (e.g. protocol_gen.yaml, loaded independently)
+        # so the auto-merged singleton validates only the Infra namespace —
+        # identical to every peer library's Root (extra="ignore").
+        model_config = m.ConfigDict(frozen=True, extra="ignore")
 
         Infra: Annotated[
             FlextInfraConfigModels.Infra,

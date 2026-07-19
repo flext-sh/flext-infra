@@ -18,10 +18,6 @@ if TYPE_CHECKING:
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
-        """Store tool configuration used to build canonical Ruff settings."""
-        self._tool_config = tool_config
-
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
         """Discover child project packages when generating workspace root settings."""
@@ -67,7 +63,7 @@ class FlextInfraEnsureRuffConfigPhase:
         include_handler: bool,
     ) -> p.Cli.TomlPhaseConfig:
         """Build the canonical Ruff phase for one project path."""
-        ruff_cfg = self._tool_config.tools.ruff
+        ruff_cfg = config.Infra.tooling.tools.ruff
         effective_src = sorted(ruff_cfg.src)
         # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
@@ -177,7 +173,7 @@ class FlextInfraEnsureRuffConfigPhase:
             [
                 pattern
                 for pattern in per_file_ignores
-                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
+                if pattern not in config.Infra.tooling.tools.ruff.lint.per_file_ignores
             ]
             if per_file_ignores is not None
             else ()
@@ -202,14 +198,8 @@ class FlextInfraEnsureRuffConfigPhase:
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
         )
-        stale_patterns = (
-            [
-                pattern
-                for pattern in list(per_file_ignores)
-                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
-            ]
-            if per_file_ignores is not None
-            else ()
+        preserved_ignores = (
+            tuple(per_file_ignores.items()) if per_file_ignores is not None else ()
         )
         changes = list(
             FlextInfraTomlPhaseService.apply_payload_phases(
@@ -225,12 +215,38 @@ class FlextInfraEnsureRuffConfigPhase:
                             "-", "_"
                         ),
                     ),
-                    stale_patterns=stale_patterns,
+                    stale_patterns=(),
                     include_handler=False,
                 ),
             )
         )
+        mapping = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        )
+        for pattern, rules in preserved_ignores:
+            mapping[pattern] = rules
+        changes.extend(self.merge_per_file_ignores_payload(payload))
         changes.extend(self._remove_stale_lint_section_payload(payload))
+        return changes
+
+    def merge_per_file_ignores_payload(
+        self, payload: t.MutableJsonMapping
+    ) -> t.StrSequence:
+        """Add missing canonical Ruff entries while preserving consumer policy."""
+        mapping = u.Cli.toml_mapping_ensure_path(
+            payload,
+            (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
+        )
+        changes: t.MutableSequenceOf[str] = []
+        for (
+            pattern,
+            rules,
+        ) in config.Infra.tooling.tools.ruff.lint.per_file_ignores.items():
+            if pattern in mapping:
+                continue
+            mapping[pattern] = u.normalize_to_json_value(sorted(rules))
+            changes.append(f"tool.ruff.lint.per-file-ignores.{pattern} set")
         return changes
 
 

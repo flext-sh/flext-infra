@@ -1523,8 +1523,8 @@ class FlextInfraUtilitiesRopeAnalysis:
             # operator path that crashed CI (FileNotFoundError) and silently bound
             # the parse project to the wrong tree locally. Anchor on the validated
             # settings SSOT, with cwd as last resort — both exist where CLI runs.
-            # Path() coercion keeps this correct while settings migrates the
-            # field from str to Path (both accepted).
+            # Path() coercion builds the path here: settings hold a plain str
+            # scalar (no complex types in settings), utilities own the Path.
             workspace_root = settings.Infra.workspace_root
             anchor = Path(workspace_root) if workspace_root else Path.cwd()
             cached = FlextInfraUtilitiesRopeCore.init_rope_project(anchor)

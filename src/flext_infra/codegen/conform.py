@@ -607,6 +607,25 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
             return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
+        if surface == c.Infra.CodegenConformSurface.PYPROJECT:
+            modernizer = FlextInfraPyprojectModernizer(
+                workspace_root=workspace_root, skip_check=True
+            )
+            tooling_result = modernizer.conform_existing_source(
+                pyproject_read.value, path=pyproject
+            )
+            if tooling_result.failure:
+                return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
+                    tooling_result.error or f"tooling conform failed: {pyproject}"
+                )
+            pyproject_plan = self._file_plan(
+                root, c.PYPROJECT_FILENAME, tooling_result.value
+            )
+            if pyproject_plan.failure:
+                return r[t.SequenceOf[p.Infra.CodegenFilePlan]].fail(
+                    pyproject_plan.error or f"pyproject planning failed: {pyproject}"
+                )
+            return r[t.SequenceOf[p.Infra.CodegenFilePlan]].ok((pyproject_plan.value,))
         package_name = repository.distribution.replace("-", "_")
         project_resources = (
             workspace.project.resources
@@ -707,7 +726,7 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
         planned = [*resource_plans.value, pyproject_plan.value]
-        if surface is c.Infra.CodegenConformSurface.PYPROJECT:
+        if surface == c.Infra.CodegenConformSurface.PYPROJECT:
             return r[t.SequenceOf[p.Infra.CodegenFilePlan]].ok(tuple(planned))
         # NOTE(mro-wkii.17.26, agent codex): retain the 0.12 managed-file
         # contract alongside the 0.20 resource/wheel conformance pipeline.

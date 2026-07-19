@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
@@ -25,10 +25,6 @@ if TYPE_CHECKING:
 
 class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
-
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
-        """Store tool configuration providing the packaged data-dir policy."""
-        self._tool_config = tool_config
 
     def _phase(
         self, *, package_name: str, data_dirs: t.StrSequence
@@ -83,7 +79,7 @@ class FlextInfraEnsurePackagingPhase:
         declared_force_include = u.Cli.json_as_mapping(wheel.get("force-include"))
         present_dirs = tuple(
             data_dir
-            for data_dir in self._tool_config.tools.hatch.packaged_data_dirs
+            for data_dir in config.Infra.tooling.tools.hatch.packaged_data_dirs
             # Force-include a root data dir only when it exists at the project
             # root AND is not already shipped from inside the package (which
             # would collide on the same wheel path).

@@ -151,92 +151,52 @@ Infra:
           per-file-ignores:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
-            # mro-wkii.17.26.25 (agent:kimi): production package root uses PEP 562
-            # lazy export machinery mandated by U20; RUF067 does not apply.
-            "**/__init__.py": [RUF067]
-            # mro-wkii.17.26.25 (agent:kimi): rope internals patch legitimately
-            # accesses private rope APIs; SLF001 does not apply.
-            "**/_utilities/rope_patch/pep695_patch.py": [SLF001]
-          #  "**/*dispatcher*": []
-          #  "**/*docs*": [INP001, S404, S603, T201]
-          #  "**/*exceptions*": [A001, S105, SLF001]
-          #  "**/*handlers*": []
-          #  "**/*instrumentation*": [C901, FBT001, SLF001]
-          #  "**/*loggings*": [PLW0603, PLR0904]
-          #  "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
-          #  "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
-          #  "**/*oracle*": [DTZ007]
-          #  "**/*result*": [PLC2701, SLF001]
-          #  "**/*runtime*": []
-          #  "**/*scripts*":
-          #    - EXE001
-          #    - FIX002
-          #    - INP001
-          #    - PLR0911
-          #    - PLR0912
-          #    - PLR0915
-          #    - PLR2004
-          #    - PLW2901
-          #    - S105
-          #    - S107
-          #    - S404
-          #    - S603
-          #    - T201
-          #    - TID252
-          #  "**/*service*": [N815, S404, S603, SLF001, PLC2801]
-          #  "**/*subprocess_utils*": [S404, S603]
-          #  "**/*typings*": [ANN401]
-          #  "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
-          #  "**/__init__.py":
-          #    - A004
-          #    - ANN401
-          #    - D107
-          #    - F401
-          #    - F403
-          #    - F405
-          #    - F822
-          #    - INP001
-          #    - N999
-          #    - PLC2701
-          #    - RUF067
-          #    - TC004
-          #  "**/_utilities/parser.py": [ARG004, FBT001]
-          #  "**/settings.py": [ANN401, FBT001, SLF001]
-          #  "**/_constants/*.py": [S105]
-          #  "**/constants.py": [S105]
-          #  "**/container.py": [ANN401, SLF001]
-          #  "**/context.py": []
-          #  "**/file_tools.py": [D102]
-          #  "**/managers.py": [S105]
-          #  "**/models.py": [PLC2801, S102, S105]
-          #  "**/output.py":
-          #    - FBT001
-          #  # FLEXT config/settings namespaces are deliberately PascalCase
-          #  # (config.<Namespace> / settings.<Namespace>). Protocol properties
-          #  # must preserve that exact public member name; N802 models functions,
-          #  # not namespace-shaped protocol attributes.
-          #  "**/_config.py": [N802]
-          #  "**/_protocols/*.py": [N802]
-          #  "**/flext_cli/_protocols/framework.py": [A002]
-          #  "**/_settings.py":
-          #    - N802
-          #  # flext-cli is the single framework-adapter owner. Direct Click,
-          #  # Typer, and Rich imports stay banned in every consumer while the
-          #  # owning boundary must import those libraries to expose the facade.
-          #  "**/flext_cli/_utilities/formatters.py": [TID251]
-          #  "**/flext_cli/_utilities/framework.py": [A002, TID251]
-          #  "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
-          #  "**/providers/*.py": [S106, S107]
-          #  "**/services/prompts.py": [D102, D107]
-          #  "**/singer/*.py": [S404, S603]
-          #  "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-          #  "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
-          #  "**/alert_manager*.py": [S310]
-          #  "**/external_command*.py": [S404, S603]
-          #  "**/orchestrator*.py": [S404, S603]
-          #  "**/protocol_impls/*.py": [SLF001]
-          #  "**/typings.py": [RUF036]
-          #  "**/workspace/*.py": [S404, S603, S607]
+            "**/*dispatcher*": []
+            "**/*docs*": [INP001, S404, S603, T201]
+            "**/*exceptions*": [A001, S105, SLF001]
+            "**/*handlers*": []
+            "**/*instrumentation*": [C901, FBT001, SLF001]
+            "**/*loggings*": [PLW0603, PLR0904]
+            "**/*middleware*": [ANN401, FBT001, FBT002, PLC2801, S107]
+            "**/*models*": [ANN401, FBT001, PLC2701, PLR0206, PLW0603]
+            "**/*oracle*": [DTZ007]
+            "**/*result*": [PLC2701, SLF001]
+            "**/*runtime*": []
+            "**/*scripts*": [EXE001, FIX002, INP001, PLR0911, PLR0912, PLR0915, PLR2004, PLW2901, S105, S107, S404, S603, T201, TID252]
+            "**/*service*": [N815, PLC2801, S404, S603, SLF001]
+            "**/*subprocess_utils*": [S404, S603]
+            "**/*typings*": [ANN401]
+            "**/*utilities*": [C901, E402, PLC2801, PLW1510, S404, S603]
+            "**/__init__.py": [A004, ANN401, D107, F401, F403, F405, F822, INP001, N999, PLC2701, RUF067, TC004]
+            "**/_config.py": [N802]
+            "**/_constants/*.py": [S105]
+            "**/_protocols/*.py": [N802]
+            "**/_settings.py": [N802]
+            "**/_utilities/parser.py": [ARG004, FBT001]
+            "**/alert_manager*.py": [S310]
+            "**/constants.py": [S105]
+            "**/container.py": [ANN401, SLF001]
+            "**/context.py": []
+            "**/external_command*.py": [S404, S603]
+            "**/file_tools.py": [D102]
+            "**/flext_cli/_protocols/framework.py": [A002]
+            "**/flext_cli/_utilities/formatters.py": [TID251]
+            "**/flext_cli/_utilities/framework.py": [A002, TID251]
+            "**/managers.py": [S105]
+            "**/models.py": [PLC2801, S102, S105]
+            "**/orchestrator*.py": [S404, S603]
+            "**/output.py": [FBT001]
+            "**/plugins/*.py": [FBT001, FBT002, S404, S603, S607, TID252]
+            "**/protocol_impls/*.py": [SLF001]
+            "**/providers/*.py": [S106, S107]
+            "**/services/prompts.py": [D102, D107]
+            "**/settings.py": [ANN401, FBT001, SLF001]
+            "**/singer/*.py": [S404, S603]
+            "**/tests/**/*.py": [FBT001, PLC1901, S108]
+            "**/tools/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+            "**/tools/**/*.py": [FBT001, FBT002, N802, S404, S603, S607, T201]
+            "**/typings.py": [RUF036]
+            "**/workspace/*.py": [S404, S603, S607]
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^legado(?:/|$)

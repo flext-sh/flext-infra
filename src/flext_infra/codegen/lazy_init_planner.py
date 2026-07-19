@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra import c, m, p, t, u
 from flext_infra.codegen._lazy_init_planner_aliases import (
@@ -30,9 +31,6 @@ from flext_infra.codegen._lazy_init_planner_parents import (
 from flext_infra.codegen._lazy_init_planner_public_root import (
     FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
@@ -194,6 +192,9 @@ class FlextInfraCodegenLazyInitPlanner(
             eager_dunders=eager_dunders,
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
+            static_module_order=self._static_module_order(
+                lazy_map, current_pkg=context.current_pkg, pkg_dir=context.pkg_dir
+            ),
         )
         # mro-pulj (codex): publish the dependency-complete bottom-up plan so
         # later alias resolution never rebuilds this package without children.

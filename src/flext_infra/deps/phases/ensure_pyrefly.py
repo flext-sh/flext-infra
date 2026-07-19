@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, t, u
+from flext_infra import c, config, m, p, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
@@ -20,10 +20,6 @@ if TYPE_CHECKING:
 class FlextInfraEnsurePyreflyConfigPhase:
     """Ensure standard Pyrefly configuration for max-strict typing."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
-        """Store tool configuration used when enforcing pyrefly project settings."""
-        self._tool_config = tool_config
-
     def _phase(
         self,
         *,
@@ -34,8 +30,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
         declared_python_dirs: t.StrSequence = (),
     ) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pyrefly phase definition."""
-        pyrefly_rules = self._tool_config.tools.pyrefly
-        venv_rules = self._tool_config.tools.pyright.path_rules
+        pyrefly_rules = config.Infra.tooling.tools.pyrefly
+        venv_rules = config.Infra.tooling.tools.pyright.path_rules
         venv_path = (
             venv_rules.root_venv_path if is_root else venv_rules.project_venv_path
         )
@@ -63,14 +59,8 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
         error_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
-            *(
-                (error_rule, "error")
-                for error_rule in self._tool_config.tools.pyrefly.strict_errors
-            ),
-            *(
-                (error_rule, False)
-                for error_rule in self._tool_config.tools.pyrefly.disabled_errors
-            ),
+            *((error_rule, "error") for error_rule in pyrefly_rules.strict_errors),
+            *((error_rule, False) for error_rule in pyrefly_rules.disabled_errors),
         )
         return (
             m.Cli.TomlPhaseConfig
@@ -104,7 +94,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def _configured_error_keys(self) -> frozenset[str]:
         """Return pyrefly error keys governed by the canonical tool config."""
-        pyrefly_rules = self._tool_config.tools.pyrefly
+        pyrefly_rules = config.Infra.tooling.tools.pyrefly
         return frozenset((*pyrefly_rules.strict_errors, *pyrefly_rules.disabled_errors))
 
     def apply(

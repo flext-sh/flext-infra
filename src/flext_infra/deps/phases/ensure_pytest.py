@@ -13,13 +13,13 @@ from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 class FlextInfraEnsurePytestConfigPhase:
     """Ensure canonical pytest policy while preserving extension declarations."""
 
-    def __init__(self, tool_config: p.Infra.ToolConfigDocument) -> None:
+    def __init__(self, pytest_config: p.Infra.PytestConfig) -> None:
         """Store tool configuration used to compose canonical pytest defaults."""
-        self._tool_config = tool_config
+        self._pytest_config = pytest_config
 
     def _phase(self) -> p.Cli.TomlPhaseConfig:
         """Build the canonical pytest phase definition."""
-        pytest = self._tool_config.tools.pytest
+        pytest = self._pytest_config
         return (
             m.Cli.TomlPhaseConfig
             .Builder("pytest")
