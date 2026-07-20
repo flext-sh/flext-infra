@@ -22,6 +22,166 @@ if TYPE_CHECKING:
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
 
+    @runtime_checkable
+    class RunCommand(Protocol):
+        """Canonical CLI payload for ``flext-infra check run``."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+        @property
+        def reports_dir(self) -> str: ...
+
+        @property
+        def files(self) -> t.StrSequence | None: ...
+
+        @property
+        def fix(self) -> bool: ...
+
+        @property
+        def check_only(self) -> bool: ...
+
+        @property
+        def ruff_args(self) -> str | None: ...
+
+        @property
+        def pyright_args(self) -> str | None: ...
+
+    @runtime_checkable
+    class MypyResourceLimit(Protocol):
+        """Validated memory and wall-time limits for every Mypy process."""
+
+        @property
+        def memory_limit_mb(self) -> int: ...
+
+        @property
+        def timeout_seconds(self) -> int: ...
+
+    @runtime_checkable
+    class FixPyreflyConfigCommand(Protocol):
+        """Canonical payload for fixing Pyrefly settings."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class FixEnforcementCommand(Protocol):
+        """Canonical payload for fixing enforcement violations."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+        @property
+        def rules(self) -> t.StrSequence: ...
+
+        @property
+        def safe_only(self) -> bool: ...
+
+        @property
+        def check_after(self) -> bool: ...
+
+    @runtime_checkable
+    class SarifRule(Protocol):
+        """Compact SARIF rule descriptor."""
+
+        @property
+        def id(self) -> str: ...
+
+        @property
+        def short_description(self) -> str: ...
+
+    @runtime_checkable
+    class SarifResult(Protocol):
+        """SARIF result entry."""
+
+        @property
+        def rule_id(self) -> str: ...
+
+        @property
+        def level(self) -> str: ...
+
+        @property
+        def message(self) -> str: ...
+
+        @property
+        def locations(self) -> t.SequenceOf[p.BaseModel]: ...
+
+    @runtime_checkable
+    class SarifReport(Protocol):
+        """Complete SARIF 2.1.0 report."""
+
+        @property
+        def schema_uri(self) -> str: ...
+
+        @property
+        def version(self) -> str: ...
+
+        @property
+        def runs(self) -> t.SequenceOf[p.BaseModel]: ...
+
     # mro-qc84 (fix-forward): protocol-of-model for a single tool-reported issue
     # (m.Infra.Issue). Consumed through gate execution issue tuples.
     @runtime_checkable

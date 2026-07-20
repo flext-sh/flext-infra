@@ -11,13 +11,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
+from flext_cli import p as cli_p
+
 if TYPE_CHECKING:
     # mro-wkii.17.26.2 (codex): every imported facade/type below is used only
     # by postponed protocol annotations; runtime loading closes p -> m/t.
     from pathlib import Path
     from types import TracebackType
 
-    from flext_infra import p, t
+    from flext_infra import c, p, t
 
 
 @runtime_checkable
@@ -34,6 +36,341 @@ class FlextInfraProtocolsRope(Protocol):
         def project_roots(self) -> tuple[Path, ...]:
             """Non-empty ordered project roots selected at the boundary."""
             ...
+
+    # mro-dxrp.3.1 (rope-worker): mirror every live Rope model field structurally.
+    @runtime_checkable
+    class ClassInfo(cli_p.BaseModel, Protocol):
+        """Semantic class information fields."""
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def bases(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ConstantInfo(cli_p.BaseModel, Protocol):
+        """Final-annotated constant definition fields."""
+
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+
+        @property
+        def class_path(self) -> str: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def annotation(self) -> str: ...
+
+        @property
+        def value(self) -> str: ...
+
+    @runtime_checkable
+    class ExportOptions(cli_p.BaseModel, Protocol):
+        """Rope module export discovery option fields."""
+
+        @property
+        def include_dunder(self) -> bool: ...
+
+        @property
+        def allow_main(self) -> bool: ...
+
+        @property
+        def allow_assignments(self) -> bool: ...
+
+        @property
+        def allow_functions(self) -> bool: ...
+
+        @property
+        def require_explicit_all(self) -> bool: ...
+
+    @runtime_checkable
+    class IgnoredRegion(cli_p.BaseModel, Protocol):
+        """Rope-classified source region fields."""
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def start_offset(self) -> int: ...
+
+        @property
+        def end_offset(self) -> int: ...
+
+        @property
+        def text(self) -> t.NonEmptyStr: ...
+
+        @property
+        def is_comment(self) -> bool: ...
+
+    @runtime_checkable
+    class ImportFact(cli_p.BaseModel, Protocol):
+        """Normalized Rope import binding fields."""
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def module(self) -> t.NonEmptyStr: ...
+
+        @property
+        def member(self) -> str: ...
+
+        @property
+        def local_name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def is_from_import(self) -> bool: ...
+
+    @runtime_checkable
+    class LogicalStatement(cli_p.BaseModel, Protocol):
+        """Rope logical statement fields."""
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def indent(self) -> int: ...
+
+        @property
+        def end_line(self) -> int: ...
+
+        @property
+        def category(self) -> c.Infra.StatementCategory: ...
+
+        @property
+        def enclosing_kind(self) -> c.Infra.RopeScopeKind: ...
+
+        @property
+        def enclosing_name(self) -> str: ...
+
+        @property
+        def type_checking_guarded(self) -> bool: ...
+
+        @property
+        def text(self) -> str: ...
+
+    @runtime_checkable
+    class ModuleSemanticState(cli_p.BaseModel, Protocol):
+        """Unified Rope module semantic state fields."""
+
+        @property
+        def class_infos(self) -> tuple[p.Infra.ClassInfo, ...]: ...
+
+        @property
+        def declared_imports(self) -> t.StrMapping: ...
+
+        @property
+        def semantic_imports(self) -> t.StrMapping: ...
+
+    @runtime_checkable
+    class RopeInventoryRecordInput(cli_p.BaseModel, Protocol):
+        """Rope inventory record input fields."""
+
+        @property
+        def rope_project(self) -> t.Infra.RopeProject: ...
+
+        @property
+        def resource(self) -> t.Infra.RopeResource: ...
+
+        @property
+        def source(self) -> str: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def pyname(self) -> t.Infra.RopePyName: ...
+
+        @property
+        def module_name(self) -> str: ...
+
+        @property
+        def project_name(self) -> str: ...
+
+        @property
+        def convention(self) -> p.Infra.RopeModuleConvention: ...
+
+        @property
+        def scope_chain(self) -> t.StrSequence: ...
+
+        @property
+        def class_chain(self) -> t.StrSequence: ...
+
+        @property
+        def child_scope(self) -> p.Infra.RopeScopeDsl | None: ...
+
+        @property
+        def rope_workspace(self) -> p.Infra.RopeWorkspaceDsl | None: ...
+
+    @runtime_checkable
+    class RopeModuleConvention(cli_p.BaseModel, Protocol):
+        """Rope module convention fields."""
+
+        @property
+        def file_path(self) -> Path: ...
+
+        @property
+        def relative_path(self) -> Path: ...
+
+        @property
+        def module_name(self) -> str: ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def package_dir(self) -> Path: ...
+
+        @property
+        def package_context(self) -> p.Infra.LazyInitPackageContext: ...
+
+        @property
+        def module_policy(self) -> p.Infra.NamespaceModulePolicy: ...
+
+        @property
+        def project_layout(self) -> p.Infra.RopeProjectLayout | None: ...
+
+    @runtime_checkable
+    class RopeModuleIndexEntry(cli_p.BaseModel, Protocol):
+        """Rope module index entry fields."""
+
+        @property
+        def file_path(self) -> Path: ...
+
+        @property
+        def resource_path(self) -> str: ...
+
+        @property
+        def module_name(self) -> str: ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def package_dir(self) -> Path: ...
+
+        @property
+        def project_root(self) -> Path | None: ...
+
+        @property
+        def is_package_init(self) -> bool: ...
+
+    @runtime_checkable
+    class RopePackageIndexEntry(cli_p.BaseModel, Protocol):
+        """Rope package index entry fields."""
+
+        @property
+        def package_dir(self) -> Path: ...
+
+        @property
+        def init_path(self) -> Path: ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def project_root(self) -> Path | None: ...
+
+        @property
+        def modules(self) -> tuple[p.Infra.RopeModuleIndexEntry, ...]: ...
+
+        @property
+        def direct_child_dirs(self) -> tuple[Path, ...]: ...
+
+        @property
+        def descendant_child_dirs(self) -> tuple[Path, ...]: ...
+
+    @runtime_checkable
+    class RopeProjectLayout(cli_p.BaseModel, Protocol):
+        """Rope project layout fields."""
+
+        @property
+        def project_root(self) -> Path: ...
+
+        @property
+        def project_name(self) -> str: ...
+
+        @property
+        def package_name(self) -> str: ...
+
+        @property
+        def package_alias(self) -> str: ...
+
+        @property
+        def class_stem(self) -> str: ...
+
+        @property
+        def src_dir(self) -> Path: ...
+
+        @property
+        def package_dir(self) -> Path: ...
+
+        @property
+        def init_path(self) -> Path: ...
+
+        @property
+        def runtime_aliases(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class RopeWorkspaceIndex(cli_p.BaseModel, Protocol):
+        """Rope workspace index fields."""
+
+        @property
+        def workspace_root(self) -> Path: ...
+
+        @property
+        def package_dirs(self) -> tuple[Path, ...]: ...
+
+        @property
+        def packages_by_dir(
+            self,
+        ) -> t.MappingKV[str, p.Infra.RopePackageIndexEntry]: ...
+
+        @property
+        def modules_by_path(
+            self,
+        ) -> t.MappingKV[str, p.Infra.RopeModuleIndexEntry]: ...
+
+        @property
+        def package_dir_by_name(self) -> t.MappingKV[str, Path]: ...
+
+        @property
+        def project_package_by_root(self) -> t.StrMapping: ...
+
+    @runtime_checkable
+    class ScopeDefinition(cli_p.BaseModel, Protocol):
+        """Rope semantic scope definition fields."""
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def kind(self) -> c.Infra.RopeScopeKind: ...
+
+        @property
+        def is_module_level(self) -> bool: ...
+
+    @runtime_checkable
+    class SymbolInfo(cli_p.BaseModel, Protocol):
+        """Rope top-level symbol information fields."""
+
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def kind(self) -> str: ...
 
     @runtime_checkable
     class ChangeTracker(Protocol):

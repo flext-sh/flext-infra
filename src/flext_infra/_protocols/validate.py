@@ -17,7 +17,7 @@ from flext_cli import p
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p as ip, t
+    from flext_infra import c, p as ip, t
 
 
 @runtime_checkable
@@ -595,6 +595,600 @@ class FlextInfraProtocolsValidate(Protocol):
 
         @property
         def fix_action(self) -> str: ...
+
+    # mro-dxrp.3.2 (validate-worker): restore the live refactor and validation
+    # model mirrors referenced through p.Infra without importing m at runtime.
+    @runtime_checkable
+    class AccessorMigrationChange(p.BaseModel, Protocol):
+        """Single accessor migration change or warning."""
+
+        @property
+        def file(self) -> t.NonEmptyStr: ...
+
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+
+        @property
+        def original_name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def replacement_name(self) -> str: ...
+
+        @property
+        def automated(self) -> bool: ...
+
+        @property
+        def reason(self) -> str: ...
+
+    @runtime_checkable
+    class AccessorMigrationInput(p.BaseModel, Protocol):
+        """CLI request for accessor migration."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+        @property
+        def preview_limit(self) -> t.PositiveInt: ...
+
+    @runtime_checkable
+    class CensusUsageRecord(p.BaseModel, Protocol):
+        """Single method usage found by census analysis."""
+
+        @property
+        def project(self) -> t.NonEmptyStr: ...
+
+        @property
+        def class_name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def method_name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def access_mode(self) -> str: ...
+
+        @property
+        def file_path(self) -> str: ...
+
+    @runtime_checkable
+    class ClassNestingMapping(p.BaseModel, Protocol):
+        """Class-nesting rewrite mapping."""
+
+        @property
+        def loose_name(self) -> str: ...
+
+        @property
+        def current_file(self) -> str: ...
+
+        @property
+        def target_namespace(self) -> t.NonEmptyStr: ...
+
+        @property
+        def target_name(self) -> str: ...
+
+        @property
+        def confidence(self) -> t.NonEmptyStr: ...
+
+        @property
+        def reason(self) -> str: ...
+
+        @property
+        def rewrite_scope(self) -> str | None: ...
+
+    @runtime_checkable
+    class ClassNestingPolicy(p.BaseModel, Protocol):
+        """Class-nesting transformation policy."""
+
+        @property
+        def family_name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def module_patterns(self) -> t.StrSequence: ...
+
+        @property
+        def facade_family(self) -> str: ...
+
+        @property
+        def allowed_operations(self) -> t.StrSequence: ...
+
+        @property
+        def forbidden_operations(self) -> t.StrSequence: ...
+
+        @property
+        def forbidden_targets(self) -> t.StrSequence: ...
+
+        @property
+        def validation_requirements(self) -> t.MappingKV[str, t.StrSequence]: ...
+
+        @property
+        def enable_class_nesting(self) -> bool: ...
+
+        @property
+        def allow_namespace_creation(self) -> bool: ...
+
+        @property
+        def allow_existing_namespace_merge(self) -> bool: ...
+
+        @property
+        def enable_helper_consolidation(self) -> bool: ...
+
+        @property
+        def allow_helper_call_rewrite(self) -> bool: ...
+
+        @property
+        def require_signature_validation(self) -> bool: ...
+
+        @property
+        def required_parameters(self) -> t.StrSequence: ...
+
+        @property
+        def forbidden_parameters(self) -> t.StrSequence: ...
+
+        @property
+        def allow_vararg(self) -> bool: ...
+
+        @property
+        def allow_kwarg(self) -> bool: ...
+
+        @property
+        def allow_positional_only_params(self) -> bool: ...
+
+        @property
+        def allow_keyword_only_params(self) -> bool: ...
+
+        @property
+        def propagate_imports(self) -> bool: ...
+
+        @property
+        def propagate_name_references(self) -> bool: ...
+
+        @property
+        def propagate_attribute_references(self) -> bool: ...
+
+        @property
+        def blocked_reference_prefixes(self) -> t.StrSequence: ...
+
+        @property
+        def allowed_targets(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ClassNestingReport(p.BaseModel, Protocol):
+        """Aggregated class-nesting analysis report."""
+
+        @property
+        def violations_count(self) -> t.NonNegativeInt: ...
+
+        @property
+        def confidence_counts(self) -> t.IntMapping: ...
+
+        @property
+        def violations(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsValidate.ClassNestingViolation]: ...
+
+        @property
+        def per_file_counts(self) -> t.IntMapping: ...
+
+    @runtime_checkable
+    class ClassNestingViolationRequest(p.BaseModel, Protocol):
+        """Input for class-nesting policy validation."""
+
+        @property
+        def symbol(self) -> t.NonEmptyStr: ...
+
+        @property
+        def family(self) -> t.NonEmptyStr: ...
+
+        @property
+        def target_namespace(self) -> t.NonEmptyStr: ...
+
+        @property
+        def operation(self) -> t.NonEmptyStr: ...
+
+    @runtime_checkable
+    class ClassOccurrence(p.BaseModel, Protocol):
+        """Class definition occurrence in a source file."""
+
+        @property
+        def name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def line(self) -> t.NonNegativeInt: ...
+
+        @property
+        def is_top_level(self) -> bool: ...
+
+    @runtime_checkable
+    class FamilyMROResolution(p.BaseModel, Protocol):
+        """Resolved MRO for one facade family."""
+
+        @property
+        def family(self) -> t.NonEmptyStr: ...
+
+        @property
+        def expected_bases(self) -> t.VariadicTuple[str]: ...
+
+        @property
+        def resolved_mro(self) -> t.VariadicTuple[str]: ...
+
+        @property
+        def accessible_namespaces(self) -> t.VariadicTuple[str]: ...
+
+    @runtime_checkable
+    class HelperClassification(p.BaseModel, Protocol):
+        """Classification of one helper function."""
+
+        @property
+        def file(self) -> t.NonEmptyStr: ...
+
+        @property
+        def function(self) -> t.NonEmptyStr: ...
+
+        @property
+        def category(self) -> t.NonEmptyStr: ...
+
+        @property
+        def target_namespace(self) -> t.NonEmptyStr: ...
+
+        @property
+        def dependencies(self) -> t.StrSequence: ...
+
+        @property
+        def manual_review(self) -> bool: ...
+
+        @property
+        def review_reason(self) -> str: ...
+
+    @runtime_checkable
+    class HelperFileAnalysis(p.BaseModel, Protocol):
+        """Helper classifications collected from one file."""
+
+        @property
+        def suggestions(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsValidate.HelperClassification]: ...
+
+        @property
+        def totals(self) -> t.IntMapping: ...
+
+        @property
+        def manual_review(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsValidate.HelperClassification]: ...
+
+    @runtime_checkable
+    class ImportModernizerRuleConfig(p.BaseModel, Protocol):
+        """Single import-modernizer rule configuration."""
+
+        @property
+        def module(self) -> str: ...
+
+        @property
+        def symbol_mapping(self) -> t.StrMapping: ...
+
+    @runtime_checkable
+    class MROScanReport(p.BaseModel, Protocol):
+        """MRO candidate scan result for one file."""
+
+        @property
+        def file(self) -> t.NonEmptyStr: ...
+
+        @property
+        def module(self) -> t.NonEmptyStr: ...
+
+        @property
+        def constants_class(self) -> str: ...
+
+        @property
+        def facade_alias(self) -> str: ...
+
+        @property
+        def candidates(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsValidate.MROSymbolCandidate]: ...
+
+    @runtime_checkable
+    class MROSymbolCandidate(p.BaseModel, Protocol):
+        """Symbol candidate discovered by an MRO scan."""
+
+        @property
+        def facade_name(self) -> str: ...
+
+        @property
+        def symbol(self) -> t.NonEmptyStr: ...
+
+        @property
+        def line(self) -> t.PositiveInt: ...
+
+        @property
+        def end_line(self) -> int | None: ...
+
+        @property
+        def kind(self) -> str: ...
+
+        @property
+        def class_name(self) -> str: ...
+
+    @runtime_checkable
+    class MethodInfo(p.BaseModel, Protocol):
+        """Method metadata used for class ordering."""
+
+        @property
+        def name(self) -> t.NonEmptyStr: ...
+
+        @property
+        def category(self) -> str: ...
+
+        @property
+        def node(self) -> t.Infra.RopePyObject | None: ...
+
+        @property
+        def decorators(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class MethodOrderRule(p.BaseModel, Protocol):
+        """Declarative class method ordering rule."""
+
+        @property
+        def category(self) -> str | None: ...
+
+        @property
+        def visibility(self) -> str | None: ...
+
+        @property
+        def exclude_decorators(self) -> t.StrSequence: ...
+
+        @property
+        def decorators(self) -> t.StrSequence: ...
+
+        @property
+        def patterns(self) -> t.StrSequence: ...
+
+        @property
+        def order(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ModernizeInput(p.BaseModel, Protocol):
+        """CLI request for generic modernizers."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ProjectClassification(p.BaseModel, Protocol):
+        """Project kind and facade family classification."""
+
+        @property
+        def project_kind(self) -> t.NonEmptyStr: ...
+
+        @property
+        def family_chains(self) -> t.MappingKV[str, t.StrSequence]: ...
+
+    @runtime_checkable
+    class RefactorConfig(p.BaseModel, Protocol):
+        """Refactor file-selection configuration."""
+
+        @property
+        def project_scan_dirs(self) -> t.StrSequence: ...
+
+        @property
+        def ignore_patterns(self) -> t.StrSequence: ...
+
+        @property
+        def file_extensions(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class RefactorMigrateMroInput(p.BaseModel, Protocol):
+        """CLI request for MRO migration."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+        @property
+        def target(self) -> str: ...
+
+    @runtime_checkable
+    class RefactorNamespaceEnforceInput(p.BaseModel, Protocol):
+        """CLI request for namespace enforcement."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class Result(p.BaseModel, Protocol):
+        """Outcome of applying refactor rules to one file."""
+
+        @property
+        def file_path(self) -> Path: ...
+
+        @property
+        def success(self) -> bool: ...
+
+        @property
+        def modified(self) -> bool: ...
+
+        @property
+        def error(self) -> str | None: ...
+
+        @property
+        def changes(self) -> t.StrSequence: ...
+
+        @property
+        def refactored_code(self) -> str | None: ...
+
+    @runtime_checkable
+    class SignatureMigration(p.BaseModel, Protocol):
+        """Declarative call-signature migration rule."""
+
+        @property
+        def id(self) -> str: ...
+
+        @property
+        def enabled(self) -> bool: ...
+
+        @property
+        def target_qualified_names(self) -> t.StrSequence: ...
+
+        @property
+        def target_simple_names(self) -> t.StrSequence: ...
+
+        @property
+        def keyword_renames(self) -> t.StrMapping: ...
+
+        @property
+        def remove_keywords(self) -> t.StrSequence: ...
+
+        @property
+        def add_keywords(self) -> t.StrMapping: ...
+
+    @runtime_checkable
+    class SkillReportContext(p.BaseModel, Protocol):
+        """Resolved inputs for one skill validation report."""
+
+        @property
+        def rules(self) -> t.MappingKV[str, t.JsonValue]: ...
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def skill_name(self) -> str: ...
+
+        @property
+        def mode(self) -> c.Infra.OperationMode: ...
+
+        @property
+        def counts(self) -> t.IntMapping: ...
+
+        @property
+        def violations(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class SkillRuleEvaluationContext(p.BaseModel, Protocol):
+        """Resolved inputs for one skill rule evaluation."""
+
+        @property
+        def rules_list(self) -> t.JsonList: ...
+
+        @property
+        def skill_dir(self) -> Path: ...
+
+        @property
+        def root(self) -> Path: ...
+
+        @property
+        def mode(self) -> c.Infra.OperationMode: ...
+
+        @property
+        def include_globs(self) -> t.StrSequence: ...
+
+        @property
+        def exclude_globs(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ViolationAnalysisReport(p.BaseModel, Protocol):
+        """Full violation analysis report."""
+
+        @property
+        def totals(self) -> t.IntMapping: ...
+
+        @property
+        def files(self) -> t.MappingKV[str, t.IntMapping]: ...
+
+        @property
+        def top_files(self) -> t.SequenceOf[p.BaseModel]: ...
+
+        @property
+        def files_scanned(self) -> t.NonNegativeInt: ...
+
+        @property
+        def helper_classification(self) -> p.BaseModel: ...
+
+        @property
+        def class_nesting(self) -> FlextInfraProtocolsValidate.ClassNestingReport: ...
 
     # mro-qc84 (fix-forward): protocols-of-models closure for the remaining
     # runtime-referenced infra models (tooling config, reports, render

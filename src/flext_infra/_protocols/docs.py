@@ -6,9 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import p
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 # NOTE (multi-agent, mro-wkii.17.23 / agent: uv_overlay_owner): protocols mirror
@@ -16,6 +19,45 @@ from flext_cli import p
 @runtime_checkable
 class FlextInfraProtocolsDocs(Protocol):
     """Documentation model protocols exposed through ``p.Infra``."""
+
+    @runtime_checkable
+    class DocstringCoverage(Protocol):
+        """Docstring coverage metric for one documentation scope."""
+
+        @property
+        def checked(self) -> t.NonNegativeInt: ...
+
+        @property
+        def documented(self) -> t.NonNegativeInt: ...
+
+        @property
+        def percent(self) -> float: ...
+
+    @runtime_checkable
+    class AuditIssue(Protocol):
+        """Single documentation audit finding."""
+
+        @property
+        def file(self) -> str: ...
+
+        @property
+        def issue_type(self) -> str: ...
+
+        @property
+        def severity(self) -> str: ...
+
+        @property
+        def message(self) -> str: ...
+
+    @runtime_checkable
+    class GeneratedFile(Protocol):
+        """Record of a generated file operation."""
+
+        @property
+        def path(self) -> str: ...
+
+        @property
+        def written(self) -> bool: ...
 
     @runtime_checkable
     class DocsRepositoryRef(p.BaseModel, Protocol):

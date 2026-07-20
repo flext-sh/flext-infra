@@ -15,7 +15,7 @@ from flext_cli import p as pc
 if TYPE_CHECKING:
     # mro-wkii.17.26.2 (codex): these names are annotation-only reverse
     # edges; runtime imports create the proven p -> m/t facade cycle.
-    from collections.abc import Iterator
+    from collections.abc import Iterator, MutableSet
     from datetime import datetime
     from pathlib import Path
 
@@ -1436,6 +1436,456 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def errors(self) -> t.StrSequence: ...
+
+    # mro-dxrp.3.4 (Sisyphus-Junior): restore declaration-only mirrors for the
+    # remaining live Infra models consumed through p.Infra.
+    @runtime_checkable
+    class AutoFixResult(Protocol):
+        """Result of auto-fixing namespace violations for one project."""
+
+        @property
+        def project(self) -> str: ...
+
+        @property
+        def violations_fixed(self) -> t.SequenceOf[p.Infra.CensusViolation]: ...
+
+        @property
+        def violations_skipped(self) -> t.SequenceOf[p.Infra.CensusViolation]: ...
+
+        @property
+        def files_modified(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class CodegenPipelineState(Protocol):
+        """Typed inter-stage state for the codegen pipeline."""
+
+        @property
+        def discovered_projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]: ...
+
+        @property
+        def census_service(self) -> p.Infra.CodegenCensusService | None: ...
+
+        @property
+        def reports_before(self) -> t.SequenceOf[p.Infra.CensusReport]: ...
+
+        @property
+        def reports_after(self) -> t.SequenceOf[p.Infra.CensusReport]: ...
+
+        @property
+        def scaffold_results(self) -> t.SequenceOf[p.Infra.ScaffoldResult]: ...
+
+        @property
+        def fix_results(self) -> t.SequenceOf[p.Infra.AutoFixResult]: ...
+
+    @runtime_checkable
+    class ConsolidatorFileResult(Protocol):
+        """Per-file result emitted by the constants consolidator."""
+
+        @property
+        def file(self) -> str: ...
+
+        @property
+        def status(self) -> str: ...
+
+        @property
+        def changes(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ConstantsGovernanceConfig(Protocol):
+        """Constants governance configuration fields."""
+
+        @property
+        def version(self) -> str: ...
+
+        @property
+        def rules(self) -> t.SequenceOf[pc.BaseModel]: ...
+
+        @property
+        def canonical_values(self) -> t.SequenceOf[pc.BaseModel]: ...
+
+        @property
+        def constants_class_pattern(self) -> str: ...
+
+    @runtime_checkable
+    class FixContext(Protocol):
+        """Mutable accumulation fields for codegen fix operations."""
+
+        @property
+        def violations_fixed(
+            self,
+        ) -> t.MutableSequenceOf[p.Infra.CensusViolation]: ...
+
+        @property
+        def violations_skipped(
+            self,
+        ) -> t.MutableSequenceOf[p.Infra.CensusViolation]: ...
+
+        @property
+        def files_modified(self) -> MutableSet[str]: ...
+
+    @runtime_checkable
+    class NamespaceModulePolicy(Protocol):
+        """Derived generation policy for one governed namespace module."""
+
+        @property
+        def enforce_contract(self) -> bool: ...
+
+        @property
+        def export_symbols(self) -> bool: ...
+
+        @property
+        def include_in_lazy_init(self) -> bool: ...
+
+        @property
+        def project_prefix(self) -> str: ...
+
+        @property
+        def expected_alias(self) -> str | None: ...
+
+        @property
+        def expected_family(self) -> str | None: ...
+
+        @property
+        def family_tokens(self) -> t.StrSequence: ...
+
+        @property
+        def accepted_suffixes(self) -> t.StrSequence: ...
+
+        @property
+        def allow_main_export(self) -> bool: ...
+
+        @property
+        def allow_type_alias(self) -> bool: ...
+
+        @property
+        def is_fixture_module(self) -> bool: ...
+
+        @property
+        def type_checking_imports(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class QualityGateCheck(Protocol):
+        """Single quality-gate check result entry."""
+
+        @property
+        def name(self) -> str: ...
+
+        @property
+        def passed(self) -> bool: ...
+
+        @property
+        def detail(self) -> str: ...
+
+        @property
+        def critical(self) -> bool: ...
+
+    @runtime_checkable
+    class ScaffoldDirRequest(Protocol):
+        """Directory-level scaffold request and accumulation state."""
+
+        @property
+        def target_dir(self) -> Path: ...
+
+        @property
+        def prefix(self) -> str: ...
+
+        @property
+        def modules(self) -> t.VariadicTuple[t.Quad[str, str, str, str]]: ...
+
+        @property
+        def test_prefix(self) -> str: ...
+
+        @property
+        def inherit_project_facade(self) -> bool: ...
+
+        @property
+        def dry_run(self) -> bool: ...
+
+        @property
+        def files_created(self) -> t.MutableSequenceOf[str]: ...
+
+        @property
+        def files_skipped(self) -> t.MutableSequenceOf[str]: ...
+
+    @runtime_checkable
+    class ScaffoldResult(Protocol):
+        """Result of scaffolding base modules for one project."""
+
+        @property
+        def project(self) -> str: ...
+
+        @property
+        def files_created(self) -> t.StrSequence: ...
+
+        @property
+        def files_skipped(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class ViolationKey(Protocol):
+        """Content-stable namespace violation identifier."""
+
+        @property
+        def module(self) -> str: ...
+
+        @property
+        def rule(self) -> str: ...
+
+        @property
+        def content_hash(self) -> str: ...
+
+    @runtime_checkable
+    class DeptryIssueGroups(Protocol):
+        """Deptry issues grouped by canonical error code."""
+
+        @property
+        def dep001(
+            self,
+        ) -> t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]]: ...
+
+        @property
+        def dep002(
+            self,
+        ) -> t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]]: ...
+
+        @property
+        def dep003(
+            self,
+        ) -> t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]]: ...
+
+        @property
+        def dep004(
+            self,
+        ) -> t.MutableSequenceOf[t.MappingKV[str, t.Primitives | None]]: ...
+
+    @runtime_checkable
+    class DetectCommand(Protocol):
+        """Canonical dependency-detection command payload."""
+
+        @property
+        def workspace(self) -> str: ...
+
+        @property
+        def projects(self) -> t.StrSequence | None: ...
+
+        @property
+        def module(self) -> str | None: ...
+
+        @property
+        def namespace(self) -> str | None: ...
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def verbose(self) -> bool: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def gates(self) -> t.StrSequence: ...
+
+        @property
+        def output_format(self) -> str: ...
+
+        @property
+        def output(self) -> str | None: ...
+
+        @property
+        def quiet(self) -> bool: ...
+
+        @property
+        def no_fail(self) -> bool: ...
+
+        @property
+        def typings(self) -> bool: ...
+
+        @property
+        def apply_typings(self) -> bool: ...
+
+        @property
+        def no_pip_check(self) -> bool: ...
+
+        @property
+        def limits(self) -> str | None: ...
+
+    @runtime_checkable
+    class ProjectDependencyReport(Protocol):
+        """Project-level dependency report fields."""
+
+        @property
+        def project(self) -> str: ...
+
+        @property
+        def deptry(self) -> pc.BaseModel: ...
+
+    @runtime_checkable
+    class DetectorContext(Protocol):
+        """Common context supplied to source detectors."""
+
+        @property
+        def file_path(self) -> Path: ...
+
+        @property
+        def rope_project(self) -> t.Infra.RopeProject: ...
+
+        @property
+        def rope_workspace(self) -> p.Infra.RopeWorkspaceDsl | None: ...
+
+        @property
+        def parse_failures(
+            self,
+        ) -> t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None: ...
+
+        @property
+        def project_name(self) -> str: ...
+
+        @property
+        def project_root(self) -> Path | None: ...
+
+    @runtime_checkable
+    class GateContext(Protocol):
+        """Quality-gate execution context and configuration."""
+
+        @property
+        def fail_fast(self) -> bool: ...
+
+        @property
+        def workspace_root(self) -> Path: ...
+
+        @property
+        def reports_dir(self) -> Path: ...
+
+        @property
+        def apply_fixes(self) -> bool: ...
+
+        @property
+        def check_only(self) -> bool: ...
+
+        @property
+        def gate_mode(self) -> str: ...
+
+        @property
+        def ruff_args(self) -> t.StrSequence: ...
+
+        @property
+        def pyright_args(self) -> t.StrSequence: ...
+
+        @property
+        def files(self) -> t.SequenceOf[Path]: ...
+
+    @runtime_checkable
+    class GithubPullRequestWorkspaceContext(Protocol):
+        """Resolved context for workspace-wide pull-request execution."""
+
+        @property
+        def workspace_root(self) -> Path: ...
+
+        @property
+        def request(self) -> p.Infra.GithubPullRequestWorkspaceRequest: ...
+
+        @property
+        def outcomes(
+            self,
+        ) -> t.MutableSequenceOf[p.Infra.GithubPullRequestOutcome]: ...
+
+    @runtime_checkable
+    class GithubWorkflowSyncContext(Protocol):
+        """Resolved context for syncing workflows in one project."""
+
+        @property
+        def project_name(self) -> str: ...
+
+        @property
+        def project_root(self) -> Path: ...
+
+        @property
+        def rendered_template(self) -> str: ...
+
+        @property
+        def request(self) -> p.Infra.GithubWorkflowSyncRequest: ...
+
+    @runtime_checkable
+    class LintGateResult(Protocol):
+        """Validated result from one protected-edit lint gate."""
+
+        @property
+        def tool_name(self) -> str: ...
+
+        @property
+        def errors(self) -> t.StrSequence: ...
+
+    @runtime_checkable
+    class SafeExecutionResult(Protocol):
+        """Result of a safe execution pipeline run."""
+
+        @property
+        def mode(self) -> str: ...
+
+        @property
+        def files_backed_up(self) -> t.StrSequence: ...
+
+        @property
+        def gate_results(self) -> t.StrSequence: ...
+
+        @property
+        def rolled_back(self) -> bool: ...
+
+    @runtime_checkable
+    class StaticPrivateRootImportRule(Protocol):
+        """Rule rejecting private package-root singleton imports."""
+
+        @property
+        def kind(self) -> str: ...
+
+        @property
+        def detail(self) -> str: ...
+
+        @property
+        def operator(self) -> str: ...
+
+        @property
+        def module(self) -> str: ...
+
+        @property
+        def singleton(self) -> str: ...
+
+        @property
+        def type_checking_families(self) -> t.StrSequence: ...
+
+        @property
+        def allow_generated_root_init(self) -> bool: ...
+
+    @runtime_checkable
+    class StaticRuffIssueRule(Protocol):
+        """Rule remediating one Rope-verified Ruff diagnostic."""
+
+        @property
+        def kind(self) -> str: ...
+
+        @property
+        def detail(self) -> str: ...
+
+        @property
+        def operator(self) -> str: ...
+
+        @property
+        def code(self) -> str: ...
+
+        @property
+        def fix_operator(self) -> str: ...
+
+        @property
+        def roots(self) -> t.StrSequence: ...
+
+        @property
+        def scope_kinds(self) -> t.StrSequence: ...
+
+        @property
+        def name_prefix(self) -> str: ...
+
+        @property
+        def docstring_template(self) -> str: ...
 
     # mro-qc84 (fix-forward): protocol-of-model for one lazy-init package context
     # (m.Infra.LazyInitPackageContext). Consumed by the lazy-init planner and the
