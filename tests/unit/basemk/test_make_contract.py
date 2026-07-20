@@ -259,14 +259,12 @@ class TestsFlextInfraBasemkMakeContract:
             has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
         )
 
-    def test_rendered_base_mk_uses_explicit_coverage_source_root(self) -> None:
-        """Keep generated coverage scoped while honoring pyproject omit rules."""
+    def test_rendered_base_mk_preserves_project_coverage_source(self) -> None:
+        """Keep coverage source owned by each project's pytest configuration."""
         rendered = _render_base_mk()
-        tm.that(
-            rendered,
-            has='_coverage_args="--cov=$(SRC_DIR) --cov-report=xml:$$coverage_file";',
-        )
-        tm.that(rendered, lacks='_coverage_args="--cov --cov-report=xml:$$coverage_file";')
+        tm.that(rendered, has='_coverage_args="--cov-report=xml:$$coverage_file";')
+        tm.that(rendered, lacks='_coverage_args="--cov=$(SRC_DIR)')
+        tm.that(rendered, lacks='_coverage_args="--cov --cov-report')
 
     def test_make_pytest_diag_accepts_exact_numeric_counts(
         self, tmp_path: Path

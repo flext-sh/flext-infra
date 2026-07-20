@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_core import c as c, e as core_e
+from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
@@ -177,6 +177,9 @@ class TestSmellsGate:
     def test_failed_scanner_is_visible(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        config_dir = tmp_path / ".qlty"
+        config_dir.mkdir()
+        (config_dir / "qlty.toml").write_text("[config]\n", encoding="utf-8")
         gate = _scanner_gate(
             tmp_path, monkeypatch, stdout="", stderr="qlty exploded", exit_code=1
         )
@@ -189,6 +192,25 @@ class TestSmellsGate:
         tm.that(execution.result.passed, eq=True)
         tm.that(len(execution.issues), eq=1)
         tm.that("qlty exploded" in execution.issues[0].message, eq=True)
+
+    def test_unconfigured_scanner_is_cleanly_skipped(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        gate = _scanner_gate(
+            tmp_path,
+            monkeypatch,
+            stdout="",
+            stderr="No qlty config file found. Try running `qlty init`",
+            exit_code=1,
+        )
+        project_dir = tmp_path / "demo-project"
+        project_dir.mkdir()
+
+        execution = gate.check(project_dir, _ctx(tmp_path))
+
+        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.issues, eq=())
+        tm.that(execution.result.errors, eq=[])
 
     def test_smell_tags_have_core_rule_text(self) -> None:
         """Every qlty smell tag mapped by the gate has a FLEXT problem/fix text."""

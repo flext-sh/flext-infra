@@ -163,6 +163,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 self._workspace_root,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
+            if "No qlty config file found" in output.stderr:
+                output = m.Cli.CommandOutput(stdout="{}", stderr="", exit_code=0)
         self._scan_cache[key] = output
         return output
 
