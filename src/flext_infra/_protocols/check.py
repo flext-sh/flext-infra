@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from flext_cli import p as cli_p
+
 if TYPE_CHECKING:
     # mro-qc84 (fix-forward): reverse edges consumed only by postponed protocol
     # annotations; runtime loading closes the p -> m/t facade cycle.
@@ -21,6 +23,18 @@ if TYPE_CHECKING:
 @runtime_checkable
 class FlextInfraProtocolsCheck(Protocol):
     """Check-domain protocol definitions."""
+
+    # mro-dxrp.3.9 (Sisyphus-Junior): mirror the common config rule contract so
+    # Rope consumers accept every discriminated StaticRuleSpec model variant.
+    @runtime_checkable
+    class StaticRuleSpec(cli_p.BaseModel, Protocol):
+        """Shared metadata exposed by every configured static-analysis rule."""
+
+        @property
+        def kind(self) -> str: ...
+
+        @property
+        def detail(self) -> str: ...
 
     @runtime_checkable
     class RunCommand(Protocol):
