@@ -21,12 +21,23 @@ def _git_status(repository_root: Path) -> bytes:
     return result.value
 
 
+def _initialize_git_repo(repository_root: Path) -> None:
+    for arguments in (
+        ("init",),
+        ("config", "user.email", "tests@flext.dev"),
+        ("config", "user.name", "FLEXT Tests"),
+        ("add", "."),
+        ("commit", "-m", "test fixture"),
+    ):
+        tm.ok(u.Infra.git_capture(repository_root, arguments))
+
+
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
     source_root = tmp_path / "source"
     source_root.mkdir()
     artifact = source_root / "artifact.txt"
     artifact.write_bytes(b"before\n")
-    u.Tests.initialize_git_repo(source_root)
+    _initialize_git_repo(source_root)
     worktree_root = tmp_path / "isolated"
     add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
     tm.ok(add_result)
@@ -50,7 +61,12 @@ def _workspace(tmp_path: Path) -> Path:
     package_root.mkdir(parents=True)
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (workspace_root / "pyproject.toml").write_text(
-        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
+        (
+            "[project]\n"
+            "name = 'transaction-fixture'\n"
+            "version = '0.1.0'\n"
+            "requires-python = '>=3.13,<3.14'\n"
+        ),
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
@@ -81,7 +97,7 @@ def _workspace(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
-    u.Tests.initialize_git_repo(workspace_root)
+    _initialize_git_repo(workspace_root)
     return workspace_root
 
 
@@ -171,11 +187,15 @@ class TestsFlextInfraWorktreeTransaction:
         package_root.mkdir(parents=True)
         (package_root / "__init__.py").write_text("", encoding="utf-8")
         (nested_root / "pyproject.toml").write_text(
-            "[project]\nname = 'consumer-fixture'\nversion = '0.1.0'\n",
+            (
+                "[project]\n"
+                "name = 'consumer-fixture'\n"
+                "version = '0.1.0'\n"
+                "requires-python = '>=3.13,<3.14'\n"
+            ),
             encoding="utf-8",
         )
-        u.Tests.initialize_git_repo(nested_root)
-        u.Tests.initialize_git_repo(workspace_root)
+        _initialize_git_repo(workspace_root)
         transaction_result = u.Infra.execute_worktree_transaction(
             m.Infra.WorktreeTransactionRequest(
                 workspace_root=workspace_root,

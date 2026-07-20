@@ -147,12 +147,12 @@ class FlextInfraCodegenLazyInitPlanner(
             and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
-        is_test_facade_root = (
-            context.current_pkg == c.Infra.DIR_TESTS
-            and context.pkg_dir.name == c.Infra.DIR_TESTS
-            and context.surface == c.Infra.DIR_TESTS
+        is_inherited_facade_root = (
+            context.surface in self.lazy_init.inherited_exports
+            and context.current_pkg == context.surface
+            and context.pkg_dir.name == context.surface
         )
-        is_facade_root = is_public_project_root or is_test_facade_root
+        is_facade_root = is_public_project_root or is_inherited_facade_root
         export_names = {*lazy_map, *eager_dunders}
         if is_facade_root:
             # __all__ is the public contract, but the complete lazy map remains

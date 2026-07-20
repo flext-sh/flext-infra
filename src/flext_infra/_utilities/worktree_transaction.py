@@ -228,11 +228,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             int(match.group(1))
             for match in re.finditer(r"\b(\d+)\s+warnings?\b", output)
         )
-        warnings = (
-            warning_matches[-1]
-            if warning_matches
-            else len(re.findall(r"(?im)^.*\bwarning:", output))
-        )
+        warnings = warning_matches[-1] if warning_matches else 0
         return (errors, warnings)
 
     @classmethod

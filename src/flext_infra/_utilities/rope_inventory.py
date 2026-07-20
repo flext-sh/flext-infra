@@ -9,6 +9,11 @@ from __future__ import annotations
 from operator import itemgetter
 from pathlib import Path
 
+from rope.base.pynames import ImportedModule, ImportedName
+from rope.base.pynamesdef import AssignedName, DefinedName, ParameterName
+from rope.base.pyobjects import AbstractClass
+from rope.base.pyobjectsdef import PyFunction
+
 from flext_infra import c, m, p, t
 from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -187,7 +192,7 @@ class FlextInfraUtilitiesRopeInventory:
         """Sorted names."""
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in names.items():
-            if isinstance(pyname, FlextInfraConstantsRope.IMPORTED_NAME_TYPES):
+            if isinstance(pyname, (ImportedModule, ImportedName)):
                 continue
             line = FlextInfraUtilitiesRopeInventory._definition_line(pyname, resource)
             if line is None:
@@ -309,13 +314,7 @@ class FlextInfraUtilitiesRopeInventory:
         scope = next((scope for scope in scopes if scope.get_start() == line), None)
         if scope is not None:
             return scope
-        if isinstance(
-            pyname,
-            (
-                *FlextInfraConstantsRope.ASSIGNED_NAME_TYPES,
-                *FlextInfraConstantsRope.PARAMETER_NAME_TYPES,
-            ),
-        ):
+        if isinstance(pyname, (AssignedName, ParameterName)):
             return None
         getter = getattr(pyname.get_object(), "get_scope", None)
         candidate = getter() if callable(getter) else None
@@ -331,9 +330,9 @@ class FlextInfraUtilitiesRopeInventory:
     ) -> str:
         """Kind for."""
         result: str
-        if isinstance(pyname, FlextInfraConstantsRope.PARAMETER_NAME_TYPES):
+        if isinstance(pyname, ParameterName):
             result = "parameter"
-        elif isinstance(pyname, FlextInfraConstantsRope.ASSIGNED_NAME_TYPES):
+        elif isinstance(pyname, AssignedName):
             if class_chain and len(scope_chain) == len(class_chain):
                 result = "attribute"
             elif scope_chain:
@@ -344,9 +343,9 @@ class FlextInfraUtilitiesRopeInventory:
                 result = "assignment"
         else:
             obj = pyname.get_object()
-            if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+            if isinstance(obj, AbstractClass):
                 result = "class"
-            elif isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
+            elif isinstance(obj, PyFunction):
                 result = (
                     "method"
                     if class_chain and len(scope_chain) == len(class_chain)
@@ -357,7 +356,7 @@ class FlextInfraUtilitiesRopeInventory:
             elif scope_chain:
                 result = "local" if not name.isupper() else "constant"
             elif (
-                isinstance(pyname, FlextInfraConstantsRope.DEFINED_NAME_TYPES)
+                isinstance(pyname, DefinedName)
                 and name.isupper()
             ):
                 result = "constant"

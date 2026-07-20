@@ -59,9 +59,10 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             pkg_dir.name,
             surface,
         }
+        is_inherited_surface = surface in self.lazy_init.inherited_exports
         if (
             not u.Infra.matches_project_namespace_package(current_pkg)
-            and not is_test_runtime_alias_surface
+            and not is_inherited_surface
         ):
             return
         self._resolve_local_aliases(lazy_map, current_pkg=current_pkg, pkg_dir=pkg_dir)
@@ -221,9 +222,26 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
 
         ordered: list[str] = []
         remaining = set(local_modules)
+        facade_rank = {
+            alias_name: index
+            for index, alias_name in enumerate(("c", "t", "p", "m", "u"))
+        }
+        module_rank = {
+            module: facade_rank[alias_name]
+            for alias_name, module in alias_provider.items()
+            if alias_name in facade_rank
+        }
         while remaining:
             ready = sorted(
-                module for module in remaining if not (dependencies[module] & remaining)
+                (
+                    module
+                    for module in remaining
+                    if not (dependencies[module] & remaining)
+                ),
+                key=lambda module: (
+                    module_rank.get(module, len(facade_rank)),
+                    module,
+                ),
             )
             if not ready:
                 ready = [min(remaining)]

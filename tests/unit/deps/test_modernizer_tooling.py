@@ -50,8 +50,10 @@ class TestsFlextInfraModernizerTooling:
         if mapping["**/__init__.py"] != sorted(canonical["**/__init__.py"]):
             message = "modernizer replaced rich package-root ignores"
             raise AssertionError(message)
-        if mapping["**/tests/**/*.py"] != ["FBT001", "PLC1901", "S108"]:
-            message = "modernizer omitted approved tests-only ignores"
+        if mapping != {
+            pattern: sorted(rules) for pattern, rules in canonical.items()
+        }:
+            message = "modernizer output diverged from canonical Ruff ignores"
             raise AssertionError(message)
 
     def test_conform_existing_source_preserves_non_owned_tooling(
@@ -106,14 +108,15 @@ paths = ["src"]
             message = "authorized global Ruff ignores changed"
             raise AssertionError(message)
         mapping = after_tool["ruff"]["lint"]["per-file-ignores"]
+        canonical = config.Infra.tooling.tools.ruff.lint.per_file_ignores
         if mapping["**/*middleware*"] != ["ANN401", "FBT001"]:
             message = "existing Ruff entry changed"
             raise AssertionError(message)
         if mapping["consumer-only.py"] != ["T201"]:
             message = "consumer-owned stale entry was removed"
             raise AssertionError(message)
-        if mapping["**/tests/**/*.py"] != ["FBT001", "PLC1901", "S108"]:
-            message = "approved tests-only entry was not merged"
+        if any(pattern not in mapping for pattern in canonical):
+            message = "canonical Ruff entries were not merged"
             raise AssertionError(message)
 
     def test_full_modernize_runs_non_ruff_phases_with_existing_ruff_table(
@@ -161,8 +164,8 @@ version = "0.1.0"
         if mapping is None or mapping["consumer-only.py"] != ["T201"]:
             message = "full modernize removed consumer Ruff entry"
             raise AssertionError(message)
-        if mapping["**/tests/**/*.py"] != ["FBT001", "PLC1901", "S108"]:
-            message = "full modernize omitted tests Ruff entry"
+        if any(pattern not in mapping for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores):
+            message = "full modernize omitted canonical Ruff entries"
             raise AssertionError(message)
 
     def test_conform_existing_source_preserves_multiline_toml_values(
@@ -200,8 +203,11 @@ fail_under = 25
         if mapping["consumer.py"] != ["T201"] or mapping["single.py"] != ["S101"]:
             message = "existing quoted-key assignments changed"
             raise AssertionError(message)
-        if mapping["**/tests/**/*.py"] != ["FBT001", "PLC1901", "S108"]:
-            message = "canonical tests assignment missing"
+        if any(
+            pattern not in mapping
+            for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores
+        ):
+            message = "canonical Ruff assignments are missing"
             raise AssertionError(message)
         for preserved in (
             '# before\n"consumer.py" = [\n  "T201",\n]\n# between',
@@ -227,7 +233,11 @@ fail_under = 25
             message = empty.error or "empty table merge failed"
             raise AssertionError(message)
         parsed = tomlkit.parse(empty.value)
-        if "**/tests/**/*.py" not in parsed["tool"]["ruff"]["lint"]["per-file-ignores"]:
+        mapping = parsed["tool"]["ruff"]["lint"]["per-file-ignores"]
+        if any(
+            pattern not in mapping
+            for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores
+        ):
             message = "empty table was not populated"
             raise AssertionError(message)
         invalid = modernizer.conform_existing_source(

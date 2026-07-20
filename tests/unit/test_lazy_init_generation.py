@@ -86,23 +86,23 @@ def _examples_workspace(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     (examples_root / "constants.py").write_text(
-        "from examples import p, t\n\n"
-        "class ExamplesConstants:\n    VALUE = p.VALUE + t.VALUE\n\n"
+        "class ExamplesConstants:\n    VALUE = 42\n\n"
         "c = ExamplesConstants\n\n"
         '__all__ = ("ExamplesConstants", "c")\n',
         encoding="utf-8",
     )
     (examples_root / "models.py").write_text(
-        "from examples import p, t\n\n"
-        "class ExamplesModels:\n    VALUE = p.VALUE + t.VALUE\n\n"
+        "from examples import c, p, t\n\n"
+        "class ExamplesModels:\n    VALUE = c.VALUE + p.VALUE + t.VALUE\n\n"
         "m = ExamplesModels\n\n"
         '__all__ = ("ExamplesModels", "m")\n',
         encoding="utf-8",
     )
-    (examples_root / "consumer.py").write_text(
+    (examples_root / "utilities.py").write_text(
         "from examples import c, m\n\n"
-        "class ExampleConsumer:\n    VALUE = c.VALUE + m.VALUE\n\n"
-        '__all__ = ("ExampleConsumer",)\n',
+        "class ExamplesUtilities:\n    VALUE = c.VALUE + m.VALUE\n\n"
+        "u = ExamplesUtilities\n\n"
+        '__all__ = ("ExamplesUtilities", "u")\n',
         encoding="utf-8",
     )
     (examples_root / "executable.py").write_text(
@@ -180,13 +180,13 @@ class TestsFlextInfraCodegenLazyInit:
             (
                 c.Infra.PYTHON,
                 "-c",
-                "import examples; print(examples.ExampleConsumer.VALUE)",
+                "import examples; print(examples.u.VALUE)",
             ),
             cwd=workspace_root,
         ).unwrap()
         if imported.exit_code != 0:
             pytest.fail(imported.stderr or imported.stdout)
-        if imported.stdout.strip() != "86":
+        if imported.stdout.strip() != "127":
             pytest.fail(f"unexpected generated wrapper value: {imported.stdout!r}")
 
         executed = u.Cli.run_raw(
@@ -195,5 +195,5 @@ class TestsFlextInfraCodegenLazyInit:
         ).unwrap()
         if executed.exit_code != 0:
             pytest.fail(executed.stderr or executed.stdout)
-        if executed.stdout.strip() != "PASS: 86":
+        if executed.stdout.strip() != "PASS: 127":
             pytest.fail(f"unexpected executable output: {executed.stdout!r}")
