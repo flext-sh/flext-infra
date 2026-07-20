@@ -10,8 +10,6 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import m, p, t, u
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,7 +35,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
                 rope.rope_project, resource
             ).get_attributes()
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *u.Infra.rope_runtime_errors(),
             RecursionError,
             SyntaxError,
             ValueError,
@@ -51,7 +49,13 @@ class FlextInfraRefactorCensusSymbolsMixin:
         object_kinds: dict[int, str] = {}
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in attributes.items():
-            if FlextInfraUtilitiesRopeAnalysis.is_imported_name(pyname):
+            if isinstance(
+                pyname,
+                (
+                    u.Infra.runtime_type("rope.base.pynames", "ImportedModule"),
+                    u.Infra.runtime_type("rope.base.pynames", "ImportedName"),
+                ),
+            ):
                 continue
             line = cls._lightweight_symbol_line(pyname, resource)
             if line is None:
@@ -87,9 +91,9 @@ class FlextInfraRefactorCensusSymbolsMixin:
         inherited_kind = object_kinds.get(id(obj))
         if inherited_kind in {"class", "function"}:
             return inherited_kind
-        if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+        if isinstance(obj, u.Infra.abstract_class_type()):
             return "class"
-        if isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
+        if isinstance(obj, u.Infra.py_function_type()):
             return "function"
         return "constant" if name.isupper() else "assignment"
 

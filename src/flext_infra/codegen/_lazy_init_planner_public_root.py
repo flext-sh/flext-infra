@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, t, u
+from flext_infra import c, m, p, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,7 +18,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
     """Publish only symbols owned by direct root modules."""
 
     if TYPE_CHECKING:
-        lazy_init: p.Infra.LazyInitConfig
+        lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
     def _root_public_contract_exports(self, pkg_dir: Path) -> frozenset[str]:

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.workspace.sync import FlextInfraSyncService
 
 
@@ -30,7 +30,7 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
 
     def _resolved_projects(
         self: _WorkspaceOrchestratorProtocol,
-    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Resolve selected projects using workspace discovery."""
         return u.Infra.resolve_projects(
             self.root, self.project_names or (), include_attached=True

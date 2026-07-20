@@ -21,7 +21,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     @classmethod
     def _run_lint_remediation(
         cls,
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
         project_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
     ) -> None:
@@ -110,7 +110,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     def _apply_configured_issues(
         cls,
         *,
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
         project_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         issues: t.SequenceOf[p.Infra.Issue],
@@ -165,7 +165,7 @@ class FlextInfraCodegenFixerLintMixin(FlextInfraCodegenFixerRefactorMixin):
     def _apply_file_entries(
         cls,
         *,
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
         file_path: Path,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         entries: t.SequenceOf[t.Pair[p.Infra.Issue, p.Infra.StaticRuffIssueRule]],

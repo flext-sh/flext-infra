@@ -27,7 +27,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Run NS-000..003 validation scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()

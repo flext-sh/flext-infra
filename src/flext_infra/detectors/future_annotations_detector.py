@@ -43,7 +43,7 @@ class FlextInfraFutureAnnotationsDetector:
             return []
         if c.Infra.FUTURE_ANNOTATIONS_RE.search(source):
             return []
-        return [p.Infra.FutureAnnotationsViolation(file=str(file_path))]
+        return [m.Infra.FutureAnnotationsViolation(file=str(file_path))]
 
     @staticmethod
     def _record_parse_failure(ctx: p.Infra.DetectorContext, exc: BaseException) -> None:

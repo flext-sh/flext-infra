@@ -107,7 +107,7 @@ class FlextInfraCodegenGrpcRenderMixin:
     @classmethod
     def _compiler_artifacts(
         cls, *, source_root: Path, generated_root: Path, proto_files: t.SequenceOf[Path]
-    ) -> p.Result[tuple[p.Infra.GrpcGeneratedArtifact, ...]]:
+    ) -> p.Result[tuple[m.Infra.GrpcGeneratedArtifact, ...]]:
         """Return validated official compiler modules as synchronization artifacts."""
         module_paths = cls._generated_module_paths(
             source_root=source_root,
@@ -116,18 +116,18 @@ class FlextInfraCodegenGrpcRenderMixin:
         )
         normalized = cls._normalize_compiler_outputs(module_paths, generated_root)
         if normalized.failure:
-            return r[tuple[p.Infra.GrpcGeneratedArtifact, ...]].fail(normalized.error)
-        artifacts: list[p.Infra.GrpcGeneratedArtifact] = []
+            return r[tuple[m.Infra.GrpcGeneratedArtifact, ...]].fail(normalized.error)
+        artifacts: list[m.Infra.GrpcGeneratedArtifact] = []
         for generated_path, target in module_paths:
             source = u.Cli.files_read_text(generated_path)
             if source.failure:
-                return r[tuple[p.Infra.GrpcGeneratedArtifact, ...]].fail(
+                return r[tuple[m.Infra.GrpcGeneratedArtifact, ...]].fail(
                     source.error or f"cannot read compiler output {generated_path}"
                 )
             artifacts.append(
                 m.Infra.GrpcGeneratedArtifact(target=target, content=source.value)
             )
-        return r[tuple[p.Infra.GrpcGeneratedArtifact, ...]].ok(tuple(artifacts))
+        return r[tuple[m.Infra.GrpcGeneratedArtifact, ...]].ok(tuple(artifacts))
 
 
 __all__: list[str] = ["FlextInfraCodegenGrpcRenderMixin"]

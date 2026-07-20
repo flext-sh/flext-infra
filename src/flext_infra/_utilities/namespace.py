@@ -25,7 +25,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
     _governance_cache: ClassVar[
-        MutableMapping[str, p.Infra.ConstantsGovernanceConfig]
+        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
     ] = {}
     _governance_file: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
@@ -459,7 +459,7 @@ class FlextInfraUtilitiesCodegenNamespace:
 
     @classmethod
     def normalize_canonical_facades(
-        cls, *, pkg_dir: Path, ctx: p.Infra.FixContext
+        cls, *, pkg_dir: Path, ctx: m.Infra.FixContext
     ) -> None:
         """Normalize canonical facade base classes for codegen auto-fix."""
         for file_name, base_import, base_name in (
@@ -484,7 +484,7 @@ class FlextInfraUtilitiesCodegenNamespace:
         file_path: Path,
         base_import: str,
         base_name: str,
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
     ) -> None:
         """Add the canonical flext-core base to a *baseless* facade class only.
 
@@ -535,11 +535,14 @@ class FlextInfraUtilitiesCodegenNamespace:
                 return
             resource.write(updated)
             ctx.files_modified.add(str(file_path))
-            ctx.fix(
-                module=str(file_path),
-                rule="NAMESPACE",
-                line=1,
-                message=(f"normalized {class_info.name} to inherit from {base_name}"),
+            ctx.violations_fixed.append(
+                m.Infra.CensusViolation(
+                    module=str(file_path),
+                    rule="NAMESPACE",
+                    line=1,
+                    message=f"normalized {class_info.name} to inherit from {base_name}",
+                    fixable=True,
+                )
             )
 
     @staticmethod
@@ -640,8 +643,13 @@ class FlextInfraUtilitiesCodegenNamespace:
             source_cache[violation.module] = cls._read_source_lines(
                 project_path, violation.module
             )
-        return m.Infra.ViolationKey.from_violation(
-            violation, source_cache[violation.module]
+        line = violation.line
+        source_lines = source_cache[violation.module]
+        context = "\n".join(source_lines[max(0, line - 2) : min(len(source_lines), line + 3)])
+        return m.Infra.ViolationKey(
+            module=violation.module,
+            rule=violation.rule,
+            content_hash=u.Cli.sha256_content(context),
         )
 
 

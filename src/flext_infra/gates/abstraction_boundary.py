@@ -36,7 +36,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Scan one project's Python sources for abstraction-boundary breaches."""
         _ = ctx
         started = time.monotonic()
@@ -63,7 +63,7 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
 
     def _result(
         self, project_dir: Path, started: float, issues: t.SequenceOf[m.Infra.Issue]
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Assemble the gate execution from collected issues."""
         return self._build_gate_result(
             result=m.Infra.GateResult(

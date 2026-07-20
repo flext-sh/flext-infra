@@ -39,7 +39,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
-        outcomes: t.MutableSequenceOf[p.Infra.GithubPullRequestOutcome] = []
+        outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root, request=request, outcomes=outcomes
         )
@@ -63,8 +63,8 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
 
     @classmethod
     def _github_pr_process_repo(
-        cls, repo_root: Path, context: p.Infra.GithubPullRequestWorkspaceContext
-    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
+        cls, repo_root: Path, context: m.Infra.GithubPullRequestWorkspaceContext
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Process one repository during workspace pull-request execution.
 
         ``r.ok(outcome)`` when the per-repo run produced an outcome (which
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             )
         if context.request.checkpoint:
             _ = cls._github_pr_checkpoint(repo_root, context.request.branch)
-        run_result: p.Result[p.Infra.GithubPullRequestOutcome] = (
+        run_result: p.Result[m.Infra.GithubPullRequestOutcome] = (
             cls._run_github_pull_request_for_repo(
                 repo_root=repo_root,
                 workspace_root=context.workspace_root,
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             return run_result
         outcome = run_result.value
         context.outcomes.append(outcome)
-        return r[p.Infra.GithubPullRequestOutcome].ok(outcome)
+        return r[m.Infra.GithubPullRequestOutcome].ok(outcome)
 
     @classmethod
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:

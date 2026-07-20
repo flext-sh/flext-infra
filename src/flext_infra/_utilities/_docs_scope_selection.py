@@ -90,7 +90,12 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             name=project.name,
             path=resolved,
             report_dir=(resolved / output_dir).resolve(),
-            project_class=project.project_class,
+            project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
+                project.name,
+                FlextInfraUtilitiesDocsScope.docs_meta_from_payload(
+                    FlextInfraUtilitiesDocsScope.project_payload(project.path)
+                ),
+            ),
             package_name=project.package_name,
         )
 

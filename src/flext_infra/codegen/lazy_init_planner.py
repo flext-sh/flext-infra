@@ -40,7 +40,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         p.Infra.RopeWorkspaceDsl,
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
-    lazy_init: p.Infra.LazyInitConfig = m.Field(
+    lazy_init: m.Infra.LazyInitConfig = m.Field(
         description="Validated lazy-init policy document"
     )
 
@@ -86,7 +86,7 @@ class FlextInfraCodegenLazyInitPlanner(
         self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> p.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
-        context = self.context(pkg_dir)
+        context = m.Infra.LazyInitPackageContext.model_validate(self.context(pkg_dir))
         is_test_child_package = (
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS
@@ -216,14 +216,15 @@ class FlextInfraCodegenLazyInitPlanner(
         (this planner's own module policy plus the caller's canonical constant);
         never a hardcoded per-package list. Consumed by the import-facade gate.
         """
-        package_entry = self._package_entry(context.pkg_dir)
+        concrete_context = m.Infra.LazyInitPackageContext.model_validate(context)
+        package_entry = self._package_entry(concrete_context.pkg_dir)
         if package_entry is None:
             return frozenset()
         expected: set[str] = set()
         for module_entry in package_entry.modules:
             convention = self.rope_workspace.convention(
                 module_entry.file_path,
-                rel_path=module_entry.file_path.relative_to(context.pkg_dir),
+                rel_path=module_entry.file_path.relative_to(concrete_context.pkg_dir),
             )
             alias = convention.module_policy.expected_alias
             if alias:
@@ -232,7 +233,7 @@ class FlextInfraCodegenLazyInitPlanner(
         # exports; fall back to the module-policy expected aliases alone rather
         # than failing the whole allowlist collection.
         try:
-            raw = frozenset(self._package_exports(context))
+            raw = frozenset(self._package_exports(concrete_context))
         except ValueError:
             return frozenset(expected)
         return frozenset(expected | (raw & canonical))

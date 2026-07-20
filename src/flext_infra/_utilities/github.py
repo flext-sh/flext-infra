@@ -85,7 +85,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             return r[p.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed"
             )
-        all_operations: t.MutableSequenceOf[p.Infra.GithubWorkflowSyncOperation] = []
+        all_operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
         for project in projects_result.value:
             ctx = m.Infra.GithubWorkflowSyncContext(
                 project_name=project.name,

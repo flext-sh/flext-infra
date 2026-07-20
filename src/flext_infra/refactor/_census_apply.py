@@ -72,7 +72,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         ) -> str: ...
 
     def _apply_supported_fixes(
-        self, rope: p.Infra.RopeWorkspaceDsl, report: p.Infra.Census.WorkspaceReport
+        self, rope: p.Infra.RopeWorkspaceDsl, report: m.Infra.Census.WorkspaceReport
     ) -> frozenset[str]:
         """Apply supported fixes."""
         applied: set[str] = set()
@@ -83,7 +83,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             for fix in project.fixes:
                 requested_fixes[Path(fix.source_file), fix.action].add(fix.object_name)
         for (file_path, action), object_names in requested_fixes.items():
-            parse_failures: list[p.Infra.ParseFailureViolation] = []
+            parse_failures: list[m.Infra.ParseFailureViolation] = []
             ctx = self._detector_context(rope, file_path, parse_failures=parse_failures)
             changed = False
             if action == "rewrite_runtime_alias":
@@ -106,9 +106,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             elif action == "rewrite_manual_typing_alias":
                 if ctx.project_root is None:
                     continue
-                manual_typing_violations: tuple[
-                    m.Infra.ManualTypingAliasViolation, ...
-                ] = tuple(
+                manual_typing_violations = tuple(
                     violation
                     for violation in FlextInfraManualTypingAliasDetector.detect_file(
                         ctx
@@ -125,9 +123,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 changed = True
             elif action == "rewrite_compatibility_alias":
-                compatibility_violations: tuple[
-                    m.Infra.CompatibilityAliasViolation, ...
-                ] = tuple(
+                compatibility_violations = tuple(
                     violation
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                         ctx
@@ -141,15 +137,12 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 changed = True
             elif action == "rewrite_private_import_bypass":
-                private_import_violations: tuple[
-                    m.Infra.PrivateImportBypassViolation, ...
-                ] = tuple(
-                    violation
+                private_import_violations = tuple(
+                    m.Infra.PrivateImportBypassViolation.model_validate(violation)
                     for violation in FlextInfraPrivateImportBypassDetector.detect_file(
                         ctx
                     )
                     if violation.imported_symbol in object_names
-                    and violation.symbol_exported
                 )
                 if not private_import_violations:
                     continue
@@ -160,7 +153,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 changed = True
             elif action == "rewrite_mro_completeness":
-                mro_violations: tuple[m.Infra.MROCompletenessViolation, ...] = tuple(
+                mro_violations = tuple(
                     violation
                     for violation in FlextInfraMROCompletenessDetector.detect_file(ctx)
                     if violation.facade_class in object_names
@@ -179,10 +172,8 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     action=action,
                 )
             elif action == "rewrite_foreign_canonical_alias":
-                foreign_canonical_violations: tuple[
-                    m.Infra.CompatibilityAliasViolation, ...
-                ] = tuple(
-                    violation
+                foreign_canonical_violations = tuple(
+                    m.Infra.CompatibilityAliasViolation.model_validate(violation)
                     for violation in FlextInfraCompatibilityAliasDetector.detect_file(
                         ctx
                     )

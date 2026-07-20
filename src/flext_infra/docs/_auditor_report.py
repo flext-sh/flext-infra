@@ -31,7 +31,8 @@ class FlextInfraDocAuditorReportMixin:
         docstring_coverage: p.Infra.DocstringCoverage | None = None,
     ) -> p.Infra.DocsPhaseReport:
         """Build the standard docs audit phase report."""
-        default_budget, per_scope_budget = params.budgets or (None, {})
+        budgets: tuple[int | None, t.IntMapping] = params.budgets or (None, {})
+        default_budget, per_scope_budget = budgets
         scope_budget = per_scope_budget.get(scope.name, default_budget)
         issue_count = len(issues)
         coverage_breached = (

@@ -50,7 +50,7 @@ class FlextInfraAccessorMigrationReportMixin:
         automated_changes: t.SequenceOf[p.Infra.AccessorMigrationChange],
         warnings: t.MutableSequenceOf[p.Infra.AccessorMigrationChange],
         include_preview: bool,
-    ) -> p.Infra.AccessorMigrationFile:
+    ) -> m.Infra.AccessorMigrationFile:
         """Process file."""
         lint_before: dict[str, t.StrSequence] = {}
         lint_after: dict[str, t.StrSequence] = {}
@@ -143,7 +143,7 @@ class FlextInfraAccessorMigrationReportMixin:
         return "".join(diff_lines[:80])
 
     @staticmethod
-    def render_text(report: p.Infra.AccessorMigrationReport) -> str:
+    def render_text(report: m.Infra.AccessorMigrationReport) -> str:
         """Render an accessor migration report as CLI text."""
         lines: t.MutableSequenceOf[str] = [
             "Accessor Migration",

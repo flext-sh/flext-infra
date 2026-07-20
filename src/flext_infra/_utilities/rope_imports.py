@@ -803,7 +803,7 @@ class FlextInfraUtilitiesRopeImports:
         for violation in violations:
             file_path = Path(violation.file)
             removals[file_path, violation.private_module].add(violation.imported_symbol)
-            additions[file_path, violation.suggested_facade].add(
+            additions[file_path, violation.canonical_singleton].add(
                 violation.imported_symbol
             )
         for (file_path, private_module), names in removals.items():

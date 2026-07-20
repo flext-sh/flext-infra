@@ -343,24 +343,20 @@ class FlextInfraUtilitiesRefactorCensus:
             attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
                 rope.rope_project, resource
             ).get_attributes()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.SYNTAX_ERRORS:
             return ()
         except (RecursionError, SyntaxError, ValueError, TypeError):
             return ()
         target_pyname = attributes.get(target_name)
-        if target_pyname is None or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
-            target_pyname
-        ):
+        if target_pyname is None:
             return ()
         try:
             target_object = target_pyname.get_object()
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.SYNTAX_ERRORS:
             return ()
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
-            if name == target_name or FlextInfraUtilitiesRopeAnalysis.is_imported_name(
-                pyname
-            ):
+            if name == target_name:
                 continue
             line = FlextInfraUtilitiesRefactorCensus._pyname_definition_line(
                 pyname, resource
@@ -371,7 +367,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 continue
             try:
                 alias_object = pyname.get_object()
-            except FlextInfraConstantsRope.RUNTIME_ERRORS:
+            except FlextInfraConstantsRope.SYNTAX_ERRORS:
                 continue
             if id(alias_object) == id(target_object):
                 alias_names.add(name)

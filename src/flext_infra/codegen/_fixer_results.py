@@ -32,7 +32,7 @@ class FlextInfraCodegenFixerResultsMixin:
 
     @staticmethod
     def _build_result(
-        project_name: str, ctx: p.Infra.FixContext
+        project_name: str, ctx: m.Infra.FixContext
     ) -> p.Infra.AutoFixResult:
         """Build result."""
         return m.Infra.AutoFixResult(
@@ -44,8 +44,8 @@ class FlextInfraCodegenFixerResultsMixin:
 
     @staticmethod
     def _load_initial_violations(
-        ctx: p.Infra.FixContext, project_path: Path
-    ) -> t.SequenceOf[p.Infra.CensusViolation]:
+        ctx: m.Infra.FixContext, project_path: Path
+    ) -> t.SequenceOf[m.Infra.CensusViolation]:
         """Read the initial namespace violations and record skip reason on failure."""
         initial_violations_result = u.Infra.parse_namespace_validation(
             FlextInfraNamespaceValidator().validate_project(project_path)
@@ -64,13 +64,16 @@ class FlextInfraCodegenFixerResultsMixin:
                 or "namespace validation failed",
             )
             return ()
-        return initial_violations_result.unwrap()
+        return tuple(
+            m.Infra.CensusViolation.model_validate(violation)
+            for violation in initial_violations_result.unwrap()
+        )
 
     @staticmethod
     def _classify_remaining_violations(
-        ctx: p.Infra.FixContext,
+        ctx: m.Infra.FixContext,
         project_path: Path,
-        initial_violations: t.SequenceOf[p.Infra.CensusViolation],
+        initial_violations: t.SequenceOf[m.Infra.CensusViolation],
     ) -> None:
         """Re-run validation and split outstanding violations into fixed vs skipped."""
         remaining_result = u.Infra.parse_namespace_validation(
@@ -89,8 +92,12 @@ class FlextInfraCodegenFixerResultsMixin:
             initial_violations=initial_violations,
             remaining_violations=remaining_result.unwrap(),
         )
-        ctx.violations_fixed.extend(fixed)
-        ctx.violations_skipped.extend(skipped)
+        ctx.violations_fixed.extend(
+            m.Infra.CensusViolation.model_validate(violation) for violation in fixed
+        )
+        ctx.violations_skipped.extend(
+            m.Infra.CensusViolation.model_validate(violation) for violation in skipped
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenFixerResultsMixin"]

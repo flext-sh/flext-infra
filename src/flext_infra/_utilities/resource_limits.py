@@ -85,8 +85,8 @@ class FlextInfraUtilitiesResourceLimits:
             prlimit_executable,
             (
                 f"{c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION}="
-                f"{validated_limit.memory_limit_bytes}:"
-                f"{validated_limit.memory_limit_bytes}"
+                f"{validated_limit.memory_limit_mb * 1024 * 1024}:"
+                f"{validated_limit.memory_limit_mb * 1024 * 1024}"
             ),
             "--",
             *command,

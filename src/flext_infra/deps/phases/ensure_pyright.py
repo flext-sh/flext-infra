@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m, p, t, u
+from flext_infra._models.deps_tool_config_type_checkers import (
+    FlextInfraModelsDepsToolConfigTypeCheckers,
+)
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
 
 if TYPE_CHECKING:
@@ -23,7 +26,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         self,
         env_dir: str,
         *,
-        rules: p.Infra.PyrightConfig.PathRulesConfig | None = None,
+        rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig
+        | None = None,
     ) -> str:
         """Only ``source_dir`` (src/) is strict; all auto-discovered dirs relax."""
         effective_rules = rules or config.Infra.tooling.tools.pyright.path_rules
@@ -39,10 +43,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dir: str,
         root: str,
         extra_paths: t.StrSequence,
-        rules: p.Infra.PyrightConfig.PathRulesConfig,
-    ) -> p.Infra.PyrightConfig.ExecutionEnvironment:
+        rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
+    ) -> FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment:
         """Env entry."""
-        return m.Infra.PyrightConfig.ExecutionEnvironment(
+        return FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment(
             root=root,
             report_private_usage=self._report_private_usage_for_env(
                 env_dir, rules=rules
@@ -66,8 +70,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         env_dirs: t.StrSequence,
         source_path: str,
         project_root: str,
-        rules: p.Infra.PyrightConfig.PathRulesConfig,
-    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
+        rules: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.PathRulesConfig,
+    ) -> t.SequenceOf[
+        FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
+    ]:
         """Envs for dirs."""
         return [
             self._env_entry(
@@ -86,13 +92,15 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _diagnostic_override_envs(
         self, *, project_dir: Path | None, root_prefix: Path | None, source_path: str
-    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[
+        FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
+    ]:
         """Resolve configured overrides only when their project path exists."""
         if project_dir is None:
             return ()
         rules = config.Infra.tooling.tools.pyright.path_rules
         environments: t.MutableSequenceOf[
-            p.Infra.PyrightConfig.ExecutionEnvironment
+            FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
         ] = []
         for override in rules.diagnostic_path_overrides:
             if not (project_dir / override.root).is_dir():
@@ -101,7 +109,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 root_prefix / override.root if root_prefix else Path(override.root)
             ).as_posix()
             environments.append(
-                m.Infra.PyrightConfig.ExecutionEnvironment(
+                FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment(
                     root=resolved_root,
                     report_private_usage=override.report_private_usage,
                     extra_paths=(source_path,),
@@ -117,13 +125,15 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _expected_envs(
         self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
-    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[
+        FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
+    ]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
             return self._expected_envs_for_project(project_dir=project_dir)
         rules = config.Infra.tooling.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
-            p.Infra.PyrightConfig.ExecutionEnvironment
+            FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
         # mro-j47u (codex): specific roots precede the broad source environment.
@@ -195,7 +205,9 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _expected_envs_for_project(
         self, *, project_dir: Path | None
-    ) -> t.SequenceOf[p.Infra.PyrightConfig.ExecutionEnvironment]:
+    ) -> t.SequenceOf[
+        FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment
+    ]:
         """Build environments only for productive directories that exist."""
         rules = config.Infra.tooling.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
@@ -242,7 +254,8 @@ class FlextInfraEnsurePyrightConfigPhase:
         )
 
     def _environment_payload(
-        self, environment: p.Infra.PyrightConfig.ExecutionEnvironment
+        self,
+        environment: FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.ExecutionEnvironment,
     ) -> t.JsonDict:
         """Render one environment with its closed, scope-specific diagnostics."""
         rules = config.Infra.tooling.tools.pyright.path_rules
@@ -264,17 +277,18 @@ class FlextInfraEnsurePyrightConfigPhase:
 
     def _override_for_kind(
         self, project_kind: str
-    ) -> p.Infra.ProjectTypeOverrideConfig | None:
+    ) -> t.StrMapping | None:
         """Return the project-type override settings for the given kind."""
         overrides = config.Infra.tooling.project_type_overrides
-        kind_map: t.MappingKV[str, p.Infra.ProjectTypeOverrideConfig] = {
+        kind_map = {
             "core": overrides.core,
             "domain": overrides.domain,
             "platform": overrides.platform,
             "integration": overrides.integration,
             "app": overrides.app,
         }
-        return kind_map.get(project_kind)
+        override = kind_map.get(project_kind)
+        return override.pyright if override is not None else None
 
     def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
         """Venv settings."""
@@ -453,7 +467,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         }
         override = self._override_for_kind(project_kind)
         if override is not None:
-            merged_settings.update(override.pyright)
+            merged_settings.update(override)
         for key, value in merged_settings.items():
             phase_builder = phase_builder.value(key, value)
         return phase_builder.build()

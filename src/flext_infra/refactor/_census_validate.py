@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import p, t, u
+from flext_infra import m, p, t, u
 
 _log = u.fetch_logger(__name__)
 
@@ -43,13 +43,13 @@ class FlextInfraRefactorCensusValidateMixin:
             description: str,
             fixable: bool = False,
             fix_action: str = "",
-        ) -> p.Infra.Census.Violation: ...
+        ) -> m.Infra.Census.Violation: ...
 
     def _validated_project_reports(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
-        project_reports: tuple[p.Infra.Census.ProjectReport, ...],
-    ) -> tuple[p.Infra.Census.ProjectReport, ...]:
+        project_reports: tuple[m.Infra.Census.ProjectReport, ...],
+    ) -> tuple[m.Infra.Census.ProjectReport, ...]:
         """Keep only removal candidates that pass the configured dry-run gates.
 
         Gate rejections are surfaced as explicit ``preview_rejected``
@@ -60,7 +60,7 @@ class FlextInfraRefactorCensusValidateMixin:
             Tuple of project reports with filtered removal candidates and
             any ``preview_rejected`` violations appended.
         """
-        validated_reports: list[p.Infra.Census.ProjectReport] = []
+        validated_reports: list[m.Infra.Census.ProjectReport] = []
         # Preview writes are restored before the next candidate, so one shared
         # source cache stays valid for the entire dry-run validation pass.
         source_cache: dict[Path, str] = {}
@@ -68,7 +68,7 @@ class FlextInfraRefactorCensusValidateMixin:
             if not report.removal_candidates:
                 validated_reports.append(report)
                 continue
-            validated_candidates_list: list[p.Infra.Census.RemovalCandidate] = []
+            validated_candidates_list: list[m.Infra.Census.RemovalCandidate] = []
             validated_violations = list(report.violations)
             for candidate in report.removal_candidates:
                 preview_result = u.Infra.preview_simple_removal_candidate(

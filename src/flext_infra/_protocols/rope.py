@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 from flext_cli import p as cli_p
@@ -617,6 +618,9 @@ class FlextInfraProtocolsRope(Protocol):
         lines: FlextInfraProtocolsRope.PatchingASTWalker.SourceLines
         source: FlextInfraProtocolsRope.PatchingASTWalker.SourceBuffer
         empty_tuple: p.AttributeProbe
+
+        _handle_function_def_node: Callable[..., None]
+        _ClassDef: Callable[..., None]
 
         def _handle(
             self,

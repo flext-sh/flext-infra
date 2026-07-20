@@ -85,13 +85,33 @@ class FlextInfraDocAuditor(
             params=params,
             docstring_coverage=docstring_coverage,
         )
-        self.write_audit_reports(
-            scope,
-            issues,
-            set(checks),
-            strict=params.strict,
-            docstring_coverage=docstring_coverage,
-            to_markdown_fn=u.Infra.docs_audit_markdown,
+        summary: t.JsonDict = {
+            "scope": scope.name,
+            "issues": len(issues),
+            "checks": list(t.json_list_adapter().validate_python(sorted(checks))),
+            "strict": params.strict,
+            "report_dir": scope.report_dir.as_posix(),
+        }
+        if docstring_coverage is not None:
+            summary["docstring_coverage"] = {
+                "checked": docstring_coverage.checked,
+                "documented": docstring_coverage.documented,
+                "percent": docstring_coverage.percent,
+            }
+        issues_payload: t.JsonValueList = [
+            {
+                "file": issue.file,
+                "issue_type": issue.issue_type,
+                "severity": issue.severity,
+                "message": issue.message,
+            }
+            for issue in issues
+        ]
+        payload: t.JsonDict = {"summary": summary, "issues": issues_payload}
+        _ = u.Cli.json_write(scope.report_dir / "audit-summary.json", payload)
+        _ = u.Infra.write_markdown(
+            scope.report_dir / "audit-report.md",
+            u.Infra.docs_audit_markdown(scope, issues, docstring_coverage),
         )
         self.logger.info(
             "docs_audit_scope_completed",

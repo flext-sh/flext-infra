@@ -38,7 +38,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
     def run(self, params: p.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator)."""
         detector = self._detector
-        root = params.workspace_path
+        root = Path(params.workspace).expanduser().resolve()
         venv_bin = root / c.Infra.VENV_BIN_REL
         env_result = self._validate_environment(params, root, venv_bin)
         if env_result.failure:
@@ -104,11 +104,15 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         projects_report: Mapping[str, Mapping[str, t.JsonValue]],
     ) -> p.Result[Path]:
         """Render and persist the canonical workspace dependency report JSON."""
-        out_path: Path = params.output_path or u.Cli.resolve_report_path(
+        out_path: Path = (
+            Path(params.output).expanduser().resolve()
+            if params.output
+            else u.Cli.resolve_report_path(
             root,
             c.Infra.PROJECT,
             c.Infra.DEPENDENCIES,
             "detect-runtime-dev-latest.json",
+            )
         )
         report_payload: t.JsonDict = {
             key: u.normalize_to_json_value(value)

@@ -72,7 +72,7 @@ class FlextInfraRefactorCensusCollectMixin(
             duplicate_keys: frozenset[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None = None,
-        ) -> p.Infra.Census.ProjectReport: ...
+        ) -> m.Infra.Census.ProjectReport: ...
 
     def _scan_module(
         self,
@@ -154,7 +154,7 @@ class FlextInfraRefactorCensusCollectMixin(
         report_projects: set[str],
         rule_names: t.StrSequence | None,
         selected_rules: frozenset[str] | None,
-    ) -> p.Infra.Census.WorkspaceReport:
+    ) -> m.Infra.Census.WorkspaceReport:
         """Aggregate per-project scans into the final workspace census report."""
         duplicates = self._duplicate_groups(tuple(project_objects.values()))
         duplicate_keys = frozenset(

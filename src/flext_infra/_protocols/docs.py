@@ -60,6 +60,72 @@ class FlextInfraProtocolsDocs(Protocol):
         def written(self) -> bool: ...
 
     @runtime_checkable
+    class AuditScopeParams(p.BaseModel, Protocol):
+        """Bundled parameters for a single audit scope run."""
+
+        @property
+        def check(self) -> str: ...
+
+        @property
+        def strict(self) -> bool: ...
+
+        @property
+        def docstring_min(self) -> float | None: ...
+
+        @property
+        def budgets(self) -> tuple[int | None, t.IntMapping] | None: ...
+
+    @runtime_checkable
+    class DocsPhaseItemModel(p.BaseModel, Protocol):
+        """Unified item payload for docs phase reports."""
+
+        @property
+        def phase(self) -> str: ...
+
+        @property
+        def file(self) -> str: ...
+
+        @property
+        def links(self) -> t.NonNegativeInt: ...
+
+        @property
+        def toc(self) -> t.NonNegativeInt: ...
+
+        @property
+        def codeblocks(self) -> t.NonNegativeInt: ...
+
+        @property
+        def path(self) -> str: ...
+
+        @property
+        def written(self) -> bool: ...
+
+    @runtime_checkable
+    class DocsPhaseReport(p.BaseModel, Protocol):
+        """Unified report payload for docs phases."""
+
+        @property
+        def phase(self) -> str: ...
+
+        @property
+        def scope(self) -> str: ...
+
+        @property
+        def result(self) -> str: ...
+
+        @property
+        def reason(self) -> str: ...
+
+        @property
+        def site_dir(self) -> str: ...
+
+        @property
+        def passed(self) -> bool: ...
+
+        @property
+        def items(self) -> t.SequenceOf[FlextInfraProtocolsDocs.DocsPhaseItemModel]: ...
+
+    @runtime_checkable
     class DocsRepositoryRef(p.BaseModel, Protocol):
         """Repository catalog fields consumed by documentation."""
 

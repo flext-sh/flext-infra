@@ -47,7 +47,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
-    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
+    def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> p.Infra.GateExecution:
         """Apply AST-based fixers for auto-fixable smell findings.
 
         Runs the same scan as ``check()``, then attempts a registered fixer
@@ -99,7 +99,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """One cached full-workspace qlty scan, filtered to ``project_dir``."""
         _ = ctx
         started = time.monotonic()

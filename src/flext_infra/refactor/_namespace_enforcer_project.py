@@ -86,7 +86,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         apply: bool,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
         gates: t.StrSequence | None = None,
-    ) -> p.Infra.ProjectEnforcementReport:
+    ) -> m.Infra.ProjectEnforcementReport:
         """Enforce one project through the workspace-wide Rope session."""
         return self._enforce_project_with_rope(
             project_root=project_root,
@@ -124,7 +124,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         apply: bool,
         gates: t.StrSequence | None,
         rope_workspace: p.Infra.RopeWorkspaceDsl,
-    ) -> p.Infra.ProjectEnforcementReport:
+    ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project using the single indexed workspace Rope project."""
         rope_project = rope_workspace.rope_project
         parse_failures: t.MutableSequenceOf[p.Infra.ParseFailureViolation] = []

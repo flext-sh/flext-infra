@@ -37,24 +37,24 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @classmethod
     def load_workspace_spec(
         cls, repository_root: Path
-    ) -> p.Result[p.Infra.WorkspaceSpec]:
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Load the canonical repository-local workspace manifest."""
         manifest_path = cls._manifest_path(repository_root)
         loaded = u.Cli.config_load(
             manifest_path, schema_path=cls._schema_path(), expand_env=False
         )
         if loaded.failure:
-            return r[p.Infra.WorkspaceSpec].fail(
+            return r[m.Infra.WorkspaceSpec].fail(
                 loaded.error or f"invalid workspace manifest: {manifest_path}"
             )
         try:
             # mro-i6nq.10: Validate the pure config model at its loading boundary.
             validated = m.Infra.WorkspaceSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
-            return r[p.Infra.WorkspaceSpec].fail_op(
+            return r[m.Infra.WorkspaceSpec].fail_op(
                 f"workspace manifest model validation ({manifest_path})", exc
             )
-        return r[p.Infra.WorkspaceSpec].ok(validated)
+        return r[m.Infra.WorkspaceSpec].ok(validated)
 
     @staticmethod
     def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
@@ -80,7 +80,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         )
 
     @staticmethod
-    def _validate_local_repository(repository: p.Infra.RepositoryRef) -> p.Result[bool]:
+    def _validate_local_repository(repository: m.Infra.RepositoryRef) -> p.Result[bool]:
         """Validate the role/profile invariants for a local manifest owner."""
         if repository.path.as_posix() != ".":
             return r[bool].fail("local repository manifest path must be '.'")
@@ -118,7 +118,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
 
     @staticmethod
     def _unattached_mode(
-        workspace_spec: p.Infra.WorkspaceSpec | None,
+        workspace_spec: m.Infra.WorkspaceSpec | None,
     ) -> c.Infra.WorkspaceMode:
         """Classify a repository that Git proves has no superproject."""
         if (
@@ -206,7 +206,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         cls,
         project_root: Path,
         superproject_root: Path,
-        workspace_spec: p.Infra.WorkspaceSpec | None,
+        workspace_spec: m.Infra.WorkspaceSpec | None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Validate a real submodule against the parent and local manifests."""
         member_root_result = u.Cli.capture(
@@ -343,7 +343,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 f"project root is not a directory: {resolved_project_root}"
             )
 
-        workspace_spec: p.Infra.WorkspaceSpec | None = None
+        workspace_spec: m.Infra.WorkspaceSpec | None = None
         local_manifest = self._manifest_path(resolved_project_root)
         if local_manifest.is_file():
             local_result = self.load_workspace_spec(resolved_project_root)

@@ -18,7 +18,7 @@ from flext_infra.refactor._accessor_rewrite import (
 
 
 class FlextInfraAccessorMigrationOrchestrator(
-    FlextInfraProjectSelectionServiceBase[p.Infra.AccessorMigrationReport],
+    FlextInfraProjectSelectionServiceBase[m.Infra.AccessorMigrationReport],
     FlextInfraAccessorMigrationRewriteMixin,
     FlextInfraAccessorMigrationReportMixin,
 ):
@@ -46,13 +46,13 @@ class FlextInfraAccessorMigrationOrchestrator(
         return u.Infra.selected_lint_tool_names(self.gate_names)
 
     @override
-    def execute(self) -> p.Result[p.Infra.AccessorMigrationReport]:
+    def execute(self) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute."""
         resolved = u.Infra.resolve_projects(
             self.workspace_root, self.project_names or ()
         )
         if resolved.failure:
-            return r[p.Infra.AccessorMigrationReport].fail(
+                return r[m.Infra.AccessorMigrationReport].fail(
                 resolved.error or "project resolution failed"
             )
         iter_result = u.Infra.iter_python_files(
@@ -61,10 +61,10 @@ class FlextInfraAccessorMigrationOrchestrator(
             )
         )
         if iter_result.failure:
-            return r[p.Infra.AccessorMigrationReport].fail(
+            return r[m.Infra.AccessorMigrationReport].fail(
                 iter_result.error or "python file iteration failed"
             )
-        previews: t.MutableSequenceOf[p.Infra.AccessorMigrationFile] = []
+        previews: t.MutableSequenceOf[m.Infra.AccessorMigrationFile] = []
         files_with_changes = 0
         automated_change_count = 0
         warning_count = 0
@@ -75,7 +75,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             for py_file in iter_result.value:
                 read = u.Cli.files_read_text(py_file)
                 if read.failure:
-                    return r[p.Infra.AccessorMigrationReport].fail(
+                    return r[m.Infra.AccessorMigrationReport].fail(
                         read.error or f"failed to read {py_file}"
                     )
                 source = read.value
@@ -107,7 +107,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 self._accumulate_lint_totals(
                     new_lint_error_totals, file_report.new_lint_errors
                 )
-        return r[p.Infra.AccessorMigrationReport].ok(
+        return r[m.Infra.AccessorMigrationReport].ok(
             m.Infra.AccessorMigrationReport(
                 workspace=str(self.workspace_root),
                 dry_run=self.dry_run,
@@ -126,8 +126,8 @@ class FlextInfraAccessorMigrationOrchestrator(
     @classmethod
     @override
     def execute_command(
-        cls, params: p.Infra.AccessorMigrationInput
-    ) -> p.Result[p.Infra.AccessorMigrationReport]:
+        cls, params: m.Infra.AccessorMigrationInput
+    ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
         result = cls(
             workspace_root=params.workspace_path,
@@ -140,11 +140,11 @@ class FlextInfraAccessorMigrationOrchestrator(
             gates=",".join(params.gates),
         ).execute()
         if result.failure:
-            return r[p.Infra.AccessorMigrationReport].fail(
+            return r[m.Infra.AccessorMigrationReport].fail(
                 result.error or "accessor migration execution failed"
             )
         cli.display_text(cls.render_text(result.value))
-        return r[p.Infra.AccessorMigrationReport].ok(result.value)
+        return r[m.Infra.AccessorMigrationReport].ok(result.value)
 
 
 __all__: list[str] = ["FlextInfraAccessorMigrationOrchestrator"]

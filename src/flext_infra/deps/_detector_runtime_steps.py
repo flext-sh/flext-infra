@@ -26,7 +26,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         """Discover projects and verify the deptry executable."""
         detector = self._detector
         projects_result = detector.deps.discover_project_paths(
-            root, projects_filter=params.project_names
+            root, projects_filter=params.projects
         )
         if projects_result.failure:
             return r[tuple[t.SequenceOf[Path], Path]].fail(
@@ -43,7 +43,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 f"Deptry executable not found at {deptry_path}"
             )
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
-        limits_path = params.limits_path or limits_default
+        limits_path = Path(params.limits).expanduser().resolve() if params.limits else limits_default
         return r[tuple[t.SequenceOf[Path], Path]].ok((projects, limits_path))
 
     def _configure_typings_limits(

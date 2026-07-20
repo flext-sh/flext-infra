@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, t, u
+from flext_infra import c, m, p, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: p.Infra.LazyInitConfig
+        lazy_init: m.Infra.LazyInitConfig
 
         def _module_file(self, module_path: str) -> Path | None: ...
 

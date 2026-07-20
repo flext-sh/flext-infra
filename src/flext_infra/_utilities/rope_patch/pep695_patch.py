@@ -38,7 +38,6 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
 
     from flext_infra import p
 
@@ -58,8 +57,11 @@ class FlextInfraUtilitiesRopePep695Patch:
         if cls._applied:
             return
         walker = FlextInfraUtilitiesRopeRuntime.patched_ast_walker()
-        original_function_def: Callable[..., None] = walker._handle_function_def_node
-        original_class_def: Callable[..., None] = walker._ClassDef
+        original_function_def = vars(walker)["_handle_function_def_node"]
+        original_class_def = vars(walker)["_ClassDef"]
+        if not callable(original_function_def) or not callable(original_class_def):
+            msg = "rope patch walker handlers must be callable"
+            raise TypeError(msg)
 
         def _type_params_children(
             node: p.Infra.PatchingASTWalker.TypeParameterOwner,

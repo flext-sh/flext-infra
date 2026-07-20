@@ -89,7 +89,7 @@ class FlextInfraRefactorCensusObjectsMixin:
     @classmethod
     def _removal_candidate(
         cls, item: p.Infra.Census.Object, *, include_unused: bool
-    ) -> p.Infra.Census.RemovalCandidate | None:
+    ) -> m.Infra.Census.RemovalCandidate | None:
         """Build a removal candidate for an object."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
@@ -121,7 +121,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @classmethod
     def _impact_map_results(
-        cls, report: p.Infra.Census.WorkspaceReport
+        cls, report: m.Infra.Census.WorkspaceReport
     ) -> tuple[p.Infra.Result, ...]:
         """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)

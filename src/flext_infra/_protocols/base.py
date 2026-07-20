@@ -836,33 +836,81 @@ class FlextInfraProtocolsBase(Protocol):
     class GithubWorkflowSyncRequest(pc.BaseModel, Protocol):
         """Workflow synchronization request contract."""
 
-        project: str | None
-        write: bool
+        workspace: str
+        projects: t.StrSequence | None
+        apply: bool
         report: str | None
         prune: bool
+
+        @property
+        def workspace_path(self) -> Path: ...
+
+        @property
+        def report_path(self) -> Path | None: ...
 
     @runtime_checkable
     class GithubWorkflowLintRequest(pc.BaseModel, Protocol):
         """Workflow lint request contract."""
 
-        project: str | None
-        read: bool
+        workspace: str
+        report: str | None
         strict: bool
+
+        @property
+        def workspace_path(self) -> Path: ...
+
+        @property
+        def report_path(self) -> Path | None: ...
 
     @runtime_checkable
     class GithubPullRequestRequest(pc.BaseModel, Protocol):
         """Single-repository pull-request request contract."""
 
         repo_root: str
-        write: bool
+        action: str
+        base: str
+        head: str | None
+        number: int | None
+        title: str | None
+        body: str | None
+        draft: bool
+        merge_method: str
+        auto: bool
+        delete_branch: bool
+        checks_strict: bool
+        release_on_merge: bool
+
+        @property
+        def repo_root_path(self) -> Path: ...
 
     @runtime_checkable
     class GithubPullRequestWorkspaceRequest(pc.BaseModel, Protocol):
         """Workspace pull-request request contract."""
 
-        workspace: Path | None
+        workspace: str
         projects: t.StrSequence | None
-        write: bool
+        include_root: bool
+        branch: str
+        checkpoint: bool
+        fail_fast: bool
+        action: str
+        base: str
+        head: str | None
+        number: int | None
+        title: str | None
+        body: str | None
+        draft: bool
+        merge_method: str
+        auto: bool
+        delete_branch: bool
+        checks_strict: bool
+        release_on_merge: bool
+
+        @property
+        def workspace_path(self) -> Path: ...
+
+        @property
+        def project_names(self) -> t.StrSequence | None: ...
 
         def lint_github_workflows(
             self, params: p.Infra.GithubWorkflowLintRequest
@@ -953,11 +1001,6 @@ class FlextInfraProtocolsBase(Protocol):
 
             @property
             def runtime_reference_sites(
-                self,
-            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
-
-            @property
-            def example_reference_sites(
                 self,
             ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
 
@@ -1058,11 +1101,6 @@ class FlextInfraProtocolsBase(Protocol):
 
             @property
             def runtime_reference_sites(
-                self,
-            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
-
-            @property
-            def example_reference_sites(
                 self,
             ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
 
@@ -1236,23 +1274,40 @@ class FlextInfraProtocolsBase(Protocol):
     # mro-qc84 (fix-forward): protocol-of-model for one accessor-migration file
     # entry (m.Infra.AccessorMigrationFile).
     @runtime_checkable
-    class AccessorMigrationFile(Protocol):
+    class AccessorMigrationFile(pc.BaseModel, Protocol):
         """Per-file accessor-migration outcome entry."""
 
         @property
-        def path(self) -> str: ...
+        def file(self) -> str: ...
 
         @property
-        def automated_changes(self) -> int: ...
+        def lint_tools(self) -> t.StrSequence: ...
 
         @property
-        def warnings(self) -> t.StrSequence: ...
+        def automated_changes(
+            self,
+        ) -> t.SequenceOf[p.Infra.AccessorMigrationChange]: ...
+
+        @property
+        def warnings(self) -> t.SequenceOf[p.Infra.AccessorMigrationChange]: ...
+
+        @property
+        def diff(self) -> str: ...
+
+        @property
+        def lint_before(self) -> t.MappingKV[str, t.StrSequence]: ...
+
+        @property
+        def lint_after(self) -> t.MappingKV[str, t.StrSequence]: ...
+
+        @property
+        def new_lint_errors(self) -> t.MappingKV[str, t.StrSequence]: ...
 
     # mro-qc84 (fix-forward): protocol-of-model for the accessor-migration
     # workspace report (m.Infra.AccessorMigrationReport). Consumed at runtime by
     # ``FlextInfraProjectSelectionServiceBase[p.Infra.AccessorMigrationReport]``.
     @runtime_checkable
-    class AccessorMigrationReport(Protocol):
+    class AccessorMigrationReport(pc.BaseModel, Protocol):
         """Workspace-scale accessor-migration orchestration report."""
 
         @property
@@ -1733,9 +1788,7 @@ class FlextInfraProtocolsBase(Protocol):
         def rope_workspace(self) -> p.Infra.RopeWorkspaceDsl | None: ...
 
         @property
-        def parse_failures(
-            self,
-        ) -> t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None: ...
+        def parse_failures(self) -> t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None: ...
 
         @property
         def project_name(self) -> str: ...
@@ -1804,6 +1857,18 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def request(self) -> p.Infra.GithubWorkflowSyncRequest: ...
+
+        @property
+        def workflows_dir(self) -> Path: ...
+
+        @property
+        def ci_destination(self) -> Path: ...
+
+        @property
+        def apply(self) -> bool: ...
+
+        @property
+        def prune(self) -> bool: ...
 
     @runtime_checkable
     class LintGateResult(Protocol):

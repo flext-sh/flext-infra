@@ -49,7 +49,7 @@ class FlextInfraMROShapeDetector:
         try:
             pymodule = u.Infra.get_pymodule(rope_project, res)
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *FlextInfraConstantsRope.SYNTAX_ERRORS,
             *FlextInfraConstantsRope.SYNTAX_ERRORS,
             TypeError,
             AttributeError,

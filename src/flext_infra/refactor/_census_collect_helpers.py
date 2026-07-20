@@ -63,7 +63,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             report_projects: set[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None,
-        ) -> p.Infra.Census.WorkspaceReport: ...
+        ) -> m.Infra.Census.WorkspaceReport: ...
 
     @staticmethod
     def _should_collect_object_references(rule_names: t.StrSequence | None) -> bool:
@@ -125,7 +125,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         )
 
     @staticmethod
-    def _is_production_module(module: m.Infra.RopeModuleIndexEntry) -> bool:
+    def _is_production_module(module: p.Infra.RopeModuleIndexEntry) -> bool:
         """Return whether a module belongs to one configured production root."""
         project_root = module.project_root
         if project_root is None:
@@ -235,7 +235,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rule_names: t.StrSequence | None,
         include_local_scopes: bool,
         applied: frozenset[str],
-    ) -> p.Infra.Census.WorkspaceReport:
+    ) -> m.Infra.Census.WorkspaceReport:
         """Scan selected modules then assemble the workspace census report."""
         selected_families = self._selected_families(family_names)
         selected_rules: frozenset[str] | None = (

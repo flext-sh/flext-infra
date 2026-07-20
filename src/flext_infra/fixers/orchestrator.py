@@ -58,7 +58,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     def execute_command(cls, params: p.Infra.FixEnforcementCommand) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
         instance = cls(
-            workspace_root=params.workspace_path,
+            workspace_root=Path(params.workspace).expanduser().resolve(),
             selected_projects=params.projects,
             apply=params.apply,
             rules=tuple(params.rules),

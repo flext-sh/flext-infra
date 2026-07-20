@@ -35,7 +35,7 @@ class FlextInfraSilentFailureGate(FlextInfraGate):
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> m.Infra.GateExecution:
+    ) -> p.Infra.GateExecution:
         """Check."""
         _ = ctx
         started = time.monotonic()

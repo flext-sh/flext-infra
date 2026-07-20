@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from flext_cli import p
 
@@ -42,10 +42,5 @@ class FlextInfraProtocolsBasemk(Protocol):
 
         @property
         def test_command(self) -> str: ...
-
-        def model_copy(
-            self, *, update: t.JsonMapping | None = None, deep: bool = False
-        ) -> Self: ...
-
 
 __all__: tuple[str, ...] = ("FlextInfraProtocolsBasemk",)

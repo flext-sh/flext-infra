@@ -50,7 +50,7 @@ class FlextInfraRefactorCensusProjectMixin:
         @classmethod
         def _removal_candidate(
             cls, item: p.Infra.Census.Object, *, include_unused: bool
-        ) -> p.Infra.Census.RemovalCandidate | None: ...
+        ) -> m.Infra.Census.RemovalCandidate | None: ...
 
     def _handle_rope_stage_failure(
         self, *, file_path: Path, stage: str, exc: BaseException
@@ -77,7 +77,7 @@ class FlextInfraRefactorCensusProjectMixin:
         duplicate_keys: frozenset[str],
         rule_names: t.StrSequence | None,
         selected_rules: frozenset[str] | None = None,
-    ) -> p.Infra.Census.ProjectReport:
+    ) -> m.Infra.Census.ProjectReport:
         """Project report."""
         violations = list(seed_violations)
         if selected_rules is None and rule_names:
@@ -92,7 +92,7 @@ class FlextInfraRefactorCensusProjectMixin:
             "wrong_tier", rule_names=rule_names, selected_rules=selected_rules
         )
         unused_count = 0
-        removal_candidates: list[p.Infra.Census.RemovalCandidate] = []
+        removal_candidates: list[m.Infra.Census.RemovalCandidate] = []
         for item in objects:
             is_unused = self._is_unused(item)
             if include_duplicate and self._object_key(item) in duplicate_keys:

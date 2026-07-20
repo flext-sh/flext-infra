@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
@@ -26,6 +27,15 @@ class FlextInfraReleaseOrchestratorPhases(
     FlextInfraReleaseOrchestratorPublishMixin, FlextInfraReleaseArtifactBuildMixin
 ):
     """Build and version phase implementations (publish via the mixin)."""
+
+    if TYPE_CHECKING:
+        def _build_targets(
+            self, workspace_root: Path, project_names: t.StrSequence
+        ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]: ...
+
+        def _version_files(
+            self, workspace_root: Path, project_names: t.StrSequence
+        ) -> p.Result[t.SequenceOf[Path]]: ...
 
     def _build_project_record(
         self,
@@ -268,7 +278,7 @@ class FlextInfraReleaseOrchestratorPhases(
 
     @staticmethod
     def _version_worktree_transaction(
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
+        ctx: p.Infra.ReleasePhaseDispatchConfig,
     ) -> p.Result[bool]:
         """Apply one complete version delta through the canonical transaction."""
         command: t.MutableSequenceOf[str] = [

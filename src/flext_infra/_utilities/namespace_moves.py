@@ -441,7 +441,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     resources=(resource,),
                 )
             except (
-                *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
                 *FlextInfraConstantsRope.SYNTAX_ERRORS,
                 TypeError,
                 ValueError,
@@ -903,7 +903,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                         rope_project, target_resource
                     ).get_name()
                 except (
-                    *FlextInfraConstantsRope.RUNTIME_ERRORS,
+                    *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
                     *FlextInfraConstantsRope.SYNTAX_ERRORS,
                     TypeError,
                 ):

@@ -205,12 +205,12 @@ class FlextInfraUtilitiesRopeStructure:
                 line=fact.line,
                 current_import=current_import,
                 detail=(
-                    f"{rule.detail} Resolved '{fact.imported_name}' from "
+                    f"{rule.detail} Resolved '{fact.member}' from "
                     f"'{private_module}'; consume '{canonical_singleton}'."
                 ),
                 kind=rule.kind,
                 private_module=private_module,
-                imported_symbol=fact.imported_name,
+                imported_symbol=fact.member,
                 bound_name=fact.local_name,
                 target_file=str(expected_target),
                 canonical_singleton=canonical_singleton,

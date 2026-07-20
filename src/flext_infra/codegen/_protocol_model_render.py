@@ -24,7 +24,7 @@ class FlextInfraCodegenProtocolModelRender:
     def protocol_class(cls, name: str, model: type[p.BaseModel]) -> str:
         """Render every validated model field and owned public property."""
         members: list[str] = []
-        for field_name, field in model.model_fields.items():
+        for field_name, field in model.__pydantic_fields__.items():
             try:
                 annotation = FlextInfraCodegenProtocolModelAnnotations.render(
                     field.annotation
@@ -34,7 +34,7 @@ class FlextInfraCodegenProtocolModelRender:
                 raise TypeError(msg) from exc
             members.extend(cls._property(field_name, annotation))
         for property_name, annotation in cls._owned_properties(model).items():
-            if property_name in model.model_fields:
+            if property_name in model.__pydantic_fields__:
                 continue
             members.extend(cls._property(property_name, annotation))
         body = members or ["        pass"]

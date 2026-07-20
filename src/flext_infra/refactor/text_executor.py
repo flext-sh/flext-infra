@@ -112,12 +112,13 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
             candidates=tuple(candidates),
         )
         updated, migration, _ = u.Infra.migrate_file(scan_result=scan_result)
+        moved_symbols = migration.moved_symbols
         if not migration.moved_symbols or updated == source:
             return (source, list[str]())
         return (
             updated,
             [
-                f"migrated constants into facade class: {', '.join(migration.moved_symbols)}"
+                f"migrated constants into facade class: {', '.join(moved_symbols)}"
             ],
         )
 

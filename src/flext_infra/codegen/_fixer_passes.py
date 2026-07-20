@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p, u
+from flext_infra import c, m, u
 from flext_infra.codegen._fixer_lint import FlextInfraCodegenFixerLintMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.refactor.migrate_to_class_mro import (
@@ -26,20 +26,23 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
     """Private pipeline passes for codegen fixer composition."""
 
     @staticmethod
-    def _run_mro_migration(ctx: p.Infra.FixContext, project_path: Path) -> None:
+    def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run the MRO migrator and accumulate fixed/skipped violations."""
-        report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
-            target="all", apply=True, gates=(c.Infra.LINT,)
+        report = m.Infra.MROMigrationReport.model_validate(
+            FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
+                target="all", apply=True, gates=(c.Infra.LINT,)
+            )
         )
         _log.info(
             "mro_migration_complete",
             project=project_path.name,
             migrations=len(report.migrations),
         )
-        ctx.files_modified |= {
+        for file_path in (
             *(migration.file for migration in report.migrations),
             *(rewrite.file for rewrite in report.rewrites),
-        }
+        ):
+            ctx.files_modified.add(file_path)
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
                 module=migration.module,
@@ -75,10 +78,12 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
         )
 
     @staticmethod
-    def _run_namespace_enforcement(ctx: p.Infra.FixContext, project_path: Path) -> None:
+    def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
-        enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
-            apply=True, gates=(c.Infra.LINT,)
+        enforcement = m.Infra.WorkspaceEnforcementReport.model_validate(
+            FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
+                apply=True, gates=(c.Infra.LINT,)
+            )
         )
         violating_projects = tuple(
             project_report
@@ -105,12 +110,13 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerLintMixin):
 
     @staticmethod
     def _run_lazy_init_regeneration(
-        ctx: p.Infra.FixContext, project_path: Path
+        ctx: m.Infra.FixContext, project_path: Path
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
         lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)
         lazy_errors = lazy_generator.generate_inits(check_only=False)
-        ctx.files_modified |= set(lazy_generator.modified_files)
+        for file_path in lazy_generator.modified_files:
+            ctx.files_modified.add(file_path)
         if lazy_errors > 0:
             ctx.skip(
                 module=project_path.name,

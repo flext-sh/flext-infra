@@ -15,9 +15,9 @@ from rope.base.pyobjects import AbstractClass
 from rope.base.pyobjectsdef import PyFunction
 
 from flext_infra import c, m, p, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeInventory:
@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRopeInventory:
         """Return all same-file defined objects for one Rope module."""
         try:
             pymodule = cls.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors() as exc:
             msg = (
                 "rope inventory failed to load "
                 f"{resource.path}: {type(exc).__name__}: {exc!s}"
@@ -50,7 +50,7 @@ class FlextInfraUtilitiesRopeInventory:
             RecursionError,
             SyntaxError,
             ValueError,
-            *FlextInfraConstantsRope.ROPE_ERROR_TYPES,
+            FlextInfraUtilitiesRopeRuntime.rope_error_type(),
         ) as exc:
             msg = (
                 "rope inventory failed to load "

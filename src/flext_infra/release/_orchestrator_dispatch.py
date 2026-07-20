@@ -272,7 +272,16 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         def handler(
             _ctx: p.Cli.PipelineStageContext,
         ) -> p.Result[p.Cli.PipelineStageResult]:
-            phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
+            phase_cfg = m.Infra.ReleasePhaseDispatchConfig(
+                workspace_root=dispatch_cfg.workspace_root,
+                project_names=dispatch_cfg.project_names,
+                version=dispatch_cfg.version,
+                tag=dispatch_cfg.tag,
+                push=dispatch_cfg.push,
+                dev_suffix=dispatch_cfg.dev_suffix,
+                dry_run=dispatch_cfg.dry_run,
+                phase=phase_name,
+            )
             phase_result = self._dispatch_phase(phase_cfg)
             if phase_result.failure:
                 return r[p.Cli.PipelineStageResult].fail(

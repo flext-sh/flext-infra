@@ -65,7 +65,8 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ],
             "after": after_metrics,
             "duplicate_constant_groups": [
-                group.model_dump(mode="json") for group in census_report.duplicates
+                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(group)
+                for group in census_report.duplicates
             ],
             "projects": [
                 t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project)
@@ -205,7 +206,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def after_metrics(
-        *, census_report: p.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
+        *, census_report: m.Infra.Census.WorkspaceReport, modified_files: t.StrSequence
     ) -> t.MappingKV[str, t.JsonValue]:
         """Build post-run metrics summary used by quality checks."""
         by_kind: t.MutableIntMapping = {}
@@ -285,7 +286,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ),
         )
         checks: t.SequenceOf[p.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
-        return [check.model_dump() for check in checks]
+        return [t.Infra.INFRA_MAPPING_ADAPTER.validate_python(check) for check in checks]
 
     @staticmethod
     def compute_verdict(checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]]) -> str:
@@ -298,7 +299,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def project_findings(
-        census_report: p.Infra.Census.WorkspaceReport,
+        census_report: m.Infra.Census.WorkspaceReport,
     ) -> t.SequenceOf[t.MappingKV[str, t.JsonValue]]:
         """Convert census reports into sorted per-project findings."""
         return [

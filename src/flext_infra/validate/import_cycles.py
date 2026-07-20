@@ -141,7 +141,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+        except FlextInfraConstantsRope.SYNTAX_ERRORS as exc:
             return r[str].fail(f"get_pymodule rope error: {exc!s}")
         except TypeError as exc:
             return r[str].fail(f"get_pymodule type error: {exc!s}")

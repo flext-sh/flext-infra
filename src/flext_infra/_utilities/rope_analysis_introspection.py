@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, p, t
-from flext_infra._constants.rope import FlextInfraConstantsRope
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
             return FlextInfraUtilitiesRopeAnalysisIntrospection._nested_class_names(
                 rope_project, resource, class_name
             )
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return ()
 
     @staticmethod
@@ -57,11 +57,11 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         if class_name not in attributes:
             return result
         obj = attributes[class_name].get_object()
-        if not isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+        if not isinstance(obj, FlextInfraUtilitiesRopeRuntime.abstract_class_type()):
             return result
         for name, pyname in obj.get_attributes().items():
             child = pyname.get_object()
-            if isinstance(child, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+            if isinstance(child, FlextInfraUtilitiesRopeRuntime.abstract_class_type()):
                 result.append(name)
         return result
 
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                         node
                     )
                 )
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return result
         return sorted(result, key=lambda symbol: symbol.line)
 

@@ -27,8 +27,8 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
 
     @classmethod
     def run_github_pull_request(
-        cls, params: p.Infra.GithubPullRequestRequest
-    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
+        cls, params: m.Infra.GithubPullRequestRequest
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command from the canonical single-repo payload."""
         result = cls._run_github_pull_request_for_repo(
             repo_root=params.repo_root_path,
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
             request=params,
         )
         if result.success and result.value.exit_code != 0:
-            return r[p.Infra.GithubPullRequestOutcome].fail(
+            return r[m.Infra.GithubPullRequestOutcome].fail(
                 f"PR operation exited with code {result.value.exit_code}"
             )
         return result
@@ -48,9 +48,9 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            p.Infra.GithubPullRequestRequest | p.Infra.GithubPullRequestWorkspaceRequest
+            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
-    ) -> p.Result[p.Infra.GithubPullRequestOutcome]:
+    ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name
         report_dir = (
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         ).resolve()
         ensure_dir_result = u.Cli.ensure_dir(report_dir)
         if ensure_dir_result.failure:
-            return r[p.Infra.GithubPullRequestOutcome].fail(
+            return r[m.Infra.GithubPullRequestOutcome].fail(
                 ensure_dir_result.error or "failed to create report directory"
             )
         report_dir = ensure_dir_result.value
@@ -72,7 +72,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         started = time.monotonic()
         to_file_result = u.Cli.run_to_file(command, log_path)
         if to_file_result.failure:
-            return r[p.Infra.GithubPullRequestOutcome].fail(
+            return r[m.Infra.GithubPullRequestOutcome].fail(
                 to_file_result.error or "command execution error"
             )
         exit_code = to_file_result.value
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         status = (
             c.Infra.ResultStatus.OK if exit_code == 0 else c.Infra.ResultStatus.FAIL
         )
-        return r[p.Infra.GithubPullRequestOutcome].ok(
+        return r[m.Infra.GithubPullRequestOutcome].ok(
             m.Infra.GithubPullRequestOutcome(
                 display=display,
                 status=status,
@@ -96,7 +96,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin:
         repo_root: Path,
         workspace_root: Path,
         request: (
-            p.Infra.GithubPullRequestRequest | p.Infra.GithubPullRequestWorkspaceRequest
+            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
         ),
     ) -> list[str]:
         """Build the CLI command list for a single pull-request operation."""

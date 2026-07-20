@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, p
+from flext_infra import c, m
 from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
 from flext_infra.refactor.service import FlextInfraRefactorService
 
@@ -20,7 +20,7 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
     """Private refactor-service pass for codegen fixer composition."""
 
     @staticmethod
-    def _run_refactor_service(ctx: p.Infra.FixContext, project_path: Path) -> None:
+    def _run_refactor_service(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Load refactor rules and run the service; record fixed/skipped violations."""
         service = FlextInfraRefactorService()
         config_result = service.load_config()
@@ -57,9 +57,9 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
                 project_path, dry_run=False, apply_safety=False, gates=(c.Infra.LINT,)
             )
         )
-        ctx.files_modified |= {
-            str(result.file_path) for result in refactor_results if result.success
-        }
+        for result in refactor_results:
+            if result.success:
+                ctx.files_modified.add(str(result.file_path))
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
                 module=str(result.file_path),

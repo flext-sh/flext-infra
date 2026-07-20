@@ -81,7 +81,14 @@ class FlextInfraWorkspaceChecker(
     @override
     def execute_command(cls, params: p.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
-        checker = cls(workspace_root=params.workspace_path)
+        workspace_path = Path(params.workspace).expanduser().resolve()
+        reports_dir_path = Path(params.reports_dir).expanduser()
+        if not reports_dir_path.is_absolute():
+            reports_dir_path = (Path.cwd() / reports_dir_path).resolve()
+        file_paths = tuple(
+            Path(file_path).expanduser().resolve() for file_path in params.files or ()
+        )
+        checker = cls(workspace_root=workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
             return r[bool].fail(
@@ -90,18 +97,18 @@ class FlextInfraWorkspaceChecker(
         project_targets = project_targets_result.value
         gates = params.gates
         gate_ctx = m.Infra.GateContext(
-            workspace=params.workspace_path,
-            reports_dir=params.reports_dir_path,
+            workspace=workspace_path,
+            reports_dir=reports_dir_path,
             apply_fixes=params.fix,
             check_only=params.check_only,
             ruff_args=tuple(cls.parse_tool_args(params.ruff_args)),
             pyright_args=tuple(cls.parse_tool_args(params.pyright_args)),
-            files=params.file_paths,
+            files=file_paths,
         )
         run_result = checker.run_projects(
             projects=project_targets,
             gates=gates,
-            reports_dir=params.reports_dir_path,
+            reports_dir=reports_dir_path,
             fail_fast=params.fail_fast,
             ctx=gate_ctx,
         )
@@ -120,17 +127,18 @@ class FlextInfraWorkspaceChecker(
         params: p.Infra.RunCommand,
     ) -> p.Result[t.SequenceOf[p.Infra.CheckProjectTarget]]:
         """Resolve explicit projects or discover the workspace project set."""
-        requested = params.project_names
+        requested = params.projects
+        workspace_path = Path(params.workspace).expanduser().resolve()
         if requested:
             return r[t.SequenceOf[p.Infra.CheckProjectTarget]].ok(
                 tuple(
                     m.Infra.CheckProjectTarget.from_workspace_name(
-                        params.workspace_path, project_name
+                        workspace_path, project_name
                     )
                     for project_name in requested
                 )
             )
-        discovered = u.Infra.resolve_projects(params.workspace_path, ())
+        discovered = u.Infra.resolve_projects(workspace_path, ())
         if discovered.failure:
             return r[t.SequenceOf[p.Infra.CheckProjectTarget]].fail(
                 discovered.error or "project discovery failed"
@@ -202,14 +210,15 @@ class FlextInfraWorkspaceChecker(
         """Return typed project targets from public names or internal selections."""
         targets: list[p.Infra.CheckProjectTarget] = []
         for project in projects:
-            if isinstance(project, m.Infra.CheckProjectTarget):
-                targets.append(project)
-                continue
-            targets.append(
-                m.Infra.CheckProjectTarget.from_workspace_name(
-                    self._workspace_root, project
-                )
-            )
+            match project:
+                case m.Infra.CheckProjectTarget():
+                    targets.append(project)
+                case str():
+                    targets.append(
+                        m.Infra.CheckProjectTarget.from_workspace_name(
+                            self._workspace_root, project
+                        )
+                    )
         return tuple(targets)
 
 

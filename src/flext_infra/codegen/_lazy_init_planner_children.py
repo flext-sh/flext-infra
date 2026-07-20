@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, p, t
+from flext_infra import c, m, p, t
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerChildrenMixin:
     if TYPE_CHECKING:
         # mro-wkii.17.26 (codex): declare the validated policy supplied by the MRO base.
-        lazy_init: p.Infra.LazyInitConfig
+        lazy_init: m.Infra.LazyInitConfig
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
         def _package_entry(

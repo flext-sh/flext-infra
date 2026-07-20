@@ -24,27 +24,30 @@ class FlextInfraTomlPhaseOps:
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to the target table."""
-        if isinstance(operation, m.Cli.TomlSetOp):
-            if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
-                out.append(
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
-                    f"{operation.value}"
-                )
-            return
-        if isinstance(operation, m.Cli.TomlListOp):
-            if operation.strategy in {
-                c.Cli.TomlMergeMode.ADDITIVE,
-                c.Cli.TomlMergeMode.MERGE,
-            }:
-                if u.Cli.toml_merge_string_list(tbl, operation.key, operation.values):
-                    out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
-                return
-            if u.Cli.toml_sync_string_list(
-                tbl, operation.key, operation.values, sort_values=operation.sort
-            ):
-                out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
-            return
-        FlextInfraTomlPhaseOps._remove_operation(tbl, operation, out, pfx)
+        match operation:
+            case m.Cli.TomlSetOp():
+                if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
+                    out.append(
+                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
+                        f"{operation.value}"
+                    )
+            case m.Cli.TomlListOp():
+                if operation.strategy in {
+                    c.Cli.TomlMergeMode.ADDITIVE,
+                    c.Cli.TomlMergeMode.MERGE,
+                }:
+                    if u.Cli.toml_merge_string_list(
+                        tbl, operation.key, operation.values
+                    ):
+                        out.append(
+                            f"{u.Cli.toml_dot_path(pfx, operation.key)} updated"
+                        )
+                elif u.Cli.toml_sync_string_list(
+                    tbl, operation.key, operation.values, sort_values=operation.sort
+                ):
+                    out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
+            case m.Cli.TomlRemoveOp():
+                FlextInfraTomlPhaseOps._remove_operation(tbl, operation, out, pfx)
 
     @staticmethod
     def _apply_payload_operation(
@@ -54,14 +57,14 @@ class FlextInfraTomlPhaseOps:
         pfx: str,
     ) -> None:
         """Apply one discriminated TOML operation to one plain mapping table."""
-        match operation.kind:
-            case c.Cli.TomlOperationKind.SET:
+        match operation:
+            case m.Cli.TomlSetOp():
                 if u.Cli.toml_mapping_sync_value(tbl, operation.key, operation.value):
                     out.append(
                         f"{u.Cli.toml_dot_path(pfx, operation.key)} set to "
                         f"{operation.value}"
                     )
-            case c.Cli.TomlOperationKind.LIST:
+            case m.Cli.TomlListOp():
                 if operation.strategy in {
                     c.Cli.TomlMergeMode.ADDITIVE,
                     c.Cli.TomlMergeMode.MERGE,
@@ -74,7 +77,7 @@ class FlextInfraTomlPhaseOps:
                     tbl, operation.key, operation.values, sort_values=operation.sort
                 ):
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
-            case c.Cli.TomlOperationKind.REMOVE:
+            case m.Cli.TomlRemoveOp():
                 FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )

@@ -131,7 +131,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @classmethod
     def _load_mapping_index(
         cls,
-    ) -> p.Result[t.MappingKV[t.StrPair, p.Infra.ClassNestingMapping]]:
+    ) -> p.Result[t.MappingKV[t.StrPair, m.Infra.ClassNestingMapping]]:
         """Load mapping index."""
         mapping_path = Path(__file__).resolve().parent / c.Infra.MAPPINGS_RELATIVE_PATH
         try:
@@ -147,14 +147,14 @@ class FlextInfraRefactorClassNestingAnalyzer:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
                 raw_nesting
             )
-            entries: t.SequenceOf[p.Infra.ClassNestingMapping] = [
+            entries: t.SequenceOf[m.Infra.ClassNestingMapping] = [
                 m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
             ]
         except c.ValidationError as exc:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
                 str(exc)
             )
-        index: MutableMapping[t.StrPair, p.Infra.ClassNestingMapping] = {}
+        index: MutableMapping[t.StrPair, m.Infra.ClassNestingMapping] = {}
         for entry in entries:
             scope = cls._normalize_rewrite_scope(entry.rewrite_scope)
             norm = u.Infra.normalize_module_path(entry.current_file)

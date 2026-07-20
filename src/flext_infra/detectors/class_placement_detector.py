@@ -246,7 +246,7 @@ class FlextInfraClassPlacementDetector:
         """
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.SYNTAX_ERRORS:
             return ()
         tree = pymodule.get_ast()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
@@ -320,7 +320,7 @@ class FlextInfraClassPlacementDetector:
         """Return module-level type aliases as (name, line) pairs."""
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS:
+        except FlextInfraConstantsRope.SYNTAX_ERRORS:
             return ()
         tree = pymodule.get_ast()
         aliases: list[tuple[str, int]] = []

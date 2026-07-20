@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, override
 
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
@@ -28,6 +28,7 @@ class FlextInfraCli(CliDispatchService):
         CliRouteService.group_commands
     )
 
+    @override
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""
         u.ensure_structlog_configured()
@@ -240,6 +241,7 @@ class FlextInfraCli(CliDispatchService):
             return 1
         return 0
 
+    @override
     def print_help(self) -> None:
         """Display the canonical command groups."""
         self.display_message(
