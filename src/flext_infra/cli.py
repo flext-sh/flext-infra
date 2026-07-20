@@ -24,7 +24,9 @@ class FlextInfraCli(CliDispatchService):
     _HELP_FLAGS: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
     _SHARED_BOOL_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
     _SHARED_VALUE_FLAGS: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
-    _GROUP_COMMANDS = CliRouteService.group_commands
+    _GROUP_COMMANDS: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = (
+        CliRouteService.group_commands
+    )
 
     def main(self, args: t.StrSequence | None = None) -> int:
         """Run the centralized dispatcher."""

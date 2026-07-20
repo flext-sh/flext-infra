@@ -21,8 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, p, u
+from flext_infra import c, p, r, t, u
 from flext_infra.workspace._workspace_makefile_template import (
     FlextInfraWorkspaceMakefileTemplateMixin,
 )

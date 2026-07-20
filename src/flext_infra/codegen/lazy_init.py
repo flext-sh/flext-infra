@@ -261,6 +261,7 @@ class FlextInfraCodegenLazyInit(
         ``ruff format`` per template; validation (``ruff check``) is deferred to
         this single batched stage over the changed artifact set so generation
         spawns one Ruff check subprocess instead of one per generated file.
+
         Returns:
             The number of artifacts that failed the Ruff check.
 

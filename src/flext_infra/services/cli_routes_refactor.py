@@ -32,6 +32,7 @@ from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
 
+
 class RefactorRoutes(CliRouteBase):
     """Own the complete refactor command tuple."""
 

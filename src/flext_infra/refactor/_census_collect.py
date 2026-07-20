@@ -18,8 +18,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
-    *u.Infra.rope_runtime_errors(),
-    *u.Infra.rope_error_types(),
+    # mro-dxrp.8 (Hephaestus): consume the canonical typed Rope error factories.
+    u.Infra.refactoring_error_type(),
+    u.Infra.resource_not_found_error_type(),
+    u.Infra.rope_error_type(),
+    AttributeError,
     RecursionError,
     SyntaxError,
     ValueError,

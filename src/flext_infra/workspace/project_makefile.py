@@ -51,7 +51,7 @@ class FlextInfraProjectMakefileUpdater:
         """
         _ = canonical_root  # reserved for future cross-project dependency resolution
         result: p.Result[bool]
-        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = project_root / c.PYPROJECT_FILENAME
         if not pyproject.exists():
             result = r[bool].ok(False)
         else:

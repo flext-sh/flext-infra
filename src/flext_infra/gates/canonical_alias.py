@@ -61,7 +61,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         )
         if files_result.failure:
             issue = m.Infra.Issue(
-                file=c.Infra.PYPROJECT_FILENAME,
+                file=c.PYPROJECT_FILENAME,
                 line=1,
                 column=1,
                 code=self.gate_id,

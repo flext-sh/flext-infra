@@ -180,6 +180,10 @@ Infra:
               - non-empty-init-module
               - runtime-import-in-type-checking-block
             "**/_utilities/parser.py": [unused-static-method-argument, boolean-type-hint-positional-argument]
+            # rope 1.14 exposes no public API to register patched-AST handlers;
+            # this intentional monkeypatch of rope internals is isolated to the
+            # rope_patch subpackage (mirrors the scoped pyright reportPrivateUsage).
+            "**/rope_patch/*.py": [private-member-access]
             "**/settings.py": [any-type, boolean-type-hint-positional-argument, private-member-access]
             "**/_constants/*.py": [hardcoded-password-string]
             "**/constants.py": [hardcoded-password-string]

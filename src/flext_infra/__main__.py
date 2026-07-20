@@ -7,7 +7,9 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import cli
-from flext_infra import main
+
+# mro-dxrp.8 (Hephaestus): avoid re-entering the root PEP 562 export resolver.
+from flext_infra.cli import main
 
 if __name__ == "__main__":
     cli.exit(main())

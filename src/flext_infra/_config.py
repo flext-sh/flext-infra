@@ -23,7 +23,7 @@ class FlextInfraConfig(FlextCliConfig):
     CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
 
     @cached_property
-    def Infra(self) -> FlextInfraConfigModels.Infra:  # noqa: N802
+    def Infra(self) -> FlextInfraConfigModels.Infra:
         """Validated ``Infra`` business-rule config namespace."""
         root = FlextInfraConfigModels.Root.model_validate(
             dict(self.model_extra or {}),
