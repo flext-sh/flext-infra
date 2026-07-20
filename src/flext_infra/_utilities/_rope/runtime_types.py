@@ -77,6 +77,15 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     rope_error_type = classmethod(
         lambda cls: cls._exception_type("rope.base.exceptions", "RopeError")
     )
+
+    @classmethod
+    def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return recoverable exceptions raised by Rope operations."""
+        return (
+            cls.refactoring_error_type(),
+            cls.resource_not_found_error_type(),
+            AttributeError,
+        )
     abstract_class_type = classmethod(
         lambda cls: cls.runtime_type("rope.base.pyobjects", "AbstractClass")
     )
