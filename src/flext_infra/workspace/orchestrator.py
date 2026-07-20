@@ -11,6 +11,7 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
+from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.workspace._orchestrator_discovery import (
     FlextInfraWorkspaceOrchestratorDiscoveryMixin,
 )
@@ -60,6 +61,11 @@ class FlextInfraOrchestratorService(
             return r[bool].fail("no projects discovered")
 
         workspace_root = self.root
+        base_mk_result = FlextInfraBaseMkValidator(
+            workspace_root=workspace_root
+        ).execute()
+        if base_mk_result.failure:
+            return r[bool].fail(base_mk_result.error or "base.mk validation failed")
         prepare_result = self._prepare_projects(projects, workspace_root=workspace_root)
         if prepare_result.failure:
             return prepare_result

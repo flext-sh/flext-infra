@@ -36,7 +36,10 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             for entry in path.split(c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR)
             if entry and entry not in blocked_path_entries
         )
-        env: dict[str, str] = {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
+        env: dict[str, str] = {
+            c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1",
+            "FLEXT_ORCHESTRATED": "1",
+        }
         if path_entries:
             env[c.Infra.ORCHESTRATOR_ENV_PATH] = (
                 c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(path_entries)

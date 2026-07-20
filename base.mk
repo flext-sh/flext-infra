@@ -173,7 +173,9 @@ endef
 # mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
 define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	if ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)"; then \
+	if [ "$(FLEXT_ORCHESTRATED)" = "1" ]; then \
+		:; \
+	elif ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)"; then \
 		echo "ERROR: [preflight] Canonical base.mk is stale. Run 'make -C $(WORKSPACE_ROOT) build WHAT=sync PROJECT=$(PROJECT_NAME)'."; \
 		exit 1; \
 	fi; \
@@ -547,18 +549,20 @@ test: ## Run pytest only
 		echo "duration_seconds=0" >> "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	if $(PROJECT_INFRA_VALIDATE) pytest-diag \
-		--junit "$$junit_file" --log "$$log_file" \
-		--failed "$$failed_file" --errors "$$errors_file" \
-		--warnings "$$warnings_file" --slowest "$$slowest_file" \
-		--skips "$$skips_file" > "$$counts_file"; then \
-		:; \
-	else \
-		counts_status=$$?; \
-		echo "ERROR: pytest diagnostic extraction failed (exit=$$counts_status)" >&2; \
-		cat "$$counts_file" >&2; \
-		exit "$$counts_status"; \
+	: > "$$failed_file"; : > "$$errors_file"; : > "$$warnings_file"; : > "$$skips_file"; \
+	failed_count=$${failures:-0}; error_count=$${errors:-0}; skipped_count=$${skipped:-0}; \
+	warning_count=0; \
+	if grep -q '^=\+ warnings summary =\+$$' "$$log_file"; then \
+		warning_count=$$(awk '/^=+ warnings summary =+$$/{active=1; next} active && /^=+/{exit} active && /^[^[:space:]].*:[0-9]+: /{count++} END{print count+0}' "$$log_file"); \
 	fi; \
+	grep -E '^FAILED ' "$$log_file" | sed 's/^FAILED //' > "$$failed_file" || true; \
+	grep -E '^ERROR ' "$$log_file" > "$$errors_file" || true; \
+	grep -E '^[^[:space:]].*:[0-9]+: .*Warning:' "$$log_file" > "$$warnings_file" || true; \
+	grep -E '^SKIPPED ' "$$log_file" | sed 's/^SKIPPED //' > "$$skips_file" || true; \
+	grep -E '^[0-9]+\.[0-9]+s (call|setup|teardown) ' "$$log_file" | \
+		awk '{seconds=$$1; phase=$$2; $$1=""; $$2=""; sub(/^  */, ""); print seconds " | " phase " | " $$0}' > "$$slowest_file" || true; \
+	printf 'failed_count=%s\nerror_count=%s\nwarning_count=%s\nskipped_count=%s\n' \
+		"$$failed_count" "$$error_count" "$$warning_count" "$$skipped_count" > "$$counts_file"; \
 	if ! awk ' \
 		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
 		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
