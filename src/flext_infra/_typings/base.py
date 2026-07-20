@@ -26,6 +26,10 @@ class FlextInfraTypesBase:
     type JinjaTemplate = _JinjaTemplate
     "Jinja2 template object."
 
+    # mro-dxrp.3.7 (Sisyphus-Junior): restore the canonical infra payload alias.
+    type InfraValue = t.JsonValue
+    "Canonical infrastructure payload contract from flext-cli JSON typing."
+
     type FacadeFamily = str
     "Facade family identifier for MRO chain resolution."
     type ExpectedBase = type | str

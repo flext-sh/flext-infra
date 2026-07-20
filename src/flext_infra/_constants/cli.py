@@ -70,6 +70,10 @@ class FlextInfraConstantsCli:
     })
     # NOTE (multi-agent, mro-wkii.17.26.2.11 / agent: codex): route membership
     # is structural CLI taxonomy; operator transaction values live in config.
+    # mro-dxrp.3.7 (Sisyphus-Junior): these process-boundary identifiers remain
+    # constants; configurable transaction policy continues to live in config.
+    WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
+    WORKTREE_TRANSACTION_TIMEOUT_SECONDS: Final[int] = 3600
     WORKTREE_TRANSACTION_APPLY_ROUTES: Final[frozenset[str]] = frozenset({
         "check:fix-enforcement",
         "check:fix-pyrefly-settings",

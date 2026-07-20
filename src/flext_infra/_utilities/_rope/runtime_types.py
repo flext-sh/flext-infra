@@ -79,6 +79,11 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
     )
 
     @classmethod
+    def rope_syntax_errors(cls) -> tuple[type[BaseException], ...]:
+        """Return exceptions that signal unparseable Python source."""
+        return (SyntaxError, cls.module_syntax_error_type())
+
+    @classmethod
     def rope_runtime_errors(cls) -> tuple[type[BaseException], ...]:
         """Return recoverable exceptions raised by Rope operations."""
         return (

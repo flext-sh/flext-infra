@@ -25,6 +25,12 @@ class FlextInfraConstantsCodegenLazy:
     "Root public ABI contract module consumed by lazy-init planning."
     ROOT_EXPORTS_DIR: Final[str] = "_constants"
     "Directory under each package where lazy-init registries must live."
+    # mro-dxrp.3.7 (Sisyphus-Junior): restore source-discovery policy at its
+    # canonical lazy-init constants owner.
+    TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
+    )
+    "Test-module filenames forbidden from installable package export maps."
     GENERATED_EXPORT_SIDECAR_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$"
     )
@@ -62,6 +68,12 @@ class FlextInfraConstantsCodegenLazy:
         "scripts/**/__init__.py",
     )
     "Glob patterns for all directories the lazy-init generator scans."
+    NON_PUBLIC_LAZY_ROOTS: Final[frozenset[str]] = frozenset({
+        "examples",
+        "scripts",
+        "tests",
+    })
+    "Root import surfaces generated as private lazy plumbing, not public ABI."
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
         r"^from\s+import\s", re.MULTILINE
     )

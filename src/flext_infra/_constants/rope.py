@@ -9,6 +9,8 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import Final
 
+from rope.base.exceptions import ModuleSyntaxError
+
 
 class FlextInfraConstantsRope:
     """Rope Project configuration constants — accessed via c.Infra.*."""
@@ -60,9 +62,13 @@ class FlextInfraConstantsRope:
         OTHER = "other"
         "Any statement not matched by a more specific category."
 
-    # NOTE (mro-0ftd.3.10.2.4): runtime engine types and exception-boundary
-    # tuples live in u.Infra (FlextInfraUtilitiesRopeRuntimeTypes), not in the
-    # constants layer, to keep c.Infra declarative and cycle-free.
+    # mro-dxrp.3.7 (Sisyphus-Junior): restore the canonical exception boundary
+    # as declaration data; the utility method exposes the same closed tuple.
+    SYNTAX_ERRORS: Final[tuple[type[BaseException], ...]] = (
+        SyntaxError,
+        ModuleSyntaxError,
+    )
+    "Exception types that signal unparseable Python source during Rope operations."
 
     ROPE_IGNORED_RESOURCES: Final[tuple[str, ...]] = (
         ".venv",
