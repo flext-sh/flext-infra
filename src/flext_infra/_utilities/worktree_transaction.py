@@ -435,7 +435,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
     def _check_patches(deltas: t.SequenceOf[p.Infra.RepositoryDelta]) -> p.Result[bool]:
         """Dry-run every patch before any source worktree mutation."""
         for delta in deltas:
-            result = FlextInfraUtilitiesGitScope.git_check_isolated_patch(delta)
+            model_delta = m.Infra.RepositoryDelta.model_validate(delta)
+            result = FlextInfraUtilitiesGitScope.git_check_isolated_patch(model_delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch check failed'}"
@@ -449,7 +450,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
             deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
         )
         for delta in ordered:
-            result = FlextInfraUtilitiesGitScope.git_apply_patch(delta)
+            model_delta = m.Infra.RepositoryDelta.model_validate(delta)
+            result = FlextInfraUtilitiesGitScope.git_apply_patch(model_delta)
             if result.failure:
                 return r[bool].fail(
                     f"{delta.relative_path}: {result.error or 'patch apply failed'}"

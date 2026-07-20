@@ -14,9 +14,6 @@ from typing import Annotated
 from flext_cli import m
 from flext_infra import p, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.refactor_namespace_enforcer import (
-    FlextInfraModelsNamespaceEnforcer,
-)
 
 
 class FlextInfraModelsScan:
@@ -38,12 +35,7 @@ class FlextInfraModelsScan:
             ),
         ] = None
         parse_failures: Annotated[
-            (
-                t.MutableSequenceOf[
-                    FlextInfraModelsNamespaceEnforcer.ParseFailureViolation
-                ]
-                | None
-            ),
+            t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None,
             m.SkipValidation,
             m.Field(
                 description="Shared parse-failure collector across detector passes."

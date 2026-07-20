@@ -623,7 +623,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def build_project_report(
             self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
-        ) -> FlextInfraProtocolsBase.ProjectReportLike:
+        ) -> p.Infra.ProjectDependencyReport:
             """Build project report from deptry issues."""
             ...
 
@@ -1001,6 +1001,11 @@ class FlextInfraProtocolsBase(Protocol):
 
             @property
             def runtime_reference_sites(
+                self,
+            ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
+
+            @property
+            def example_reference_sites(
                 self,
             ) -> t.SequenceOf[p.Infra.Census.ReferenceSite]: ...
 

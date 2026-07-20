@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, m, p, t, u
 from flext_infra.deps._detector_runtime_steps import (
     FlextInfraDependencyDetectorRuntimeSteps,
 )
@@ -25,9 +25,9 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
     def __init__(
         self,
         detector: p.Infra.DetectorRuntime,
-        workspace_report_factory: Callable[..., p.Infra.WorkspaceReport],
-        dependency_limits_factory: Callable[..., p.Infra.DependencyLimitsInfo],
-        pip_check_factory: Callable[..., p.Infra.PipCheckReport],
+        workspace_report_factory: Callable[..., m.Infra.WorkspaceDependencyReport],
+        dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo],
+        pip_check_factory: Callable[..., m.Infra.PipCheckReport],
     ) -> None:
         """Store runtime collaborators used by dependency detection orchestration."""
         self._detector = detector
@@ -100,7 +100,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
         self,
         params: p.Infra.DetectCommand,
         root: Path,
-        report_model: p.Infra.WorkspaceReport,
+        report_model: m.Infra.WorkspaceDependencyReport,
         projects_report: Mapping[str, Mapping[str, t.JsonValue]],
     ) -> p.Result[Path]:
         """Render and persist the canonical workspace dependency report JSON."""

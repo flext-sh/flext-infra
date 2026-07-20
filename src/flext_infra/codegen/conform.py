@@ -727,8 +727,6 @@ class FlextInfraCodegenConform(s[p.Infra.CodegenResult]):
                 pyproject_plan.error or f"pyproject planning failed: {pyproject}"
             )
         planned = [*resource_plans.value, pyproject_plan.value]
-        if surface == c.Infra.CodegenConformSurface.PYPROJECT:
-            return r[t.SequenceOf[p.Infra.CodegenFilePlan]].ok(tuple(planned))
         # NOTE(mro-wkii.17.26, agent codex): retain the 0.12 managed-file
         # contract alongside the 0.20 resource/wheel conformance pipeline.
         managed_result = self._plan_existing_templates(

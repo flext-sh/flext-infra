@@ -10,6 +10,7 @@ from typing import Annotated, override
 
 from flext_cli import cli
 from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._accessor_report import FlextInfraAccessorMigrationReportMixin
 from flext_infra.refactor._accessor_rewrite import (
@@ -126,19 +127,10 @@ class FlextInfraAccessorMigrationOrchestrator(
     @classmethod
     @override
     def execute_command(
-        cls, params: m.Infra.AccessorMigrationInput
+        cls, params: FlextInfraServiceBase[m.Infra.AccessorMigrationReport]
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
-        result = cls(
-            workspace_root=params.workspace_path,
-            selected_projects=params.projects,
-            apply_changes=params.apply,
-            fail_fast=params.fail_fast,
-            target_module=params.module,
-            target_namespace=params.namespace,
-            preview_limit=params.preview_limit,
-            gates=",".join(params.gates),
-        ).execute()
+        result = params.execute()
         if result.failure:
             return r[m.Infra.AccessorMigrationReport].fail(
                 result.error or "accessor migration execution failed"

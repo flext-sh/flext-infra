@@ -94,15 +94,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         """Execute."""
         return self.render_all()
 
-    @staticmethod
-    def _render_template(
-        template: p.Infra.RenderableTemplate,
-        **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type,
-    ) -> str:
-        """Render template."""
-        rendered: str = template.render(**kwargs)
-        return rendered
-
     def render_all(self, settings: p.Infra.BaseMkConfig | None = None) -> p.Result[str]:
         """Render all base.mk templates into a single output string."""
         active_config = settings or self.default_config()
@@ -113,9 +104,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 template: p.Infra.RenderableTemplate = self._environment.get_template(
                     template_name
                 )
-                rendered = self._render_template(
-                    template,
-                    settings=active_config,
+                rendered = template.render(
+                    settings=m.Infra.BaseMkConfig.model_validate(active_config),
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -134,14 +124,24 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             return r[str].fail_op("base.mk template render", exc)
 
     def render_single(
-        self, template_name: str, **kwargs: p.Infra.BaseMkConfig | t.JsonValue | type
+        self,
+        template_name: str,
+        **kwargs: (
+            t.JsonPayload
+            | t.SequenceOf[t.JsonValue]
+            | t.StrPairSequence
+            | t.SequenceOf[t.StrSequencePair]
+            | t.SequenceOf[t.StrPairSequencePair]
+            | t.JsonMapping
+            | type
+        ),
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:
             template: p.Infra.RenderableTemplate = self._environment.get_template(
                 template_name
             )
-            content = self._render_template(template, **kwargs)
+            content = template.render(**kwargs)
             return r[str].ok(content.rstrip("\n"))
         except (TemplateError, OSError, ValueError, TypeError) as exc:
             return r[str].fail_op("template render", exc)

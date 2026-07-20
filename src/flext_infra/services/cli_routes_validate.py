@@ -72,17 +72,13 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
                 model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=lambda params: u.Infra.sync_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
+                handler=lambda params: u.Infra.sync_github_workflows(params),
             ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.LINT_SECTION,
                 help_text="Lint GitHub workflow files",
                 model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=lambda params: u.Infra.lint_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
+                handler=lambda params: u.Infra.lint_github_workflows(params),
             ),
             m.Cli.ResultCommandRoute(
                 name=c.Infra.PR,
@@ -96,9 +92,7 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=lambda params: u.Infra.run_github_workspace_pull_requests(params),
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

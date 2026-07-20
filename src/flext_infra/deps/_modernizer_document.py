@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import tomlkit
 from tomlkit.exceptions import ParseError
-from tomlkit.items import InlineTable, Table
+from tomlkit.items import InlineTable
 
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
@@ -116,8 +116,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     f"inline Ruff per-file-ignore table is unsupported: {path}"
                 )
             return r[str].ok(source)
-        if not isinstance(existing, Table):
-            return r[str].fail(f"invalid Ruff per-file-ignore table: {path}")
         missing = tuple(
             (pattern, rules)
             for pattern, rules in config.Infra.tooling.tools.ruff.lint.per_file_ignores.items()

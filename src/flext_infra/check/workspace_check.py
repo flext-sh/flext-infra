@@ -219,6 +219,8 @@ class FlextInfraWorkspaceChecker(
                             self._workspace_root, project
                         )
                     )
+                case project_target:
+                    targets.append(project_target)
         return tuple(targets)
 
 

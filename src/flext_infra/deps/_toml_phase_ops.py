@@ -48,6 +48,9 @@ class FlextInfraTomlPhaseOps:
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             case m.Cli.TomlRemoveOp():
                 FlextInfraTomlPhaseOps._remove_operation(tbl, operation, out, pfx)
+            case _ as unsupported:
+                msg = f"unsupported TOML operation: {unsupported.kind}"
+                raise TypeError(msg)
 
     @staticmethod
     def _apply_payload_operation(
@@ -81,6 +84,9 @@ class FlextInfraTomlPhaseOps:
                 FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
+            case _ as unsupported:
+                msg = f"unsupported TOML operation: {unsupported.kind}"
+                raise TypeError(msg)
 
     @staticmethod
     def _remove_operation(

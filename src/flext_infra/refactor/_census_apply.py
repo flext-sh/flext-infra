@@ -83,7 +83,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             for fix in project.fixes:
                 requested_fixes[Path(fix.source_file), fix.action].add(fix.object_name)
         for (file_path, action), object_names in requested_fixes.items():
-            parse_failures: list[m.Infra.ParseFailureViolation] = []
+            parse_failures: list[p.Infra.ParseFailureViolation] = []
             ctx = self._detector_context(rope, file_path, parse_failures=parse_failures)
             changed = False
             if action == "rewrite_runtime_alias":
@@ -146,11 +146,16 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 if not private_import_violations:
                     continue
+                concrete_parse_failures = [
+                    m.Infra.ParseFailureViolation.model_validate(failure)
+                    for failure in parse_failures
+                ]
                 u.Infra.rewrite_private_import_bypass_violations(
                     rope_project=ctx.rope_project,
                     violations=private_import_violations,
-                    parse_failures=parse_failures,
+                    parse_failures=concrete_parse_failures,
                 )
+                parse_failures[:] = concrete_parse_failures
                 changed = True
             elif action == "rewrite_mro_completeness":
                 mro_violations = tuple(
@@ -186,11 +191,16 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                 )
                 if not foreign_canonical_violations:
                     continue
+                concrete_parse_failures = [
+                    m.Infra.ParseFailureViolation.model_validate(failure)
+                    for failure in parse_failures
+                ]
                 u.Infra.rewrite_foreign_canonical_alias_violations(
                     rope_project=ctx.rope_project,
                     violations=foreign_canonical_violations,
-                    parse_failures=parse_failures,
+                    parse_failures=concrete_parse_failures,
                 )
+                parse_failures[:] = concrete_parse_failures
                 changed = True
             elif action == "classvar_relocation":
                 changed = self._apply_classvar_relocation(

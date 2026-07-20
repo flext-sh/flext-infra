@@ -254,7 +254,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         gate_instance: FlextInfraGate,
         project_dir: Path,
         ctx: p.Infra.GateContext,
-        gates_sink: MutableMapping[str, p.Infra.GateExecution],
+        gates_sink: MutableMapping[str, m.Infra.GateExecution],
     ) -> t.Cli.PipelineHandler:
         """Build a pipeline stage handler that executes a single gate.
 
@@ -286,7 +286,27 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 else "error",
             )
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
-            gates_sink[gate_id] = execution
+            gates_sink[gate_id] = m.Infra.GateExecution(
+                result=m.Infra.GateResult(
+                    gate=execution.result.gate,
+                    project=execution.result.project,
+                    passed=execution.result.passed,
+                    errors=execution.result.errors,
+                    duration=execution.result.duration,
+                ),
+                issues=tuple(
+                    m.Infra.Issue(
+                        file=issue.file,
+                        line=issue.line,
+                        column=issue.column,
+                        code=issue.code,
+                        message=issue.message,
+                        severity=issue.severity,
+                    )
+                    for issue in execution.issues
+                ),
+                raw_output=execution.raw_output,
+            )
             self._gate_logger.debug(
                 "gate_executed",
                 project=project_name,

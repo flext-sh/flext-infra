@@ -59,20 +59,50 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
 
     def _build_codegen_stages(self) -> t.SequenceOf[p.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
-        handlers = {
-            str(c.Infra.PipelineStage.DISCOVER): self._stage_discover,
-            str(c.Infra.PipelineStage.TOOLCHAIN): self._stage_toolchain,
-            str(c.Infra.PipelineStage.PY_TYPED): self._stage_py_typed,
-            str(c.Infra.PipelineStage.CENSUS_BEFORE): self._stage_census_before,
-            str(c.Infra.PipelineStage.SCAFFOLD): self._stage_scaffold,
-            str(c.Infra.PipelineStage.AUTO_FIX): self._stage_auto_fix,
-            str(c.Infra.PipelineStage.DEPS): self._stage_deps,
-            str(c.Infra.PipelineStage.LAZY_INIT): self._stage_lazy_init,
-            str(c.Infra.PipelineStage.CENSUS_AFTER): self._stage_census_after,
+        handlers: t.Cli.PipelineHandlerMap = {
+            str(c.Infra.PipelineStage.DISCOVER): lambda ctx: self._protocol_stage(
+                self._stage_discover, ctx
+            ),
+            str(c.Infra.PipelineStage.TOOLCHAIN): lambda ctx: self._protocol_stage(
+                self._stage_toolchain, ctx
+            ),
+            str(c.Infra.PipelineStage.PY_TYPED): lambda ctx: self._protocol_stage(
+                self._stage_py_typed, ctx
+            ),
+            str(c.Infra.PipelineStage.CENSUS_BEFORE): lambda ctx: self._protocol_stage(
+                self._stage_census_before, ctx
+            ),
+            str(c.Infra.PipelineStage.SCAFFOLD): lambda ctx: self._protocol_stage(
+                self._stage_scaffold, ctx
+            ),
+            str(c.Infra.PipelineStage.AUTO_FIX): lambda ctx: self._protocol_stage(
+                self._stage_auto_fix, ctx
+            ),
+            str(c.Infra.PipelineStage.DEPS): lambda ctx: self._protocol_stage(
+                self._stage_deps, ctx
+            ),
+            str(c.Infra.PipelineStage.LAZY_INIT): lambda ctx: self._protocol_stage(
+                self._stage_lazy_init, ctx
+            ),
+            str(c.Infra.PipelineStage.CENSUS_AFTER): lambda ctx: self._protocol_stage(
+                self._stage_census_after, ctx
+            ),
         }
         retry_by_stage: t.Cli.PipelineRetryMap = {c.Infra.PipelineStage.AUTO_FIX: 1}
         return cli.linear_pipeline(
             c.Infra.PIPELINE_STAGE_ORDER, handlers, retry_by_stage=retry_by_stage
+        )
+
+    @staticmethod
+    def _protocol_stage(
+        handler: Callable[
+            [p.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]
+        ],
+        context: p.Cli.PipelineStageContext,
+    ) -> p.Result[p.Cli.PipelineStageResult]:
+        """Preserve a concrete stage result behind the public protocol contract."""
+        return r[p.Cli.PipelineStageResult].create_from_callable(
+            lambda: handler(context).unwrap()
         )
 
     # ------------------------------------------------------------------

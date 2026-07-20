@@ -125,11 +125,13 @@ class FlextInfraWorkspaceCheckReportsMixin:
                 md_write_result.error or "failed to write markdown report"
             )
         sarif_path = report_base / "check-report.sarif"
-        sarif_report = FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
-            results, resolved_gates
+        sarif_report = m.Infra.SarifReport.model_validate(
+            FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
+                results, resolved_gates
+            )
         )
         try:
-            u.Infra.export_pydantic_json(sarif_report, sarif_path)
+            u.Cli.json_write(sarif_path, sarif_report.model_dump(mode="json"))
         except OSError as exc:
             return r[t.SequenceOf[p.Infra.ProjectResult]].fail(
                 f"failed to write sarif report: {exc}"

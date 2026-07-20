@@ -10,15 +10,15 @@ from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, p, t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
     """Mixin holding environment setup and per-project detection steps."""
 
     _detector: p.Infra.DetectorRuntime
-    _dependency_limits_factory: Callable[..., p.Infra.DependencyLimitsInfo]
-    _pip_check_factory: Callable[..., p.Infra.PipCheckReport]
+    _dependency_limits_factory: Callable[..., m.Infra.DependencyLimitsInfo]
+    _pip_check_factory: Callable[..., m.Infra.PipCheckReport]
 
     def _validate_environment(
         self, params: p.Infra.DetectCommand, root: Path, venv_bin: Path
@@ -50,7 +50,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         self,
         typing_deps: p.Infra.TypingsDepsService | None,
         limits_path: Path,
-        report_model: p.Infra.WorkspaceReport,
+        report_model: m.Infra.WorkspaceDependencyReport,
     ) -> p.Result[bool]:
         """Load dependency-limits TOML and seed the workspace report's limits info."""
         if typing_deps is None:
@@ -93,7 +93,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             return r[bool].fail(deptry_result.error or "deptry run failed")
         issues, _ = deptry_result.value
         project_payload = deps_service.build_project_report(project_name, issues)
-        projects_report[project_name] = dict(project_payload.model_dump())
+        projects_report[project_name] = dict(
+            m.Infra.ProjectDependencyReport.model_validate(project_payload).model_dump()
+        )
         run_typings_for_project = (
             do_typings
             and typing_deps is not None
@@ -161,7 +163,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         root: Path,
         venv_bin: Path,
         params: p.Infra.DetectCommand,
-        report_model: p.Infra.WorkspaceReport,
+        report_model: m.Infra.WorkspaceDependencyReport,
     ) -> p.Result[bool]:
         """Execute workspace ``pip check`` and stamp the report."""
         if params.no_pip_check:

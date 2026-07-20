@@ -1228,22 +1228,6 @@ class FlextInfraProtocolsValidate(Protocol):
         def origin(self) -> str: ...
 
     @runtime_checkable
-    class AuditScopeParams(p.BaseModel, Protocol):
-        """Bundled parameters for a single audit scope run."""
-
-        @property
-        def check(self) -> str: ...
-
-        @property
-        def strict(self) -> bool: ...
-
-        @property
-        def docstring_min(self) -> float | None: ...
-
-        @property
-        def budgets(self) -> t.JsonValue | None: ...
-
-    @runtime_checkable
     class CheckProjectTarget(p.BaseModel, Protocol):
         """Resolved project target for workspace gate execution."""
 
@@ -1335,92 +1319,6 @@ class FlextInfraProtocolsValidate(Protocol):
 
         @property
         def package_name(self) -> str: ...
-
-    @runtime_checkable
-    class DocsPhaseItemModel(p.BaseModel, Protocol):
-        """Unified item payload for docs phase reports."""
-
-        @property
-        def phase(self) -> str: ...
-
-        @property
-        def file(self) -> str: ...
-
-        @property
-        def issue_type(self) -> str: ...
-
-        @property
-        def severity(self) -> str: ...
-
-        @property
-        def message(self) -> str: ...
-
-        @property
-        def links(self) -> int: ...
-
-        @property
-        def toc(self) -> int: ...
-
-        @property
-        def codeblocks(self) -> int: ...
-
-        @property
-        def path(self) -> str: ...
-
-        @property
-        def written(self) -> bool: ...
-
-    @runtime_checkable
-    class DocsPhaseReport(p.BaseModel, Protocol):
-        """Unified report payload for docs phases (declaration only)."""
-
-        @property
-        def phase(self) -> str: ...
-
-        @property
-        def scope(self) -> str: ...
-
-        @property
-        def result(self) -> str: ...
-
-        @property
-        def reason(self) -> str: ...
-
-        @property
-        def message(self) -> str: ...
-
-        @property
-        def site_dir(self) -> str: ...
-
-        @property
-        def checks(self) -> t.StrSequence: ...
-
-        @property
-        def strict(self) -> bool: ...
-
-        @property
-        def passed(self) -> bool: ...
-
-        @property
-        def changed_files(self) -> int: ...
-
-        @property
-        def applied(self) -> bool: ...
-
-        @property
-        def generated(self) -> int: ...
-
-        @property
-        def source(self) -> str: ...
-
-        @property
-        def missing_adr_skills(self) -> t.StrSequence: ...
-
-        @property
-        def todo_written(self) -> bool: ...
-
-        @property
-        def items(self) -> FlextInfraProtocolsValidate.DocsPhaseItemModel: ...
 
     @runtime_checkable
     class FacadeStatus(p.BaseModel, Protocol):
@@ -1571,7 +1469,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def total_scripts(self) -> int: ...
 
         @property
-        def reports_written(self) -> t.JsonValue: ...
+        def reports_written(self) -> t.MutableSequenceOf[str]: ...
 
     @runtime_checkable
     class MROFileMigration(p.BaseModel, Protocol):
@@ -1584,10 +1482,10 @@ class FlextInfraProtocolsValidate(Protocol):
         def module(self) -> str: ...
 
         @property
-        def moved_symbols(self) -> t.JsonValue: ...
+        def moved_symbols(self) -> t.VariadicTuple[str]: ...
 
         @property
-        def created_classes(self) -> t.JsonValue: ...
+        def created_classes(self) -> t.VariadicTuple[str]: ...
 
     @runtime_checkable
     class MROMigrationReport(p.BaseModel, Protocol):
@@ -2355,7 +2253,7 @@ class FlextInfraProtocolsValidate(Protocol):
         def project(self) -> str: ...
 
         @property
-        def mypy_hints(self) -> t.JsonValue: ...
+        def mypy_hints(self) -> t.MutableSequenceOf[str]: ...
 
         @property
         def internal_missing(self) -> t.JsonValue: ...

@@ -224,7 +224,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         project_dir: Path,
         violations: t.SequenceOf[tuple[p.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: p.Infra.FixEnforcementCommand,
-        detector: Callable[[p.Infra.DetectorContext], t.SequenceOf[V]],
+        detector: Callable[[m.Infra.DetectorContext], t.SequenceOf[V]],
         filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
         rewrite: Callable[[t.SequenceOf[V]], None],
         empty_reason: str,

@@ -124,7 +124,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     def analyze(
         self, project_dir: Path, workspace_root: Path
-    ) -> p.Result[p.Infra.StubAnalysisReport]:
+    ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze a project for missing typed dependencies.
 
         Runs mypy for hints and pyrefly for missing imports, then
@@ -141,7 +141,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         try:
             return self._analyze_project(project_dir, workspace_root)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[p.Infra.StubAnalysisReport].fail(
+            return r[m.Infra.StubAnalysisReport].fail(
                 f"typed dependency analysis failed for {project_dir.name}: {exc}"
             )
 
@@ -188,13 +188,13 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     def _analyze_project(
         self, project_dir: Path, workspace_root: Path
-    ) -> p.Result[p.Infra.StubAnalysisReport]:
+    ) -> p.Result[m.Infra.StubAnalysisReport]:
         """Analyze one project after path resolution."""
         _ = workspace_root
         proj = project_dir.resolve()
         mypy_result = self._run_mypy_hints(proj)
         if mypy_result.failure:
-            return r[p.Infra.StubAnalysisReport].fail(
+            return r[m.Infra.StubAnalysisReport].fail(
                 mypy_result.error or "bounded Mypy analysis failed"
             )
         mypy_hints = mypy_result.value
@@ -202,7 +202,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         internal, unresolved = self._classify_missing_imports(
             missing_imports, proj.name
         )
-        return r[p.Infra.StubAnalysisReport].ok(
+        return r[m.Infra.StubAnalysisReport].ok(
             m.Infra.StubAnalysisReport(
                 project=proj.name,
                 mypy_hints=mypy_hints,

@@ -115,7 +115,10 @@ class FlextInfraEnforcementSourceCollectors(
                 )
                 for rule in rules:
                     try:
-                        detected = self.detect_declarative(rule, ctx)
+                        detected = self.detect_declarative(
+                            rule,
+                            m.Infra.DetectorContext.model_validate(ctx),
+                        )
                     except c.EXC_BROAD_RUNTIME as exc:
                         failures.append(
                             self.collection_failure(

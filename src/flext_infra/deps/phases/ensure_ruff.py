@@ -67,9 +67,7 @@ class FlextInfraEnsureRuffConfigPhase:
         effective_src = sorted(ruff_cfg.src)
         # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
-        effective_ignore = tuple(
-            sorted({*ruff_cfg.lint.ignore, *ruff_cfg.lint.ignored_rule_rationales})
-        )
+        effective_ignore = tuple(sorted(ruff_cfg.lint.ignore))
         detected_packages = sorted({
             *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path.parent),
