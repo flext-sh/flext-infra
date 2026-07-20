@@ -961,9 +961,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             read.value, config.make.custom_handler_policy
         )
         if validation.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                validation.error or f"invalid custom Make handlers: {path}"
+            diagnostic = validation.error or f"invalid custom Make handlers: {path}"
+            rejection_path = Path(f"{path}.rej")
+            u.Cli.warning(f"{diagnostic}; review proposed rejection: {rejection_path}")
+            rejection = u.Cli.atomic_write_text_file(
+                rejection_path,
+                f"--- {path}\n+++ {rejection_path}\n@@ rejected custom Make surface @@\n{diagnostic}\n",
             )
+            if rejection.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    rejection.error or f"custom Make rejection write failed: {rejection_path}"
+                )
         digest = u.Cli.sha256_content(read.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((
             m.Infra.CodegenFilePlan(

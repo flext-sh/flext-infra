@@ -325,5 +325,110 @@ class TestCodegenConform:
         )
         tm.ok(process)
 
+    def test_invalid_public_custom_make_is_preserved_with_rejection(
+        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        root = infra_git_repo
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        custom = root / "custom.mk"
+        content = ".PHONY: public-handler\npublic-handler:\n\t@true\n"
+        tm.ok(u.Cli.atomic_write_text_file(custom, content))
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(result)
+        output = capsys.readouterr().out
+        rejection = Path(f"{custom}.rej")
+        tm.that("WARN:" in output, eq=True)
+        tm.that("custom.mk line 1 is not a private custom handler" in output, eq=True)
+        tm.that(rejection.is_file(), eq=True)
+        tm.that(
+            "custom.mk line 1 is not a private custom handler"
+            in rejection.read_text(),
+            eq=True,
+        )
+        tm.that(custom.read_text(), eq=content)
+
+    def test_valid_private_custom_make_has_no_rejection(
+        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        root = infra_git_repo
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        custom = root / "custom.mk"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                custom,
+                ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n",
+            )
+        )
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(result)
+        tm.that("WARN:" in capsys.readouterr().out, eq=False)
+        tm.that(Path(f"{custom}.rej").exists(), eq=False)
+
+    def test_non_regular_custom_make_remains_fatal(self, infra_git_repo: Path) -> None:
+        root = infra_git_repo
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        tm.ok(u.Cli.files_delete(root / "custom.mk"))
+        (root / "custom.mk").mkdir()
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.fail(result)
+        tm.that(
+            result.error,
+            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
+        )
+
 
 __all__: list[str] = []
