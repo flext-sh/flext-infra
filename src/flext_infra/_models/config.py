@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal
 
@@ -584,6 +585,22 @@ class FlextInfraConfigModels:
             Path, m.Field(description="Repository-relative manifest path")
         ]
 
+    class CodegenVscodeSpec(_ConfigContract):
+        """Fully modeled content of the ``vscode`` section of ``config/codegen.yaml``."""
+
+        scalar_settings: Annotated[
+            Mapping[str, str | bool],
+            m.Field(description="VS Code scalar keys enforced on every project"),
+        ]
+        list_settings: Annotated[
+            Mapping[str, tuple[str, ...]],
+            m.Field(description="VS Code list keys enforced on every project"),
+        ]
+        map_union_settings: Annotated[
+            Mapping[str, Mapping[str, str | bool]],
+            m.Field(description="VS Code map keys union-merged over project settings"),
+        ]
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -603,6 +620,10 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make contract"),
+        ]
+        vscode: Annotated[
+            FlextInfraConfigModels.CodegenVscodeSpec,
+            m.Field(description="Canonical VS Code settings merge contract"),
         ]
         managed_files: Annotated[
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
