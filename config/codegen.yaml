@@ -222,7 +222,19 @@ Infra:
             - .coverage
             - htmlcov/
         - name: FLEXT
-          patterns: [.venv/, .reports/, "*.tpl.rej"]
+          patterns:
+            - .venv/
+            - .reports/
+            - "*.tpl.rej"
+            - "*.bak"
+            - history.json
+            - .flext-deps
+            - .archive
+            - .ropeproject/
+            - api-reference/
+            - docs/api-reference/
+            - site/
+            - _build/
         - name: Environment and secrets
           patterns: [.env, .env.*]
         - name: Editors
