@@ -257,7 +257,7 @@ Infra:
         policy: create-only
       - path: Makefile
         owner: make
-        policy: delegated
+        policy: full
       - path: README.md
         owner: codegen
         policy: create-only

@@ -211,7 +211,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"repository planning failed: {repository_root}"
                 )
             governed = self._complete_governed_plans(
-                repository_root, repository_plan.value, config_spec
+                repository_root, repository_plan.value, config_spec, surface
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -243,8 +243,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
+        surface: c.Infra.CodegenConformSurface = (
+            c.Infra.CodegenConformSurface.ALL
+        ),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Attach ownership metadata and represent every governed root artifact."""
+        """Attach ownership metadata and represent every governed root artifact.
+
+        Only the ``ALL`` surface completes the full governed set; the
+        pyproject-scoped surfaces (``DEPENDENCIES``/``PYPROJECT``) keep the plan
+        restricted to what their own planners already produced.
+        """
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
@@ -260,6 +268,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     update={"owner": governed.owner, "policy": governed.policy}
                 )
             )
+        if surface is not c.Infra.CodegenConformSurface.ALL:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
             if relative in represented:
                 continue
