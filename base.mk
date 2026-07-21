@@ -244,6 +244,20 @@ define _run_custom_what
 	$(MAKE) --no-print-directory "$$target"
 endef
 
+# Verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the current
+# WHAT, run that custom handler; otherwise run the builtin implementation. This
+# lets every verb accept project-specific WHATs while preserving builtin WHATs.
+# $(1)=verb, $(2)=builtin impl target.
+define _run_verb_body
+	@verb="$(1)"; impl="$(2)"; what="$(WHAT)"; \
+	if [ -n "$$what" ]; then \
+		custom="_custom_$${verb}_$${what}"; \
+		$(MAKE) --no-print-directory -q "$$custom" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then exec $(MAKE) --no-print-directory "$$custom"; fi; \
+	fi; \
+	exec $(MAKE) --no-print-directory "$$impl"
+endef
+
 help: ## Show commands
 	$(Q)echo "================================================"
 	$(Q)echo "  $(PROJECT_NAME)"
@@ -357,7 +371,7 @@ help: ## Show commands
 
 boot: ## Complete setup
 	$(call _run_verb_hooks,pre,boot,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _boot_impl
+	$(call _run_verb_body,boot,_boot_impl)
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
@@ -380,7 +394,7 @@ _boot_impl:
 
 build: ## Build distributable artifacts
 	$(call _run_verb_hooks,pre,build,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _build_impl
+	$(call _run_verb_body,build,_build_impl)
 	$(call _run_verb_hooks,post,build,$(WHAT))
 
 _build_impl:
@@ -390,7 +404,7 @@ _build_impl:
 
 check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
 	$(call _run_verb_hooks,pre,check,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _check_impl
+	$(call _run_verb_body,check,_check_impl)
 	$(call _run_verb_hooks,post,check,$(WHAT))
 
 _check_impl:
@@ -454,7 +468,7 @@ _check_impl:
 
 fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, PROJECTS=..., RULES=...)
 	$(call _run_verb_hooks,pre,fix-enforcement,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _fix_enforcement_impl
+	$(call _run_verb_body,fix-enforcement,_fix_enforcement_impl)
 	$(call _run_verb_hooks,post,fix-enforcement,$(WHAT))
 
 _fix_enforcement_impl:
@@ -469,7 +483,7 @@ _fix_enforcement_impl:
 
 scan: ## Run all security checks
 	$(call _run_verb_hooks,pre,scan,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _scan_impl
+	$(call _run_verb_body,scan,_scan_impl)
 	$(call _run_verb_hooks,post,scan,$(WHAT))
 
 _scan_impl:
@@ -486,7 +500,7 @@ _scan_impl:
 
 fmt: ## Run code formatting (ruff + markdownlint on tracked files)
 	$(call _run_verb_hooks,pre,fmt,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _fmt_impl
+	$(call _run_verb_body,fmt,_fmt_impl)
 	$(call _run_verb_hooks,post,fmt,$(WHAT))
 
 _fmt_impl:
@@ -533,7 +547,7 @@ _fmt_impl:
 
 docs: ## Build docs
 	$(call _run_verb_hooks,pre,docs,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _docs_impl
+	$(call _run_verb_body,docs,_docs_impl)
 	$(call _run_verb_hooks,post,docs,$(WHAT))
 
 _docs_impl:
@@ -568,7 +582,7 @@ _docs_impl:
 # kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
 docs-serve: ## Serve documentation via the flext-infra docs engine
 	$(call _run_verb_hooks,pre,docs-serve,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _docs_serve_impl
+	$(call _run_verb_body,docs-serve,_docs_serve_impl)
 	$(call _run_verb_hooks,post,docs-serve,$(WHAT))
 
 _docs_serve_impl:
@@ -577,7 +591,7 @@ _docs_serve_impl:
 
 test: ## Run pytest only
 	$(call _run_verb_hooks,pre,test,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _test_impl
+	$(call _run_verb_body,test,_test_impl)
 	$(call _run_verb_hooks,post,test,$(WHAT))
 
 _test_impl:
@@ -689,7 +703,7 @@ _test_impl:
 
 val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1)
 	$(call _run_verb_hooks,pre,val,$(WHAT))
-	$(Q)$(MAKE) --no-print-directory _val_impl
+	$(call _run_verb_body,val,_val_impl)
 	$(call _run_verb_hooks,post,val,$(WHAT))
 
 _val_impl:

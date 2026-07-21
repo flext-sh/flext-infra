@@ -249,6 +249,49 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(order == sorted(order), eq=True)
         tm.that(result.stdout + result.stderr, has="DIAG COMPLETED")
 
+    def test_make_verbs_dispatch_custom_what_handlers(self, tmp_path: Path) -> None:
+        """Every verb runs _custom_<verb>_<what> from custom.mk for a custom WHAT."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: _custom_build_proto _custom_test_dbt _custom_docs_dbt "
+            "_custom_run_x\n"
+            "_custom_build_proto:\n\t@echo CUSTOM_BUILD_PROTO\n"
+            "_custom_test_dbt:\n\t@echo CUSTOM_TEST_DBT\n"
+            "_custom_docs_dbt:\n\t@echo CUSTOM_DOCS_DBT\n"
+            "_custom_run_x:\n\t@echo CUSTOM_RUN_X\n",
+            encoding="utf-8",
+        )
+        for verb, what, marker in (
+            ("build", "proto", "CUSTOM_BUILD_PROTO"),
+            ("test", "dbt", "CUSTOM_TEST_DBT"),
+            ("docs", "dbt", "CUSTOM_DOCS_DBT"),
+            ("run", "x", "CUSTOM_RUN_X"),
+        ):
+            result = _run_make(tmp_path, verb, f"WHAT={what}")
+            output = result.stdout + result.stderr
+            tm.that(result.exit_code, eq=0)
+            tm.that(output, has=marker)
+
+    def test_make_run_verb_requires_and_validates_what(self, tmp_path: Path) -> None:
+        """run needs WHAT and fails clearly when the custom handler is absent."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text("# no handlers\n", encoding="utf-8")
+        no_what = _run_make(tmp_path, "run")
+        tm.that(no_what.exit_code, ne=0)
+        tm.that(no_what.stdout + no_what.stderr, has="requires WHAT")
+        missing = _run_make(tmp_path, "run", "WHAT=nope")
+        tm.that(missing.exit_code, ne=0)
+        tm.that(missing.stdout + missing.stderr, has="no custom handler")
+
+
     def test_make_build_uses_mise_uv_and_propagates_failure(
         self, tmp_path: Path
     ) -> None:
