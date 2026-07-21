@@ -54,12 +54,15 @@ class FlextInfraEnsurePackagingPhase:
     ) -> t.StrSequence:
         """Emit bounded build targets for a distributable project.
 
-        The workspace root is not a distributable package, so it is skipped.
-        Only data directories that actually exist at the project root are
-        force-included, keeping the wheel free of phantom paths.
+        Projects whose distribution name resolves to ``src/<name>`` build via
+        hatchling default file selection and need no explicit targets (the
+        workspace root is the canonical case). Standalone projects whose
+        import package differs from the distribution name (e.g. cosmos-docgen
+        shipping ``src/dcdoc``) must receive explicit bounded targets, or
+        hatchling cannot determine the wheel contents. Only data directories
+        that actually exist at the project root are force-included, keeping
+        the wheel free of phantom paths.
         """
-        if is_root:
-            return ()
         project_dir = path.parent
         docs_meta = u.Infra.docs_meta_from_payload(payload)
         package_name = u.Infra.package_name_from_payload(
@@ -68,6 +71,12 @@ class FlextInfraEnsurePackagingPhase:
         if not package_name:
             return ()
         package_root = project_dir / c.Infra.DEFAULT_SRC_DIR / package_name
+        if is_root:
+            project_name = u.Infra.project_name_from_payload(path, payload).replace(
+                "-", "_"
+            )
+            if (project_dir / c.Infra.DEFAULT_SRC_DIR / project_name).is_dir():
+                return ()
         tool = u.Cli.json_as_mapping(payload.get(c.Infra.TOOL))
         hatch = u.Cli.json_as_mapping(tool.get("hatch"))
         build = u.Cli.json_as_mapping(hatch.get("build"))
