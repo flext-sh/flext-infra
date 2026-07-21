@@ -172,6 +172,83 @@ def _run_make(
 class TestsFlextInfraBasemkMakeContract:
     """Behavior contract for test_make_contract."""
 
+    def test_make_verb_runs_pre_and_post_hooks_from_custom_mk(
+        self, tmp_path: Path
+    ) -> None:
+        """A member verb runs custom.mk pre-<verb> and post-<verb> around its body."""
+        log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        _write_stubs(bin_dir, log_path)
+        _write_project(tmp_path)
+        _write_venv_python_stub(tmp_path, log_path)
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "demo.py").write_text("x = 1\n", encoding="utf-8")
+        # Real member Makefiles -include custom.mk (see flext-core/Makefile);
+        # replicate that so the verb hook seam can see the custom hooks.
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: pre-check post-check\n"
+            "pre-check:\n\t@echo HOOK_PRE_CHECK\n"
+            "post-check:\n\t@echo HOOK_POST_CHECK\n",
+            encoding="utf-8",
+        )
+        result = _run_make(
+            tmp_path,
+            "check",
+            "FILE=src/demo.py",
+            "CHECK_GATES=mypy",
+            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+        )
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, eq=0)
+        pre_at = output.find("HOOK_PRE_CHECK")
+        post_at = output.find("HOOK_POST_CHECK")
+        tm.that(pre_at >= 0 and post_at >= 0, eq=True)
+        tm.that(pre_at < post_at, eq=True)
+
+    def test_make_verb_runs_what_scoped_and_verb_wide_hooks_in_order(
+        self, tmp_path: Path
+    ) -> None:
+        """pre/post hooks run verb-wide and WHAT-scoped, ordered around the body."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=(
+                "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
+            ),
+            exit_code=0,
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: pre-test post-test pre-test-contract post-test-contract\n"
+            "pre-test:\n\t@echo H_PRE_TEST\n"
+            "pre-test-contract:\n\t@echo H_PRE_TEST_CONTRACT\n"
+            "post-test-contract:\n\t@echo H_POST_TEST_CONTRACT\n"
+            "post-test:\n\t@echo H_POST_TEST\n",
+            encoding="utf-8",
+        )
+        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract", "WHAT=contract")
+        tm.that(result.exit_code, eq=0)
+        # The pytest body reports DIAG on stderr; the four hooks print on stdout.
+        # Assert the hook ordering on stdout (verb-wide before WHAT-scoped for pre,
+        # WHAT-scoped before verb-wide for post) and that the body actually ran.
+        stdout = result.stdout
+        order = [
+            stdout.find("H_PRE_TEST"),
+            stdout.find("H_PRE_TEST_CONTRACT"),
+            stdout.find("H_POST_TEST_CONTRACT"),
+            stdout.find("H_POST_TEST"),
+        ]
+        tm.that(all(position >= 0 for position in order), eq=True)
+        tm.that(order == sorted(order), eq=True)
+        tm.that(result.stdout + result.stderr, has="DIAG COMPLETED")
+
     def test_make_build_uses_mise_uv_and_propagates_failure(
         self, tmp_path: Path
     ) -> None:
