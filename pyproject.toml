@@ -222,7 +222,6 @@ local_partial_types = true
 mypy_path = [".", "src"]
 namespace_packages = true
 no_implicit_reexport = true
-overrides = []
 plugins = ["pydantic.mypy", "returns.contrib.mypy.returns_plugin"]
 python_version = "3.13"
 strict_equality = true
@@ -230,6 +229,14 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+disable_error_code = ["arg-type"]
+module = ["*.cli"]
+
+[[tool.mypy.overrides]]
+disable_error_code = ["unreachable"]
+module = ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
 
 [tool.poetry]
 
@@ -262,7 +269,13 @@ project-excludes = [
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
-search-path = [".", "src"]
+search-path = [
+  ".",
+  "../flext-cli/src",
+  "../flext-core/src",
+  "../flext-tests/src",
+  "src",
+]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -516,7 +529,7 @@ exclude = [
 ]
 fix = false
 line-length = 88
-namespace-packages = ["tests"]
+namespace-packages = ["examples", "scripts", "tests"]
 preview = true
 respect-gitignore = true
 show-fixes = true
