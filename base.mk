@@ -227,6 +227,23 @@ define _run_verb_hooks
 	done
 endef
 
+# Custom-WHAT dispatch: run the custom.mk handler _custom_<verb>_<what> when it
+# exists. Used by the generic `run` verb and by any verb given a WHAT that has no
+# builtin meaning. $(1)=verb, $(2)=what. Fails clearly if the handler is absent.
+define _run_custom_what
+	@verb="$(1)"; what="$(2)"; \
+	if [ -z "$$what" ]; then \
+		printf 'ERROR: make %s requires WHAT=<action>\n' "$$verb" >&2; exit 2; \
+	fi; \
+	target="_custom_$${verb}_$${what}"; \
+	$(MAKE) --no-print-directory -q "$$target" >/dev/null 2>&1; rc=$$?; \
+	if [ "$$rc" -eq 2 ]; then \
+		printf 'ERROR: no custom handler %s for make %s WHAT=%s (define it in custom.mk)\n' "$$target" "$$verb" "$$what" >&2; \
+		exit 2; \
+	fi; \
+	$(MAKE) --no-print-directory "$$target"
+endef
+
 help: ## Show commands
 	$(Q)echo "================================================"
 	$(Q)echo "  $(PROJECT_NAME)"
@@ -699,6 +716,11 @@ _val_impl:
 	if echo "$$gates" | grep -qw docstring; then \
 		$(PROJECT_INFRA_DOCS) audit --workspace . --checks docstrings --docstring-min $(DOCSTRING_MIN) --output-dir .reports/docs; \
 	fi
+
+run: ## Run a project-specific action (WHAT=<action> -> _custom_run_<action> in custom.mk)
+	$(call _run_verb_hooks,pre,run,$(WHAT))
+	$(call _run_custom_what,run,$(WHAT))
+	$(call _run_verb_hooks,post,run,$(WHAT))
 
 daemon-start-mypy: ## Start dmypy daemon for this project
 	$(Q)mkdir -p .dmypy
