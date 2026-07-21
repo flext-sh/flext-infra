@@ -61,7 +61,9 @@ class FlextInfraUtilitiesRopeCore(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
-                ignored_resources=sorted(config.Infra.source_scan.ignored_resources),
+                # NOTE (mro-jnm1.1 / mro-jnm1.4): ignore names derive from the
+                # codegen artifact SSOT (single source, no per-consumer copies).
+                ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                 source_folders=source_folders,
             )
             return project

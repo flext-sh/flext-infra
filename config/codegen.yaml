@@ -95,6 +95,58 @@ Infra:
         allow_setup_declarations: false
         allow_help_declarations: false
 
+    # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
+    # resources. VS Code files.exclude/search.exclude (vscode_exclude),
+    # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
+    # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
+    # computed fields. Add a tool cache/build dir here only — never in the
+    # consuming projections. Ordering reproduces the historical derived maps.
+    artifacts:
+      - {name: __pycache__, source_scan_ignore: true}
+      - {name: __pyrefly_virtual__}
+      - {name: .agents}
+      - {name: .beads}
+      - {name: .benchmarks}
+      - {name: .cache, source_scan_ignore: true}
+      # mro-j47u: agent worktrees are duplicate repositories, never production input.
+      - {name: .claude, source_scan_ignore: true}
+      - {name: .code-review-graph}
+      - {name: .codegraph}
+      - {name: .dolt}
+      - {name: .dolt_dropped_databases}
+      - {name: .doltcfg}
+      - {name: .git, source_scan_ignore: true}
+      - {name: .mypy_cache, source_scan_ignore: true}
+      - {name: .omo}
+      - {name: .pylance_cache, vscode_exclude: false}
+      - {name: .pytest_cache, source_scan_ignore: true}
+      - {name: .reports, source_scan_ignore: true}
+      - {name: .ropeproject}
+      - {name: .ruff_cache, source_scan_ignore: true}
+      - {name: .scope}
+      - {name: .serena}
+      - {name: .sisyphus}
+      - {name: .state}
+      - {name: .superpowers}
+      - {name: .trash}
+      - {name: .turbo}
+      - {name: .venv, source_scan_ignore: true}
+      - {name: .venv.*}
+      - {name: '*.egg-info', vscode_exclude: false}
+      - {name: build, source_scan_ignore: true}
+      - {name: dist, source_scan_ignore: true}
+      - {name: node_modules, source_scan_ignore: true}
+      - {name: site, watch_exclude: false}
+      - {name: target}
+      - {name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: conftest.py, is_dir: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: dist-packages, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: legado, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: site-packages, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: vendor, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: venv, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+
     vscode:
       # Canonical .vscode/settings.json content injected with merge semantics:
       # scalar/list keys are enforced, map keys are union-merged (project entries
@@ -120,109 +172,6 @@ Infra:
           - ./*/.venv
           - ./apps/*/.venv
       map_union_settings:
-        files.exclude:
-          '**/__pycache__': true
-          '**/__pyrefly_virtual__': true
-          '**/.agents': true
-          '**/.beads': true
-          '**/.benchmarks': true
-          '**/.cache': true
-          '**/.claude': true
-          '**/.code-review-graph': true
-          '**/.codegraph': true
-          '**/.dolt': true
-          '**/.dolt_dropped_databases': true
-          '**/.doltcfg': true
-          '**/.git': true
-          '**/.mypy_cache': true
-          '**/.omo': true
-          '**/.pytest_cache': true
-          '**/.reports': true
-          '**/.ropeproject': true
-          '**/.ruff_cache': true
-          '**/.scope': true
-          '**/.serena': true
-          '**/.sisyphus': true
-          '**/.state': true
-          '**/.superpowers': true
-          '**/.trash': true
-          '**/.turbo': true
-          '**/.venv': true
-          '**/.venv.*': true
-          '**/build': true
-          '**/dist': true
-          '**/node_modules': true
-          '**/site': true
-          '**/target': true
-        files.watcherExclude:
-          '**/__pycache__/**': true
-          '**/__pyrefly_virtual__/**': true
-          '**/.agents/**': true
-          '**/.beads/**': true
-          '**/.benchmarks/**': true
-          '**/.cache/**': true
-          '**/.claude/**': true
-          '**/.code-review-graph/**': true
-          '**/.codegraph/**': true
-          '**/.dolt/**': true
-          '**/.dolt_dropped_databases/**': true
-          '**/.doltcfg/**': true
-          '**/.git/**': true
-          '**/.mypy_cache/**': true
-          '**/.omo/**': true
-          '**/.pylance_cache/**': true
-          '**/.pytest_cache/**': true
-          '**/.reports/**': true
-          '**/.ropeproject/**': true
-          '**/.ruff_cache/**': true
-          '**/.scope/**': true
-          '**/.serena/**': true
-          '**/.sisyphus/**': true
-          '**/.state/**': true
-          '**/.superpowers/**': true
-          '**/.trash/**': true
-          '**/.turbo/**': true
-          '**/.venv/**': true
-          '**/.venv.*/**': true
-          '**/*.egg-info/**': true
-          '**/build/**': true
-          '**/dist/**': true
-          '**/node_modules/**': true
-          '**/target/**': true
-        search.exclude:
-          '**/__pycache__': true
-          '**/__pyrefly_virtual__': true
-          '**/.agents': true
-          '**/.beads': true
-          '**/.benchmarks': true
-          '**/.cache': true
-          '**/.claude': true
-          '**/.code-review-graph': true
-          '**/.codegraph': true
-          '**/.dolt': true
-          '**/.dolt_dropped_databases': true
-          '**/.doltcfg': true
-          '**/.git': true
-          '**/.mypy_cache': true
-          '**/.omo': true
-          '**/.pytest_cache': true
-          '**/.reports': true
-          '**/.ropeproject': true
-          '**/.ruff_cache': true
-          '**/.scope': true
-          '**/.serena': true
-          '**/.sisyphus': true
-          '**/.state': true
-          '**/.superpowers': true
-          '**/.trash': true
-          '**/.turbo': true
-          '**/.venv': true
-          '**/.venv.*': true
-          '**/build': true
-          '**/dist': true
-          '**/node_modules': true
-          '**/site': true
-          '**/target': true
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
         terminal.integrated.env.linux:

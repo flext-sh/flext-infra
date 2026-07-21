@@ -18,6 +18,7 @@ legado/
 # ============================================================================
 !src/
 !tests/
+!config/
 !docs/
 !examples/
 !ansible/
@@ -60,6 +61,7 @@ legado/
 # ============================================================================
 !src/**
 !tests/**
+!config/**
 !docs/**
 !examples/**
 !ansible/**
@@ -337,4 +339,3 @@ staging/
 .reports/
 .venv/
 __pycache__/
-base.mk

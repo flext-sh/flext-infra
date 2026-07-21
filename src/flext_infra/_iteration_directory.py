@@ -57,7 +57,7 @@ class FlextInfraUtilitiesIterationDirectory:
             for file_path in files
             if file_path.is_file()
             and file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and not config.Infra.source_scan.ignored_resources.intersection(
+            and not frozenset(config.Infra.codegen.source_scan_ignored).intersection(
                 file_path.relative_to(resolved_directory).parts
             )
         ]

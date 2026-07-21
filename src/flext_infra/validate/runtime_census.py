@@ -150,7 +150,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         real_modules = [
             name
             for name in real_modules
-            if not config.Infra.source_scan.ignored_resources.intersection(
+            if not frozenset(config.Infra.codegen.source_scan_ignored).intersection(
                 name.split(".")
             )
         ]

@@ -102,7 +102,17 @@ class FlextInfraWorkspaceVscode:
             list_settings=spec.list_settings,
             workspace_root=workspace_root,
         )
-        return cls.apply_union_settings(settings, spec.map_union_settings) or changed
+        # NOTE (mro-jnm1.1 / mro-jnm1.4): the three exclude maps derive from
+        # the codegen artifact SSOT; map_union_settings keeps only the
+        # remaining non-artifact keys.
+        codegen = config.Infra.codegen
+        map_union_settings: dict[str, Mapping[str, str | bool]] = {
+            "files.exclude": dict(codegen.vscode_files_exclude_map),
+            "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
+            "search.exclude": dict(codegen.vscode_search_exclude_map),
+            **spec.map_union_settings,
+        }
+        return cls.apply_union_settings(settings, map_union_settings) or changed
 
     @classmethod
     def apply_enforced_settings(

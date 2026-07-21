@@ -97,7 +97,6 @@ class FlextInfraConstantsWorkspace:
         ".venv/",
         "CLAUDE.local.md",
         "__pycache__/",
-        "base.mk",
         "skill-create-output/",
     )
     GITIGNORE_MANAGED_HEADER: Final[str] = (

@@ -5,31 +5,9 @@ Infra:
     roots:
       - src
       - scripts
-    # Root wrappers are excluded by roots; basename ignores must not hide
-    # legitimate production packages such as src/tests or src/examples.
-    # NOTE (multi-agent, mro-wkii.17.24): resource names are rejected before indexing.
-    ignored_resources:
-      - .cache
-      # mro-j47u: agent worktrees are duplicate repositories, never production input.
-      - .claude
-      - .git
-      - .mypy_cache
-      - .pyrefly_cache
-      - .pytest_cache
-      - .reports
-      - .ruff_cache
-      - .tox
-      - .venv
-      - __pycache__
-      - build
-      - conftest.py
-      - dist
-      - dist-packages
-      - legado
-      - node_modules
-      - site-packages
-      - vendor
-      - venv
+    # NOTE (mro-jnm1.1 / mro-jnm1.4): ignored_resources was removed; the names
+    # now derive from the codegen artifact SSOT (config/codegen.yaml artifacts
+    # with source_scan_ignore=true) via CodegenConfigSpec.source_scan_ignored.
   # mro-j47u (codex): every static rule is validated data; the detector owns no policy.
   enforcement:
     rules:

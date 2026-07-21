@@ -653,6 +653,29 @@ class FlextInfraConfigModels:
             Path, m.Field(description="Repository-relative manifest path")
         ]
 
+    # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
+    # ephemeral/generated resources; VS Code excludes and source_scan ignores
+    # are derived projections, never re-declared in YAML.
+    class CodegenArtifactSpec(_ConfigContract):
+        """One ephemeral/generated resource every ignore/exclude derives from."""
+
+        name: Annotated[
+            t.NonEmptyStr, m.Field(description="Basename of the resource")
+        ]
+        is_dir: Annotated[
+            bool, m.Field(description="Directory (vs file) resource")
+        ] = True
+        vscode_exclude: Annotated[
+            bool,
+            m.Field(description="Feed VS Code files.exclude + search.exclude"),
+        ] = True
+        watch_exclude: Annotated[
+            bool, m.Field(description="Feed VS Code files.watcherExclude")
+        ] = True
+        source_scan_ignore: Annotated[
+            bool, m.Field(description="Feed source_scan.ignored_resources")
+        ] = False
+
     class CodegenVscodeSpec(_ConfigContract):
         """Fully modeled content of the ``vscode`` section of ``config/codegen.yaml``."""
 
@@ -693,6 +716,52 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
         ]
+        artifacts: Annotated[
+            tuple[FlextInfraConfigModels.CodegenArtifactSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Ephemeral/generated artifact SSOT; every ignore/exclude "
+                    "projection derives from this list"
+                ),
+            ),
+        ]
+
+        @m.computed_field()
+        @property
+        def vscode_files_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""
+            return {
+                f"**/{artifact.name}": True
+                for artifact in self.artifacts
+                if artifact.vscode_exclude
+            }
+
+        @m.computed_field()
+        @property
+        def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``files.watcherExclude`` entries from the SSOT."""
+            return {
+                f"**/{artifact.name}/**": True
+                for artifact in self.artifacts
+                if artifact.watch_exclude
+            }
+
+        @m.computed_field()
+        @property
+        def vscode_search_exclude_map(self) -> Mapping[str, bool]:
+            """Derived VS Code ``search.exclude`` entries from the artifact SSOT."""
+            return self.vscode_files_exclude_map
+
+        @m.computed_field()
+        @property
+        def source_scan_ignored(self) -> tuple[str, ...]:
+            """Derived ``source_scan.ignored_resources`` names from the SSOT."""
+            return tuple(
+                artifact.name
+                for artifact in self.artifacts
+                if artifact.source_scan_ignore
+            )
         managed_files: Annotated[
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
@@ -722,13 +791,6 @@ class FlextInfraConfigModels:
         roots: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Ordered production source directory names"),
-        ]
-        ignored_resources: Annotated[
-            frozenset[t.NonEmptyStr],
-            m.Field(
-                min_length=1,
-                description="File or directory names excluded from every source scan",
-            ),
         ]
 
     class StaticRule(_ConfigContract):

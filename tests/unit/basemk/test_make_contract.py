@@ -277,7 +277,7 @@ class TestsFlextInfraBasemkMakeContract:
             tm.that(output, has=marker)
 
     def test_make_run_verb_requires_and_validates_what(self, tmp_path: Path) -> None:
-        """run needs WHAT and fails clearly when the custom handler is absent."""
+        """Run needs WHAT and fails clearly when the custom handler is absent."""
         _write_project(tmp_path)
         (tmp_path / "Makefile").write_text(
             "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
@@ -290,7 +290,6 @@ class TestsFlextInfraBasemkMakeContract:
         missing = _run_make(tmp_path, "run", "WHAT=nope")
         tm.that(missing.exit_code, ne=0)
         tm.that(missing.stdout + missing.stderr, has="no custom handler")
-
 
     def test_make_build_uses_mise_uv_and_propagates_failure(
         self, tmp_path: Path
@@ -366,7 +365,6 @@ class TestsFlextInfraBasemkMakeContract:
                 "_custom_check_myscan",
             ],
         )
-
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
         """Verify generated command roots use canonical CLI groups."""
