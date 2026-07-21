@@ -289,6 +289,42 @@ class TestsFlextInfraBasemkMakeContract:
         )
         tm.that(result.stdout, lacks="check-fast")
 
+    def test_make_help_documents_and_lists_custom_hooks(self, tmp_path: Path) -> None:
+        """Help documents the hook contract and lists custom.mk-defined hooks."""
+        _write_project(tmp_path)
+        (tmp_path / "Makefile").write_text(
+            "PROJECT_NAME := demo-project\ninclude base.mk\n-include custom.mk\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "custom.mk").write_text(
+            ".PHONY: pre-check post-test-all _custom_check_myscan\n"
+            "pre-check:\n\t@true\n"
+            "post-test-all:\n\t@true\n"
+            "_custom_check_myscan:\n\t@true\n",
+            encoding="utf-8",
+        )
+        result = _run_make(tmp_path, "help")
+        tm.that(result.exit_code, eq=0)
+        # The hook contract is documented.
+        tm.that(
+            result.stdout,
+            has=[
+                "Custom hooks",
+                "pre-<verb>",
+                "post-<verb>",
+            ],
+        )
+        # The actual custom.mk hooks and custom WHATs are discovered and listed.
+        tm.that(
+            result.stdout,
+            has=[
+                "pre-check",
+                "post-test-all",
+                "_custom_check_myscan",
+            ],
+        )
+
+
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
         """Verify generated command roots use canonical CLI groups."""
         rendered = _render_base_mk()

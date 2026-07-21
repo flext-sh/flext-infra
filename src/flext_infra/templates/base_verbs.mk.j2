@@ -57,6 +57,19 @@ help: ## Show commands
 	$(Q)echo "  {{ help_line | replace('"', '\\"') }}"
 {% endfor %}
 
+	$(Q)echo ""
+	$(Q)echo "Custom hooks (custom.mk):"
+	$(Q)echo "  Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>"
+	$(Q)echo "  in custom.mk to run extra steps at the start or end of any verb, for"
+	$(Q)echo "  all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT."
+	$(Q)if [ -f custom.mk ]; then \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		if [ -n "$$hooks" ]; then \
+			echo "  Defined in this project:"; \
+			for hook in $$hooks; do echo "    $$hook"; done; \
+		fi; \
+	fi
+
 boot: ## Complete setup
 	$(call _run_verb_hooks,pre,boot,$(WHAT))
 	$(Q)$(MAKE) --no-print-directory _boot_impl
