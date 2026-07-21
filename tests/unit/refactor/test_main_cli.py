@@ -1,3 +1,5 @@
+"""Tests for the refactor main CLI entry point."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -36,6 +38,8 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 
 
 class TestsFlextInfraRefactorMainCli:
+    """Tests for the refactor main CLI."""
+
     @staticmethod
     def _refactor_main(*args: str) -> int:
         return infra_main(["refactor", *args])
@@ -492,7 +496,7 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace = self._build_mro_incomplete_workspace(tmp_path)
 
-        def _explode(*args: object, **kwargs: object) -> object:
+        def _explode(*_args: object, **_kwargs: object) -> object:
             msg = "mro_completeness should not trigger reference discovery"
             raise AssertionError(msg)
 
@@ -590,7 +594,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace = self._build_mro_incomplete_workspace(tmp_path)
         rope_error_message = "boom"
 
-        def _explode(*args: object, **kwargs: object) -> object:
+        def _explode(*_args: object, **_kwargs: object) -> object:
             raise u.Infra.rope_error_types()[0](rope_error_message)
 
         monkeypatch.setattr(

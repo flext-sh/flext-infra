@@ -35,6 +35,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         """Change-tracker fixture that rewrites one sentinel token."""
 
         def __init__(self) -> None:
+            """Initialize the recorded change list."""
             self.changes: t.MutableSequenceOf[str] = []
 
         def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -45,6 +46,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         """Change-tracker fixture that raises a transformer error."""
 
         def __init__(self) -> None:
+            """Initialize the recorded change list."""
             self.changes: t.MutableSequenceOf[str] = []
 
         def apply_to_source(self, source: str) -> t.Infra.TransformResult:

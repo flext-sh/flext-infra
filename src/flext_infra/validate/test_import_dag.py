@@ -130,9 +130,12 @@ class FlextInfraValidateTestImportDag(s[bool]):
                 imported_facet
             ) < rules.facet_order.index(source_facet):
                 return "reverse canonical test-facet edge"
-        if file_path.name == "__init__.py" and relative.parent.name == "tests":
-            if imports_fixture or imports_test_module:
-                return "tests package root cannot import fixtures, conftest, or tests"
+        if (
+            file_path.name == "__init__.py"
+            and relative.parent.name == "tests"
+            and (imports_fixture or imports_test_module)
+        ):
+            return "tests package root cannot import fixtures, conftest, or tests"
         return None
 
     @override

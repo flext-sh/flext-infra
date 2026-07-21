@@ -46,19 +46,19 @@ class TestsFlextInfraInfraTypings:
 
     def test_container_mapping_adapter_accepts_paths_and_scalars(self) -> None:
         payload = t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
-            "root": Path("/tmp/flext"),
+            "root": Path("/var/lib/flext"),
             "enabled": True,
             "retries": 3,
         })
 
-        tm.that(payload["root"], eq=Path("/tmp/flext"))
+        tm.that(payload["root"], eq=Path("/var/lib/flext"))
         tm.that(payload["enabled"], eq=True)
         tm.that(payload["retries"], eq=3)
 
     def test_container_mapping_adapter_rejects_nested_mapping(self) -> None:
         with pytest.raises(c.ValidationError):
             t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
-                "root": Path("/tmp/flext"),
+                "root": Path("/var/lib/flext"),
                 "settings": {"enabled": True},
             })
 

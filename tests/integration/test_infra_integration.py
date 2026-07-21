@@ -30,6 +30,8 @@ pytestmark = [pytest.mark.integration]
 
 
 class TestsFlextInfraIntegrationInfraIntegration:
+    """Integration tests for the public FlextInfra surface."""
+
     @pytest.mark.integration
     def test_workspace_detector_and_orchestrator_share_state(
         self, tmp_path: Path
@@ -52,7 +54,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(orchestrator, is_=FlextInfraOrchestratorService)
 
     @pytest.mark.integration
-    def test_workspace_detector_returns_flext_result(self, tmp_path: Path) -> None:
+    def test_workspace_detector_returns_flext_result(self) -> None:
         """Test that workspace detector operations return r.
 
         Validates:
@@ -168,7 +170,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
             r[int]
             .ok(initial_value)
             .flat_map(lambda x: r[int].ok(x * 2))
-            .flat_map(lambda x: r[int].fail("intentional error"))
+            .flat_map(lambda _: r[int].fail("intentional error"))
             .flat_map(lambda x: r[int].ok(x + 5))
         )
         tm.fail(result)
@@ -196,7 +198,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(result.value, eq=26)
 
     @pytest.mark.integration
-    def test_discover_projects_via_mro(self, tmp_path: Path) -> None:
+    def test_discover_projects_via_mro(self) -> None:
         """Test u.Infra.discover_projects flow.
 
         Validates:
@@ -207,7 +209,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         assert callable(u.Infra.resolve_workspace_root_or_cwd)
 
     @pytest.mark.integration
-    def test_path_utilities_via_mro(self, tmp_path: Path) -> None:
+    def test_path_utilities_via_mro(self) -> None:
         """Test u.Infra path utility methods are available via MRO."""
         assert callable(u.Infra.resolve_project_root)
 

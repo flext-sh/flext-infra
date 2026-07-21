@@ -88,6 +88,15 @@ class FlextInfraModelsWorktree:
         apply_patch: Annotated[
             bool, m.Field(description="Apply a validated operation patch to source")
         ] = False
+        allow_lint_regression: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Permit lint diagnostic increases for coverage-expanding "
+                    "migrations; the delta is still reported in the summary."
+                )
+            ),
+        ] = False
         timeout_seconds: Annotated[
             t.PositiveInt, m.Field(description="Command and lint timeout in seconds")
         ]

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 _DEADLINE_SECONDS = 90.0
 _POLL_INTERVAL_SECONDS = 0.5
+_HTTP_OK = 200
 
 
 def _free_local_port() -> int:
@@ -39,7 +40,7 @@ def _http_get_body(host: str, port: int) -> str | None:
         response = connection.getresponse()
         body = (
             response.read().decode("utf-8", errors="replace")
-            if response.status == 200
+            if response.status == _HTTP_OK
             else None
         )
         connection.close()

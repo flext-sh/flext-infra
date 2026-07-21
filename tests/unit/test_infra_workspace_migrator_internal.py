@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:
+    """Tests for workspace migrator internals via the public surface."""
+
     @staticmethod
     def _write_project_files(
         tmp_path: Path,
@@ -88,15 +90,10 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
-        _envrc = FlextInfraWorkspaceEnvironment._render_environment_template(
-            c.Infra.WORKSPACE_ENVRC_TEMPLATE_NAME
-        )
-        (project_root / c.Infra.ENVRC_FILENAME).write_text(
-            _envrc.value, encoding="utf-8"
-        )
-        _mise = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
+        FlextInfraWorkspaceEnvironment.sync_envrc(project_root)
+        mise_result = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
         (project_root / c.Infra.MISE_TOML_FILENAME).write_text(
-            _mise.value, encoding="utf-8"
+            mise_result.value, encoding="utf-8"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),

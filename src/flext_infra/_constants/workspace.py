@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from enum import StrEnum, unique
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -119,14 +118,11 @@ class FlextInfraConstantsWorkspace:
     WORKSPACE_ENV_FILES: Final[t.StrSequence] = (ENVRC_FILENAME, MISE_TOML_FILENAME)
     VSCODE_DIRNAME: Final[str] = ".vscode"
     VSCODE_SETTINGS_FILENAME: Final[str] = "settings.json"
-    VSCODE_DIAGNOSTIC_SEVERITY_OVERRIDES_KEY: Final[str] = (
-        "python.analysis.diagnosticSeverityOverrides"
-    )
-    VSCODE_REPORT_UNTYPED_BASE_CLASS: Final[str] = "reportUntypedBaseClass"
-    VSCODE_REQUIRED_SCALAR_SETTINGS: Final[t.StrMapping] = MappingProxyType({
-        "python.analysis.typeCheckingMode": "strict",
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-    })
+    VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY: Final[str] = "python-envs.workspaceSearchPaths"
+    CODEGEN_OWNER_VSCODE: Final[str] = "vscode"
+    # Canonical VS Code settings content lives in config/codegen.yaml (vscode:).
+    # Recursive "**" venv search globs are forbidden: they make the Python
+    # Environments locator (pet) walk entire trees and hang discovery.
     # mro-sltx (backport 0.20): .envrc/.mise.toml content moved to Jinja templates
     # templates/workspace_{envrc.sh,mise.toml}.j2, rendered from validated toolchain.
 

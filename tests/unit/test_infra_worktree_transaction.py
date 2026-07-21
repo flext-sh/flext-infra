@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra.services.cli_transaction import CliTransactionService
 from flext_tests import tm
 
 from tests import m, u
@@ -158,3 +159,50 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
+
+
+class TestsFlextInfraWorktreeTransactionLintRegression:
+    """Contract for the explicit lint-regression allowance."""
+
+    def test_lint_regressed_detects_diagnostic_increase(self) -> None:
+        """Flag diagnostic growth as regression; stable diagnostics are safe."""
+        before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
+        after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
+
+        regressed = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+            before, after
+        )
+        stable = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+            before, before
+        )
+
+        tm.that(regressed, eq=True)
+        tm.that(stable, eq=False)
+
+    def test_request_defaults_to_rejecting_lint_regression(
+        self, tmp_path: Path
+    ) -> None:
+        """Default transactions keep rejecting lint regressions."""
+        request = m.Infra.WorktreeTransactionRequest(
+            workspace_root=tmp_path, command=("deps", "modernize"), timeout_seconds=60
+        )
+
+        tm.that(request.allow_lint_regression, eq=False)
+
+    def test_inner_args_strip_allow_lint_regression_flag(self) -> None:
+        """Strip the outer allowance flag before the isolated invocation."""
+        args = (
+            "modernize",
+            "--apply",
+            "--allow-lint-regression",
+            "--projects",
+            "flext-infra",
+        )
+
+        normalized = CliTransactionService.transaction_inner_args(
+            "deps:modernize", args
+        )
+
+        tm.that("--allow-lint-regression" in normalized, eq=False)
+        tm.that("--apply" in normalized, eq=True)
+        tm.that("--projects" in normalized, eq=True)

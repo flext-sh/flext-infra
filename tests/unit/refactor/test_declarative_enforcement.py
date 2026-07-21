@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_core import m as m, u
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,

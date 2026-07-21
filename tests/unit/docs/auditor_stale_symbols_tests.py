@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from tests import m
 from tests import u
 from flext_tests import tm
@@ -158,7 +157,7 @@ def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -
         ),
     )
 
-    contract = FlextInfraUtilitiesDocsApi.public_contract(tmp_path, "demo_pkg")
+    contract = u.Infra.public_contract(tmp_path, "demo_pkg")
     exports = contract["exports"]
     public_symbols = contract["public_symbols"]
 
@@ -167,7 +166,7 @@ def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -
     tm.that(exports, has="LiveSymbol")
     tm.that(public_symbols, has="LiveSymbol")
 
-    issues = FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract)
+    issues = u.Infra.docstring_issues(tmp_path, contract)
 
     tm.that(issues, eq=[])
 
@@ -233,10 +232,10 @@ def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> No
         ),
     )
 
-    contract = FlextInfraUtilitiesDocsApi.public_contract(tmp_path, "demo_pkg")
+    contract = u.Infra.public_contract(tmp_path, "demo_pkg")
 
     tm.that(contract["target_map"], eq={"LiveSymbol": "demo_pkg.facade"})
-    tm.that(FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract), eq=[])
+    tm.that(u.Infra.docstring_issues(tmp_path, contract), eq=[])
 
 
 def test_docstring_issues_accepts_direct_part_mro_docstring(tmp_path: Path) -> None:
@@ -276,7 +275,7 @@ def test_docstring_issues_accepts_direct_part_mro_docstring(tmp_path: Path) -> N
         ),
     )
 
-    contract = FlextInfraUtilitiesDocsApi.public_contract(tmp_path, "demo_pkg")
-    issues = FlextInfraUtilitiesDocsApi.docstring_issues(tmp_path, contract)
+    contract = u.Infra.public_contract(tmp_path, "demo_pkg")
+    issues = u.Infra.docstring_issues(tmp_path, contract)
 
     tm.that(issues, eq=[])

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -42,8 +42,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     def load_workspace_spec(
         cls, repository_root: Path
     ) -> p.Result[m.Infra.WorkspaceSpec]:
-        """Load the canonical repository-local workspace manifest."""
+        """Load the repository-local manifest, or derive it from the SSOT catalog."""
         manifest_path = cls._manifest_path(repository_root)
+        if not manifest_path.is_file():
+            return cls._derive_workspace_spec(repository_root)
         loaded = u.Cli.config_load(
             manifest_path, schema_path=cls._schema_path(), expand_env=False
         )
@@ -59,6 +61,47 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 f"workspace manifest model validation ({manifest_path})", exc
             )
         return r[m.Infra.WorkspaceSpec].ok(validated)
+
+    @classmethod
+    def _derive_workspace_spec(
+        cls, repository_root: Path
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
+        """Derive a generic minimal spec from the codegen catalog SSOT.
+
+        Standalone projects (and their transaction worktrees) ship no
+        ``config/workspace.yaml``. Their topology is nonetheless declared in the
+        canonical ``config.Infra.codegen`` catalog. The project's own name is
+        read from its ``pyproject.toml`` via the flext-core project-metadata
+        SSOT, then matched against the catalog to retain the exact declared
+        repository contract. Nothing is fabricated; a project absent from both
+        the manifest and the catalog fails closed.
+        """
+        metadata = u.read_project_metadata(repository_root)
+        if metadata.failure:
+            return r[m.Infra.WorkspaceSpec].fail(
+                metadata.error
+                or f"cannot derive workspace spec without metadata: {repository_root}"
+            )
+        project_name = metadata.value.project.name
+        repository = next(
+            (
+                declared
+                for declared in config.Infra.codegen.repositories
+                if declared.name == project_name
+            ),
+            None,
+        )
+        if repository is None:
+            return r[m.Infra.WorkspaceSpec].fail(
+                f"project is absent from the codegen catalog: {project_name}"
+            )
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=project_name,
+                repository=repository,
+            )
+        )
 
     @staticmethod
     def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:

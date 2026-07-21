@@ -86,7 +86,7 @@ Infra:
           apply_guarded: true
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: '^_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*$'
+        target_pattern: '^(_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)(-[a-z0-9][a-z0-9-]*)?)$'
         allow_public_targets: false
         allow_generated_target_redefinition: false
         allow_toolchain_declarations: false

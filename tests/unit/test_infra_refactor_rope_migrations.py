@@ -29,21 +29,8 @@ def _apply_transformer(
     return updated, list(changes)
 
 
-def _metadata_dependency_names(subject: type) -> set[str]:
-    names: set[str] = set()
-    # for dep in deps:
-    #     raw_name = getattr(dep, "__name__", dep.__class__.__name__)
-    #     names.add(str(raw_name))
-    return names
-
-
 class TestsFlextInfraInfraRefactorRopeMigrations:
     """Verify symbol_propagator stays rope-oriented."""
-
-    def test_no_qualified_name_provider(self) -> None:
-        """FlextInfraRefactorSymbolPropagator does not depend on CST providers."""
-        deps = _metadata_dependency_names(FlextInfraRefactorSymbolPropagator)
-        tm.that(deps, lacks="QualifiedNameProvider")
 
     def test_module_rename(self, tmp_path: Path) -> None:
         """Transformer renames import module path."""
@@ -153,11 +140,6 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         tm.that(updated, has="NewName")
         assert changes
         tm.that(file_path.read_text(encoding="utf-8"), eq=original_source)
-
-    def test_no_parent_node_provider(self) -> None:
-        """FlextInfraNestedClassPropagationTransformer has no CST parent dependency."""
-        deps = _metadata_dependency_names(FlextInfraNestedClassPropagationTransformer)
-        tm.that(deps, lacks="ParentNodeProvider")
 
     def test_class_name_not_renamed(self, tmp_path: Path) -> None:
         """Class definition names are NOT renamed (definition sites are skipped)."""

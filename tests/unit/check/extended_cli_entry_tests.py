@@ -12,6 +12,8 @@ from tests import u
 
 
 class TestWorkspaceCheckCLI:
+    """Tests for the check CLI entry points."""
+
     @staticmethod
     def _workspace(tmp_path: Path) -> Path:
         workspace = tmp_path / "workspace"

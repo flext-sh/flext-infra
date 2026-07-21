@@ -360,10 +360,10 @@ class TestCodegenConform:
         tm.that(rejection.is_file(), eq=True)
         tm.that(
             "custom.mk line 1 is not a private custom handler"
-            in rejection.read_text(),
+            in rejection.read_text(encoding="utf-8"),
             eq=True,
         )
-        tm.that(custom.read_text(), eq=content)
+        tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     def test_valid_private_custom_make_has_no_rejection(
         self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
@@ -387,6 +387,87 @@ class TestCodegenConform:
             u.Cli.atomic_write_text_file(
                 custom,
                 ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n",
+            )
+        )
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(result)
+        tm.that("WARN:" in capsys.readouterr().out, eq=False)
+        tm.that(Path(f"{custom}.rej").exists(), eq=False)
+
+    def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Generated _dispatch runs pre-<verb>, handler, post-<verb> in order."""
+        root = infra_git_repo
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        # A custom WHAT keeps the handler offline (no uv/network); the
+        # pre-/post-<verb> hooks prove ordering around it.
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "custom.mk",
+                ".PHONY: pre-check post-check _custom_check_probe\n"
+                "pre-check:\n\t@echo HOOK_PRE\n"
+                "_custom_check_probe:\n\t@echo HANDLER_BODY\n"
+                "post-check:\n\t@echo HOOK_POST\n",
+            )
+        )
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        output = tm.ok(outcome)
+        tm.that(output.exit_code, eq=0)
+        combined = output.stdout + output.stderr
+        pre_at = combined.find("HOOK_PRE")
+        body_at = combined.find("HANDLER_BODY")
+        post_at = combined.find("HOOK_POST")
+        tm.that(pre_at >= 0 and body_at >= 0 and post_at >= 0, eq=True)
+        tm.that(pre_at < body_at, eq=True)
+        tm.that(body_at < post_at, eq=True)
+
+    def test_custom_make_accepts_pre_post_verb_hooks(
+        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """custom.mk may append pre/post verb hooks (verb-wide and WHAT-scoped)."""
+        root = infra_git_repo
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        custom = root / "custom.mk"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                custom,
+                ".PHONY: pre-check post-check pre-test-all post-test-all\n"
+                "pre-check:\n\t@true\n"
+                "post-check:\n\t@true\n"
+                "pre-test-all:\n\t@true\n"
+                "post-test-all:\n\t@true\n",
             )
         )
         result = FlextInfraCodegenConform.execute_request(

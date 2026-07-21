@@ -1,3 +1,5 @@
+"""Tests for the MRO service-base alias."""
+
 from __future__ import annotations
 
 from flext_cli import s as cli_service_base

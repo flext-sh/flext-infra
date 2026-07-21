@@ -11,6 +11,7 @@ from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.constants import c
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from tests import m
 from tests import t
 from tests import u
@@ -287,6 +288,32 @@ class TestsFlextInfraWorkspaceSync:
         tm.that(overrides["reportUnknownMemberType"], eq="none")
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(second_result.value.files_changed, eq=0)
+
+    def test_sync_replaces_recursive_vscode_search_paths(self, tmp_path: Path) -> None:
+        """Replace recursive venv search globs with canonical shallow paths."""
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+        settings_path = project_root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        _ = settings_path.write_text(
+            '{\n  "python-envs.workspaceSearchPaths": ["./.venv", "./**/.venv"]\n}\n',
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
+        second_result = FlextInfraWorkspaceVscode.sync_settings(
+            project_root, apply=True
+        )
+
+        tm.ok(result)
+        tm.that(result.value, eq=True)
+        tm.ok(second_result)
+        tm.that(second_result.value, eq=False)
+        settings = u.Cli.json_read(settings_path).unwrap()
+        tm.that(
+            settings["python-envs.workspaceSearchPaths"],
+            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+        )
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""

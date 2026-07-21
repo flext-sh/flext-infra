@@ -1,11 +1,11 @@
-"""Unit tests for pattern corrections through the text executor."""
+"""Unit tests for pattern corrections through the public refactor service."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, t
-from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+from flext_infra import t
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -18,10 +18,32 @@ def _apply_rule(
     file_path = tmp_path / "src" / "demo.py"
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(source, encoding="utf-8")
-    updated, changes = FlextInfraRefactorTextExecutor()._apply_text_rule_selection(
-        c.Infra.RefactorRuleKind.PATTERN_CORRECTIONS, settings, source, file_path
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir(parents=True, exist_ok=True)
+    config_path = tmp_path / "settings.yml"
+    config_path.write_text("session: test\n", encoding="utf-8")
+    rule_lines = ["", "rules:", "  - id: " + str(settings["id"])]
+    for key, value in settings.items():
+        if key == "id":
+            continue
+        if isinstance(value, bool):
+            rule_lines.append(f"    {key}: {str(value).lower()}")
+        elif isinstance(value, (list, tuple)):
+            rule_lines.append(f"    {key}:")
+            rule_lines.extend(f"      - {item}" for item in value)
+        else:
+            rule_lines.append(f"    {key}: {value}")
+    rule_lines.append("    enabled: true")
+    (rules_dir / "rules.yml").write_text(
+        "\n".join(rule_lines) + "\n", encoding="utf-8"
     )
-    return updated, list(changes)
+    service = FlextInfraRefactorService(config_path=config_path)
+    load_result = service.load_rules()
+    tm.ok(load_result)
+    result = service.refactor_file(file_path)
+    tm.that(result.success, eq=True)
+    updated = file_path.read_text(encoding="utf-8")
+    return updated, list(result.changes)
 
 
 class TestsFlextInfraRefactorInfraRefactorPatternCorrections:

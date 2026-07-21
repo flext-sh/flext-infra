@@ -69,6 +69,7 @@ class TestTypeGates:
     )
     def test_check(
         self,
+        *,
         tmp_path: Path,
         gate_class: type[FlextInfraGate],
         project_has_src: bool,

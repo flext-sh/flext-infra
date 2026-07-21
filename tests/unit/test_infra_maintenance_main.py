@@ -53,6 +53,8 @@ def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
 
 
 class TestsFlextInfraInfraMaintenanceMain:
+    """Tests for the maintenance main entry point."""
+
     def test_main_with_help_flag(self) -> None:
         tm.that(main(["--help"]), eq=0)
 

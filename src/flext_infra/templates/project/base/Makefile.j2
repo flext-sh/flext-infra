@@ -89,10 +89,18 @@ define _dispatch
 	esac; \
 	builtin="_builtin_$@_$$what"; \
 	custom="_custom_$@_$$what"; \
+	for hook in "pre-$@" "pre-$@-$$what"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done; \
 	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) exec $(MAKE) --no-print-directory "$$builtin" ;; \
-		*) exec $(MAKE) --no-print-directory "$$custom" ;; \
-	esac
+		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
+		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
+	esac; \
+	for hook in "post-$@-$$what" "post-$@"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
 endef
 
 define _require_apply

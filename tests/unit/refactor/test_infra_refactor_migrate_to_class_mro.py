@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from tests import u
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
@@ -219,7 +218,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (project_root / "src").mkdir(parents=True)
 
-        discovered = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
+        discovered = u.Infra.discover_project_roots(
             workspace_root=workspace_root
         )
         tm.that(discovered, eq=[project_root])
@@ -246,7 +245,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
 
-        reports, scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
+        reports, scanned = u.Infra.scan_workspace(
             workspace_root=project_root, target="constants"
         )
         report_files = {

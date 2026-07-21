@@ -54,6 +54,7 @@ class TestBanditAndMarkdownGates:
     )
     def test_bandit_check(
         self,
+        *,
         tmp_path: Path,
         with_src: bool,
         runner_results: tuple[r[m.Cli.CommandOutput], ...],
@@ -109,6 +110,7 @@ class TestBanditAndMarkdownGates:
     )
     def test_markdown_check(
         self,
+        *,
         tmp_path: Path,
         markdown_text: str,
         config_text: str | None,

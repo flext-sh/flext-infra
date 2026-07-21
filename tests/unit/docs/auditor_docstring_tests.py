@@ -20,6 +20,9 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from pathlib import Path
 
+_FULL_COVERAGE_PERCENT = 100.0
+_PARTIAL_COVERAGE_THRESHOLD = 80.0
+
 _PACKAGE_INIT = '''"""Demo package."""
 
 
@@ -106,7 +109,7 @@ class TestsDocstringCoverage:
             )
             metric = summary["summary"]["docstring_coverage"]
             assert metric["checked"] > 0
-            assert 0.0 <= metric["percent"] < 100.0
+            assert 0.0 <= metric["percent"] < _FULL_COVERAGE_PERCENT
 
     class TestExecuteChecksSelector:
         """execute() honors the CLI --checks selector (no hardcoded "all")."""
@@ -157,7 +160,7 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )["summary"]
-            assert summary["docstring_coverage"]["percent"] < 80.0
+            assert summary["docstring_coverage"]["percent"] < _PARTIAL_COVERAGE_THRESHOLD
 
         def test_coverage_above_minimum_keeps_audit_green(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)

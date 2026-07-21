@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDeps:
+    """Tests for workspace migrator dependency handling."""
+
     @staticmethod
     def _build_migrator(
         tmp_path: Path, *, pyproject: str, base_mk: str = "base"

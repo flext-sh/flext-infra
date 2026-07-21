@@ -10,6 +10,8 @@ from tests import u
 
 
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
+    """Edge-case tests for project discovery."""
+
     def test_discover_projects_includes_non_git_flext_projects(
         self, tmp_path: Path
     ) -> None:

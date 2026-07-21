@@ -1,3 +1,5 @@
+"""Tests for version diagnostics (extended)."""
+
 from pathlib import Path
 
 import flext_infra as infra_pkg

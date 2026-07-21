@@ -1,4 +1,4 @@
-"""Tests for FlextInfraUtilitiesLogParser.extract_errors.
+"""Tests for u.Infra.extract_errors log parsing.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-from tests import c
+from tests import c, u
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraUtilitiesLogParser:
     def test_missing_file_returns_zero_empty(self, tmp_path: Path) -> None:
-        result = FlextInfraUtilitiesLogParser.extract_errors(
+        result = u.Infra.extract_errors(
             tmp_path / "nonexistent.log"
         )
 
@@ -32,7 +31,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "empty.log"
         log_file.write_text("", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=0)
         tm.that(list(lines), eq=[])
@@ -41,7 +40,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "whitespace.log"
         log_file.write_text("   \n\n   \n", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=0)
         tm.that(list(lines), eq=[])
@@ -50,7 +49,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "errors.log"
         log_file.write_text(f"{c.Tests.LOG_ERROR_LINES[0]}\n", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=1)
         tm.that(lines[0], has=c.Tests.LOG_ERROR_LINES[0])
@@ -59,7 +58,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "fail.log"
         log_file.write_text(f"{c.Tests.LOG_ERROR_LINES[1]}\n", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=1)
         tm.that(lines[0], has=c.Tests.LOG_ERROR_LINES[1])
@@ -70,7 +69,7 @@ class TestsFlextInfraUtilitiesLogParser:
             "\n".join(c.Tests.LOG_NOISE_LINES[:2]) + "\n", encoding="utf-8"
         )
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=0)
         tm.that(list(lines), eq=[])
@@ -80,7 +79,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "many_errors.log"
         log_file.write_text(error_lines + "\n", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(
+        count, lines = u.Infra.extract_errors(
             log_file, max_lines=3
         )
 
@@ -92,7 +91,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "many_errors2.log"
         log_file.write_text(error_lines + "\n", encoding="utf-8")
 
-        count, lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=10)
         tm.that(len(list(lines)), eq=5)
@@ -101,7 +100,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "pyerr.log"
         log_file.write_text("  foo/bar.py:42 ImportError\n", encoding="utf-8")
 
-        count, _lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, _lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=1)
 
@@ -110,7 +109,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "mixed.log"
         log_file.write_text(content, encoding="utf-8")
 
-        count, _lines = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, _lines = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=2)
 
@@ -121,7 +120,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "pattern.log"
         log_file.write_text(line + "\n", encoding="utf-8")
 
-        count, _ = FlextInfraUtilitiesLogParser.extract_errors(log_file)
+        count, _ = u.Infra.extract_errors(log_file)
 
         tm.that(count, eq=expected_count)
 

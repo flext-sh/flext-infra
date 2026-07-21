@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from tests import m
 from tests import u
 from flext_tests import tm
@@ -60,7 +59,7 @@ def test_docstring_issues_accept_assignment_docstrings(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    issues = FlextInfraUtilitiesDocsApi.docstring_issues(
+    issues = u.Infra.docstring_issues(
         tmp_path,
         {
             "package_name": "demo_pkg",

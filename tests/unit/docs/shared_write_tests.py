@@ -8,6 +8,8 @@ from tests import m
 from tests import u
 from flext_tests import tm
 
+_MIN_MARKDOWN_NEWLINES = 3
+
 
 def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
     json_file = tmp_path / "nested/data.json"
@@ -48,7 +50,7 @@ def test_write_markdown_preserves_empty_lines(tmp_path: Path) -> None:
     result = u.Infra.write_markdown(md_file, ["# Title", "", "", "Content"])
 
     tm.ok(result)
-    assert md_file.read_text().count("\n") >= 3
+    assert md_file.read_text().count("\n") >= _MIN_MARKDOWN_NEWLINES
 
 
 def test_write_markdown_fails_for_non_directory_parent() -> None:

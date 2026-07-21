@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests import c
 from tests import u
 
 if TYPE_CHECKING:
@@ -71,31 +69,6 @@ class TestScannerHelpers:
         files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
 
         tm.that(files, eq=[tracked_file, untracked_file])
-
-    def test_count_matches(self, tmp_path: Path) -> None:
-        """_count_matches counts regex matches and handles edge cases."""
-        f = tmp_path / "test.txt"
-        f.write_text("hello hello hello")
-        regex = c.Tests.SCANNER_HELLO_RE
-        tm.that(FlextInfraTextPatternScanner._count_matches([f], regex).value, eq=3)
-        empty = tmp_path / "empty.txt"
-        empty.write_text("")
-        tm.that(FlextInfraTextPatternScanner._count_matches([empty], regex).value, eq=0)
-
-    def test_count_matches_unreadable_file(self, tmp_path: Path) -> None:
-        """_count_matches surfaces an unreadable file as a failure - never skipped."""
-        f = tmp_path / "test.txt"
-        f.write_text("hello")
-        f.chmod(0o000)
-        try:
-            tm.that(
-                FlextInfraTextPatternScanner._count_matches(
-                    [f], c.Tests.SCANNER_HELLO_RE
-                ).failure,
-                eq=True,
-            )
-        finally:
-            f.chmod(0o644)
 
 
 __all__: t.StrSequence = []

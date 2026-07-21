@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -33,7 +34,7 @@ class FlextInfraNamespaceRules:
         ("Types", c.Infra.TYPINGS_PY, c.Infra.FAMILY_DIRECTORIES["t"]),
         ("Utilities", c.Infra.UTILITIES_PY, c.Infra.FAMILY_DIRECTORIES["u"]),
     )
-    _FACADE_DAG = {"c": 0, "t": 1, "p": 2, "m": 3, "u": 4}
+    _FACADE_DAG: t.Mapping[str, int] = MappingProxyType({"c": 0, "t": 1, "p": 2, "m": 3, "u": 4})
 
     @staticmethod
     def _is_private_dir_file(filepath: Path) -> bool:
@@ -402,13 +403,17 @@ class FlextInfraNamespaceRules:
                             f"namespace import {imported_name!r}: {owner} may only import "
                             "forward through c -> t -> p -> m -> u"
                         )
-            elif imported_owner is not None and owner is not None and not type_checking_only:
-                if self._FACADE_DAG[imported_owner] > self._FACADE_DAG[owner]:
-                    messages.append(
-                        f"{filepath}:{getattr(node, 'lineno', 0)} — Invalid runtime "
-                        f"namespace import from {module!r}: {owner} may only import "
-                        "forward through c -> t -> p -> m -> u"
-                    )
+            elif (
+                imported_owner is not None
+                and owner is not None
+                and not type_checking_only
+                and self._FACADE_DAG[imported_owner] > self._FACADE_DAG[owner]
+            ):
+                messages.append(
+                    f"{filepath}:{getattr(node, 'lineno', 0)} — Invalid runtime "
+                    f"namespace import from {module!r}: {owner} may only import "
+                    "forward through c -> t -> p -> m -> u"
+                )
             if module != package_name or self._is_private_dir_file(filepath):
                 continue
             for alias in getattr(node, "names", []) or []:

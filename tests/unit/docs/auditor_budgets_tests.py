@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
 
 class TestLoadAuditBudgets:
+    """Tests for docs auditor budget handling."""
+
     def test_no_config(self, tmp_path: Path) -> None:
         default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=None)

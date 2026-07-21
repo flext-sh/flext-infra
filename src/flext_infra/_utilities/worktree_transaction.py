@@ -498,10 +498,11 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 deltas_result.error or "failed to capture repository deltas"
             )
         deltas = deltas_result.value
+        lint_regressed = cls._lint_regressed(lint_before, lint_after)
         breakage = (
             command_output.exit_code != 0
             or import_probe.exit_code != 0
-            or cls._lint_regressed(lint_before, lint_after)
+            or (lint_regressed and not request.allow_lint_regression)
         )
         patch_check = cls._check_patches(deltas)
         if patch_check.failure:
@@ -518,6 +519,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "
             f"applied={'yes' if applied else 'no'}"
         )
+        if lint_regressed and request.allow_lint_regression:
+            summary = f"{summary}; lint-regression=allowed"
         if apply_error:
             summary = f"{summary}; apply-error={apply_error}"
         return r[m.Infra.WorktreeTransactionReport].ok(

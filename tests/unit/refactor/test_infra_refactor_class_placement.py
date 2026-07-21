@@ -1,3 +1,5 @@
+"""Tests for the refactor class-placement detector."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -290,7 +292,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         tm.that(" ".join(str(p) for p in touched_files), has="demo/_constants.py")
         target_text = result["target_text"]
         source_text = result["source_text"]
-        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert isinstance(target_text, str)
+        assert isinstance(source_text, str)
         tm.that(target_text, has="GROUPS = frozenset({'a'})")
         tm.that(source_text, lacks="GROUPS = frozenset({'a'})")
 
@@ -348,7 +351,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         target_text = result["target_text"]
         source_text = result["source_text"]
-        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert isinstance(target_text, str)
+        assert isinstance(source_text, str)
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
 
@@ -414,7 +418,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         target_text = result["target_text"]
         source_text = result["source_text"]
         touched_files = result["touched_files"]
-        assert isinstance(target_text, str) and isinstance(source_text, str)
+        assert isinstance(target_text, str)
+        assert isinstance(source_text, str)
         tm.that(touched_files, is_=(list, tuple))
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")

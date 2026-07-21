@@ -53,6 +53,8 @@ def is_external() -> Callable[[str], bool]:
 
 
 class TestAuditorCore:
+    """Tests for the docs auditor."""
+
     def test_returns_flext_result(
         self, auditor: FlextInfraDocAuditor, tmp_path: Path
     ) -> None:
@@ -97,6 +99,7 @@ class TestAuditorCore:
     )
     def test_audit_option_variants(
         self,
+        *,
         auditor: FlextInfraDocAuditor,
         tmp_path: Path,
         projects: list[str] | None,
@@ -123,6 +126,8 @@ class TestAuditorCore:
 
 
 class TestAuditorNormalize:
+    """Additional tests for the docs auditor."""
+
     @pytest.mark.parametrize(
         ("raw", "expected"),
         [
@@ -151,6 +156,7 @@ class TestAuditorNormalize:
     )
     def test_should_skip_target(
         self,
+        *,
         should_skip_target: Callable[[str, str], bool],
         text: str,
         target: str,
@@ -172,6 +178,10 @@ class TestAuditorNormalize:
         ],
     )
     def test_is_external(
-        self, is_external: Callable[[str], bool], value: str, expected: bool
+        self,
+        *,
+        is_external: Callable[[str], bool],
+        value: str,
+        expected: bool,
     ) -> None:
         tm.that(is_external(value), eq=expected)

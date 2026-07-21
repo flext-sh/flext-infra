@@ -13,6 +13,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+_MIN_SCANNED_FILES = 3
+_MIN_TOTAL_FILES = 2
+_MIN_VIOLATIONS = 3
+
+
 class TestsFlextInfraIntegrationRefactorNestingWorkspace:
     """Test class nesting refactor across multi-project workspace."""
 
@@ -40,7 +45,7 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
             violations_count += (
                 int(raw_violations) if isinstance(raw_violations, (int, float)) else 0
             )
-        assert files_scanned >= 3
+        assert files_scanned >= _MIN_SCANNED_FILES
         assert violations_count >= 0
 
     def test_cross_project_references_updated(self, tmp_path: Path) -> None:
@@ -62,7 +67,7 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
         for result in (result_a, result_b):
             raw = result.value.get("files_scanned", 0)
             total_files += int(raw) if isinstance(raw, (int, float)) else 0
-        assert total_files >= 2
+        assert total_files >= _MIN_TOTAL_FILES
 
     def test_all_projects_consistent(self, tmp_path: Path) -> None:
         """Verify all projects remain consistent after refactor."""
@@ -88,6 +93,6 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
                         all_violations.append(
                             m.Infra.LooseClassViolation.model_validate(v_item)
                         )
-        assert len(all_violations) >= 3
+        assert len(all_violations) >= _MIN_VIOLATIONS
         for v in all_violations:
             tm.that({"high", "medium", "low"}, has=v.confidence)

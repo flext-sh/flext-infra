@@ -1,30 +1,59 @@
-"""Unit tests for legacy-removal and future-annotations text execution."""
+"""Unit tests for legacy-removal and future-annotations via the public service."""
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
 
 
+_KIND_PRIMARY_FIX_ACTION: dict[c.Infra.RefactorRuleKind, str] = {
+    c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS: "ensure_future_annotations",
+    c.Infra.RefactorRuleKind.LEGACY_REMOVAL: "remove",
+}
+
+
 class _TextRuleHarness:
     def __init__(
         self, kind: c.Infra.RefactorRuleKind, settings: t.Infra.InfraMapping
     ) -> None:
-        self._executor = FlextInfraRefactorTextExecutor()
         self._kind = kind
         self._settings = settings
 
-    def apply(self, source: str) -> t.Infra.TransformResult:
-        return self._executor._apply_text_rule_selection(
-            self._kind, self._settings, source, Path("target.py")
+    def apply(self, source: str) -> tuple[str, list[str]]:
+        workspace = Path(tempfile.mkdtemp())
+        file_path = workspace / "src" / "target.py"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(source, encoding="utf-8")
+        rules_dir = workspace / "rules"
+        rules_dir.mkdir(parents=True, exist_ok=True)
+        config_path = workspace / "settings.yml"
+        config_path.write_text("session: test\n", encoding="utf-8")
+        fix_action = self._settings.get("fix_action") or _KIND_PRIMARY_FIX_ACTION[
+            self._kind
+        ]
+        rule_lines = [
+            "",
+            "rules:",
+            "  - id: " + str(self._settings["id"]),
+            f"    fix_action: {fix_action}",
+            "    enabled: true",
+        ]
+        (rules_dir / "rules.yml").write_text(
+            "\n".join(rule_lines) + "\n", encoding="utf-8"
         )
+        service = FlextInfraRefactorService(config_path=config_path)
+        tm.ok(service.load_rules())
+        result = service.refactor_file(file_path)
+        tm.that(result.success, eq=True)
+        return file_path.read_text(encoding="utf-8"), list(result.changes)
 
 
 class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:

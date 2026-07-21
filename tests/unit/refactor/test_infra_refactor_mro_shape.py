@@ -1,3 +1,5 @@
+"""Tests for refactor MRO-shape detection."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

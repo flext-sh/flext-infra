@@ -52,6 +52,10 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
+CANONICAL_PROJECT_ROOT := $(shell git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print substr($$0, 10); exit }')
+ifeq ($(CANONICAL_PROJECT_ROOT),)
+CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
+endif
 
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
@@ -95,6 +99,10 @@ export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
 export POETRY_VIRTUALENVS_IN_PROJECT := true
 export POETRY_VIRTUALENVS_CREATE := true
 endif
+
+override UV_PROJECT := $(CANONICAL_PROJECT_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 

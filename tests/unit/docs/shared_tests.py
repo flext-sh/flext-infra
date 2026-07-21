@@ -30,7 +30,7 @@ def test_doc_scope_requires_name(tmp_path: Path) -> None:
     report_dir = tmp_path / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    with pytest.raises(Exception):
+    with pytest.raises(c.ValidationError):
         m.Infra.DocScope(name="", path=tmp_path, report_dir=report_dir)
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from tests import c, m, u
 
@@ -33,7 +34,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             provider="flext",
             url=url or f"https://github.com/flext-sh/{name}.git",
             branch=branch,
-            path=path,
+            path=Path(path),
             role=role,
             state=c.Infra.RepositoryState.ACTIVE,
             profile=profile,
@@ -319,4 +320,35 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.fail(
             FlextInfraWorkspaceDetector().detect(Path("\0")),
             has="Workspace detection failed",
+        )
+
+    def test_manifestless_repo_derives_spec_from_catalog(
+        self, tmp_path: Path
+    ) -> None:
+        """Derive a generic minimal spec from the catalog when no manifest exists."""
+        catalog_name = next(
+            declared.name
+            for declared in config.Infra.codegen.repositories
+            if declared.role is c.Infra.RepositoryRole.STANDALONE
+        )
+        (tmp_path / "pyproject.toml").write_text(
+            f'[project]\nname = "{catalog_name}"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        assert spec.name == catalog_name
+        assert spec.repository.role is c.Infra.RepositoryRole.STANDALONE
+        assert spec.version == c.Infra.WORKSPACE_MANIFEST_VERSION
+
+    def test_manifestless_repo_absent_from_catalog_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail closed for a manifest-less project absent from the catalog."""
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "not-a-declared-flext-project"\nversion = "0.0.0"\n',
+            encoding="utf-8",
+        )
+        tm.fail(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path),
+            has="absent from the codegen catalog",
         )

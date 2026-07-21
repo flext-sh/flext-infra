@@ -10,7 +10,7 @@ from typing import ClassVar
 import pytest
 
 from flext_cli import cli
-from flext_core import m as m, r, u
+from flext_core import r
 from flext_infra import m, p, t, u
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter

@@ -19,6 +19,7 @@ from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -276,6 +277,30 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 current = read.value
             digest = u.Cli.sha256_content(current) if path.is_file() else ""
+            if (
+                governed.policy == "merge"
+                and governed.owner == c.Infra.CODEGEN_OWNER_VSCODE
+            ):
+                # Owner-merge dispatch: owners with a canonical document merge
+                # (vscode settings today) produce their rendered content here.
+                merged = FlextInfraWorkspaceVscode.render_merged_settings(root)
+                if merged.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        merged.error or f"vscode settings merge failed: {path}"
+                    )
+                if merged.value != current:
+                    completed.append(
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                            rendered=merged.value,
+                            expected_sha256=u.Cli.sha256_content(merged.value),
+                            current_sha256=digest,
+                            changed=True,
+                        )
+                    )
+                    continue
             completed.append(
                 m.Infra.CodegenFilePlan(
                     path=path,

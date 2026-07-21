@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from tests import c
 from tests import m
 from tests import u
@@ -296,7 +295,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             encoding="utf-8",
         )
 
-        result = FlextInfraUtilitiesDiscovery.find_all_pyproject_files(workspace)
+        result = u.Infra.find_all_pyproject_files(workspace)
 
         tm.ok(result)
         tm.that(result.value, has=external_pyproject)

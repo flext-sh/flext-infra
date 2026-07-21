@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class RealSubprocessRunner:
+    """Shared runner-service test helper."""
+
     subprocess_utility: type[u.Cli] = u.Cli
     allowed_commands: frozenset[str] = frozenset({"echo", "pwd", "ls", "git"})
 

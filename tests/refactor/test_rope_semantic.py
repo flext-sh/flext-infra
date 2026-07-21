@@ -12,6 +12,8 @@ type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
 
 
 class TestsFlextInfraRefactorRopeSemantic:
+    """Tests for rope semantic-model helpers via the public surface."""
+
     def test_returns_imports(
         self, rope_workspace: RopeWorkspace, services_resource: t.Infra.RopeResource
     ) -> None:
