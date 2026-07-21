@@ -102,6 +102,24 @@ WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment 
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := $(SELECTED_PROJECT_FLAGS)
 
+# Workspace verb hook seam: workspace_custom.mk may define pre-<verb>,
+# post-<verb>, pre-<verb>-<what>, and post-<verb>-<what> targets to append work
+# at the start or end of any root verb, for all or some WHATs. Undefined hooks
+# are no-ops (make -q returns 2 when a target is absent). $(1)=phase (pre|post),
+# $(2)=verb, $(3)=optional WHAT.
+define _run_workspace_hooks
+	@phase="$(1)"; verb="$(2)"; what="$(3)"; \
+	hooks="$$phase-$$verb"; \
+	if [ -n "$$what" ]; then \
+		if [ "$$phase" = "pre" ]; then hooks="$$phase-$$verb $$phase-$$verb-$$what"; \
+		else hooks="$$phase-$$verb-$$what $$phase-$$verb"; fi; \
+	fi; \
+	for hook in $$hooks; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
+endef
+
 define ENSURE_NO_PROJECT_CONFLICT
 	if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
 	echo "{{ make.PROJECT_SELECTION_CONFLICT_ERROR }}"; \
@@ -271,7 +289,9 @@ help: ## Show registry-driven workspace verbs
 	$(Q)$(FLEXT_MAKE_DISPATCH) help
 
 boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
+	$(call _run_workspace_hooks,pre,boot,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) boot
+	$(call _run_workspace_hooks,post,boot,$(WHAT))
 
 _boot_submodules: ## Initialize declared submodules without touching the environment
 	$(Q)$(PREFLIGHT_CHECK)
@@ -406,7 +426,9 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)echo "Dependency constraint rewrite complete."
 
 check: ## Quality gates (WHAT=all|scan|fmt|format|types|pyre|pol|cqrs|lint|pyrefly|mypy|pyright|markdown|silent-failure|loc-cap|boundary|coordination)
+	$(call _run_workspace_hooks,pre,check,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) check
+	$(call _run_workspace_hooks,post,check,$(WHAT))
 
 _check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -443,14 +465,18 @@ _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
 build: ## Build/regen (WHAT=all|gen|mod|up|constraints|sync|docs|stubs)
+	$(call _run_workspace_hooks,pre,build,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) build
+	$(call _run_workspace_hooks,post,build,$(WHAT))
 
 _build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
 ship: ## Release workflow (WHAT=all|save|tag|push|pr|rel)
+	$(call _run_workspace_hooks,pre,ship,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) ship
+	$(call _run_workspace_hooks,post,ship,$(WHAT))
 
 _rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -561,10 +587,14 @@ _docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 		$(DOCS_PROJECT_FLAGS)
 
 docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
+	$(call _run_workspace_hooks,pre,docs,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) docs
+	$(call _run_workspace_hooks,post,docs,$(WHAT))
 
 test: ## Run tests only in all projects
+	$(call _run_workspace_hooks,pre,test,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) test
+	$(call _run_workspace_hooks,post,test,$(WHAT))
 
 _test_default: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -574,7 +604,9 @@ _test_default: ## Run tests only in all projects
 		$(ORCHESTRATOR_PROJECTS)
 
 val: ## Run validate gates (WHAT=all|project|workspace, VALIDATE_SCOPE=project|workspace, FIX=1)
+	$(call _run_workspace_hooks,pre,val,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) val
+	$(call _run_workspace_hooks,post,val,$(WHAT))
 
 _val_project: ## Run project validation gates
 	$(Q)$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=project $(MAKE_SELECTION_ARGS)
@@ -782,7 +814,9 @@ _pol: ## Repo-wide typing policy gate (dynamic typing/t.JsonValue/# type: ignore
 	exit $$status
 
 clean: ## Clean all projects
+	$(call _run_workspace_hooks,pre,clean,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) clean
+	$(call _run_workspace_hooks,post,clean,$(WHAT))
 
 _clean_default: ## Clean all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)

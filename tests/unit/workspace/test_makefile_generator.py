@@ -184,6 +184,25 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
 
+    def test_workspace_makefile_runs_custom_verb_hooks(self, tmp_path: Path) -> None:
+        """A root verb runs workspace_custom.mk pre-<verb> before its dispatch body."""
+        workspace_root = _write_workspace_root(tmp_path)
+        tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+        (workspace_root / "workspace_custom.mk").write_text(
+            ".PHONY: pre-check post-check\n"
+            "pre-check:\n\t@echo WS_HOOK_PRE_CHECK\n"
+            "post-check:\n\t@echo WS_HOOK_POST_CHECK\n",
+            encoding="utf-8",
+        )
+        # The dispatch body needs a workspace venv it does not have here, so it
+        # stops after the pre-hook. That is enough to prove the pre-hook fires
+        # at the start of the verb, ahead of the dispatch body.
+        outcome = cli.run_raw(
+            ["make", "-C", str(workspace_root), "check", "WHAT=lint"]
+        )
+        combined = outcome.value.stdout + outcome.value.stderr
+        tm.that(combined, has="WS_HOOK_PRE_CHECK")
+
     def test_workspace_makefile_generator_ignores_projects_outside_workspace_scope(
         self, tmp_path: Path
     ) -> None:
