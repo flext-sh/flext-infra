@@ -1079,6 +1079,136 @@ Infra:
         package: false
         editable: false
         read_only: true
+      - name: cosmos-inventory
+        distribution: cosmos-inventory
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos.git
+        branch: develop
+        path: cosmos/inventory
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-automation
+        distribution: cosmos-automation
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-automation-artifacts.git
+        branch: main
+        path: cosmos/automation
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-frontend
+        distribution: cosmos-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-frontend.git
+        branch: main
+        path: cosmos/frontend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-observability
+        distribution: cosmos-observability
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-observability.git
+        branch: main
+        path: cosmos/observability
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-templates
+        distribution: cosmos-templates
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-templates.git
+        branch: main
+        path: cosmos/templates
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-zabbix
+        distribution: cosmos-zabbix
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-zabbix
+        branch: dev
+        path: cosmos/zabbix
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-monitoring
+        distribution: cosmos-monitoring
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-monitoring
+        branch: main
+        path: cosmos/monitoring
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-hook
+        distribution: cosmos-hook
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-hook
+        branch: dev
+        path: cosmos/hook
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-backend
+        distribution: cosmosec-backend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-backend
+        branch: dev
+        path: cosmos/sec-backend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-frontend
+        distribution: cosmosec-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-frontend
+        branch: main
+        path: cosmos/sec-frontend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
       - name: ai-hub
         distribution: ai-hub
         provider: datacosmos-br

@@ -23,15 +23,42 @@ class TestRunProjectsPublicBehavior:
     """Verify project execution through the public checker methods."""
 
     @staticmethod
-    def _install_fake_ruff(tmp_path: Path, body: str) -> str:
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
-        ruff = fake_bin / "ruff"
-        ruff.write_text(body, encoding="utf-8")
-        ruff.chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
-        return original_path
+    def _install_fake_ruff(
+        tmp_path: Path,
+        *,
+        default_stdout: str,
+        default_exit: int,
+        per_project: dict[str, tuple[str, int]] | None = None,
+    ) -> str:
+        """Install a fake ``python -m ruff`` module (venv-anchored gate).
+
+        Emits ``default_stdout``/``default_exit`` unless the current project
+        directory name matches a ``per_project`` key, mirroring how ruff is now
+        invoked through the workspace interpreter rather than a PATH binary.
+        """
+        fake_pkg = tmp_path / "fake_modules" / "ruff"
+        fake_pkg.mkdir(parents=True, exist_ok=True)
+        (fake_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (fake_pkg / "__main__.py").write_text(
+            (
+                "import sys\n"
+                "from pathlib import Path\n"
+                f"per_project = {per_project or {}!r}\n"
+                f"default = ({default_stdout!r}, {default_exit!r})\n"
+                "stdout, code = per_project.get(Path.cwd().name, default)\n"
+                "sys.stdout.write(stdout)\n"
+                "raise SystemExit(code)\n"
+            ),
+            encoding="utf-8",
+        )
+        original_pythonpath = os.environ.get("PYTHONPATH")
+        fake_pythonpath = str(fake_pkg.parent)
+        os.environ["PYTHONPATH"] = (
+            f"{fake_pythonpath}:{original_pythonpath}"
+            if original_pythonpath
+            else fake_pythonpath
+        )
+        return original_pythonpath or ""
 
     def test_invalid_gates_fail(self, tmp_path: Path) -> None:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
