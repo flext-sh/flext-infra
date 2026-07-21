@@ -82,15 +82,18 @@ class TestRunProjectsPublicBehavior:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-        original_path = self._install_fake_ruff(
-            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
+        original_pythonpath = self._install_fake_ruff(
+            tmp_path, default_stdout="[]", default_exit=0
         )
         try:
             result = checker.run_projects(
                 ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
         assert (tmp_path / "reports" / report_name).exists()
@@ -101,15 +104,18 @@ class TestRunProjectsPublicBehavior:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-        original_path = self._install_fake_ruff(
-            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
+        original_pythonpath = self._install_fake_ruff(
+            tmp_path, default_stdout="[]", default_exit=0
         )
         try:
             result = checker.run_projects(
                 ["p1"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
         assert (tmp_path / "reports" / "p1").is_dir()
@@ -121,13 +127,13 @@ class TestRunProjectsPublicBehavior:
             (project_dir / "src" / "test.py").write_text(
                 "value = 1\n", encoding="utf-8"
             )
-        original_path = self._install_fake_ruff(
+        original_pythonpath = self._install_fake_ruff(
             tmp_path,
-            (
-                "#!/usr/bin/env bash\n"
-                'printf \'[{"filename":"src/test.py","location":{"row":1,"column":1},"code":"F401","message":"unused"}]\'\n'
-                "exit 1\n"
+            default_stdout=(
+                '[{"filename":"src/test.py","location":{"row":1,"column":1},'
+                '"code":"F401","message":"unused"}]'
             ),
+            default_exit=1,
         )
         try:
             result = checker.run_projects(
@@ -137,7 +143,10 @@ class TestRunProjectsPublicBehavior:
                 fail_fast=True,
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
@@ -149,24 +158,29 @@ class TestRunProjectsPublicBehavior:
             (project_dir / "src" / "test.py").write_text(
                 "value = 1\n", encoding="utf-8"
             )
-        original_path = self._install_fake_ruff(
+        original_pythonpath = self._install_fake_ruff(
             tmp_path,
-            (
-                "#!/usr/bin/env bash\n"
-                'if [ "$(basename "$PWD")" = \'p1\' ]; then\n'
-                '  printf \'[{"filename":"src/test.py","location":{"row":1,"column":1},"code":"F401","message":"unused"}]\'\n'
-                "  exit 1\n"
-                "fi\n"
-                "printf '[]'\n"
-                "exit 0\n"
-            ),
+            default_stdout="[]",
+            default_exit=0,
+            per_project={
+                "p1": (
+                    (
+                        '[{"filename":"src/test.py","location":{"row":1,'
+                        '"column":1},"code":"F401","message":"unused"}]'
+                    ),
+                    1,
+                )
+            },
         )
         try:
             result = checker.run_projects(
                 ["p1", "p2"], ["lint"], reports_dir=tmp_path / "reports"
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
         tm.that(len(result.value), eq=2)
@@ -177,13 +191,16 @@ class TestRunProjectsPublicBehavior:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-        original_path = self._install_fake_ruff(
-            tmp_path, "#!/usr/bin/env bash\nprintf '[]'\nexit 0\n"
+        original_pythonpath = self._install_fake_ruff(
+            tmp_path, default_stdout="[]", default_exit=0
         )
         try:
             result = checker.run_project("p1", ["lint"])
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
