@@ -34,29 +34,49 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Python selector and exact uv version shared by generated projects."""
+        """Language-runtime versions shared by generated projects.
+
+        Only the exact-patch ``python_version`` (e.g. ``3.13.11``) and
+        ``uv_version`` are declared (single source, chosen by the package-version
+        updater). Every PEP 440 expression and the major.minor selector are
+        derived, so a version bump touches exactly one value. Linters/type-
+        checkers are NOT here: their pins live in the pyproject dependency
+        groups (dependency_profiles).
+        """
 
         python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
-        python_minor_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Python major.minor tool configuration value"),
+            m.Field(description="Exact Python patch version, e.g. '3.13.11'"),
         ]
-        python_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
-        ]
-        # mro-sltx (backport 0.20): model the Ruff pin for the mise toolchain.
-        ruff_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Ruff version for mise")
-        ]
-        uv_version: Annotated[t.NonEmptyStr, m.Field(description="Exact uv version")]
-        uv_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 uv required-version expression")
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv version, e.g. '0.11.29'")
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
+
+        @m.computed_field()
+        @property
+        def python_minor_version(self) -> str:
+            """Python major.minor selector derived from the exact patch."""
+            major, _, rest = self.python_version.partition(".")
+            minor, _, _patch = rest.partition(".")
+            return f"{major}.{minor}"
+
+        @m.computed_field()
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement: exact patch floor, next-minor ceiling."""
+            major, _, rest = self.python_version.partition(".")
+            minor, _, _patch = rest.partition(".")
+            next_minor = int(minor) + 1
+            return f">={self.python_version},<{major}.{next_minor}"
+
+        @m.computed_field()
+        @property
+        def uv_required_version(self) -> str:
+            """Exact PEP 440 uv requirement derived from the declared version."""
+            return f"=={self.uv_version}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""

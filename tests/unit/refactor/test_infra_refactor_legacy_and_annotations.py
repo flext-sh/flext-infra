@@ -51,9 +51,9 @@ class _TextRuleHarness:
         )
         service = FlextInfraRefactorService(config_path=config_path)
         tm.ok(service.load_rules())
-        result = service.refactor_file(file_path)
+        result = service.refactor_file(file_path, dry_run=True)
         tm.that(result.success, eq=True)
-        return file_path.read_text(encoding="utf-8"), list(result.changes)
+        return result.refactored_code or "", list(result.changes)
 
 
 class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:

@@ -27,12 +27,11 @@ class TestRunnerPublicBehavior:
         stderr: str = "",
         log_file: Path | None = None,
     ) -> str:
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
-        script = fake_bin / "pyrefly"
-        script.write_text(
+        fake_pkg = tmp_path / "fake_modules" / "pyrefly"
+        fake_pkg.mkdir(parents=True, exist_ok=True)
+        (fake_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (fake_pkg / "__main__.py").write_text(
             (
-                "#!/usr/bin/env python3\n"
                 "from pathlib import Path\n"
                 "import sys\n"
                 f"payload = {payload!r}\n"
@@ -53,10 +52,14 @@ class TestRunnerPublicBehavior:
             ),
             encoding="utf-8",
         )
-        script.chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
-        return original_path
+        original_pythonpath = os.environ.get("PYTHONPATH")
+        fake_pythonpath = str(fake_pkg.parent)
+        os.environ["PYTHONPATH"] = (
+            f"{fake_pythonpath}:{original_pythonpath}"
+            if original_pythonpath
+            else fake_pythonpath
+        )
+        return original_pythonpath or ""
 
     @staticmethod
     def _install_fake_mypy(
@@ -97,7 +100,7 @@ class TestRunnerPublicBehavior:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path, payload='{"errors": []}', exit_code=0
         )
         try:
@@ -105,7 +108,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert result.result.passed
 
@@ -114,7 +118,7 @@ class TestRunnerPublicBehavior:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path,
             payload=(
                 '{"errors": [{"path": "a.py", "line": 1, "column": 0, '
@@ -127,7 +131,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert not result.result.passed
         tm.that(len(result.issues), eq=1)
@@ -137,7 +142,7 @@ class TestRunnerPublicBehavior:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path, payload="invalid json", exit_code=1
         )
         try:
@@ -145,7 +150,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert not result.result.passed
 
@@ -154,7 +160,7 @@ class TestRunnerPublicBehavior:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path,
             payload=(
                 '[{"path": "a.py", "line": 1, "column": 0, "name": "E001", '
@@ -167,7 +173,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         tm.that(len(result.issues), eq=1)
 
@@ -181,7 +188,7 @@ class TestRunnerPublicBehavior:
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         (proj_dir / "tests" / "test_main.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "pyrefly-command.txt"
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path, payload='{"errors": []}', exit_code=0, log_file=log_file
         )
         try:
@@ -189,7 +196,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert result.result.passed
         tm.that(
@@ -208,7 +216,7 @@ class TestRunnerPublicBehavior:
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         log_file = tmp_path / "pyrefly-config-command.txt"
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path, payload='{"errors": []}', exit_code=0, log_file=log_file
         )
         try:
@@ -216,7 +224,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert result.result.passed
         tm.that(
@@ -231,7 +240,7 @@ class TestRunnerPublicBehavior:
         reports_dir = tmp_path / "reports"
         reports_dir.mkdir()
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        original_path = self._install_fake_pyrefly(
+        original_pythonpath = self._install_fake_pyrefly(
             tmp_path, payload=None, exit_code=1, stderr="pyrefly crashed"
         )
         try:
@@ -239,7 +248,8 @@ class TestRunnerPublicBehavior:
                 FlextInfraPyreflyGate, tmp_path, proj_dir, reports_dir=reports_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
 
         assert not result.result.passed
         tm.that(len(result.issues), eq=1)

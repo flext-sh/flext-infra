@@ -4,13 +4,15 @@ Infra:
     version: 1
 
     toolchain:
-      python_version: "3.13"
-      python_minor_version: "3.13"
-      python_required_version: ">=3.13,<3.14"
-      # mro-sltx (backport 0.20): Ruff pin for the mise toolchain (0.12 canonical 0.15.22)
-      ruff_version: "0.15.22"
+      # Single-source language-runtime versions (exact patch pins chosen by the
+      # package-version updater). Derived as computed fields on ToolchainSpec:
+      #   python_minor_version    -> major.minor of python_version (3.13)
+      #   python_required_version -> >={python_version},<{major}.{minor+1}
+      #   uv_required_version     -> =={uv_version}
+      # A version bump touches ONLY python_version / uv_version. Linter pins
+      # live in the pyproject dependency groups (dependency_profiles).
+      python_version: "3.13.11"
       uv_version: "0.11.29"
-      uv_required_version: "==0.11.29"
       uv_link_mode: copy
 
     providers:

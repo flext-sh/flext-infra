@@ -32,7 +32,11 @@ Infra:
           - typings
           - vendor
           - venv
-        namespace-packages: [tests]
+        # tests, examples, and scripts are dev/tooling source roots (see `src`
+        # below), not installed packages: they hold namespace/command modules
+        # loaded by path (e.g. the scripts/<verb>/<what> dispatch pattern), so
+        # ruff must not demand an __init__.py (INP001) there.
+        namespace-packages: [tests, examples, scripts]
         fix: false
         line-length: 88
         preview: true

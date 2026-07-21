@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -40,14 +39,12 @@ class FlextInfraPyrightGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
-        return [
-            sys.executable,
-            "-m",
+        return self._python_module_command(
             c.Infra.PYRIGHT,
             *check_dirs,
             *ctx.pyright_args,
             "--outputjson",
-        ]
+        )
 
     @staticmethod
     def _has_project_pyright_config(project_dir: Path) -> bool:

@@ -40,10 +40,9 @@ def _apply_rule(
     service = FlextInfraRefactorService(config_path=config_path)
     load_result = service.load_rules()
     tm.ok(load_result)
-    result = service.refactor_file(file_path)
+    result = service.refactor_file(file_path, dry_run=True)
     tm.that(result.success, eq=True)
-    updated = file_path.read_text(encoding="utf-8")
-    return updated, list(result.changes)
+    return result.refactored_code or "", list(result.changes)
 
 
 class TestsFlextInfraRefactorInfraRefactorPatternCorrections:

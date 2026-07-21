@@ -37,7 +37,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
-        return [
+        return self._python_module_command(
             c.Infra.RUFF,
             c.Infra.VERB_CHECK,
             *check_dirs,
@@ -45,7 +45,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
             "--output-format",
             c.Infra.OUTPUT_JSON,
             "--quiet",
-        ]
+        )
 
     @override
     def _parse_check_output(
@@ -92,14 +92,14 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir
-        return [
+        return self._python_module_command(
             c.Infra.RUFF,
             c.Infra.VERB_CHECK,
             *targets,
             *ctx.ruff_args,
             "--fix",
             "--quiet",
-        ]
+        )
 
 
 __all__: list[str] = ["FlextInfraRuffLintGate"]

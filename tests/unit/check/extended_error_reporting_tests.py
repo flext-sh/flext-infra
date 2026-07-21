@@ -58,29 +58,37 @@ class TestGateErrorReportingPublicBehavior:
     def test_ruff_format_deduplicates_reported_files(self, tmp_path: Path) -> None:
         proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
-        (fake_bin / "ruff").write_text(
+        fake_pkg = tmp_path / "fake_modules" / "ruff"
+        fake_pkg.mkdir(parents=True, exist_ok=True)
+        (fake_pkg / "__init__.py").write_text("", encoding="utf-8")
+        (fake_pkg / "__main__.py").write_text(
             (
-                "#!/usr/bin/env bash\n"
-                "cat <<'EOF'\n"
-                "--> src/file.py:1:1\n"
-                "--> src/file.py:1:1\n"
-                "--> src/other.py:1:1\n"
-                "EOF\n"
-                "exit 1\n"
+                "import sys\n"
+                "sys.stdout.write(\n"
+                "    '--> src/file.py:1:1\\n'\n"
+                "    '--> src/file.py:1:1\\n'\n"
+                "    '--> src/other.py:1:1\\n'\n"
+                ")\n"
+                "raise SystemExit(1)\n"
             ),
             encoding="utf-8",
         )
-        (fake_bin / "ruff").chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+        original_pythonpath = os.environ.get("PYTHONPATH")
+        fake_pythonpath = str(fake_pkg.parent)
+        os.environ["PYTHONPATH"] = (
+            f"{fake_pythonpath}:{original_pythonpath}"
+            if original_pythonpath
+            else fake_pythonpath
+        )
         try:
             result = u.Tests.run_gate_check(
                 FlextInfraRuffFormatGate, tmp_path, proj_dir
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
         assert not result.result.passed
         tm.that(len(result.issues), eq=2)
