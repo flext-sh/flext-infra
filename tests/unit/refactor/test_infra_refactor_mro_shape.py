@@ -185,7 +185,7 @@ class TestsFlextInfraRefactorInfraRefactorMroShape:
         violations = FlextInfraMROShapeDetector.detect_file(ctx)
 
         assert not violations
-        tm.that(ctx.parse_failures, none=False)
+        assert ctx.parse_failures is not None
         tm.that(len(ctx.parse_failures), eq=1)
         tm.that(ctx.parse_failures[0].stage, eq="mro_shape")
 

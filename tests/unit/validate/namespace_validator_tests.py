@@ -55,7 +55,7 @@ class TestFlextInfraNamespaceValidator:
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
         layout = u.Infra.layout(project_root)
-        tm.that(layout, none=False)
+        assert layout is not None
         tm.that(layout.class_stem, eq="Flext")
 
     def test_rule0_valid_module_passes(self, tmp_path: Path) -> None:

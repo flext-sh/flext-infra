@@ -93,7 +93,7 @@ class TestsFlextInfraIntegrationRefactorNestingIdempotency:
             "    confidence: high\n"
         )
         result1 = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        tm.that(result1.refactored_code, none=False)
+        assert result1.refactored_code is not None
         test_file.write_text(result1.refactored_code)
         result2 = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
         tm.that(result2.success, eq=True)

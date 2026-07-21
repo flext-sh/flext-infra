@@ -34,9 +34,9 @@ class TestsFlextInfraRefactorRopeStubs:
         tm.that(project, none=False)
         try:
             resource = u.Infra.get_resource_from_path(project, target)
-            tm.that(resource, none=False)
+            assert resource is not None
             offset = u.Infra.find_definition_offset(project, resource, "Demo")
-            tm.that(offset, none=False)
+            assert offset is not None
             hits = u.Infra.find_occurrences(project, resource, offset)
             assert hits
         finally:

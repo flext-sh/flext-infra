@@ -102,5 +102,5 @@ class TestsFlextInfraRefactorRopeSemantic:
         proj, _ = rope_workspace
         offset = u.Infra.find_definition_offset(proj, models_resource, "Dog")
         source = models_resource.read()
-        tm.that(offset, none=False)
+        assert offset is not None
         tm.that(source[offset : offset + 3], eq="Dog")

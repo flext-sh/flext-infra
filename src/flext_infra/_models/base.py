@@ -63,9 +63,10 @@ class FlextInfraModelsBase:
         # trailing newline every FLEXT module requires). ContractModel sets
         # str_strip_whitespace=True, which would corrupt written files, so the
         # canonical contract config is inherited with stripping disabled.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            m.ContractModel.model_config, str_strip_whitespace=False
-        )
+        model_config: ClassVar[m.ConfigDict] = {
+            **m.ContractModel.model_config,
+            "str_strip_whitespace": False,
+        }
 
         workspace: Annotated[
             Path, m.Field(description="Workspace root used for lint and pytest checks")

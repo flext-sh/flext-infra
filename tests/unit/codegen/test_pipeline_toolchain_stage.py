@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 import pytest
 from flext_cli import cli
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class _ToolchainStageHarness(FlextInfraCodegenPipelineStagesMixin):
+    @override
     def _run_stage[V](
         self, stage_id: str, action: Callable[[], V], emit: Callable[[V], t.JsonMapping]
     ) -> p.Result[m.Cli.PipelineStageResult]:
@@ -49,7 +50,7 @@ def test_toolchain_stage_builds_full_workspace_conform_request(
     def execute_request(
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> r[m.Infra.CodegenResult]:
+    ) -> p.Result[m.Infra.CodegenResult]:
         del initial_workspace
         captured.append(request)
         plan = m.Infra.CodegenPlan.model_construct(
@@ -88,7 +89,7 @@ def test_toolchain_stage_propagates_conform_failure(
     def execute_request(
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> r[m.Infra.CodegenResult]:
+    ) -> p.Result[m.Infra.CodegenResult]:
         del request, initial_workspace
         return r[m.Infra.CodegenResult].fail("codegen drift detected: pyproject.toml")
 

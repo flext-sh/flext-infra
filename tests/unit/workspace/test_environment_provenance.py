@@ -174,6 +174,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """Parse the public workspace CLI flag into the canonical request field."""
         workspace = _workspace(tmp_path / "workspace")
 
-        request = m.Infra.WorkspaceEnvironmentRequest(workspace=workspace)
+        request = m.Infra.WorkspaceEnvironmentRequest.model_validate(
+            {"workspace": workspace}
+        )
 
         tm.that(request.workspace_root, eq=workspace)
