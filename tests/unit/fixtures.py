@@ -220,7 +220,7 @@ def models_resource(
     resource = u.Infra.get_resource_from_path(
         rope_project, workspace_root / "src" / "rope_demo" / "models.py"
     )
-    tm.that(resource, none=False)
+    assert resource is not None
     return resource
 
 
@@ -233,7 +233,7 @@ def services_resource(
     resource = u.Infra.get_resource_from_path(
         rope_project, workspace_root / "src" / "rope_demo" / "services.py"
     )
-    tm.that(resource, none=False)
+    assert resource is not None
     return resource
 
 

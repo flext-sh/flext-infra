@@ -34,7 +34,7 @@ class FlextInfraNamespaceRules:
         ("Types", c.Infra.TYPINGS_PY, c.Infra.FAMILY_DIRECTORIES["t"]),
         ("Utilities", c.Infra.UTILITIES_PY, c.Infra.FAMILY_DIRECTORIES["u"]),
     )
-    _FACADE_DAG: t.Mapping[str, int] = MappingProxyType({"c": 0, "t": 1, "p": 2, "m": 3, "u": 4})
+    _FACADE_DAG: t.MappingKV[str, int] = MappingProxyType({"c": 0, "t": 1, "p": 2, "m": 3, "u": 4})
 
     @staticmethod
     def _is_private_dir_file(filepath: Path) -> bool:
