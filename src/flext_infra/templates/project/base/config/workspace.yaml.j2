@@ -19,6 +19,22 @@ repository:
   package: {{ workspace_repository.package | tojson }}
   editable: {{ workspace_repository.editable | tojson }}
   read_only: {{ workspace_repository.read_only | tojson }}
+{%- if workspace_repository.extra_verbs %}
+  extra_verbs:
+{%- for verb in workspace_repository.extra_verbs %}
+    - name: {{ verb.name | tojson }}
+      default_what: {{ verb.default_what | tojson }}
+      apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- endfor %}
+{%- endif %}
+{%- if workspace_repository.script_dispatch %}
+  script_dispatch:
+    dispatcher: {{ workspace_repository.script_dispatch.dispatcher | tojson }}
+    roots:
+{%- for root in workspace_repository.script_dispatch.roots %}
+      - {{ root | tojson }}
+{%- endfor %}
+{%- endif %}
 project:
   package_name: {{ package_name | tojson }}
   class_stem: {{ class_stem | tojson }}
@@ -55,6 +71,22 @@ members:
     package: {{ repository.package | tojson }}
     editable: {{ repository.editable | tojson }}
     read_only: {{ repository.read_only | tojson }}
+{%- if repository.extra_verbs %}
+    extra_verbs:
+{%- for verb in repository.extra_verbs %}
+      - name: {{ verb.name | tojson }}
+        default_what: {{ verb.default_what | tojson }}
+        apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- endfor %}
+{%- endif %}
+{%- if repository.script_dispatch %}
+    script_dispatch:
+      dispatcher: {{ repository.script_dispatch.dispatcher | tojson }}
+      roots:
+{%- for root in repository.script_dispatch.roots %}
+        - {{ root | tojson }}
+{%- endfor %}
+{%- endif %}
 {% else %}
   []
 {%- endfor %}

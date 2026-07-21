@@ -17,13 +17,16 @@ PROJECTS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
+PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src
 
 {% include "base_mypy_limit.mk.j2" %}
 
 {% for verb in make.verbs -%}
+_DEFAULT_{{ verb.name }} := {{ verb.default_what }}
+{% endfor -%}
+{% for verb in extra_verbs -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
 
@@ -59,6 +62,12 @@ UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
+{% if script_dispatch %}
+# Script command framework: non-builtin verbs/WHATs route to scripts/<verb>/<what>.
+# A hyphenated WHAT (make check WHAT=no-fallbacks) maps to the underscore module
+# stem (scripts/check/no_fallbacks.py) so PEP 8 module names stay valid.
+_SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
+{% endif %}
 
 -include custom.mk
 
@@ -93,10 +102,35 @@ define _dispatch
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done; \
+{%- if script_dispatch %}
+	what_norm=$$(printf '%s' "$$what" | tr '-' '_'); \
+	script=''; script_what=''; \
+	for root in $(_SCRIPT_DISPATCH_ROOTS); do \
+		for cand in "$$what_norm" "$$what"; do \
+			for ext in py sh; do \
+				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$@/$$cand.$$ext" ]; then \
+					script="$(PROJECT_ROOT)/$$root/$@/$$cand.$$ext"; script_what="$$cand"; \
+				fi; \
+			done; \
+		done; \
+	done; \
+	$(MAKE) --no-print-directory -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
+	if [ "$$custom_rc" -ne 2 ]; then \
+		$(MAKE) --no-print-directory "$$custom" || exit $$?; \
+	elif [ -n "$$script" ]; then \
+		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$@" || exit $$?; \
+	else \
+		case " $(_BUILTIN_HANDLERS) " in \
+			*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
+			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$@" || exit $$? ;; \
+		esac; \
+	fi; \
+{%- else %}
 	case " $(_BUILTIN_HANDLERS) " in \
 		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
 		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
 	esac; \
+{%- endif %}
 	for hook in "post-$@-$$what" "post-$@"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
@@ -131,6 +165,8 @@ $(PUBLIC_VERBS):
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
 {% for verb in make.verbs %}
+	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
+{% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
 {% endfor %}
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'

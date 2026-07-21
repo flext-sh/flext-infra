@@ -151,6 +151,55 @@
         },
         "read_only": {
           "type": "boolean"
+        },
+        "extra_verbs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/makeVerb"
+          }
+        },
+        "script_dispatch": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "dispatcher",
+            "roots"
+          ],
+          "properties": {
+            "dispatcher": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "roots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/relativePath"
+              }
+            }
+          }
+        }
+      }
+    },
+    "makeVerb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "default_what"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "default_what": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "apply_guarded": {
+          "type": "boolean"
         }
       }
     },

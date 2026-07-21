@@ -119,6 +119,28 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
 
+    class ScriptDispatchSpec(_ConfigContract):
+        """Opt-in routing of non-builtin verbs to a script command framework."""
+
+        dispatcher: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Repository-relative dispatcher entrypoint that resolves "
+                    "scripts/<verb>/<what>.{py,sh} commands"
+                )
+            ),
+        ]
+        roots: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Repository-relative script roots scanned for a matching "
+                    "<verb>/<what> command before falling back to a builtin"
+                ),
+            ),
+        ]
     class CustomHandlerPolicy(_ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
@@ -347,6 +369,24 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(
+                description=(
+                    "Additional public Make verbs this repository dispatches "
+                    "beyond the canonical set (e.g. a script command framework)"
+                )
+            ),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(
+                description=(
+                    "Opt-in script command-framework routing for non-builtin "
+                    "verbs and WHAT selectors; None keeps builtin-only dispatch"
+                )
+            ),
+        ] = None
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
@@ -554,6 +594,14 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
             m.Field(description="Ordered excluded workspace paths"),
         ] = ()
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(description="Repository-specific additional public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(description="Opt-in script command-framework routing contract"),
+        ] = None
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""

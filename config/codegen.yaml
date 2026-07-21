@@ -1038,6 +1038,27 @@ Infra:
         package: false
         editable: false
         read_only: false
+        extra_verbs:
+          - { name: auth, default_what: all }
+          - { name: bead, default_what: all }
+          - { name: bootstrap, default_what: all }
+          - { name: charts, default_what: all }
+          - { name: converge, default_what: all }
+          - { name: done-check, default_what: all }
+          - { name: gitops, default_what: all }
+          - { name: incidente, default_what: all }
+          - { name: nodepool, default_what: all }
+          - { name: packages, default_what: all }
+          - { name: repair, default_what: all }
+          - { name: scaffold, default_what: all }
+          - { name: secret, default_what: all }
+          - { name: sync, default_what: all }
+        script_dispatch:
+          dispatcher: scripts/dispatch.py
+          roots:
+            - scripts
+            - apps/cosmos-charts/scripts
+            - apps/cosmos-gitops/scripts
       - name: cosmos-charts
         distribution: cosmos-charts
         provider: datacosmos-br

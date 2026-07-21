@@ -951,6 +951,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_repositories=members,
                 workspace_content_only=tuple(workspace.content_only),
                 workspace_exclusions=tuple(workspace.exclusions),
+                extra_verbs=repository.extra_verbs,
+                script_dispatch=repository.script_dispatch,
             )
         )
 

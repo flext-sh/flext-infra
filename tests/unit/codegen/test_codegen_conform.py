@@ -554,4 +554,120 @@ class TestCodegenConform:
         )
 
 
+class TestScriptDispatchMakefile:
+    """Prove per-repo extra verbs and script-dispatch WHAT normalization."""
+
+    @staticmethod
+    def _render_root_makefile(
+        tmp_path: Path,
+        *,
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
+        script_dispatch: m.Infra.ScriptDispatchSpec | None,
+    ) -> str:
+        root_repository = m.Infra.RepositoryRef(
+            name="cosmos-demo",
+            distribution="cosmos-demo",
+            url="https://github.com/datacosmos-br/cosmos-demo.git",
+            branch="main",
+            path=Path(),
+            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            provider="datacosmos-br",
+            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            checkout=c.Infra.CheckoutKind.ROOT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=False,
+            editable=False,
+            read_only=False,
+            extra_verbs=extra_verbs,
+            script_dispatch=script_dispatch,
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="cosmos-demo",
+            repository=root_repository,
+            project=m.Infra.ProjectSpec(
+                package_name="cosmos_demo",
+                class_stem="CosmosDemo",
+                namespace="CosmosDemo",
+                constant_name="cosmos-demo",
+                namespace_attribute="cosmos_demo",
+                alias="cosmos_demo",
+                environment_prefix="COSMOS_",
+                description="Cosmos workspace",
+                version="0.2.0",
+                license="MIT",
+                author_name="Datacosmos",
+                author_email="devops@datacosmos.com.br",
+                upstream="flext_cli",
+                homepage="https://github.com/datacosmos-br/cosmos-demo",
+                documentation="https://github.com/datacosmos-br/cosmos-demo",
+                workspace_root_rel=".",
+                year=2026,
+            ),
+            members=(),
+        )
+        root = tmp_path / "cosmos-demo"
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        planned = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        ).plan(request)
+        plan = tm.ok(planned)
+        makefile = next(
+            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
+        )
+        return makefile.rendered
+
+    def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
+        self, tmp_path: Path
+    ) -> None:
+        """Extra verbs join PUBLIC_VERBS and WHAT hyphens map to script stems."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(name="incidente", default_what="all"),
+                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+            ),
+            script_dispatch=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py",
+                roots=("scripts", "apps/cosmos-charts/scripts"),
+            ),
+        )
+        # Extra verbs are public targets the dispatcher can reach.
+        tm.that("incidente" in rendered, eq=True)
+        tm.that("charts" in rendered, eq=True)
+        # The generated dispatch normalizes hyphenated WHAT to the module stem.
+        tm.that("tr '-' '_'" in rendered, eq=True)
+        # It forwards to the declared dispatcher through uv, not a raw builtin.
+        tm.that("scripts/dispatch.py" in rendered, eq=True)
+        # Existence check spans every declared script root.
+        tm.that("apps/cosmos-charts/scripts" in rendered, eq=True)
+        # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
+        # command must continue with a trailing backslash. A blank/unterminated
+        # line splits the recipe, drops $$what/$$builtin, and recurses into the
+        # default goal. Verify continuity across the whole define body.
+        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
+        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
+        broken = [
+            ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")
+        ]
+        tm.that(broken, eq=[])
+
+    def test_repo_without_script_dispatch_renders_unchanged_surface(
+        self, tmp_path: Path
+    ) -> None:
+        """A repo with no script dispatch keeps the canonical builtin surface."""
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        # No script routing leaks into non-opted-in repositories.
+        tm.that("tr '-' '_'" in rendered, eq=False)
+        tm.that("scripts/dispatch.py" in rendered, eq=False)
+        # The canonical builtin dispatch is preserved verbatim.
+        tm.that('*) $(MAKE) --no-print-directory "$$custom"' in rendered, eq=True)
+
+
 __all__: list[str] = []
