@@ -8,8 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path

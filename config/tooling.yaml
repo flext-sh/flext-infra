@@ -139,7 +139,10 @@ Infra:
             "**/*dispatcher*": []
             "**/*docs*": [implicit-namespace-package, suspicious-subprocess-import, subprocess-without-shell-equals-true, print]
             "**/*exceptions*": [builtin-variable-shadowing, hardcoded-password-string, private-member-access]
-            "**/*handlers*": []
+            # handlers/handler utilities lazy-import the m facade INSIDE functions to
+            # break the flext-core internal cycle (ADR-011 sanctioned escape hatch).
+            "**/*handlers*": [import-outside-top-level]
+            "**/handler.py": [import-outside-top-level]
             "**/*instrumentation*": [complex-structure, boolean-type-hint-positional-argument, private-member-access]
             "**/*loggings*": [global-statement, too-many-public-methods]
             "**/*middleware*": [any-type, boolean-type-hint-positional-argument, boolean-default-value-positional-argument, unnecessary-dunder-call, hardcoded-password-default]
@@ -207,7 +210,7 @@ Infra:
             # Typer, and Rich imports stay banned in every consumer while the
             # owning boundary must import those libraries to expose the facade.
             "**/flext_cli/_utilities/formatters.py": [banned-api]
-            "**/flext_cli/_utilities/framework.py": [builtin-argument-shadowing, banned-api]
+            "**/flext_cli/_utilities/framework.py": [builtin-argument-shadowing, banned-api, import-outside-top-level]
             "**/plugins/*.py": [boolean-type-hint-positional-argument, boolean-default-value-positional-argument, suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path, relative-imports]
             "**/providers/*.py": [hardcoded-password-func-arg, hardcoded-password-default]
             "**/services/prompts.py": [undocumented-public-method, undocumented-public-init]
@@ -220,6 +223,42 @@ Infra:
             "**/protocol_impls/*.py": [private-member-access]
             "**/typings.py": [none-not-at-end-of-union]
             "**/workspace/*.py": [suspicious-subprocess-import, subprocess-without-shell-equals-true, start-process-with-partial-path]
+            # mro-wkii.17.26: tests are first-class code, but pytest-idiomatic and
+            # fixture patterns are legitimate ONLY under tests/. Bounded to the test
+            # trees; real defects (undefined-name, unused-import, redefined-while-unused)
+            # stay enforced and are fixed at the source, never silenced here.
+            "**/tests/**/*.py":
+              - assert
+              - import-outside-top-level
+              - constant-imported-as-non-constant
+              - undocumented-public-method
+              - undocumented-public-function
+              - undocumented-public-class
+              - undocumented-public-module
+              - magic-value-comparison
+              - boolean-type-hint-positional-argument
+              - boolean-positional-value-in-call
+              - private-member-access
+              - import-private-name
+              - compare-to-empty-string
+              - hardcoded-temp-file
+              - hardcoded-password-func-arg
+              - hardcoded-password-string
+              - hardcoded-password-default
+              - hardcoded-bind-all-interfaces
+              - pytest-raises-too-broad
+              - f-string-in-exception
+              - suppressible-exception
+              - unused-method-argument
+              - unused-lambda-argument
+              - unused-function-argument
+              - too-many-blank-lines
+              - line-contains-todo
+            "**/conftest.py":
+              - undocumented-public-method
+              - undocumented-public-function
+              - unused-function-argument
+              - unused-method-argument
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         exclude: ^legado(?:/|$)
@@ -437,9 +476,7 @@ Infra:
           - invalid-variance
           - invalid-yield
           - missing-argument
-          - missing-attribute
           - missing-import
-          - missing-module-attribute
           - missing-override-decorator
           - missing-source
           - missing-source-for-stubs
@@ -477,6 +514,12 @@ Infra:
           - variance-mismatch
           - inconsistent-overload-default
         disabled-errors:
+          # mro-wkii.17.26: the generated PEP 562 lazy facades (c/t/p/m/u.<Ns>.*)
+          # cannot be modeled statically by pyrefly, exactly as mypy disables
+          # attr-defined and pyright sets reportAttributeAccessIssue=none. Keep the
+          # three type checkers consistent on this single tool-limitation class.
+          - missing-attribute
+          - missing-module-attribute
           - abstract-method-call
           - bad-override
           - non-convergent-recursion

@@ -12,14 +12,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-
-from tests import c
-from tests import u
 from flext_tests import tm
 
+from tests import c, u
+
 if TYPE_CHECKING:
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 

@@ -18,9 +18,9 @@ from flext_infra._protocols.basemk import FlextInfraProtocolsBasemk
 from flext_infra._protocols.check import FlextInfraProtocolsCheck
 from flext_infra._protocols.deps import FlextInfraProtocolsDeps
 from flext_infra._protocols.docs import FlextInfraProtocolsDocs
+from flext_infra._protocols.release import FlextInfraProtocolsRelease
 from flext_infra._protocols.rope import FlextInfraProtocolsRope
 from flext_infra._protocols.rope_runtime import FlextInfraProtocolsRopeRuntime
-from flext_infra._protocols.release import FlextInfraProtocolsRelease
 from flext_infra._protocols.validate import FlextInfraProtocolsValidate
 from flext_infra._protocols.worktree import FlextInfraProtocolsWorktree
 

@@ -53,7 +53,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             self.workspace_root, self.project_names or ()
         )
         if resolved.failure:
-                return r[m.Infra.AccessorMigrationReport].fail(
+            return r[m.Infra.AccessorMigrationReport].fail(
                 resolved.error or "project resolution failed"
             )
         iter_result = u.Infra.iter_python_files(

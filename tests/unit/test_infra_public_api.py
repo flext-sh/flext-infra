@@ -10,8 +10,8 @@ import pytest
 from flext_tests import FlextTestsSettings, tm
 
 import flext_infra as infra_pkg
-from tests.base import s
 from tests import c
+from tests.base import s
 
 if TYPE_CHECKING:
     from types import ModuleType

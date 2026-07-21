@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 
 
 class TestsVscodeOwnerMerge:
@@ -24,7 +25,7 @@ class TestsVscodeOwnerMerge:
             '{"python.languageServer": "None"}\n', encoding="utf-8"
         )
 
-        result = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
+        result = FlextInfraCodegenConform._complete_governed_plans(
             root, (), config.Infra.codegen
         )
 
@@ -47,14 +48,14 @@ class TestsVscodeOwnerMerge:
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         _ = settings_path.write_text("{}\n", encoding="utf-8")
-        first = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
+        first = FlextInfraCodegenConform._complete_governed_plans(
             root, (), config.Infra.codegen
         )
         tm.ok(first)
         plan = next(f for f in first.value if f.path == settings_path)
         _ = settings_path.write_text(plan.rendered, encoding="utf-8")
 
-        second = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
+        second = FlextInfraCodegenConform._complete_governed_plans(
             root, (), config.Infra.codegen
         )
 

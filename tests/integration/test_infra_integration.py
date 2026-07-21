@@ -15,13 +15,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

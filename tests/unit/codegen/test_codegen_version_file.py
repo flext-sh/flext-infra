@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from tests import c
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

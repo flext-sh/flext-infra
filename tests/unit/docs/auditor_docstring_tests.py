@@ -11,11 +11,11 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.utilities import u
 from tests import m
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -11,8 +11,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
-from tests import t
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

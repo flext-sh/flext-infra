@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import flext_infra
 from flext_tests import tm
+
+import flext_infra
 
 # mro-wkii.4.15: pin the generated direct config/settings singleton surface.
 _EXPECTED_ROOT_EXPORTS: tuple[str, ...] = (

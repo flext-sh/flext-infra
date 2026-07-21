@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.services.cli_transaction import CliTransactionService
 from flext_tests import tm
 
+from flext_infra.services.cli_transaction import CliTransactionService
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -169,10 +169,10 @@ class TestsFlextInfraWorktreeTransactionLintRegression:
         before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
         after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
 
-        regressed = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+        regressed = u.Infra._lint_regressed(
             before, after
         )
-        stable = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+        stable = u.Infra._lint_regressed(
             before, before
         )
 

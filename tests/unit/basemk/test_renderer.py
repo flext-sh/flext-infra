@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture

@@ -4,19 +4,15 @@ from __future__ import annotations
 
 import importlib
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 from flext_tests import tm
 
 import flext_infra as infra_pkg
-from tests import c
-from tests import u
-
-from collections.abc import Iterator
-from types import ModuleType
-
-from tests import t
+from tests import c, t, u
 
 # NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is
 # the only fixture owner; conftest must not re-export or shadow its fixtures.

@@ -10,14 +10,12 @@ from flext_tests import tm
 from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:

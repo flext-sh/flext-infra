@@ -246,6 +246,20 @@ define _run_custom_what
 	$(MAKE) --no-print-directory "$$target"
 endef
 
+# Verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the current
+# WHAT, run that custom handler; otherwise run the builtin implementation. This
+# lets every verb accept project-specific WHATs while preserving builtin WHATs.
+# $(1)=verb, $(2)=builtin impl target.
+define _run_verb_body
+	@verb="$(1)"; impl="$(2)"; what="$(WHAT)"; \
+	if [ -n "$$what" ]; then \
+		custom="_custom_$${verb}_$${what}"; \
+		$(MAKE) --no-print-directory -q "$$custom" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then exec $(MAKE) --no-print-directory "$$custom"; fi; \
+	fi; \
+	exec $(MAKE) --no-print-directory "$$impl"
+endef
+
 help: ## Show commands
 	$(Q)echo "================================================"
 	$(Q)echo "  $(PROJECT_NAME)"

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from enum import StrEnum, unique
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -146,7 +147,6 @@ class FlextInfraConstantsWorkspace:
     WORKSPACE_ENV_FILES: Final[t.StrSequence] = (ENVRC_FILENAME, MISE_TOML_FILENAME)
     VSCODE_DIRNAME: Final[str] = ".vscode"
     VSCODE_SETTINGS_FILENAME: Final[str] = "settings.json"
-    VSCODE_FILES_WATCHER_EXCLUDE_KEY: Final[str] = "files.watcherExclude"
     VSCODE_FILES_WATCHER_EXCLUDE_KEY: Final[str] = "files.watcherExclude"
     # mro-wkii.17.26.2 (codex): keep workspace diagnostics while preventing
     # duplicate dependency indexing and nested-worktree refresh loops.

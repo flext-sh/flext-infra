@@ -8,6 +8,7 @@ from types import ModuleType, SimpleNamespace
 from typing import ClassVar
 
 import pytest
+from flext_tests import tm
 
 from flext_cli import cli
 from flext_core import r
@@ -17,7 +18,6 @@ from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from tests import c
-from flext_tests import tm
 
 
 class TestsEnforcementFixerOrchestrator:

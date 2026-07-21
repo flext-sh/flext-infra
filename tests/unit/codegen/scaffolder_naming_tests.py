@@ -14,14 +14,12 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 def _parse_class_names(source: str) -> t.StrSequence:

@@ -8,9 +8,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from tests import c
-from tests import m
-from tests import u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

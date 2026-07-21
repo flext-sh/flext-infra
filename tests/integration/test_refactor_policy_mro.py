@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
 from tests import c
-from flext_tests import tm
 
 
 class TestsFlextInfraIntegrationRefactorPolicyMro:

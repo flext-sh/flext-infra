@@ -5,21 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
-from tests import t
-from tests import u
-from flext_tests import tm
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import p
+    from tests import m, p
 
 
 def _parse_source_ast(source: str) -> object | None:

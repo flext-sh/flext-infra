@@ -19,10 +19,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c
-from tests import m
-from tests import p
-from tests import t
+from tests import c, m, p, t
 
 if TYPE_CHECKING:
     from tomlkit import TOMLDocument

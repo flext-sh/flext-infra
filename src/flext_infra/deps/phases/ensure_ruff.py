@@ -231,7 +231,7 @@ class FlextInfraEnsureRuffConfigPhase:
     def merge_per_file_ignores_payload(
         self, payload: t.MutableJsonMapping
     ) -> t.StrSequence:
-        """Add missing canonical Ruff entries while preserving consumer policy."""
+        """Make tooling-SSOT entries authoritative while preserving consumer policy."""
         mapping = u.Cli.toml_mapping_ensure_path(
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
@@ -241,9 +241,10 @@ class FlextInfraEnsureRuffConfigPhase:
             pattern,
             rules,
         ) in config.Infra.tooling.tools.ruff.lint.per_file_ignores.items():
-            if pattern in mapping:
+            canonical = u.normalize_to_json_value(sorted(rules))
+            if pattern in mapping and mapping[pattern] == canonical:
                 continue
-            mapping[pattern] = u.normalize_to_json_value(sorted(rules))
+            mapping[pattern] = canonical
             changes.append(f"tool.ruff.lint.per-file-ignores.{pattern} set")
         return changes
 

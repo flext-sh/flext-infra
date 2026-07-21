@@ -6,8 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
+from tests import c, u
 
 
 # mro-i6nq.10: Cleanup is proven through the real generator, not private mixins.

@@ -324,7 +324,6 @@ class TestsFlextInfraBasemkMakeContract:
             ],
         )
 
-
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:
         """Verify generated command roots use canonical CLI groups."""
         rendered = _render_base_mk()

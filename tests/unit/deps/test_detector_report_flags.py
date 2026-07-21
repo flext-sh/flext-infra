@@ -9,9 +9,7 @@ from typing import TYPE_CHECKING, override
 from flext_tests import tm
 
 from flext_infra import r
-from tests import p
-from tests import t
-from tests import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u, p, t
 
 if TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector

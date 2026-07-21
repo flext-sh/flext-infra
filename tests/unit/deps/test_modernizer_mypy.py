@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import m

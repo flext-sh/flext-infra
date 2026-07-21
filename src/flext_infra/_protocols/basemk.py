@@ -43,4 +43,5 @@ class FlextInfraProtocolsBasemk(Protocol):
         @property
         def test_command(self) -> str: ...
 
+
 __all__: tuple[str, ...] = ("FlextInfraProtocolsBasemk",)

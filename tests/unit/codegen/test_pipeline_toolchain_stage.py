@@ -6,14 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_cli import cli
-from flext_core import r
 from flext_tests import tm
 
+from flext_cli import cli
+from flext_core import r
 from flext_infra import c, m, p, t
-from flext_infra.codegen._pipeline_stages import (  # ruff:ignore[import-private-name]
-    FlextInfraCodegenPipelineStagesMixin,
-)
+from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
@@ -65,7 +63,7 @@ def test_toolchain_stage_builds_full_workspace_conform_request(
         tmp_path, settings={c.Infra.PIPELINE_KEY_DRY_RUN: dry_run}
     )
 
-    result = pipeline._stage_toolchain(context)  # ruff:ignore[private-member-access]
+    result = pipeline._stage_toolchain(context)
 
     tm.ok(result)
     tm.that(
@@ -98,7 +96,7 @@ def test_toolchain_stage_propagates_conform_failure(
     pipeline = _ToolchainStageHarness()
     context = cli.stage_context(tmp_path, settings={c.Infra.PIPELINE_KEY_DRY_RUN: True})
 
-    result = pipeline._stage_toolchain(context)  # ruff:ignore[private-member-access]
+    result = pipeline._stage_toolchain(context)
 
     tm.fail(result)
     tm.that(result.error or "", has="codegen drift detected: pyproject.toml")

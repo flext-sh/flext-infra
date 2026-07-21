@@ -9,9 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 import flext_infra as infra_pkg
 from flext_infra import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests import u
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
+from tests import u
 
 
 class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:

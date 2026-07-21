@@ -5,8 +5,9 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_infra import main as infra_main
 from flext_tests import tm
+
+from flext_infra import main as infra_main
 
 
 def basemk_main(argv: list[str]) -> int:

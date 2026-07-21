@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import m, u
 from flext_infra.detectors.class_placement_detector import (
@@ -14,7 +15,6 @@ from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

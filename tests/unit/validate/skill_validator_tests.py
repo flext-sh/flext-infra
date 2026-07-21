@@ -12,14 +12,12 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 class TestSafeLoadYaml:

@@ -25,9 +25,9 @@ from flext_infra.__version__ import (
 )
 
 if TYPE_CHECKING:
-    from . import basemk
     from flext_cli import d, e, h, r, x
 
+    from . import basemk
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra
