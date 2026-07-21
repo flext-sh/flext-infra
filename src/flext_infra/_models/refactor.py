@@ -273,6 +273,36 @@ class FlextInfraModelsRefactor(
             int, m.Field(description="1-based line where the class starts")
         ]
 
+    class ClassvarConstantAutofixResult(m.ArbitraryTypesModel):
+        """Outcome of one ENFORCE-079 ClassVar-constant autofix.
+
+        Dry-run populates ``source_text``/``target_text``/``rewrites``; apply
+        populates ``constant_module``. ``touched_files`` is always present.
+        """
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        touched_files: Annotated[
+            t.StrSequence,
+            m.Field(description="Files the autofix created or rewrote"),
+        ]
+        source_text: Annotated[
+            str | None,
+            m.Field(description="Rewritten source-module preview (dry-run only)"),
+        ] = None
+        target_text: Annotated[
+            str | None,
+            m.Field(description="Rewritten constants-module preview (dry-run only)"),
+        ] = None
+        constant_module: Annotated[
+            str | None,
+            m.Field(description="Canonical _constants module (apply only)"),
+        ] = None
+        rewrites: Annotated[
+            t.MappingKV[str, t.SequenceOf[tuple[int, int, str]]] | None,
+            m.Field(description="Per-file textual edits planned (dry-run only)"),
+        ] = None
+
     # -- Namespace Enforcer Models ---------------------------------------------
 
     class ParsedPythonModule(m.ArbitraryTypesModel):

@@ -917,17 +917,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             )
                         )
                         continue
-                    touched_raw = result.get("touched_files", ())
-                    if not isinstance(touched_raw, (list, tuple)):
-                        failed.append(
-                            fr.FailedFix(
-                                rule_id=rule_id,
-                                file_path=file_path_str,
-                                error="autofix returned invalid touched_files",
-                            )
-                        )
-                        continue
-                    touched = tuple(str(path) for path in touched_raw)
+                    touched = tuple(result.touched_files)
                     if ctx.apply:
                         files_modified.update(str(project_dir / p) for p in touched)
                     message = (

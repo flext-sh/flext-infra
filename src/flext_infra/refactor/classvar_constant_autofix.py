@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import u
+from flext_infra import m, u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
@@ -108,11 +108,8 @@ class FlextInfraRefactorClassvarConstantAutofix:
         constants_module: str,
         *,
         dry_run: bool = False,
-    ) -> dict[str, object]:
-        """Move the constant and rewrite all internal references.
-
-        Returns a summary dict with ``touched_files`` and ``constant_module``.
-        """
+    ) -> m.Infra.ClassvarConstantAutofixResult:
+        """Move the constant and rewrite all internal references."""
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
@@ -127,7 +124,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         plan: ClassvarConstantAutofixPlan,
         *,
         dry_run: bool,
-    ) -> dict[str, object]:
+    ) -> m.Infra.ClassvarConstantAutofixResult:
         source_text = plan.source_resource.read()
         target_path = Path(plan.target_resource.real_path)
         target_text = plan.target_resource.read()
@@ -198,12 +195,12 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 plan.constant_name,
                 plan.constants_module.split(".")[-1],
             )
-            return {
-                "touched_files": sorted(touched),
-                "source_text": source_preview,
-                "target_text": new_target,
-                "rewrites": dict(rewrites),
-            }
+            return m.Infra.ClassvarConstantAutofixResult(
+                touched_files=tuple(sorted(touched)),
+                source_text=source_preview,
+                target_text=new_target,
+                rewrites=dict(rewrites),
+            )
 
         # 4. Rewrite source-module references textually. Rope occurrence offsets
         # target the original source and become stale after the declaration is
@@ -230,10 +227,10 @@ class FlextInfraRefactorClassvarConstantAutofix:
             text = _apply_edits(text, edits)
             Path(resource.real_path).write_text(text, encoding="utf-8")
 
-        return {
-            "touched_files": sorted(touched),
-            "constant_module": plan.constants_module,
-        }
+        return m.Infra.ClassvarConstantAutofixResult(
+            touched_files=tuple(sorted(touched)),
+            constant_module=plan.constants_module,
+        )
 
 
 def _class_start_lineno(source: str, class_name: str) -> int:

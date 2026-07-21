@@ -288,12 +288,12 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        touched_files = result["touched_files"]
+        touched_files = result.touched_files
         tm.that(touched_files, is_=(list, tuple))
-        tm.that(" ".join(str(p) for p in touched_files), has="demo/service.py")
-        tm.that(" ".join(str(p) for p in touched_files), has="demo/_constants.py")
-        target_text = result["target_text"]
-        source_text = result["source_text"]
+        tm.that(" ".join(touched_files), has="demo/service.py")
+        tm.that(" ".join(touched_files), has="demo/_constants.py")
+        target_text = result.target_text
+        source_text = result.source_text
         assert isinstance(target_text, str)
         assert isinstance(source_text, str)
         tm.that(target_text, has="GROUPS = frozenset({'a'})")
@@ -351,8 +351,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        target_text = result["target_text"]
-        source_text = result["source_text"]
+        target_text = result.target_text
+        source_text = result.source_text
         assert isinstance(target_text, str)
         assert isinstance(source_text, str)
         tm.that(target_text, has="TEST_VALUE = 1.5")
@@ -461,16 +461,16 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        target_text = result["target_text"]
-        source_text = result["source_text"]
-        touched_files = result["touched_files"]
+        target_text = result.target_text
+        source_text = result.source_text
+        touched_files = result.touched_files
         assert isinstance(target_text, str)
         assert isinstance(source_text, str)
         tm.that(touched_files, is_=(list, tuple))
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
         tm.that(
-            " ".join(str(path) for path in touched_files),
+            " ".join(touched_files),
             has="tests/_constants/__init__.py",
         )
 
@@ -541,7 +541,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        tm.that(dry_run_result["target_text"], eq=constants_text)
+        tm.that(dry_run_result.target_text, eq=constants_text)
         tm.that(constants_mod.read_text(encoding="utf-8"), eq=constants_text)
         tm.that(service.read_text(encoding="utf-8"), eq=source_text)
 
@@ -651,10 +651,10 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             dry_run=True,
         )
 
-        source_text = result["source_text"]
-        target_text = result["target_text"]
-        tm.that(source_text, is_=str)
-        tm.that(target_text, is_=str)
+        source_text = result.source_text
+        target_text = result.target_text
+        assert source_text is not None
+        assert target_text is not None
         tm.that(source_text, lacks="GROUPS: ClassVar")
         tm.that(source_text, has="_constants.GROUPS")
         tm.that(target_text.count("GROUPS"), eq=1)
