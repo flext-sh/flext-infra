@@ -172,7 +172,7 @@ class TestsFlextInfraInfraRopeService:
             tm.that(projects[0].name, eq="flext-demo")
 
             layout = rope.layout(workspace_root)
-            tm.that(layout, none=False)
+            assert layout is not None
             tm.that(layout.project_name, eq="flext-demo")
             tm.that(layout.package_name, eq="flext_demo")
             tm.that(layout.package_alias, eq="demo")
@@ -185,7 +185,7 @@ class TestsFlextInfraInfraRopeService:
             tm.that(convention.package_name, eq="flext_demo")
             tm.that(convention.package_context.current_pkg, eq="flext_demo")
             tm.that(convention.module_policy.expected_alias, eq="m")
-            tm.that(convention.project_layout, none=False)
+            assert convention.project_layout is not None
             tm.that(convention.project_layout.class_stem, eq="FlextDemo")
 
     def test_workspace_dsl_exposes_direct_modules_source_and_objects(
@@ -461,7 +461,7 @@ class TestsFlextInfraInfraRopeService:
 
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(example_path)
-            tm.that(resource, none=False)
+            assert resource is not None
 
             class _BrokenWorkspace:
                 def name_index(

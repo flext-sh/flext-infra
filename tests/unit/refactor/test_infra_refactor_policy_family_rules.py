@@ -16,7 +16,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextUtilities",
         })
         assert not ok
-        tm.that(violation, none=False)
+        assert violation is not None
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_utilities_family_allows_utilities_target(self) -> None:
@@ -35,7 +35,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextModels",
         })
         assert not ok
-        tm.that(violation, none=False)
+        assert violation is not None
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_runtime_family_blocks_non_runtime_target(self) -> None:
@@ -45,7 +45,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextDispatcher",
         })
         assert not ok
-        tm.that(violation, none=False)
+        assert violation is not None
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_decorators_family_blocks_dispatcher_target(self) -> None:
@@ -55,7 +55,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextDispatcher",
         })
         assert not ok
-        tm.that(violation, none=False)
+        assert violation is not None
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_helper_consolidation_is_prechecked(self) -> None:
@@ -65,5 +65,5 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "target_namespace": "FlextModels",
         })
         assert not ok
-        tm.that(violation, none=False)
+        assert violation is not None
         tm.that(violation["violation_type"], eq="forbidden_target")
