@@ -1147,7 +1147,7 @@ Infra:
       - name: cosmos-zabbix
         distribution: cosmos-zabbix
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-zabbix
+        url: https://github.com/datacosmos-br/cosmos-zabbix.git
         branch: dev
         path: cosmos/zabbix
         role: content-only
@@ -1160,7 +1160,7 @@ Infra:
       - name: cosmos-monitoring
         distribution: cosmos-monitoring
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-monitoring
+        url: https://github.com/datacosmos-br/cosmos-monitoring.git
         branch: main
         path: cosmos/monitoring
         role: content-only
@@ -1173,7 +1173,7 @@ Infra:
       - name: cosmos-hook
         distribution: cosmos-hook
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-hook
+        url: https://github.com/datacosmos-br/cosmos-hook.git
         branch: dev
         path: cosmos/hook
         role: content-only
@@ -1186,7 +1186,7 @@ Infra:
       - name: cosmosec-backend
         distribution: cosmosec-backend
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmosec-backend
+        url: https://github.com/datacosmos-br/cosmosec-backend.git
         branch: dev
         path: cosmos/sec-backend
         role: content-only
@@ -1199,7 +1199,7 @@ Infra:
       - name: cosmosec-frontend
         distribution: cosmosec-frontend
         provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmosec-frontend
+        url: https://github.com/datacosmos-br/cosmosec-frontend.git
         branch: main
         path: cosmos/sec-frontend
         role: content-only

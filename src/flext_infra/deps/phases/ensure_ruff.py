@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_infra import c, config, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -32,6 +33,23 @@ class FlextInfraEnsureRuffConfigPhase:
                     == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
                 )
             )
+        })
+
+    @staticmethod
+    def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
+        """Return the project's declared workspace-exclusion path globs.
+
+        Paths declared under ``exclusions`` in the repository-local
+        ``config/workspace.yaml`` are vendored, non-source trees (e.g. document
+        submodules) that must not be linted as engine source. They are unioned
+        into the emitted Ruff ``exclude`` list so the topology SSOT owns the
+        lint scope. A repository without a manifest contributes nothing.
+        """
+        spec = FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
+        if spec.failure:
+            return ()
+        return sorted({
+            exclusion.path.as_posix() for exclusion in spec.value.exclusions
         })
 
     @staticmethod
@@ -62,6 +80,10 @@ class FlextInfraEnsureRuffConfigPhase:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)
+        effective_exclude = sorted({
+            *ruff_cfg.exclude,
+            *self._workspace_exclusion_globs(path.parent),
+        })
         # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
         effective_ignore = tuple(
@@ -92,7 +114,7 @@ class FlextInfraEnsureRuffConfigPhase:
             .Builder("ruff")
             .table(c.Infra.RUFF)
             .deprecated(c.Infra.EXTEND)
-            .list(c.Infra.EXCLUDE, sorted(ruff_cfg.exclude))
+            .list(c.Infra.EXCLUDE, effective_exclude)
             .list("namespace-packages", sorted(ruff_cfg.namespace_packages))
             .value("fix", ruff_cfg.fix)
             .value("line-length", ruff_cfg.line_length)

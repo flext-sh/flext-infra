@@ -2,7 +2,7 @@
    Members are FLEXT-governed submodules; content-only submodules are non-FLEXT
    checkouts kept in-tree (codegen: none) — both are real git submodules and MUST
    appear here so `git submodule status` stays consistent with the index. #}
-{%- set submodules = workspace_repositories | list + (workspace_content_only | selectattr("checkout.value", "equalto", "submodule") | list) -%}
+{%- set submodules = workspace_repositories | list + (workspace_content_only | selectattr("checkout", "equalto", "submodule") | list) -%}
 {% for repository in submodules %}[submodule "{{ repository.name }}"]
 	path = {{ repository.path }}
 	url = {{ repository.url }}
