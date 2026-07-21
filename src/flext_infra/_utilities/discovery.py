@@ -156,14 +156,39 @@ class FlextInfraUtilitiesDiscovery:
         effective_skip = (
             skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
+        workspace_excluded = FlextInfraUtilitiesDiscovery._workspace_excluded_top_dirs(
+            project_dir
+        )
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
             if subdir.is_dir()
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
+            and subdir.name not in workspace_excluded
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
+
+    @staticmethod
+    def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
+        """Return first segments of manifest-excluded workspace-relative paths.
+
+        Paths declared under ``exclusions`` in the repository-local
+        ``config/workspace.yaml`` are vendored, non-source trees (e.g. document
+        submodules). They must never be discovered as Python source roots,
+        regardless of any Python files they happen to contain. A repository
+        without a manifest (or a derivation fallback) contributes nothing.
+        """
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        spec = FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
+        if spec.failure:
+            return frozenset()
+        return frozenset(
+            exclusion.path.parts[0]
+            for exclusion in spec.value.exclusions
+            if exclusion.path.parts
+        )
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:

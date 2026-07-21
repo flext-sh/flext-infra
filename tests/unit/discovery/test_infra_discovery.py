@@ -219,5 +219,47 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(result.value[0].name, eq="demo-project")
         tm.that(result.value[0].package_name, eq="demo_pkg")
 
+    def test_discover_python_dirs_skips_workspace_excluded_dirs(
+        self, service: u.Infra, tmp_path: Path
+    ) -> None:
+        """Manifest-excluded vendored trees are never Python source roots."""
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "workspace.yaml").write_text(
+            "version: 2\n"
+            "name: demo\n"
+            "repository:\n"
+            "  name: demo\n"
+            "  distribution: demo\n"
+            "  provider: datacosmos-br\n"
+            "  url: https://github.com/datacosmos-br/demo.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: standalone\n"
+            "  state: active\n"
+            "  profile: standalone\n"
+            "  checkout: independent\n"
+            "  codegen: conform\n"
+            "  package: true\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            "members: []\n"
+            "content_only: []\n"
+            "exclusions:\n"
+            "  - path: data\n"
+            "    reason: vendored document submodules\n",
+            encoding="utf-8",
+        )
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        (src_dir / "module.py").write_text("X = 1\n", encoding="utf-8")
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "vendored.py").write_text("Y = 2\n", encoding="utf-8")
+
+        discovered = service.discover_python_dirs(tmp_path)
+
+        tm.that(discovered, eq=["src"])
+
 
 __all__: t.StrSequence = []
