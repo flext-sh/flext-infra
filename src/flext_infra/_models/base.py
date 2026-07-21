@@ -64,7 +64,7 @@ class FlextInfraModelsBase:
         # str_strip_whitespace=True, which would corrupt written files, so the
         # canonical contract config is inherited with stripping disabled.
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            **{**m.ContractModel.model_config, "str_strip_whitespace": False}
+            m.ContractModel.model_config, str_strip_whitespace=False
         )
 
         workspace: Annotated[
