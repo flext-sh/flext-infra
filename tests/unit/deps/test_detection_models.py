@@ -99,9 +99,10 @@ class TestsFlextInfraDepsDetectionModels:
 
     def test_list_of_valid_values(self) -> None:
         """Verify list of valid values."""
+        expected_list: t.JsonList = ["a", 1, True]
         tm.that(
             FlextInfraDependencyDetectionService.to_infra_value(["a", 1, True]),
-            eq=["a", 1, True],
+            eq=expected_list,
         )
 
     def test_list_with_unconvertible(self, tmp_path: Path) -> None:
@@ -120,7 +121,8 @@ class TestsFlextInfraDepsDetectionModels:
             "num": 42,
         })
         tm.that(result, is_=Mapping)
-        tm.that(result, eq={"key": "value", "num": 42})
+        expected_map: t.JsonMapping = {"key": "value", "num": 42}
+        tm.that(result, eq=expected_map)
 
     def test_mapping_with_unconvertible(self, tmp_path: Path) -> None:
         """Verify mapping with unconvertible."""

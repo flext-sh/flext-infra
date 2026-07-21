@@ -127,24 +127,14 @@ class TestsFlextInfraWorkspaceSync:
             timestamp=datetime(2026, 5, 4, tzinfo=UTC),
         )
 
-        tm.that(
-            payload.model_dump(mode="json"),
-            eq={
-                "files_changed": 2,
-                "source": str(source),
-                "target": str(target),
-                "timestamp": "2026-05-04T00:00:00+00:00",
-            },
-        )
-        tm.that(
-            u.normalize_to_json_value(payload),
-            eq={
-                "files_changed": 2,
-                "source": str(source),
-                "target": str(target),
-                "timestamp": "2026-05-04T00:00:00+00:00",
-            },
-        )
+        expected_payload: t.JsonMapping = {
+            "files_changed": 2,
+            "source": str(source),
+            "target": str(target),
+            "timestamp": "2026-05-04T00:00:00+00:00",
+        }
+        tm.that(payload.model_dump(mode="json"), eq=expected_payload)
+        tm.that(u.normalize_to_json_value(payload), eq=expected_payload)
 
     def test_sync_generates_basemk_gitignore_and_makefile(self, tmp_path: Path) -> None:
         """Generate canonical project files and strict editor settings."""

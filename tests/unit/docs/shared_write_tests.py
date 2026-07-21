@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests import m
+from tests import t
 from tests import u
 from flext_tests import tm
 
@@ -19,7 +20,8 @@ def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
 
     tm.ok(result)
     tm.ok(read_result)
-    tm.that(read_result.unwrap(), eq={"key": "value", "number": 42})
+    expected: t.JsonMapping = {"key": "value", "number": 42}
+    tm.that(read_result.unwrap(), eq=expected)
 
 
 def test_json_write_accepts_pydantic_model(tmp_path: Path) -> None:

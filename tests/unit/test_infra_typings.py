@@ -26,7 +26,8 @@ class TestsFlextInfraInfraTypings:
     def test_json_list_adapter_validates_mixed_cli_values(self) -> None:
         items = t.Cli.JSON_LIST_ADAPTER.validate_python(["infra", 1, True])
 
-        tm.that(list(items), eq=["infra", 1, True])
+        expected: t.JsonList = ["infra", 1, True]
+        tm.that(list(items), eq=expected)
 
     def test_infra_mapping_adapter_validates_real_workspace_payload(self) -> None:
         payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
