@@ -283,7 +283,7 @@ Infra:
         requirements: [hatchling]
       project:
         readme: README.md
-        supported_licenses: [MIT]
+        supported_licenses: [MIT, Proprietary]
         classifiers:
           - "Development Status :: 4 - Beta"
           - "Intended Audience :: Developers"
