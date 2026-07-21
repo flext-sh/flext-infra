@@ -67,6 +67,27 @@ class TestsFlextInfraDepsModernizerMypy:
         )
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
+    def test_mypy_phase_emits_cli_registration_arg_type_override(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Type-erased CLI route registration keeps a scoped arg-type override."""
+        overrides = tool_config_document.tools.mypy.overrides
+        cli_entries = [entry for entry in overrides if "*.cli" in entry.modules]
+        tm.that(len(cli_entries), eq=1)
+        tm.that("arg-type" in cli_entries[0].disable_error_codes, eq=True)
+        tm.that(len(cli_entries[0].justification) > 0, eq=True)
+        unreachable_entries = [
+            entry
+            for entry in overrides
+            if "dcdoc._utilities._charts._matplotlib_renderer._renders_spec"
+            in entry.modules
+        ]
+        tm.that(len(unreachable_entries), eq=1)
+        tm.that(
+            "unreachable" in unreachable_entries[0].disable_error_codes, eq=True
+        )
+        tm.that(len(unreachable_entries[0].justification) > 0, eq=True)
+
     def test_mypy_phase_removes_legacy_test_overrides(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:

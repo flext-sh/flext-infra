@@ -177,7 +177,32 @@ Infra:
           warn_unused_ignores: true
         string-settings:
           follow_imports: normal
-        overrides: []
+        overrides:
+          # CLI registration modules: flext-cli ResultCommandRoute is an
+          # intentionally type-erased contract for heterogeneous batch
+          # registration; Mypy arg-type rejects precise handler signatures
+          # (Callable[[InputModel], r[OutputModel]]) at registration although
+          # the dispatcher validates input models at runtime. Documented
+          # checker disagreement at the facade-CLI boundary (cosmos-docgen
+          # AGENTS.md). Scoped to CLI registration modules only.
+          - modules: ["*.cli"]
+            disable-error-codes: [arg-type]
+            justification: >-
+              Type-erased ResultCommandRoute batch registration (flext-cli)
+              rejects precise handler signatures under Mypy arg-type; the
+              dispatcher enforces input models at runtime. Documented
+              facade-CLI boundary disagreement, scoped to CLI modules.
+          # Fail-loud exhaustive enum dispatch (ADR-001): Mypy over-narrows
+          # the enum through the branch chain and flags the live defensive
+          # guard as unreachable; the guard is the required runtime contract
+          # for future ChartPrimitive members.
+          - modules: ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
+            disable-error-codes: [unreachable]
+            justification: >-
+              Mypy over-narrows exhaustive ChartPrimitive dispatch and
+              rejects the live fail-loud guard (ADR-001) as unreachable;
+              the guard is the required runtime contract for future enum
+              members (cosmos-docgen HEAD pyproject documented rationale).
       pydantic-mypy:
         init_forbid_extra: true
         init_typed: true
