@@ -518,12 +518,13 @@ class FlextInfraUtilitiesRopeAnalysis:
             or not FlextInfraUtilitiesRopeRuntime.is_assigned_name(explicit_all_name)
         ):
             return None
+        assigned_all: t.Infra.RopeAssignedName = explicit_all_name
         if not FlextInfraUtilitiesRopeAnalysis._is_local_name(
-            explicit_all_name, resource
+            assigned_all, resource
         ):
             return None
         return FlextInfraUtilitiesRopeAnalysis._explicit_all_names(
-            explicit_all_name, pymodule
+            assigned_all, pymodule
         )
 
     @staticmethod

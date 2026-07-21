@@ -121,9 +121,9 @@ class FlextInfraWorkspaceVscode:
                 continue
             settings[key] = normalized
             changed = True
-        for key, value in list_settings.items():
+        for key, list_value in list_settings.items():
             entries = cls.resolve_list_setting(
-                key, value, workspace_root=workspace_root
+                key, list_value, workspace_root=workspace_root
             )
             canonical: list[t.JsonValue] = [
                 u.normalize_to_json_value(entry) for entry in entries

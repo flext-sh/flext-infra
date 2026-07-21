@@ -57,7 +57,9 @@ class RefactorRoutes(CliRouteBase):
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
             model_cls=FlextInfraRefactorCensus,
-            handler=lambda params: FlextInfraRefactorCensus.execute_command(params),
+            handler=lambda params: FlextInfraRefactorCensus.execute_command(
+                params
+            ).map(CliRouteBase.as_route_value),
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
