@@ -83,7 +83,8 @@ class FlextInfraCodegenPipelineStagesMixin:
             if result.failure:
                 msg = result.error or "toolchain conform failed"
                 raise RuntimeError(msg)
-            return result.unwrap()
+            conformed: m.Infra.CodegenResult = result.unwrap()
+            return conformed
 
         return self._run_stage(
             c.Infra.PipelineStage.TOOLCHAIN,

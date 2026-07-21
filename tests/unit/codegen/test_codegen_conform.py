@@ -619,7 +619,8 @@ class TestScriptDispatchMakefile:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        return makefile.rendered
+        rendered: str = makefile.rendered
+        return rendered
 
     def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
         self, tmp_path: Path

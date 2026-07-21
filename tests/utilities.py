@@ -311,7 +311,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def infra_mapping(value: t.Infra.InfraMapping) -> t.JsonMapping:
             """Provide the typed test helper `infra_mapping`."""
-            return t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+            result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                value
+            )
+            return result
 
         @staticmethod
         def infra_mapping_result(
@@ -892,7 +895,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_root: Path, name: str = "project-a"
         ) -> m.Infra.ProjectInfo:
             """Create a typed project fixture for migration tests."""
-            return m.Infra.ProjectInfo.model_validate(
+            result: m.Infra.ProjectInfo = m.Infra.ProjectInfo.model_validate(
                 obj={
                     "name": name,
                     "path": project_root,
@@ -901,6 +904,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "has_src": True,
                 }
             )
+            return result
 
         @staticmethod
         def create_migrator_dir_layout(
@@ -1302,10 +1306,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if gates is not None
                 else {"lint": TestsFlextInfraUtilities.Tests.create_gate_execution()}
             )
-            return m.Infra.ProjectResult.model_validate({
+            result: m.Infra.ProjectResult = m.Infra.ProjectResult.model_validate({
                 "project": name,
                 "gates": resolved_gates,
             })
+            return result
 
         @staticmethod
         def create_checker_project(

@@ -29,7 +29,8 @@ def _mapping(value: t.JsonValue | t.JsonMapping) -> t.JsonMapping:
 
 
 def _strings(value: t.JsonValue) -> t.StrSequence:
-    return t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+    result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
+    return result
 
 
 class TestsFlextInfraRefactorMainCli:
