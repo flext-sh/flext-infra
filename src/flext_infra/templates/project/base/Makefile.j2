@@ -89,10 +89,18 @@ define _dispatch
 	esac; \
 	builtin="_builtin_$@_$$what"; \
 	custom="_custom_$@_$$what"; \
+	for hook in "pre-$@" "pre-$@-$$what"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done; \
 	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) exec $(MAKE) --no-print-directory "$$builtin" ;; \
-		*) exec $(MAKE) --no-print-directory "$$custom" ;; \
-	esac
+		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
+		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
+	esac; \
+	for hook in "post-$@-$$what" "post-$@"; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
 endef
 
 define _require_apply
@@ -125,6 +133,17 @@ _builtin_help_usage:
 {% for verb in make.verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
 {% endfor %}
+	@printf '\n%s\n' 'Custom hooks (custom.mk):'
+	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
+	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
+	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.'
+	@if [ -f custom.mk ]; then \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		if [ -n "$$hooks" ]; then \
+			printf '  %s\n' 'Defined in this project:'; \
+			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
+		fi; \
+	fi
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:

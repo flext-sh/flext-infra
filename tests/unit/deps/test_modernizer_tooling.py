@@ -1,256 +1,329 @@
-"""Ruff tooling SSOT regression tests.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Tooling phase tests for deps modernizer."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomlkit
+from flext_tests import tm
 
-from flext_infra import config, u
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_infra.deps.phases.ensure_formatting import (
+    FlextInfraEnsureFormattingToolingPhase,
+)
+from flext_infra.deps.phases.ensure_namespace import (
+    FlextInfraEnsureNamespaceToolingPhase,
+)
+from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import m
 
 
-class TestsFlextInfraModernizerTooling:
-    """Verify public modernization preserves canonical Ruff policy."""
+class TestsFlextInfraDepsModernizerTooling:
+    """Declarative tests for formatting, namespace, and Ruff phases."""
 
-    def test_conform_source_emits_complete_ruff_per_file_ignores(
-        self, tmp_path: Path
+    def test_typecheck_policy_keeps_tracked_surfaces_visible(
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Preserve rich mappings and the approved tests-only policy."""
-        pyproject = tmp_path / "pyproject.toml"
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
-        )
+        """Keep every tracked Python surface visible to all four analyzers."""
+        tools = tool_config_document.tools
+        tracked_surfaces = frozenset({"examples", "scripts", "src", "tests"})
+        hidden_globs = frozenset({
+            "**/examples",
+            "**/examples/**",
+            "**/tests",
+            "**/tests/**",
+        })
 
-        rendered = modernizer.conform_source(
-            '[project]\nname = "sample"\n', path=pyproject
+        tm.that(frozenset(tools.ruff.src), eq=tracked_surfaces)
+        tm.that(frozenset(tools.ruff.namespace_packages), eq=frozenset({"tests"}))
+        tm.that(tracked_surfaces.isdisjoint(tools.ruff.exclude), eq=True)
+        tm.that(tools.mypy.exclude, eq=r"^legado(?:/|$)")
+        tm.that(frozenset(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(
+            hidden_globs.isdisjoint(tools.pyright.path_rules.default_excludes), eq=True
         )
+        tm.that(frozenset(tools.pyrefly.path_rules.env_dirs), eq=tracked_surfaces)
+        tm.that(hidden_globs.isdisjoint(tools.pyrefly.project_exclude_globs), eq=True)
 
-        if rendered.failure:
-            message = rendered.error or "modernizer failed"
-            raise AssertionError(message)
-        payload = u.Cli.toml_mapping_from_text(rendered.value)
-        if payload is None:
-            message = "modernizer emitted invalid TOML"
-            raise AssertionError(message)
-        mapping = u.Cli.toml_mapping_path(
-            payload, ("tool", "ruff", "lint", "per-file-ignores")
-        )
-        if mapping is None:
-            message = "modernizer omitted Ruff per-file ignores"
-            raise AssertionError(message)
-        canonical = config.Infra.tooling.tools.ruff.lint.per_file_ignores
-        if mapping["**/*middleware*"] != sorted(canonical["**/*middleware*"]):
-            message = "modernizer replaced rich middleware ignores"
-            raise AssertionError(message)
-        if mapping["**/__init__.py"] != sorted(canonical["**/__init__.py"]):
-            message = "modernizer replaced rich package-root ignores"
-            raise AssertionError(message)
-        if mapping != {
-            pattern: sorted(rules) for pattern, rules in canonical.items()
-        }:
-            message = "modernizer output diverged from canonical Ruff ignores"
-            raise AssertionError(message)
-
-    def test_conform_existing_source_preserves_non_owned_tooling(
-        self, tmp_path: Path
+    def test_formatting_phase_sets_expected_state(
+        self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Merge missing Ruff entries without migrating established consumer policy."""
-        pyproject = tmp_path / "pyproject.toml"
-        source = """[project]
-name = "sample"
+        """Render every managed formatting tool from typed policy."""
+        doc = tomlkit.document()
 
-[tool.coverage.report]
-fail_under = 25
+        _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
 
-[tool.pytest.ini_options]
-addopts = ["--strict-markers", "--markdown-docs"]
-filterwarnings = ["ignore:consumer warning"]
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.toml_mapping(tool["codespell"])
+        tomlsort = u.Tests.toml_mapping(tool["tomlsort"])
+        yamlfix = u.Tests.toml_mapping(tool["yamlfix"])
+        tm.that(
+            codespell["check-filenames"],
+            eq=tool_config_document.tools.codespell.check_filenames,
+        )
+        tm.that(
+            codespell["ignore-words-list"],
+            eq=tool_config_document.tools.codespell.ignore_words_list,
+        )
+        tm.that(tomlsort["all"], eq=tool_config_document.tools.tomlsort.all)
+        tm.that(tomlsort["in_place"], eq=tool_config_document.tools.tomlsort.in_place)
+        tm.that(
+            list(u.Tests.toml_strings(tomlsort["sort_first"])),
+            eq=sorted(tool_config_document.tools.tomlsort.sort_first),
+        )
+        tm.that(
+            yamlfix["line_length"], eq=tool_config_document.tools.yamlfix.line_length
+        )
+        tm.that(
+            yamlfix["preserve_quotes"],
+            eq=tool_config_document.tools.yamlfix.preserve_quotes,
+        )
+        tm.that(yamlfix["whitelines"], eq=tool_config_document.tools.yamlfix.whitelines)
+        tm.that(
+            yamlfix["section_whitelines"],
+            eq=tool_config_document.tools.yamlfix.section_whitelines,
+        )
+        tm.that(
+            yamlfix["explicit_start"],
+            eq=tool_config_document.tools.yamlfix.explicit_start,
+        )
 
-[tool.pyrefly]
-project-includes = ["src/**/*.py*"]
+    def test_formatting_phase_is_idempotent(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Keep formatting output stable after the first application."""
+        phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
+        doc = tomlkit.document()
 
-[tool.pyright]
-include = ["src"]
+        _ = phase.apply(doc)
+        second_changes = phase.apply(doc)
 
-[tool.ruff.lint]
-ignore = ["S101", "D102", "PLR2004"]
+        tm.that(second_changes, eq=[])
 
-[tool.ruff.lint.per-file-ignores]
-"**/*middleware*" = ["ANN401", "FBT001"]
-"consumer-only.py" = ["T201"]
-
-[tool.vulture]
-paths = ["src"]
+    def test_formatting_phase_removes_codespell_skip(
+        self, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Remove the obsolete codespell skip setting."""
+        phase = FlextInfraEnsureFormattingToolingPhase(tool_config_document)
+        doc = tomlkit.parse(
+            """
+[tool.codespell]
+check-filenames = true
+ignore-words-list = "crate,nd"
+skip = ".git,poetry.lock"
 """
-        before = tomlkit.parse(source)
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
         )
 
-        rendered = modernizer.conform_existing_source(source, path=pyproject)
+        changes = phase.apply(doc)
 
-        if rendered.failure:
-            message = rendered.error or "preservative conform failed"
-            raise AssertionError(message)
-        after = tomlkit.parse(rendered.value)
-        before_tool = before["tool"]
-        after_tool = after["tool"]
-        for section in ("coverage", "pytest", "pyrefly", "pyright", "vulture"):
-            if after_tool[section] != before_tool[section]:
-                message = f"unowned section changed: {section}"
-                raise AssertionError(message)
-        if after_tool["ruff"]["lint"]["ignore"] != ["S101", "D102", "PLR2004"]:
-            message = "authorized global Ruff ignores changed"
-            raise AssertionError(message)
-        mapping = after_tool["ruff"]["lint"]["per-file-ignores"]
-        canonical = config.Infra.tooling.tools.ruff.lint.per_file_ignores
-        if mapping["**/*middleware*"] != ["ANN401", "FBT001"]:
-            message = "existing Ruff entry changed"
-            raise AssertionError(message)
-        if mapping["consumer-only.py"] != ["T201"]:
-            message = "consumer-owned stale entry was removed"
-            raise AssertionError(message)
-        if any(pattern not in mapping for pattern in canonical):
-            message = "canonical Ruff entries were not merged"
-            raise AssertionError(message)
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.toml_mapping(tool["codespell"])
+        tm.that(codespell, lacks="skip")
+        tm.that(changes, has="removed codespell.skip hardcode")
 
-    def test_full_modernize_runs_non_ruff_phases_with_existing_ruff_table(
+    def test_namespace_phase_sets_detected_first_party(self, tmp_path: Path) -> None:
+        """Detect the project package as first-party code."""
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureNamespaceToolingPhase().apply(
+            doc, path=project_dir / "pyproject.toml"
+        )
+
+        deptry = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
+        )
+        tm.that(
+            list(u.Tests.toml_strings(deptry["known_first_party"])),
+            eq=["flext_core", "flext_sample"],
+        )
+
+    def test_namespace_phase_includes_workspace_source_packages(
         self, tmp_path: Path
     ) -> None:
-        """Keep the broad modernize contract while preserving consumer Ruff entries."""
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text(
-            """[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
+        """Include declared workspace dependencies in first-party packages."""
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        doc = tomlkit.parse(
+            """
 [project]
-name = "sample"
-version = "0.1.0"
+dependencies = ["flext-core>=0.1.0"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+"""
+        )
+
+        _ = FlextInfraEnsureNamespaceToolingPhase().apply(
+            doc, path=project_dir / "pyproject.toml"
+        )
+
+        deptry = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["deptry"]
+        )
+        tm.that(
+            list(u.Tests.toml_strings(deptry["known_first_party"])),
+            eq=["flext_core", "flext_sample"],
+        )
+
+    def test_ruff_phase_sets_expected_state(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Render Ruff policy while retaining tracked test roots."""
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        test_dir = project_dir / "tests"
+        fixture_dir = test_dir / "fixtures"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        fixture_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        _ = (fixture_dir / "sample.py").write_text("VALUE = 1\n", encoding="utf-8")
+        _ = (test_dir / "test_dummy.py").write_text(
+            "def test_dummy() -> None:\n    assert True\n", encoding="utf-8"
+        )
+        doc = tomlkit.parse(
+            """
+[lint]
+select = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-"consumer-only.py" = ["T201"]
-""",
+"old.py" = ["E402"]
+"""
+        )
+
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
+            doc, path=project_dir / "pyproject.toml"
+        )
+
+        root = u.Tests.toml_doc_mapping(doc)
+        tm.that(root, lacks="lint")
+        ruff = u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])
+        tm.that(
+            frozenset(u.Tests.toml_strings(ruff["exclude"])),
+            eq=frozenset(tool_config_document.tools.ruff.exclude),
+        )
+        tm.that(
+            frozenset(u.Tests.toml_strings(ruff["namespace-packages"])),
+            eq=frozenset(tool_config_document.tools.ruff.namespace_packages),
+        )
+        tm.that(ruff["fix"], eq=tool_config_document.tools.ruff.fix)
+        tm.that(ruff["line-length"], eq=tool_config_document.tools.ruff.line_length)
+        tm.that(ruff["preview"], eq=tool_config_document.tools.ruff.preview)
+        tm.that(
+            ruff["respect-gitignore"],
+            eq=tool_config_document.tools.ruff.respect_gitignore,
+        )
+        tm.that(ruff["show-fixes"], eq=tool_config_document.tools.ruff.show_fixes)
+        tm.that(
+            ruff["target-version"], eq=tool_config_document.tools.ruff.target_version
+        )
+        tm.that(
+            frozenset(u.Tests.toml_strings(ruff["src"])),
+            eq=frozenset(tool_config_document.tools.ruff.src),
+        )
+        format_section = u.Tests.toml_mapping(ruff["format"])
+        tm.that(
+            format_section["docstring-code-format"],
+            eq=tool_config_document.tools.ruff.format.docstring_code_format,
+        )
+        lint_section = u.Tests.toml_mapping(ruff["lint"])
+        tm.that(
+            frozenset(u.Tests.toml_strings(lint_section["select"])),
+            eq=frozenset(tool_config_document.tools.ruff.lint.select),
+        )
+        tm.that(
+            frozenset(u.Tests.toml_strings(lint_section["ignore"]))
+            == frozenset({
+                *tool_config_document.tools.ruff.lint.ignore,
+                *tool_config_document.tools.ruff.lint.ignored_rule_rationales,
+            }),
+            eq=True,
+        )
+        isort = u.Tests.toml_mapping(lint_section["isort"])
+        tm.that(
+            isort["combine-as-imports"],
+            eq=tool_config_document.tools.ruff.lint.isort.combine_as_imports,
+        )
+        tm.that(
+            list(u.Tests.toml_strings(isort["known-first-party"])),
+            eq=["flext_core", "flext_sample"],
+        )
+        tm.that(
+            u.Tests.toml_mapping(lint_section["per-file-ignores"]),
+            eq={
+                pattern: sorted(rules)
+                for pattern, rules in tool_config_document.tools.ruff.lint.per_file_ignores.items()
+            },
+        )
+
+    def test_ruff_phase_is_idempotent(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Keep the Ruff phase stable after the first application."""
+        project_dir = tmp_path / "flext-sample"
+        package_dir = project_dir / "src" / "flext_sample"
+        package_dir.mkdir(parents=True, exist_ok=True)
+        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
+        doc = tomlkit.document()
+
+        _ = phase.apply(doc, path=project_dir / "pyproject.toml")
+        second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
+
+        tm.that(second_changes, eq=[])
+
+    def test_ruff_phase_skips_attached_workspace_namespaces(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Exclude attached consumer namespaces from FLEXT first-party names."""
+        workspace_root = tmp_path / "workspace"
+        project_dir = workspace_root / "demo-migration-tool"
+        internal_project = workspace_root / "flext-core"
+        project_dir.joinpath("src", "demo_migration_tool").mkdir(
+            parents=True, exist_ok=True
+        )
+        internal_project.joinpath("src", "flext_core").mkdir(
+            parents=True, exist_ok=True
+        )
+        _ = project_dir.joinpath(
+            "src", "demo_migration_tool", "__init__.py"
+        ).write_text("", encoding="utf-8")
+        _ = internal_project.joinpath("src", "flext_core", "__init__.py").write_text(
+            "", encoding="utf-8"
+        )
+        _ = project_dir.joinpath("pyproject.toml").write_text(
+            '[project]\nname = "demo-migration-tool"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path,
-            apply_changes=True,
-            skip_check=True,
-            skip_comments=True,
+        _ = workspace_root.joinpath("pyproject.toml").write_text(
+            "[project]\nname = 'workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['flext-core']\n",
+            encoding="utf-8",
+        )
+        _ = internal_project.joinpath("pyproject.toml").write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
+            doc, path=workspace_root / "pyproject.toml"
         )
 
-        exit_code = modernizer.run()
-
-        if exit_code != 0:
-            message = f"full modernize exited {exit_code}"
-            raise AssertionError(message)
-        payload = u.Cli.toml_mapping_from_text(pyproject.read_text(encoding="utf-8"))
-        if payload is None:
-            message = "full modernize emitted invalid TOML"
-            raise AssertionError(message)
-        build_system = u.Cli.toml_mapping_child(payload, "build-system")
-        if build_system is None or build_system["build-backend"] != "hatchling.build":
-            message = "full modernize skipped build-system migration"
-            raise AssertionError(message)
-        mapping = u.Cli.toml_mapping_path(
-            payload, ("tool", "ruff", "lint", "per-file-ignores")
+        ruff = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"]
         )
-        if mapping is None or mapping["consumer-only.py"] != ["T201"]:
-            message = "full modernize removed consumer Ruff entry"
-            raise AssertionError(message)
-        if any(pattern not in mapping for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores):
-            message = "full modernize omitted canonical Ruff entries"
-            raise AssertionError(message)
-
-    def test_conform_existing_source_preserves_multiline_toml_values(
-        self, tmp_path: Path
-    ) -> None:
-        """Insert canonical entries after complete parsed values, never inside arrays."""
-        source = """[project]
-name = "sample"
-
-[tool.ruff.lint.per-file-ignores]
-# before
-"consumer.py" = [
-  "T201",
-]
-# between
-'single.py' = [ "S101" ]
-# after
-
-[tool.coverage.report]
-fail_under = 25
-"""
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
-        )
-
-        rendered = modernizer.conform_existing_source(
-            source, path=tmp_path / "pyproject.toml"
-        )
-
-        if rendered.failure:
-            message = rendered.error or "multiline preservation failed"
-            raise AssertionError(message)
-        parsed = tomlkit.parse(rendered.value)
-        mapping = parsed["tool"]["ruff"]["lint"]["per-file-ignores"]
-        if mapping["consumer.py"] != ["T201"] or mapping["single.py"] != ["S101"]:
-            message = "existing quoted-key assignments changed"
-            raise AssertionError(message)
-        if any(
-            pattern not in mapping
-            for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores
-        ):
-            message = "canonical Ruff assignments are missing"
-            raise AssertionError(message)
-        for preserved in (
-            '# before\n"consumer.py" = [\n  "T201",\n]\n# between',
-            "'single.py' = [ \"S101\" ]\n# after",
-            "[tool.coverage.report]\nfail_under = 25",
-        ):
-            if preserved not in rendered.value:
-                message = f"source bytes changed: {preserved}"
-                raise AssertionError(message)
-
-    def test_conform_existing_source_handles_empty_and_invalid_tables(
-        self, tmp_path: Path
-    ) -> None:
-        """Populate an empty table and reject malformed or inline representations."""
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
-        )
-        empty = modernizer.conform_existing_source(
-            '[project]\nname = "sample"\n\n[tool.ruff.lint.per-file-ignores]\n',
-            path=tmp_path / "empty.toml",
-        )
-        if empty.failure:
-            message = empty.error or "empty table merge failed"
-            raise AssertionError(message)
-        parsed = tomlkit.parse(empty.value)
-        mapping = parsed["tool"]["ruff"]["lint"]["per-file-ignores"]
-        if any(
-            pattern not in mapping
-            for pattern in config.Infra.tooling.tools.ruff.lint.per_file_ignores
-        ):
-            message = "empty table was not populated"
-            raise AssertionError(message)
-        invalid = modernizer.conform_existing_source(
-            '[project\nname = "sample"\n', path=tmp_path / "invalid.toml"
-        )
-        if invalid.success:
-            message = "invalid TOML succeeded"
-            raise AssertionError(message)
-        inline = modernizer.conform_existing_source(
-            '[project]\nname = "sample"\n\n[tool.ruff.lint]\n'
-            'per-file-ignores = { "consumer.py" = ["T201"] }\n',
-            path=tmp_path / "inline.toml",
-        )
-        if inline.success:
-            message = "inline per-file-ignore table was not rejected"
-            raise AssertionError(message)
+        lint_section = u.Tests.toml_mapping(ruff["lint"])
+        isort = u.Tests.toml_mapping(lint_section["isort"])
+        known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))
+        tm.that(known_first_party, has="flext_core")
+        tm.that("demo_migration_tool" in known_first_party, eq=False)

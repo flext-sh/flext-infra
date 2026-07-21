@@ -225,16 +225,58 @@ Infra:
           patterns:
             - .venv/
             - .reports/
+            - .benchmarks/
             - "*.tpl.rej"
+            - "*.rej"
             - "*.bak"
+            - "*.orig"
+            - history
             - history.json
             - .flext-deps
+            - .flext-sync.lock
+            - .sync.lock
             - .archive
             - .ropeproject/
             - api-reference/
             - docs/api-reference/
             - site/
             - _build/
+        - name: Agent and tooling state
+          # mro-wkii.17.26: runtime/agent artifacts are never source; keep them
+          # out of every generated project so a broken checkout cannot commit them.
+          patterns:
+            - .beads/
+            - .hypothesis/
+            - .claude/
+            - .omo/
+            - .scope/
+            - .serena/
+            - .sisyphus/
+            - .superpowers/
+            - .state/
+            - .qlty/
+            - .turbo/
+            - .trash/
+            - .code-review-graph/
+            - .codegraph/
+            - .mcp.json
+            - .token
+            - .envrc.local
+        - name: Local databases and caches
+          patterns:
+            - .dolt/
+            - .doltcfg/
+            - .dolt_dropped_databases/
+            - .cache/
+            - __pyrefly_virtual__/
+            - .pylance_cache/
+            - node_modules/
+        - name: Stray build artifacts
+          # Guard against tool bugs that emit literal placeholder names at the root.
+          patterns:
+            - /$OUT
+            - "/{}"
+            - /max
         - name: Environment and secrets
           patterns: [.env, .env.*]
         - name: Editors

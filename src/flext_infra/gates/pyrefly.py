@@ -51,7 +51,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
         target_args: t.StrSequence = (
             () if self._has_project_includes_config(project_dir) else tuple(check_dirs)
         )
-        return [
+        return self._python_module_command(
             c.Infra.PYREFLY,
             c.Infra.CHECK,
             *target_args,
@@ -64,7 +64,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             "-o",
             str(json_file),
             "--summary=none",
-        ]
+        )
 
     @override
     def _parse_check_output(

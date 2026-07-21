@@ -1,9 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Unit package.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Unit package."""
 
 from __future__ import annotations
 

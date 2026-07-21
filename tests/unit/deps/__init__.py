@@ -1,9 +1,5 @@
 # AUTO-GENERATED FILE — Regenerate with: make gen
-"""Deps package.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Deps package."""
 
 from __future__ import annotations
 

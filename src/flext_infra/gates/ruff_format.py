@@ -36,7 +36,9 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx
-        return [c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"]
+        return self._python_module_command(
+            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"
+        )
 
     @override
     def _parse_check_output(
@@ -76,7 +78,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir, ctx, targets
-        return [c.Infra.RUFF, c.Infra.FORMAT, "."]
+        return self._python_module_command(c.Infra.RUFF, c.Infra.FORMAT, ".")
 
 
 __all__: list[str] = ["FlextInfraRuffFormatGate"]

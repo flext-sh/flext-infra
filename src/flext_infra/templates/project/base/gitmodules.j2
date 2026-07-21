@@ -1,4 +1,9 @@
-{# NOTE (multi-agent, mro-wkii.17.11 / agent: codex): ordered workspace topology is the sole .gitmodules owner. #}{% for repository in workspace_repositories %}[submodule "{{ repository.name }}"]
+{# NOTE (multi-agent): ordered workspace topology is the sole .gitmodules owner.
+   Members are FLEXT-governed submodules; content-only submodules are non-FLEXT
+   checkouts kept in-tree (codegen: none) — both are real git submodules and MUST
+   appear here so `git submodule status` stays consistent with the index. #}
+{%- set submodules = workspace_repositories | list + (workspace_content_only | selectattr("checkout.value", "equalto", "submodule") | list) -%}
+{% for repository in submodules %}[submodule "{{ repository.name }}"]
 	path = {{ repository.path }}
 	url = {{ repository.url }}
 	branch = {{ repository.branch }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}

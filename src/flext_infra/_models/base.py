@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
@@ -58,6 +58,14 @@ class FlextInfraModelsBase:
 
     class ProtectedSourceWriteRequest(m.ContractModel):
         """Validated options for a single protected source write."""
+
+        # Source content must retain its exact bytes (notably the mandatory
+        # trailing newline every FLEXT module requires). ContractModel sets
+        # str_strip_whitespace=True, which would corrupt written files, so the
+        # canonical contract config is inherited with stripping disabled.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            **{**m.ContractModel.model_config, "str_strip_whitespace": False}
+        )
 
         workspace: Annotated[
             Path, m.Field(description="Workspace root used for lint and pytest checks")

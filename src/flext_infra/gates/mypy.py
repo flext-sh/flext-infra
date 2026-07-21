@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
-import sys
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, p, t, u
@@ -114,16 +113,16 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         cfg = self._resolve_config(project_dir, ctx)
-        return u.Infra.mypy_limited_command((
-            sys.executable,
-            "-m",
-            c.Infra.MYPY,
-            *check_dirs,
-            "--config-file",
-            str(cfg),
-            "--output",
-            c.Infra.OUTPUT_JSON,
-        ))
+        return u.Infra.mypy_limited_command(
+            self._python_module_command(
+                c.Infra.MYPY,
+                *check_dirs,
+                "--config-file",
+                str(cfg),
+                "--output",
+                c.Infra.OUTPUT_JSON,
+            )
+        )
 
     @override
     def _check_timeout(self, project_dir: Path, ctx: p.Infra.GateContext) -> int:

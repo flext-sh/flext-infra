@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t
@@ -31,6 +32,7 @@ class FlextInfraNamespaceRules:
         ("Types", c.Infra.TYPINGS_PY, c.Infra.FAMILY_DIRECTORIES["t"]),
         ("Utilities", c.Infra.UTILITIES_PY, c.Infra.FAMILY_DIRECTORIES["u"]),
     )
+    _FACADE_DAG: t.Mapping[str, int] = MappingProxyType({"c": 0, "t": 1, "p": 2, "m": 3, "u": 4})
 
     @staticmethod
     def _is_private_dir_file(filepath: Path) -> bool:
@@ -362,14 +364,58 @@ class FlextInfraNamespaceRules:
         self, tree: object, filepath: Path, *, class_stem: str, package_name: str
     ) -> t.StrSequence:
         """Rule 3 — Runtime modules use namespaced MRO aliases (c/m/p/t/u)."""
-        if self._is_private_dir_file(filepath):
-            return []
         owner_rules = self._owner_direct_facade_rules(class_stem)
         messages: list[str] = []
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
+        owner = self._facade_owner(filepath)
+        is_test_file = "tests" in filepath.parts
+        for node, type_checking_only in self._imports_with_context(tree):
             if self._kind(node) != "ImportFrom":
                 continue
-            if getattr(node, "module", None) != package_name:
+            module = getattr(node, "module", None)
+            if not isinstance(module, str):
+                continue
+            imported_owner = self._module_owner(module, namespace="tests")
+            if (
+                is_test_file
+                and owner is not None
+                and imported_owner is None
+                and self._is_test_support_module(module)
+            ):
+                imported_names = {
+                    getattr(alias, "name", "")
+                    for alias in getattr(node, "names", []) or []
+                }
+                owner_assembly = module == "tests" and imported_names <= self._FACADE_DAG.keys()
+                if not owner_assembly:
+                    messages.append(
+                        f"{filepath}:{getattr(node, 'lineno', 0)} — Test facade must "
+                        f"not import test support module {module!r}"
+                    )
+                    continue
+            namespace_module = "tests" if is_test_file else package_name
+            if module == namespace_module and owner is not None and not type_checking_only:
+                for alias in getattr(node, "names", []) or []:
+                    imported_name = getattr(alias, "name", "")
+                    if imported_name in self._FACADE_DAG and (
+                        self._FACADE_DAG[imported_name] > self._FACADE_DAG[owner]
+                    ):
+                        messages.append(
+                            f"{filepath}:{getattr(node, 'lineno', 0)} — Invalid runtime "
+                            f"namespace import {imported_name!r}: {owner} may only import "
+                            "forward through c -> t -> p -> m -> u"
+                        )
+            elif (
+                imported_owner is not None
+                and owner is not None
+                and not type_checking_only
+                and self._FACADE_DAG[imported_owner] > self._FACADE_DAG[owner]
+            ):
+                messages.append(
+                    f"{filepath}:{getattr(node, 'lineno', 0)} — Invalid runtime "
+                    f"namespace import from {module!r}: {owner} may only import "
+                    "forward through c -> t -> p -> m -> u"
+                )
+            if module != package_name or self._is_private_dir_file(filepath):
                 continue
             for alias in getattr(node, "names", []) or []:
                 alias_name = getattr(alias, "name", "")
@@ -383,6 +429,51 @@ class FlextInfraNamespaceRules:
                     f"import {alias_name!r}"
                 )
         return self._accumulate_violations("NS-003", messages)
+
+    def _imports_with_context(self, tree: object) -> list[tuple[object, bool]]:
+        """Return imports paired with whether they are TYPE_CHECKING-only."""
+        guarded_import_ids = {
+            id(subnode)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if self._is_type_checking_guard(node)
+            for subnode in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(node)
+            if self._kind(subnode) in {"Import", "ImportFrom"}
+        }
+        return [
+            (node, id(node) in guarded_import_ids)
+            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            if self._kind(node) in {"Import", "ImportFrom"}
+        ]
+
+    def _facade_owner(self, filepath: Path) -> str | None:
+        """Return the owning facade alias for roots and private families."""
+        filename_owners = {
+            c.Infra.CONSTANTS_PY: "c",
+            c.Infra.TYPINGS_PY: "t",
+            c.Infra.PROTOCOLS_PY: "p",
+            c.Infra.MODELS_PY: "m",
+            c.Infra.UTILITIES_PY: "u",
+        }
+        if filepath.name in filename_owners:
+            return filename_owners[filepath.name]
+        for owner, directory in c.Infra.FAMILY_DIRECTORIES.items():
+            if directory in filepath.parts and owner in self._FACADE_DAG:
+                return owner
+        return None
+
+    @staticmethod
+    def _is_test_support_module(module: str) -> bool:
+        """Return whether a module belongs to the local test-support tree."""
+        return module == "tests" or module.startswith("tests.")
+
+    def _module_owner(self, module: str, *, namespace: str) -> str | None:
+        """Return the facade owner encoded by a namespace-private module."""
+        for owner, directory in c.Infra.FAMILY_DIRECTORIES.items():
+            if module == f"{namespace}.{directory}" or module.startswith(
+                f"{namespace}.{directory}."
+            ):
+                return owner if owner in self._FACADE_DAG else None
+        return None
 
     def _allows_direct_facade_import(
         self,

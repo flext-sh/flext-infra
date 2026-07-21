@@ -52,6 +52,10 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
+CANONICAL_PROJECT_ROOT := $(shell git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print substr($$0, 10); exit }')
+ifeq ($(CANONICAL_PROJECT_ROOT),)
+CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
+endif
 
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
@@ -95,6 +99,10 @@ export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
 export POETRY_VIRTUALENVS_IN_PROJECT := true
 export POETRY_VIRTUALENVS_CREATE := true
 endif
+
+override UV_PROJECT := $(CANONICAL_PROJECT_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
@@ -204,6 +212,40 @@ PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA
 PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) refactor
 PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate
 
+# Verb hook seam: custom.mk may define pre-<verb>, post-<verb>, pre-<verb>-<what>,
+# and post-<verb>-<what> targets to append work at the start or end of any verb,
+# for all or some WHATs. Undefined hooks are no-ops (make -q returns 2 when a
+# target is absent). $(1)=phase (pre|post), $(2)=verb, $(3)=optional WHAT.
+define _run_verb_hooks
+	@phase="$(1)"; verb="$(2)"; what="$(3)"; \
+	hooks="$$phase-$$verb"; \
+	if [ -n "$$what" ]; then \
+		if [ "$$phase" = "pre" ]; then hooks="$$phase-$$verb $$phase-$$verb-$$what"; \
+		else hooks="$$phase-$$verb-$$what $$phase-$$verb"; fi; \
+	fi; \
+	for hook in $$hooks; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
+endef
+
+# Custom-WHAT dispatch: run the custom.mk handler _custom_<verb>_<what> when it
+# exists. Used by the generic `run` verb and by any verb given a WHAT that has no
+# builtin meaning. $(1)=verb, $(2)=what. Fails clearly if the handler is absent.
+define _run_custom_what
+	@verb="$(1)"; what="$(2)"; \
+	if [ -z "$$what" ]; then \
+		printf 'ERROR: make %s requires WHAT=<action>\n' "$$verb" >&2; exit 2; \
+	fi; \
+	target="_custom_$${verb}_$${what}"; \
+	$(MAKE) --no-print-directory -q "$$target" >/dev/null 2>&1; rc=$$?; \
+	if [ "$$rc" -eq 2 ]; then \
+		printf 'ERROR: no custom handler %s for make %s WHAT=%s (define it in custom.mk)\n' "$$target" "$$verb" "$$what" >&2; \
+		exit 2; \
+	fi; \
+	$(MAKE) --no-print-directory "$$target"
+endef
+
 help: ## Show commands
 	$(Q)echo "================================================"
 	$(Q)echo "  $(PROJECT_NAME)"
@@ -302,7 +344,25 @@ help: ## Show commands
 	$(Q)echo "  PR_RELEASE_ON_MERGE=0|1"
 
 
+	$(Q)echo ""
+	$(Q)echo "Custom hooks (custom.mk):"
+	$(Q)echo "  Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>"
+	$(Q)echo "  in custom.mk to run extra steps at the start or end of any verb, for"
+	$(Q)echo "  all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT."
+	$(Q)if [ -f custom.mk ]; then \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		if [ -n "$$hooks" ]; then \
+			echo "  Defined in this project:"; \
+			for hook in $$hooks; do echo "    $$hook"; done; \
+		fi; \
+	fi
+
 boot: ## Complete setup
+	$(call _run_verb_hooks,pre,boot,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _boot_impl
+	$(call _run_verb_hooks,post,boot,$(WHAT))
+
+_boot_impl:
 	# mro-j47u: generated boot consumes the sole public extra-paths route.
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)uv lock
@@ -321,11 +381,21 @@ boot: ## Complete setup
 	fi
 
 build: ## Build distributable artifacts
+	$(call _run_verb_hooks,pre,build,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _build_impl
+	$(call _run_verb_hooks,post,build,$(WHAT))
+
+_build_impl:
 	$(Q)build_start=$$(date +%s) && \
 	mise exec -- uv build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
 check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
+	$(call _run_verb_hooks,pre,check,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _check_impl
+	$(call _run_verb_hooks,post,check,$(WHAT))
+
+_check_impl:
 	$(Q)gates="$(CHECK_GATES)"; \
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
@@ -391,6 +461,11 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	exit $$?
 
 fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, PROJECTS=..., RULES=...)
+	$(call _run_verb_hooks,pre,fix-enforcement,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _fix_enforcement_impl
+	$(call _run_verb_hooks,post,fix-enforcement,$(WHAT))
+
+_fix_enforcement_impl:
 	$(Q)apply_flag=""; \
 	if [ "$(APPLY)" = "1" ]; then apply_flag="--apply"; fi; \
 	projects_arg=""; \
@@ -401,6 +476,11 @@ fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, P
 	exit $$?
 
 scan: ## Run all security checks
+	$(call _run_verb_hooks,pre,scan,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _scan_impl
+	$(call _run_verb_hooks,post,scan,$(WHAT))
+
+_scan_impl:
 	$(Q)project_key="$(PROJECT_NAME)"; \
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		project_key="."; \
@@ -413,6 +493,11 @@ scan: ## Run all security checks
 	exit $$?
 
 fmt: ## Run code formatting (ruff + markdownlint on tracked files)
+	$(call _run_verb_hooks,pre,fmt,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _fmt_impl
+	$(call _run_verb_hooks,post,fmt,$(WHAT))
+
+_fmt_impl:
 	$(Q)_fmt_target="."; \
 	_fmt_files=""; \
 	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
@@ -455,6 +540,11 @@ fmt: ## Run code formatting (ruff + markdownlint on tracked files)
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
 docs: ## Build docs
+	$(call _run_verb_hooks,pre,docs,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _docs_impl
+	$(call _run_verb_hooks,post,docs,$(WHAT))
+
+_docs_impl:
 	$(Q)if python3 -c "import flext_infra.docs" >/dev/null 2>&1; then \
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=OK REASON=docs-module-available"; \
 	else \
@@ -485,9 +575,20 @@ docs: ## Build docs
 
 # kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
 docs-serve: ## Serve documentation via the flext-infra docs engine
+	$(call _run_verb_hooks,pre,docs-serve,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _docs_serve_impl
+	$(call _run_verb_hooks,post,docs-serve,$(WHAT))
+
+_docs_serve_impl:
+	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
 	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
 
 test: ## Run pytest only
+	$(call _run_verb_hooks,pre,test,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _test_impl
+	$(call _run_verb_hooks,post,test,$(WHAT))
+
+_test_impl:
 	$(Q)_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -514,7 +615,7 @@ test: ## Run pytest only
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
 	interrupted=0; \
-	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
+	_coverage_args="--cov-report=xml:$$coverage_file"; \
 	if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi; \
 	echo "$(VENV_PYTHON) -m pytest $$_pytest_run $(PYTEST_REPORT_ARGS) $(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) -p no:metadata --junitxml=$$junit_file $$_coverage_args $(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args" > "$$command_file"; \
 	trap 'interrupted=1; trap "" INT TERM' INT TERM; \
@@ -597,6 +698,11 @@ test: ## Run pytest only
 	exit $$rc
 
 val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1)
+	$(call _run_verb_hooks,pre,val,$(WHAT))
+	$(Q)$(MAKE) --no-print-directory _val_impl
+	$(call _run_verb_hooks,post,val,$(WHAT))
+
+_val_impl:
 	$(Q)if [ -n "$(FIX)" ] && [ "$(FIX)" != "1" ]; then \
 		echo "ERROR: FIX must be empty or 1, got '$(FIX)'"; \
 		exit 1; \
@@ -620,6 +726,11 @@ val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1
 	if echo "$$gates" | grep -qw docstring; then \
 		$(PROJECT_INFRA_DOCS) audit --workspace . --checks docstrings --docstring-min $(DOCSTRING_MIN) --output-dir .reports/docs; \
 	fi
+
+run: ## Run a project-specific action (WHAT=<action> -> _custom_run_<action> in custom.mk)
+	$(call _run_verb_hooks,pre,run,$(WHAT))
+	$(call _run_custom_what,run,$(WHAT))
+	$(call _run_verb_hooks,post,run,$(WHAT))
 
 daemon-start-mypy: ## Start dmypy daemon for this project
 	$(Q)mkdir -p .dmypy

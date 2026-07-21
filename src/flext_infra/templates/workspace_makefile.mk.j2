@@ -25,23 +25,20 @@ FLEXT_WORKSPACE_ROOT="$(CURDIR)" {%- for variable_name, _default_value in make.W
 SHELL := /usr/bin/bash
 .DEFAULT_GOAL := help
 
-WORKSPACE_VENV ?= $(CURDIR)/.venv
-WORKSPACE_VENV_READY := $(WORKSPACE_VENV)/.flext-ready
+WORKSPACE_VENV := $(CURDIR)/.venv
 
 # Determine required python version from pyproject.toml and find matching executable
 PYTHON_REQ_VERSION := $(shell awk -F'"' '/requires-python/ {match($$2, /3\.[0-9]+/); print substr($$2, RSTART, RLENGTH)}' pyproject.toml)
 PYTHON_CMD := $(shell if command -v python$(PYTHON_REQ_VERSION) >/dev/null 2>&1; then echo python$(PYTHON_REQ_VERSION); elif command -v python3 >/dev/null 2>&1; then echo python3; else echo python; fi)
-UV_REQ_VERSION := $(shell awk -F'"' '/^uv = / {print $$2; exit}' .mise.toml)
 
 PY := $(WORKSPACE_VENV)/bin/python
 PIPX_BIN := $(WORKSPACE_VENV)/bin/pipx
 UV_BIN := $(WORKSPACE_VENV)/bin/uv
 UV_CACHE_DIR ?= /tmp/uv-cache
 override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)
-override VIRTUAL_ENV := $(WORKSPACE_VENV)
+WORKSPACE_BOOT_LOCK ?= /tmp/flext-workspace-boot.lock
 export UV_CACHE_DIR
 export UV_PROJECT_ENVIRONMENT
-export VIRTUAL_ENV
 {% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
 {% if default_value -%}
 {{ variable_name }} ?= {{ default_value }}
@@ -89,7 +86,7 @@ WORKSPACE_PYTHONPATH := $(shell \
 		[ "$$skip" = "0" ] && [ -d "$(CURDIR)/$$d/src" ] && printf "$(CURDIR)/$$d/src:"; \
 	done)$(CURDIR)/src
 WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
-FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PR_BRANCH="$(PR_BRANCH)" $(WORKSPACE_PYTHON) -m scripts.dispatch
+FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PR_BRANCH="$(PR_BRANCH)" PYTHONPATH="$(WORKSPACE_PYTHONPATH)" uv run --all-packages python -m scripts.dispatch
 WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
 WORKSPACE_INFRA_CHECK := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CHECK }}
 WORKSPACE_INFRA_CODEGEN := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CODEGEN }}
@@ -104,6 +101,24 @@ WORKSPACE_EDITABLE_REINSTALL_FLAGS :={% for distribution in editable_distributio
 WORKSPACE_VERIFY_ENVIRONMENT := $(WORKSPACE_INFRA_WORKSPACE) verify-environment --workspace "$(CURDIR)"
 ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate
 ORCHESTRATOR_PROJECTS := $(SELECTED_PROJECT_FLAGS)
+
+# Workspace verb hook seam: workspace_custom.mk may define pre-<verb>,
+# post-<verb>, pre-<verb>-<what>, and post-<verb>-<what> targets to append work
+# at the start or end of any root verb, for all or some WHATs. Undefined hooks
+# are no-ops (make -q returns 2 when a target is absent). $(1)=phase (pre|post),
+# $(2)=verb, $(3)=optional WHAT.
+define _run_workspace_hooks
+	@phase="$(1)"; verb="$(2)"; what="$(3)"; \
+	hooks="$$phase-$$verb"; \
+	if [ -n "$$what" ]; then \
+		if [ "$$phase" = "pre" ]; then hooks="$$phase-$$verb $$phase-$$verb-$$what"; \
+		else hooks="$$phase-$$verb-$$what $$phase-$$verb"; fi; \
+	fi; \
+	for hook in $$hooks; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
+endef
 
 define ENSURE_NO_PROJECT_CONFLICT
 	if [ -n "$(PROJECT)" ] && [ -n "$(PROJECTS)" ]; then \
@@ -155,12 +170,11 @@ done
 endef
 
 define AUTO_SYNC_ALL_PROJECTS
-# mro-wkii.17.26 (codex): sync root and discovered children once, surfacing failures.
-$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply || exit 1
+$(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --apply >/dev/null || exit 1
 endef
 
+# mro-wkii.17.27 (codex): validation detects generated drift without writes.
 define CHECK_SYNC_ALL_PROJECTS
-# mro-wkii.17.26 (codex): validation reports generated drift without mutating source.
 $(WORKSPACE_INFRA_WORKSPACE) sync --workspace "$(CURDIR)" --dry-run || exit 1
 endef
 
@@ -181,7 +195,7 @@ done); \
 if [ -n "$$local_venvs" ]; then \
 	echo "ERROR: project-local .venv directories violate the workspace environment contract:"; \
 	printf '%s\n' "$$local_venvs"; \
-	echo "Move those generated environments outside the workspace, then rerun '{{ make.WORKSPACE_BOOT_HINT }}'."; \
+	echo "Move those generated environments outside the workspace, then rerun 'make boot'."; \
 	exit 1; \
 fi
 endef
@@ -209,47 +223,14 @@ if [ ! -x "$(PY)" ]; then \
 	echo ""; \
 	exit 1; \
 fi; \
-if [ ! -f "$(WORKSPACE_VENV_READY)" ]; then \
-	echo "ERROR: workspace .venv is incomplete ($(WORKSPACE_VENV_READY) missing)."; \
-	echo "    Run '{{ make.WORKSPACE_BOOT_HINT }}' to finish synchronization and import validation."; \
-	exit 1; \
-fi; \
-lock_hash=$$($(PYTHON_CMD) -c 'from hashlib import sha256; from pathlib import Path; print(sha256(Path("uv.lock").read_bytes()).hexdigest())'); \
-ready_hash=$$(cat "$(WORKSPACE_VENV_READY)"); \
-if [ "$$lock_hash" != "$$ready_hash" ]; then \
-	echo "ERROR: workspace .venv is stale (uv.lock changed after the last successful boot)."; \
-	echo "    Run '{{ make.WORKSPACE_BOOT_HINT }}' to synchronize it."; \
-	exit 1; \
-fi; \
-$(PY) -c 'import sys; required = tuple(map(int, "$(PYTHON_REQ_VERSION)".split("."))); actual = sys.version_info[:2]; assert actual == required, f"expected Python {required}, found {actual}"' || { \
-	echo "ERROR: workspace .venv uses the wrong Python interpreter."; \
-	exit 1; \
-}
+$(WORKSPACE_VERIFY_ENVIRONMENT) || exit 1
 mkdir -p "$(UV_CACHE_DIR)"
-endef
-
-define BOOTSTRAP_WORKSPACE_VENV
-if [ -z "$(UV_REQ_VERSION)" ]; then \
-	echo "ERROR: canonical uv version is missing from .mise.toml"; \
-	exit 1; \
-fi; \
-rm -f "$(WORKSPACE_VENV_READY)"; \
-echo "Creating or repairing $(WORKSPACE_VENV) with Python $(PYTHON_REQ_VERSION)..."; \
-$(PYTHON_CMD) -m venv --upgrade-deps "$(WORKSPACE_VENV)" || exit 1; \
-$(PY) -m pip install --disable-pip-version-check --upgrade "uv==$(UV_REQ_VERSION)" || exit 1; \
-$(UV_BIN) --version || exit 1
-endef
-
-define VERIFY_WORKSPACE_VENV
-echo "Verifying workspace package metadata and public imports..."; \
-$(PY) -c 'import importlib, importlib.metadata as metadata, pathlib, tomllib; from packaging.version import Version; root = pathlib.Path.cwd(); pyprojects = (root / "pyproject.toml", *sorted(root.glob("flext-*/pyproject.toml"))); projects = tuple((path.parent, tomllib.loads(path.read_text())["project"]) for path in pyprojects); installed = tuple((project, metadata.version(project["name"])) for _, project in projects); mismatches = tuple("{}: expected {}, installed {}".format(project["name"], project["version"], version) for project, version in installed if Version(version) != Version(project["version"])); assert not mismatches, "; ".join(mismatches); modules = tuple(sorted({entry.name for project_dir, _ in projects for entry in (project_dir / "src").glob("flext_*") if entry.is_dir()})); tuple(importlib.import_module(module) for module in modules); print("Verified {} distributions and {} public imports".format(len(projects), len(modules)))' || exit 1; \
-$(PYTHON_CMD) -c 'from hashlib import sha256; from pathlib import Path; print(sha256(Path("uv.lock").read_bytes()).hexdigest())' > "$(WORKSPACE_VENV_READY)"
 endef
 
 define ENSURE_WORKSPACE_RUNTIME
 echo "Ensuring workspace runtime dependencies in .venv..."; \
 log_file="/tmp/flext-workspace-runtime-sync.log"; \
-if $(UV_BIN) lock >"$$log_file" 2>&1; then \
+if uv lock >"$$log_file" 2>&1; then \
 	:; \
 else \
 	cat "$$log_file"; \
@@ -287,16 +268,32 @@ define PREFLIGHT_CHECK
 	echo " OK: all required tools present"
 endef
 
-.PHONY: help setup boot _boot_default build _build_default _up _mod _constraints docs _docs _stubs _grpc _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status _status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
+define ENSURE_CLEAN_SUBMODULE_WORKTREES
+dirty_submodules=""; \
+for submodule_path in $$submodule_paths; do \
+	if [ -e "$$submodule_path/.git" ] && [ -n "$$(git -C "$$submodule_path" status --porcelain --untracked-files=all)" ]; then \
+		dirty_submodules="$$dirty_submodules $$submodule_path"; \
+	fi; \
+done; \
+if [ -n "$$dirty_submodules" ]; then \
+	echo "ERROR: boot refused to update dirty submodule worktrees:"; \
+	for submodule_path in $$dirty_submodules; do echo " - $$submodule_path"; done; \
+	echo "Commit or otherwise preserve those changes before rerunning make boot."; \
+	exit 1; \
+fi
+endef
 
-help: ## Show workspace verbs without creating or synchronizing .venv
-	$(Q)awk 'BEGIN {FS = ":.*## "; print "FLEXT workspace commands:"} /^[a-zA-Z][a-zA-Z0-9_.-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' "$(firstword $(MAKEFILE_LIST))"
+.PHONY: help boot _boot_default _boot_venv _boot_submodules build _build_default _up _mod _constraints docs _docs _stubs _gen _sync check _check_default _scan _fmt _types _pyre _pol _cqrs _coordination coordination makefile status _status test _test_default val clean _clean_default ship _rel _pr _save _tag _push _imp _stat
 
-setup: _boot_default ## Create and validate the complete workspace .venv
+help: ## Show registry-driven workspace verbs
+	$(Q)$(FLEXT_MAKE_DISPATCH) help
 
-boot: setup ## Alias for the complete workspace setup
+boot: ## Bootstrap .venv + submodules (WHAT=all|venv|submodules|sync|stat|imp)
+	$(call _run_workspace_hooks,pre,boot,$(WHAT))
+	$(Q)$(FLEXT_MAKE_DISPATCH) boot
+	$(call _run_workspace_hooks,post,boot,$(WHAT))
 
-_boot_default: ## Install all projects into workspace .venv
+_boot_submodules: ## Initialize declared submodules without touching the environment
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)$(ENSURE_NO_PROJECT_CONFLICT)
 	$(Q)if [ -f .gitmodules ]; then \
@@ -304,38 +301,39 @@ _boot_default: ## Install all projects into workspace .venv
 		if [ -z "$$submodule_paths" ]; then \
 			echo "No declared submodules found in .gitmodules."; \
 		else \
+		$(ENSURE_CLEAN_SUBMODULE_WORKTREES); \
 		echo "Initializing and updating submodules..."; \
 		git submodule sync --recursive -- $$submodule_paths; \
-		missing_paths="$$(git submodule status --recursive | awk '/^-/ {print $$2}' | tr '\n' ' ')"; \
-		if [ -n "$$missing_paths" ]; then \
-			echo "Materializing missing submodules: $$missing_paths"; \
-			if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$missing_paths; then \
-				echo "ERROR: failed to initialize missing submodules from .gitmodules"; \
-				echo "Fix the canonical .gitmodules URL or local Git credentials, then rerun make boot."; \
-				exit 1; \
-			fi; \
-		else \
-			echo "All declared submodules are already materialized; preserving their current commits and WIP."; \
+		if ! git submodule update --init --recursive --jobs $${JOBS:-8} -- $$submodule_paths; then \
+			echo "ERROR: failed to update declared submodules from .gitmodules"; \
+			echo "Fix the canonical .gitmodules URL or local Git credentials, then rerun make boot."; \
+			exit 1; \
 		fi; \
 		echo "Submodules ready."; \
 		fi; \
 	fi
-	$(Q)$(BOOTSTRAP_WORKSPACE_VENV)
+
+_boot_venv: ## Repair the root workspace environment from the existing lock
+	$(Q)$(PREFLIGHT_CHECK)
+	$(Q)mkdir -p "$(UV_CACHE_DIR)"
+	$(Q)flock -x "$(WORKSPACE_BOOT_LOCK)" uv sync --locked --all-packages --all-groups --all-extras --reinstall
+
+_boot_default: ## Initialize submodules, repair .venv, then complete workspace setup
+	$(Q)$(MAKE) --no-print-directory _boot_submodules
+	$(Q)$(MAKE) --no-print-directory _boot_venv
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
-	$(Q)$(ENSURE_WORKSPACE_RUNTIME)
 	$(Q)$(PREPARE_SELECTED_PROJECTS)
-	# mro-wkii.17.26 (codex): setup never mutates source; codegen/sync runs only after a checkpoint.
+	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
-	# mro-qc84 (fix-forward): ENSURE_WORKSPACE_RUNTIME already locks + syncs the
-	# whole workspace (uv sync --all-packages); the previous per-project uv lock
-	# loop and the duplicate root lock/sync were redundant and slow. One sync.
-	$(Q)echo "Workspace .venv synchronized ($(words $(SELECTED_PROJECTS)) projects + root)."
-	# mro-wkii.17.26 (codex): prove imports and mark the synced venv ready first.
-	$(Q)$(VERIFY_WORKSPACE_VENV)
-	# mro-wkii.17.26 (codex): setup ends after environment/import proof; validation is an explicit next verb.
+	$(Q)if [ -n "$(BOOT_VALIDATE_PROJECTS)" ]; then \
+		echo "Validating workspace selection (validate VALIDATE_SCOPE=workspace)..."; \
+		$(MAKE) val WHAT=workspace VALIDATE_SCOPE=workspace PROJECTS="$(BOOT_VALIDATE_PROJECTS)" || { echo "FAIL: boot validation"; exit 1; }; \
+	else \
+		echo "Skipping workspace validation (no managed workspace projects selected)."; \
+	fi
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1 && [ -f .pre-commit-config.yaml ]; then \
 		echo "Installing pre-commit hooks (workspace root)..."; \
-		$(UV_BIN) run --no-sync --all-packages pre-commit install || exit 1; \
+		uv run --all-packages pre-commit install || exit 1; \
 	else \
 		echo "INFO: skipping pre-commit install (no git repository or config)"; \
 	fi
@@ -348,7 +346,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)$(CHECK_SYNC_ALL_PROJECTS)
+	$(Q)$(AUTO_SYNC_ALL_PROJECTS)
 	$(Q)echo "Enforcing Python version guards..."; $(WORKSPACE_INFRA_MAINTENANCE) || exit 1
 	$(Q)echo "Standardizing project metadata (make mod)..."
 	$(Q)$(MAKE) _mod $(MAKE_SELECTION_ARGS)
@@ -413,13 +411,24 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)$(ENSURE_SELECTED_PROJECTS)
 	$(Q)$(ENSURE_PROJECTS_EXIST)
+	$(Q)echo "Refreshing workspace dependency resolution..."; \
+		log_file="/tmp/flext-constraints-lock.log"; \
+		if uv lock --upgrade >"$$log_file" 2>&1; then \
+			rm -f "$$log_file"; \
+		else \
+			cat "$$log_file"; \
+			rm -f "$$log_file"; \
+			exit 1; \
+		fi
 	$(Q)echo "Rewriting dependency constraints from uv.lock..."; \
 	$(WORKSPACE_INFRA_DEPS) modernize --apply --rewrite-constraints --constraint-policy floor $(MODERNIZE_SELECTION_FLAGS) || exit 1; \
 	echo ""
 	$(Q)echo "Dependency constraint rewrite complete."
 
 check: ## Quality gates (WHAT=all|scan|fmt|format|types|pyre|pol|cqrs|lint|pyrefly|mypy|pyright|markdown|silent-failure|loc-cap|boundary|coordination)
+	$(call _run_workspace_hooks,pre,check,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) check
+	$(call _run_workspace_hooks,post,check,$(WHAT))
 
 _check_default: ## Run lint gates in all projects (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }})
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -455,15 +464,19 @@ _status: ## Show Beads status
 _cqrs: ## Enforce strict CQRS/FlextModels patterns across ecosystem
 	$(Q).github/scripts/check-cqrs-compliance.sh
 
-build: ## Build/regen (WHAT=all|gen|grpc|mod|up|constraints|sync|docs|stubs)
+build: ## Build/regen (WHAT=all|gen|mod|up|constraints|sync|docs|stubs)
+	$(call _run_workspace_hooks,pre,build,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) build
+	$(call _run_workspace_hooks,post,build,$(WHAT))
 
 _build_default: ## Build/package all selected projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
 	$(Q)$(ORCHESTRATOR) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(ORCHESTRATOR_PROJECTS)
 
 ship: ## Release workflow (WHAT=all|save|tag|push|pr|rel)
+	$(call _run_workspace_hooks,pre,ship,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) ship
+	$(call _run_workspace_hooks,post,ship,$(WHAT))
 
 _rel: ## Interactive workspace release orchestration
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -574,10 +587,14 @@ _docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
 		$(DOCS_PROJECT_FLAGS)
 
 docs: ## Run docs pipeline (DOCS_PHASE=audit|fix|build|generate|validate|all)
+	$(call _run_workspace_hooks,pre,docs,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) docs
+	$(call _run_workspace_hooks,post,docs,$(WHAT))
 
 test: ## Run tests only in all projects
+	$(call _run_workspace_hooks,pre,test,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) test
+	$(call _run_workspace_hooks,post,test,$(WHAT))
 
 _test_default: ## Run tests only in all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -587,7 +604,9 @@ _test_default: ## Run tests only in all projects
 		$(ORCHESTRATOR_PROJECTS)
 
 val: ## Run validate gates (WHAT=all|project|workspace, VALIDATE_SCOPE=project|workspace, FIX=1)
+	$(call _run_workspace_hooks,pre,val,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) val
+	$(call _run_workspace_hooks,post,val,$(WHAT))
 
 _val_project: ## Run project validation gates
 	$(Q)$(MAKE) --no-print-directory _val_body VALIDATE_SCOPE=project $(MAKE_SELECTION_ARGS)
@@ -795,7 +814,9 @@ _pol: ## Repo-wide typing policy gate (dynamic typing/t.JsonValue/# type: ignore
 	exit $$status
 
 clean: ## Clean all projects
+	$(call _run_workspace_hooks,pre,clean,$(WHAT))
 	$(Q)$(FLEXT_MAKE_DISPATCH) clean
+	$(call _run_workspace_hooks,post,clean,$(WHAT))
 
 _clean_default: ## Clean all projects
 	$(Q)$(PREPARE_RUNTIME_SELECTED_PROJECTS)
@@ -939,27 +960,11 @@ _push: ## Push branches and tags for selected projects
 	fi; \
 	echo "Push: $$pushed pushed, $$failed failed"
 
-_grpc: ## Generate Python gRPC modules for projects that own proto schemas
-	$(Q)$(REQUIRE_VENV)
-	$(Q)$(ENFORCE_WORKSPACE_VENV)
-ifneq ($(HAS_EXPLICIT_PROJECT_SELECTION),)
-	$(Q)$(ENSURE_SELECTED_PROJECTS)
-	$(Q)$(ENSURE_PROJECTS_EXIST)
-	$(Q)for proj in $(SELECTED_PROJECTS); do \
-		$(WORKSPACE_INFRA_CODEGEN) grpc \
-			--workspace "$(CURDIR)/$$proj" --apply || exit 1; \
-	done
-else
-	$(Q)$(WORKSPACE_INFRA_CODEGEN) grpc --workspace "$(CURDIR)" --apply
-endif
-
-_gen: ## Recreate standardized metadata, gRPC modules, Makefiles and initializers
+_gen: ## Recreate standardized pyproject.toml, base.mk, Makefile and __init__.py
 	$(Q)$(REQUIRE_VENV)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 	$(Q)echo "Recreating standardized pyproject.toml..."
 	$(Q)$(MAKE) --no-print-directory _mod $(MAKE_SELECTION_ARGS)
-	$(Q)echo "Regenerating package-owned gRPC modules..."
-	$(Q)$(MAKE) --no-print-directory _grpc $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Recreating standardized base.mk/Makefile/__init__.py..."
 	$(Q)$(MAKE) --no-print-directory _sync $(MAKE_SELECTION_ARGS)
 	$(Q)echo "Generation complete."

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import sys
 import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
@@ -32,6 +33,19 @@ class FlextInfraGate(ABC):
         self._workspace_root = workspace_root
         self._runner = runner
 
+    @staticmethod
+    def _python_module_command(
+        module: str, *args: str
+    ) -> t.StrSequence:
+        """Canonical venv-anchored tool invocation.
+
+        Every linter/type-checker runs through the workspace interpreter
+        (``sys.executable -m <module>``) so tool resolution is bound to the
+        active ``.venv`` and never depends on ``PATH`` ordering or an external
+        mise/system shim. This is the single source for building a Python
+        module command shared by all gates.
+        """
+        return (sys.executable, "-m", module, *args)
     # ------------------------------------------------------------------
     # Template method: check
     # ------------------------------------------------------------------
@@ -337,14 +351,9 @@ class FlextInfraGate(ABC):
         )
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Existing check dirs."""
-        has_root_python = any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi")
-        )
-        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
-        if has_root_python or discovered_dirs:
-            return ["."]
-        return []
+        """Return direct project-owned source directories only."""
+        candidates = ("src", "tests")
+        return self._dirs_with_py(project_dir, candidates)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

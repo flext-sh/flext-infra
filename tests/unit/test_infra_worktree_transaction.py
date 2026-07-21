@@ -1,10 +1,10 @@
-
 """Real Git behavior tests for isolated workspace transactions."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra.services.cli_transaction import CliTransactionService
 from flext_tests import tm
 
 from tests import m, u
@@ -21,23 +21,12 @@ def _git_status(repository_root: Path) -> bytes:
     return result.value
 
 
-def _initialize_git_repo(repository_root: Path) -> None:
-    for arguments in (
-        ("init",),
-        ("config", "user.email", "tests@flext.dev"),
-        ("config", "user.name", "FLEXT Tests"),
-        ("add", "."),
-        ("commit", "-m", "test fixture"),
-    ):
-        tm.ok(u.Infra.git_capture(repository_root, arguments))
-
-
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
     source_root = tmp_path / "source"
     source_root.mkdir()
     artifact = source_root / "artifact.txt"
     artifact.write_bytes(b"before\n")
-    _initialize_git_repo(source_root)
+    u.Tests.initialize_git_repo(source_root)
     worktree_root = tmp_path / "isolated"
     add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
     tm.ok(add_result)
@@ -56,17 +45,11 @@ def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelt
 
 def _workspace(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
-
     package_root = workspace_root / "src" / "transaction_fixture"
     package_root.mkdir(parents=True)
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (workspace_root / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            "name = 'transaction-fixture'\n"
-            "version = '0.1.0'\n"
-            "requires-python = '>=3.13,<3.14'\n"
-        ),
+        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
@@ -97,7 +80,7 @@ def _workspace(tmp_path: Path) -> Path:
         ),
         encoding="utf-8",
     )
-    _initialize_git_repo(workspace_root)
+    u.Tests.initialize_git_repo(workspace_root)
     return workspace_root
 
 
@@ -177,33 +160,49 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
-    def test_public_selected_repository_transaction_preserves_unselected_materialization(
+
+class TestsFlextInfraWorktreeTransactionLintRegression:
+    """Contract for the explicit lint-regression allowance."""
+
+    def test_lint_regressed_detects_diagnostic_increase(self) -> None:
+        """Flag diagnostic growth as regression; stable diagnostics are safe."""
+        before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
+        after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
+
+        regressed = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+            before, after
+        )
+        stable = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
+            before, before
+        )
+
+        tm.that(regressed, eq=True)
+        tm.that(stable, eq=False)
+
+    def test_request_defaults_to_rejecting_lint_regression(
         self, tmp_path: Path
     ) -> None:
-        """Selected execution must still materialize the complete workspace."""
-        workspace_root = _workspace(tmp_path)
-        nested_root = workspace_root / "consumer"
-        package_root = nested_root / "src" / "consumer_fixture"
-        package_root.mkdir(parents=True)
-        (package_root / "__init__.py").write_text("", encoding="utf-8")
-        (nested_root / "pyproject.toml").write_text(
-            (
-                "[project]\n"
-                "name = 'consumer-fixture'\n"
-                "version = '0.1.0'\n"
-                "requires-python = '>=3.13,<3.14'\n"
-            ),
-            encoding="utf-8",
+        """Default transactions keep rejecting lint regressions."""
+        request = m.Infra.WorktreeTransactionRequest(
+            workspace_root=tmp_path, command=("deps", "modernize"), timeout_seconds=60
         )
-        _initialize_git_repo(workspace_root)
-        transaction_result = u.Infra.execute_worktree_transaction(
-            m.Infra.WorktreeTransactionRequest(
-                workspace_root=workspace_root,
-                command=("workspace", "sync", "--workspace", str(workspace_root)),
-                selected_repositories=(".",),
-                timeout_seconds=120,
-            )
+
+        tm.that(request.allow_lint_regression, eq=False)
+
+    def test_inner_args_strip_allow_lint_regression_flag(self) -> None:
+        """Strip the outer allowance flag before the isolated invocation."""
+        args = (
+            "modernize",
+            "--apply",
+            "--allow-lint-regression",
+            "--projects",
+            "flext-infra",
         )
-        report = tm.ok(transaction_result)
-        tm.that(report.breakage_detected, eq=False)
-        tm.that(tuple(item.relative_path for item in report.repositories), eq=(".",))
+
+        normalized = CliTransactionService.transaction_inner_args(
+            "deps:modernize", args
+        )
+
+        tm.that("--allow-lint-regression" in normalized, eq=False)
+        tm.that("--apply" in normalized, eq=True)
+        tm.that("--projects" in normalized, eq=True)

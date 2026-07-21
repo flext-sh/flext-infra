@@ -1,0 +1,258 @@
+"""Edge-case tests for public modernizer flows."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from flext_tests import tm
+
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from tests import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+class TestsFlextInfraDepsModernizerMainExtra:
+    """Validate edge cases through the public modernizer API."""
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            pytest.param(None, 2, id="missing-root-pyproject"),
+            pytest.param("", 2, id="empty-root-pyproject"),
+            pytest.param("[invalid toml {", 2, id="invalid-root-pyproject"),
+        ],
+    )
+    def test_run_handles_root_edge_cases(
+        self, tmp_path: Path, content: str | None, expected: int
+    ) -> None:
+        """Fail loud for missing, empty, or invalid root project contracts."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir(parents=True, exist_ok=True)
+        if content is not None:
+            (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+                content, encoding="utf-8"
+            )
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=workspace)
+        tm.that(modernizer.run(), eq=expected)
+
+    def test_audit_returns_zero_after_workspace_is_canonical(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Reach a fixed point after one canonical apply."""
+        apply_exit = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+        audit_exit = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace, audit=True, skip_comments=True
+        ).run()
+        tm.that(apply_exit, eq=0)
+        tm.that(audit_exit, eq=0)
+
+    def test_run_fails_when_selected_project_has_invalid_toml(
+        self, modernizer_workspace_with_projects: Path
+    ) -> None:
+        """Report invalid TOML from an explicitly selected declared member."""
+        selected_pyproject = (
+            modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
+        )
+        selected_pyproject.write_text("[invalid", encoding="utf-8")
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace_with_projects,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=False,
+        )
+        tm.that(modernizer.run(), eq=1)
+
+    def test_run_rewrite_constraints_requires_uv_lock(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Reject constraint rewriting when the lock SSOT is unavailable."""
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+
+    def test_run_rewrite_constraints_rejects_member_local_uv_lock(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Require the workspace root lock to be the only resolution authority."""
+        (modernizer_workspace / "uv.lock").write_text(
+            "version = 1\n[manifest]\nmembers = []\n",
+            encoding="utf-8",
+        )
+        member = modernizer_workspace / "flext-core"
+        member.mkdir()
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n',
+            encoding="utf-8",
+        )
+        (member / "uv.lock").write_text(
+            "version = 1\n[manifest]\nmembers = []\n",
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+
+    def test_run_apply_rewrites_dependency_constraints_from_uv_lock(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Rewrite registry constraints while preserving internal dependencies."""
+        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                'dependencies = ["requests>=2.0", "httpx[socks]>=0.1; python_version < \'3.14\'", "flext-core"]\n\n'
+                "[tool.uv.workspace]\n"
+                'members = ["flext-core"]\n\n'
+                "[tool.poetry.dependencies]\n"
+                'python = ">=3.13,<3.14"\n'
+                'rich = ">=10"\n'
+                'pendulum = { version = ">=2.0", extras = ["test"] }\n'
+                'flext-core = { path = "../flext-core", develop = true }\n'
+            ),
+            encoding="utf-8",
+        )
+        (modernizer_workspace / "uv.lock").write_text(
+            (
+                "version = 1\n"
+                "[manifest]\n"
+                'members = ["workspace", "flext-core"]\n'
+                "[[package]]\n"
+                'name = "requests"\n'
+                'version = "2.32.4"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+                "[[package]]\n"
+                'name = "httpx"\n'
+                'version = "0.28.1"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+                "[[package]]\n"
+                'name = "rich"\n'
+                'version = "14.2.0"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+                "[[package]]\n"
+                'name = "pendulum"\n'
+                'version = "3.1.0"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+                "[[package]]\n"
+                'name = "flext-core"\n'
+                'version = "0.12.0-dev"\n'
+                'source = { editable = "." }\n'
+            ),
+            encoding="utf-8",
+        )
+        member = modernizer_workspace / "flext-core"
+        package = member / "src" / "flext_core"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        tm.that(rendered, has='"requests>=2.32.4"')
+        tm.that(rendered, has="\"httpx[socks]>=0.28.1; python_version < '3.14'\"")
+        tm.that(rendered, has='"flext-core"')
+        tm.that(rendered, has='rich = ">=14.2.0"')
+        tm.that(rendered, has='version = ">=3.1.0"')
+
+    def test_run_apply_rewrites_constraints_with_compatible_policy(
+        self, modernizer_workspace: Path
+    ) -> None:
+        """Honor the compatible constraint policy selected by the caller."""
+        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            (
+                "[project]\n"
+                'name = "workspace"\n'
+                'version = "0.1.0"\n'
+                'dependencies = ["requests>=2.0"]\n'
+            ),
+            encoding="utf-8",
+        )
+        (modernizer_workspace / "uv.lock").write_text(
+            (
+                "version = 1\n"
+                "[manifest]\n"
+                'members = ["workspace"]\n'
+                "[[package]]\n"
+                'name = "requests"\n'
+                'version = "2.32.4"\n'
+                'source = { registry = "https://pypi.org/simple" }\n'
+            ),
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            constraint_policy=c.Infra.DependencyConstraintPolicy.COMPATIBLE,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+        tm.that(
+            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+                encoding="utf-8"
+            ),
+            has='"requests~=2.32.4"',
+        )
+
+    def test_run_scopes_default_audit_to_root_without_external_siblings(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Keep default modernization inside the declared workspace boundary."""
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='flext'\n", encoding="utf-8"
+        )
+        external = tmp_path / "gruponos-data"
+        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external_pyproject = external / c.Infra.PYPROJECT_FILENAME
+        external_pyproject.write_text(
+            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=workspace, audit=True, skip_comments=True
+        )
+
+        tm.that(modernizer.run(), eq=1)
+        output = capsys.readouterr().out
+        tm.that(output, has="pyproject.toml:")
+        tm.that(output, lacks=str(external_pyproject.resolve()))
+        tm.that(output, lacks="not in the subpath")

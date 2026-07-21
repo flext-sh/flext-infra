@@ -1,0 +1,8 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class FlextTestTypes(Types):
+    class ProtocolInsideTypes(Protocol):
+        pass
