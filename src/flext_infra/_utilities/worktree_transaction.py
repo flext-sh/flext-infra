@@ -599,7 +599,10 @@ class FlextInfraUtilitiesWorktreeTransaction:
         breakage = (
             command_output.exit_code != 0
             or import_probe.exit_code != 0
-            or cls._lint_regressed(lint_before, lint_after)
+            or (
+                not request.allow_lint_regression
+                and cls._lint_regressed(lint_before, lint_after)
+            )
             or bool(out_of_scope)
         )
         patch_check = cls._check_patches(selected_deltas)
