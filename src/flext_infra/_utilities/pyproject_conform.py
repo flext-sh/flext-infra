@@ -45,7 +45,6 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         normalized = cls._normalize_requirements(
             source,
-            project_name=project_name,
             repositories=repositories,
             workspace=workspace,
             canonicalize_all=True,
@@ -95,7 +94,6 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name = project_name_raw.strip()
         normalized = cls._normalize_requirements(
             source,
-            project_name=project_name,
             repositories=repositories,
             workspace=workspace,
             canonicalize_all=False,
@@ -124,7 +122,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         canonicalize_all: bool,
@@ -136,15 +133,11 @@ class FlextInfraUtilitiesPyprojectConform:
             *workspace.members,
             *workspace.content_only,
         )
-        workspace_root = cls._is_workspace_root(
-            project_name=project_name, workspace=workspace
-        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
-            workspace_root=workspace_root,
             canonicalize_all=canonicalize_all,
         )
         if normalized.failure:
@@ -161,7 +154,6 @@ class FlextInfraUtilitiesPyprojectConform:
                     section,
                     group_name,
                     repositories=available,
-                    workspace_root=workspace_root,
                     canonicalize_all=canonicalize_all,
                 )
                 if group_result.failure:
@@ -175,7 +167,6 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        workspace_root: bool,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
@@ -189,9 +180,7 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].fail_op(f"validate dependency group {key}", exc)
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
-            normalized = cls._canonical_requirement(
-                item, repositories=repositories, workspace_root=workspace_root
-            )
+            normalized = cls._canonical_requirement(item, repositories=repositories)
             if normalized.failure:
                 return r[bool].fail(
                     normalized.error or f"normalize dependency group {key} failed"
@@ -207,11 +196,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _canonical_requirement(
-        cls,
-        requirement: str,
-        *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        workspace_root: bool,
+        cls, requirement: str, *, repositories: t.SequenceOf[p.Infra.RepositoryRef]
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
@@ -222,24 +207,21 @@ class FlextInfraUtilitiesPyprojectConform:
         if head_match is None:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
-        canonical = head
-        if not workspace_root:
-            reference_result = cls._repository_reference(
-                dependency_name, repositories=repositories
+        reference_result = cls._repository_reference(
+            dependency_name, repositories=repositories
+        )
+        if reference_result.failure:
+            return r[str].fail(
+                reference_result.error
+                or f"repository resolution failed: {dependency_name}"
             )
-            if reference_result.failure:
-                return r[str].fail(
-                    reference_result.error
-                    or f"repository resolution failed: {dependency_name}"
-                )
-            reference = reference_result.value
-            url_result = cls._git_requirement_url(reference.url)
-            if url_result.failure:
-                return r[str].fail(
-                    url_result.error
-                    or f"Git URL normalization failed: {dependency_name}"
-                )
-            canonical = f"{head} @ {url_result.value}@{reference.branch}"
+        reference = reference_result.value
+        url_result = cls._git_requirement_url(reference.url)
+        if url_result.failure:
+            return r[str].fail(
+                url_result.error or f"Git URL normalization failed: {dependency_name}"
+            )
+        canonical = f"{head} @ {url_result.value}@{reference.branch}"
         marker_text = marker.strip()
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
@@ -451,9 +433,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if workspace_root:
             if constraint_dependencies is not None:
                 u.Cli.toml_sync_string_list(
-                    uv,
-                    "constraint-dependencies",
-                    tuple(constraint_dependencies),
+                    uv, "constraint-dependencies", tuple(constraint_dependencies)
                 )
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
