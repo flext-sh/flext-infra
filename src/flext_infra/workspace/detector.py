@@ -112,12 +112,16 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             cwd=resolved_root,
         )
         if superproject.failure:
-            # NOTE(mro-p68a.5, agent codex): codegen new emits a validated local
-            # manifest before Git initialization; an existing .git still fails closed.
-            if (
-                not (resolved_root / c.Infra.GIT_DIR).exists()
-                and FlextInfraWorkspaceDetector._manifest_path(resolved_root).is_file()
-            ):
+            # A path that is not inside ANY Git work tree is a standalone project
+            # that owns its own workspace root (covers freshly scaffolded projects
+            # before `git init`, and repo-less checkouts). Git reports this with a
+            # non-zero rev-parse; confirm it via --is-inside-work-tree so a genuine
+            # in-repo failure still fails closed (NOTE mro-p68a.5, agent codex).
+            inside_work_tree = u.Cli.capture(
+                [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
+                cwd=resolved_root,
+            )
+            if inside_work_tree.failure or inside_work_tree.value.strip() != "true":
                 return r[Path].ok(resolved_root)
             return r[Path].fail(
                 superproject.error or "unable to resolve Git superproject"
