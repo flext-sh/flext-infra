@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, p, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
@@ -16,7 +16,7 @@ from flext_infra.workspace.workspace_makefile import (
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
-    """Per-artifact sync steps (base.mk, Makefile, .gitignore) under the lock.
+    """Per-artifact sync steps (base.mk, Makefile) under the lock.
 
     Composed into FlextInfraSyncService via MRO; each step is idempotent
     (SHA256 / exact-line compare) and surfaces generator/IO failures as r.fail.
@@ -72,47 +72,6 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         return any(
             project.path.resolve() != resolved_root for project in discovered.value
         )
-
-    def _ensure_gitignore_entries(
-        self, workspace_root: Path, required: t.StrSequence, *, apply: bool
-    ) -> p.Result[bool]:
-        """Idempotently sync one managed .gitignore block."""
-        gitignore = workspace_root / c.Infra.GITIGNORE
-        existing = ""
-        if gitignore.exists():
-            read = u.Cli.files_read_text(gitignore)
-            if read.failure:
-                return r[bool].fail(read.error or ".gitignore read failed")
-            existing = read.value
-        rendered = self._render_gitignore_with_managed_entries(existing, required)
-        if rendered == existing:
-            return r[bool].ok(False)
-        if not apply:
-            return r[bool].ok(True)
-        write = u.Cli.files_write_text(gitignore, rendered)
-        if write.failure:
-            return r[bool].fail(write.error or ".gitignore update failed")
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _render_gitignore_with_managed_entries(
-        existing: str, required: t.StrSequence
-    ) -> str:
-        """Return ``existing`` with one canonical managed ignore block."""
-        managed_patterns = frozenset(required)
-        unmanaged: t.MutableSequenceOf[str] = [
-            line
-            for line in existing.splitlines()
-            if line.strip() != c.Infra.GITIGNORE_MANAGED_HEADER
-            and line.strip() not in managed_patterns
-        ]
-        while unmanaged and not unmanaged[-1].strip():
-            _ = unmanaged.pop()
-        if unmanaged:
-            unmanaged.append("")
-        unmanaged.append(c.Infra.GITIGNORE_MANAGED_HEADER)
-        unmanaged.extend(required)
-        return "\n".join(unmanaged) + "\n"
 
     def _sync_environment_files(
         self, workspace_root: Path, *, apply: bool

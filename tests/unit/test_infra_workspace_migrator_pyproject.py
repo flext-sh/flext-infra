@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
 from tests import u
 
 if TYPE_CHECKING:
@@ -32,7 +31,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("unchanged for flext-core" in c for c in migration[0].changes), eq=True
+            any("unchanged for flext-core" in change for change in migration[0].changes), eq=True
         )
 
     def test_flext_core_dry_run(self, tmp_path: Path) -> None:
@@ -49,8 +48,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "unchanged for flext-core" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "unchanged for flext-core" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )
@@ -67,7 +66,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         )
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(any("already includes" in c for c in migration[0].changes), eq=True)
+        tm.that(any("already includes" in change for change in migration[0].changes), eq=True)
 
     def test_poetry_table_missing(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
@@ -82,7 +81,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes), eq=True
+            any("flext-core dependency" in change for change in migration[0].changes), eq=True
         )
 
     def test_poetry_deps_not_table(self, tmp_path: Path) -> None:
@@ -98,7 +97,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes), eq=True
+            any("flext-core dependency" in change for change in migration[0].changes), eq=True
         )
 
     def test_makefile_not_found(self, tmp_path: Path) -> None:
@@ -115,8 +114,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "Makefile not found" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "Makefile not found" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )
@@ -135,30 +134,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "pyproject.toml not found" in c
-                for c in migration[0].changes
-            ),
-            eq=True,
-        )
-
-    def test_gitignore_already_normalized(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
-        )
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base",
-            workspace_root=tmp_path,
-            dry_run=True,
-        )
-        result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any(
-                "[DRY-RUN]" in c and ".gitignore already normalized" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "pyproject.toml not found" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )

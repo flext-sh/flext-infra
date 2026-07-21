@@ -107,18 +107,9 @@ class FlextInfraSyncService(
                 basemk_result.error or "base.mk sync failed"
             )
         changed += 1 if basemk_result.value else 0
-        gitignore_result = self._ensure_gitignore_entries(
-            resolved,
-            (*c.Infra.REQUIRED_GITIGNORE_ENTRIES, "!.pre-commit-config.yaml")
-            if is_workspace_root
-            else c.Infra.REQUIRED_GITIGNORE_ENTRIES,
-            apply=apply,
-        )
-        if gitignore_result.failure:
-            return r[m.Infra.SyncResult].fail(
-                gitignore_result.error or ".gitignore sync failed"
-            )
-        changed += 1 if gitignore_result.value else 0
+        # NOTE (mro-jnm1.2): .gitignore is owned solely by codegen conform
+        # (canonical body derived from the artifact SSOT); sync no longer
+        # appends a managed block.
         env_result = self._sync_environment_files(resolved, apply=apply)
         if env_result.failure:
             return r[m.Infra.SyncResult].fail(

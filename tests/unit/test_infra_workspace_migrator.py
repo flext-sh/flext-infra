@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
@@ -156,7 +155,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             tmp_path,
             makefile="migrated",
             pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()

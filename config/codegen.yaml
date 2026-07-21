@@ -110,12 +110,16 @@ Infra:
       - {name: .cache, source_scan_ignore: true}
       # mro-j47u: agent worktrees are duplicate repositories, never production input.
       - {name: .claude, source_scan_ignore: true}
+      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
+      # watch/source-scan projections (order-sensitive, after .claude).
+      - {name: .direnv, source_scan_ignore: true}
       - {name: .code-review-graph}
       - {name: .codegraph}
       - {name: .dolt}
       - {name: .dolt_dropped_databases}
       - {name: .doltcfg}
-      - {name: .git, source_scan_ignore: true}
+      - {name: .git, gitignore: false, source_scan_ignore: true}
       - {name: .mypy_cache, source_scan_ignore: true}
       - {name: .omo}
       - {name: .pylance_cache, vscode_exclude: false}
@@ -140,12 +144,22 @@ Infra:
       - {name: target}
       - {name: .pyrefly_cache, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
       - {name: .tox, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: conftest.py, is_dir: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: dist-packages, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: legado, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: site-packages, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: vendor, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
-      - {name: venv, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: conftest.py, is_dir: false, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: dist-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: legado, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: site-packages, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: vendor, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      - {name: venv, gitignore: false, vscode_exclude: false, watch_exclude: false, source_scan_ignore: true}
+      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
+      - {name: .flext-deps, vscode_exclude: false, watch_exclude: false}
+      - {name: .flext-sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .sync.lock, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .planning, vscode_exclude: false, watch_exclude: false}
+      - {name: skill-create-output, vscode_exclude: false, watch_exclude: false}
+      - {name: .debug-journal.md, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: .mcp.json, is_dir: false, vscode_exclude: false, watch_exclude: false}
+      - {name: CLAUDE.local.md, is_dir: false, vscode_exclude: false, watch_exclude: false}
 
     vscode:
       # Canonical .vscode/settings.json content injected with merge semantics:
@@ -286,27 +300,25 @@ Infra:
         enabled_default: true
         reply: pong
         disabled_reply: disabled
+      # mro-jnm1.2: the first section is merged AFTER the artifact-SSOT derived
+      # patterns by the CodegenConfigSpec.gitignore_sections projection
+      # (deduplicated, SSOT wins); declare here only what the SSOT cannot
+      # express (file globs, secrets, editor/OS noise). Per-project exception
+      # fields are added by mro-jnm1.3.
       gitignore_sections:
-        - name: Python
+        - name: Python and build artifacts
           patterns:
-            - __pycache__/
             - '*.py[cod]'
             - '*$py.class'
-            - '*.egg-info/'
             - .eggs/
-            - build/
-            - dist/
-            - .pytest_cache/
-            - .mypy_cache/
-            - .ruff_cache/
             - .coverage
             - htmlcov/
         - name: FLEXT
-          patterns: [.venv/, .reports/, '*.tpl.rej']
+          patterns: ['*.tpl.rej']
         - name: Environment and secrets
-          patterns: [.env, .env.*]
-        - name: Editors
-          patterns: [.vscode/, .idea/, '*.swp', .DS_Store]
+          patterns: [.env, .env.*, '*.key', '*.pem', '*.p12', '*.pfx', credentials.json, secrets.yaml, secrets.yml]
+        - name: Editors and OS
+          patterns: [.idea/, '*.swp', '*.swo', '*~', .DS_Store, Thumbs.db, Desktop.ini]
 
     templates:
       root: project

@@ -54,6 +54,15 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
+        ]
 
         @m.computed_field()
         @property
@@ -443,6 +452,15 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
         ]
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Canonical .gitignore sections derived from the artifact SSOT"
+                ),
+            ),
+        ]
         dependency_profile: Annotated[
             FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
             m.Field(description="Resolved upstream dependency profile"),
@@ -522,6 +540,15 @@ class FlextInfraConfigModels:
         ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
+        ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
@@ -672,6 +699,10 @@ class FlextInfraConfigModels:
         watch_exclude: Annotated[
             bool, m.Field(description="Feed VS Code files.watcherExclude")
         ] = True
+        gitignore: Annotated[
+            bool,
+            m.Field(description="Feed the Python/tool section of .gitignore"),
+        ] = True
         source_scan_ignore: Annotated[
             bool, m.Field(description="Feed source_scan.ignored_resources")
         ] = False
@@ -762,6 +793,57 @@ class FlextInfraConfigModels:
                 for artifact in self.artifacts
                 if artifact.source_scan_ignore
             )
+
+        # NOTE (mro-jnm1.2): the canonical .gitignore body is ONE computed
+        # projection — the artifact SSOT feeds the Python/build section and the
+        # static scaffold sections carry only what the SSOT cannot express
+        # (file globs, secrets, editor/OS noise). Per-project exception fields
+        # (extra_ignored / allowed dirs) land in WorkspaceSpec with mro-jnm1.3;
+        # this projection is the seam they will extend.
+        @m.computed_field()
+        @property
+        def gitignore_sections(
+            self,
+        ) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
+            """Derived canonical ``.gitignore`` sections (SSOT first, deduplicated)."""
+            scaffold_sections = self.scaffold.gitignore_sections
+            first = scaffold_sections[0]
+            merged: t.MutableSequenceOf[str] = list(self.gitignore_artifact_patterns)
+            seen = set(merged)
+            for pattern in first.patterns:
+                if pattern not in seen:
+                    seen.add(pattern)
+                    merged.append(pattern)
+            sections: t.MutableSequenceOf[
+                FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
+            ] = [
+                FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
+                    name=first.name, patterns=tuple(merged)
+                )
+            ]
+            for section in scaffold_sections[1:]:
+                patterns = tuple(
+                    pattern for pattern in section.patterns if pattern not in seen
+                )
+                seen.update(patterns)
+                if patterns:
+                    sections.append(
+                        FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
+                            name=section.name, patterns=patterns
+                        )
+                    )
+            return tuple(sections)
+
+        @m.computed_field()
+        @property
+        def gitignore_artifact_patterns(self) -> tuple[str, ...]:
+            """Derived ``.gitignore`` artifact patterns from the SSOT (stable order)."""
+            return tuple(
+                f"{artifact.name}/" if artifact.is_dir else artifact.name
+                for artifact in self.artifacts
+                if artifact.gitignore
+            )
+
         managed_files: Annotated[
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),

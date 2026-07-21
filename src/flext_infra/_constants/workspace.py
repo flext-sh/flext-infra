@@ -59,49 +59,11 @@ class FlextInfraConstantsWorkspace:
             "python3 -m flext_infra github pr",
         ),
     )
-    GITIGNORE_REMOVE_EXACT: Final[frozenset[str]] = frozenset({
-        "!scripts/",
-        "!scripts/**",
-        "scripts/",
-        "/scripts/",
-    })
-    REQUIRED_GITIGNORE_ENTRIES: Final[t.StrSequence] = (
-        ".agents/",
-        ".beads/",
-        ".benchmarks/",
-        ".cache/",
-        ".claude/",
-        ".code-review-graph/",
-        ".codegraph/",
-        ".coverage",
-        ".debug-journal.md",
-        ".direnv/",
-        ".dolt/",
-        ".dolt_dropped_databases/",
-        ".doltcfg/",
-        ".mcp.json",
-        ".mypy_cache/",
-        ".omo/",
-        ".pytest_cache/",
-        ".reports/",
-        ".ropeproject/",
-        ".ruff_cache/",
-        ".scope/",
-        ".sisyphus/",
-        ".state/",
-        ".superpowers/",
-        ".trash/",
-        ".turbo/",
-        ".venv.bak/",
-        ".venv.uv3/",
-        ".venv/",
-        "CLAUDE.local.md",
-        "__pycache__/",
-        "skill-create-output/",
-    )
-    GITIGNORE_MANAGED_HEADER: Final[str] = (
-        "# --- workspace-sync: required ignores (auto-managed) ---"
-    )
+    # NOTE (mro-jnm1.2): the .gitignore body is derived from the artifact SSOT
+    # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
+    # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
+    # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were
+    # removed with the migrator/sync parallel writers.
     ENVRC_FILENAME: Final[str] = ".envrc"
     MISE_TOML_FILENAME: Final[str] = ".mise.toml"
     # mro-sltx (backport 0.20): config-driven Jinja templates for env root files.

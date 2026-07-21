@@ -116,7 +116,6 @@ class FlextInfraProjectMigrator(
             self._migrate_pyproject(
                 project.path, project_name=project.name, dry_run=dry_run
             ),
-            self._migrate_gitignore(project.path, dry_run=dry_run),
         ):
             if step_result.failure:
                 errors.append(step_result.error or "migration action failed")

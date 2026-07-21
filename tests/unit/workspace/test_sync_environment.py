@@ -47,9 +47,6 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         ).execute()
 
         tm.ok(result)
-        tm.that(
-            (project_root / ".gitignore").read_text(encoding="utf-8"), has=".direnv/"
-        )
         assert (project_root / ".envrc").is_file()
         assert (project_root / ".mise.toml").is_file()
 

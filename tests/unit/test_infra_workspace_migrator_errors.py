@@ -28,7 +28,6 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
     @pytest.mark.parametrize(
         ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
         [
-            ("base", ".gitignore", "base", ".gitignore update failed"),
             ("old", "base.mk", "new content", "base.mk update failed"),
         ],
     )
@@ -98,24 +97,6 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
                 "bootstrap include render failed" in err for err in migration[0].errors
             ),
             eq=True,
-        )
-
-    def test_gitignore_read_failure(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", gitignore=None
-        )
-        (root / ".gitignore").mkdir()
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base",
-            workspace_root=tmp_path,
-            dry_run=False,
-        )
-
-        result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any(".gitignore read failed" in err for err in migration[0].errors), eq=True
         )
 
     def test_basemk_generation_failure(self, tmp_path: Path) -> None:

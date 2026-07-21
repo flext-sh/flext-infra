@@ -86,7 +86,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             tmp_path,
             makefile=None,
             pyproject='[project]\ndependencies = ["flext-core"]\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
@@ -111,7 +110,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         project_root = self._write_project_files(
             tmp_path,
             pyproject="[tool.poetry]\n",
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         self._make_read_only(project_root / "pyproject.toml")
         migrator = u.Tests.build_project_migrator(
@@ -130,7 +128,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             tmp_path,
             name="flext-core",
             pyproject='[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "flext-core"),

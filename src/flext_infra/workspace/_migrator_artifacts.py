@@ -12,12 +12,12 @@ from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
     from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 
 
 class FlextInfraProjectMigratorArtifactsMixin:
-    """Migrate base.mk / .gitignore / Makefile for one project.
+    """Migrate base.mk / Makefile for one project.
 
     Composed into FlextInfraProjectMigrator via inheritance; borrows
     ``_get_generator`` (workspace-generator base) via MRO.
@@ -90,50 +90,6 @@ class FlextInfraProjectMigratorArtifactsMixin:
         return r[str].ok(
             self._action_text(
                 "canonical base.mk regenerated via BaseMkGenerator", dry_run=dry_run
-            )
-        )
-
-    def _migrate_gitignore(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
-        """Migrate gitignore."""
-        gitignore_path = project_root / c.Infra.GITIGNORE
-        existing_lines: t.StrSequence = list[str]()
-        if gitignore_path.exists():
-            read = u.Cli.files_read_text(gitignore_path)
-            if read.failure:
-                return r[str].fail(f".gitignore read failed: {read.error}")
-            existing_lines = read.value.splitlines()
-        filtered = [
-            line
-            for line in existing_lines
-            if line.strip() not in c.Infra.GITIGNORE_REMOVE_EXACT
-        ]
-        existing_patterns = {line.strip() for line in filtered if line.strip()}
-        missing = [
-            pattern
-            for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES
-            if pattern not in existing_patterns
-        ]
-        if not missing and len(filtered) == len(existing_lines):
-            return self._no_change_result(
-                ".gitignore already normalized", dry_run=dry_run
-            )
-        next_lines = list(filtered)
-        if missing:
-            if next_lines and next_lines[-1].strip():
-                next_lines.append("")
-            next_lines.append(
-                "# --- workspace-migrate: required ignores (auto-managed) ---"
-            )
-            next_lines.extend(missing)
-        if not dry_run:
-            body = "\n".join(next_lines).rstrip("\n") + "\n"
-            try:
-                u.write_file(gitignore_path, body, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op(".gitignore update", exc)
-        return r[str].ok(
-            self._action_text(
-                ".gitignore cleaned from scripts/ and normalized", dry_run=dry_run
             )
         )
 

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.constants import c
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
@@ -136,7 +135,7 @@ class TestsFlextInfraWorkspaceSync:
         tm.that(payload.model_dump(mode="json"), eq=expected_payload)
         tm.that(u.normalize_to_json_value(payload), eq=expected_payload)
 
-    def test_sync_generates_basemk_gitignore_and_makefile(self, tmp_path: Path) -> None:
+    def test_sync_generates_basemk_and_makefile(self, tmp_path: Path) -> None:
         """Generate canonical project files and strict editor settings."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
@@ -150,7 +149,8 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         tm.that(result.value.files_changed, gt=0)
         tm.that((project_root / "base.mk").exists(), eq=False)
-        tm.that((project_root / ".gitignore").exists(), eq=True)
+        # mro-jnm1.2: .gitignore is owned by codegen conform, not sync.
+        tm.that((project_root / ".gitignore").exists(), eq=False)
         tm.that((project_root / "Makefile").exists(), eq=True)
         settings = u.Cli.json_read(project_root / ".vscode" / "settings.json").unwrap()
         tm.that(settings["python.analysis.typeCheckingMode"], eq="strict")
@@ -208,36 +208,6 @@ class TestsFlextInfraWorkspaceSync:
 
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
-
-    def test_sync_deduplicates_gitignore_managed_block(self, tmp_path: Path) -> None:
-        """Collapse duplicate managed blocks while preserving manual entries."""
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-        header = c.Infra.GITIGNORE_MANAGED_HEADER
-        gitignore = project_root / ".gitignore"
-        gitignore.write_text(
-            f"custom.log\n\n{header}\n.direnv/\n\n"
-            f"# keep manual ignore\n.venv/\n{header}\nbase.mk\n",
-            encoding="utf-8",
-        )
-        service = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace_root=project_root,
-            apply_changes=True,
-        )
-
-        result = service.execute()
-        second_result = service.execute()
-
-        tm.ok(result)
-        tm.ok(second_result)
-        tm.that(second_result.value.files_changed, eq=0)
-        synced = gitignore.read_text(encoding="utf-8")
-        tm.that(synced.count(header), eq=1)
-        tm.that(synced, has="custom.log\n")
-        tm.that(synced, has="# keep manual ignore\n")
-        for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES:
-            tm.that(synced.count(f"{pattern}\n"), eq=1)
 
     def test_sync_preserves_custom_vscode_settings(self, tmp_path: Path) -> None:
         """Preserve custom editor values while adding canonical diagnostics."""
@@ -328,19 +298,6 @@ class TestsFlextInfraWorkspaceSync:
         tm.fail(result)
         tm.that(_error_text(result), has="Generation failed")
 
-    def test_sync_fails_when_gitignore_path_is_directory(self, tmp_path: Path) -> None:
-        """Return a typed failure when the gitignore target is a directory."""
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-        (project_root / ".gitignore").mkdir()
-
-        result = FlextInfraSyncService(
-            canonical_root=project_root.parent, workspace_root=project_root
-        ).execute()
-
-        tm.fail(result)
-        tm.that(_error_text(result), has=".gitignore")
-
     def test_sync_workspace_root_also_syncs_child_projects(
         self, tmp_path: Path
     ) -> None:
@@ -374,12 +331,10 @@ class TestsFlextInfraWorkspaceSync:
 
         tm.ok(result)
         pre_commit_path = workspace_root / ".pre-commit-config.yaml"
-        gitignore_text = (workspace_root / ".gitignore").read_text(encoding="utf-8")
         tm.that(
             pre_commit_path.read_text(encoding="utf-8").strip(),
             eq=(FlextInfraManualCommandValidator.render_pre_commit_config().strip()),
         )
-        tm.that(gitignore_text, has="!.pre-commit-config.yaml")
 
     def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         self, tmp_path: Path

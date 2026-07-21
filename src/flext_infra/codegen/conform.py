@@ -311,6 +311,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         )
                     )
                     continue
+            if (
+                governed.policy == "merge"
+                and relative.as_posix() == c.Infra.GITIGNORE
+            ):
+                # NOTE (mro-jnm1.2): the canonical .gitignore body is rendered
+                # from the same base/gitignore.j2 + computed
+                # CodegenConfigSpec.gitignore_sections used by `codegen new` —
+                # ONE render mechanism derived from the artifact SSOT.
+                # Per-project exception fields land with mro-jnm1.3.
+                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
+                    codegen
+                )
+                if rendered_gitignore.failure:
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        rendered_gitignore.error
+                        or f"gitignore render failed: {path}"
+                    )
+                if rendered_gitignore.value != current:
+                    completed.append(
+                        m.Infra.CodegenFilePlan(
+                            path=path,
+                            owner=governed.owner,
+                            policy=governed.policy,
+                            rendered=rendered_gitignore.value,
+                            expected_sha256=u.Cli.sha256_content(
+                                rendered_gitignore.value
+                            ),
+                            current_sha256=digest,
+                            changed=True,
+                        )
+                    )
+                    continue
             completed.append(
                 m.Infra.CodegenFilePlan(
                     path=path,
@@ -328,6 +360,36 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _package_root() -> Path:
         """Return the installed flext-infra package root."""
         return Path(__file__).resolve().parent.parent
+
+    @staticmethod
+    def _render_gitignore(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[str]:
+        """Render the canonical ``.gitignore`` body via the single template.
+
+        NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
+        the full project context; conform renders the same template with the
+        codegen config — both consume the same computed ``gitignore_sections``
+        projection, so the body is byte-identical.
+        """
+        entry = next(
+            (
+                item
+                for item in codegen.templates.entries
+                if item.destination == c.Infra.GITIGNORE
+            ),
+            None,
+        )
+        if entry is None:
+            return r[str].fail(
+                "gitignore template is missing from codegen configuration"
+            )
+        templates_root = (
+            FlextInfraCodegenConform._package_root()
+            / "templates"
+            / codegen.templates.root
+        ).resolve()
+        return u.Cli.template_render(templates_root / entry.source, codegen)
 
     @staticmethod
     def _validate_workspace_catalog(
@@ -899,6 +961,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 scaffold=codegen.scaffold,
+                gitignore_sections=codegen.gitignore_sections,
                 dependency_profile=dependency_profile,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
