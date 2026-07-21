@@ -400,6 +400,48 @@ class TestCodegenConform:
         tm.that("WARN:" in capsys.readouterr().out, eq=False)
         tm.that(Path(f"{custom}.rej").exists(), eq=False)
 
+    def test_scaffold_make_help_documents_and_lists_custom_hooks(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Scaffold help documents the hook contract and lists custom.mk hooks."""
+        root = infra_git_repo
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "custom.mk",
+                ".PHONY: pre-check post-test-all _custom_check_myscan\n"
+                "pre-check:\n\t@true\n"
+                "post-test-all:\n\t@true\n"
+                "_custom_check_myscan:\n\t@true\n",
+            )
+        )
+        outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
+        output = tm.ok(outcome)
+        tm.that(output.exit_code, eq=0)
+        tm.that(
+            output.stdout,
+            has=[
+                "Custom hooks (custom.mk):",
+                "pre-<verb>",
+                "pre-check",
+                "post-test-all",
+                "_custom_check_myscan",
+            ],
+        )
+
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
