@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,6 +16,7 @@ from flext_infra.refactor.classvar_constant_autofix import (
 )
 from tests import c
 from tests import m
+from tests import u
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -356,34 +358,78 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
 
-    def test_classvar_constants_module_for_tests_package(self, tmp_path: Path) -> None:
-        """ENFORCE-079 maps project tests modules to sibling _constants."""
-        file_path = tmp_path / "tests" / "unit" / "test_execution_result.py"
-
-        constants_module = FlextInfraRopeFixerAdapter._constants_module_for_file(
-            file_path,
-            module_name="tests.unit.test_execution_result",
-            project_root=tmp_path,
+    @staticmethod
+    def _classvar_rule() -> m.EnforcementRuleSpec:
+        catalog = u.build_canonical_catalog()
+        return next(
+            rule
+            for rule in catalog.enabled_rules()
+            if rule.fix_action is not None
+            and rule.fix_action.target == "classvar_relocation"
         )
 
-        tm.that(constants_module, eq="tests.unit._constants")
+    @staticmethod
+    def _write_classvar_test_module(project_root: Path) -> Path:
+        tests_pkg = project_root / "tests" / "unit"
+        tests_pkg.mkdir(parents=True)
+        (project_root / "tests" / "__init__.py").write_text("", encoding="utf-8")
+        (tests_pkg / "__init__.py").write_text("", encoding="utf-8")
+        module_path = tests_pkg / "test_execution_result.py"
+        module_path.write_text(
+            "class TestsDemo:\n"
+            "    TEST_VALUE = 1.5\n"
+            "    def test_value(self) -> None:\n"
+            "        assert self.TEST_VALUE == 1.5\n",
+            encoding="utf-8",
+        )
+        return module_path
 
-    def test_classvar_constants_module_uses_existing_tests_root_constants(
+    def test_classvar_relocation_targets_tests_package_constants(
+        self, tmp_path: Path
+    ) -> None:
+        """ENFORCE-079 maps project tests modules to their sibling _constants."""
+        project_root = tmp_path / "demo"
+        module_path = self._write_classvar_test_module(project_root)
+        adapter = FlextInfraRopeFixerAdapter(tmp_path)
+        ctx = m.Infra.FixEnforcementCommand(
+            workspace=str(tmp_path), projects=("demo",), apply=False
+        )
+
+        result = adapter.fix_project(
+            project_root,
+            ((self._classvar_rule(), SimpleNamespace(file_path=str(module_path))),),
+            ctx,
+        )
+
+        tm.that(
+            " ".join(fix.error for fix in result.failed),
+            has="tests.unit._constants",
+        )
+
+    def test_classvar_relocation_uses_existing_tests_root_constants(
         self, tmp_path: Path
     ) -> None:
         """ENFORCE-079 reuses an existing top-level tests constants SSOT."""
-        file_path = tmp_path / "tests" / "unit" / "test_execution_result.py"
-        constants_root = tmp_path / "tests" / "_constants"
+        project_root = tmp_path / "demo"
+        module_path = self._write_classvar_test_module(project_root)
+        constants_root = project_root / "tests" / "_constants"
         constants_root.mkdir(parents=True)
         (constants_root / "__init__.py").write_text("", encoding="utf-8")
-
-        constants_module = FlextInfraRopeFixerAdapter._constants_module_for_file(
-            file_path,
-            module_name="tests.unit.test_execution_result",
-            project_root=tmp_path,
+        adapter = FlextInfraRopeFixerAdapter(tmp_path)
+        ctx = m.Infra.FixEnforcementCommand(
+            workspace=str(tmp_path), projects=("demo",), apply=False
         )
 
-        tm.that(constants_module, eq="tests._constants")
+        result = adapter.fix_project(
+            project_root,
+            ((self._classvar_rule(), SimpleNamespace(file_path=str(module_path))),),
+            ctx,
+        )
+
+        tm.that(
+            " ".join(preview.message for preview in result.previewed),
+            has="tests._constants",
+        )
 
     def test_autofix_dry_run_resolves_package_constants_module(
         self, tmp_path: Path

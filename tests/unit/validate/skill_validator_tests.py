@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -131,67 +132,120 @@ class TestSkillValidatorCore:
         tm.that(report.violations, empty=True)
 
 
-class TestSkillValidatorRenderTemplate:
-    """Tests for _render_template static method."""
+class TestSkillValidatorAstGrepRules:
+    """Public build_report coverage for ast-grep rule counting."""
 
-    def test_absolute_path(self, tmp_path: Path) -> None:
-        """Absolute path template resolves correctly."""
-        result = FlextInfraSkillValidator._render_template(
-            tmp_path, "/absolute/path/{skill}/file.json", "my-skill"
+    @staticmethod
+    def _write_skill(root: Path, rules_yml: str) -> None:
+        skill = root / c.Infra.SKILLS_DIR / "test-skill"
+        skill.mkdir(parents=True)
+        (skill / "rule.yaml").write_text(
+            "id: t\nlanguage: python\nrule: {pattern: 'forbidden_token'}\n",
+            encoding="utf-8",
         )
-        tm.that(str(result), eq="/absolute/path/my-skill/file.json")
+        (skill / "rules.yml").write_text(rules_yml, encoding="utf-8")
 
-    def test_relative_path(self, tmp_path: Path) -> None:
-        """Relative path template resolves with skill name."""
-        result = FlextInfraSkillValidator._render_template(
-            tmp_path, ".reports/{skill}/report.json", "my-skill"
+    @staticmethod
+    def _write_target(root: Path, source: str) -> None:
+        package_root = root / "demo" / "src" / "demo"
+        package_root.mkdir(parents=True)
+        (package_root / "m.py").write_text(source, encoding="utf-8")
+
+    def test_empty_ast_grep_rule_file_yields_no_violations(
+        self, tmp_path: Path
+    ) -> None:
+        """An ast-grep rule with an empty file contributes zero violations."""
+        self._write_skill(tmp_path, 'rules:\n  - id: t\n    type: ast-grep\n    file: ""\n')
+        report = tm.ok(
+            FlextInfraSkillValidator(skill="test-skill").build_report(
+                tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
+            )
         )
-        tm.that(str(result), has="my-skill")
-        tm.that(str(result), has="report.json")
+        tm.that(report.passed, eq=True)
 
-
-class TestSkillValidatorAstGrepCount:
-    """Tests for _run_ast_grep_count and _run_custom_count methods."""
-
-    def test_empty_or_missing_rule_file(self, tmp_path: Path) -> None:
-        """Empty/nonexistent rule file returns 0."""
-        v = FlextInfraSkillValidator(skill="test-skill")
-        skill = tmp_path / "skill"
-        skill.mkdir()
-        empty = {"id": "t", "type": "ast-grep", "file": ""}
-        missing = {"id": "t", "type": "ast-grep", "file": "nonexistent.yml"}
-        tm.that(v._run_ast_grep_count(empty, skill, tmp_path, [], []), eq=0)
-        tm.that(v._run_ast_grep_count(missing, skill, tmp_path, [], []), eq=0)
-
-    def test_with_include_globs(self, tmp_path: Path) -> None:
-        """Include globs are passed to runner."""
-        v = FlextInfraSkillValidator(skill="test-skill")
-        skill = tmp_path / "skill"
-        skill.mkdir()
-        rule_file = skill / "rule.yaml"
-        rule_file.write_text("id: test\nlanguage: python\nrule: {pattern: 'test'}")
-        count = v._run_ast_grep_count(
-            {"file": str(rule_file)}, skill, tmp_path, ["**/*.py"], []
+    def test_missing_ast_grep_rule_file_yields_no_violations(
+        self, tmp_path: Path
+    ) -> None:
+        """An ast-grep rule pointing at a missing file contributes zero."""
+        self._write_skill(
+            tmp_path,
+            'rules:\n  - id: t\n    type: ast-grep\n    file: "nonexistent.yml"\n',
         )
-        tm.that(count, is_=int)
+        report = tm.ok(
+            FlextInfraSkillValidator(skill="test-skill").build_report(
+                tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
+            )
+        )
+        tm.that(report.passed, eq=True)
 
-    def test_custom_count_empty_or_missing(self, tmp_path: Path) -> None:
-        """Empty/nonexistent custom script returns 0."""
-        v = FlextInfraSkillValidator(skill="test-skill")
-        skill = tmp_path / "skill"
-        skill.mkdir()
-        empty = {"id": "t", "type": "custom", "script": ""}
-        missing = {"id": "t", "type": "custom", "script": "nonexistent.py"}
-        tm.that(
-            v._run_custom_count(empty, skill, tmp_path, c.Infra.OperationMode.BASELINE),
-            eq=0,
+    def test_matching_ast_grep_rule_reports_violation(
+        self, tmp_path: Path
+    ) -> None:
+        """A matching ast-grep rule over include globs surfaces a violation."""
+        self._write_skill(
+            tmp_path,
+            'scan_targets:\n  include: ["**/*.py"]\n'
+            'rules:\n  - id: t\n    type: ast-grep\n    file: "rule.yaml"\n',
         )
-        tm.that(
-            v._run_custom_count(
-                missing, skill, tmp_path, c.Infra.OperationMode.BASELINE
-            ),
-            eq=0,
+        self._write_target(tmp_path, "forbidden_token = 1\n")
+        report = tm.ok(
+            FlextInfraSkillValidator(skill="test-skill").build_report(
+                tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
+            )
         )
+        tm.that(report.passed, eq=False)
+        tm.that(report.summary, has="1 violations")
+
+    def test_missing_custom_script_yields_no_violations(
+        self, tmp_path: Path
+    ) -> None:
+        """A custom rule pointing at a missing script contributes zero."""
+        self._write_skill(
+            tmp_path,
+            'rules:\n  - id: t\n    type: custom\n    script: "nonexistent.py"\n',
+        )
+        report = tm.ok(
+            FlextInfraSkillValidator(skill="test-skill").build_report(
+                tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
+            )
+        )
+        tm.that(report.passed, eq=True)
+
+
+class TestSkillValidatorBaselineTemplate:
+    """Public build_report coverage for {skill} baseline path templating."""
+
+    def test_relative_baseline_path_resolves_with_skill_name(
+        self, tmp_path: Path
+    ) -> None:
+        """A relative baseline file template is resolved under the workspace."""
+        skill_dir = tmp_path / c.Infra.SKILLS_DIR / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "rule.yaml").write_text(
+            "id: t\nlanguage: python\nrule: {pattern: 'forbidden_token'}\n",
+            encoding="utf-8",
+        )
+        (skill_dir / "rules.yml").write_text(
+            'scan_targets:\n  include: ["**/*.py"]\n'
+            'baseline:\n  strategy: total\n  file: ".reports/{skill}/baseline.json"\n'
+            'rules:\n  - id: t\n    type: ast-grep\n    file: "rule.yaml"\n',
+            encoding="utf-8",
+        )
+        package_root = tmp_path / "demo" / "src" / "demo"
+        package_root.mkdir(parents=True)
+        (package_root / "m.py").write_text("forbidden_token = 1\n", encoding="utf-8")
+        baseline_path = tmp_path / ".reports" / "test-skill" / "baseline.json"
+        baseline_path.parent.mkdir(parents=True)
+        baseline_path.write_text(json.dumps({"counts": {"t": 0}}), encoding="utf-8")
+
+        report = tm.ok(
+            FlextInfraSkillValidator(skill="test-skill").build_report(
+                tmp_path, "test-skill", mode=c.Infra.OperationMode.BASELINE
+            )
+        )
+
+        # Resolved templated baseline (counts.t=0) disallows the 1 real match.
+        tm.that(report.passed, eq=False)
 
 
 __all__: t.StrSequence = []

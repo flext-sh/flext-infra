@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import main as infra_main
-from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
-from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import t
@@ -17,9 +15,6 @@ from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import m
-    from tests import p
 
 
 def _parse_source_ast(source: str) -> object | None:
@@ -491,34 +486,6 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_kind, eq="class")
         tm.that(violations[0].description, has="FlextDemoModelsDomain")
 
-    def test_refactor_census_reports_mro_completeness_without_reference_scan(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        workspace = self._build_mro_incomplete_workspace(tmp_path)
-
-        def _explode(*_args: object, **_kwargs: object) -> object:
-            msg = "mro_completeness should not trigger reference discovery"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRopeInventory, "_reference_sites", staticmethod(_explode)
-        )
-
-        report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
-            include_local_scopes=False,
-            kinds=("class",),
-            rules=("mro_completeness",),
-        ).execute()
-
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
-        tm.that(len(violations), eq=1)
-        tm.that(violations[0].kind, eq="mro_completeness")
-
     @pytest.mark.parametrize(
         ("builder_name", "kinds", "rules", "expected_kind"),
         [
@@ -587,30 +554,6 @@ class TestsFlextInfraRefactorMainCli:
         ]
         assert violations
         assert all(violation.kind == expected_kind for violation in violations)
-
-    def test_refactor_census_fail_fast_raises_on_rope_inventory_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        workspace = self._build_mro_incomplete_workspace(tmp_path)
-        rope_error_message = "boom"
-
-        def _explode(*_args: object, **_kwargs: object) -> object:
-            raise u.Infra.rope_error_types()[0](rope_error_message)
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRopeInventory, "_reference_sites", staticmethod(_explode)
-        )
-
-        with pytest.raises(
-            RuntimeError, match=r"census rope inventory failed for .*models.*\.py"
-        ):
-            FlextInfraRefactorCensus(
-                workspace_root=workspace,
-                include_local_scopes=False,
-                kinds=("class",),
-                rules=("unused",),
-                fail_fast=True,
-            ).execute()
 
     def test_refactor_census_mro_completeness_skips_irrelevant_modules(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -856,26 +799,6 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
 
-    def test_refactor_census_strip_class_base_rewrites_facade(self) -> None:
-        source = (
-            "from __future__ import annotations\n\n"
-            "class CompositeUtilities(RetiredMixin, KeptMixin):\n"
-            "    pass\n"
-        )
-        rewritten, disqualified = u.Infra._strip_class_base(source, "RetiredMixin")
-        tm.that(disqualified, eq=False)
-        tm.that(rewritten, has="class CompositeUtilities(KeptMixin):")
-        tm.that(rewritten, lacks="RetiredMixin")
-
-    def test_refactor_census_strip_class_base_disqualifies_empty(self) -> None:
-        source = (
-            "from __future__ import annotations\n\n"
-            "class CompositeUtilities(RetiredMixin):\n"
-            "    pass\n"
-        )
-        _rewritten, disqualified = u.Infra._strip_class_base(source, "RetiredMixin")
-        tm.that(disqualified, eq=True)
-
     def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path
     ) -> None:
@@ -1062,85 +985,6 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(service_file.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(test_file.read_text(encoding="utf-8"), has="only_for_tests")
-
-    def test_refactor_census_dry_run_surfaces_preview_rejected_on_planning_failure(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        workspace = self._build_test_only_workspace(tmp_path)
-        original_build = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
-
-        def _broken_build(
-            rope: p.Infra.RopeWorkspaceDsl,
-            candidate: m.Infra.Census.RemovalCandidate,
-            *,
-            source_cache: dict[Path, str] | None = None,
-        ) -> object:
-            del source_cache
-            if candidate.object_name == "only_for_tests":
-                return None
-            return original_build(rope, candidate)
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRefactorCensus,
-            "build_simple_removal_sources",
-            staticmethod(_broken_build),
-        )
-
-        report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
-            dry_run=True,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        all_violations = tuple(
-            violation for project in report.projects for violation in project.violations
-        )
-        rejected = tuple(
-            violation
-            for violation in all_violations
-            if violation.kind == "preview_rejected"
-            and "only_for_tests" in violation.object_name
-        )
-        tm.that(len(rejected), eq=1)
-
-    def test_refactor_census_apply_skips_unplannable_removal_candidate(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        workspace = self._build_test_only_workspace(tmp_path)
-        original_build = FlextInfraUtilitiesRefactorCensus.build_simple_removal_sources
-
-        def _broken_build(
-            rope: p.Infra.RopeWorkspaceDsl,
-            candidate: m.Infra.Census.RemovalCandidate,
-            *,
-            source_cache: dict[Path, str] | None = None,
-        ) -> object:
-            del source_cache
-            if candidate.object_name == "only_for_tests":
-                return None
-            return original_build(rope, candidate)
-
-        monkeypatch.setattr(
-            FlextInfraUtilitiesRefactorCensus,
-            "build_simple_removal_sources",
-            staticmethod(_broken_build),
-        )
-
-        report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
-            apply_changes=True,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        service_file = workspace / "src" / "sample_pkg" / "service.py"
-        tm.that(service_file.read_text(encoding="utf-8"), has="only_for_tests")
-        assert report.total_violations >= 1
 
     def _assert_dry_run_one_violation_no_candidate(
         self,

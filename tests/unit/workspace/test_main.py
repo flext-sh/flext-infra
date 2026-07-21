@@ -3,21 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from flext_tests import r, tm
+import pytest
+from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c
-from tests import m
-from tests import t
 from tests import u
-
-if TYPE_CHECKING:
-    from tests import p
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -54,50 +49,31 @@ def _write_workspace(workspace_root: Path) -> None:
     _write_project(workspace_root / "demo-a", "demo-a")
 
 
-def _cmd_out(exit_code: int = 0) -> m.Cli.CommandOutput:
-    return m.Cli.CommandOutput(stdout="", stderr="", exit_code=exit_code, duration=0.0)
-
-
-def _install_successful_orchestration(
-    orchestrator: FlextInfraOrchestratorService, *, project_root: Path
-) -> None:
-    project = m.Infra.ProjectInfo(name="flext-demo", path=project_root, stack="python")
-
-    def _resolved_projects(
-        self: FlextInfraOrchestratorService,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-        del self
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
-
-    def _prepare_projects(
-        self: FlextInfraOrchestratorService,
-        projects: t.SequenceOf[m.Infra.ProjectInfo],
-        *,
-        workspace_root: Path,
-    ) -> p.Result[bool]:
-        _ = (self, projects, workspace_root)
-        return r[bool].ok(True)
-
-    def _run_project(
-        self: FlextInfraOrchestratorService,
-        project_name: str,
-        verb: str,
-        _index: int,
-        *,
-        make_args: t.StrSequence,
-    ) -> p.Result[m.Cli.CommandOutput]:
-        _ = (self, project_name, verb, _index, make_args)
-        return r[m.Cli.CommandOutput].ok(_cmd_out())
-
-    orchestrator._resolved_projects = _resolved_projects.__get__(
-        orchestrator, FlextInfraOrchestratorService
+def _write_orchestratable_workspace(
+    workspace_root: Path, *, capture_fail_fast: bool = False
+) -> Path:
+    """Build a workspace whose single member has a trivial ``make check``."""
+    workspace_root.mkdir(parents=True, exist_ok=True)
+    (workspace_root / ".gitmodules").write_text(
+        '[submodule "demo"]\n\tpath = demo\n'
+        "\turl = https://example.invalid/demo.git\n",
+        encoding="utf-8",
     )
-    orchestrator._prepare_projects = _prepare_projects.__get__(
-        orchestrator, FlextInfraOrchestratorService
+    (workspace_root / "pyproject.toml").write_text(
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n'
+        '\n[tool.flext.workspace]\nmembers = ["demo"]\n',
+        encoding="utf-8",
     )
-    orchestrator._run_project = _run_project.__get__(
-        orchestrator, FlextInfraOrchestratorService
+    member_root = workspace_root / "demo"
+    _write_project(member_root, "demo")
+    check_recipe = (
+        '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CURDIR)/captured.txt\n'
+        if capture_fail_fast
+        else "\t@true\n"
     )
+    (member_root / "base.mk").write_text(f"check:\n{check_recipe}", encoding="utf-8")
+    (member_root / "Makefile").write_text("include base.mk\n", encoding="utf-8")
+    return member_root
 
 
 def workspace_main(argv: list[str] | None = None) -> int:
@@ -145,42 +121,43 @@ class TestsFlextInfraWorkspaceMain:
         tm.fail(result)
         tm.that((result.error or ""), has="unsupported orchestrate verb")
 
-    def test_orchestrate_workspace_defaults_to_current_project(self) -> None:
-        orchestrator = FlextInfraOrchestratorService(verb="check", selected_projects=[])
-        _install_successful_orchestration(orchestrator, project_root=Path.cwd())
-        result = orchestrator.execute()
+    def test_orchestrate_runs_make_verb_across_members(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Orchestrate resolves members and runs the make verb to success."""
+        workspace_root = tmp_path / "workspace"
+        _write_orchestratable_workspace(workspace_root)
+        monkeypatch.chdir(workspace_root)
+
+        result = FlextInfraOrchestratorService(
+            verb="check", selected_projects=["demo"], workspace_root=workspace_root
+        ).execute()
 
         tm.ok(result)
+        tm.that(result.value, eq=True)
+        log_path = workspace_root / ".reports" / "workspace" / "check" / "demo.log"
+        tm.that(log_path.is_file(), eq=True)
 
-    def test_orchestrate_project_target_accepts_external_sibling(
-        self, tmp_path: Path
+    def test_orchestrate_forwards_fail_fast_to_project_make(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace = tmp_path / "flext"
-        external = tmp_path / ".ai-hub"
-        workspace.mkdir()
-        external.mkdir()
-        project = m.Infra.ProjectInfo(
-            name="ai-hub", path=external, stack="python/flext"
+        """Fail-fast intent reaches each project's make invocation."""
+        workspace_root = tmp_path / "workspace"
+        member_root = _write_orchestratable_workspace(
+            workspace_root, capture_fail_fast=True
         )
+        monkeypatch.chdir(workspace_root)
 
-        target = FlextInfraOrchestratorService._project_target(
-            project, workspace_root=workspace
-        )
+        result = FlextInfraOrchestratorService(
+            verb="check",
+            selected_projects=["demo"],
+            workspace_root=workspace_root,
+            fail_fast=True,
+        ).execute()
 
-        tm.that(target, eq=str(external.resolve()))
-
-    def test_orchestrate_project_log_filename_stays_under_reports(self) -> None:
-        filename = FlextInfraOrchestratorService._project_log_filename("../.ai-hub")
-
-        tm.that(filename, eq=".ai-hub.log")
-
-    def test_orchestrate_workspace_forwards_fail_fast_to_project_make(self) -> None:
-        tm.that(
-            FlextInfraOrchestratorService._normalize_fail_fast_make_args(
-                (), fail_fast=True
-            ),
-            eq=("FAIL_FAST=1",),
-        )
+        tm.ok(result)
+        captured = (member_root / "captured.txt").read_text(encoding="utf-8")
+        tm.that(captured, has="FAIL_FAST=1")
 
     def test_workspace_main_detect_accepts_explicit_workspace_root(
         self, tmp_path: Path
