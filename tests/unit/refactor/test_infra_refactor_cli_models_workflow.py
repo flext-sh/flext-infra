@@ -6,8 +6,9 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import TYPE_CHECKING
 
-from flext_infra import main as infra_main
 from flext_tests import tm
+
+from flext_infra import main as infra_main
 from tests import u
 
 if TYPE_CHECKING:
@@ -21,10 +22,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path
     ) -> None:
         workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\n",
-            with_src=True,
+            tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
         module_dir = workspace / "src" / "sample_pkg"
         module_dir.mkdir(parents=True)
@@ -46,10 +44,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
 
     def test_wrapper_root_namespace_cli_dry_run_succeeds(self, tmp_path: Path) -> None:
         workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\n",
-            with_src=True,
+            tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
         scripts_dir = workspace / "scripts"
         scripts_dir.mkdir(parents=True)
@@ -79,10 +74,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path
     ) -> None:
         workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\n",
-            with_src=True,
+            tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
         scripts_dir = workspace / "scripts"
         scripts_dir.mkdir(parents=True)
@@ -109,10 +101,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         self, tmp_path: Path
     ) -> None:
         workspace = u.Tests.mk_project(
-            tmp_path,
-            "workspace",
-            pyproject="[project]\nname='sample'\n",
-            with_src=True,
+            tmp_path, "workspace", pyproject="[project]\nname='sample'\n", with_src=True
         )
         scripts_dir = workspace / "scripts"
         scripts_dir.mkdir(parents=True)

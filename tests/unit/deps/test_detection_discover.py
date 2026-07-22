@@ -8,8 +8,7 @@ from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
-from tests import m
-from tests import u
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableSequence
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests import m
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -89,18 +89,15 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         """Require the workspace root lock to be the only resolution authority."""
         (modernizer_workspace / "uv.lock").write_text(
-            "version = 1\n[manifest]\nmembers = []\n",
-            encoding="utf-8",
+            "version = 1\n[manifest]\nmembers = []\n", encoding="utf-8"
         )
         member = modernizer_workspace / "flext-core"
         member.mkdir()
         (member / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n',
-            encoding="utf-8",
+            '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
         )
         (member / "uv.lock").write_text(
-            "version = 1\n[manifest]\nmembers = []\n",
-            encoding="utf-8",
+            "version = 1\n[manifest]\nmembers = []\n", encoding="utf-8"
         )
 
         modernizer = FlextInfraPyprojectModernizer(

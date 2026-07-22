@@ -145,7 +145,9 @@ class TestsCodegenArtifactSsot:
                 artifact.name
             )
 
-    def test_source_scan_ignored_independence_anchor(self, codegen: CodegenSpec) -> None:
+    def test_source_scan_ignored_independence_anchor(
+        self, codegen: CodegenSpec
+    ) -> None:
         """conftest.py is scanned-out but NOT vscode-excluded (independence)."""
         assert "conftest.py" in codegen.source_scan_ignored
         assert "**/conftest.py" not in codegen.vscode_files_exclude_map

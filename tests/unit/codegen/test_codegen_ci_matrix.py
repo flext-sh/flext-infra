@@ -47,8 +47,7 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             tm.that(
-                (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(),
-                eq=True,
+                (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
             )
 
     def test_ci_matrix_has_all_legs(self, tmp_path: Path) -> None:

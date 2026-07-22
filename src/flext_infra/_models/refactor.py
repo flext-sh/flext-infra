@@ -283,8 +283,7 @@ class FlextInfraModelsRefactor(
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         touched_files: Annotated[
-            t.StrSequence,
-            m.Field(description="Files the autofix created or rewrote"),
+            t.StrSequence, m.Field(description="Files the autofix created or rewrote")
         ]
         source_text: Annotated[
             str | None,
@@ -295,8 +294,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Rewritten constants-module preview (dry-run only)"),
         ] = None
         constant_module: Annotated[
-            str | None,
-            m.Field(description="Canonical _constants module (apply only)"),
+            str | None, m.Field(description="Canonical _constants module (apply only)")
         ] = None
         rewrites: Annotated[
             t.MappingKV[str, t.SequenceOf[tuple[int, int, str]]] | None,

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_cli import cli, p as cli_p
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -6,10 +6,10 @@ Tests lazy loading and __getattr__ fallthrough behavior.
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.maintenance
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_tests import tm
 
 
 class TestsFlextInfraInfraMaintenanceInit:

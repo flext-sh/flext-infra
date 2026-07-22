@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from tests import c, u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,9 +21,7 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraUtilitiesLogParser:
     def test_missing_file_returns_zero_empty(self, tmp_path: Path) -> None:
-        result = u.Infra.extract_errors(
-            tmp_path / "nonexistent.log"
-        )
+        result = u.Infra.extract_errors(tmp_path / "nonexistent.log")
 
         tm.that(result, eq=(0, []))
 
@@ -79,9 +77,7 @@ class TestsFlextInfraUtilitiesLogParser:
         log_file = tmp_path / "many_errors.log"
         log_file.write_text(error_lines + "\n", encoding="utf-8")
 
-        count, lines = u.Infra.extract_errors(
-            log_file, max_lines=3
-        )
+        count, lines = u.Infra.extract_errors(log_file, max_lines=3)
 
         tm.that(count, eq=10)
         tm.that(len(list(lines)), eq=3)

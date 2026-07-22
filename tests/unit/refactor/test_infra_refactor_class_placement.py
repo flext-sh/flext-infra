@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -14,10 +15,7 @@ from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
-from tests import c
-from tests import m
-from tests import u
-from flext_tests import tm
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -402,8 +400,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         )
 
         tm.that(
-            " ".join(fix.error for fix in result.failed),
-            has="tests.unit._constants",
+            " ".join(fix.error for fix in result.failed), has="tests.unit._constants"
         )
 
     def test_classvar_relocation_uses_existing_tests_root_constants(
@@ -469,10 +466,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         tm.that(touched_files, is_=(list, tuple))
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
-        tm.that(
-            " ".join(touched_files),
-            has="tests/_constants/__init__.py",
-        )
+        tm.that(" ".join(touched_files), has="tests/_constants/__init__.py")
 
     def test_autofix_apply_inserts_import_after_module_header(
         self, tmp_path: Path

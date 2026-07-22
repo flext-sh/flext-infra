@@ -15,8 +15,7 @@ from flext_tests import tf, tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-from tests import m
-from tests import u
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

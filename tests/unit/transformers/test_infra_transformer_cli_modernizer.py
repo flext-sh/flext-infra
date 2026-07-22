@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
 from flext_tests import tm
+
+from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

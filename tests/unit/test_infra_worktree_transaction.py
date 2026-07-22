@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.services.cli_transaction import CliTransactionService
 from flext_tests import tm
 
+from flext_infra.services.cli_transaction import CliTransactionService
 from tests import m, u
 
 if TYPE_CHECKING:

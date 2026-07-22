@@ -5,9 +5,10 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

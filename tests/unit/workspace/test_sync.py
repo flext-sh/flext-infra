@@ -6,15 +6,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
+from flext_tests import tm
+
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-from tests import m
-from tests import t
-from tests import u
-from flext_tests import tm
+from tests import m, t, u
 
 if TYPE_CHECKING:
     from tests import p

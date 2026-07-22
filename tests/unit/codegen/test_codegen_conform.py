@@ -385,8 +385,7 @@ class TestCodegenConform:
         custom = root / "custom.mk"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                custom,
-                ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n",
+                custom, ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n"
             )
         )
         result = FlextInfraCodegenConform.execute_request(
@@ -652,9 +651,7 @@ class TestScriptDispatchMakefile:
         # default goal. Verify continuity across the whole define body.
         body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
         recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [
-            ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")
-        ]
+        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
         tm.that(broken, eq=[])
 
     def test_repo_without_script_dispatch_renders_unchanged_surface(

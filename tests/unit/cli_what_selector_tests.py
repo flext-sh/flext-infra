@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from flext_infra.cli import main
 from flext_tests import tm
+
+from flext_infra.cli import main
 
 
 class TestsFlextInfraCliWhatSelector:

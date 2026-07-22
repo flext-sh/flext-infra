@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from tests import m
-from tests import u
-from flext_tests import tm
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

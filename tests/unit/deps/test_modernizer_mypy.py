@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import tomlkit
+from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import m
@@ -83,9 +83,7 @@ class TestsFlextInfraDepsModernizerMypy:
             in entry.modules
         ]
         tm.that(len(unreachable_entries), eq=1)
-        tm.that(
-            "unreachable" in unreachable_entries[0].disable_error_codes, eq=True
-        )
+        tm.that("unreachable" in unreachable_entries[0].disable_error_codes, eq=True)
         tm.that(len(unreachable_entries[0].justification) > 0, eq=True)
 
     def test_mypy_phase_removes_legacy_test_overrides(

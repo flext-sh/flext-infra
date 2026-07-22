@@ -6,15 +6,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 pytestmark = [pytest.mark.integration]
 

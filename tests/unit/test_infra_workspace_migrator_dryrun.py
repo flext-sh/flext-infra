@@ -15,8 +15,7 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDryrun:
@@ -33,7 +32,10 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
         result = migrator.execute()
         migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("unchanged for flext-core" in change for change in migrations[0].changes), eq=True
+            any(
+                "unchanged for flext-core" in change for change in migrations[0].changes
+            ),
+            eq=True,
         )
 
     def test_migrator_makefile_not_found_dry_run(self, tmp_path: Path) -> None:

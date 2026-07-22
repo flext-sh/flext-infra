@@ -14,8 +14,7 @@ from flext_tests import tm
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
-from tests import t
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -168,10 +167,7 @@ class TestConfigFixerProcessFile:
         tm.that(result.value, has="removed ignore=true sub-settings for '*.py'")
         payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
         expected_sub_settings: t.JsonList = [{"matches": "*.pyi", "ignore": False}]
-        tm.that(
-            payload["tool"]["pyrefly"]["sub-settings"],
-            eq=expected_sub_settings,
-        )
+        tm.that(payload["tool"]["pyrefly"]["sub-settings"], eq=expected_sub_settings)
 
     def test_process_file_syncs_root_project_excludes_via_public_api(
         self, tmp_path: Path

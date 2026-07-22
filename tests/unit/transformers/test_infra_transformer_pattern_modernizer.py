@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.transformers.pattern_modernizer import (
     FlextInfraRefactorPatternModernizer,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

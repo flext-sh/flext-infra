@@ -5,11 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import c, m
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
@@ -25,9 +26,7 @@ class _ImportModernizerHarness:
         sample_path = tmp_path / "sample.py"
         sample_path.write_text(source, encoding="utf-8")
         loader = FlextInfraRefactorRuleLoader(tmp_path / "refactor.yaml")
-        loader.rules = [
-            (c.Infra.RefactorRuleKind.IMPORT_MODERNIZER, self._settings)
-        ]
+        loader.rules = [(c.Infra.RefactorRuleKind.IMPORT_MODERNIZER, self._settings)]
         result = FlextInfraRefactorOrchestrator(loader).refactor_file(
             sample_path, dry_run=True
         )
@@ -70,7 +69,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
     def _failing_transformer_factory() -> FailingTransformer:
         return TestsFlextInfraRefactorInfraRefactorImportModernizer.FailingTransformer()
 
-    def test_import_modernizer_partial_import_keeps_unmapped_symbols(self, tmp_path: Path) -> None:
+    def test_import_modernizer_partial_import_keeps_unmapped_symbols(
+        self, tmp_path: Path
+    ) -> None:
         source = (
             "from flext_core import PLATFORM, KEEP\n\nvalue = PLATFORM\nother = KEEP\n"
         )
@@ -85,7 +86,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="value = c.System.PLATFORM")
         tm.that(updated, has="other = KEEP")
 
-    def test_import_modernizer_updates_aliased_symbol_usage(self, tmp_path: Path) -> None:
+    def test_import_modernizer_updates_aliased_symbol_usage(
+        self, tmp_path: Path
+    ) -> None:
         source = "from flext_core import PLATFORM as P\n\nvalue = P\n"
         rule = _ImportModernizerHarness({
             "id": "modernize-constants-import",
@@ -98,8 +101,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="value = c.System.PLATFORM")
 
     def test_import_modernizer_partial_import_with_asname_keeps_unmapped_alias(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = (
             "from flext_core import PLATFORM as P, KEEP as K\n\nvalue = P\nother = K\n"
@@ -115,7 +117,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="value = c.System.PLATFORM")
         tm.that(updated, has="other = K")
 
-    def test_import_modernizer_adds_c_when_existing_c_is_aliased(self, tmp_path: Path) -> None:
+    def test_import_modernizer_adds_c_when_existing_c_is_aliased(
+        self, tmp_path: Path
+    ) -> None:
         source = "from flext_core import c as consts\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
         rule = _ImportModernizerHarness({
             "id": "modernize-constants-import",
@@ -127,7 +131,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="from flext_core import c")
         tm.that(updated, has="value = c.System.PLATFORM")
 
-    def test_import_modernizer_does_not_rewrite_function_parameter_shadow(self, tmp_path: Path) -> None:
+    def test_import_modernizer_does_not_rewrite_function_parameter_shadow(
+        self, tmp_path: Path
+    ) -> None:
         source = "from flext_core import PLATFORM as P\n\ndef f(P: str) -> str:\n    return P\n\nvalue = P\n"
         rule = _ImportModernizerHarness({
             "id": "modernize-constants-import",
@@ -140,7 +146,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="return c.System.PLATFORM")
         tm.that(updated, has="value = c.System.PLATFORM")
 
-    def test_import_modernizer_does_not_rewrite_rebound_local_name_usage(self, tmp_path: Path) -> None:
+    def test_import_modernizer_does_not_rewrite_rebound_local_name_usage(
+        self, tmp_path: Path
+    ) -> None:
         source = (
             'from flext_core import PLATFORM\n\nPLATFORM = "local"\nvalue = PLATFORM\n'
         )
@@ -156,7 +164,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has='c.System.PLATFORM = "local"')
         tm.that(updated, has="value = c.System.PLATFORM")
 
-    def test_import_modernizer_skips_when_runtime_alias_name_is_blocked(self, tmp_path: Path) -> None:
+    def test_import_modernizer_skips_when_runtime_alias_name_is_blocked(
+        self, tmp_path: Path
+    ) -> None:
         source = "from flext_infra import c\nfrom flext_core import PLATFORM\n\nvalue = PLATFORM\n"
         rule = _ImportModernizerHarness({
             "id": "modernize-constants-import",
@@ -170,8 +180,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="value = PLATFORM")
 
     def test_import_modernizer_skips_rewrite_when_runtime_alias_shadowed_in_function(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = (
             "from flext_core import PLATFORM\n\ndef compute(c):\n    return PLATFORM\n"
@@ -187,7 +196,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         # Because of `c` shadowing, it bails out early and no replacements happen.
         tm.that(updated, has="return PLATFORM")
 
-    def test_lazy_import_rule_hoists_import_to_module_level(self, tmp_path: Path) -> None:
+    def test_lazy_import_rule_hoists_import_to_module_level(
+        self, tmp_path: Path
+    ) -> None:
         source = "def build() -> None:\n    import json\n    return None\n"
         rule = _ImportModernizerHarness({
             "id": "ban-lazy-imports",
@@ -229,10 +240,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
 
         result = orchestrator.run(
             m.Infra.ModernizeInput(
-                workspace=str(tmp_path),
-                projects=["flext-demo"],
-                apply=False,
-                gates=[],
+                workspace=str(tmp_path), projects=["flext-demo"], apply=False, gates=[]
             )
         )
 
@@ -252,10 +260,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
 
         result = orchestrator.run(
             m.Infra.ModernizeInput(
-                workspace=str(tmp_path),
-                projects=["flext-demo"],
-                apply=False,
-                gates=[],
+                workspace=str(tmp_path), projects=["flext-demo"], apply=False, gates=[]
             )
         )
 

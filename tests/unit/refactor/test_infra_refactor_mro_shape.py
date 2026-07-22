@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 from tests import m
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

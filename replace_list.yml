@@ -1,0 +1,5 @@
+id: replace-sequence-default-factory-list
+language: python
+rule:
+  pattern: $NAME: Sequence[$T] = Field(..., default_factory=list, ...)
+fix: $NAME: list[$T] = Field(..., default_factory=list, ...)

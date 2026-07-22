@@ -12,8 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import m
-from tests import u
+from tests import m, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -178,10 +177,6 @@ class TestAuditorNormalize:
         ],
     )
     def test_is_external(
-        self,
-        *,
-        is_external: Callable[[str], bool],
-        value: str,
-        expected: bool,
+        self, *, is_external: Callable[[str], bool], value: str, expected: bool
     ) -> None:
         tm.that(is_external(value), eq=expected)

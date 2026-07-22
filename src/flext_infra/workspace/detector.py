@@ -118,8 +118,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             # non-zero rev-parse; confirm it via --is-inside-work-tree so a genuine
             # in-repo failure still fails closed (NOTE mro-p68a.5, agent codex).
             inside_work_tree = u.Cli.capture(
-                [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
-                cwd=resolved_root,
+                [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=resolved_root
             )
             if inside_work_tree.failure or inside_work_tree.value.strip() != "true":
                 return r[Path].ok(resolved_root)

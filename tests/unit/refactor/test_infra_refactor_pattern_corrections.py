@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import t
 from flext_infra.refactor.service import FlextInfraRefactorService
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,9 +35,7 @@ def _apply_rule(
         else:
             rule_lines.append(f"    {key}: {value}")
     rule_lines.append("    enabled: true")
-    (rules_dir / "rules.yml").write_text(
-        "\n".join(rule_lines) + "\n", encoding="utf-8"
-    )
+    (rules_dir / "rules.yml").write_text("\n".join(rule_lines) + "\n", encoding="utf-8")
     service = FlextInfraRefactorService(config_path=config_path)
     load_result = service.load_rules()
     tm.ok(load_result)

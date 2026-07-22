@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import c
-from tests import m
-from tests import u
 from flext_tests import tm
+
+from tests import c, m, u
 
 
 class TestsFlextInfraUtilitiesdiscoveryconsolidated:
@@ -77,8 +76,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         external = tmp_path / ".ai-hub"
         (external / c.Infra.DEFAULT_SRC_DIR / "ai_hub").mkdir(parents=True)
         (external / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="ai-hub"\nversion="0.1.0"\n'
-            'dependencies=["flext-core"]\n',
+            '[project]\nname="ai-hub"\nversion="0.1.0"\ndependencies=["flext-core"]\n',
             encoding="utf-8",
         )
 

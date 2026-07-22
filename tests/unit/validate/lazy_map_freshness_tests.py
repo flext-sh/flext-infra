@@ -17,8 +17,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
-from tests import m
-from tests import u
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

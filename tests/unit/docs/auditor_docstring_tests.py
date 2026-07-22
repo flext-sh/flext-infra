@@ -11,11 +11,11 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.utilities import u
 from tests import m
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,7 +160,9 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )["summary"]
-            assert summary["docstring_coverage"]["percent"] < _PARTIAL_COVERAGE_THRESHOLD
+            assert (
+                summary["docstring_coverage"]["percent"] < _PARTIAL_COVERAGE_THRESHOLD
+            )
 
         def test_coverage_above_minimum_keeps_audit_green(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)

@@ -9,8 +9,7 @@ from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path

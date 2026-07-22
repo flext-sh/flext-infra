@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import u
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,7 +19,7 @@ def _transform_source(tmp_path: Path, source: str) -> str:
     file_path = tmp_path / "nested_class_propagation.py"
     file_path.write_text(source, encoding="utf-8")
     transformer = FlextInfraNestedClassPropagationTransformer({
-        "TimeoutEnforcer": "FlextDispatcher.TimeoutEnforcer",
+        "TimeoutEnforcer": "FlextDispatcher.TimeoutEnforcer"
     })
     rope_project = u.Infra.init_rope_project(tmp_path)
     try:
@@ -36,8 +37,7 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
     """Behavior contract for test_infra_transformer_nested_class_propagation."""
 
     def test_nested_class_propagation_updates_import_annotations_and_calls(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "from pkg import TimeoutEnforcer\n\nclass Child(TimeoutEnforcer):\n    pass\n\ndef validate(x: TimeoutEnforcer) -> bool:\n    if isinstance(x, TimeoutEnforcer):\n        y = TimeoutEnforcer()\n        return isinstance(y, pkg.TimeoutEnforcer)\n    return False\n"
         code = _transform_source(tmp_path, source)
@@ -49,8 +49,7 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
         tm.that(code, has="isinstance(y, pkg.FlextDispatcher.TimeoutEnforcer)")
 
     def test_nested_class_propagation_preserves_asname_and_rewrites_alias_usage(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "from pkg import TimeoutEnforcer as TE\n\nvalue = TE()\n"
         code = _transform_source(tmp_path, source)

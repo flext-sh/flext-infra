@@ -8,9 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from tests import c
-from tests import m
-from tests import u
+from tests import c, m, u
 
 _FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "namespace_validator"
 
@@ -728,8 +726,7 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
         tm.that(
-            any("test support module" in v for v in result.value.violations),
-            eq=False,
+            any("test support module" in v for v in result.value.violations), eq=False
         )
 
     def test_rule3_test_private_family_runtime_reverse_import_detected(

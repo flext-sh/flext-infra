@@ -322,9 +322,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             has="Workspace detection failed",
         )
 
-    def test_manifestless_repo_derives_spec_from_catalog(
-        self, tmp_path: Path
-    ) -> None:
+    def test_manifestless_repo_derives_spec_from_catalog(self, tmp_path: Path) -> None:
         """Derive a generic minimal spec from the catalog when no manifest exists."""
         catalog_name = next(
             declared.name
@@ -332,8 +330,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             if declared.role is c.Infra.RepositoryRole.STANDALONE
         )
         (tmp_path / "pyproject.toml").write_text(
-            f'[project]\nname = "{catalog_name}"\nversion = "0.0.0"\n',
-            encoding="utf-8",
+            f'[project]\nname = "{catalog_name}"\nversion = "0.0.0"\n', encoding="utf-8"
         )
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
         assert spec.name == catalog_name

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -18,9 +19,7 @@ def _transform_source(tmp_path: Path, source: str) -> str:
     file_path = tmp_path / "class_nesting.py"
     file_path.write_text(source, encoding="utf-8")
     transformer = FlextInfraRefactorClassNestingTransformer(
-        {"TimeoutEnforcer": "FlextDispatcher"},
-        {},
-        {},
+        {"TimeoutEnforcer": "FlextDispatcher"}, {}, {}
     )
     rope_project = u.Infra.init_rope_project(tmp_path)
     try:
@@ -38,8 +37,7 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     """Behavior contract for test_infra_transformer_class_nesting."""
 
     def test_class_nesting_moves_top_level_class_into_new_namespace(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
         code = _transform_source(tmp_path, source)
@@ -55,8 +53,7 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
         tm.that(code, has="class FlextDispatcher:")
 
     def test_class_nesting_appends_to_existing_namespace_and_removes_pass(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = (
             "class FlextDispatcher:\n    pass\n\nclass TimeoutEnforcer:\n    pass\n"
@@ -68,8 +65,7 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
         tm.that(code, lacks="class FlextDispatcher:\n    pass\n")
 
     def test_class_nesting_keeps_unmapped_top_level_classes(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
         code = _transform_source(tmp_path, source)

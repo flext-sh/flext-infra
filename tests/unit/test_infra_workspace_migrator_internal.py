@@ -107,10 +107,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         tm.that(migration.changes, has="no changes needed")
 
     def test_execute_surfaces_pyproject_write_error(self, tmp_path: Path) -> None:
-        project_root = self._write_project_files(
-            tmp_path,
-            pyproject="[tool.poetry]\n",
-        )
+        project_root = self._write_project_files(tmp_path, pyproject="[tool.poetry]\n")
         self._make_read_only(project_root / "pyproject.toml")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "test-proj"),

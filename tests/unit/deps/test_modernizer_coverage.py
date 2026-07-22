@@ -8,8 +8,7 @@ from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
-from tests import t
-from tests import u
+from tests import t, u
 
 
 def _doc_mapping(doc: TOMLDocument) -> t.JsonMapping:
