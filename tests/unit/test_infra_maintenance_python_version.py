@@ -37,9 +37,7 @@ def _ws(root: Path, *, minor: int = _MINOR) -> Path:
         ),
         encoding="utf-8",
     )
-    (root / ".python-version").write_text(
-        f"3.{minor}\n", encoding="utf-8"
-    )
+    (root / ".python-version").write_text(f"3.{minor}\n", encoding="utf-8")
     return root
 
 
@@ -59,9 +57,7 @@ def _proj(root: Path, name: str, *, minor: int = _MINOR) -> Path:
         ),
         encoding="utf-8",
     )
-    (proj / ".python-version").write_text(
-        f"3.{minor}\n", encoding="utf-8"
-    )
+    (proj / ".python-version").write_text(f"3.{minor}\n", encoding="utf-8")
     return proj
 
 
@@ -113,9 +109,7 @@ class TestsFlextInfraInfraMaintenancePythonVersion:
         self, tmp_path: Path
     ) -> None:
         ws = _ws(tmp_path / "ws")
-        (ws / ".python-version").write_text(
-            f"3.{_BAD}\n", encoding="utf-8"
-        )
+        (ws / ".python-version").write_text(f"3.{_BAD}\n", encoding="utf-8")
 
         tm.fail(_svc(ws).execute(check_only=True, verbose=False))
 

@@ -81,7 +81,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if superproject.failure:
             # Not inside any Git work tree -> standalone project owning its own
             # root; a genuine in-repo failure still fails closed.
-            inside = cls.git_capture(repository_path, ("rev-parse", "--is-inside-work-tree"))
+            inside = cls.git_capture(
+                repository_path, ("rev-parse", "--is-inside-work-tree")
+            )
             if inside.failure or inside.value.strip() != "true":
                 return r[Path].ok(repository_path.expanduser().resolve())
             return r[Path].fail(

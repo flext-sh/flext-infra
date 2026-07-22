@@ -14,8 +14,9 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
+
+from flext_infra.docs.server import FlextInfraDocServer
 
 if TYPE_CHECKING:
     from pathlib import Path

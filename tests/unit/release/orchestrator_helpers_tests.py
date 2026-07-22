@@ -7,11 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-
-from tests import c
-from tests import m
-from tests import u
 from flext_tests import tm
+
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from tests import t

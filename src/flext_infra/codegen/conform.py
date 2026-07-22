@@ -215,7 +215,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
-                    governed.error or f"artifact ownership planning failed: {repository_root}"
+                    governed.error
+                    or f"artifact ownership planning failed: {repository_root}"
                 )
             files.extend(governed.value)
             environments.append(
@@ -243,9 +244,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
-        surface: c.Infra.CodegenConformSurface = (
-            c.Infra.CodegenConformSurface.ALL
-        ),
+        surface: c.Infra.CodegenConformSurface = (c.Infra.CodegenConformSurface.ALL),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 
@@ -311,22 +310,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         )
                     )
                     continue
-            if (
-                governed.policy == "merge"
-                and relative.as_posix() == c.Infra.GITIGNORE
-            ):
+            if governed.policy == "merge" and relative.as_posix() == c.Infra.GITIGNORE:
                 # NOTE (mro-jnm1.2): the canonical .gitignore body is rendered
                 # from the same base/gitignore.j2 + computed
                 # CodegenConfigSpec.gitignore_sections used by `codegen new` —
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
-                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen
-                )
+                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(codegen)
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        rendered_gitignore.error
-                        or f"gitignore render failed: {path}"
+                        rendered_gitignore.error or f"gitignore render failed: {path}"
                     )
                 if rendered_gitignore.value != current:
                     completed.append(
@@ -362,9 +355,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return Path(__file__).resolve().parent.parent
 
     @staticmethod
-    def _render_gitignore(
-        codegen: m.Infra.CodegenConfigSpec,
-    ) -> p.Result[str]:
+    def _render_gitignore(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
         NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
@@ -993,6 +984,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 uv_version=codegen.toolchain.uv_version,
                 uv_required_version=codegen.toolchain.uv_required_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                kubectl_version=codegen.toolchain.kubectl_version,
+                helm_version=codegen.toolchain.helm_version,
+                kind_version=codegen.toolchain.kind_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,
@@ -1070,7 +1064,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if rejection.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rejection.error or f"custom Make rejection write failed: {rejection_path}"
+                    rejection.error
+                    or f"custom Make rejection write failed: {rejection_path}"
                 )
         digest = u.Cli.sha256_content(read.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((

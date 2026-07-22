@@ -9,6 +9,77 @@ from flext_tests import tm
 from flext_infra import c, m, u
 
 
+def _member_ref(distribution: str) -> m.Infra.RepositoryRef:
+    """Build one flext-sh workspace member repository reference."""
+    return m.Infra.RepositoryRef(
+        name=distribution,
+        distribution=distribution,
+        url=f"https://github.com/flext-sh/{distribution}.git",
+        branch="0.12.0-dev",
+        path=Path(distribution),
+        role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        provider="flext-sh",
+        profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+        checkout=c.Infra.CheckoutKind.SUBMODULE,
+        codegen=c.Infra.CodegenKind.CONFORM,
+        package=True,
+        editable=True,
+        read_only=False,
+    )
+
+
+def _cosmos_workspace() -> m.Infra.WorkspaceSpec:
+    """Build a cosmos-main-like root whose members are not flext projects."""
+    root = m.Infra.RepositoryRef(
+        name="cosmos-main",
+        distribution="cosmos-main",
+        url="https://github.com/datacosmos-br/cosmos-main.git",
+        branch="main",
+        path=Path(),
+        role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+        provider="datacosmos-br",
+        profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+        checkout=c.Infra.CheckoutKind.ROOT,
+        codegen=c.Infra.CodegenKind.CONFORM,
+        package=False,
+        editable=False,
+        read_only=False,
+    )
+    charts = m.Infra.RepositoryRef(
+        name="cosmos-charts",
+        distribution="cosmos-charts",
+        url="https://github.com/datacosmos-br/cosmos-charts.git",
+        branch="main",
+        path=Path("apps/cosmos-charts"),
+        role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        provider="datacosmos-br",
+        profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+        checkout=c.Infra.CheckoutKind.SUBMODULE,
+        codegen=c.Infra.CodegenKind.CONFORM,
+        package=True,
+        editable=True,
+        read_only=False,
+    )
+    return m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name="cosmos-main",
+        repository=root,
+        members=(charts,),
+    )
+
+
+def _toolchain() -> m.Infra.ToolchainSpec:
+    """Build the canonical 0.12 toolchain specification."""
+    return m.Infra.ToolchainSpec(
+        python_version="3.13.11",
+        uv_version="0.11.29",
+        uv_link_mode="copy",
+        kubectl_version="1.32.0",
+        helm_version="3.19.4",
+        kind_version="0.31.0",
+    )
+
+
 class TestsFlextInfraCodegenPyprojectConform:
     """Exercise only the public u.Infra conformance contract."""
 
@@ -99,12 +170,11 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         toolchain = m.Infra.ToolchainSpec(
             python_version="3.13.11",
-            python_minor_version="3.13",
-            python_required_version=">=3.13.11,<3.14",
-            ruff_version="0.15.22",
             uv_version="0.11.28",
-            uv_required_version="==0.11.28",
             uv_link_mode="copy",
+            kubectl_version="1.32.0",
+            helm_version="3.19.4",
+            kind_version="0.31.0",
         )
         repositories = (core, infra, tests, web)
         root_source = """[project]
@@ -164,12 +234,12 @@ mypy_path = [".", "src", "../flext-core/src"]
         tm.that(root_rendered, eq=root_second.value)
         tm.that(root_rendered, has='required-version = "==0.11.28"')
         tm.that(root_rendered, has='link-mode = "copy"')
+        tm.that(root_rendered, has='constraint-dependencies = [\n    "uv==0.11.28",')
+        tm.that(root_rendered, has='override-dependencies = ["pathspec>=1.0.0"]')
         tm.that(
             root_rendered,
-            has='constraint-dependencies = [\n    "uv==0.11.28",',
+            has='dependencies = [\n    "flext-core[async] @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",',
         )
-        tm.that(root_rendered, has='override-dependencies = ["pathspec>=1.0.0"]')
-        tm.that(root_rendered, has='dependencies = [\n    "flext-core[async]",')
         tm.that(root_rendered, has="[tool.uv.workspace]")
         tm.that(root_rendered, has='members = [\n    "flext-core",')
         tm.that(root_rendered, has="[tool.uv.sources.flext-core]")
@@ -184,7 +254,6 @@ mypy_path = [".", "src", "../flext-core/src"]
             "editable = true",
             "marker =",
             "\npath =",
-            "git+https://github.com/flext-sh/",
             "venvPath",
         ):
             tm.that(forbidden not in root_rendered, eq=True, msg=forbidden)
@@ -317,3 +386,101 @@ workspace = true
         tm.that(empty_uv_second.success, eq=True)
         tm.that(empty_uv_second.value, eq=empty_uv_rendered)
         tm.that("[tool.uv]" not in empty_uv_rendered, eq=True)
+
+    def test_workspace_root_renders_inline_git_urls_for_flext_deps(self) -> None:
+        """Root flext-* deps render inline PEP508 Git URLs, never plain names."""
+        repositories = (
+            _member_ref("flext-core"),
+            _member_ref("flext-cli"),
+            _member_ref("flext-tests"),
+            _member_ref("flext-infra"),
+        )
+        workspace = _cosmos_workspace()
+        toolchain = _toolchain()
+        root_source = """[project]
+name = "cosmos-main"
+dependencies = ["flext-core", "flext-cli", "requests>=2"]
+
+[dependency-groups]
+dev = ["flext-tests", "pytest>=8"]
+"""
+        first = u.Infra.pyproject_conform(
+            root_source,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(first.success, eq=True)
+        rendered = first.value
+        for expected in (
+            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+        ):
+            tm.that(rendered, has=expected)
+        # NOTE: no bare plain flext-* requirement survives at the workspace root.
+        for bare in ('"flext-core"', '"flext-cli"', '"flext-tests"', '"flext-infra"'):
+            tm.that(bare not in rendered, eq=True, msg=bare)
+        # NOTE: [tool.uv.sources] keeps only {workspace=true} members, no flext-*.
+        tm.that("[tool.uv.sources.flext-" not in rendered, eq=True)
+        tm.that(rendered, has="[tool.uv.sources.cosmos-charts]")
+        tm.that(rendered, has="workspace = true")
+        second = u.Infra.pyproject_conform(
+            rendered,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(second.success, eq=True)
+        tm.that(second.value, eq=rendered)
+
+    def test_relative_path_flext_deps_are_rewritten_to_inline_git_urls(self) -> None:
+        """The no-relative-path law: file://, ../ and {path=} never survive."""
+        repositories = (
+            _member_ref("flext-core"),
+            _member_ref("flext-cli"),
+            _member_ref("flext-tests"),
+            _member_ref("flext-infra"),
+        )
+        workspace = _cosmos_workspace()
+        toolchain = _toolchain()
+        relative_source = """[project]
+name = "cosmos-main"
+dependencies = ["flext-core @ file://../flext-core", "flext-cli @ ../flext-cli"]
+
+[dependency-groups]
+dev = ["flext-tests @ file:///home/marlonsc/flext/flext-tests"]
+
+[tool.uv.sources.flext-core]
+path = "../flext-core"
+editable = true
+
+[tool.uv.sources.flext-cli]
+workspace = false
+path = "../flext-cli"
+"""
+        first = u.Infra.pyproject_conform(
+            relative_source,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(first.success, eq=True)
+        rendered = first.value
+        for expected in (
+            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+        ):
+            tm.that(rendered, has=expected)
+        for forbidden in ("../", "file://", "editable = true", "workspace = false"):
+            tm.that(forbidden not in rendered, eq=True, msg=forbidden)
+        tm.that("[tool.uv.sources.flext-" not in rendered, eq=True)
+        second = u.Infra.pyproject_conform(
+            rendered,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(second.success, eq=True)
+        tm.that(second.value, eq=rendered)

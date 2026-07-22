@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import FlextCliConfig
@@ -18,10 +17,11 @@ class _FlextInfraConfig(FlextCliConfig):
 
     # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
     # config.Infra is the only codegen information surface; no accessor method.
-    # NOTE (mro-sltx / backport from 0.20.0-dev): canonical [project-root]/config
-    # resolution (parents[2]) overrides the package-anchored CONFIG_DIR inherited
-    # from FlextCliConfig, so the infra YAML SSOT loads from the repo-root config/.
-    CONFIG_DIR: ClassVar[str] = str(Path(__file__).resolve().parents[2] / "config")
+    # NOTE (mro-sltx / cosmos-main-fkbx): CONFIG_DIR stays the relative default so
+    # flext-core FlextConfig._config_dir() resolves the packaged flext_infra/config
+    # in a wheel install AND the repo-root config/ in an editable source checkout.
+    # An absolute parents[2] value broke every git-dep/wheel consumer (config poison).
+    CONFIG_DIR: ClassVar[str] = "config"
     Infra: FlextInfraConfigModels.Infra
 
 

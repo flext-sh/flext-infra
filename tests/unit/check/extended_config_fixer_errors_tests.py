@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

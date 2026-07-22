@@ -12,9 +12,7 @@ from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
-from tests import m
-from tests import t
-from tests import u
+from tests import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path

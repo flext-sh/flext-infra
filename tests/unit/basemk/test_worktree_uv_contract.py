@@ -35,14 +35,17 @@ class TestsFlextInfraBasemkWorktreeUvContract:
         (canonical_root / "tracked.txt").write_text("fixture\n", encoding="utf-8")
         _run(["git", "add", "tracked.txt"], canonical_root)
         _run(["git", "commit", "-q", "-m", "fixture"], canonical_root)
-        _run(["git", "worktree", "add", "-q", str(lane_root), "-b", "feature"], canonical_root)
+        _run(
+            ["git", "worktree", "add", "-q", str(lane_root), "-b", "feature"],
+            canonical_root,
+        )
 
         rendered = tm.ok(FlextInfraBaseMkGenerator().generate_basemk())
         (lane_root / "base.mk").write_text(rendered, encoding="utf-8")
         (lane_root / "Makefile").write_text(
             "include base.mk\n"
             "print-uv-roots:\n"
-            "\t@printf '%s\\n%s\\n' \"$(UV_PROJECT)\" \"$(UV_PROJECT_ENVIRONMENT)\"\n",
+            '\t@printf \'%s\\n%s\\n\' "$(UV_PROJECT)" "$(UV_PROJECT_ENVIRONMENT)"\n',
             encoding="utf-8",
         )
 

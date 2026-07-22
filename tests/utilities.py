@@ -19,10 +19,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import c
-from tests import m
-from tests import p
-from tests import t
+from tests import c, m, p, t
 
 if TYPE_CHECKING:
     from tomlkit import TOMLDocument
@@ -311,9 +308,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def infra_mapping(value: t.Infra.InfraMapping) -> t.JsonMapping:
             """Provide the typed test helper `infra_mapping`."""
-            result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                value
-            )
+            result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
             return result
 
         @staticmethod

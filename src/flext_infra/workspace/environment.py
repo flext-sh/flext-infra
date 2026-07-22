@@ -10,7 +10,6 @@ from flext_core import r
 from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-
     from flext_infra import p, t
 
 
@@ -76,9 +75,7 @@ class FlextInfraWorkspaceEnvironment:
             c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
         )
         if rendered.failure:
-            return r[str].fail(
-                rendered.error or ".mise.toml template render failed"
-            )
+            return r[str].fail(rendered.error or ".mise.toml template render failed")
         doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
@@ -93,7 +90,9 @@ class FlextInfraWorkspaceEnvironment:
         """Render one workspace environment template from validated toolchain data."""
         # mro-sltx (backport 0.20): config-driven Jinja render replaces inline
         # content constants; template dir resolved package-relative (0.12 pattern).
-        template_path = Path(__file__).resolve().parent.parent / "templates" / template_name
+        template_path = (
+            Path(__file__).resolve().parent.parent / "templates" / template_name
+        )
         return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
 
     @classmethod

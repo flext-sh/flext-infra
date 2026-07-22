@@ -8,8 +8,9 @@ required public families present, no private/internal names, uniqueness.
 
 from __future__ import annotations
 
-import flext_infra
 from flext_tests import tm
+
+import flext_infra
 
 
 class TestsFlextInfraRootExportContract:

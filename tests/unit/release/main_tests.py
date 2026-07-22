@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import main
-from tests import c
-from tests import TestsFlextInfraUtilities as u
 from flext_tests import tm
+
+from flext_infra import main
+from tests import TestsFlextInfraUtilities as u, c
 
 if TYPE_CHECKING:
     from pathlib import Path

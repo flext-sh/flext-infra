@@ -13,11 +13,10 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
+from flext_tests import tm
 
 from flext_core import FlextContainer
-from tests import c
-from tests import u
-from flext_tests import tm
+from tests import c, u
 
 
 class TestsFlextInfraContainerInfraContainer:

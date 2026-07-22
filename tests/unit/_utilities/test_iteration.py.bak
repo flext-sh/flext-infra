@@ -1,0 +1,215 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import tomlkit
+
+from tests import t
+from tests import u
+from flext_tests import tm
+
+
+class TestsFlextInfraUtilitiesiteration:
+    @staticmethod
+    def _create_project(workspace: Path, name: str) -> Path:
+        project_root = workspace / name
+        (project_root / "src" / name).mkdir(parents=True)
+        (project_root / "tests").mkdir()
+        (project_root / "Makefile").touch()
+        (project_root / "pyproject.toml").touch()
+        (project_root / "src" / name / "core.py").write_text(
+            "from __future__ import annotations\n", encoding="utf-8"
+        )
+        (project_root / "tests" / "test_core.py").write_text(
+            "from __future__ import annotations\n", encoding="utf-8"
+        )
+        return project_root
+
+    def test_returns_success_with_project_and_file_tuples(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").touch()
+        alpha_root = self._create_project(tmp_path, "alpha")
+        beta_root = self._create_project(tmp_path, "beta")
+
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
+
+        tm.ok(result)
+        expected = {
+            (alpha_root, alpha_root / "src" / "alpha" / "core.py"),
+            (alpha_root, alpha_root / "tests" / "test_core.py"),
+            (beta_root, beta_root / "src" / "beta" / "core.py"),
+            (beta_root, beta_root / "tests" / "test_core.py"),
+        }
+        tm.that(set(result.value), eq=expected)
+        assert all(
+            project_root in file_path.parents
+            for project_root, file_path in result.value
+        )
+
+    def test_excludes_files_in_skip_directories(self, tmp_path: Path) -> None:
+        project_root = self._create_project(tmp_path, "gamma")
+        (project_root / ".venv" / "lib").mkdir(parents=True)
+        (project_root / ".venv" / "lib" / "ignored.py").write_text(
+            "from __future__ import annotations\n", encoding="utf-8"
+        )
+
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
+
+        tm.ok(result)
+        tm.that(
+            set(result.value),
+            lacks=(project_root, project_root / ".venv" / "lib" / "ignored.py"),
+        )
+
+    def test_exclude_packages_parameter(self, tmp_path: Path) -> None:
+        alpha_root = self._create_project(tmp_path, "alpha")
+        self._create_project(tmp_path, "beta")
+
+        result = u.Infra.iter_workspace_python_modules(
+            workspace_root=tmp_path, exclude_packages=frozenset({"beta"})
+        )
+
+        tm.ok(result)
+        assert result.value
+        assert all(project_root == alpha_root for project_root, _ in result.value)
+
+    def test_include_tests_parameter(self, tmp_path: Path) -> None:
+        project_root = self._create_project(tmp_path, "delta")
+
+        result = u.Infra.iter_workspace_python_modules(
+            workspace_root=tmp_path, include_tests=False
+        )
+
+        tm.ok(result)
+        expected = {(project_root, project_root / "src" / "delta" / "core.py")}
+        tm.that(set(result.value), eq=expected)
+
+    def test_empty_workspace_returns_empty_list(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").touch()
+
+        result = u.Infra.iter_workspace_python_modules(workspace_root=tmp_path)
+
+        tm.ok(result)
+        tm.that(result.value, eq=[])
+
+    def test_non_existent_workspace_root_raises(self) -> None:
+        missing_root = Path("/tmp/flext-missing-workspace-root")
+
+        try:
+            result = u.Infra.iter_workspace_python_modules(workspace_root=missing_root)
+            tm.fail(result)
+            tm.that(result.error, none=False)
+            tm.that(result.error, has="failed")
+        except FileNotFoundError:
+            assert True
+
+    @staticmethod
+    def _create_attached_subrepo(workspace: Path, name: str) -> Path:
+        sub_root = workspace / name
+        package_name = name.replace("-", "_")
+        (sub_root / "src" / package_name).mkdir(parents=True)
+        (sub_root / "tests").mkdir()
+        (sub_root / "Makefile").touch()
+        (sub_root / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "' + name + '"\nversion = "0.1.0"\n'
+                "[tool.flext.workspace]\nattached = true\n"
+            ),
+            encoding="utf-8",
+        )
+        return sub_root
+
+    def test_attached_helper_returns_only_opted_in_dirs(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+        opted = self._create_attached_subrepo(tmp_path, "alpha-attached")
+        (tmp_path / "noisy").mkdir()
+        (tmp_path / ".hidden").mkdir()
+        unopted = tmp_path / "beta-not-attached"
+        unopted.mkdir()
+        (unopted / "pyproject.toml").write_text(
+            '[project]\nname = "beta"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        names = u.Infra._attached_top_level_dir_names(tmp_path)
+
+        tm.that(names, eq=frozenset({opted.name}))
+
+    def test_discover_project_candidates_includes_attached_when_requested(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "ws"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+        self._create_project(tmp_path, "host_pkg")
+        external = self._create_attached_subrepo(tmp_path, "external-repo")
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=tmp_path, include_attached=True
+        )
+
+        names = {path.name for path in candidates}
+        tm.that(names, has=external.name)
+
+    def test_discover_project_candidates_includes_external_sibling_patterns(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "flext"
+        workspace.mkdir()
+        (workspace / "pyproject.toml").write_text(
+            '[project]\nname = "flext"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+        external = tmp_path / ".ai-hub"
+        (external / "src" / "ai_hub").mkdir(parents=True)
+        (external / "src" / "ai_hub" / "__init__.py").write_text("", encoding="utf-8")
+        (external / "pyproject.toml").write_text(
+            (
+                '[project]\nname = "ai-hub"\nversion = "0.0.0"\n'
+                'dependencies = ["flext-core"]\n'
+            ),
+            encoding="utf-8",
+        )
+
+        candidates = u.Infra.discover_project_candidates(
+            workspace_root=workspace, include_attached=True
+        )
+
+        tm.that(candidates, has=external.resolve())
+
+    def test_workspace_dep_namespaces_from_payload_uses_workspace_sources(self) -> None:
+        payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+            "project": {
+                "dependencies": ["flext-core>=0.1.0", "requests>=2.0", "flext-cli"]
+            },
+            "tool": {
+                "uv": {
+                    "sources": {
+                        "flext-core": {"workspace": True},
+                        "flext-cli": {"workspace": True},
+                        "requests": {"path": "../vendor/requests"},
+                    }
+                }
+            },
+        })
+
+        namespaces = u.Infra.workspace_dep_namespaces_from_payload(payload)
+
+        tm.that(namespaces, eq=("flext_cli", "flext_core"))
+
+    def test_workspace_dep_namespaces_reads_toml_document(self) -> None:
+        doc = tomlkit.parse(
+            """
+[project]
+dependencies = ["flext-core>=0.1.0"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+"""
+        )
+
+        namespaces = u.Infra.workspace_dep_namespaces(doc)
+
+        tm.that(namespaces, eq=("flext_core",))
+
+
+__all__: t.StrSequence = []

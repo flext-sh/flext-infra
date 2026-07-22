@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from tests import u
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -72,9 +73,7 @@ class TestsFlextInfraRopeImports:
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
             assert resource is not None
-            result = u.Infra.organize_imports(
-                rope.rope_project, resource, apply=False
-            )
+            result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)
         tm.that(result.value, eq=False)
@@ -101,9 +100,7 @@ class TestsFlextInfraRopeImports:
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
             assert resource is not None
-            result = u.Infra.organize_imports(
-                rope.rope_project, resource, apply=False
-            )
+            result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)
         tm.that(result.value, eq=True)

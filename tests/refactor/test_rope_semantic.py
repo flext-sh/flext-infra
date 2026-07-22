@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import t
-from tests import u
 from flext_tests import tm
+
+from tests import t, u
 
 type RopeWorkspace = t.Pair[t.Infra.RopeProject, Path]
 

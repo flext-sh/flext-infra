@@ -13,14 +13,12 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 class TestSafeLoadYaml:
@@ -155,7 +153,9 @@ class TestSkillValidatorAstGrepRules:
         self, tmp_path: Path
     ) -> None:
         """An ast-grep rule with an empty file contributes zero violations."""
-        self._write_skill(tmp_path, 'rules:\n  - id: t\n    type: ast-grep\n    file: ""\n')
+        self._write_skill(
+            tmp_path, 'rules:\n  - id: t\n    type: ast-grep\n    file: ""\n'
+        )
         report = tm.ok(
             FlextInfraSkillValidator(skill="test-skill").build_report(
                 tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
@@ -178,9 +178,7 @@ class TestSkillValidatorAstGrepRules:
         )
         tm.that(report.passed, eq=True)
 
-    def test_matching_ast_grep_rule_reports_violation(
-        self, tmp_path: Path
-    ) -> None:
+    def test_matching_ast_grep_rule_reports_violation(self, tmp_path: Path) -> None:
         """A matching ast-grep rule over include globs surfaces a violation."""
         self._write_skill(
             tmp_path,
@@ -196,9 +194,7 @@ class TestSkillValidatorAstGrepRules:
         tm.that(report.passed, eq=False)
         tm.that(report.summary, has="1 violations")
 
-    def test_missing_custom_script_yields_no_violations(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_custom_script_yields_no_violations(self, tmp_path: Path) -> None:
         """A custom rule pointing at a missing script contributes zero."""
         self._write_skill(
             tmp_path,

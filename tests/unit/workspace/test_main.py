@@ -11,8 +11,7 @@ from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests import c
-from tests import u
+from tests import c, u
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -55,8 +54,7 @@ def _write_orchestratable_workspace(
     """Build a workspace whose single member has a trivial ``make check``."""
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / ".gitmodules").write_text(
-        '[submodule "demo"]\n\tpath = demo\n'
-        "\turl = https://example.invalid/demo.git\n",
+        '[submodule "demo"]\n\tpath = demo\n\turl = https://example.invalid/demo.git\n',
         encoding="utf-8",
     )
     (workspace_root / "pyproject.toml").write_text(

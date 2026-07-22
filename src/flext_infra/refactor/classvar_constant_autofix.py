@@ -228,8 +228,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
             Path(resource.real_path).write_text(text, encoding="utf-8")
 
         return m.Infra.ClassvarConstantAutofixResult(
-            touched_files=tuple(sorted(touched)),
-            constant_module=plan.constants_module,
+            touched_files=tuple(sorted(touched)), constant_module=plan.constants_module
         )
 
 

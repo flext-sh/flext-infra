@@ -60,7 +60,9 @@ class TestRealGateRunners:
         (project_dir / "tests").mkdir()
         nested = project_dir / ".claude" / "worktrees" / "nested"
         nested.mkdir(parents=True)
-        (nested / "pyproject.toml").write_text("[project]\nname='nested'\n", encoding="utf-8")
+        (nested / "pyproject.toml").write_text(
+            "[project]\nname='nested'\n", encoding="utf-8"
+        )
         (nested / "bad.py").write_text("import os\n", encoding="utf-8")
 
         gate = FlextInfraRuffLintGate(tmp_path)

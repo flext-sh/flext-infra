@@ -15,8 +15,7 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-    from tests import t
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorPyproject:
@@ -31,7 +30,10 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("unchanged for flext-core" in change for change in migration[0].changes), eq=True
+            any(
+                "unchanged for flext-core" in change for change in migration[0].changes
+            ),
+            eq=True,
         )
 
     def test_flext_core_dry_run(self, tmp_path: Path) -> None:
@@ -66,7 +68,10 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         )
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(any("already includes" in change for change in migration[0].changes), eq=True)
+        tm.that(
+            any("already includes" in change for change in migration[0].changes),
+            eq=True,
+        )
 
     def test_poetry_table_missing(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
@@ -81,7 +86,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in change for change in migration[0].changes), eq=True
+            any("flext-core dependency" in change for change in migration[0].changes),
+            eq=True,
         )
 
     def test_poetry_deps_not_table(self, tmp_path: Path) -> None:
@@ -97,7 +103,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in change for change in migration[0].changes), eq=True
+            any("flext-core dependency" in change for change in migration[0].changes),
+            eq=True,
         )
 
     def test_makefile_not_found(self, tmp_path: Path) -> None:

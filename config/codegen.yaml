@@ -14,6 +14,11 @@ Infra:
       python_version: "3.13.11"
       uv_version: "0.11.29"
       uv_link_mode: copy
+      # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
+      # .mise.toml and the ci-matrix workflow kind leg.
+      kubectl_version: "1.32.0"
+      helm_version: "3.19.4"
+      kind_version: "0.31.0"
 
     providers:
       - name: flext-sh
@@ -350,6 +355,38 @@ Infra:
           overwrite: false
         - source: base/.mise.toml.j2
           destination: .mise.toml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
+        # clean-machine images validating bootstrap and make verbs everywhere.
+        - source: base/.github/workflows/ci-matrix.yml.j2
+          destination: .github/workflows/ci-matrix.yml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/ubuntu.Dockerfile.j2
+          destination: ci/docker/ubuntu.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/debian.Dockerfile.j2
+          destination: ci/docker/debian.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/fedora.Dockerfile.j2
+          destination: ci/docker/fedora.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/alpine.Dockerfile.j2
+          destination: ci/docker/alpine.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/arch.Dockerfile.j2
+          destination: ci/docker/arch.Dockerfile
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

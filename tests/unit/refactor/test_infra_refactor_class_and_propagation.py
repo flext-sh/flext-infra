@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )
@@ -12,7 +14,6 @@ from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
 from tests import m
-from flext_tests import tm
 
 
 class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:

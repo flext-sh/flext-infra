@@ -31,9 +31,7 @@ def real_git_repo(tmp_path: Path) -> Path:
     """
     repo_root = tmp_path / "git_repo"
     repo_root.mkdir()
-    (repo_root / "README.md").write_text(
-        "# Test Repository\n", encoding="utf-8"
-    )
+    (repo_root / "README.md").write_text("# Test Repository\n", encoding="utf-8")
     # FLEXT: one real-Git initializer owns branch, identity, staging, and commit.
     u.Tests.initialize_git_repo(repo_root)
 

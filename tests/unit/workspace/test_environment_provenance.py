@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_tests import tm
+
 from flext_infra import m
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
-from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -174,8 +175,8 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
         """Parse the public workspace CLI flag into the canonical request field."""
         workspace = _workspace(tmp_path / "workspace")
 
-        request = m.Infra.WorkspaceEnvironmentRequest.model_validate(
-            {"workspace": workspace}
-        )
+        request = m.Infra.WorkspaceEnvironmentRequest.model_validate({
+            "workspace": workspace
+        })
 
         tm.that(request.workspace_root, eq=workspace)

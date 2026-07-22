@@ -150,6 +150,7 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+
     class CustomHandlerPolicy(_ConfigContract):
         """Strict schema for the only handwritten Make extension file."""
 
@@ -686,22 +687,18 @@ class FlextInfraConfigModels:
     class CodegenArtifactSpec(_ConfigContract):
         """One ephemeral/generated resource every ignore/exclude derives from."""
 
-        name: Annotated[
-            t.NonEmptyStr, m.Field(description="Basename of the resource")
-        ]
-        is_dir: Annotated[
-            bool, m.Field(description="Directory (vs file) resource")
-        ] = True
+        name: Annotated[t.NonEmptyStr, m.Field(description="Basename of the resource")]
+        is_dir: Annotated[bool, m.Field(description="Directory (vs file) resource")] = (
+            True
+        )
         vscode_exclude: Annotated[
-            bool,
-            m.Field(description="Feed VS Code files.exclude + search.exclude"),
+            bool, m.Field(description="Feed VS Code files.exclude + search.exclude")
         ] = True
         watch_exclude: Annotated[
             bool, m.Field(description="Feed VS Code files.watcherExclude")
         ] = True
         gitignore: Annotated[
-            bool,
-            m.Field(description="Feed the Python/tool section of .gitignore"),
+            bool, m.Field(description="Feed the Python/tool section of .gitignore")
         ] = True
         source_scan_ignore: Annotated[
             bool, m.Field(description="Feed source_scan.ignored_resources")
@@ -1045,7 +1042,8 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]
         owner: Annotated[
-            str, m.Field(description="Canonical artifact owner, empty for scaffold files")
+            str,
+            m.Field(description="Canonical artifact owner, empty for scaffold files"),
         ] = ""
         policy: Annotated[
             Literal["full", "merge", "create-only", "delegated", "manual"] | None,

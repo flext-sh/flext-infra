@@ -36,9 +36,7 @@ def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:
     (root / "pyproject.toml").write_text(
         f'requires-python = ">=3.{python_minor}"\n', encoding="utf-8"
     )
-    (root / ".python-version").write_text(
-        f"3.{python_minor}\n", encoding="utf-8"
-    )
+    (root / ".python-version").write_text(f"3.{python_minor}\n", encoding="utf-8")
     return root
 
 

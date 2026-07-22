@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests import c
-from tests import u
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path

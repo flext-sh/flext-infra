@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests import m
-from tests import t
-from tests import u
 from flext_tests import tm
+
+from tests import m, t, u
 
 _MIN_MARKDOWN_NEWLINES = 3
 
