@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -110,6 +111,20 @@ class FlextInfraProjectMakefileUpdater:
         return tests_dir
 
     @staticmethod
+    def _python_selector(requires_python: str) -> str:
+        """Derive the bare ``major.minor`` interpreter selector for Make.
+
+        The generated Makefile feeds ``PYTHON_VERSION`` into
+        ``command -v python$(PYTHON_VERSION)`` in the standalone bootstrap
+        (``makefile_bootstrap.mk.j2``), so it must be an interpreter suffix
+        like ``3.13`` — NOT the PEP 440 requirement specifier
+        (``>=3.13,<3.14``) that ``requires-python`` carries. Mirrors the
+        canonical derivation in ``environment.workspace_python_version``.
+        """
+        match = re.search(r">=\s*(3\.\d+)", requires_python)
+        return match.group(1) if match else requires_python
+
+    @staticmethod
     def _build_makefile(
         meta: p.ProjectMetadata, bootstrap: str, *, tests_dir: str
     ) -> str:
@@ -128,7 +143,7 @@ class FlextInfraProjectMakefileUpdater:
             sep,
             "",
             f"PROJECT_NAME := {meta.project.name}",
-            f"PYTHON_VERSION ?= {meta.project.requires_python}",
+            f"PYTHON_VERSION ?= {FlextInfraProjectMakefileUpdater._python_selector(meta.project.requires_python)}",
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
             f"TESTS_DIR ?= {tests_dir}",
             bootstrap,
