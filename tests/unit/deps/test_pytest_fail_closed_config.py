@@ -35,7 +35,15 @@ testpaths = ["architecture", "guides", "tests"]
         second_change_summary = "\n".join(second_changes)
         tm.that(second_change_summary, lacks="filterwarnings")
         tm.that(second_change_summary, lacks="testpaths")
-        tm.that(rendered, has='filterwarnings = [\n    "error",\n]')
+        tm.that(
+            rendered,
+            has=(
+                'filterwarnings = [\n'
+                '    "error",\n'
+                '    "module::flext_core._constants.enforcement.FlextMroViolation",\n'
+                ']'
+            ),
+        )
         tm.that(rendered, has='testpaths = [\n    "tests",\n]')
         for preserved_value in ("custom: stale local marker", "Spec*", "spec_*.py"):
             tm.that(rendered, has=preserved_value)

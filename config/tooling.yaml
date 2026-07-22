@@ -457,7 +457,15 @@ Infra:
         python-files: ["*_test.py", "*_tests.py", "test_*.py"]
         # mro-pulj (codex): collect executable tests only; docs/examples are consumers.
         test-paths: [tests]
-        filter-warnings: [error]
+        # pytest applies filterwarnings last-entry-wins; the conform phase +
+        # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
+        # "error" to survive re-conform. Only module::/once:: sort after 'error'
+        # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
+        # lose. module:: keeps FlextMroViolation (and its FlextSmellViolation
+        # subclass) VISIBLE-but-non-fatal, matching the non-strict enforcement
+        # policy (flext-tests registers default::{category}); all other warnings
+        # stay fatal. See flext-core test_enforcement_warning_visibility.
+        filter-warnings: [error, "module::flext_core._constants.enforcement.FlextMroViolation"]
         standard-markers:
           - "smoke: public-interface smoke tests"
           - "unit: unit tests"
