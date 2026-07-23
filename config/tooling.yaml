@@ -162,16 +162,7 @@ Infra:
               - import-private-name
               - non-empty-init-module
               - runtime-import-in-type-checking-block
-            # flext_cli runtime/processes is the SOLE sanctioned subprocess execution
-            # boundary (single-engine): every other module must use the u.Cli facade.
-            # S404/S603 are exempt ONLY at this boundary, never anywhere else
-            # (operator single-engine law 2026-07-21).
-            "**/flext_cli/_utilities/runtime.py":
-              - S404
-              - S603
-            "**/flext_cli/_utilities/processes.py":
-              - S404
-              - S603
+
       mypy:
         plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
         # mro-j47u: every retained global exclusion carries its tested rationale;
