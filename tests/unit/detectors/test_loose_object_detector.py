@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class TestsFlextInfraLooseObjectDetector:
     @staticmethod
     def _violations(
         *, project: Path, file_path: Path
-    ) -> tuple[m.Infra.LooseObjectViolation, ...]:
+    ) -> tuple[p.Infra.LooseObjectViolation, ...]:
         parse_failures: list[m.Infra.ParseFailureViolation] = []
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraLooseObjectDetector.detect_file(

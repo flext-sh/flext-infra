@@ -15,7 +15,7 @@ import pytest
 from flext_tests import r, tm
 
 from flext_infra.codegen.census import FlextInfraCodegenCensus
-from tests import m, u
+from tests import m, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,9 +23,9 @@ if TYPE_CHECKING:
     from tests import t
 
 
-def _parse_violation(violation: str) -> m.Infra.CensusViolation | None:
+def _parse_violation(violation: str) -> p.Infra.CensusViolation | None:
     parsed = u.Infra.parse_namespace_validation(
-        r[m.Infra.ValidationReport].ok(
+        r[p.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(passed=True, violations=[violation])
         )
     )

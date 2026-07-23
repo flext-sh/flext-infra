@@ -36,7 +36,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
 
-            def __init__(self, result: p.Result[Sequence[m.Infra.ProjectInfo]]) -> None:
+            def __init__(self, result: p.Result[Sequence[p.Infra.ProjectInfo]]) -> None:
                 """Store the typed project-selection result."""
                 self._result = result
 
@@ -46,7 +46,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 names: t.StrSequence,
                 *,
                 include_attached: bool = False,
-            ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+            ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
                 del workspace_root, names, include_attached
                 return self._result
@@ -388,7 +388,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def __init__(
                 self,
-                projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+                projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
                 *,
                 error: str = "",
             ) -> None:
@@ -398,12 +398,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def discover_projects(
                 self, workspace_root: Path
-            ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
+            ) -> p.Result[Sequence[p.Infra.ProjectInfo]]:
                 """Provide the typed test helper `discover_projects`."""
                 _ = workspace_root
                 if self._error:
-                    return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
-                return r[Sequence[m.Infra.ProjectInfo]].ok(self._projects)
+                    return r[Sequence[p.Infra.ProjectInfo]].fail(self._error)
+                return r[Sequence[p.Infra.ProjectInfo]].ok(self._projects)
 
         class MigratorGenerator(FlextInfraBaseMkGenerator):
             """Typed base.mk generator stub for migrator behavior tests."""
@@ -887,9 +887,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def create_migrator_project(
             project_root: Path, name: str = "project-a"
-        ) -> m.Infra.ProjectInfo:
+        ) -> p.Infra.ProjectInfo:
             """Create a typed project fixture for migration tests."""
-            return m.Infra.ProjectInfo.model_validate(
+            return p.Infra.ProjectInfo.model_validate(
                 obj={
                     "name": name,
                     "path": project_root,
@@ -942,7 +942,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_role: c.Infra.WorkspaceProjectRole = (
                 c.Infra.WorkspaceProjectRole.ATTACHED
             ),
-        ) -> m.Infra.ProjectInfo:
+        ) -> p.Infra.ProjectInfo:
             """Provide the typed test helper `create_project_info`."""
             return m.Infra.ProjectInfo(
                 name=name,
@@ -971,7 +971,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def create_deptry_service(
             *,
-            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+            projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
             selection_error: str | None = None,
             command_output: m.Cli.CommandOutput | None = None,
             run_error: str | None = None,
@@ -979,9 +979,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Provide the typed test helper `create_deptry_service`."""
             service = FlextInfraDependencyDetectionService()
             service.selector = TestsFlextInfraUtilities.Tests.DeptrySelector(
-                r[Sequence[m.Infra.ProjectInfo]].fail(selection_error)
+                r[Sequence[p.Infra.ProjectInfo]].fail(selection_error)
                 if selection_error is not None
-                else r[Sequence[m.Infra.ProjectInfo]].ok(list(projects or []))
+                else r[Sequence[p.Infra.ProjectInfo]].ok(list(projects or []))
             )
             service.runner = TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r[m.Cli.CommandOutput].fail(run_error)
@@ -1161,7 +1161,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_migrator_discovery(
-            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+            projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
             *,
             error: str = "",
         ) -> p.Infra.Discovery:
@@ -1179,7 +1179,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def build_project_migrator(
-            project: m.Infra.ProjectInfo,
+            project: p.Infra.ProjectInfo,
             base_mk: str,
             *,
             workspace_root: Path | None = None,
@@ -1404,12 +1404,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 limits_path: Path | None = None,
                 *,
                 include_mypy: bool = True,
-            ) -> p.Result[m.Infra.TypingsReport]:
+            ) -> p.Result[p.Infra.TypingsReport]:
                 del project_path, limits_path
                 del include_mypy
                 if self.typings_failure is not None:
-                    return r[m.Infra.TypingsReport].fail(self.typings_failure)
-                return r[m.Infra.TypingsReport].ok(m.Infra.TypingsReport(to_add=[]))
+                    return r[p.Infra.TypingsReport].fail(self.typings_failure)
+                return r[p.Infra.TypingsReport].ok(m.Infra.TypingsReport(to_add=[]))
 
             @override
             def load_dependency_limits(

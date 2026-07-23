@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import m, u
+from flext_infra import m, p, u
 from flext_infra.detectors.loose_test_function_detector import (
     FlextInfraLooseTestFunctionDetector,
 )
@@ -31,7 +31,7 @@ class TestsFlextInfraLooseTestFunctionDetector:
     @staticmethod
     def _violations(
         *, project: Path, file_path: Path
-    ) -> tuple[m.Infra.LooseTestFunctionViolation, ...]:
+    ) -> tuple[p.Infra.LooseTestFunctionViolation, ...]:
         with u.Infra.open_project(project) as rope_project:
             violations = FlextInfraLooseTestFunctionDetector.detect_file(
                 m.Infra.DetectorContext(

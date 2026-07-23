@@ -17,7 +17,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
-from tests import m, u
+from tests import m, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -37,7 +37,7 @@ class TestLazyMapFreshnessValidatorCore:
     def test_empty_workspace_yields_passing_report(
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
@@ -45,13 +45,13 @@ class TestLazyMapFreshnessValidatorCore:
     def test_passing_summary_mentions_lazy_maps(
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="lazy")
 
     def test_report_is_validation_report(
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
 
     def test_stale_generated_lazy_map_fails_report(
@@ -69,7 +69,7 @@ class TestLazyMapFreshnessValidatorCore:
             encoding="utf-8",
         )
 
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(workspace_root))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(workspace_root))
 
         tm.that(report.passed, eq=False)
         tm.that(report.summary, has="stale")

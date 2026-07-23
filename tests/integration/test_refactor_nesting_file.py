@@ -10,7 +10,7 @@ from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from tests import m, t
@@ -35,7 +35,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool,
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Expose class nesting through the integration harness contract."""
         return self._apply_file_rule_selection(
             c.Infra.RefactorFileRuleKind.CLASS_NESTING,
@@ -48,7 +48,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 
 def _apply_rule(
     workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
+) -> p.Infra.Result:
     rule = _FileRuleHarness(config_path)
     rope_project = u.Infra.init_rope_project(workspace_root)
     try:

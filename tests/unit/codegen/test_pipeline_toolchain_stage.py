@@ -47,13 +47,13 @@ def test_toolchain_stage_builds_full_workspace_conform_request(
     def execute_request(
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> r[m.Infra.CodegenResult]:
+    ) -> r[p.Infra.CodegenResult]:
         del initial_workspace
         captured.append(request)
         plan = m.Infra.CodegenPlan.model_construct(
             request=request, repositories=(), files=()
         )
-        return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
+        return r[p.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
 
     monkeypatch.setattr(
         FlextInfraCodegenConform, "execute_request", staticmethod(execute_request)
@@ -86,9 +86,9 @@ def test_toolchain_stage_propagates_conform_failure(
     def execute_request(
         request: m.Infra.CodegenConformRequest,
         initial_workspace: m.Infra.WorkspaceSpec | None = None,
-    ) -> r[m.Infra.CodegenResult]:
+    ) -> r[p.Infra.CodegenResult]:
         del request, initial_workspace
-        return r[m.Infra.CodegenResult].fail("codegen drift detected: pyproject.toml")
+        return r[p.Infra.CodegenResult].fail("codegen drift detected: pyproject.toml")
 
     monkeypatch.setattr(
         FlextInfraCodegenConform, "execute_request", staticmethod(execute_request)

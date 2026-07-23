@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,7 +46,7 @@ class TestPytestDiagExtractorBehavior:
         log = tmp_path / "log.txt"
         log.write_text("")
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, log).extract(junit, log)
         )
 
@@ -61,14 +61,14 @@ class TestPytestDiagExtractorBehavior:
         log.write_text("FAILED test_case.py::test_foo")
         missing_xml = tmp_path / "missing.xml"
 
-        missing_report: m.Infra.PytestDiagnostics = tm.ok(
+        missing_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(missing_xml, log).extract(missing_xml, log)
         )
         tm.that(missing_report.failed_cases, length_gt=0)
 
         bad_xml = tmp_path / "bad.xml"
         bad_xml.write_text("invalid xml content")
-        invalid_report: m.Infra.PytestDiagnostics = tm.ok(
+        invalid_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(bad_xml, log).extract(bad_xml, log)
         )
         tm.that(invalid_report.failed_cases, length_gt=0)
@@ -84,7 +84,7 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>"
         )
 
-        fail_report: m.Infra.PytestDiagnostics = tm.ok(
+        fail_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(fail_xml, log).extract(fail_xml, log)
         )
         tm.that(fail_report.failed_count, eq=1)
@@ -98,7 +98,7 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>"
         )
 
-        err_report: m.Infra.PytestDiagnostics = tm.ok(
+        err_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(err_xml, log).extract(err_xml, log)
         )
         tm.that(err_report.error_count, eq=1)
@@ -114,7 +114,7 @@ class TestPytestDiagExtractorBehavior:
             "</testcase></testsuite></testsuites>"
         )
 
-        skip_report: m.Infra.PytestDiagnostics = tm.ok(
+        skip_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(skip_xml, log).extract(skip_xml, log)
         )
         tm.that(skip_report.skipped_count, eq=1)
@@ -126,7 +126,7 @@ class TestPytestDiagExtractorBehavior:
             "</testsuite></testsuites>"
         )
 
-        slow_report: m.Infra.PytestDiagnostics = tm.ok(
+        slow_report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
@@ -138,7 +138,7 @@ class TestPytestDiagExtractorBehavior:
             '<testsuite name="t" tests="0"/></testsuites>'
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, tmp_path / "missing.txt").extract(
                 junit, tmp_path / "missing.txt"
             )
@@ -170,7 +170,7 @@ class TestPytestDiagExtractorBehavior:
             "-- Docs: https://docs.pytest.org/\n"
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, log).extract(junit, log)
         )
 
@@ -182,7 +182,7 @@ class TestPytestDiagExtractorBehavior:
         log = tmp_path / "log.txt"
         log.write_text("test_case.py:10: DeprecationWarning: test warning")
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, log).extract(junit, log)
         )
 
@@ -200,7 +200,7 @@ class TestPytestDiagExtractorBehavior:
             "=== 2 passed in 6.00s ===\n"
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        report: p.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, log).extract(junit, log)
         )
 

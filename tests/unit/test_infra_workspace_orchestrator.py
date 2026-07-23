@@ -76,20 +76,20 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         def __init__(
             self,
             runner: TestsFlextInfraInfraWorkspaceOrchestrator.ProjectRunner,
-            project: m.Infra.ProjectInfo,
+            project: p.Infra.ProjectInfo,
         ) -> None:
             """Initialize an executable orchestrator for one resolved project."""
             super().__init__(runner, verb="check")
             self._project = project
 
         @override
-        def _resolved_projects(self) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-            return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([self._project])
+        def _resolved_projects(self) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].ok([self._project])
 
         @staticmethod
         @override
         def _prepare_projects(
-            projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+            projects: t.SequenceOf[p.Infra.ProjectInfo], *, workspace_root: Path
         ) -> p.Result[bool]:
             _ = (projects, workspace_root)
             return r[bool].ok(True)

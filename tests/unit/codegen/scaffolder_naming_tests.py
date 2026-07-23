@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests import c, u
+from tests import c, p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -60,7 +60,7 @@ def _validate_class_names(
 
 def _project_info(
     project: Path, *, package_name: str = "test_project"
-) -> m.Infra.ProjectInfo:
+) -> p.Infra.ProjectInfo:
     return u.Tests.create_project_info(
         project, name=project.name, package_name=package_name
     )

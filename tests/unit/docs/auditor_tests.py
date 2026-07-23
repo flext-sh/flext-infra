@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests import m, u
+from tests import m, p, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -118,7 +118,7 @@ class TestAuditorCore:
         tm.that(result.success or result.failure, eq=True)
 
     def test_report_frozen(self) -> None:
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(p.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     def test_issue_frozen(self) -> None:
         tm.that(m.Infra.AuditIssue.model_config.get("frozen"), eq=True)

@@ -14,7 +14,7 @@ from flext_tests import tf, tm
 from flext_infra.validate.metadata_discipline import (
     FlextInfraValidateMetadataDiscipline,
 )
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -49,7 +49,7 @@ class TestMetadataDiscipline:
     def test_empty_workspace_passes(
         self, tmp_path: Path, v: FlextInfraValidateMetadataDiscipline
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -58,7 +58,7 @@ class TestMetadataDiscipline:
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("import json\n", "ok.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
     def test_direct_tomllib_import_fails(
@@ -66,7 +66,7 @@ class TestMetadataDiscipline:
     ) -> None:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("import tomllib\n", "bad.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         tm.that(" | ".join(report.violations), has="tomllib")
 
@@ -83,7 +83,7 @@ class TestMetadataDiscipline:
         )
         allowlisted.parent.mkdir(parents=True, exist_ok=True)
         allowlisted.write_text("import tomllib\n", encoding="utf-8")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
     def test_outside_flext_infra_scope_is_ignored(
@@ -93,7 +93,7 @@ class TestMetadataDiscipline:
         external.mkdir(parents=True, exist_ok=True)
         (external / "__init__.py").write_text("", encoding="utf-8")
         (external / "bad.py").write_text("import tomllib\n", encoding="utf-8")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
 

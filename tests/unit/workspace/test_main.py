@@ -11,7 +11,7 @@ from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests import c, m, t, u
+from tests import c, m, p, t, u
 
 if TYPE_CHECKING:
     from tests import p
@@ -62,13 +62,13 @@ def _install_successful_orchestration(
 
     def _resolved_projects(
         self: FlextInfraOrchestratorService,
-    ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
+    ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         del self
-        return r[t.SequenceOf[m.Infra.ProjectInfo]].ok([project])
+        return r[t.SequenceOf[p.Infra.ProjectInfo]].ok([project])
 
     def _prepare_projects(
         self: FlextInfraOrchestratorService,
-        projects: t.SequenceOf[m.Infra.ProjectInfo],
+        projects: t.SequenceOf[p.Infra.ProjectInfo],
         *,
         workspace_root: Path,
     ) -> p.Result[bool]:

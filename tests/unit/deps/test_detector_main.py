@@ -53,11 +53,11 @@ class _DepsStub(
         limits_path: Path | None = None,
         *,
         include_mypy: bool = True,
-    ) -> p.Result[m.Infra.TypingsReport]:
+    ) -> p.Result[p.Infra.TypingsReport]:
         self.typings_calls += 1
         del project_path, limits_path
         del include_mypy
-        return r[m.Infra.TypingsReport].ok(
+        return r[p.Infra.TypingsReport].ok(
             m.Infra.TypingsReport(to_add=list(self._to_add))
         )
 

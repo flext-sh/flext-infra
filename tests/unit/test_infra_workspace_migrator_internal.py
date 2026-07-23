@@ -10,7 +10,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from tests import m
@@ -57,7 +57,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             dry_run=True,
         )
 
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
+        migration: p.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(
             any(
@@ -75,7 +75,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             workspace_root=tmp_path,
         )
 
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
+        migration: p.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(any("Makefile read failed" in err for err in migration.errors), eq=True)
 
@@ -102,7 +102,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             dry_run=False,
         )
 
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
+        migration: p.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(len(migration.errors), eq=0)
         tm.that(migration.changes, has="no changes needed")
@@ -121,7 +121,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             dry_run=False,
         )
 
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
+        migration: p.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(any("TOML write" in err for err in migration.errors), eq=True)
 
@@ -139,7 +139,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             dry_run=False,
         )
 
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
+        migration: p.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
         tm.that(len(migration.errors), eq=0)
         tm.that(

@@ -12,7 +12,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,12 +33,12 @@ class TestBuilderCore:
         self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with valid scope returns success."""
-        reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
+        reports: t.SequenceOf[p.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:
         """Test BuildReport is frozen (immutable)."""
-        tm.that(m.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
+        tm.that(p.Infra.DocsPhaseReport.model_config.get("frozen"), eq=True)
 
     @pytest.mark.parametrize(
         "kwargs",

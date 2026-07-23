@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests import t, u
+from tests import p, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -65,7 +65,7 @@ class TestsFlextInfraDepsDetectionUncovered:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        report: m.Infra.TypingsReport = tm.ok(
+        report: p.Infra.TypingsReport = tm.ok(
             service.get_required_typings(tmp_path, limits_path=limits_path)
         )
         tm.that(report.limits_applied, eq=True)

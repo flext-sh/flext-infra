@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,7 +50,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
     def test_run_rope_post_hooks_applies_mro_migration(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
-        results: list[m.Infra.Result] = list(
+        results: list[p.Infra.Result] = list(
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
         )
 
@@ -70,7 +70,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
         original_constants = constants_path.read_text(encoding="utf-8")
         original_consumer = consumer_path.read_text(encoding="utf-8")
 
-        results: list[m.Infra.Result] = list(
+        results: list[p.Infra.Result] = list(
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
         )
 

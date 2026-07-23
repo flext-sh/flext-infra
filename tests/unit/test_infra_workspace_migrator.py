@@ -9,7 +9,7 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -32,7 +32,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             dry_run=True,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n")
 
@@ -48,7 +48,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             dry_run=False,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(len(migrations[0].errors), eq=0)
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
@@ -147,7 +147,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         migrator.discovery = u.Tests.create_migrator_discovery([])
         migrator.generator = u.Tests.create_migrator_generator("base.mk")
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(len(migrations), gte=1)
 
     def test_migrator_no_changes_needed(self, tmp_path: Path) -> None:
@@ -169,5 +169,5 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             dry_run=False,
         )
         result = migrator.execute()
-        migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migrations: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(migrations[0].changes, has="no changes needed")

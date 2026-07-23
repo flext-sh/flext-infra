@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, override
 
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-from tests import c, tm, u
+from tests import c, p, tm, u
 
 if TYPE_CHECKING:
     from tests import m, t
@@ -33,7 +33,7 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         resource: t.Infra.RopeResource,
         *,
         dry_run: bool,
-    ) -> m.Infra.Result:
+    ) -> p.Infra.Result:
         """Expose class nesting through the performance harness contract."""
         return self._apply_file_rule_selection(
             c.Infra.RefactorFileRuleKind.CLASS_NESTING,

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra import c
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,7 +29,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("unchanged for flext-core" in c for c in migration[0].changes), eq=True
         )
@@ -45,7 +45,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "unchanged for flext-core" in c
@@ -65,7 +65,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(any("already includes" in c for c in migration[0].changes), eq=True)
 
     def test_poetry_table_missing(self, tmp_path: Path) -> None:
@@ -79,7 +79,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("flext-core dependency" in c for c in migration[0].changes), eq=True
         )
@@ -95,7 +95,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any("flext-core dependency" in c for c in migration[0].changes), eq=True
         )
@@ -111,7 +111,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "Makefile not found" in c
@@ -131,7 +131,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and "pyproject.toml not found" in c
@@ -153,7 +153,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             dry_run=True,
         )
         result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
+        migration: t.SequenceOf[p.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
                 "[DRY-RUN]" in c and ".gitignore already normalized" in c

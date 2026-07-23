@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests import u
+from tests import p, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 def _project_info(
     project: Path, *, package_name: str = "test_proj"
-) -> m.Infra.ProjectInfo:
+) -> p.Infra.ProjectInfo:
     return u.Tests.create_project_info(
         project, name=project.name, package_name=package_name
     )

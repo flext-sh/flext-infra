@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -47,7 +47,7 @@ class TestsTestImportDag:
         self, tmp_path: Path, source: str, imported: str
     ) -> None:
         project = self._project(tmp_path, {source: imported})
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project)
         )
         tm.that(report.passed, eq=False)
@@ -70,7 +70,7 @@ class TestsTestImportDag:
                 ),
             },
         )
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             FlextInfraValidateTestImportDag().build_report(project)
         )
         tm.that(report.passed, eq=True)

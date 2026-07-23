@@ -16,7 +16,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -34,18 +34,18 @@ class TestFreshImportValidatorCore:
     """Core validation: clean imports vs broken imports."""
 
     def test_empty_package_list_passes(self, v: FlextInfraValidateFreshImport) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
 
     def test_stdlib_package_passes(self, v: FlextInfraValidateFreshImport) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
 
     def test_nonexistent_package_fails(self, v: FlextInfraValidateFreshImport) -> None:
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_pkg_xyz_abc_123",))
         )
         tm.that(report.passed, eq=False)
@@ -55,7 +55,7 @@ class TestFreshImportValidatorCore:
     def test_mixed_good_and_bad_reports_only_bad(
         self, v: FlextInfraValidateFreshImport
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os"))
         )
         tm.that(report.passed, eq=False)
@@ -65,7 +65,7 @@ class TestFreshImportValidatorCore:
     def test_summary_reports_failure_count(
         self, v: FlextInfraValidateFreshImport
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_a_qqq", "nonexistent_b_qqq"))
         )
         tm.that(report.summary, has="2")
@@ -74,7 +74,7 @@ class TestFreshImportValidatorCore:
     def test_passing_summary_is_human_readable(
         self, v: FlextInfraValidateFreshImport
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
         tm.that(report.summary, has="import")
 
     def test_workspace_src_package_passes(self, tmp_path: Path) -> None:
@@ -82,7 +82,7 @@ class TestFreshImportValidatorCore:
         package_root.mkdir(parents=True)
         package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
         validator = FlextInfraValidateFreshImport(workspace_root=tmp_path)
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             validator.build_report(packages=("demo_external",))
         )
         assert report.passed, report.violations
@@ -92,7 +92,7 @@ class TestFreshImportValidatorFlextPackages:
     """Smoke: core flext packages must import cleanly."""
 
     def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))
         )
         assert report.passed, report.summary
@@ -100,7 +100,7 @@ class TestFreshImportValidatorFlextPackages:
     def test_flext_infra_imports_cleanly(
         self, v: FlextInfraValidateFreshImport
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(
+        report: p.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_infra",))
         )
         assert report.passed, report.summary

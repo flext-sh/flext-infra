@@ -17,7 +17,7 @@ import pytest
 from flext_tests import tf, tm
 
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-from tests import m
+from tests import m, p
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -44,7 +44,7 @@ class TestImportCyclesValidatorCore:
     def test_empty_workspace_passes(
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
 
@@ -54,7 +54,7 @@ class TestImportCyclesValidatorCore:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("X = 1\n", "a.py")
         tf(base_dir=pkg).create("from pkg.a import X\n", "b.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
     def test_two_module_cycle_fails(
@@ -63,7 +63,7 @@ class TestImportCyclesValidatorCore:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="pkg.a")
@@ -76,7 +76,7 @@ class TestImportCyclesValidatorCore:
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import c\n", "b.py")
         tf(base_dir=pkg).create("from pkg import a\n", "c.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="pkg.a")
@@ -97,7 +97,7 @@ class TestImportCyclesValidatorCore:
             "a.py",
         )
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
 
 
@@ -110,7 +110,7 @@ class TestImportCyclesValidatorSummary:
         pkg = _seed_pkg(tmp_path)
         tf(base_dir=pkg).create("from pkg import b\n", "a.py")
         tf(base_dir=pkg).create("from pkg import a\n", "b.py")
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="1")
         tm.that(report.summary, has="cycle")
 
@@ -118,7 +118,7 @@ class TestImportCyclesValidatorSummary:
         self, tmp_path: Path, v: FlextInfraValidateImportCycles
     ) -> None:
         _seed_pkg(tmp_path)
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.summary, has="cycle")
 
 
@@ -161,7 +161,7 @@ class TestImportCyclesPerProjectScope:
             {"b.py": "from examples.a import X\n", "a.py": "X = 1\n"},
             pkg="examples",
         )
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="scanned 6 modules")
 
@@ -177,7 +177,7 @@ class TestImportCyclesPerProjectScope:
         self._seed_project(
             tmp_path, "beta", {"a.py": "X = 1\n", "b.py": "from tests.a import X\n"}
         )
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
+        report: p.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)
         tm.that(joined, has="[alpha]")
