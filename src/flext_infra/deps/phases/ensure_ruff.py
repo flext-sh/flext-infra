@@ -69,12 +69,38 @@ class FlextInfraEnsureRuffConfigPhase:
             return ["removed stale top-level [lint] section"]
         return ()
 
+    @staticmethod
+    def _project_per_file_ignores(project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
+        """Load validated project-owned Ruff additions from ``config/*.yaml``."""
+        config_dir = project_dir / c.CONFIG_DIR_NAME
+        if not config_dir.is_dir():
+            return {}
+        loaded = u.Cli.config_load_dir(config_dir)
+        if loaded.failure:
+            msg = loaded.error or f"project config load failed: {config_dir}"
+            raise ValueError(msg)
+        merged: t.MutableJsonMapping = {}
+        for document in loaded.value.values():
+            merged.update(document.data)
+        project_config = m.Infra.ProjectConfigDocument.model_validate(merged)
+        return project_config.ManagedArtifacts.Ruff.per_file_ignores
+
+    def _per_file_ignores(self, project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
+        """Compose global policy with the current project's managed additions."""
+        global_ignores = self._tool_config.tools.ruff.lint.per_file_ignores
+        local_ignores = self._project_per_file_ignores(project_dir)
+        return {
+            pattern: tuple(sorted({*global_ignores.get(pattern, ()), *rules}))
+            for pattern, rules in {**global_ignores, **local_ignores}.items()
+        }
+
     def _phase(
         self,
         *,
         path: Path,
         workspace_namespaces: t.StrSequence,
         stale_patterns: t.StrSequence,
+        per_file_ignores: t.MappingKV[str, t.StrSequence],
         include_handler: bool,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
@@ -152,7 +178,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 "per-file-ignores",
                 values=tuple(
                     (pattern, u.normalize_to_json_value(sorted(rules)))
-                    for pattern, rules in ruff_cfg.lint.per_file_ignores.items()
+                    for pattern, rules in per_file_ignores.items()
                 ),
                 deprecated_keys=stale_patterns,
             )
@@ -166,6 +192,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
         """Apply canonical Ruff tables with namespace-aware first-party detection."""
+        effective_ignores = self._per_file_ignores(path.parent)
         per_file_ignores = u.Cli.toml_table_path(
             doc, (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores")
         )
@@ -173,7 +200,7 @@ class FlextInfraEnsureRuffConfigPhase:
             [
                 pattern
                 for pattern in per_file_ignores
-                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
+                if pattern not in effective_ignores
             ]
             if per_file_ignores is not None
             else ()
@@ -186,6 +213,7 @@ class FlextInfraEnsureRuffConfigPhase:
                 # share the same first-party import contract.
                 workspace_namespaces=u.Infra.flext_dependency_namespaces(doc),
                 stale_patterns=stale_patterns,
+                per_file_ignores=effective_ignores,
                 include_handler=True,
             ),
         )
@@ -194,6 +222,7 @@ class FlextInfraEnsureRuffConfigPhase:
         self, payload: t.MutableJsonMapping, *, path: Path
     ) -> t.StrSequence:
         """Apply canonical Ruff settings directly to one normalized payload."""
+        effective_ignores = self._per_file_ignores(path.parent)
         per_file_ignores = u.Cli.toml_mapping_path(
             payload,
             (c.Infra.TOOL, c.Infra.RUFF, c.Infra.LINT_SECTION, "per-file-ignores"),
@@ -202,7 +231,7 @@ class FlextInfraEnsureRuffConfigPhase:
             [
                 pattern
                 for pattern in list(per_file_ignores)
-                if pattern not in self._tool_config.tools.ruff.lint.per_file_ignores
+                if pattern not in effective_ignores
             ]
             if per_file_ignores is not None
             else ()
@@ -222,6 +251,7 @@ class FlextInfraEnsureRuffConfigPhase:
                         ),
                     ),
                     stale_patterns=stale_patterns,
+                    per_file_ignores=effective_ignores,
                     include_handler=False,
                 ),
             )

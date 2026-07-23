@@ -128,6 +128,40 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
 
+    class ProjectRuffConfig(m.ArbitraryTypesModel):
+        """Project-owned Ruff additions for generated managed artifacts."""
+
+        per_file_ignores: Annotated[
+            t.MappingKV[str, t.StrSequence],
+            m.Field(
+                description="Project-local per-file rules merged with global policy."
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+
+    class ProjectManagedArtifactsConfig(m.ArbitraryTypesModel):
+        """Project-owned configuration for generated artifacts."""
+
+        Ruff: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.ProjectRuffConfig,
+            m.Field(description="Ruff additions owned by the current project."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigLinters.ProjectRuffConfig()
+            )
+        )
+
+    class ProjectConfigDocument(m.ArbitraryTypesModel):
+        """Relevant managed-artifact slice loaded from project config files."""
+
+        ManagedArtifacts: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.ProjectManagedArtifactsConfig,
+            m.Field(description="Project-local managed artifact configuration."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigLinters.ProjectManagedArtifactsConfig()
+            )
+        )
+
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 

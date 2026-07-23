@@ -39,9 +39,12 @@ class TestsFlextInfraDepsModernizerTooling:
         })
 
         tm.that(frozenset(tools.ruff.src), eq=tracked_surfaces)
-        tm.that(frozenset(tools.ruff.namespace_packages), eq=frozenset({"tests"}))
+        tm.that(
+            frozenset(tools.ruff.namespace_packages),
+            eq=frozenset({"examples", "scripts", "tests"}),
+        )
         tm.that(tracked_surfaces.isdisjoint(tools.ruff.exclude), eq=True)
-        tm.that(tools.mypy.exclude, eq=r"^legado(?:/|$)")
+        tm.that(tools.mypy.exclude, eq="")
         tm.that(frozenset(tools.pyright.path_rules.env_dirs), eq=tracked_surfaces)
         tm.that(
             hidden_globs.isdisjoint(tools.pyright.path_rules.default_excludes), eq=True
@@ -273,6 +276,76 @@ select = ["E501"]
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
+        doc = tomlkit.document()
+
+        _ = phase.apply(doc, path=project_dir / "pyproject.toml")
+        second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
+
+        tm.that(second_changes, eq=[])
+
+    def test_ruff_phase_applies_project_managed_artifact_overrides(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Project config extends Ruff policy only for its managed artifact."""
+        project_dir = tmp_path / "flext-cli"
+        config_dir = project_dir / "config"
+        config_dir.mkdir(parents=True)
+        (config_dir / "cli.yaml").write_text(
+            "ManagedArtifacts:\n"
+            "  Ruff:\n"
+            "    per_file_ignores:\n"
+            "      src/flext_cli/_config.py: [N802]\n",
+            encoding="utf-8",
+        )
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
+            doc, path=project_dir / "pyproject.toml"
+        )
+
+        root = u.Tests.toml_doc_mapping(doc)
+        lint = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])["lint"]
+        )
+        ignores = u.Tests.toml_mapping(lint["per-file-ignores"])
+        tm.that(
+            list(u.Tests.toml_strings(ignores["src/flext_cli/_config.py"])), eq=["N802"]
+        )
+
+    def test_ruff_phase_does_not_leak_other_project_overrides(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """A project without local policy receives only the global Ruff policy."""
+        project_dir = tmp_path / "flext-tests"
+        project_dir.mkdir()
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
+            doc, path=project_dir / "pyproject.toml"
+        )
+
+        root = u.Tests.toml_doc_mapping(doc)
+        lint = u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])["lint"]
+        )
+        ignores = u.Tests.toml_mapping(lint["per-file-ignores"])
+        tm.that(ignores, lacks="src/flext_cli/_config.py")
+
+    def test_ruff_phase_project_overrides_are_idempotent(
+        self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
+    ) -> None:
+        """Repeated project-local policy application reaches one fixed point."""
+        project_dir = tmp_path / "flext-cli"
+        config_dir = project_dir / "config"
+        config_dir.mkdir(parents=True)
+        (config_dir / "cli.yaml").write_text(
+            "ManagedArtifacts:\n"
+            "  Ruff:\n"
+            "    per_file_ignores:\n"
+            "      src/flext_cli/_config.py: [N802]\n",
+            encoding="utf-8",
+        )
         phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
         doc = tomlkit.document()
 
