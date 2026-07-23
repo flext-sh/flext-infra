@@ -358,6 +358,55 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         """Return success when the live source already contains the patch target."""
         return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=True)
 
+    @staticmethod
+    def _git_patch_added_paths(patch: bytes) -> tuple[Path, ...]:
+        """Return paths declared as new files by one binary Git patch."""
+        added: list[Path] = []
+        current: Path | None = None
+        for raw_line in patch.splitlines():
+            if raw_line.startswith(b"diff --git a/"):
+                _, _, _source, target = raw_line.split(maxsplit=3)
+                current = Path(target.removeprefix(b"b/").decode())
+                continue
+            if raw_line.startswith(b"new file mode ") and current is not None:
+                added.append(current)
+        return tuple(added)
+
+    @classmethod
+    def _git_apply_with_ignored_additions(
+        cls, delta: m.Infra.RepositoryDelta
+    ) -> p.Result[bool]:
+        """Apply additions over existing ignored projections with rollback."""
+        collisions = tuple(
+            path
+            for path in cls._git_patch_added_paths(delta.patch)
+            if (delta.source_root / path).is_file()
+        )
+        if not collisions:
+            return r[bool].fail("patch has no existing ignored additions")
+        original = {
+            path: (delta.source_root / path).read_bytes() for path in collisions
+        }
+        for path in collisions:
+            (delta.source_root / path).unlink()
+        result = cls.git_run(
+            delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
+        )
+        if result.success and result.value.exit_code == 0:
+            return r[bool].ok(True)
+        for path, content in original.items():
+            target = delta.source_root / path
+            if target.exists():
+                target.unlink()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        if result.failure:
+            return r[bool].fail(result.error or "git apply failed")
+        output = result.value
+        return r[bool].fail(
+            (output.stderr or output.stdout).strip() or "git apply failed"
+        )
+
     @classmethod
     def git_apply_patch(cls, delta: m.Infra.RepositoryDelta) -> p.Result[bool]:
         """Forward-check and idempotently converge one source operation patch."""
@@ -368,9 +417,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             converged_result = cls._git_source_has_patch(delta)
             if converged_result.success:
                 return r[bool].ok(True)
-            return r[bool].fail(
-                check_result.error or "git apply --check failed before apply"
-            )
+            collision_result = cls._git_apply_with_ignored_additions(delta)
+            if collision_result.success:
+                return collision_result
+            return r[bool].fail(check_result.error or collision_result.error)
         result = cls.git_run(
             delta.source_root, ("apply", "--binary", "-"), input_data=delta.patch
         )

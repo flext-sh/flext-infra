@@ -127,6 +127,77 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=applied_status)
 
+    def test_apply_replaces_existing_ignored_canonical_addition(
+        self, tmp_path: Path
+    ) -> None:
+        """Converge an ignored projection that the patch canonically adds."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        (source_root / ".gitignore").write_text(".vscode/\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(source_root)
+        ignored = source_root / ".vscode" / "settings.json"
+        ignored.parent.mkdir()
+        ignored.write_text('{"strict": false}\n', encoding="utf-8")
+        worktree_root = tmp_path / "isolated"
+        checkpoint = tm.ok(
+            u.Infra.git_add_detached_worktree(source_root, worktree_root)
+        )
+        generated = worktree_root / ".vscode" / "settings.json"
+        generated.parent.mkdir()
+        generated.write_text('{"strict": true}\n', encoding="utf-8")
+        delta = tm.ok(
+            u.Infra.git_repository_delta(
+                m.Infra.RepositoryWorktree(
+                    relative_path=".",
+                    source_root=source_root,
+                    worktree_root=worktree_root,
+                    checkpoint_sha=checkpoint,
+                )
+            )
+        )
+
+        tm.ok(u.Infra.git_apply_patch(delta))
+
+        tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": true}\n')
+
+    def test_failed_collision_apply_restores_ignored_projection(
+        self, tmp_path: Path
+    ) -> None:
+        """Preserve ignored source bytes when another patch hunk conflicts."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        tracked = source_root / "tracked.txt"
+        tracked.write_text("before\n", encoding="utf-8")
+        (source_root / ".gitignore").write_text(".vscode/\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(source_root)
+        ignored = source_root / ".vscode" / "settings.json"
+        ignored.parent.mkdir()
+        ignored.write_text('{"strict": false}\n', encoding="utf-8")
+        worktree_root = tmp_path / "isolated"
+        checkpoint = tm.ok(
+            u.Infra.git_add_detached_worktree(source_root, worktree_root)
+        )
+        (worktree_root / "tracked.txt").write_text("after\n", encoding="utf-8")
+        generated = worktree_root / ".vscode" / "settings.json"
+        generated.parent.mkdir()
+        generated.write_text('{"strict": true}\n', encoding="utf-8")
+        delta = tm.ok(
+            u.Infra.git_repository_delta(
+                m.Infra.RepositoryWorktree(
+                    relative_path=".",
+                    source_root=source_root,
+                    worktree_root=worktree_root,
+                    checkpoint_sha=checkpoint,
+                )
+            )
+        )
+        tracked.write_text("concurrent\n", encoding="utf-8")
+
+        tm.fail(u.Infra.git_apply_patch(delta), has="patch failed")
+
+        tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": false}\n')
+        tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
+
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
         self, tmp_path: Path
     ) -> None:

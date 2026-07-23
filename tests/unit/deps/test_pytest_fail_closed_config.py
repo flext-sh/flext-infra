@@ -38,10 +38,10 @@ testpaths = ["architecture", "guides", "tests"]
         tm.that(
             rendered,
             has=(
-                'filterwarnings = [\n'
+                "filterwarnings = [\n"
                 '    "error",\n'
                 '    "module::flext_core._constants.enforcement.FlextMroViolation",\n'
-                ']'
+                "]"
             ),
         )
         tm.that(rendered, has='testpaths = [\n    "tests",\n]')
