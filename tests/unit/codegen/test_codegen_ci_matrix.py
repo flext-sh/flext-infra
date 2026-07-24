@@ -50,6 +50,35 @@ class TestCodegenCiMatrix:
                 (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
             )
 
+    def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
+        self, tmp_path: Path
+    ) -> None:
+        """Fedora's generated Node runtime has its required atomic library."""
+        root = self._render_project(tmp_path / "external")
+        fedora = (root / "ci" / "docker" / "fedora.Dockerfile").read_text(
+            encoding="utf-8"
+        )
+        tm.that(fedora, has="libatomic")
+        for distro in ("ubuntu", "debian", "alpine", "arch"):
+            content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
+                encoding="utf-8"
+            )
+            tm.that("libatomic" not in content, eq=True, msg=distro)
+
+    def test_dockerfiles_render_byte_idempotently(self, tmp_path: Path) -> None:
+        """Repeated project generation preserves the generated Dockerfiles."""
+        root = self._render_project(tmp_path / "external")
+        before = {
+            distro: (root / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            for distro in ("ubuntu", "debian", "fedora", "alpine", "arch")
+        }
+        self._render_project(root)
+        after = {
+            distro: (root / "ci" / "docker" / f"{distro}.Dockerfile").read_bytes()
+            for distro in before
+        }
+        tm.that(after, eq=before)
+
     def test_ci_matrix_has_all_legs(self, tmp_path: Path) -> None:
         """ci-matrix.yml declares every environment leg as a job."""
         root = self._render_project(tmp_path / "external")

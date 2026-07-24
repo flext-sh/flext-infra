@@ -5,7 +5,7 @@ FROM fedora:41
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN dnf install -y \
-      bash ca-certificates curl git make gcc gcc-c++ \
+      bash ca-certificates curl git make gcc gcc-c++ libatomic \
     && dnf clean all
 
 # mise is the toolchain installer; .mise.toml pins python {{ python_toolchain_version }}
