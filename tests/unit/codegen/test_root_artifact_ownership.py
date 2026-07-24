@@ -28,7 +28,7 @@ class TestsRootArtifactOwnership:
             ".python-version": "full",
             ".vscode/settings.json": "merge",
             "LICENSE": "create-only",
-            "Makefile": "delegated",
+            "Makefile": "full",
             "README.md": "create-only",
             "base.mk": "delegated",
             "config/workspace.yaml": "manual",

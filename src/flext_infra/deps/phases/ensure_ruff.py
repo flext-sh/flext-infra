@@ -79,7 +79,7 @@ class FlextInfraEnsureRuffConfigPhase:
         if loaded.failure:
             msg = loaded.error or f"project config load failed: {config_dir}"
             raise ValueError(msg)
-        per_file_ignores: t.MutableMapping[str, set[str]] = {}
+        per_file_ignores: dict[str, set[str]] = {}
         for document in loaded.value.values():
             managed = document.data.get("ManagedArtifacts")
             if not managed:

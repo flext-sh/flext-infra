@@ -74,7 +74,7 @@ class FlextInfraGateContractReportMixin:
         ansi = FlextInfraGateContractModels.Ansi
         errors = self._severity_count(script, c.Infra.GateSeverity.ERROR.value)
         warnings = self._severity_count(script, c.Infra.GateSeverity.WARNING.value)
-        self._eu.Cli.print(
+        u.Cli.formatters_print(
             f"{script.path:<60} {script.role:<10} "
             f"{self._status_for(errors, warnings):<22} "
             f"{self._detail_for(errors, warnings)}"
@@ -85,7 +85,7 @@ class FlextInfraGateContractReportMixin:
                 if violation.severity == c.Infra.GateSeverity.ERROR.value
                 else ansi.YELLOW
             )
-            self._eu.Cli.print(
+            u.Cli.formatters_print(
                 f"  {color}[{violation.check}]{ansi.RESET} {violation.message}"
             )
 
@@ -93,8 +93,8 @@ class FlextInfraGateContractReportMixin:
         self, scripts: t.SequenceOf[FlextInfraGateContractModels.ScriptInfo]
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
-        self._eu.Cli.print(f"{ansi.CYAN}Gate Contract Validation{ansi.RESET}")
-        self._eu.Cli.print(
+        u.Cli.formatters_print(f"{ansi.CYAN}Gate Contract Validation{ansi.RESET}")
+        u.Cli.formatters_print(
             f"{ansi.CYAN}{'SCRIPT':<60} {'ROLE':<10} {'STATUS':<10} DETAILS{ansi.RESET}"
         )
         for script in self._visible_scripts(scripts):
@@ -169,14 +169,14 @@ class FlextInfraGateContractReportMixin:
         self, summary: FlextInfraGateContractModels.Summary, report_path: Path
     ) -> None:
         ansi = FlextInfraGateContractModels.Ansi
-        self._eu.Cli.print(
+        u.Cli.formatters_print(
             f"\n{ansi.CYAN}Summary:{ansi.RESET} "
             f"gate_scripts={summary.gate_scripts} "
             f"{ansi.GREEN}ok={summary.ok}{ansi.RESET} "
             f"{ansi.RED}errors={summary.errors}{ansi.RESET} "
             f"{ansi.YELLOW}warnings={summary.warnings}{ansi.RESET}"
         )
-        self._eu.Cli.print(f"Report: {report_path}")
+        u.Cli.formatters_print(f"Report: {report_path}")
 
 
 __all__: list[str] = ["FlextInfraGateContractReportMixin"]

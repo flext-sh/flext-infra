@@ -126,13 +126,27 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
 
         @override
         def visit_Call(self, node: ast.Call) -> None:
-            """Rewrite ``u.Cli.print()`` and flag banned direct instantiations."""
+            """Rewrite ``print()`` / ``u.Cli.print()`` and flag banned direct instantiations."""
             func = node.func
             if isinstance(func, ast.Name) and func.id == "print":
                 self._maybe_rewrite_print(node)
+            elif self._is_u_cli_print(func):
+                self._maybe_rewrite_u_cli_print(node)
             elif isinstance(func, ast.Attribute):
                 self._maybe_flag_manual_conversion(func)
             self.generic_visit(node)
+
+        @staticmethod
+        def _is_u_cli_print(func: ast.expr) -> bool:
+            """Return True for ``u.Cli.print`` attribute access."""
+            return (
+                isinstance(func, ast.Attribute)
+                and func.attr == "print"
+                and isinstance(func.value, ast.Attribute)
+                and func.value.attr == "Cli"
+                and isinstance(func.value.value, ast.Name)
+                and func.value.value.id == "u"
+            )
 
         def _maybe_rewrite_print(self, node: ast.Call) -> None:
             """Rewrite ``print(msg)`` when ``cli`` is imported from ``flext_cli``."""
@@ -143,6 +157,25 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             call_text = self.node_text(node)
             new_call = re.sub(
                 r"\bprint\b", f"{self._cli_symbol}.display_text", call_text, count=1
+            )
+            self.append_rewrite(
+                node,
+                new_call,
+                f"Replaced u.Cli.print() with {self._cli_symbol}.display_text()",
+            )
+
+        def _maybe_rewrite_u_cli_print(self, node: ast.Call) -> None:
+            """Rewrite ``u.Cli.print(msg)`` when ``cli`` is imported from ``flext_cli``."""
+            if self._cli_symbol is None:
+                return
+            if len(node.args) != 1 or node.keywords:
+                return
+            call_text = self.node_text(node)
+            new_call = re.sub(
+                r"\bu\.Cli\.print\b",
+                f"{self._cli_symbol}.display_text",
+                call_text,
+                count=1,
             )
             self.append_rewrite(
                 node,

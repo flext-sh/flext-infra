@@ -57,7 +57,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has='python = "3.13"',
+            has='python = "3.13.11"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(

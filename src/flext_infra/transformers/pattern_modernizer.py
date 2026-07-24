@@ -128,7 +128,30 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                 if value.func.id == "breakpoint":
                     self.append_rewrite(node, "pass", "Replaced breakpoint() with pass")
                     return
+            elif isinstance(value, ast.Call) and self._is_u_cli_print(value):
+                self.needs_logger = True
+                call_text = self.node_text(value)
+                new_call = re.sub(
+                    r"\bu\.Cli\.print\b", "logger.info", call_text, count=1
+                )
+                self.append_rewrite(
+                    node, new_call, "Replaced u.Cli.print() with logger.info()"
+                )
+                return
             self.generic_visit(node)
+
+        @staticmethod
+        def _is_u_cli_print(value: ast.Call) -> bool:
+            """Return True for ``u.Cli.print(...)`` calls."""
+            func = value.func
+            return (
+                isinstance(func, ast.Attribute)
+                and func.attr == "print"
+                and isinstance(func.value, ast.Attribute)
+                and func.value.attr == "Cli"
+                and isinstance(func.value.value, ast.Name)
+                and func.value.value.id == "u"
+            )
 
         @override
         def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:

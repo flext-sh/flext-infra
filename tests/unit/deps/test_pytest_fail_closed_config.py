@@ -44,7 +44,19 @@ testpaths = ["architecture", "guides", "tests"]
                 "]"
             ),
         )
-        tm.that(rendered, has='testpaths = [\n    "tests",\n]')
+        tm.that(
+            rendered,
+            has=(
+                "testpaths = [\n"
+                '    ".",\n'
+                '    "docs",\n'
+                '    "examples",\n'
+                '    "scripts",\n'
+                '    "src",\n'
+                '    "tests",\n'
+                "]"
+            ),
+        )
         for preserved_value in ("custom: stale local marker", "Spec*", "spec_*.py"):
             tm.that(rendered, has=preserved_value)
         for stale_value in (

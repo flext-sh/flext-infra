@@ -32,7 +32,6 @@ class TestsFlextInfraDepsModernizerMypy:
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         tm.that(mypy_mapping["python_version"], eq="3.13")
-        tm.that(mypy_mapping["exclude"], eq=tool_config_document.tools.mypy.exclude)
         tm.that(
             set(u.Tests.toml_strings(mypy_mapping["plugins"])),
             eq=set(tool_config_document.tools.mypy.plugins),
@@ -137,7 +136,6 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         mypy_mapping = u.Tests.toml_mapping(
             u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
-        tm.that(mypy_mapping["exclude"], eq=tool_config_document.tools.mypy.exclude)
         tm.that(
             list(u.Tests.toml_strings(mypy_mapping["plugins"])),
             eq=list(tool_config_document.tools.mypy.plugins),

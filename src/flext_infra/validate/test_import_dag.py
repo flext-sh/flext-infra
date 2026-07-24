@@ -92,7 +92,11 @@ class FlextInfraValidateTestImportDag(s[bool]):
         parts = imported.split(".")
         if not parts or parts[0] != "tests":
             return None
-        return next((facet for facet in rules.facet_order if facet in parts[1:]), None)
+        for part in parts[1:]:
+            for facet, filename in rules.facet_files.items():
+                if part == filename.removesuffix(".py"):
+                    return facet
+        return None
 
     @classmethod
     def _edge_violation(

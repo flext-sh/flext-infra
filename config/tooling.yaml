@@ -316,6 +316,8 @@ Infra:
             - "**/site-packages/**"
             - "**/dist-packages"
             - "**/dist-packages/**"
+            - "**/tests/fixtures"
+            - "**/tests/fixtures/**"
           root-typings-paths: []
           project-typings-paths: []
           ignored-diagnostic-globs: []

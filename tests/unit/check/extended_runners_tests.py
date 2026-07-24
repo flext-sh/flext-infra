@@ -48,7 +48,7 @@ class TestRunnerPublicBehavior:
                 "if payload is not None and output is not None:\n"
                 "    output.write_text(payload, encoding='utf-8')\n"
                 "if stderr_text:\n"
-                "    u.Cli.print(stderr_text, file=sys.stderr)\n"
+                "    sys.stderr.write(stderr_text + '\\n')\n"
                 f"raise SystemExit({exit_code})\n"
             ),
             encoding="utf-8",

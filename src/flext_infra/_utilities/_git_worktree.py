@@ -282,7 +282,7 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if head_result.failure
                 else "isolated command moved repository HEAD"
             )
-        stage_result = cls.git_capture(repository.worktree_root, ("add", "-A"))
+        stage_result = cls.git_capture(repository.worktree_root, ("add", "-A", "-f"))
         if stage_result.failure:
             return r[m.Infra.RepositoryDelta].fail(
                 stage_result.error or "failed to stage operation delta"

@@ -245,6 +245,6 @@ class TestsFlextInfraIntegrationInfraIntegration:
     @pytest.mark.integration
     def test_command_runner_capture_executes_real_command(self) -> None:
         """Test u.Cli.capture with a real external command."""
-        capture_result = u.Cli.capture(["python3", "-c", "u.Cli.print('infra-ok')"])
+        capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
         tm.ok(capture_result)
         tm.that(capture_result.value, eq="infra-ok")

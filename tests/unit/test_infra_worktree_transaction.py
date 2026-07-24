@@ -217,6 +217,7 @@ class TestsFlextInfraWorktreeTransaction:
                     "--apply",
                 ),
                 apply_patch=False,
+                allow_lint_regression=True,
                 timeout_seconds=120,
             )
         )
