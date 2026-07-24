@@ -12,6 +12,7 @@ __pyrefly_virtual__/
 .dolt/
 .dolt_dropped_databases/
 .doltcfg/
+.hypothesis/
 .mypy_cache/
 .omo/
 .pylance_cache/

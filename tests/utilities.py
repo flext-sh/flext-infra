@@ -468,6 +468,63 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path, name: str, *, upstream: str = "flext_core"
+        ) -> Path:
+            """Write a local standalone workspace manifest for codegen conform."""
+            config_dir = project_dir / "config"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            package_name = name.replace("-", "_")
+            class_stem = "".join(part.capitalize() for part in name.split("-"))
+            namespace = class_stem
+            env_prefix = f"{name.upper().replace('-', '_')}_"
+            manifest_path = config_dir / "workspace.yaml"
+            manifest_path.write_text(
+                (
+                    "version: 2\n"
+                    f"name: {name}\n"
+                    "repository:\n"
+                    f"  name: {name}\n"
+                    f"  distribution: {name}\n"
+                    "  provider: flext-sh\n"
+                    f"  url: https://github.com/flext-sh/{name}.git\n"
+                    "  branch: main\n"
+                    "  path: .\n"
+                    "  role: standalone\n"
+                    "  state: active\n"
+                    "  profile: standalone\n"
+                    "  checkout: independent\n"
+                    "  codegen: conform\n"
+                    "  package: true\n"
+                    "  editable: true\n"
+                    "  read_only: false\n"
+                    "project:\n"
+                    f"  package_name: {package_name}\n"
+                    f"  class_stem: {class_stem}\n"
+                    f"  namespace: {namespace}\n"
+                    f"  constant_name: {name}\n"
+                    f"  namespace_attribute: {name}\n"
+                    f"  alias: {name}\n"
+                    f"  environment_prefix: {env_prefix}\n"
+                    f'  description: "Demo {name}"\n'
+                    '  version: "0.1.0"\n'
+                    "  license: MIT\n"
+                    "  author_name: FLEXT Team\n"
+                    "  author_email: team@flext.sh\n"
+                    f"  upstream: {upstream}\n"
+                    f"  homepage: https://github.com/flext-sh/{name}\n"
+                    f"  documentation: https://github.com/flext-sh/{name}\n"
+                    "  workspace_root_rel: .\n"
+                    "  year: 2026\n"
+                    "members: []\n"
+                    "content_only: []\n"
+                    "exclusions: []\n"
+                ),
+                encoding="utf-8",
+            )
+            return manifest_path
+
+        @staticmethod
         def create_docs_workspace(
             root: Path,
             *,

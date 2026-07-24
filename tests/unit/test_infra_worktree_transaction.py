@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra.services.cli_transaction import CliTransactionService
@@ -198,6 +199,7 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": false}\n')
         tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
 
+    @pytest.mark.timeout(60)
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
         self, tmp_path: Path
     ) -> None:

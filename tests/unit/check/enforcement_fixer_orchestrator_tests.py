@@ -379,6 +379,7 @@ class TestsEnforcementFixerOrchestrator:
         tm.that(len(result.previewed), eq=1)
         tm.that(result.failed, eq=())
 
+    @pytest.mark.timeout(60)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
         self, tmp_path: Path
     ) -> None:

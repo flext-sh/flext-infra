@@ -6,6 +6,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import main as infra_main
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
     """Behavior contract for test_infra_refactor_cli_models_workflow."""
 
+    @pytest.mark.timeout(60)
     def test_namespace_enforce_cli_fails_on_manual_protocol_violation(
         self, tmp_path: Path
     ) -> None:
