@@ -132,7 +132,10 @@ class TestsEnforcementFixerOrchestrator:
 
         tm.ok(result)
         tm.that(result.unwrap(), has="skipped: 1")
-        tm.that(source_file.read_text(encoding="utf-8"), eq="from __future__ import annotations\n")
+        tm.that(
+            source_file.read_text(encoding="utf-8"),
+            eq="from __future__ import annotations\n",
+        )
 
     def test_stub_file_rule_collects_pyi_probes(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

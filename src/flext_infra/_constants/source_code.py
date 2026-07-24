@@ -34,7 +34,7 @@ class FlextInfraConstantsSourceCode:
     })
     "Common directories to exclude from analysis across all scripts."
     PYTHON_DISCOVERY_SKIP_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
-        "vendor",
+        "vendor"
     }
     "Non-productive roots excluded while discovering Python analyzer surfaces."
     DOC_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"site"}

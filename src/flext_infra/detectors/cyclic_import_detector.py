@@ -41,7 +41,7 @@ class FlextInfraCyclicImportDetector:
             try:
                 module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
             except (
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                *FlextInfraConstantsRope.SYNTAX_ERRORS,
                 *FlextInfraConstantsRope.SYNTAX_ERRORS,
                 TypeError,
             ):

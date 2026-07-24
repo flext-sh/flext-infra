@@ -29,6 +29,7 @@ class FlextInfraReleaseOrchestratorPhases(
     """Build and version phase implementations (publish via the mixin)."""
 
     if TYPE_CHECKING:
+
         def _build_targets(
             self, workspace_root: Path, project_names: t.StrSequence
         ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]: ...

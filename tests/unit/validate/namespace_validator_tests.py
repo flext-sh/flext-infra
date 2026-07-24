@@ -726,8 +726,7 @@ class TestFlextInfraNamespaceValidator:
         tm.ok(result)
         tm.that(result.value.passed, eq=True)
         tm.that(
-            any("test support module" in v for v in result.value.violations),
-            eq=False,
+            any("test support module" in v for v in result.value.violations), eq=False
         )
 
     def test_rule3_test_private_family_runtime_reverse_import_detected(

@@ -385,8 +385,7 @@ class TestCodegenConform:
         custom = root / "custom.mk"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                custom,
-                ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n",
+                custom, ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n"
             )
         )
         result = FlextInfraCodegenConform.execute_request(

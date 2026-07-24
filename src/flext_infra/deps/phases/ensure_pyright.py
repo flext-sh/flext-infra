@@ -275,9 +275,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         payload.update(diagnostics)
         return payload
 
-    def _override_for_kind(
-        self, project_kind: str
-    ) -> t.StrMapping | None:
+    def _override_for_kind(self, project_kind: str) -> t.StrMapping | None:
         """Return the project-type override settings for the given kind."""
         overrides = config.Infra.tooling.project_type_overrides
         kind_map = {

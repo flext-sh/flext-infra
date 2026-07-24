@@ -355,10 +355,7 @@ class FlextInfraUtilitiesRopeInventory:
                 result = "attribute"
             elif scope_chain:
                 result = "local" if not name.isupper() else "constant"
-            elif (
-                isinstance(pyname, DefinedName)
-                and name.isupper()
-            ):
+            elif isinstance(pyname, DefinedName) and name.isupper():
                 result = "constant"
             else:
                 result = "assignment"

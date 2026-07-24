@@ -177,10 +177,6 @@ class TestAuditorNormalize:
         ],
     )
     def test_is_external(
-        self,
-        *,
-        is_external: Callable[[str], bool],
-        value: str,
-        expected: bool,
+        self, *, is_external: Callable[[str], bool], value: str, expected: bool
     ) -> None:
         tm.that(is_external(value), eq=expected)

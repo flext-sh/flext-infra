@@ -177,11 +177,7 @@ class TestsFlextInfraCodegenLazyInit:
         if errors:
             pytest.fail(f"lazy-init generation returned {errors} errors")
         imported = u.Cli.run_raw(
-            (
-                c.Infra.PYTHON,
-                "-c",
-                "import examples; print(examples.u.VALUE)",
-            ),
+            (c.Infra.PYTHON, "-c", "import examples; print(examples.u.VALUE)"),
             cwd=workspace_root,
         ).unwrap()
         if imported.exit_code != 0:

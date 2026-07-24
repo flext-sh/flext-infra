@@ -13,7 +13,7 @@ from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from tests import c, p, tm, u
 
 if TYPE_CHECKING:
-    from tests import m, t
+    from tests import t
 
 
 class _FileRuleHarness(FlextInfraRefactorFileExecutor):

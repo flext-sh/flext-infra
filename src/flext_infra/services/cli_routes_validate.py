@@ -92,7 +92,9 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=lambda params: u.Infra.run_github_workspace_pull_requests(params),
+                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
+                    params
+                ),
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

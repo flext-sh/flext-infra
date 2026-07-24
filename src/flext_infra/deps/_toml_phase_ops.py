@@ -39,9 +39,7 @@ class FlextInfraTomlPhaseOps:
                     if u.Cli.toml_merge_string_list(
                         tbl, operation.key, operation.values
                     ):
-                        out.append(
-                            f"{u.Cli.toml_dot_path(pfx, operation.key)} updated"
-                        )
+                        out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
                 elif u.Cli.toml_sync_string_list(
                     tbl, operation.key, operation.values, sort_values=operation.sort
                 ):

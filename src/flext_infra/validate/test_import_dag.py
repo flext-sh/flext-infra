@@ -49,9 +49,7 @@ class FlextInfraValidateTestImportDag(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=not violations,
-                violations=violations,
-                summary=summary,
+                passed=not violations, violations=violations, summary=summary
             )
         )
 
@@ -67,7 +65,9 @@ class FlextInfraValidateTestImportDag(s[bool]):
                 if module_imports is None:
                     continue
                 for imported in u.Infra.imported_module_paths(module_imports):
-                    reason = self._edge_violation(file_path, imported, project_root, rules)
+                    reason = self._edge_violation(
+                        file_path, imported, project_root, rules
+                    )
                     if reason is not None:
                         violations.append(f"{file_path}: {imported}: {reason}")
         return tuple(violations)
@@ -77,7 +77,11 @@ class FlextInfraValidateTestImportDag(s[bool]):
         if "tests" not in file_path.parts:
             return None
         return next(
-            (facet for facet, filename in rules.facet_files.items() if file_path.name == filename),
+            (
+                facet
+                for facet, filename in rules.facet_files.items()
+                if file_path.name == filename
+            ),
             None,
         )
 
@@ -142,7 +146,9 @@ class FlextInfraValidateTestImportDag(s[bool]):
     def execute(self) -> p.Result[bool]:
         report_result = self.build_report(self.workspace_root)
         if report_result.failure:
-            return r[bool].fail(report_result.error or "test-import-dag validation failed")
+            return r[bool].fail(
+                report_result.error or "test-import-dag validation failed"
+            )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

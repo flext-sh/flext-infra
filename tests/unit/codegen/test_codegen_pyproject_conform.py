@@ -164,10 +164,7 @@ mypy_path = [".", "src", "../flext-core/src"]
         tm.that(root_rendered, eq=root_second.value)
         tm.that(root_rendered, has='required-version = "==0.11.28"')
         tm.that(root_rendered, has='link-mode = "copy"')
-        tm.that(
-            root_rendered,
-            has='constraint-dependencies = [\n    "uv==0.11.28",',
-        )
+        tm.that(root_rendered, has='constraint-dependencies = [\n    "uv==0.11.28",')
         tm.that(root_rendered, has='override-dependencies = ["pathspec>=1.0.0"]')
         tm.that(root_rendered, has='dependencies = [\n    "flext-core[async]",')
         tm.that(root_rendered, has="[tool.uv.workspace]")

@@ -40,10 +40,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir
         return self._python_module_command(
-            c.Infra.PYRIGHT,
-            *check_dirs,
-            *ctx.pyright_args,
-            "--outputjson",
+            c.Infra.PYRIGHT, *check_dirs, *ctx.pyright_args, "--outputjson"
         )
 
     @staticmethod

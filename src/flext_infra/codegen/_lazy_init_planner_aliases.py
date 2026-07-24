@@ -238,10 +238,7 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                     for module in remaining
                     if not (dependencies[module] & remaining)
                 ),
-                key=lambda module: (
-                    module_rank.get(module, len(facade_rank)),
-                    module,
-                ),
+                key=lambda module: (module_rank.get(module, len(facade_rank)), module),
             )
             if not ready:
                 ready = [min(remaining)]

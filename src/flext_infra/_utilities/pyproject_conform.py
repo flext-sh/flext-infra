@@ -546,9 +546,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if workspace_root:
             if constraint_dependencies is not None:
                 u.Cli.toml_sync_string_list(
-                    uv,
-                    "constraint-dependencies",
-                    tuple(constraint_dependencies),
+                    uv, "constraint-dependencies", tuple(constraint_dependencies)
                 )
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:

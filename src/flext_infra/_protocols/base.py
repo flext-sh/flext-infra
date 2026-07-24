@@ -1571,9 +1571,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Mutable accumulation fields for codegen fix operations."""
 
         @property
-        def violations_fixed(
-            self,
-        ) -> t.MutableSequenceOf[p.Infra.CensusViolation]: ...
+        def violations_fixed(self) -> t.MutableSequenceOf[p.Infra.CensusViolation]: ...
 
         @property
         def violations_skipped(
@@ -1793,7 +1791,9 @@ class FlextInfraProtocolsBase(Protocol):
         def rope_workspace(self) -> p.Infra.RopeWorkspaceDsl | None: ...
 
         @property
-        def parse_failures(self) -> t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None: ...
+        def parse_failures(
+            self,
+        ) -> t.MutableSequenceOf[p.Infra.ParseFailureViolation] | None: ...
 
         @property
         def project_name(self) -> str: ...
@@ -1843,9 +1843,7 @@ class FlextInfraProtocolsBase(Protocol):
         def request(self) -> p.Infra.GithubPullRequestWorkspaceRequest: ...
 
         @property
-        def outcomes(
-            self,
-        ) -> t.MutableSequenceOf[p.Infra.GithubPullRequestOutcome]: ...
+        def outcomes(self) -> t.MutableSequenceOf[p.Infra.GithubPullRequestOutcome]: ...
 
     @runtime_checkable
     class GithubWorkflowSyncContext(Protocol):

@@ -19,7 +19,7 @@ from tests import c, p, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import t
 
 
 def _parse_class_names(source: str) -> t.StrSequence:

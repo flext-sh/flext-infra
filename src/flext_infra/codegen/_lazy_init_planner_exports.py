@@ -36,9 +36,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
-        if (
-            context.surface == c.Infra.DIR_TESTS
-            and context.pkg_dir.name.startswith("_")
+        if context.surface == c.Infra.DIR_TESTS and context.pkg_dir.name.startswith(
+            "_"
         ):
             return {}
         package_entry = self._package_entry(context.pkg_dir)

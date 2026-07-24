@@ -286,7 +286,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ),
         )
         checks: t.SequenceOf[p.Infra.QualityGateCheck] = (*metric_checks, *tool_checks)
-        return [t.Infra.INFRA_MAPPING_ADAPTER.validate_python(check) for check in checks]
+        return [
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(check) for check in checks
+        ]
 
     @staticmethod
     def compute_verdict(checks: t.SequenceOf[t.MappingKV[str, t.JsonValue]]) -> str:

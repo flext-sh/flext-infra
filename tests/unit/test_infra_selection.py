@@ -17,7 +17,7 @@ from flext_tests import tm
 from tests import p, u
 
 if TYPE_CHECKING:
-    from tests import m, t
+    from tests import t
 
 
 class TestsFlextInfraInfraSelection:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import r, tm
 
@@ -12,9 +11,6 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c, m, p, t, u
-
-if TYPE_CHECKING:
-    from tests import p
 
 
 def _write_project(project_root: Path, name: str) -> None:

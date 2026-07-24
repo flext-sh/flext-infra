@@ -91,6 +91,7 @@ class FlextInfraUtilitiesRopeRuntimeTypes(FlextInfraUtilitiesRopeRuntimeBase):
             cls.resource_not_found_error_type(),
             AttributeError,
         )
+
     abstract_class_type = classmethod(
         lambda cls: cls.runtime_type("rope.base.pyobjects", "AbstractClass")
     )

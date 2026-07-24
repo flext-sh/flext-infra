@@ -11,8 +11,6 @@ from tests import p, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-
 
 def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
     workspace_root = tmp_path

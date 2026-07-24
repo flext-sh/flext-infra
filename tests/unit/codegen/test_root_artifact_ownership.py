@@ -84,7 +84,9 @@ class TestsRootArtifactOwnership:
             request
         )
         tm.ok(planned)
-        governed = tuple(file for file in planned.value.files if file.policy is not None)
+        governed = tuple(
+            file for file in planned.value.files if file.policy is not None
+        )
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -94,9 +96,7 @@ class TestsRootArtifactOwnership:
         )
 
         checked = FlextInfraSyncService(workspace_root=root).execute()
-        first = FlextInfraSyncService(
-            workspace_root=root, apply_changes=True
-        ).execute()
+        first = FlextInfraSyncService(workspace_root=root, apply_changes=True).execute()
         second = FlextInfraSyncService(
             workspace_root=root, apply_changes=True
         ).execute()

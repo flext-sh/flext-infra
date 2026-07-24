@@ -274,8 +274,7 @@ class FlextInfraCodegenLazyInit(
         if not targets:
             return 0
         check = u.Cli.run_raw(
-            [c.Infra.RUFF, c.Infra.CHECK, "--no-fix", *targets],
-            cwd=self.workspace_root,
+            [c.Infra.RUFF, c.Infra.CHECK, "--no-fix", *targets], cwd=self.workspace_root
         )
         if check.failure:
             u.Cli.error(f"batched Ruff check failed to run: {check.error}")

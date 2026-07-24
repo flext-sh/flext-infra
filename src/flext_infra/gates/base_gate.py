@@ -34,9 +34,7 @@ class FlextInfraGate(ABC):
         self._runner = runner
 
     @staticmethod
-    def _python_module_command(
-        module: str, *args: str
-    ) -> t.StrSequence:
+    def _python_module_command(module: str, *args: str) -> t.StrSequence:
         """Canonical venv-anchored tool invocation.
 
         Every linter/type-checker runs through the workspace interpreter
@@ -46,6 +44,7 @@ class FlextInfraGate(ABC):
         module command shared by all gates.
         """
         return (sys.executable, "-m", module, *args)
+
     # ------------------------------------------------------------------
     # Template method: check
     # ------------------------------------------------------------------

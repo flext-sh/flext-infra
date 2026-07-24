@@ -117,9 +117,7 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
             return (source, list[str]())
         return (
             updated,
-            [
-                f"migrated constants into facade class: {', '.join(moved_symbols)}"
-            ],
+            [f"migrated constants into facade class: {', '.join(moved_symbols)}"],
         )
 
     def _apply_import_modernizer(

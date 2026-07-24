@@ -37,9 +37,9 @@ class _TextRuleHarness:
         rules_dir.mkdir(parents=True, exist_ok=True)
         config_path = workspace / "settings.yml"
         config_path.write_text("session: test\n", encoding="utf-8")
-        fix_action = self._settings.get("fix_action") or _KIND_PRIMARY_FIX_ACTION[
-            self._kind
-        ]
+        fix_action = (
+            self._settings.get("fix_action") or _KIND_PRIMARY_FIX_ACTION[self._kind]
+        )
         rule_lines = [
             "",
             "rules:",

@@ -645,7 +645,9 @@ class FlextInfraUtilitiesCodegenNamespace:
             )
         line = violation.line
         source_lines = source_cache[violation.module]
-        context = "\n".join(source_lines[max(0, line - 2) : min(len(source_lines), line + 3)])
+        context = "\n".join(
+            source_lines[max(0, line - 2) : min(len(source_lines), line + 3)]
+        )
         return m.Infra.ViolationKey(
             module=violation.module,
             rule=violation.rule,

@@ -108,10 +108,10 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
             Path(params.output).expanduser().resolve()
             if params.output
             else u.Cli.resolve_report_path(
-            root,
-            c.Infra.PROJECT,
-            c.Infra.DEPENDENCIES,
-            "detect-runtime-dev-latest.json",
+                root,
+                c.Infra.PROJECT,
+                c.Infra.DEPENDENCIES,
+                "detect-runtime-dev-latest.json",
             )
         )
         report_payload: t.JsonDict = {

@@ -94,9 +94,7 @@ class TestsFlextInfraLazyInitCleanup:
         tm.that(obsolete_module.is_file(), eq=True)
         tm.that(str(obsolete_module) in service.modified_files, eq=True)
 
-    def test_obsolete_root_support_cleanup_fails_closed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_obsolete_root_support_cleanup_fails_closed(self, tmp_path: Path) -> None:
         """Reject unexpected content before deleting any retired registry."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(

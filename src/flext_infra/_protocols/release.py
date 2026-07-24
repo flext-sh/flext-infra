@@ -75,9 +75,7 @@ class FlextInfraProtocolsRelease(Protocol):
         def source_date_epoch(self) -> t.NonNegativeInt | None: ...
 
         @property
-        def source_license_sha256(
-            self,
-        ) -> t.Infra.ReleaseArtifactSha256 | None: ...
+        def source_license_sha256(self) -> t.Infra.ReleaseArtifactSha256 | None: ...
 
     @runtime_checkable
     class ReleaseOrchestratorConfig(Protocol):

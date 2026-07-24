@@ -220,9 +220,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
         _write_pytest_diag_python_stub(
             tmp_path,
-            payload=(
-                "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
-            ),
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
             exit_code=0,
         )
         (tmp_path / "custom.mk").write_text(
@@ -233,7 +231,9 @@ class TestsFlextInfraBasemkMakeContract:
             "post-test:\n\t@echo H_POST_TEST\n",
             encoding="utf-8",
         )
-        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract", "WHAT=contract")
+        result = _run_make(
+            tmp_path, "test", "DIAG=1", "MATCH=contract", "WHAT=contract"
+        )
         tm.that(result.exit_code, eq=0)
         # The pytest body reports DIAG on stderr; the four hooks print on stdout.
         # Assert the hook ordering on stdout (verb-wide before WHAT-scoped for pre,
@@ -306,22 +306,10 @@ class TestsFlextInfraBasemkMakeContract:
         result = _run_make(tmp_path, "help")
         tm.that(result.exit_code, eq=0)
         # The hook contract is documented.
-        tm.that(
-            result.stdout,
-            has=[
-                "Custom hooks",
-                "pre-<verb>",
-                "post-<verb>",
-            ],
-        )
+        tm.that(result.stdout, has=["Custom hooks", "pre-<verb>", "post-<verb>"])
         # The actual custom.mk hooks and custom WHATs are discovered and listed.
         tm.that(
-            result.stdout,
-            has=[
-                "pre-check",
-                "post-test-all",
-                "_custom_check_myscan",
-            ],
+            result.stdout, has=["pre-check", "post-test-all", "_custom_check_myscan"]
         )
 
     def test_rendered_base_mk_declares_cli_group_roots(self) -> None:

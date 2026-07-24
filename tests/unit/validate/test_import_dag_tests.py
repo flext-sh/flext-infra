@@ -8,7 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.validate.test_import_dag import FlextInfraValidateTestImportDag
-from tests import m, p
+from tests import p
 
 if TYPE_CHECKING:
     from pathlib import Path

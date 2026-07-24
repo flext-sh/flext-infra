@@ -11,8 +11,6 @@ from tests import p, t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m
-
 
 class TestsFlextInfraDepsDetectionUncovered:
     """Test flext infra deps detection uncovered behavior."""

@@ -218,9 +218,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (project_root / "src").mkdir(parents=True)
 
-        discovered = u.Infra.discover_project_roots(
-            workspace_root=workspace_root
-        )
+        discovered = u.Infra.discover_project_roots(workspace_root=workspace_root)
         tm.that(discovered, eq=[project_root])
 
     def test_mro_scan_respects_namespace_scan_dirs_src_only(

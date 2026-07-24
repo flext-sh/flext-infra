@@ -35,9 +35,7 @@ def _apply_rule(
         else:
             rule_lines.append(f"    {key}: {value}")
     rule_lines.append("    enabled: true")
-    (rules_dir / "rules.yml").write_text(
-        "\n".join(rule_lines) + "\n", encoding="utf-8"
-    )
+    (rules_dir / "rules.yml").write_text("\n".join(rule_lines) + "\n", encoding="utf-8")
     service = FlextInfraRefactorService(config_path=config_path)
     load_result = service.load_rules()
     tm.ok(load_result)

@@ -169,12 +169,8 @@ class TestsFlextInfraWorktreeTransactionLintRegression:
         before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
         after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
 
-        regressed = u.Infra._lint_regressed(
-            before, after
-        )
-        stable = u.Infra._lint_regressed(
-            before, before
-        )
+        regressed = u.Infra._lint_regressed(before, after)
+        stable = u.Infra._lint_regressed(before, before)
 
         tm.that(regressed, eq=True)
         tm.that(stable, eq=False)

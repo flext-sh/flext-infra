@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -11,9 +10,6 @@ from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import p, u
-
-if TYPE_CHECKING:
-    from tests import m
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:

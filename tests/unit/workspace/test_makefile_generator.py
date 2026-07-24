@@ -198,9 +198,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         # The dispatch body needs a workspace venv it does not have here, so it
         # stops after the pre-hook. That is enough to prove the pre-hook fires
         # at the start of the verb, ahead of the dispatch body.
-        outcome = cli.run_raw(
-            ["make", "-C", str(workspace_root), "check", "WHAT=lint"]
-        )
+        outcome = cli.run_raw(["make", "-C", str(workspace_root), "check", "WHAT=lint"])
         combined = outcome.value.stdout + outcome.value.stderr
         tm.that(combined, has="WS_HOOK_PRE_CHECK")
 

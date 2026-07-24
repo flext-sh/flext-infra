@@ -14,7 +14,7 @@ from tests import p, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import t
 
 
 class TestsFlextInfraInfraWorkspaceMigrator:

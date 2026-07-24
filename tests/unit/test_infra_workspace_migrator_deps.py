@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-    from tests import m, t
+    from tests import t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDeps:
