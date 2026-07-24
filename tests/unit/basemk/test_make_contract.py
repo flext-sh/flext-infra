@@ -764,3 +764,13 @@ class TestsFlextInfraBasemkMakeContract:
                 "uv sync --all-extras --all-groups",
             ],
         )
+        # REGRESSION (boot cycle): extra-paths imports flext_core, so the
+        # environment (uv lock + uv sync) MUST be provisioned before it runs.
+        # `has=` is membership-only and does not enforce order, so assert the
+        # positions explicitly.
+        lock_at = log_content.find("uv lock")
+        sync_at = log_content.find("uv sync --all-extras --all-groups")
+        extra_paths_at = log_content.find("deps extra-paths")
+        tm.that(lock_at >= 0 and sync_at >= 0 and extra_paths_at >= 0, eq=True)
+        tm.that(lock_at < extra_paths_at, eq=True)
+        tm.that(sync_at < extra_paths_at, eq=True)
