@@ -50,6 +50,14 @@ ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
+RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
+override VIRTUAL_ENV := $(RUNTIME_VENV)
+override PATH := $(RUNTIME_VENV)/bin:$(PATH)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
@@ -184,11 +192,11 @@ _builtin_help_usage:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:
 	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@uv pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		uv pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
+	@uv pip check --python "$(RUNTIME_PYTHON)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment:
@@ -245,8 +253,8 @@ _builtin_status_diagnostics:
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@uv --version
 	@uv lock --project "$(PROJECT_ROOT)" --check
-	@if [ -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		uv pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
+	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
+		uv pip check --python "$(RUNTIME_PYTHON)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
