@@ -399,18 +399,16 @@ Infra:
           patterns: ["*.tpl.rej"]
         - name: Environment and secrets
           patterns:
-            [
-              .env,
-              .env.*,
-              "!.env.example",
-              "*.key",
-              "*.pem",
-              "*.p12",
-              "*.pfx",
-              credentials.json,
-              secrets.yaml,
-              secrets.yml,
-            ]
+            - .env
+            - .env.*
+            - "!.env.example"
+            - "*.key"
+            - "*.pem"
+            - "*.p12"
+            - "*.pfx"
+            - credentials.json
+            - secrets.yaml
+            - secrets.yml
         - name: Editors and OS
           patterns:
             [.idea/, "*.swp", "*.swo", "*~", .DS_Store, Thumbs.db, Desktop.ini]

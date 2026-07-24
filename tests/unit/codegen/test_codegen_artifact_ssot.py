@@ -214,11 +214,13 @@ class TestsCodegenArtifactSsot:
         assert set(codegen.gitignore_artifact_patterns) <= set(flat)
 
     def test_gitignore_sections_static_origin_proof(self, codegen: CodegenSpec) -> None:
-        """``.env`` reaches .gitignore from the static secrets section only."""
+        """Environment patterns reach .gitignore from the static section only."""
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
         assert ".env" in flat
+        assert "!.env.example" in flat
         assert ".env" not in codegen.gitignore_artifact_patterns
+        assert "!.env.example" not in codegen.gitignore_artifact_patterns
 
     def test_gitignore_sections_header_order(self, codegen: CodegenSpec) -> None:
         """Section headers are present in declared order (bodies not pinned)."""
