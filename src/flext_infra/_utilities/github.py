@@ -94,7 +94,9 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             ctx = m.Infra.GithubWorkflowSyncContext(
                 project_name=project.name,
                 project_root=project.path,
-                rendered_template=template_result.value,
+                rendered_template=cls._github_render_project_template(
+                    template_result.value
+                ),
                 request=request,
             )
             ops_result = cls._github_sync_project(ctx)
