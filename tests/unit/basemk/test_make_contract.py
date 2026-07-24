@@ -741,7 +741,7 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_boot_works_without_existing_venv_in_workspace_mode(
         self, tmp_path: Path
     ) -> None:
-        """Verify boot invokes dependency setup without requiring an existing venv."""
+        """Verify boot self-heals deps before refreshing the project entry point."""
         workspace_root = tmp_path / "workspace"
         project_root = workspace_root / "demo-project"
         project_root.mkdir(parents=True)
@@ -755,12 +755,17 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
-        log_content = log_path.read_text(encoding="utf-8")
-        tm.that(
-            log_content,
-            has=[
-                "run python -m flext_infra deps extra-paths",
-                "uv lock",
-                "uv sync --all-extras --all-groups",
-            ],
+        log_lines = log_path.read_text(encoding="utf-8").splitlines()
+        initial_sync = "uv sync --all-extras --all-groups"
+        extra_paths = (
+            "run python -m flext_infra deps extra-paths --apply --workspace "
+            f"{project_root}"
         )
+        lock = "uv lock"
+        reinstall_sync = (
+            "uv sync --all-extras --all-groups --reinstall-package demo-project"
+        )
+        tm.that(log_lines, has=[initial_sync, extra_paths, lock, reinstall_sync])
+        tm.that(log_lines.index(initial_sync) < log_lines.index(extra_paths), eq=True)
+        tm.that(log_lines.index(extra_paths) < log_lines.index(lock), eq=True)
+        tm.that(log_lines.index(lock) < log_lines.index(reinstall_sync), eq=True)

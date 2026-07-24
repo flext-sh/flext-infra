@@ -6,7 +6,7 @@
 # =============================================================================
 
 # === CONFIGURATION (override before include) ===
-PROJECT_NAME ?= unnamed
+PROJECT_NAME ?= flext-infra
 PYTHON_VERSION ?= 3.13
 SRC_DIR ?= src
 TESTS_DIR ?= tests
@@ -375,10 +375,11 @@ boot: ## Complete setup
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
-	# mro-j47u: generated boot consumes the sole public extra-paths route.
+	# mro-j47u: generated boot consumes the sole public extra-paths route after the initial sync.
+	$(Q)uv sync --all-extras --all-groups
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)uv lock
-	$(Q)uv sync --all-extras --all-groups
+	$(Q)uv sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
 		hooks_path=$$(git config --get core.hooksPath || true); \
 		if [ -n "$$hooks_path" ]; then \
