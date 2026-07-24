@@ -18,8 +18,8 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
-MYPY_PATHS := $(PROJECT_ROOT)/src
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 
 {% include "base_mypy_limit.mk.j2" %}
 
