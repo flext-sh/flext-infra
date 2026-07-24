@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_cli import cli
@@ -185,6 +186,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
 
+    @pytest.mark.timeout(60)
     def test_workspace_makefile_runs_custom_verb_hooks(self, tmp_path: Path) -> None:
         """A root verb runs workspace_custom.mk pre-<verb> before its dispatch body."""
         workspace_root = _write_workspace_root(tmp_path)

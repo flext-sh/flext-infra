@@ -8,52 +8,7 @@
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
-# [CUSTOM] project metadata
-[project]
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Framework :: Pydantic :: 2",
-  "Framework :: Pydantic",
-  "Intended Audience :: Developers",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.13",
-  "Topic :: Software Development :: Build Tools",
-  "Topic :: Software Development :: Code Generators",
-  "Typing :: Typed",
-]
-dependencies = [
-  "defusedxml>=0.7.1",
-  "flext-cli",
-  "flext-core",
-  "gitpython>=3.1.49",
-  "libcst>=1.8.6",
-  "mkdocs-exclude>=1.0.2",
-  "mkdocs-material>=9.7.6",
-  "mkdocs-section-index>=0.3.12",
-  "mkdocs>=1.6.1",
-  "mkdocstrings-python>=2.0.3",
-  "mkdocstrings>=1.0.4",
-  "rope>=1.14.0",
-]
-description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
-keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
-license = "MIT"
-name = "flext-infra"
-readme = "README.md"
-requires-python = ">=3.13,<3.14"
-version = "0.12.0rc0"
-
-[[project.authors]]
-email = "team@flext.sh"
-name = "FLEXT Team"
-
-[[project.maintainers]]
-email = "team@flext.sh"
-name = "FLEXT Team"
-
-# [MANAGED] consolidated development dependencies
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "autoflake>=2.3.1",
   "bandit>=1.8",
@@ -64,9 +19,11 @@ dev = [
   "django-stubs>=5.2.2",
   "factory-boy>=3.3.1",
   "faker>=37.4",
+  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis>=6.125",
   "isort>=6.0.1",
   "matplotlib-stubs>=0.3",
+  "mkdocs>=1.6",
   "mkdocs-awesome-pages-plugin>=2.9",
   "mkdocs-encryptcontent-plugin>=2",
   "mkdocs-exclude>=1.0.2",
@@ -74,21 +31,21 @@ dev = [
   "mkdocs-git-revision-date-localized-plugin>=1.2",
   "mkdocs-literate-nav>=0.6",
   "mkdocs-macros-plugin>=1",
-  "mkdocs-material-extensions>=1.3.1",
   "mkdocs-material>=9.5",
+  "mkdocs-material-extensions>=1.3.1",
   "mkdocs-mermaid2-plugin>=1.1",
   "mkdocs-minify-plugin>=0.7",
   "mkdocs-print-site-plugin>=0.8",
   "mkdocs-redirects>=1.2",
   "mkdocs-section-index>=0.3.12",
   "mkdocs-versioning>=0.2",
-  "mkdocs>=1.6",
-  "mkdocstrings-python>=1.7",
   "mkdocstrings>=0.24",
+  "mkdocstrings-python>=1.7",
   "pip-audit>=2.7.3",
   "pre-commit>=4.6.0",
   "pylint>=3.3",
   "pyrefly>=1.1.1,<1.2.0",
+  "pytest>=8.4",
   "pytest-benchmark>=5.1",
   "pytest-clarity>=1.0.1",
   "pytest-codeblocks>=0.17.0",
@@ -101,7 +58,6 @@ dev = [
   "pytest-sugar>=1",
   "pytest-timeout>=2.4",
   "pytest-xdist>=3.8",
-  "pytest>=8.4",
   "pyupgrade>=3.19",
   "radon>=6.0.1",
   "ruff>=0.12.3",
@@ -130,6 +86,51 @@ dev = [
   "yamlfix>=1.19.1,<2",
 ]
 
+# [CUSTOM] project metadata
+[project]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: Pydantic :: 2",
+  "Framework :: Pydantic",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Code Generators",
+  "Typing :: Typed",
+]
+dependencies = [
+  "defusedxml>=0.7.1",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
+  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "gitpython>=3.1.49",
+  "libcst>=1.8.6",
+  "mkdocs>=1.6.1",
+  "mkdocs-exclude>=1.0.2",
+  "mkdocs-material>=9.7.6",
+  "mkdocs-section-index>=0.3.12",
+  "mkdocstrings>=1.0.4",
+  "mkdocstrings-python>=2.0.3",
+  "rope>=1.14.0",
+]
+description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
+keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
+license = "MIT"
+name = "flext-infra"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+version = "0.12.0rc0"
+
+[[project.authors]]
+email = "team@flext.sh"
+name = "FLEXT Team"
+
+[[project.maintainers]]
+email = "team@flext.sh"
+name = "FLEXT Team"
+
+# [MANAGED] consolidated development dependencies
 [project.scripts]
 flext-docs = "flext_infra.cli:docs_main"
 flext-infra = "flext_infra.cli:main"
@@ -166,7 +167,7 @@ omit = ["*/dependency_injector/providers.pyx"]
 
 # [MANAGED] deptry
 [tool.deptry]
-known_first_party = ["flext_cli", "flext_core", "flext_infra"]
+known_first_party = ["flext_cli", "flext_core", "flext_infra", "flext_tests"]
 pep621_dev_dependency_groups = ["dev"]
 
 [tool.flext.docs]
@@ -238,8 +239,6 @@ module = ["*.cli"]
 disable_error_code = ["unreachable"]
 module = ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
 
-[tool.poetry]
-
 # [MANAGED] pydantic-mypy
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -270,11 +269,8 @@ project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
 search-path = [
-  ".",
-  "../flext-cli/src",
-  "../flext-core/src",
-  "../flext-tests/src",
-  "src",
+    ".",
+    "src",
 ]
 use-ignore-files = false
 
@@ -383,6 +379,8 @@ exclude = [
   "**/node_modules",
   "**/site-packages",
   "**/site-packages/**",
+  "**/tests/fixtures",
+  "**/tests/fixtures/**",
   "**/venv",
   "**/venv/**",
   ".git",
@@ -423,11 +421,9 @@ reportUnusedFunction = "error"
 reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
+extraPaths = [".", "src"]
 reportAssignmentType = "none"
 reportAttributeAccessIssue = "none"
 reportGeneralTypeIssues = "none"
@@ -476,8 +472,6 @@ reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
 reportUnusedImport = "none"
 root = "tests"
-
-# [MANAGED] pytest
 [tool.pytest.ini_options]
 addopts = [
   "--durations=10",
@@ -652,7 +646,7 @@ msg = "Use cli.read_json_file / cli.write_json_file / u.Cli.json_dumps."
 [tool.ruff.lint.isort]
 combine-as-imports = true
 force-single-line = false
-known-first-party = ["flext_cli", "flext_core", "flext_infra"]
+known-first-party = ["flext_cli", "flext_core", "flext_infra", "flext_tests"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
@@ -686,6 +680,10 @@ split-on-trailing-comma = false
 all = true
 in_place = true
 sort_first = ["build-system", "dependency-groups", "project", "tool"]
+
+[tool.uv]
+link-mode = "copy"
+required-version = "==0.11.29"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

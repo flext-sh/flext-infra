@@ -375,11 +375,12 @@ boot: ## Complete setup
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
-	# mro-j47u: generated boot consumes the sole public extra-paths route after the initial sync.
-	$(Q)uv sync --all-extras --all-groups
-	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)uv lock
-	$(Q)uv sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
+	$(Q)uv sync --all-extras --all-groups
+	# mro-j47u: extra-paths imports flext_core and only mutates pyright/mypy
+	# paths, so it must run AFTER the environment exists (uv lock + sync). A
+	# fresh checkout cannot import flext_infra before its deps are installed.
+	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
 		hooks_path=$$(git config --get core.hooksPath || true); \
 		if [ -n "$$hooks_path" ]; then \

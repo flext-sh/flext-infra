@@ -26,6 +26,7 @@ def _write_project(project_root: Path, name: str) -> None:
         ),
         encoding="utf-8",
     )
+    u.Tests.write_standalone_workspace_manifest(project_root, name)
 
 
 def _write_workspace(workspace_root: Path) -> None:
@@ -35,13 +36,46 @@ def _write_workspace(workspace_root: Path) -> None:
         encoding="utf-8",
     )
     (workspace_root / "pyproject.toml").write_text(
+        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
+    )
+    config_dir = workspace_root / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "workspace.yaml").write_text(
         (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-            "\n"
-            "[tool.flext.workspace]\n"
-            'members = ["demo-a"]\n'
+            "version: 2\n"
+            "name: workspace-root\n"
+            "repository:\n"
+            "  name: workspace-root\n"
+            "  distribution: workspace-root\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/workspace-root.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            "members:\n"
+            "  - name: demo-a\n"
+            "    distribution: demo-a\n"
+            "    provider: flext-sh\n"
+            "    url: https://example.invalid/demo-a.git\n"
+            "    branch: main\n"
+            "    path: demo-a\n"
+            "    role: workspace-member\n"
+            "    state: active\n"
+            "    profile: workspace-member\n"
+            "    checkout: submodule\n"
+            "    codegen: conform\n"
+            "    package: true\n"
+            "    editable: true\n"
+            "    read_only: false\n"
+            "content_only: []\n"
+            "exclusions: []\n"
         ),
         encoding="utf-8",
     )
@@ -58,8 +92,47 @@ def _write_orchestratable_workspace(
         encoding="utf-8",
     )
     (workspace_root / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n'
-        '\n[tool.flext.workspace]\nmembers = ["demo"]\n',
+        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    config_dir = workspace_root / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "workspace.yaml").write_text(
+        (
+            "version: 2\n"
+            "name: workspace-root\n"
+            "repository:\n"
+            "  name: workspace-root\n"
+            "  distribution: workspace-root\n"
+            "  provider: flext-sh\n"
+            "  url: https://github.com/flext-sh/workspace-root.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: workspace-root\n"
+            "  state: active\n"
+            "  profile: workspace-root\n"
+            "  checkout: root\n"
+            "  codegen: conform\n"
+            "  package: false\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            "members:\n"
+            "  - name: demo\n"
+            "    distribution: demo\n"
+            "    provider: flext-sh\n"
+            "    url: https://example.invalid/demo.git\n"
+            "    branch: main\n"
+            "    path: demo\n"
+            "    role: workspace-member\n"
+            "    state: active\n"
+            "    profile: workspace-member\n"
+            "    checkout: submodule\n"
+            "    codegen: conform\n"
+            "    package: true\n"
+            "    editable: true\n"
+            "    read_only: false\n"
+            "content_only: []\n"
+            "exclusions: []\n"
+        ),
         encoding="utf-8",
     )
     member_root = workspace_root / "demo"

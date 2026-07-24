@@ -200,6 +200,7 @@ class TestCodegenConform:
             eq=("flext-core",),
         )
 
+    @pytest.mark.timeout(60)
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:
@@ -262,6 +263,7 @@ class TestCodegenConform:
         )
         tm.that(after, eq=before)
 
+    @pytest.mark.timeout(60)
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
     ) -> None:
@@ -666,6 +668,77 @@ class TestScriptDispatchMakefile:
         tm.that("scripts/dispatch.py" in rendered, eq=False)
         # The canonical builtin dispatch is preserved verbatim.
         tm.that('*) $(MAKE) --no-print-directory "$$custom"' in rendered, eq=True)
+
+    def test_public_config_loads_cosmos_charts_and_gitops_script_dispatch(self) -> None:
+        """Public typed config declares cosmos-charts and cosmos-gitops verbs."""
+        repositories = {repo.name: repo for repo in config.Infra.codegen.repositories}
+        charts = repositories["cosmos-charts"]
+        gitops = repositories["cosmos-gitops"]
+
+        tm.that(
+            tuple(verb.name for verb in charts.extra_verbs),
+            eq=("charts", "chart-release", "bead"),
+        )
+        tm.that(tuple(verb.name for verb in gitops.extra_verbs), eq=("gitops", "bead"))
+        tm.that(
+            {verb.name: verb.default_what for verb in charts.extra_verbs},
+            eq={"charts": "all", "chart-release": "all", "bead": "all"},
+        )
+        tm.that(
+            {verb.name: verb.default_what for verb in gitops.extra_verbs},
+            eq={"gitops": "all", "bead": "all"},
+        )
+        tm.that(charts.script_dispatch is not None, eq=True)
+        tm.that(gitops.script_dispatch is not None, eq=True)
+        assert charts.script_dispatch is not None
+        assert gitops.script_dispatch is not None
+        tm.that(charts.script_dispatch.dispatcher, eq="scripts/dispatch.py")
+        tm.that(gitops.script_dispatch.dispatcher, eq="scripts/dispatch.py")
+        tm.that(charts.script_dispatch.roots, eq=("scripts",))
+        tm.that(gitops.script_dispatch.roots, eq=("scripts",))
+
+    def test_script_dispatch_adds_scripts_to_lint_and_type_paths(
+        self, tmp_path: Path
+    ) -> None:
+        """Opted-in repos scan scripts alongside src and tests."""
+        rendered = self._render_root_makefile(
+            tmp_path,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(name="charts", default_what="all"),
+                m.Infra.MakeVerbSpec(name="chart-release", default_what="all"),
+                m.Infra.MakeVerbSpec(name="bead", default_what="all"),
+            ),
+            script_dispatch=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py", roots=("scripts",)
+            ),
+        )
+        tm.that(
+            "RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(PROJECT_ROOT)/scripts"
+            in rendered,
+            eq=True,
+        )
+        tm.that(
+            "MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(PROJECT_ROOT)/scripts"
+            in rendered,
+            eq=True,
+        )
+
+    def test_repo_without_script_dispatch_retains_canonical_lint_and_type_paths(
+        self, tmp_path: Path
+    ) -> None:
+        """A repo without script dispatch keeps src/tests paths and excludes scripts."""
+        rendered = self._render_root_makefile(
+            tmp_path, extra_verbs=(), script_dispatch=None
+        )
+        tm.that(
+            "RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests" in rendered,
+            eq=True,
+        )
+        tm.that(
+            "MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests" in rendered,
+            eq=True,
+        )
+        tm.that("$(PROJECT_ROOT)/scripts" in rendered, eq=False)
 
 
 __all__: list[str] = []

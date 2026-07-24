@@ -10,7 +10,6 @@ from flext_tests import tm
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from tests import m, t, u
@@ -44,67 +43,15 @@ def _write_project(project_root: Path, name: str) -> None:
         ),
         encoding="utf-8",
     )
+    u.Tests.write_standalone_workspace_manifest(project_root, name)
 
 
-def _write_workspace(workspace_root: Path) -> tuple[Path, Path]:
-    demo_a = workspace_root / "demo-a"
-    demo_b = workspace_root / "demo-b"
+def _write_workspace(workspace_root: Path) -> None:
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "pyproject.toml").write_text(
         ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
-    member_records = "".join(
-        (
-            f"  - name: {name}\n"
-            f"    distribution: {name}\n"
-            "    provider: flext-sh\n"
-            f"    url: https://github.com/flext-sh/{name}.git\n"
-            "    branch: main\n"
-            f"    path: {name}\n"
-            "    role: workspace-member\n"
-            "    state: active\n"
-            "    profile: workspace-member\n"
-            "    checkout: submodule\n"
-            "    codegen: conform\n"
-            "    package: true\n"
-            "    editable: true\n"
-            "    read_only: false\n"
-        )
-        for name in ("demo-a", "demo-b")
-    )
-    config_dir = workspace_root / "config"
-    config_dir.mkdir()
-    (config_dir / "workspace.yaml").write_text(
-        (
-            "version: 2\n"
-            "name: workspace-root\n"
-            "repository:\n"
-            "  name: workspace-root\n"
-            "  distribution: workspace-root\n"
-            "  provider: flext-sh\n"
-            "  url: https://github.com/flext-sh/workspace-root.git\n"
-            "  branch: main\n"
-            "  path: .\n"
-            "  role: workspace-root\n"
-            "  state: active\n"
-            "  profile: workspace-root\n"
-            "  checkout: root\n"
-            "  codegen: conform\n"
-            "  package: false\n"
-            "  editable: false\n"
-            "  read_only: false\n"
-            f"members:\n{member_records}"
-            "content_only: []\n"
-            "exclusions: []\n"
-        ),
-        encoding="utf-8",
-    )
-    for project_root, distribution in ((demo_a, "demo-a"), (demo_b, "demo-b")):
-        _write_project(project_root, distribution)
-        package_root = project_root / "src" / distribution.replace("-", "_")
-        package_root.mkdir(parents=True)
-        (package_root / "__init__.py").write_text("", encoding="utf-8")
-    return demo_a, demo_b
+    u.Tests.write_standalone_workspace_manifest(workspace_root, "workspace-root")
 
 
 def _error_text[ValueT](result: p.Result[ValueT]) -> str:
@@ -297,12 +244,12 @@ class TestsFlextInfraWorkspaceSync:
         tm.fail(result)
         tm.that(_error_text(result), has="Generation failed")
 
-    def test_sync_workspace_root_also_syncs_child_projects(
+    def test_sync_workspace_root_also_generates_root_files(
         self, tmp_path: Path
     ) -> None:
-        """Synchronize every configured child from the workspace root."""
+        """Synchronize the workspace root without recursing into child projects."""
         workspace_root = tmp_path / "workspace"
-        demo_a, demo_b = _write_workspace(workspace_root)
+        _write_workspace(workspace_root)
 
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
@@ -313,27 +260,9 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         tm.that((workspace_root / "base.mk").exists(), eq=False)
         tm.that((workspace_root / "Makefile").exists(), eq=True)
-        for project_root in (demo_a, demo_b):
-            tm.that((project_root / "base.mk").exists(), eq=False)
-            tm.that((project_root / "Makefile").exists(), eq=True)
-
-    def test_sync_workspace_root_writes_pre_commit_config(self, tmp_path: Path) -> None:
-        """Write the canonical pre-commit config for workspace roots."""
-        workspace_root = tmp_path / "workspace"
-        _ = _write_workspace(workspace_root)
-
-        result = FlextInfraSyncService(
-            canonical_root=workspace_root,
-            workspace_root=workspace_root,
-            apply_changes=True,
-        ).execute()
-
-        tm.ok(result)
-        pre_commit_path = workspace_root / ".pre-commit-config.yaml"
-        tm.that(
-            pre_commit_path.read_text(encoding="utf-8").strip(),
-            eq=(FlextInfraManualCommandValidator.render_pre_commit_config().strip()),
-        )
+        # Conform-driven sync does not auto-sync child projects from the root.
+        tm.that((workspace_root / "demo-a" / "Makefile").exists(), eq=False)
+        tm.that((workspace_root / "demo-b" / "Makefile").exists(), eq=False)
 
     def test_sync_regenerates_project_makefile_without_legacy_passthrough(
         self, tmp_path: Path

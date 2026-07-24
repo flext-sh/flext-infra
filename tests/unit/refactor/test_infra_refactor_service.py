@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c
@@ -159,6 +160,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
         tm.ok(result)
         tm.that(service.rule_loader.rules, eq=[])
 
+    @pytest.mark.timeout(60)
     def test_refactor_project_scans_tests_and_scripts_dirs(
         self, tmp_path: Path
     ) -> None:
