@@ -13,6 +13,8 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
 from tests import c, u
 
+pytestmark = pytest.mark.timeout(60)
+
 
 def _write_project(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True, exist_ok=True)

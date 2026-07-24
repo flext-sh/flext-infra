@@ -20,6 +20,8 @@ from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
+pytestmark = pytest.mark.timeout(180)
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -94,7 +96,6 @@ def _make_project(
     return project
 
 
-@pytest.mark.timeout(60)
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+
+pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from pathlib import Path

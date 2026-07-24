@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from tests import c, u
+
+pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from pathlib import Path

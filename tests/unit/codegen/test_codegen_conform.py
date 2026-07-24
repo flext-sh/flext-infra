@@ -19,6 +19,8 @@ from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
+pytestmark = pytest.mark.timeout(60)
+
 
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
@@ -200,7 +202,6 @@ class TestCodegenConform:
             eq=("flext-core",),
         )
 
-    @pytest.mark.timeout(60)
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:
@@ -263,7 +264,6 @@ class TestCodegenConform:
         )
         tm.that(after, eq=before)
 
-    @pytest.mark.timeout(60)
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
     ) -> None:
