@@ -54,6 +54,6 @@ testpaths = ["architecture", "guides", "tests"]
             "ignore:legacy warning suppression",
             "--maxfail=1",
             "--cov=.",
-            "--markdown-docs",
         ):
             tm.that(rendered, lacks=stale_value)
+        tm.that(rendered, has="--markdown-docs")
