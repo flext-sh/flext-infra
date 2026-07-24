@@ -22,7 +22,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT, timeout_seconds=60
         )
         command = u.Infra.mypy_limited_command(
-            (sys.executable, "-c", "print('bounded-process')"), limit
+            (sys.executable, "-c", "u.Cli.print('bounded-process')"), limit
         )
         result = u.Cli.run_raw(command, timeout=u.Infra.mypy_runner_timeout(limit))
 

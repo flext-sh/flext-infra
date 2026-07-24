@@ -950,7 +950,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         script_file = scripts_dir / "run.py"
         _ = script_file.write_text(
-            "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nprint('ok')\n",
+            "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nu.Cli.print('ok')\n",
             encoding="utf-8",
         )
 

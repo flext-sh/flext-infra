@@ -4,7 +4,7 @@ Conservative AST rewrites for CLI anti-patterns:
 
 - Remove ``import`` / ``from`` statements for ``typer``, ``click``,
   ``argparse``, ``rich`` and ``tabulate``.
-- Rewrite ``print(msg)`` → ``cli.display_text(msg)`` when ``cli`` has been
+- Rewrite ``u.Cli.print(msg)`` → ``cli.display_text(msg)`` when ``cli`` has been
   imported from ``flext_cli``.
 - Flag direct ``typer.Typer()``, ``click.group()`` / ``click.command()`` and
   ``argparse.ArgumentParser()`` instantiations for manual conversion.
@@ -126,7 +126,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
 
         @override
         def visit_Call(self, node: ast.Call) -> None:
-            """Rewrite ``print()`` and flag banned direct instantiations."""
+            """Rewrite ``u.Cli.print()`` and flag banned direct instantiations."""
             func = node.func
             if isinstance(func, ast.Name) and func.id == "print":
                 self._maybe_rewrite_print(node)
@@ -147,7 +147,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             self.append_rewrite(
                 node,
                 new_call,
-                f"Replaced print() with {self._cli_symbol}.display_text()",
+                f"Replaced u.Cli.print() with {self._cli_symbol}.display_text()",
             )
 
         def _maybe_flag_manual_conversion(self, func: ast.Attribute) -> None:

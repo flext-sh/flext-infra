@@ -2,7 +2,7 @@
 
 Applies safe, syntactic transformations that do not require type inference:
 
-- ``print(...)`` → ``logger.info(...)`` and injects a module-level logger.
+- ``u.Cli.print(...)`` → ``logger.info(...)`` and injects a module-level logger.
 - ``breakpoint()`` / ``import pdb; pdb.set_trace()`` → removed.
 - Bare ``except:`` → ``except Exception:``.
 - ``open(path, mode)`` without ``encoding`` → ``open(path, mode, encoding="utf-8")``.
@@ -122,7 +122,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                     call_text = self.node_text(value)
                     new_call = re.sub(r"\bprint\b", "logger.info", call_text, count=1)
                     self.append_rewrite(
-                        node, new_call, "Replaced print() with logger.info()"
+                        node, new_call, "Replaced u.Cli.print() with logger.info()"
                     )
                     return
                 if value.func.id == "breakpoint":

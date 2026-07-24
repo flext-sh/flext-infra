@@ -58,9 +58,9 @@ endif
 # - FLEXT_PROJECTS: declared git submodules from .gitmodules
 # - WORKSPACE_PROJECTS: configured workspace members from tool.flext.workspace or tool.uv.workspace
 FLEXT_PROJECTS := $(shell \
-	$(PYTHON_CMD) -c 'import pathlib, re; root = pathlib.Path("."); gitmodules = root / ".gitmodules"; content = gitmodules.read_text() if gitmodules.is_file() else ""; print(" ".join(re.findall(r"^\s*path\s*=\s*(.+?)\s*$$", content, re.MULTILINE)), end="")')
+	$(PYTHON_CMD) -c 'import pathlib, re; root = pathlib.Path("."); gitmodules = root / ".gitmodules"; content = gitmodules.read_text() if gitmodules.is_file() else ""; u.Cli.print(" ".join(re.findall(r"^\s*path\s*=\s*(.+?)\s*$$", content, re.MULTILINE)), end="")')
 WORKSPACE_PROJECTS := $(shell \
-	$(PYTHON_CMD) -c 'import pathlib, tomllib; root = pathlib.Path("pyproject.toml"); payload = tomllib.loads(root.read_text()) if root.is_file() else {}; tool_payload = payload.get("tool", {}) if isinstance(payload, dict) else {}; flext_payload = tool_payload.get("flext", {}) if isinstance(tool_payload, dict) else {}; workspace_payload = flext_payload.get("workspace", {}) if isinstance(flext_payload, dict) else {}; members = workspace_payload.get("members", []) if isinstance(workspace_payload, dict) else []; uv_payload = tool_payload.get("uv", {}) if isinstance(tool_payload, dict) else {}; uv_workspace = uv_payload.get("workspace", {}) if isinstance(uv_payload, dict) else {}; members = members if isinstance(members, list) and members else (uv_workspace.get("members", []) if isinstance(uv_workspace, dict) else []); print(" ".join(str(item).strip() for item in members if str(item).strip()), end="") if isinstance(members, list) else print("", end="")')
+	$(PYTHON_CMD) -c 'import pathlib, tomllib; root = pathlib.Path("pyproject.toml"); payload = tomllib.loads(root.read_text()) if root.is_file() else {}; tool_payload = payload.get("tool", {}) if isinstance(payload, dict) else {}; flext_payload = tool_payload.get("flext", {}) if isinstance(tool_payload, dict) else {}; workspace_payload = flext_payload.get("workspace", {}) if isinstance(flext_payload, dict) else {}; members = workspace_payload.get("members", []) if isinstance(workspace_payload, dict) else []; uv_payload = tool_payload.get("uv", {}) if isinstance(tool_payload, dict) else {}; uv_workspace = uv_payload.get("workspace", {}) if isinstance(uv_payload, dict) else {}; members = members if isinstance(members, list) and members else (uv_workspace.get("members", []) if isinstance(uv_workspace, dict) else []); u.Cli.print(" ".join(str(item).strip() for item in members if str(item).strip()), end="") if isinstance(members, list) else u.Cli.print("", end="")')
 MANAGED_PROJECTS := $(strip $(FLEXT_PROJECTS))
 ALL_PROJECTS := $(strip $(sort $(MANAGED_PROJECTS) $(WORKSPACE_PROJECTS)))
 SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(if $(PROJECTS),$(PROJECTS),$(ALL_PROJECTS))))
@@ -256,7 +256,7 @@ define PREFLIGHT_CHECK
 	if [ -z "$(PYTHON_CMD)" ] || ! command -v $(PYTHON_CMD) >/dev/null 2>&1; then \
 		echo " MISSING: Python $(PYTHON_REQ_VERSION) — please install from https://python.org"; ok=0; \
 	else \
-		py_minor=$$($(PYTHON_CMD) -c 'import sys; print(sys.version_info.minor)' 2>/dev/null || echo 0); \
+		py_minor=$$($(PYTHON_CMD) -c 'import sys; u.Cli.print(sys.version_info.minor)' 2>/dev/null || echo 0); \
 		req_minor=$$(echo $(PYTHON_REQ_VERSION) | cut -d. -f2); \
 		if [ "$$py_minor" -ne "$$req_minor" ] 2>/dev/null; then \
 			echo " REQUIRES: Python $(PYTHON_REQ_VERSION), found 3.$$py_minor — please install Python $(PYTHON_REQ_VERSION)"; ok=0; \

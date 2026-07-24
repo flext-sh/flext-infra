@@ -350,7 +350,7 @@ class FlextInfraModelsNamespaceEnforcer:
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.PatternSmellViolation],
             m.Field(
                 default_factory=tuple,
-                description="`print()` violations collected for the project.",
+                description="`u.Cli.print()` violations collected for the project.",
             ),
         ]
         breakpoint_violations: Annotated[
@@ -529,7 +529,7 @@ class FlextInfraModelsNamespaceEnforcer:
             t.NonNegativeInt, m.Field(description="Total bare `except:` violations")
         ] = 0
         total_print_violations: Annotated[
-            t.NonNegativeInt, m.Field(description="Total `print()` violations")
+            t.NonNegativeInt, m.Field(description="Total `u.Cli.print()` violations")
         ] = 0
         total_breakpoint_violations: Annotated[
             t.NonNegativeInt,

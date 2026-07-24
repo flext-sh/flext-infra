@@ -83,7 +83,7 @@ class RefactorRoutes(CliRouteBase):
         m.Cli.ResultCommandRoute(
             name="modernize-patterns",
             help_text=(
-                "Fix print(), pdb, bare except and open() encoding in library code"
+                "Fix u.Cli.print(), pdb, bare except and open() encoding in library code"
             ),
             model_cls=m.Infra.ModernizeInput,
             handler=lambda params: FlextInfraModernizeOrchestrator.execute_command(
@@ -128,7 +128,7 @@ class RefactorRoutes(CliRouteBase):
         m.Cli.ResultCommandRoute(
             name="modernize-cli",
             help_text=(
-                "Remove banned CLI helper imports and route print() "
+                "Remove banned CLI helper imports and route u.Cli.print() "
                 "to cli.display_text()"
             ),
             model_cls=m.Infra.ModernizeInput,

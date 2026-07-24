@@ -410,13 +410,13 @@ class TestsFlextInfraTransformersPattern:
 
     def test_pattern_with_required_alias(self, tmp_path: Path) -> None:
         """Verify pattern with required alias."""
-        source = "def foo(x):\n    return print(x)\n"
+        source = "def foo(x):\n    return u.Cli.print(x)\n"
         transformer = FlextInfraRefactorPatternTransformer(
             patterns=[
                 {
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote print() to logger",
+                    "change_message": "Rewrote u.Cli.print() to logger",
                 }
             ],
             required_alias="u",
@@ -429,13 +429,13 @@ class TestsFlextInfraTransformersPattern:
 
     def test_pattern_required_alias_not_duplicated(self, tmp_path: Path) -> None:
         """Verify pattern required alias not duplicated."""
-        source = 'from flext_core import c, u\n\nprint("hello")\n'
+        source = 'from flext_core import c, u\n\nu.Cli.print("hello")\n'
         transformer = FlextInfraRefactorPatternTransformer(
             patterns=[
                 {
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote print() to logger",
+                    "change_message": "Rewrote u.Cli.print() to logger",
                 }
             ],
             required_alias="u",
@@ -455,7 +455,7 @@ class TestsFlextInfraTransformersPattern:
                 {
                     "regex": r"\bprint\s*\(\s*(?P<args>[^)]*)\s*\)",
                     "replacement": r"u.fetch_logger(__name__).info(\g<args>)",
-                    "change_message": "Rewrote print() to logger",
+                    "change_message": "Rewrote u.Cli.print() to logger",
                 }
             ],
             required_alias="u",

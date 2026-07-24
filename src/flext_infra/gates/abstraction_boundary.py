@@ -6,7 +6,7 @@ regex catalog, exemptions) lives in ``c.Infra.BOUNDARY_*`` (CONSTANTS-FIRST);
 this class is the thin, data-driven scanner. For every project except
 ``flext-cli``/``flext-core`` it flags CLI-domain lib imports (``click`` exempt
 in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
-``flext-infra``, direct ``json.``/``yaml.``/``csv.`` use, top-level ``print(``/
+``flext-infra``, direct ``json.``/``yaml.``/``csv.`` use, top-level ``u.Cli.print(``/
 ``sys.exit(``, and concrete ``FlextCli<X>`` imports outside src extension files.
 """
 

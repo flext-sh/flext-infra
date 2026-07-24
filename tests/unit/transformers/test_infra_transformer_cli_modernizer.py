@@ -35,21 +35,21 @@ class TestsFlextInfraTransformersCliModernizer:
         assert changes
 
     def test_print_replaced_when_cli_imported(self) -> None:
-        source = 'from flext_cli import cli\n\nprint("hi")\n'
+        source = 'from flext_cli import cli\n\nu.Cli.print("hi")\n'
         code, changes = _transform(source)
         tm.that(code, has='cli.display_text("hi")')
-        tm.that(code, lacks="print(")
+        tm.that(code, lacks="u.Cli.print(")
         assert changes
 
     def test_fstring_print_replaced_when_cli_imported(self) -> None:
-        source = 'from flext_cli import cli\n\nprint(f"hi {name}")\n'
+        source = 'from flext_cli import cli\n\nu.Cli.print(f"hi {name}")\n'
         code, changes = _transform(source)
         tm.that(code, has='cli.display_text(f"hi {name}")')
-        tm.that(code, lacks="print(")
+        tm.that(code, lacks="u.Cli.print(")
         assert changes
 
     def test_print_unchanged_without_cli_import(self) -> None:
-        source = 'print("hi")\n'
+        source = 'u.Cli.print("hi")\n'
         code, changes = _transform(source)
         tm.that(code, eq=source)
         assert not changes
@@ -74,8 +74,8 @@ class TestsFlextInfraTransformersCliModernizer:
         assert any("Manual conversion required" in change for change in changes)
 
     def test_cli_alias_honored_for_print_rewrite(self) -> None:
-        source = 'from flext_cli import cli as c\n\nprint("hi")\n'
+        source = 'from flext_cli import cli as c\n\nu.Cli.print("hi")\n'
         code, changes = _transform(source)
         tm.that(code, has='c.display_text("hi")')
-        tm.that(code, lacks="print(")
+        tm.that(code, lacks="u.Cli.print(")
         assert changes

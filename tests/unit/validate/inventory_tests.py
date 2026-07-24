@@ -55,7 +55,7 @@ class TestInventoryServiceScripts:
         service = FlextInfraInventoryService()
         scripts = tmp_path / "scripts"
         scripts.mkdir()
-        (scripts / "test.py").write_text("#!/usr/bin/env python3\nprint('hello')")
+        (scripts / "test.py").write_text("#!/usr/bin/env python3\nu.Cli.print('hello')")
         tm.ok(service.generate(tmp_path))
 
     def test_generate_scans_bash_scripts(self, tmp_path: Path) -> None:

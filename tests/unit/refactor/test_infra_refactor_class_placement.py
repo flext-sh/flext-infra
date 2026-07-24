@@ -272,7 +272,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             "class DemoService:\n"
             "    GROUPS = frozenset({'a'})\n"
             "    def run(self) -> None:\n"
-            "        print(DemoService.GROUPS)\n",
+            "        u.Cli.print(DemoService.GROUPS)\n",
             encoding="utf-8",
         )
         constants_mod = pkg / "_constants.py"
@@ -309,7 +309,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
             "class DemoService:\n"
             "    GROUPS = frozenset({'a'})\n"
             "    def run(self) -> None:\n"
-            "        print(DemoService.GROUPS)\n",
+            "        u.Cli.print(DemoService.GROUPS)\n",
             encoding="utf-8",
         )
 

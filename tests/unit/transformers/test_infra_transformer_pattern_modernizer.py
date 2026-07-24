@@ -25,15 +25,15 @@ class TestsFlextInfraTransformersPatternModernizer:
     """Behavior contract for FlextInfraRefactorPatternModernizer."""
 
     def test_print_replaced_with_logger_info_and_logger_injected(self) -> None:
-        source = 'from flext_core import c\n\ndef foo():\n    print("hello")\n'
+        source = 'from flext_core import c\n\ndef foo():\n    u.Cli.print("hello")\n'
         code = _transform(source)
         tm.that(code, has='logger.info("hello")')
         tm.that(code, has="logger = u.fetch_logger(__name__)")
         tm.that(code, has="from flext_core import c, u")
-        tm.that(code, lacks='print("hello")')
+        tm.that(code, lacks='u.Cli.print("hello")')
 
     def test_existing_logger_is_reused(self) -> None:
-        source = 'logger = u.fetch_logger(__name__)\n\ndef foo():\n    print("hello")\n'
+        source = 'logger = u.fetch_logger(__name__)\n\ndef foo():\n    u.Cli.print("hello")\n'
         code = _transform(source)
         tm.that(code.count("logger = u.fetch_logger(__name__)"), eq=1)
         tm.that(code, has='logger.info("hello")')

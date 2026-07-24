@@ -289,7 +289,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
             f"packages = {packages!r}\n"
             "for package in packages:\n"
             "    importlib.import_module(package)\n"
-            "print(f'imported {len(packages)} packages')\n"
+            "u.Cli.print(f'imported {len(packages)} packages')\n"
         )
         result = u.Cli.run_raw(
             (sys.executable, "-c", script),

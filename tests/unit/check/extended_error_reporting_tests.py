@@ -31,9 +31,9 @@ class TestGateErrorReportingPublicBehavior:
         (fake_modules / "__main__.py").write_text(
             (
                 "import sys\n"
-                'print(\'{"file":"a.py","line":1,"column":0,"code":"E001","message":"Error","severity":"error"}\')\n'
-                "print()\n"
-                'print(\'{"file":"b.py","line":2,"column":0,"code":"E002","message":"Error","severity":"error"}\')\n'
+                'u.Cli.print(\'{"file":"a.py","line":1,"column":0,"code":"E001","message":"Error","severity":"error"}\')\n'
+                "u.Cli.print()\n"
+                'u.Cli.print(\'{"file":"b.py","line":2,"column":0,"code":"E002","message":"Error","severity":"error"}\')\n'
                 "raise SystemExit(1)\n"
             ),
             encoding="utf-8",

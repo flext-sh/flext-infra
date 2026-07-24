@@ -138,7 +138,10 @@ class FlextInfraConstantsCheck:
             re.compile(r"\bcsv\.(reader|writer|DictReader|DictWriter)\b"),
             "uses csv.reader/writer — use cli.*_csv_file",
         ),
-        (re.compile(r"^\s*print\(", re.MULTILINE), "uses print() — use cli.print"),
+        (
+            re.compile(r"^\s*print\(", re.MULTILINE),
+            "uses u.Cli.print() — use cli.print",
+        ),
         (
             re.compile(r"^\s*sys\.exit\(", re.MULTILINE),
             "uses sys.exit() — use cli.exit()",
