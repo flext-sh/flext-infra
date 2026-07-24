@@ -9,15 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import m, t
 
 
 def _parse_class_names(source: str) -> t.StrSequence:
@@ -36,12 +38,11 @@ def _validate_modules_parse(base_dir: Path, modules: t.StrSequence) -> None:
     for mod in modules:
         source = (base_dir / mod).read_text(encoding="utf-8")
         compiled = compile(source, str(base_dir / mod), "exec")
-        assert compiled is not None
+        tm.that(compiled, none=False)
 
 
 def _validate_class_names(
-    base_dir: Path,
-    filename_to_expected_class: t.StrMapping,
+    base_dir: Path, filename_to_expected_class: t.StrMapping
 ) -> None:
     """Validate expected class names exist in modules.
 
@@ -61,54 +62,44 @@ def _project_info(
     project: Path, *, package_name: str = "test_project"
 ) -> m.Infra.ProjectInfo:
     return u.Tests.create_project_info(
-        project,
-        name=project.name,
-        package_name=package_name,
+        project, name=project.name, package_name=package_name
     )
 
 
 class TestGeneratedFilesAreValidPython:
-    def test_generated_src_modules_parse_successfully(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    """Generated source and test modules compile as Python."""
+
+    def test_generated_src_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every generated source facade module."""
         project = u.Tests.create_scaffolder_test_project(
-            tmp_path=tmp_path,
-            with_all_modules=False,
+            tmp_path=tmp_path, with_all_modules=False
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
-        _validate_modules_parse(
-            pkg,
-            u.Tests.src_module_files(),
-        )
+        _validate_modules_parse(pkg, u.Tests.src_module_files())
 
-    def test_generated_tests_modules_parse_successfully(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_generated_tests_modules_parse_successfully(self, tmp_path: Path) -> None:
+        """Compile every generated test facade module."""
         project = u.Tests.create_scaffolder_test_project(
-            tmp_path=tmp_path,
-            with_all_modules=True,
+            tmp_path=tmp_path, with_all_modules=True
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
-        _validate_modules_parse(
-            tests_dir,
-            u.Tests.src_module_files(),
-        )
+        _validate_modules_parse(tests_dir, u.Tests.src_module_files())
 
 
 class TestGeneratedClassNamingConvention:
+    """Generated class names follow the canonical prefix and suffix contract."""
+
     def test_src_class_names_use_prefix_suffix(self, tmp_path: Path) -> None:
+        """Use the project prefix on generated source facade classes."""
         project = u.Tests.create_scaffolder_test_project(
-            tmp_path=tmp_path,
-            with_all_modules=False,
+            tmp_path=tmp_path, with_all_modules=False
         )
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         pkg = project / "src" / "test_project"
         _validate_class_names(
@@ -122,17 +113,14 @@ class TestGeneratedClassNamingConvention:
             },
         )
 
-    def test_tests_class_names_use_tests_prefix_suffix(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_tests_class_names_use_tests_prefix_suffix(self, tmp_path: Path) -> None:
+        """Use the Tests prefix on generated test facade classes."""
         project = u.Tests.create_scaffolder_test_project(
-            tmp_path=tmp_path,
-            with_all_modules=True,
+            tmp_path=tmp_path, with_all_modules=True
         )
         tests_dir = project / "tests"
         tests_dir.mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         _ = scaffolder.run(projects=[_project_info(project)])
         _validate_class_names(
             tests_dir,
@@ -146,16 +134,15 @@ class TestGeneratedClassNamingConvention:
         )
 
     def test_no_prefix_returns_empty_result(self, tmp_path: Path) -> None:
+        """Skip generation when no package prefix is available."""
         project = tmp_path / "empty-project"
         project.mkdir()
         (project / "Makefile").touch()
-        scaffolder = FlextInfraCodegenScaffolder(workspace=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
         [result] = scaffolder.run(
             projects=[
                 u.Tests.create_project_info(
-                    project,
-                    name="empty-project",
-                    package_name="",
+                    project, name="empty-project", package_name=""
                 )
             ]
         )

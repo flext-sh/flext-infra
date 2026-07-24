@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
 from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import c, m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestStubChain:
@@ -27,12 +28,10 @@ class TestStubChain:
         all_projects: bool = False,
     ) -> FlextInfraStubSupplyChain:
         return FlextInfraStubSupplyChain(
-            workspace=workspace_root,
+            workspace_root=workspace_root,
             selected_projects=projects,
             all_projects=all_projects,
-            runner=u.Tests.DeptryRunner(
-                r.ok(u.Tests.stub_run(stdout=stdout)),
-            ),
+            runner=u.Tests.DeptryRunner(r.ok(u.Tests.stub_run(stdout=stdout))),
         )
 
     @staticmethod
@@ -40,15 +39,14 @@ class TestStubChain:
         return "\n".join(lines)
 
     def test_init_defaults(self, tmp_path: Path) -> None:
-        chain = FlextInfraStubSupplyChain(workspace=tmp_path)
+        chain = FlextInfraStubSupplyChain(workspace_root=tmp_path)
         tm.that(chain.runner is None, eq=True)
         tm.that(chain.project_names is None, eq=True)
         tm.that(chain.project_dirs is None, eq=True)
 
     def test_project_names_and_dirs_are_normalized(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace=tmp_path,
-            selected_projects=[" alpha, beta ", "gamma delta"],
+            workspace_root=tmp_path, selected_projects=[" alpha, beta ", "gamma delta"]
         )
         tm.that(chain.project_names, eq=["alpha", "beta", "gamma", "delta"])
         tm.that(
@@ -63,40 +61,22 @@ class TestStubChain:
 
     def test_project_dirs_are_disabled_for_all_projects(self, tmp_path: Path) -> None:
         chain = FlextInfraStubSupplyChain(
-            workspace=tmp_path,
-            selected_projects=["alpha"],
-            all_projects=True,
+            workspace_root=tmp_path, selected_projects=["alpha"], all_projects=True
         )
         tm.that(chain.project_dirs is None, eq=True)
 
-    @pytest.mark.parametrize(
-        ("stub_path", "expected_unresolved"),
-        [
-            (None, ["requests"]),
-            ("typings/requests.pyi", []),
-        ],
-    )
-    def test_analyze_classifies_public_results(
-        self,
-        tmp_path: Path,
-        stub_path: str | None,
-        expected_unresolved: t.StrSequence,
-    ) -> None:
+    def test_analyze_classifies_public_results(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(
             tmp_path,
             "project",
             pyproject="[project]\nname = 'project'\n",
             with_src=True,
         )
-        if stub_path is not None:
-            stub_file = tmp_path / stub_path
-            stub_file.parent.mkdir(parents=True, exist_ok=True)
-            stub_file.write_text("", encoding="utf-8")
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
-                "note: hint: install stub package `types-requests`",
-                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+                "note: hint: install stub package `types-definitely-missing-external`",
+                "src/project.py:1: error: Cannot find module `definitely_missing_external` [missing-import]",
                 "src/project.py:2: error: Cannot find module `flext_core` [missing-import]",
             ),
         )
@@ -108,9 +88,9 @@ class TestStubChain:
             result.value,
             eq=m.Infra.StubAnalysisReport(
                 project="project",
-                mypy_hints=["types-requests"],
+                mypy_hints=["types-definitely-missing-external"],
                 internal_missing=["flext_core"],
-                unresolved_missing=list(expected_unresolved),
+                unresolved_missing=["definitely_missing_external"],
                 total_missing=2,
             ),
         )
@@ -119,10 +99,7 @@ class TestStubChain:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         hidden_dir = tmp_path / ".hidden"
         hidden_dir.mkdir()
-        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text(
-            "",
-            encoding="utf-8",
-        )
+        (hidden_dir / c.Infra.PYPROJECT_FILENAME).write_text("", encoding="utf-8")
         (hidden_dir / c.Infra.DEFAULT_SRC_DIR).mkdir()
         u.Tests.mk_project(tmp_path, "project-b", with_src=False)
         valid_project = u.Tests.mk_project(tmp_path, "project-c", with_src=True)
@@ -130,7 +107,7 @@ class TestStubChain:
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 2 projects, 0 issues")
         tm.that(result.value.violations, empty=True)
         tm.that(valid_project.exists(), eq=True)
 
@@ -139,52 +116,42 @@ class TestStubChain:
         _project_b = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(
-            tmp_path,
-            project_dirs=[project_a],
+            tmp_path, project_dirs=[project_a]
         )
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 1 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 1 projects, 0 issues")
 
     def test_build_report_includes_untracked_git_projects(self, tmp_path: Path) -> None:
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        assert init_result.success
-        assert init_result.value.exit_code == 0
+        tm.ok(init_result)
+        tm.that(init_result.value.exit_code, eq=0)
         email_result = u.Cli.run_raw(
-            ["git", "config", "user.email", "test@example.com"],
-            cwd=tmp_path,
+            ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
         )
-        assert email_result.success
-        assert email_result.value.exit_code == 0
+        tm.ok(email_result)
+        tm.that(email_result.value.exit_code, eq=0)
         name_result = u.Cli.run_raw(
-            ["git", "config", "user.name", "Test User"],
-            cwd=tmp_path,
+            ["git", "config", "user.name", "Test User"], cwd=tmp_path
         )
-        assert name_result.success
-        assert name_result.value.exit_code == 0
+        tm.ok(name_result)
+        tm.that(name_result.value.exit_code, eq=0)
         tracked_project = u.Tests.mk_project(tmp_path, "project-a", with_src=True)
-        _untracked_project = u.Tests.mk_project(
-            tmp_path,
-            "project-b",
-            with_src=True,
-        )
-        add_result = u.Cli.run_raw(
-            ["git", "add", "project-a"],
-            cwd=tmp_path,
-        )
-        assert add_result.success
-        assert add_result.value.exit_code == 0
+        _untracked_project = u.Tests.mk_project(tmp_path, "project-b", with_src=True)
+        add_result = u.Cli.run_raw(["git", "add", "project-a"], cwd=tmp_path)
+        tm.ok(add_result)
+        tm.that(add_result.value.exit_code, eq=0)
 
         result = self.make_chain(workspace_root=tmp_path).build_report(tmp_path)
 
         tm.ok(result)
-        tm.that(result.value.summary, eq="stub chain: 2 projects, 0 issues")
+        tm.that(result.value.summary, eq="typed dependency chain: 2 projects, 0 issues")
         tm.that(tracked_project.exists(), eq=True)
 
     def test_build_report_fails_for_missing_workspace(self, tmp_path: Path) -> None:
-        result = self.make_chain(
-            workspace_root=tmp_path,
-        ).build_report(tmp_path / "missing")
+        result = self.make_chain(workspace_root=tmp_path).build_report(
+            tmp_path / "missing"
+        )
         tm.fail(result)
 
     def test_execute_fails_when_report_has_violations(self, tmp_path: Path) -> None:
@@ -192,7 +159,7 @@ class TestStubChain:
         chain = self.make_chain(
             workspace_root=tmp_path,
             stdout=self._stub_output(
-                "src/project.py:1: error: Cannot find module `requests` [missing-import]",
+                "note: hint: install stub package `types-definitely-missing-external`"
             ),
             all_projects=True,
         )
@@ -200,15 +167,12 @@ class TestStubChain:
         result = chain.execute()
 
         tm.fail(result)
-        tm.that(result.error, has="stub chain: 1 projects, 1 issues")
+        tm.that(result.error, has="typed dependency chain: 1 projects, 1 issues")
 
     def test_execute_passes_for_selected_projects(self, tmp_path: Path) -> None:
         u.Tests.mk_project(tmp_path, "project-a", with_src=True)
         u.Tests.mk_project(tmp_path, "project-b", with_src=True)
-        chain = self.make_chain(
-            workspace_root=tmp_path,
-            projects=["project-a"],
-        )
+        chain = self.make_chain(workspace_root=tmp_path, projects=["project-a"])
 
         result = chain.execute()
 

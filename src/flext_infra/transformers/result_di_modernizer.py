@@ -19,14 +19,14 @@ result is unambiguous and records every change.
 from __future__ import annotations
 
 import ast
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
-from flext_infra.transformers._rewrite import (
-    FlextInfraSourceRewriter,
-)
+from flext_infra import c
+from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
@@ -89,16 +89,11 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 self._rewrite_di_root_import(node)
             elif module == "dependency_injector.containers":
                 self._rewrite_di_submodule_import(
-                    node,
-                    f"{self._di_facade()}.containers",
-                    "DeclarativeContainer",
+                    node, f"{self._di_facade()}.containers", "DeclarativeContainer"
                 )
             elif module == "dependency_injector.providers":
                 self._rewrite_di_submodule_import(
-                    node,
-                    f"{self._di_facade()}.providers",
-                    "Factory",
-                    "Singleton",
+                    node, f"{self._di_facade()}.providers", "Factory", "Singleton"
                 )
             self.generic_visit(node)
 
@@ -109,16 +104,11 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 return
             new_text = f"from {self._di_facade()} import {', '.join(names)}\n"
             self.append_rewrite(
-                node,
-                new_text,
-                "Rewrote dependency_injector import to flext_core.di",
+                node, new_text, "Rewrote dependency_injector import to flext_core.di"
             )
 
         def _rewrite_di_submodule_import(
-            self,
-            node: ast.ImportFrom,
-            new_module: str,
-            *expected_names: str,
+            self, node: ast.ImportFrom, new_module: str, *expected_names: str
         ) -> None:
             """Rewrite a submodule import when all names are expected."""
             names = [alias.name for alias in node.names]
@@ -132,9 +122,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                     as_clauses.append(alias.name)
             new_text = f"from {new_module} import {', '.join(as_clauses)}\n"
             self.append_rewrite(
-                node,
-                new_text,
-                f"Rewrote {node.module} import to {new_module}",
+                node, new_text, f"Rewrote {node.module} import to {new_module}"
             )
 
         @override
@@ -163,9 +151,7 @@ class FlextInfraRefactorResultDiModernizer(FlextInfraRopeTransformer):
                 f'return r[str].fail("{message}", error_code="{self._error_code()}")'
             )
             self.append_rewrite(
-                node,
-                new_text,
-                "Replaced raise ValueError with r[str].fail result",
+                node, new_text, "Replaced raise ValueError with r[str].fail result"
             )
             self.generic_visit(node)
 

@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from tests.constants import c
-from tests.typings import t
+from tests import c, t
 
 
 class TestsFlextInfraInfraTypings:
@@ -26,7 +25,8 @@ class TestsFlextInfraInfraTypings:
     def test_json_list_adapter_validates_mixed_cli_values(self) -> None:
         items = t.Cli.JSON_LIST_ADAPTER.validate_python(["infra", 1, True])
 
-        tm.that(list(items), eq=["infra", 1, True])
+        expected: t.JsonList = ["infra", 1, True]
+        tm.that(list(items), eq=expected)
 
     def test_infra_mapping_adapter_validates_real_workspace_payload(self) -> None:
         payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
@@ -40,27 +40,25 @@ class TestsFlextInfraInfraTypings:
         tm.that(payload["enabled"], eq=True)
 
     def test_str_seq_adapter_validates_project_name_sequences(self) -> None:
-        values = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            ("flext-core", "flext-infra"),
-        )
+        values = t.Infra.STR_SEQ_ADAPTER.validate_python(("flext-core", "flext-infra"))
 
         tm.that(list(values), eq=["flext-core", "flext-infra"])
 
     def test_container_mapping_adapter_accepts_paths_and_scalars(self) -> None:
         payload = t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
-            "root": Path("/tmp/flext"),
+            "root": Path("/var/lib/flext"),
             "enabled": True,
             "retries": 3,
         })
 
-        tm.that(payload["root"], eq=Path("/tmp/flext"))
+        tm.that(payload["root"], eq=Path("/var/lib/flext"))
         tm.that(payload["enabled"], eq=True)
         tm.that(payload["retries"], eq=3)
 
     def test_container_mapping_adapter_rejects_nested_mapping(self) -> None:
         with pytest.raises(c.ValidationError):
             t.Infra.CONTAINER_MAPPING_ADAPTER.validate_python({
-                "root": Path("/tmp/flext"),
+                "root": Path("/var/lib/flext"),
                 "settings": {"enabled": True},
             })
 

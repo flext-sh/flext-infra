@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
+from flext_infra import config, m
 from flext_infra._constants.refactor import FlextInfraConstantsRefactor
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
+    from flext_infra._models.mro_scan import FlextInfraModelsMroScan
 
 
 class FlextInfraUtilitiesMroScanCatalog:
@@ -18,8 +21,7 @@ class FlextInfraUtilitiesMroScanCatalog:
 
     @classmethod
     def target_specs(
-        cls,
-        target: str,
+        cls, target: str
     ) -> tuple[FlextInfraModelsMroScan.MROTargetSpec, ...]:
         """Return target specs for a normalized MRO scan target."""
         target_map: t.StrMapping = {
@@ -44,33 +46,23 @@ class FlextInfraUtilitiesMroScanCatalog:
 
     @staticmethod
     def project_roots(
-        workspace_root: Path,
-        project_names: t.StrSequence | None,
+        workspace_root: Path, project_names: t.StrSequence | None
     ) -> t.SequenceOf[Path]:
         """Discover governed project roots through the canonical workspace path."""
         selected = frozenset(project_names or ())
         return tuple(
             path
             for path in FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-                workspace_root=workspace_root,
+                workspace_root=workspace_root
             )
             if not selected or path.name in selected
         )
 
     @staticmethod
     def python_files(project_root: Path) -> t.SequenceOf[Path]:
-        """Return Python files under configured namespace scan directories."""
-        scan_dirs = FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(project_root)
+        """Return Python files under the production source roots."""
         result = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=project_root,
-            project_roots=[project_root],
-            include_tests=FlextInfraConstantsSharedInfra.DIR_TESTS in scan_dirs,
-            include_examples=FlextInfraConstantsSharedInfra.DIR_EXAMPLES in scan_dirs,
-            include_scripts=FlextInfraConstantsSharedInfra.DIR_SCRIPTS in scan_dirs,
-            include_dynamic_dirs=FlextInfraUtilitiesNamespaceConfig.namespace_include_dynamic_dirs(
-                project_root,
-            ),
-            src_dirs=scan_dirs,
+            m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         return () if result.failure else tuple(result.value)
 
@@ -81,13 +73,12 @@ class FlextInfraUtilitiesMroScanCatalog:
         return ".".join(
             part
             for part in relative_path.with_suffix("").parts
-            if part != FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR
+            if part not in config.Infra.source_scan.roots
         )
 
     @staticmethod
     def matches_target(
-        file_path: Path,
-        spec: FlextInfraModelsMroScan.MROTargetSpec,
+        file_path: Path, spec: FlextInfraModelsMroScan.MROTargetSpec
     ) -> bool:
         """Return whether a Python file belongs to the target family."""
         return (

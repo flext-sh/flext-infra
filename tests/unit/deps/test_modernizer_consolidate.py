@@ -12,6 +12,7 @@ class TestsFlextInfraDepsModernizerConsolidate:
     """Tests consolidate groups phase behavior."""
 
     def test_consolidate_groups_creates_dev_group(self) -> None:
+        """Verify consolidate groups creates dev group."""
         doc = tomlkit.document()
         project = tomlkit.table()
         optional = tomlkit.table()
@@ -21,16 +22,18 @@ class TestsFlextInfraDepsModernizerConsolidate:
         tm.that(changes, empty=False)
 
     def test_consolidate_groups_removes_old_groups(self) -> None:
+        """Verify consolidate groups removes old groups."""
         doc = tomlkit.parse(
             "[project.optional-dependencies]\n"
             'dev = ["pytest"]\n'
             'docs = ["sphinx"]\n'
-            'test = ["coverage"]\n',
+            'test = ["coverage"]\n'
         )
         changes = FlextInfraConsolidateGroupsPhase().apply(doc, ["pytest"])
         tm.that(any("removed" in change for change in changes), eq=True)
 
     def test_consolidate_groups_merges_poetry_groups(self) -> None:
+        """Verify consolidate groups merges poetry groups."""
         doc = tomlkit.document()
         project = tomlkit.table()
         optional = tomlkit.table()
@@ -48,6 +51,7 @@ class TestsFlextInfraDepsModernizerConsolidate:
         tm.that(changes, empty=False)
 
     def test_consolidate_groups_sets_deptry_config(self) -> None:
+        """Verify consolidate groups sets deptry config."""
         doc = tomlkit.document()
         project = tomlkit.table()
         project["optional-dependencies"] = tomlkit.table()
@@ -57,10 +61,12 @@ class TestsFlextInfraDepsModernizerConsolidate:
         tm.that(any("deptry" in change for change in changes), eq=True)
 
     def test_consolidate_groups_handles_missing_tables(self) -> None:
+        """Verify consolidate groups handles missing tables."""
         changes = FlextInfraConsolidateGroupsPhase().apply(tomlkit.document(), [])
         tm.that(changes, empty=False)
 
     def test_consolidate_groups_phase_apply_removes_old_groups(self) -> None:
+        """Verify consolidate groups phase apply removes old groups."""
         doc = tomlkit.document()
         project = tomlkit.table()
         optional = tomlkit.table()
@@ -78,6 +84,7 @@ class TestsFlextInfraDepsModernizerConsolidate:
         )
 
     def test_consolidate_groups_phase_apply_with_empty_poetry_group(self) -> None:
+        """Verify consolidate groups phase apply with empty poetry group."""
         doc = tomlkit.document()
         project = tomlkit.table()
         project["optional-dependencies"] = tomlkit.table()

@@ -8,34 +8,20 @@ from typing import Annotated, override
 
 from flext_cli import cli
 from flext_core import r
+from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.refactor._census_apply import (
-    FlextInfraRefactorCensusApplyMixin,
-)
-from flext_infra.refactor._census_collect import (
-    FlextInfraRefactorCensusCollectMixin,
-)
+from flext_infra.refactor._census_apply import FlextInfraRefactorCensusApplyMixin
+from flext_infra.refactor._census_collect import FlextInfraRefactorCensusCollectMixin
 from flext_infra.refactor._census_collect_helpers import (
     FlextInfraRefactorCensusCollectHelpersMixin,
 )
-from flext_infra.refactor._census_filters import (
-    FlextInfraRefactorCensusFiltersMixin,
-)
+from flext_infra.refactor._census_filters import FlextInfraRefactorCensusFiltersMixin
 from flext_infra.refactor._census_inventory import (
     FlextInfraRefactorCensusInventoryMixin,
 )
-from flext_infra.refactor._census_objects import (
-    FlextInfraRefactorCensusObjectsMixin,
-)
-from flext_infra.refactor._census_project import (
-    FlextInfraRefactorCensusProjectMixin,
-)
-from flext_infra.refactor._census_render import (
-    FlextInfraRefactorCensusRenderMixin,
-)
+from flext_infra.refactor._census_objects import FlextInfraRefactorCensusObjectsMixin
+from flext_infra.refactor._census_project import FlextInfraRefactorCensusProjectMixin
+from flext_infra.refactor._census_render import FlextInfraRefactorCensusRenderMixin
 from flext_infra.refactor._census_rules_alias import (
     FlextInfraRefactorCensusRulesAliasMixin,
 )
@@ -45,14 +31,8 @@ from flext_infra.refactor._census_rules_dispatch import (
 from flext_infra.refactor._census_rules_struct import (
     FlextInfraRefactorCensusRulesStructMixin,
 )
-from flext_infra.refactor._census_symbols import (
-    FlextInfraRefactorCensusSymbolsMixin,
-)
-from flext_infra.refactor._census_validate import (
-    FlextInfraRefactorCensusValidateMixin,
-)
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra.refactor._census_symbols import FlextInfraRefactorCensusSymbolsMixin
+from flext_infra.refactor._census_validate import FlextInfraRefactorCensusValidateMixin
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
@@ -75,12 +55,10 @@ class FlextInfraRefactorCensus(
     """Generalized Rope-only census service for Python objects across the workspace."""
 
     json_output: Annotated[
-        str | None,
-        m.Field(description="Path to write JSON report"),
+        str | None, m.Field(description="Path to write JSON report")
     ] = None
     impact_map_output: Annotated[
-        str | None,
-        m.Field(description="Path to write dry-run impact map JSON"),
+        str | None, m.Field(description="Path to write dry-run impact map JSON")
     ] = None
     kinds: Annotated[
         t.StrSequence | None,
@@ -97,43 +75,40 @@ class FlextInfraRefactorCensus(
         ),
     ] = None
     include_local_scopes: Annotated[
-        bool,
-        m.Field(description="Include locals, parameters, and nested scopes"),
+        bool, m.Field(description="Include locals, parameters, and nested scopes")
     ] = True
 
     @property
     def json_output_path(self) -> Path | None:
-        """Return the resolved JSON export path when provided."""
+        """Resolved JSON export path when provided."""
         path: Path | None = u.Infra.normalize_optional_path(self.json_output)
         return path
 
     @property
     def impact_map_output_path(self) -> Path | None:
-        """Return the resolved impact-map export path when provided."""
-        path: Path | None = u.Infra.normalize_optional_path(
-            self.impact_map_output,
-        )
+        """Resolved impact-map export path when provided."""
+        path: Path | None = u.Infra.normalize_optional_path(self.impact_map_output)
         return path
 
     @property
     def kind_names(self) -> t.StrSequence | None:
-        """Return normalized symbol-kind filters."""
+        """Normalized symbol-kind filters."""
         return u.Infra.normalize_sequence_values(self.kinds)
 
     @property
     def rule_names(self) -> t.StrSequence | None:
-        """Return normalized violation-rule filters."""
+        """Normalized violation-rule filters."""
         return u.Infra.normalize_sequence_values(self.rules)
 
     @property
     def family_names(self) -> t.StrSequence | None:
-        """Return normalized family filters."""
+        """Normalized family filters."""
         return u.Infra.normalize_sequence_values(self.families)
 
     @property
     @override
     def dry_run_gate_names(self) -> t.StrSequence:
-        """Return the per-candidate gate set (``lint`` + ``pyrefly``).
+        """Per-candidate gate set (``lint`` + ``pyrefly``).
 
         Mypy and pyright perform transitive module analysis that flags
         ``__init__.py`` lazy-import references to just-removed symbols
@@ -156,25 +131,22 @@ class FlextInfraRefactorCensus(
         names = self.project_names
         if names is None or len(names) != 1:
             return None
-        project_path = self.root / names[0]
+        project_name: str = names[0]
+        project_path: Path = self.root / project_name
         if project_path.is_dir():
             return project_path
         return None
 
     def _execution_reports(
         self,
-    ) -> tuple[
-        m.Infra.Census.WorkspaceReport,
-        m.Infra.Census.WorkspaceReport | None,
-    ]:
+    ) -> tuple[m.Infra.Census.WorkspaceReport, m.Infra.Census.WorkspaceReport | None]:
         """Collect the final report and the pre-apply impact-map report."""
         started = time.monotonic()
         applied = frozenset[str]()
         impact_map_report: m.Infra.Census.WorkspaceReport | None = None
         rope_root = self._rope_root_for_selection()
         with FlextInfraRopeWorkspace.open_workspace(
-            self.root,
-            rope_workspace_root=rope_root,
+            self.root, rope_workspace_root=rope_root
         ) as rope:
 
             def collect(applied: frozenset[str]) -> m.Infra.Census.WorkspaceReport:

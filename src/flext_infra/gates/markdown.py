@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraMarkdownGate(FlextInfraGate):
@@ -41,9 +42,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Return relative markdown file paths (doubles as check_dirs for _build_check_command)."""
         _ = ctx
@@ -54,10 +53,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = ctx
@@ -69,10 +65,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
@@ -88,16 +81,13 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     column=int(match.group("col") or 1),
                     code=match.group("code"),
                     message=match.group("msg"),
-                ),
+                )
             )
         return result.exit_code == 0, issues
 
     @override
     def _build_fix_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = ctx
@@ -109,7 +99,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     @override
-    def _fix_raw_output(self, result: m.Cli.CommandOutput) -> str:
+    def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
         """Fix raw output."""
         return "\n".join(part for part in (result.stdout, result.stderr) if part)
 

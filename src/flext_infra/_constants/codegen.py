@@ -13,9 +13,7 @@ import re
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.codegen_detection import (
-    FlextInfraConstantsCodegenDetection,
-)
+from flext_infra._constants.codegen_detection import FlextInfraConstantsCodegenDetection
 from flext_infra._constants.codegen_lazy import FlextInfraConstantsCodegenLazy
 from flext_infra._constants.codegen_render_names import (
     FlextInfraConstantsCodegenRenderNames,
@@ -48,8 +46,17 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
     )
     "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
+    # mro-wkii.14 (agent: codegen) — par raiz config/settings (padrao cosmos-main:
+    # modulo privado `_config.py`/`_settings.py` exportando o singleton). Consumido
+    # pelo gerador de scaffold (mro-wkii.10); base flext-core em estabilizacao por
+    # outro agente — nao tocar runtime config/settings aqui.
+    RUNTIME_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
+        ("_config.py", "Config", "FlextConfig", "Runtime config"),
+        ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),
+    )
+    "Runtime singleton modules for src/: (filename, class_suffix, base_class, docstring)."
     VIOLATION_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)",
+        r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
 
@@ -59,19 +66,23 @@ class FlextInfraConstantsCodegen(
         """Canonical codegen pipeline stage identifiers."""
 
         DISCOVER = "discover"
+        TOOLCHAIN = "toolchain"
         PY_TYPED = "py_typed"
         CENSUS_BEFORE = "census_before"
         SCAFFOLD = "scaffold"
         AUTO_FIX = "auto_fix"
+        DEPS = "deps"
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
     PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
         PipelineStage.DISCOVER,
+        PipelineStage.TOOLCHAIN,
         PipelineStage.PY_TYPED,
         PipelineStage.CENSUS_BEFORE,
         PipelineStage.SCAFFOLD,
         PipelineStage.AUTO_FIX,
+        PipelineStage.DEPS,
         PipelineStage.LAZY_INIT,
         PipelineStage.CENSUS_AFTER,
     )

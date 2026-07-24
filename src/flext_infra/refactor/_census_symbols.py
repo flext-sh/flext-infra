@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from operator import itemgetter
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusSymbolsMixin:
@@ -22,9 +22,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @classmethod
     def _lightweight_symbol_index(
-        cls,
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
+        cls, rope: p.Infra.RopeWorkspaceDsl, file_path: Path
     ) -> dict[str, tuple[str, int]]:
         """Top-level symbol index for detector-only rule sets."""
         resource = rope.resource(file_path)
@@ -32,11 +30,10 @@ class FlextInfraRefactorCensusSymbolsMixin:
             return {}
         try:
             attributes = u.Infra.get_pymodule(
-                rope.rope_project,
-                resource,
+                rope.rope_project, resource
             ).get_attributes()
         except (
-            *FlextInfraConstantsRope.RUNTIME_ERRORS,
+            *u.Infra.rope_runtime_errors(),
             RecursionError,
             SyntaxError,
             ValueError,
@@ -50,7 +47,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         object_kinds: dict[int, str] = {}
         candidates: list[tuple[int, str, t.Infra.RopePyName]] = []
         for name, pyname in attributes.items():
-            if FlextInfraUtilitiesRopeAnalysis.is_imported_name(pyname):
+            if u.Infra.is_imported_name(pyname):
                 continue
             line = cls._lightweight_symbol_line(pyname, resource)
             if line is None:
@@ -59,9 +56,7 @@ class FlextInfraRefactorCensusSymbolsMixin:
         for line, name, pyname in sorted(candidates, key=itemgetter(0)):
             obj = pyname.get_object()
             kind = cls._lightweight_symbol_kind(
-                name=name,
-                obj=obj,
-                object_kinds=object_kinds,
+                name=name, obj=obj, object_kinds=object_kinds
             )
             symbols.setdefault(name, (kind, line))
             if kind in {"class", "function"}:
@@ -70,13 +65,10 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @staticmethod
     def _lightweight_symbol_line(
-        pyname: t.Infra.RopePyName,
-        resource: t.Infra.RopeResource,
+        pyname: t.Infra.RopePyName, resource: t.Infra.RopeResource
     ) -> int | None:
         """Return the local definition line for one top-level Rope symbol."""
         location = pyname.get_definition_location()
-        if location is None:
-            return None
         module, line = location
         origin = module.get_resource() if module is not None else None
         if not isinstance(line, int) or line < 1 or origin is None:
@@ -85,18 +77,15 @@ class FlextInfraRefactorCensusSymbolsMixin:
 
     @staticmethod
     def _lightweight_symbol_kind(
-        *,
-        name: str,
-        obj: t.Infra.RopePyObject | None,
-        object_kinds: dict[int, str],
+        *, name: str, obj: t.Infra.RopePyObject | None, object_kinds: dict[int, str]
     ) -> str:
         """Infer a detector-only symbol kind from Rope metadata."""
         inherited_kind = object_kinds.get(id(obj))
         if inherited_kind in {"class", "function"}:
             return inherited_kind
-        if isinstance(obj, FlextInfraConstantsRope.ABSTRACT_CLASS_TYPES):
+        if u.Infra.is_abstract_class(obj):
             return "class"
-        if isinstance(obj, FlextInfraConstantsRope.PY_FUNCTION_TYPES):
+        if u.Infra.is_py_function(obj):
             return "function"
         return "constant" if name.isupper() else "assignment"
 

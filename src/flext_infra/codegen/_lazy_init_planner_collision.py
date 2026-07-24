@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from pathlib import Path
+
+    from flext_infra import m, p, t
 
 
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
@@ -33,12 +31,15 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         policy = convention.module_policy
         if policy.expected_alias == name:
             score += 100
+        elif policy.expected_family and name.endswith(policy.expected_family):
+            # A governed facade legitimately owns its declared family class
+            # (e.g. ``FlextTestsValidator`` in ``validator.py``); it must win
+            # over an MRO ``_part_`` module of the same name.
+            score += 25
         elif policy.expected_alias:
             # Governed root facades should primarily own their canonical alias.
             score -= 40
-        if policy.expected_family and name.endswith(policy.expected_family):
-            score += 25
-        elif policy.expected_family and name != (policy.expected_alias or ""):
+        elif policy.expected_family:
             # Penalize cross-family leakage from governed facade files.
             score -= 20
         if policy.export_symbols:
@@ -58,16 +59,17 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 3
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
+            # mro-pulj (codex): the final public facade owns the external
+            # class identity; numbered implementation parts only rank among
+            # themselves when no facade candidate exists.
+            score -= 50
             score += int(part_number)
         score -= module_path.count(".")
         final_score: int = score
         return final_score
 
     def _pick_preferred_target(
-        self,
-        name: str,
-        existing: t.StrPair,
-        target: t.StrPair,
+        self, name: str, existing: t.StrPair, target: t.StrPair
     ) -> t.StrPair:
         """Return the higher-scored of two competing export targets."""
         existing_score = self._target_score(name, existing)
@@ -78,20 +80,13 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return existing
         return min(existing, target)
 
-    def _add(
-        self,
-        index: t.MutableLazyAliasMap,
-        name: str,
-        target: t.StrPair,
-    ) -> None:
+    def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
         """Insert a name/target pair, resolving collisions via policy scoring."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
             return
-        if not isinstance(existing, tuple):
-            index[name] = target
-            return
+        # mro-j47u (codex): MutableLazyAliasMap values are always StrPair.
         winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
             index[name] = winner
@@ -99,20 +94,20 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         self._collision_count += 1
         u.Cli.warning(
             f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}",
+            f"resolved by canonical policy scorer to {winner}"
         )
         index[name] = winner
 
     @classmethod
-    def _is_intentional_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_intentional_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
         if cls._is_mro_part_reexport(a, b):
             return True
-        if cls._is_root_typing_reexport(a, b):
+        # mro-pulj (codex): root typing sidecars are removed; real source
+        # owners now participate in the normal collision policy.
+        if cls._is_private_facade_reexport(a, b):
+            return True
+        if cls._is_test_collection_collision(a, b):
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
@@ -141,11 +136,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return "_part_" in module_stem
 
     @classmethod
-    def _is_mro_part_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
+    def _is_mro_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether targets are the same logical MRO owner split into parts."""
         if a[1] != b[1]:
             return False
@@ -181,21 +172,42 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return facade_tuple == expected_facade_parts
 
     @classmethod
-    def _is_root_typing_reexport(
-        cls,
-        a: t.StrPair,
-        b: t.StrPair,
-    ) -> bool:
-        """Return whether a generated root-typing module re-exports source owners."""
+    def _is_private_facade_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether a public facade re-exports a private implementation module."""
         if a[1] != b[1]:
+            return False
+        for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
+            pub_parts = cls._module_parts(pub_mod)
+            priv_parts = cls._module_parts(priv_mod)
+            if not pub_parts or not priv_parts or pub_parts[0] != priv_parts[0]:
+                continue
+            pub_private_segments = cls._private_segments(pub_parts)
+            priv_private_segments = cls._private_segments(priv_parts)
+            if not (priv_private_segments - pub_private_segments):
+                continue
+            if pub_parts[:-1] == priv_parts[:-1]:
+                return True
+            if pub_parts[-1] == priv_parts[-1].removeprefix("_"):
+                return True
+        return False
+
+    @classmethod
+    def _private_segments(cls, parts: t.StrSequence) -> frozenset[tuple[int, str]]:
+        """Return private implementation segments with their path positions."""
+        return frozenset(
+            (index, part)
+            for index, part in enumerate(parts[1:], start=1)
+            if part.startswith("_") and not part.startswith("__")
+        )
+
+    @classmethod
+    def _is_test_collection_collision(cls, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether duplicate generated test collection names are benign."""
+        if a[1] != b[1] or not a[1].startswith("Tests"):
             return False
         a_parts = cls._module_parts(a[0])
         b_parts = cls._module_parts(b[0])
-        if not a_parts or not b_parts or a_parts[0] != b_parts[0]:
-            return False
-        a_root_typing = "_root_typing_parts" in a_parts
-        b_root_typing = "_root_typing_parts" in b_parts
-        return a_root_typing != b_root_typing
+        return bool(a_parts and b_parts and a_parts[0] == b_parts[0] == "tests")
 
     @staticmethod
     def _publish(name: str, *, allow_main: bool) -> bool:

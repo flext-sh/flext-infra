@@ -6,14 +6,10 @@ Uses rope-based analysis and regex source scanning instead of CST visitors.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import (
-    MutableMapping,
-)
 from operator import itemgetter
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, m, u
 from flext_infra.refactor._violation_helper_classifier import (
     FlextInfraRefactorViolationHelperClassifierMixin,
 )
@@ -23,19 +19,22 @@ from flext_infra.refactor.class_nesting_analyzer import (
 from flext_infra.transformers.violation_census_visitor import (
     FlextInfraViolationCensusVisitor,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraRefactorViolationAnalyzer(
-    FlextInfraRefactorViolationHelperClassifierMixin,
+    FlextInfraRefactorViolationHelperClassifierMixin
 ):
     """Analyzer for refactor violation metrics across source files."""
 
     @classmethod
     def analyze_files(
-        cls,
-        files: t.SequenceOf[Path],
+        cls, files: t.SequenceOf[Path]
     ) -> m.Infra.ViolationAnalysisReport:
         """Analyze files and return aggregated violation and helper metrics."""
         totals: Counter[str] = Counter()
@@ -49,8 +48,7 @@ class FlextInfraRefactorViolationAnalyzer(
                 continue
             content = read.value
             helper_analysis = cls._analyze_file_helpers(
-                file_path=file_path,
-                content=content,
+                file_path=file_path, content=content
             )
             helper_suggestions.extend(helper_analysis.suggestions)
             helper_totals.update(helper_analysis.totals)
@@ -79,9 +77,7 @@ class FlextInfraRefactorViolationAnalyzer(
         ranked_sorted = sorted(ranked_files, key=itemgetter(1), reverse=True)
         hottest_files = [
             m.Infra.ViolationTopFileSection(
-                file=file_name,
-                total=total,
-                counts={**counts},
+                file=file_name, total=total, counts={**counts}
             )
             for file_name, total, counts in ranked_sorted[:25]
         ]

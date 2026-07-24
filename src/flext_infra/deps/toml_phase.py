@@ -12,21 +12,15 @@ from __future__ import annotations
 
 from typing import Annotated, override
 
-from flext_core import r
-from flext_infra.base import s
+from flext_infra import m, p, r, s, t, u
 from flext_infra.deps._toml_phase_ops import FlextInfraTomlPhaseOps
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
     """Apply ``m.Infra.Deps.Toml.PhaseConfig`` phases to a TOML document."""
 
     doc: Annotated[
-        t.Cli.TomlDocument,
-        m.Field(exclude=True, description="Target TOML document"),
+        t.Cli.TomlDocument, m.Field(exclude=True, description="Target TOML document")
     ]
     phases: Annotated[
         t.SequenceOf[m.Infra.Deps.Toml.PhaseConfig],
@@ -41,28 +35,21 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
 
     @classmethod
     def apply_phases(
-        cls,
-        doc: t.Cli.TomlDocument,
-        *phases: m.Infra.Deps.Toml.PhaseConfig,
+        cls, doc: t.Cli.TomlDocument, *phases: m.Infra.Deps.Toml.PhaseConfig
     ) -> t.StrSequence:
         """Apply a declarative phase set to one TOML document."""
-        return cls.model_construct(doc=doc, phases=phases).apply()
+        result: t.StrSequence = cls.model_construct(doc=doc, phases=phases).apply()
+        return result
 
     @classmethod
     def apply_payload_phases(
-        cls,
-        payload: t.MutableJsonMapping,
-        *phases: m.Infra.Deps.Toml.PhaseConfig,
+        cls, payload: t.MutableJsonMapping, *phases: m.Infra.Deps.Toml.PhaseConfig
     ) -> t.StrSequence:
         """Apply one declarative phase set to one plain TOML payload."""
         return [
             change
             for phase in phases
-            for change in cls._apply_payload_phase(
-                payload,
-                phase,
-                parent_path=(),
-            )
+            for change in cls._apply_payload_phase(payload, phase, parent_path=())
         ]
 
     @override
@@ -105,11 +92,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
             cls._apply_payload_operation(table, operation, out, prefix)
         for nested in phase.nested_tables:
             out.extend(
-                cls._apply_payload_phase(
-                    payload,
-                    nested,
-                    parent_path=phase_path,
-                )
+                cls._apply_payload_phase(payload, nested, parent_path=phase_path)
             )
         return out
 
@@ -123,10 +106,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
         return table
 
     def _apply_phase(
-        self,
-        phase: m.Infra.Deps.Toml.PhaseConfig,
-        *,
-        parent_path: t.StrSequence,
+        self, phase: m.Infra.Deps.Toml.PhaseConfig, *, parent_path: t.StrSequence
     ) -> t.StrSequence:
         """Apply one phase recursively using cached path resolution."""
         out: t.MutableSequenceOf[str] = []
@@ -148,9 +128,7 @@ class FlextInfraTomlPhaseService(FlextInfraTomlPhaseOps, s[t.StrSequence]):
             self._apply_operation(tbl, operation, out, pfx)
 
         for nested in phase.nested_tables:
-            out.extend(
-                self._apply_phase(nested, parent_path=phase_path),
-            )
+            out.extend(self._apply_phase(nested, parent_path=phase_path))
 
         if phase.custom_handler is not None:
             out.extend(phase.custom_handler(self.doc))

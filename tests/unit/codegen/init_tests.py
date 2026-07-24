@@ -19,10 +19,11 @@ def test_codegen_getattr_raises_attribute_error() -> None:
         _ = getattr(codegen_module, "nonexistent_xyz_attribute")
 
 
-def test_codegen_dir_returns_all_exports() -> None:
-    """Test that dir() returns all exported attributes."""
+def test_codegen_package_does_not_reexport_leaf_implementations() -> None:
+    """Keep implementation classes available only from their leaf owners."""
     exports = dir(codegen_module)
-    tm.that(exports, has="FlextInfraCodegenLazyInit")
+    tm.that(codegen_module.__all__, eq=())
+    tm.that(exports, lacks="FlextInfraCodegenLazyInit")
 
 
 def test_codegen_lazy_imports_work() -> None:

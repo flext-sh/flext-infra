@@ -7,12 +7,16 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsExtendedProjectRunners:
@@ -22,24 +26,31 @@ class TestsExtendedProjectRunners:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
-        fake_bin = tmp_path / "fake_bin"
-        fake_bin.mkdir(parents=True, exist_ok=True)
+        fake_modules = tmp_path / "fake_modules"
         for command in ("ruff", "pyrefly"):
-            script = fake_bin / command
-            script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-            script.chmod(0o755)
-        original_path = os.environ.get("PATH", "")
-        os.environ["PATH"] = f"{fake_bin}:{original_path}"
+            fake_pkg = fake_modules / command
+            fake_pkg.mkdir(parents=True, exist_ok=True)
+            (fake_pkg / "__init__.py").write_text("", encoding="utf-8")
+            (fake_pkg / "__main__.py").write_text(
+                "raise SystemExit(0)\n", encoding="utf-8"
+            )
+        original_pythonpath = os.environ.get("PYTHONPATH")
+        os.environ["PYTHONPATH"] = (
+            f"{fake_modules}:{original_pythonpath}"
+            if original_pythonpath
+            else str(fake_modules)
+        )
         try:
             result = checker.run_projects(
-                ["p1"],
-                ["lint", "format", "pyrefly"],
-                reports_dir=tmp_path / "reports",
+                ["p1"], ["lint", "format", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
-            os.environ["PATH"] = original_path
+            if original_pythonpath:
+                os.environ["PYTHONPATH"] = original_pythonpath
+            else:
+                os.environ.pop("PYTHONPATH", None)
 
-        assert result.success
+        tm.ok(result)
         assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
@@ -61,5 +72,5 @@ class TestsExtendedProjectRunners:
         finally:
             os.environ["PATH"] = original_path
 
-        assert result.success
-        assert result.value.gate == gate_method
+        tm.ok(result)
+        tm.that(result.value.gate, eq=gate_method)

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m, u
 from flext_infra.codegen._fixer_passes import FlextInfraCodegenFixerPassesMixin
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
@@ -23,12 +23,9 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
 
         @property
         def project_names(self) -> t.StrSequence | None:
-            """Return normalized selected project names."""
+            """Normalized selected project names."""
 
-    def _fix_project(
-        self,
-        project: p.Infra.ProjectInfo,
-    ) -> m.Infra.AutoFixResult:
+    def _fix_project(self, project: p.Infra.ProjectInfo) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
         project_layout = u.Infra.layout(project_path)
@@ -44,25 +41,17 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if self.dry_run or self.rules_only:
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
-        py_files_result = u.Infra.iter_python_files(
-            workspace_root=project_path,
-            project_roots=[project_path],
-        )
-        py_files = tuple(py_files_result.value) if py_files_result.success else ()
-        bak_paths = u.Infra.backup_files(py_files)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         self._run_mro_migration(ctx, project_path)
         self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
         self._run_lazy_init_regeneration(ctx, project_path)
-        self._post_fix_ruff_format(ctx, bak_paths)
+        # mro-j47u (codex): each fixer owns Ruff-native output; no post-hoc mutation.
         self._classify_remaining_violations(ctx, project_path, initial_violations)
         return self._build_result(project_path.name, ctx)
 
     def fix_workspace(
-        self,
-        *,
-        projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
+        self, *, projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None
     ) -> t.SequenceOf[m.Infra.AutoFixResult]:
         """Run auto-fix on selected projects."""
         if projects is not None:

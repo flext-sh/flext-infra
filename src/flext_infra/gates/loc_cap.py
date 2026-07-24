@@ -8,14 +8,15 @@ for this tool-driven gate (tokei reports at file granularity only).
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
@@ -29,10 +30,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Run tokei over the project's Python directories, emitting JSON."""
         _ = project_dir, ctx
@@ -40,10 +38,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
@@ -85,7 +80,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
                             code="LOC_CAP",
                             message=f"{code} code LOC exceeds {cap}-line SUPREME LAW",
                             severity="ERROR",
-                        ),
+                        )
                     )
         return tuple(issues)
 

@@ -6,23 +6,96 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
+from flext_infra import t
 from flext_infra._models.deps_tool_config_linters import (
     FlextInfraModelsDepsToolConfigLinters,
 )
 from flext_infra._models.deps_tool_config_type_checkers import (
     FlextInfraModelsDepsToolConfigTypeCheckers,
 )
-from flext_infra.typings import t
 
 
 class FlextInfraModelsDepsToolSettings(
-    FlextInfraModelsDepsToolConfigLinters,
-    FlextInfraModelsDepsToolConfigTypeCheckers,
+    FlextInfraModelsDepsToolConfigLinters, FlextInfraModelsDepsToolConfigTypeCheckers
 ):
     """Models for tool configuration loaded from YAML."""
 
+    class DeptryConfig(m.ArbitraryTypesModel):
+        """Deptry namespace and dependency-group policy."""
+
+        known_first_party: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="known-first-party",
+                description="Base first-party namespaces extended by project metadata.",
+            ),
+        ]
+        pep621_dev_dependency_groups: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="pep621-dev-dependency-groups",
+                description="PEP 735 groups treated as development dependencies.",
+            ),
+        ]
+
+    class HatchConfig(m.ArbitraryTypesModel):
+        """Hatch metadata policy."""
+
+        allow_direct_references: Annotated[
+            bool,
+            m.Field(
+                alias="allow-direct-references",
+                description="Allow direct references in project metadata.",
+            ),
+        ]
+        packaged_data_dirs: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="packaged-data-dirs",
+                default_factory=tuple,
+                description=(
+                    "Root data directories force-included into the wheel when "
+                    "present (e.g. config, templates), so they survive install."
+                ),
+            ),
+        ]
+
     class PytestConfig(m.ArbitraryTypesModel):
         """Pytest baseline settings loaded from YAML."""
+
+        # mro-j47u (codex): every rendered pytest value is validated config data.
+        min_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(alias="min-version", description="Minimum pytest version."),
+        ]
+        python_classes: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="python-classes",
+                description="Canonical pytest test class patterns.",
+            ),
+        ]
+        python_files: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="python-files",
+                description="Canonical pytest test module patterns.",
+            ),
+        ]
+        # mro-wkii.17 (codex): collection roots are validated config, not local state.
+        test_paths: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="test-paths",
+                description="Canonical tracked roots collected by pytest.",
+            ),
+        ]
+        filter_warnings: Annotated[
+            t.StrTuple,
+            m.Field(
+                alias="filter-warnings", description="Canonical pytest warning filters."
+            ),
+        ]
 
         standard_markers: Annotated[
             t.StrSequence,
@@ -88,8 +161,7 @@ class FlextInfraModelsDepsToolSettings(
         """Coverage baseline settings loaded from YAML."""
 
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
-            alias="fail-under",
-            description="Coverage fail-under thresholds by layer.",
+            alias="fail-under", description="Coverage fail-under thresholds by layer."
         )
         show_missing: Annotated[
             bool,
@@ -124,11 +196,42 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
 
+    class VultureConfig(m.ArbitraryTypesModel):
+        """Vulture production-reachability policy loaded from YAML."""
+
+        # NOTE (multi-agent, mro-j47u): keep dead-code scope fully config-owned.
+        exclude: Annotated[
+            t.StrTuple,
+            m.Field(
+                description="Declaration-only path patterns excluded from Vulture."
+            ),
+        ]
+        min_confidence: Annotated[
+            int,
+            m.Field(
+                alias="min-confidence",
+                description="Minimum confidence reported as dead production code.",
+            ),
+        ]
+        paths: Annotated[
+            t.StrTuple,
+            m.Field(description="Production roots scanned for unreachable code."),
+        ]
+        verbose: bool = m.Field(
+            description="Enable Vulture's internal scanner trace when requested."
+        )
+
     class ToolConfigTools(m.ArbitraryTypesModel):
         """Tool map loaded from YAML."""
 
         codespell: FlextInfraModelsDepsToolSettings.CodespellConfig = m.Field(
             description="Codespell settings"
+        )
+        deptry: FlextInfraModelsDepsToolSettings.DeptryConfig = m.Field(
+            description="Deptry settings"
+        )
+        hatch: FlextInfraModelsDepsToolSettings.HatchConfig = m.Field(
+            description="Hatch metadata settings"
         )
         ruff: FlextInfraModelsDepsToolSettings.RuffConfig = m.Field(
             description="Ruff settings"
@@ -151,6 +254,9 @@ class FlextInfraModelsDepsToolSettings(
         tomlsort: FlextInfraModelsDepsToolSettings.TomlsortConfig = m.Field(
             description="Tomlsort settings"
         )
+        vulture: FlextInfraModelsDepsToolSettings.VultureConfig = m.Field(
+            description="Vulture production-reachability settings"
+        )
         yamlfix: FlextInfraModelsDepsToolSettings.YamlfixConfig = m.Field(
             description="Yamlfix settings"
         )
@@ -167,7 +273,7 @@ class FlextInfraModelsDepsToolSettings(
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
     class ProjectTypeOverridesConfig(m.ArbitraryTypesModel):
-        """Project-type-specific override matrix from tool_config.yml."""
+        """Project-type-specific override matrix from ``config/tooling.yaml``."""
 
         core: FlextInfraModelsDepsToolSettings.ProjectTypeOverrideConfig = m.Field(
             description="Core overrides"
@@ -239,7 +345,7 @@ class FlextInfraModelsDepsToolSettings(
         ]
 
     class ToolConfigDocument(m.ArbitraryTypesModel):
-        """Root schema for tool_config.yml."""
+        """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
         tools: FlextInfraModelsDepsToolSettings.ToolConfigTools = m.Field(
             description="Tools"
@@ -249,9 +355,89 @@ class FlextInfraModelsDepsToolSettings(
             description="Per-project-type configuration overrides.",
         )
         lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
-            alias="lazy-init",
-            description="Declarative lazy-init generation policy.",
+            alias="lazy-init", description="Declarative lazy-init generation policy."
         )
+
+    class ToolingScalarSetting(m.ArbitraryTypesModel):
+        """One validated scalar setting rendered into an explicit TOML table."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="TOML setting name")]
+        value: Annotated[
+            str, m.Field(description="Validated Pyright diagnostic severity")
+        ]
+
+    class ToolingPyrightEnvironment(m.ArbitraryTypesModel):
+        """One resolved Pyright execution environment."""
+
+        root: Annotated[t.NonEmptyStr, m.Field(description="Environment root")]
+        extra_paths: Annotated[
+            t.StrTuple, m.Field(description="Resolved environment import paths")
+        ]
+        settings: Annotated[
+            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            m.Field(description="Resolved environment diagnostics"),
+        ]
+
+    # mro-j47u (codex): explicit runtime-only values keep the Jinja structure full.
+    class ToolingRuntimeContext(m.ArbitraryTypesModel):
+        """Resolved project/workspace values consumed by the complete template."""
+
+        project_kind: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved project classification")
+        ]
+        coverage_fail_under: Annotated[
+            int, m.Field(ge=0, le=100, description="Resolved coverage threshold")
+        ]
+        first_party: Annotated[
+            t.StrTuple, m.Field(description="Resolved first-party namespaces")
+        ]
+        mypy_path: Annotated[
+            t.StrTuple, m.Field(description="Resolved Mypy search paths")
+        ]
+        pyrefly_interpreter_path: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
+        ]
+        pyrefly_search_path: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyrefly search paths")
+        ]
+        pyrefly_project_includes: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyrefly production includes")
+        ]
+        pyright_exclude: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyright exclusions")
+        ]
+        pyright_ignore: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyright ignored paths")
+        ] = ()
+        pyright_include: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyright production roots")
+        ]
+        pyright_extra_paths: Annotated[
+            t.StrTuple, m.Field(description="Resolved Pyright import paths")
+        ]
+        pyright_venv: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Resolved Pyright virtual environment name"),
+        ]
+        pyright_venv_path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Resolved Pyright virtual environment base"),
+        ]
+        pyright_settings: Annotated[
+            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            m.Field(description="Resolved Pyright scalar settings"),
+        ]
+        pyright_execution_environments: Annotated[
+            tuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment, ...],
+            m.Field(description="Resolved Pyright environments"),
+        ]
+        ruff_src: Annotated[
+            t.StrTuple, m.Field(description="Resolved Ruff source roots")
+        ]
+        ruff_ignore: Annotated[
+            t.StrTuple,
+            m.Field(description="Resolved ordinary and justified Ruff ignores"),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsDepsToolSettings"]

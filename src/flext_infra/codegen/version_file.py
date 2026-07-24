@@ -14,15 +14,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import override
+from pathlib import Path
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_core.__version__ import FlextVersion
+from flext_infra import c, u
 from flext_infra.base import s
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraCodegenVersionFile(s[bool]):
@@ -40,8 +41,12 @@ class FlextInfraCodegenVersionFile(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Generate __version__.py for each discovered project."""
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_VERSION_FILE,
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the exact
+        # source metadata model crosses the sole CLI rendering boundary.
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_VERSION_FILE
         )
         discovered = u.Infra.discover_projects(self.workspace_root)
         if not discovered.success:
@@ -51,14 +56,20 @@ class FlextInfraCodegenVersionFile(s[bool]):
         skipped = 0
 
         for project_info in discovered.value:
-            meta = u.read_project_metadata(project_info.path)
+            metadata_result = u.read_project_metadata(project_info.path)
+            if metadata_result.failure:
+                return r[bool].fail(
+                    metadata_result.error
+                    or f"version-file: cannot load {project_info.path}"
+                )
+            meta = metadata_result.value
             class_name = f"{meta.class_stem}Version"
 
             if class_name == FlextVersion.__name__:
                 skipped += 1
                 continue
 
-            if self.project_filter and meta.name != self.project_filter:
+            if self.project_filter and meta.project.name != self.project_filter:
                 continue
 
             src_pkg = project_info.path / "src" / meta.package_name
@@ -66,16 +77,21 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 continue
 
             target = src_pkg / "__version__.py"
-            content = (
-                template.render(
-                    project_name=meta.name,
-                    class_name=class_name,
-                ).rstrip()
-                + "\n"
-            )
+            rendered = u.Cli.template_render(template_path, meta)
+            if rendered.failure:
+                return r[bool].fail(
+                    rendered.error or f"version-file: cannot render {target}"
+                )
+            content = rendered.value
 
-            if u.Cli.files_read_text(target).unwrap_or("") == content:
-                continue
+            if target.is_file():
+                current = u.Cli.files_read_text(target)
+                if current.failure:
+                    return r[bool].fail(
+                        current.error or f"version-file: cannot read {target}"
+                    )
+                if current.value == content:
+                    continue
 
             if self.check_only or self.dry_run:
                 u.Cli.info(f"  stale: {target.relative_to(self.workspace_root)}")
@@ -85,17 +101,13 @@ class FlextInfraCodegenVersionFile(s[bool]):
             write_result = u.Cli.atomic_write_text_file(target, content)
             if write_result.failure:
                 return r[bool].fail(
-                    write_result.error or f"version-file: cannot write {target}",
+                    write_result.error or f"version-file: cannot write {target}"
                 )
             generated += 1
-            u.Cli.info(
-                f"  generated: {target.relative_to(self.workspace_root)}",
-            )
+            u.Cli.info(f"  generated: {target.relative_to(self.workspace_root)}")
 
         verb = "would generate" if (self.check_only or self.dry_run) else "generated"
-        u.Cli.info(
-            f"version-file: {verb} {generated}, skipped {skipped}",
-        )
+        u.Cli.info(f"version-file: {verb} {generated}, skipped {skipped}")
         return r[bool].ok(True)
 
 

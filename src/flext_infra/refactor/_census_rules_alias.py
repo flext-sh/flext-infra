@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
+from flext_infra import c, m
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusRulesAliasMixin:
@@ -146,7 +147,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
         for detector_violation in FlextInfraManualTypingAliasDetector.detect_file(
-            manual_ctx,
+            manual_ctx
         ):
             matched = (
                 self._named_object(objects, detector_violation.name)
@@ -183,9 +184,7 @@ class FlextInfraRefactorCensusRulesAliasMixin:
                         target_file=str(convention.package_dir / c.Infra.TYPINGS_PY),
                         files_changed=2,
                         applied=self._fix_key(
-                            file_path,
-                            detector_violation.name,
-                            action,
+                            file_path, detector_violation.name, action
                         )
                         in applied,
                     )

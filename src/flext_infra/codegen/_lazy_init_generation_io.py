@@ -1,53 +1,107 @@
-"""Lazy-init generated initializer IO helpers."""
+"""Canonical IO for generated initializer artifact sets."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, u
+from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, t
 
 
+# mro-wkii.17.26 (codex): IO owns one initializer and removes obsolete sidecars.
 class FlextInfraCodegenLazyInitGenerationIOMixin:
-    """Read and write generated ``__init__.py`` files."""
+    """Compare, write, and remove generated package initializers."""
 
     if TYPE_CHECKING:
+        workspace_root: Path
         _modified_files: t.Infra.StrSet
 
-    @staticmethod
-    def _read_previous_init(plan: m.Infra.LazyInitPlan) -> str | None:
-        """Read existing __init__.py content when it exists."""
-        init_path = plan.context.init_path
-        if not init_path.exists():
-            return None
-        read = u.Cli.files_read_text(init_path)
-        if read.failure:
-            message = f"reading {init_path}: {read.error}"
-            raise OSError(message)
-        content = read.value
-        if isinstance(content, str):
-            return content
-        message = f"reading {init_path}: expected text content"
-        raise TypeError(message)
+        def _cleanup_generated_support_files(
+            self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
+        ) -> int: ...
 
-    def _write_changed_init(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        generated: str,
-        previous: str | None,
-    ) -> int:
-        """Write generated __init__.py content when it changed."""
+        @staticmethod
+        def _read_generated_file(path: Path) -> str | None: ...
+
+    def _read_previous_init(self, plan: m.Infra.LazyInitPlan) -> str | None:
+        """Read existing initializer content when present."""
+        return self._read_generated_file(plan.context.init_path)
+
+    def _write_generated_file(
+        self, path: Path, generated: str, previous: str | None
+    ) -> None:
+        """Atomically write one changed canonical generated Python file."""
         if previous == generated:
-            return 0
-        init_path = plan.context.init_path
-        write_result = u.Cli.atomic_write_text_file(init_path, generated)
+            return
+        write_result = u.Cli.atomic_write_text_file(path, generated)
         if write_result.failure:
-            message = f"writing {init_path}: {write_result.error}"
+            message = f"writing {path}: {write_result.error}"
             raise OSError(message)
-        self._modified_files.add(str(init_path))
-        _ = u.Infra.run_ruff_fix(init_path, quiet=True)
-        return 0
+        self._modified_files.add(str(path))
+
+    def _check_remove_init(
+        self, plan: m.Infra.LazyInitPlan
+    ) -> t.Infra.LazyInitWriteResult:
+        """Record generated artifact removals without writing."""
+        init_path = plan.context.init_path
+        if init_path.is_file():
+            self._modified_files.add(str(init_path))
+        self._cleanup_generated_support_files(plan, check_only=True)
+        return (0, dict(plan.lazy_map))
+
+    def _remove_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
+        """Remove the initializer and every obsolete generated sidecar."""
+        init_path = plan.context.init_path
+        try:
+            if init_path.is_file():
+                init_path.unlink()
+                self._modified_files.add(str(init_path))
+            cleanup_exit = self._cleanup_generated_support_files(plan)
+        except OSError as exc:
+            u.Cli.error(f"removing generated init {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        if cleanup_exit < 0:
+            return (-1, dict(plan.lazy_map))
+        return (0, dict(plan.lazy_map))
+
+    def _write_init(self, plan: m.Infra.LazyInitPlan) -> t.Infra.LazyInitWriteResult:
+        """Write one initializer after removing obsolete generated sidecars."""
+        init_path = plan.context.init_path
+        try:
+            # mro-j47u (codex): Jinja owns final Ruff shape; IO only compares/writes.
+            generated = FlextInfraCodegenGeneration.render_init(plan)
+            previous = self._read_previous_init(plan)
+            cleanup_exit = self._cleanup_generated_support_files(plan)
+            self._write_generated_file(init_path, generated, previous)
+        except c.EXC_OS_VALUE as exc:
+            u.Cli.error(f"generating {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        if cleanup_exit < 0:
+            return (-1, dict(plan.lazy_map))
+        return (0, dict(plan.lazy_map))
+
+    def _check_write_init(
+        self, plan: m.Infra.LazyInitPlan
+    ) -> t.Infra.LazyInitWriteResult:
+        """Compare the initializer and obsolete sidecars without mutating them."""
+        init_path = plan.context.init_path
+        try:
+            generated = FlextInfraCodegenGeneration.render_init(plan)
+            previous = self._read_previous_init(plan)
+            cleanup_exit = self._cleanup_generated_support_files(plan, check_only=True)
+        except c.EXC_OS_VALUE as exc:
+            u.Cli.error(f"checking generated init {init_path}: {exc}")
+            return (-1, dict(plan.lazy_map))
+        if cleanup_exit < 0:
+            return (-1, dict(plan.lazy_map))
+        if previous != generated:
+            self._modified_files.add(str(init_path))
+        return (0, dict(plan.lazy_map))
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitGenerationIOMixin"]

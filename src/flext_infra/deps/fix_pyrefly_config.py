@@ -6,22 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    MutableMapping,
-)
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
 
 logger = u.fetch_logger(__name__)
@@ -30,21 +19,17 @@ logger = u.fetch_logger(__name__)
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
+    _workspace_root: Path = u.PrivateAttr()
+
     def __init__(
-        self,
-        workspace_root: Path | None = None,
-        *,
-        workspace: Path | None = None,
+        self, workspace_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize pyrefly settings fixer."""
-        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
-            workspace_root or workspace,
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
+            workspace_root or workspace
         )
-        config_result = u.Infra.load_tool_config()
-        if config_result.failure:
-            msg = config_result.error or "failed to load deps tool settings"
-            raise ValueError(msg)
-        self._tool_config: m.Infra.ToolConfigDocument = config_result.value
+        super().__init__(workspace_root=resolved_workspace)
+        self._workspace_root = self.workspace_root
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -52,11 +37,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: m.Infra.FixPyreflyConfigCommand,
-    ) -> p.Result[bool]:
+    def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
         fixer = cls(workspace_root=params.workspace_path)
         fix_result = fixer.run(
@@ -75,25 +56,26 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         document_result = u.Cli.toml_read_document(path)
         if document_result.failure:
             return r[t.StrSequence].fail(
-                document_result.error or f"failed to read {path}",
+                document_result.error or f"failed to read {path}"
             )
         doc = document_result.value
         doc_data = doc.unwrap()
         tool_data = doc_data.get(c.Infra.TOOL)
         if not isinstance(tool_data, Mapping):
-            return r[t.StrSequence].ok([])
+            return r[t.StrSequence].ok(())
         typed_tool_data: MutableMapping[str, t.Infra.InfraValue] = (
             t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(tool_data)
         )
         pyrefly_data = typed_tool_data.get(c.Infra.PYREFLY)
         if not isinstance(pyrefly_data, Mapping):
-            return r[t.StrSequence].ok([])
+            return r[t.StrSequence].ok(())
         try:
             pyrefly: MutableMapping[str, t.Infra.InfraValue] = (
                 t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(pyrefly_data)
             )
         except c.ValidationError as err:
             return r[t.StrSequence].fail_op(f"validate {path} [tool.pyrefly]", err)
+        original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
         is_root = project_dir == self._workspace_root
@@ -102,9 +84,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             return search_result
         all_fixes.extend(search_result.value)
         includes_result = self._sync_project_includes(
-            pyrefly,
-            project_dir,
-            is_root=is_root,
+            pyrefly, project_dir, is_root=is_root
         )
         if includes_result.failure:
             return includes_result
@@ -126,21 +106,21 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             pyrefly_table = tool_table[c.Infra.PYREFLY]
             if not isinstance(pyrefly_table, MutableMapping):
                 return r[t.StrSequence].fail(f"invalid {path} [tool.pyrefly] table")
+            # mro-wkii.17 (codex): reassign only changed keys so an untouched
+            # nested table retains adjacent managed comments and TOML trivia.
             for key, value in pyrefly.items():
+                if key in original_pyrefly and original_pyrefly[key] == value:
+                    continue
                 pyrefly_table[key] = value
             write_result = u.Cli.toml_write_document(path, doc)
             if write_result.failure:
                 return r[t.StrSequence].fail(
-                    write_result.error or f"failed to write {path}",
+                    write_result.error or f"failed to write {path}"
                 )
         return r[t.StrSequence].ok(all_fixes)
 
     def run(
-        self,
-        projects: t.StrSequence,
-        *,
-        dry_run: bool = False,
-        verbose: bool = False,
+        self, projects: t.StrSequence, *, dry_run: bool = False, verbose: bool = False
     ) -> p.Result[t.StrSequence]:
         """Run pyrefly configuration fixes for selected projects."""
         project_paths = [
@@ -153,12 +133,11 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             for project_path in [Path(project)]
         ]
         files_result = u.Infra.find_all_pyproject_files(
-            self._workspace_root,
-            project_paths=project_paths or None,
+            self._workspace_root, project_paths=project_paths or None
         )
         if files_result.failure:
             return r[t.StrSequence].fail(
-                files_result.error or "failed to find pyproject files",
+                files_result.error or "failed to find pyproject files"
             )
         messages: t.MutableSequenceOf[str] = []
         total_fixes = 0
@@ -167,7 +146,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             fixes_result = self.process_file(path, dry_run=dry_run)
             if fixes_result.failure:
                 return r[t.StrSequence].fail(
-                    fixes_result.error or f"failed to process {path}",
+                    fixes_result.error or f"failed to process {path}"
                 )
             fixes: t.StrSequence = fixes_result.value
             if not fixes:

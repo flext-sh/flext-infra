@@ -1,7 +1,7 @@
 """Runtime Beartype census validator.
 
 Imports every ``flext_*`` module in selected projects and runs
-``FlextUtilitiesEnforcement.check()`` against every locally-defined class.
+``u.check()`` against every locally-defined class.
 Aggregates violations by rule/project into the standard validation report.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -13,38 +13,25 @@ from __future__ import annotations
 import importlib
 import inspect
 import pkgutil
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import FlextUtilitiesEnforcement, r
+from flext_core import r
+from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraRuntimeCensusValidator(s[bool]):
     """Post-import runtime enforcement census across workspace projects."""
 
     project_filter: Annotated[
-        str | None,
-        m.Field(description="Project filter (comma-separated)"),
+        str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
-    include_tests: Annotated[
-        bool,
-        m.Field(description="Include test packages in the census"),
-    ] = False
-
-    include_examples: Annotated[
-        bool,
-        m.Field(description="Include example packages in the census"),
-    ] = False
-
     def _selected_projects(
-        self,
-        projects: t.SequenceOf[p.Infra.ProjectInfo],
+        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
     ) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Apply comma-separated project filter when provided."""
         if self.project_filter is None:
@@ -55,9 +42,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         return [project for project in projects if project.name in selected]
 
     @staticmethod
-    def _package_name_for_project(
-        project: p.Infra.ProjectInfo,
-    ) -> str | None:
+    def _package_name_for_project(project: p.Infra.ProjectInfo) -> str | None:
         """Resolve the importable package name for a project root."""
         layout = u.Infra.layout(project.path, project=project)
         if layout is not None:
@@ -88,9 +73,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         modules: list[str] = [package.__name__]
         try:
             for _, modname, _ in pkgutil.walk_packages(
-                package.__path__,
-                prefix=prefix,
-                onerror=lambda _name: None,
+                package.__path__, prefix=prefix, onerror=lambda _name: None
             ):
                 modules.append(modname)
         except Exception as exc:
@@ -114,7 +97,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if not self._is_local_class(obj, module.__name__):
                 continue
             try:
-                report = FlextUtilitiesEnforcement.check(obj)
+                report = u.check(obj)
             except Exception as exc:
                 violations.append(
                     f"{module_name}:{obj.__qualname__}: check raised: {exc}"
@@ -140,10 +123,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             )
         ]
 
-    def _project_report(
-        self,
-        project: p.Infra.ProjectInfo,
-    ) -> m.Infra.ValidationReport:
+    def _project_report(self, project: p.Infra.ProjectInfo) -> m.Infra.ValidationReport:
         """Run the runtime census for one project and return a merged report."""
         package_name = self._package_name_for_project(project)
         if package_name is None:
@@ -167,18 +147,13 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
                 if name == self.target_module
                 or name.startswith(self.target_module + ".")
             ]
-        if not self.include_tests:
-            real_modules = [
-                name
-                for name in real_modules
-                if c.Infra.DIR_TESTS not in name.split(".")
-            ]
-        if not self.include_examples:
-            real_modules = [
-                name
-                for name in real_modules
-                if c.Infra.DIR_EXAMPLES not in name.split(".")
-            ]
+        real_modules = [
+            name
+            for name in real_modules
+            if not frozenset(config.Infra.codegen.source_scan_ignored).intersection(
+                name.split(".")
+            )
+        ]
         all_reports: list[m.Infra.ValidationReport] = [
             m.Infra.ValidationReport(
                 passed=False,
@@ -198,9 +173,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             else f"{project.name}: runtime census passed ({len(real_modules)} module(s))"
         )
         return m.Infra.ValidationReport(
-            passed=passed,
-            violations=merged_violations,
-            summary=summary,
+            passed=passed, violations=merged_violations, summary=summary
         )
 
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
@@ -208,7 +181,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         projects_result = u.Infra.projects(self.workspace_root)
         if projects_result.failure:
             return r[m.Infra.ValidationReport].fail(
-                projects_result.error or "project discovery failed",
+                projects_result.error or "project discovery failed"
             )
         projects = self._selected_projects(projects_result.unwrap())
         if not projects:
@@ -231,9 +204,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=tuple(merged_violations),
-                summary=summary,
+                passed=passed, violations=tuple(merged_violations), summary=summary
             )
         )
 

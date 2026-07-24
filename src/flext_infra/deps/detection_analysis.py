@@ -2,33 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-    MutableMapping,
-)
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
 from flext_core import r
-from flext_infra.constants import c
+from flext_infra import c, m, p, t
 from flext_infra.deps._detection_runners import (
     FlextInfraDependencyDetectionRunnersMixin,
 )
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
 
 
-class FlextInfraDependencyDetectionAnalysis(
-    FlextInfraDependencyDetectionRunnersMixin,
-):
+class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunnersMixin):
     """Typings analysis + conversion helpers composed with the tool-runner mixin."""
 
     @override
     def _to_toml_config(
-        self,
-        payload: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.Infra.ContainerDict:
+        self, payload: t.MappingKV[str, t.Infra.InfraValue]
+    ) -> t.JsonMapping:
         """To toml config."""
         normalized: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, value in payload.items():
@@ -42,9 +33,7 @@ class FlextInfraDependencyDetectionAnalysis(
         return normalized
 
     @staticmethod
-    def to_infra_value(
-        value: t.Infra.InfraValue | None,
-    ) -> t.Infra.InfraValue | None:
+    def to_infra_value(value: t.Infra.InfraValue | None) -> t.Infra.InfraValue | None:
         """Convert container value to namespaced infra value."""
         if value is None:
             return None
@@ -81,11 +70,8 @@ class FlextInfraDependencyDetectionAnalysis(
             converted_map[key] = conv
         return t.json_dict_adapter().validate_python(converted_map)
 
-    def _mapping_from_value(
-        self,
-        value: t.Infra.InfraValue | None,
-    ) -> t.Infra.ContainerDict:
-        """Mapping from value."""
+    def _mapping_from_value(self, value: t.Infra.InfraValue | None) -> t.JsonMapping:
+        """Build a mapping from a value."""
         if not isinstance(value, Mapping):
             return {}
         return self._to_toml_config(value)
@@ -107,9 +93,7 @@ class FlextInfraDependencyDetectionAnalysis(
         deps = self._mapping_from_value(typings_group.get(c.Infra.DEPENDENCIES))
         names.update(key for key in deps)
         project = self._mapping_from_value(data.get(c.Infra.PROJECT))
-        optional = self._mapping_from_value(
-            project.get(c.Infra.OPTIONAL_DEPENDENCIES),
-        )
+        optional = self._mapping_from_value(project.get(c.Infra.OPTIONAL_DEPENDENCIES))
         typings = optional.get(c.Infra.TYPINGS)
         if isinstance(typings, list):
             for spec in typings:
@@ -119,7 +103,7 @@ class FlextInfraDependencyDetectionAnalysis(
                     .split("[", maxsplit=1)[0]
                     .split(">=", maxsplit=1)[0]
                     .split("==", maxsplit=1)[0]
-                    .strip(),
+                    .strip()
                 )
         elif isinstance(typings, Mapping):
             names.update(key for key in typings)
@@ -146,7 +130,7 @@ class FlextInfraDependencyDetectionAnalysis(
             hints_result = self.run_mypy_stub_hints(project_path)
             if hints_result.failure:
                 return r[m.Infra.TypingsReport].fail(
-                    hints_result.error or "typing hint detection failed",
+                    hints_result.error or "typing hint detection failed"
                 )
             typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
             hinted, missing_modules = typed_hints
@@ -176,8 +160,7 @@ class FlextInfraDependencyDetectionAnalysis(
         return r[m.Infra.TypingsReport].ok(report)
 
     def load_dependency_limits(
-        self,
-        limits_path: Path | None = None,
+        self, limits_path: Path | None = None
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Load dependency limits configuration from TOML file."""
         path = limits_path or Path(__file__).resolve().parent / "dependency_limits.toml"
@@ -190,9 +173,7 @@ class FlextInfraDependencyDetectionAnalysis(
         return config
 
     def module_to_types_package(
-        self,
-        module_name: str,
-        limits: t.MappingKV[str, t.Infra.InfraValue],
+        self, module_name: str, limits: t.MappingKV[str, t.Infra.InfraValue]
     ) -> str | None:
         """Map a module name to its corresponding types-* package."""
         root = module_name.split(".", 1)[0]
@@ -210,6 +191,4 @@ class FlextInfraDependencyDetectionAnalysis(
         return f"types-{root.lower()}"
 
 
-__all__: list[str] = [
-    "FlextInfraDependencyDetectionAnalysis",
-]
+__all__: list[str] = ["FlextInfraDependencyDetectionAnalysis"]

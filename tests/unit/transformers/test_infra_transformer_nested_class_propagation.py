@@ -2,19 +2,24 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra import u
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def _transform_source(tmp_path: Path, source: str) -> str:
     file_path = tmp_path / "nested_class_propagation.py"
     file_path.write_text(source, encoding="utf-8")
     transformer = FlextInfraNestedClassPropagationTransformer({
-        "TimeoutEnforcer": "FlextDispatcher.TimeoutEnforcer",
+        "TimeoutEnforcer": "FlextDispatcher.TimeoutEnforcer"
     })
     rope_project = u.Infra.init_rope_project(tmp_path)
     try:
@@ -32,23 +37,21 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
     """Behavior contract for test_infra_transformer_nested_class_propagation."""
 
     def test_nested_class_propagation_updates_import_annotations_and_calls(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "from pkg import TimeoutEnforcer\n\nclass Child(TimeoutEnforcer):\n    pass\n\ndef validate(x: TimeoutEnforcer) -> bool:\n    if isinstance(x, TimeoutEnforcer):\n        y = TimeoutEnforcer()\n        return isinstance(y, pkg.TimeoutEnforcer)\n    return False\n"
         code = _transform_source(tmp_path, source)
-        assert "from pkg import FlextDispatcher" in code
-        assert "class Child(FlextDispatcher.TimeoutEnforcer):" in code
-        assert "def validate(x: FlextDispatcher.TimeoutEnforcer) -> bool:" in code
-        assert "if isinstance(x, FlextDispatcher.TimeoutEnforcer):" in code
-        assert "y = FlextDispatcher.TimeoutEnforcer()" in code
-        assert "isinstance(y, pkg.FlextDispatcher.TimeoutEnforcer)" in code
+        tm.that(code, has="from pkg import FlextDispatcher")
+        tm.that(code, has="class Child(FlextDispatcher.TimeoutEnforcer):")
+        tm.that(code, has="def validate(x: FlextDispatcher.TimeoutEnforcer) -> bool:")
+        tm.that(code, has="if isinstance(x, FlextDispatcher.TimeoutEnforcer):")
+        tm.that(code, has="y = FlextDispatcher.TimeoutEnforcer()")
+        tm.that(code, has="isinstance(y, pkg.FlextDispatcher.TimeoutEnforcer)")
 
     def test_nested_class_propagation_preserves_asname_and_rewrites_alias_usage(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = "from pkg import TimeoutEnforcer as TE\n\nvalue = TE()\n"
         code = _transform_source(tmp_path, source)
-        assert "from pkg import FlextDispatcher as TE" in code
-        assert "value = TE.TimeoutEnforcer()" in code
+        tm.that(code, has="from pkg import FlextDispatcher as TE")
+        tm.that(code, has="value = TE.TimeoutEnforcer()")

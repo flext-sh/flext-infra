@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestWorkspaceCheckCli:
@@ -18,9 +22,7 @@ class TestWorkspaceCheckCli:
 
     @staticmethod
     def _create_workspace(
-        tmp_path: Path,
-        *,
-        project_names: t.StrSequence = ("flext-core",),
+        tmp_path: Path, *, project_names: t.StrSequence = ("flext-core",)
     ) -> Path:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
@@ -46,113 +48,92 @@ class TestWorkspaceCheckCli:
 
     @pytest.mark.parametrize(
         ("source", "expected_exit"),
-        [
-            ("value = 1\n", 0),
-            ("def broken(:\n", 1),
-        ],
+        [("value = 1\n", 0), ("def broken(:\n", 1)],
         ids=["passing_project", "failing_project"],
     )
     def test_run_cli_lint_exit_code_matches_source_validity(
-        self,
-        tmp_path: Path,
-        source: str,
-        expected_exit: int,
+        self, tmp_path: Path, source: str, expected_exit: int
     ) -> None:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", source)
 
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--projects",
-                "flext-core",
-            ],
-        )
+        exit_code = main([
+            "check",
+            "run",
+            "--workspace",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--projects",
+            "flext-core",
+        ])
 
         tm.that(exit_code, eq=expected_exit)
 
     def test_run_cli_returns_one_for_report_directory_error(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "value = 1\n")
         blocked = tmp_path / "blocked"
         blocked.write_text("not a directory\n", encoding="utf-8")
 
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--projects",
-                "flext-core",
-                "--reports-dir",
-                str(blocked / "check"),
-            ],
-        )
+        exit_code = main([
+            "check",
+            "run",
+            "--workspace",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--projects",
+            "flext-core",
+            "--reports-dir",
+            str(blocked / "check"),
+        ])
 
         tm.that(exit_code, eq=1)
 
     def test_run_cli_handles_multiple_projects(self, tmp_path: Path) -> None:
-        workspace = self._create_workspace(
-            tmp_path,
-            project_names=("proj1", "proj2"),
-        )
+        workspace = self._create_workspace(tmp_path, project_names=("proj1", "proj2"))
         _ = self._write_module(workspace, "proj1", "value = 1\n")
         _ = self._write_module(workspace, "proj2", "other = 2\n")
 
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--projects",
-                "proj1",
-                "--projects",
-                "proj2",
-            ],
-        )
+        exit_code = main([
+            "check",
+            "run",
+            "--workspace",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--projects",
+            "proj1",
+            "--projects",
+            "proj2",
+        ])
 
         tm.that(exit_code, eq=0)
 
     def test_run_cli_fix_rewrites_source_with_forwarded_ruff_args(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
-            workspace,
-            "flext-core",
-            "import os\n\nvalue = 1\n",
+            workspace, "flext-core", "import os\n\nvalue = 1\n"
         )
 
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--fix",
-                "--ruff-args",
-                "--select F401",
-                "--projects",
-                "flext-core",
-            ],
-        )
+        exit_code = main([
+            "check",
+            "run",
+            "--workspace",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--fix",
+            "--ruff-args",
+            "--select F401",
+            "--projects",
+            "flext-core",
+        ])
 
         tm.that(exit_code, eq=0)
         tm.that("import os" in module_path.read_text(encoding="utf-8"), eq=False)
@@ -160,43 +141,28 @@ class TestWorkspaceCheckCli:
     def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
-            workspace,
-            "flext-core",
-            "import os\n\nvalue = 1\n",
+            workspace, "flext-core", "import os\n\nvalue = 1\n"
         )
 
-        exit_code = main(
-            [
-                "check",
-                "run",
-                "--workspace",
-                str(workspace),
-                "--gates",
-                "lint",
-                "--fix",
-                "--check-only",
-                "--ruff-args",
-                "--select F401",
-                "--projects",
-                "flext-core",
-            ],
-        )
+        exit_code = main([
+            "check",
+            "run",
+            "--workspace",
+            str(workspace),
+            "--gates",
+            "lint",
+            "--fix",
+            "--check-only",
+            "--ruff-args",
+            "--select F401",
+            "--projects",
+            "flext-core",
+        ])
 
         tm.that(exit_code, eq=1)
-        tm.that(
-            module_path.read_text(encoding="utf-8"),
-            eq="import os\n\nvalue = 1\n",
-        )
+        tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
 
     def test_run_cli_rejects_shared_dry_run_flag(self) -> None:
-        exit_code = main(
-            [
-                "check",
-                "--dry-run",
-                "run",
-                "--projects",
-                "flext-core",
-            ],
-        )
+        exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])
 
         tm.that(exit_code, eq=2)

@@ -6,8 +6,7 @@ from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -15,6 +14,24 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
 
     class PyrightConfig(m.ArbitraryTypesModel):
         """Pyright strict settings loaded from YAML."""
+
+        class DiagnosticPathOverride(m.ContractModel):
+            """One evidence-backed diagnostic override for an existing path."""
+
+            root: Annotated[
+                t.NonEmptyStr, m.Field(description="Project-relative override root.")
+            ]
+            report_private_usage: Annotated[
+                str,
+                m.Field(
+                    alias=c.Infra.REPORT_PRIVATE_USAGE,
+                    description="Narrow reportPrivateUsage value for this root.",
+                ),
+            ]
+            rationale: Annotated[
+                t.NonEmptyStr,
+                m.Field(description="Verified technical reason for the override."),
+            ]
 
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
@@ -38,6 +55,13 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="extraPaths applied to this execution environment.",
                 ),
             ]
+            rationale: Annotated[
+                str,
+                m.Field(
+                    exclude=True,
+                    description="Non-rendered evidence for a scoped environment.",
+                ),
+            ] = ""
 
         class PathRulesConfig(m.ArbitraryTypesModel):
             """Path resolution rules loaded from YAML."""
@@ -76,13 +100,6 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Always-applied pyright exclude globs.",
                 ),
             ]
-            dynamic_exclude_dirs: Annotated[
-                t.StrSequence,
-                m.Field(
-                    alias="dynamic-exclude-dirs",
-                    description="Directory names excluded only when present in project.",
-                ),
-            ]
             root_typings_paths: Annotated[
                 t.StrSequence,
                 m.Field(
@@ -104,6 +121,16 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                     description="Pyright ignore globs for files that remain on search paths but must not emit diagnostics.",
                 ),
             ]
+            diagnostic_path_overrides: Annotated[
+                tuple[
+                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride,
+                    ...,
+                ],
+                m.Field(
+                    alias="diagnostic-path-overrides",
+                    description="Existing path roots with evidence-backed diagnostic overrides.",
+                ),
+            ] = ()
             source_report_private_usage: Annotated[
                 str,
                 m.Field(
@@ -165,6 +192,13 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             m.Field(
                 alias="lazy-import-suppressions",
                 description="Pyright rules suppressed in ALL envs due to lazy import pattern.",
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        global_suppression_rationales: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="global-suppression-rationales",
+                description="Global Pyright exclusions mapped to verified facade-MRO rationales.",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         source_env_suppressions: Annotated[
@@ -312,6 +346,4 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         ]
 
 
-__all__: list[str] = [
-    "FlextInfraModelsDepsToolConfigTypeCheckers",
-]
+__all__: list[str] = ["FlextInfraModelsDepsToolConfigTypeCheckers"]

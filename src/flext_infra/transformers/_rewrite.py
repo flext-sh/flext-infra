@@ -67,12 +67,7 @@ class FlextInfraSourceRewriter(ast.NodeVisitor):
         end = self.node_offset(node, start=False)
         return self._source[start:end]
 
-    def append_rewrite(
-        self,
-        node: ast.AST,
-        text: str,
-        change: str,
-    ) -> None:
+    def append_rewrite(self, node: ast.AST, text: str, change: str) -> None:
         """Record a rewrite spanning a node's source range."""
         start = self.node_offset(node, start=True)
         end = self.node_offset(node, start=False)
@@ -80,10 +75,7 @@ class FlextInfraSourceRewriter(ast.NodeVisitor):
         self.changes.append(change)
 
     @staticmethod
-    def apply_rewrites(
-        source: str,
-        rewrites: list[FlextInfraSourceRewrite],
-    ) -> str:
+    def apply_rewrites(source: str, rewrites: list[FlextInfraSourceRewrite]) -> str:
         """Apply rewrites from bottom-right to top-left to preserve offsets."""
         result = source
         for rewrite in sorted(rewrites, reverse=True):

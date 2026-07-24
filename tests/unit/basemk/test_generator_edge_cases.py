@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
+
+from flext_tests import tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _FailingStream(io.StringIO):
@@ -25,30 +29,27 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         blocked_parent.write_text("occupied", encoding="utf-8")
 
         result = FlextInfraBaseMkGenerator().write(
-            "all:\n\t@echo 'test'\n",
-            output=blocked_parent / "test.mk",
+            "all:\n\t@echo 'test'\n", output=blocked_parent / "test.mk"
         )
 
-        assert result.failure
+        tm.fail(result)
         assert result.error
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
         result = FlextInfraBaseMkGenerator().write(
-            "all:\n\t@echo 'test'\n",
-            stream=_FailingStream(),
+            "all:\n\t@echo 'test'\n", stream=_FailingStream()
         )
 
-        assert result.failure
-        assert "stdout write failed" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="stdout write failed")
 
     def test_generator_write_to_closed_stream_fails(self) -> None:
         stream = io.StringIO()
         stream.close()
 
         result = FlextInfraBaseMkGenerator().write(
-            "all:\n\t@echo 'test'\n",
-            stream=stream,
+            "all:\n\t@echo 'test'\n", stream=stream
         )
 
-        assert result.failure
-        assert "stdout write failed" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="stdout write failed")

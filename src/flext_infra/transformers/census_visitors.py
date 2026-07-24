@@ -6,11 +6,14 @@ and regex-based attribute access detection for usage collection.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraCensusImportDiscoveryVisitor:
@@ -20,12 +23,7 @@ class FlextInfraCensusImportDiscoveryVisitor:
     ``facade_class_prefix`` (e.g. ``"FlextUtilities"``).
     """
 
-    def __init__(
-        self,
-        *,
-        family_alias: str,
-        facade_class_prefix: str,
-    ) -> None:
+    def __init__(self, *, family_alias: str, facade_class_prefix: str) -> None:
         """Initialize with family alias and facade class prefix."""
         self.family_alias = family_alias
         self.facade_class_prefix = facade_class_prefix
@@ -129,10 +127,7 @@ class FlextInfraCensusUsageCollector:
                     self._record(actual, method_name, c.Infra.CensusMode.DIRECT)
 
     def _record(
-        self,
-        class_name: str,
-        method_name: str,
-        mode: c.Infra.CensusMode,
+        self, class_name: str, method_name: str, mode: c.Infra.CensusMode
     ) -> None:
         """Record."""
         self.records.append(
@@ -142,7 +137,7 @@ class FlextInfraCensusUsageCollector:
                 access_mode=mode,
                 file_path=str(self.file_path),
                 project=self.project_name,
-            ),
+            )
         )
 
 

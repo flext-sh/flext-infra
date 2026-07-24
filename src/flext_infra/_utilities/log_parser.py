@@ -9,10 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesLogParser:
@@ -22,9 +26,7 @@ class FlextInfraUtilitiesLogParser:
 
     @staticmethod
     def extract_errors(
-        log_path: Path,
-        *,
-        max_lines: int = 5,
+        log_path: Path, *, max_lines: int = 5
     ) -> t.Pair[int, t.StrSequence]:
         """Read log tail and extract error lines.
 

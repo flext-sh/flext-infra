@@ -9,17 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+from flext_infra import c, m, u
 from flext_infra.base import s
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraBaseMkValidator(s[bool]):
@@ -28,8 +28,7 @@ class FlextInfraBaseMkValidator(s[bool]):
     generator: Annotated[
         FlextInfraBaseMkGenerator | None,
         m.Field(
-            exclude=True,
-            description="Optional generator for freshness comparison",
+            exclude=True, description="Optional generator for freshness comparison"
         ),
     ] = None
 
@@ -61,8 +60,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         )
 
     def _compare_with_generated(
-        self,
-        source: Path,
+        self, source: Path
     ) -> p.Result[m.Infra.ValidationReport]:
         """Compare source base.mk with freshly generated content."""
         generator = self.generator or FlextInfraBaseMkGenerator()
@@ -73,7 +71,7 @@ class FlextInfraBaseMkValidator(s[bool]):
                     passed=False,
                     violations=[gen_result.error or "base.mk generation failed"],
                     summary="base.mk template generation failed",
-                ),
+                )
             )
         try:
             existing_hash, generated_hash = self._base_mk_hash_pair(
@@ -82,7 +80,7 @@ class FlextInfraBaseMkValidator(s[bool]):
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("base.mk validation", exc)
         return r[m.Infra.ValidationReport].ok(
-            self._build_freshness_report(existing_hash, generated_hash),
+            self._build_freshness_report(existing_hash, generated_hash)
         )
 
     @staticmethod
@@ -92,8 +90,7 @@ class FlextInfraBaseMkValidator(s[bool]):
 
     @staticmethod
     def _build_freshness_report(
-        existing_hash: str,
-        generated_hash: str,
+        existing_hash: str, generated_hash: str
     ) -> m.Infra.ValidationReport:
         """Build freshness validation report from hash comparison."""
         violations: t.MutableSequenceOf[str] = []
@@ -108,9 +105,7 @@ class FlextInfraBaseMkValidator(s[bool]):
             else "root base.mk is out of sync with templates"
         )
         return m.Infra.ValidationReport(
-            passed=passed,
-            violations=violations,
-            summary=summary,
+            passed=passed, violations=violations, summary=summary
         )
 
     @override

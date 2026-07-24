@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import sys
-from collections.abc import (
-    Mapping,
-)
-from pathlib import Path
-from typing import ClassVar, override
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraPyrightGate(FlextInfraGate):
@@ -27,36 +25,23 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Use the project pyright config as SSOT when it exists."""
         _ = ctx
         if self._has_project_pyright_config(project_dir):
-            return [
-                c.Infra.PYRIGHT_PROJECT_ARG,
-                c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET,
-            ]
+            return [c.Infra.PYRIGHT_PROJECT_ARG, c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET]
         return super()._get_check_dirs(project_dir, ctx)
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir
-        return [
-            sys.executable,
-            "-m",
-            c.Infra.PYRIGHT,
-            *check_dirs,
-            *ctx.pyright_args,
-            "--outputjson",
-        ]
+        return self._python_module_command(
+            c.Infra.PYRIGHT, *check_dirs, *ctx.pyright_args, "--outputjson"
+        )
 
     @staticmethod
     def _has_project_pyright_config(project_dir: Path) -> bool:
@@ -71,11 +56,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         )
 
     @override
-    def _check_timeout(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-    ) -> int:
+    def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Check timeout."""
         _ = project_dir, ctx
         timeout: int = c.Infra.TIMEOUT_LONG
@@ -83,10 +64,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
@@ -97,8 +75,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
         data = u.Cli.json_as_mapping(parsed) if isinstance(parsed, Mapping) else empty
         try:
             diagnostics = u.Cli.json_deep_mapping_list(
-                data,
-                c.Infra.PYRIGHT_DIAGNOSTICS_KEY,
+                data, c.Infra.PYRIGHT_DIAGNOSTICS_KEY
             )
             issues.extend(
                 m.Infra.Issue(

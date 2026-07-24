@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+from flext_infra import m, t
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraEnsureCoverageConfigPhase:
@@ -15,9 +14,7 @@ class FlextInfraEnsureCoverageConfigPhase:
         self._tool_config = tool_config
 
     def _phases(
-        self,
-        *,
-        project_kind: str = "core",
+        self, *, project_kind: str = "core"
     ) -> tuple[m.Infra.Deps.Toml.PhaseConfig, m.Infra.Deps.Toml.PhaseConfig]:
         """Build the canonical coverage phases for the selected project kind."""
         cov_config = self._tool_config.tools.coverage
@@ -34,8 +31,9 @@ class FlextInfraEnsureCoverageConfigPhase:
             .Builder("coverage-report")
             .table("coverage", "report")
             .value("fail_under", fail_under)
-            .value("show_missing", True)
-            .value("skip_covered", False)
+            # mro-j47u (codex): policy values come only from config.Infra.tooling.
+            .value("show_missing", cov_config.show_missing)
+            .value("skip_covered", cov_config.skip_covered)
             .value("precision", cov_config.precision)
             .list("exclude_also", sorted(set(cov_config.exclude_also)))
             .build()
@@ -50,27 +48,19 @@ class FlextInfraEnsureCoverageConfigPhase:
         return (report_phase, run_phase)
 
     def apply(
-        self,
-        doc: t.Cli.TomlDocument,
-        *,
-        project_kind: str = "core",
+        self, doc: t.Cli.TomlDocument, *, project_kind: str = "core"
     ) -> t.StrSequence:
         """Apply canonical coverage report/run tables for the selected project kind."""
         return FlextInfraTomlPhaseService.apply_phases(
-            doc,
-            *self._phases(project_kind=project_kind),
+            doc, *self._phases(project_kind=project_kind)
         )
 
     def apply_payload(
-        self,
-        payload: t.MutableJsonMapping,
-        *,
-        project_kind: str = "core",
+        self, payload: t.MutableJsonMapping, *, project_kind: str = "core"
     ) -> t.StrSequence:
         """Apply canonical coverage settings to one normalized payload."""
         return FlextInfraTomlPhaseService.apply_payload_phases(
-            payload,
-            *self._phases(project_kind=project_kind),
+            payload, *self._phases(project_kind=project_kind)
         )
 
 

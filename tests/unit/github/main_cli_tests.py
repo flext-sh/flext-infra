@@ -2,48 +2,49 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra import main as infra_main
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_main_returns_zero_on_help() -> None:
-    assert infra_main(["github", "--help"]) == 0
+    tm.that(infra_main(["github", "--help"]), eq=0)
 
 
 def test_main_returns_one_without_subcommand() -> None:
-    assert infra_main(["github"]) == 1
+    tm.that(infra_main(["github"]), eq=1)
 
 
 def test_main_returns_nonzero_on_unknown() -> None:
-    assert infra_main(["github", "unknown-command"]) != 0
+    tm.that(infra_main(["github", "unknown-command"]), ne=0)
 
 
-def test_pr_workspace_accepts_repeated_project_options(
-    tmp_path: Path,
-) -> None:
+def test_pr_workspace_accepts_repeated_project_options(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b", "flext-c"),
         pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
     )
 
-    result = infra_main(
-        [
-            "github",
-            "pr-workspace",
-            "--workspace",
-            str(workspace),
-            "--projects",
-            "flext-a",
-            "--projects",
-            "flext-b",
-        ],
-    )
+    result = infra_main([
+        "github",
+        "pr-workspace",
+        "--workspace",
+        str(workspace),
+        "--projects",
+        "flext-a",
+        "--projects",
+        "flext-b",
+    ])
 
     report_dir = workspace / ".reports/workspace/pr"
-    assert result == 0
+    tm.that(result, eq=0)
     assert (report_dir / "flext-a.log").is_file()
     assert (report_dir / "flext-b.log").is_file()
     assert not (report_dir / "flext-c.log").exists()

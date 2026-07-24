@@ -29,6 +29,7 @@ theme:
         name: Switch to light mode
 {%- endmacro %}
 {%- macro plugins_block(exclude_plugin_block, mkdocstrings_paths_block) -%}
+{# mro-kkk5 (agent: kimi) — git-revision-date-localized/mermaid2/redirects/minify enabled per docs-renaissance S2; deps already declared in pyproject docs extra. #}
 plugins:
   - search
 {{ exclude_plugin_block }}  - autorefs
@@ -49,6 +50,15 @@ plugins:
             separate_signature: true
             merge_init_into_class: true
             docstring_section_style: spacy
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
+      exclude:
+        - api-reference/generated/**
+  - mermaid2
+  - redirects
+  - minify:
+      minify_html: true
 {%- endmacro %}
 {%- macro not_in_nav_block() -%}
 not_in_nav: |

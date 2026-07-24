@@ -8,23 +8,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import m, t
 
 
 def _project_info(
     project: Path, *, package_name: str = "test_proj"
 ) -> m.Infra.ProjectInfo:
     return u.Tests.create_project_info(
-        project,
-        name=project.name,
-        package_name=package_name,
+        project, name=project.name, package_name=package_name
     )
 
 
@@ -45,10 +46,11 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
         pkg_name="test_proj",
         files={
             "base.py": "import typing\nT = typing.TypeVar('T')\n"
-            "class TestProjBase:\n    pass\n",
+            "class TestProjBase:\n    pass\n\n"
+            '__all__: list[str] = ["TestProjBase", "T"]\n'
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
     tm.that("external-project" not in project_names, eq=True)
@@ -61,10 +63,8 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "Makefile").touch()
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
-    [result] = fixer.fix_workspace(
-        projects=[_project_info(project, package_name="")],
-    )
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
+    [result] = fixer.fix_workspace(projects=[_project_info(project, package_name="")])
     tm.that(result.project, eq="no-src-proj")
     tm.that(result.violations_fixed, empty=True)
     tm.that(result.violations_skipped, empty=True)
@@ -78,14 +78,16 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
         pkg_name="test_proj",
         files={
             "base.py": "from typing import Final\nMAX_RETRIES: Final = 3\n"
-            "class TestProjBase:\n    pass\n",
+            "class TestProjBase:\n    pass\n\n"
+            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n'
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace=tmp_path)
+    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
-    tm.that(modified_str, contains="__init__.py")
-    tm.that(len(result.files_modified) >= 1, eq=True)
+    tm.that(modified_str, contains="constants.py")
+    tm.that(modified_str, contains="typings.py")
+    tm.that(result.files_modified, length_gte=2)
 
 
 __all__: t.StrSequence = []

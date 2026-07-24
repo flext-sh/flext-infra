@@ -3,103 +3,52 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, m, p, t
 
 
 class FlextInfraUtilitiesCodegen:
     """Compose all codegen utility concerns for ``u.Infra``."""
 
-    @staticmethod
-    def run_ruff_fix(path: Path, *, quiet: bool = False) -> p.Result[bool]:
-        """Run Ruff post-processing for one generated file path.
+    if TYPE_CHECKING:
 
-        Python modules use ``ruff check --fix`` plus ``ruff format``. Typing
-        stubs only apply safe import/blank-line fixes, then run ``ruff check``
-        without autofix so literal ``__all__`` entries remain valid stub
-        exports. ``quiet=True`` suppresses the CLI error log; the failure still
-        surfaces via ``r``.
-        """
-        cwd = path.parent if path.suffix else path
-
-        def _step(args: list[str], default_msg: str) -> p.Result[str]:
-            return (
-                u.Cli
-                .capture(args, cwd=cwd)
-                .map_error(
-                    lambda e: e or default_msg,
-                )
-                .tap_error(lambda e: None if quiet else u.Cli.error(e))
-            )
-
-        if path.suffix == ".pyi":
-            return (
-                _step(
-                    [
-                        c.Infra.RUFF,
-                        "check",
-                        "--fix",
-                        "--select",
-                        "I001,E303",
-                        str(path),
-                    ],
-                    f"ruff stub safe fix failed: {path}",
-                )
-                .flat_map(
-                    lambda _: _step(
-                        [c.Infra.RUFF, "format", str(path)],
-                        f"ruff format failed: {path}",
-                    )
-                )
-                .flat_map(
-                    lambda _: _step(
-                        [c.Infra.RUFF, "check", str(path)],
-                        f"ruff check failed: {path}",
-                    )
-                )
-                .map(lambda _: True)
-            )
-
-        return (
-            _step(
-                [c.Infra.RUFF, "check", "--fix", str(path)],
-                f"ruff check --fix failed: {path}",
-            )
-            .flat_map(
-                lambda _: _step(
-                    [c.Infra.RUFF, "format", str(path)],
-                    f"ruff format failed: {path}",
-                )
-            )
-            .map(lambda _: True)
-        )
+        @staticmethod
+        def project_root(file_path: Path) -> Path | None: ...
 
     @staticmethod
     def generate_module_skeleton(
         *, class_name: str, base_class: str, docstring: str
     ) -> str:
-        """Generate one minimal module skeleton used by codegen scaffolding."""
+        """Render one module skeleton through the cli template engine (ADR-005).
+
+        The body lives in ``templates/module_skeleton.py.j2``; this method only
+        builds the context (base-import block) and renders fail-closed via
+        ``u.Cli.template_render``. A render failure is a real incident and
+        surfaces via ``unwrap`` (no silent fallback).
+        """
         if base_class.startswith("FlextTests"):
-            base_import = f"from flext_tests import {base_class}\n\n"
+            base_import_block = f"from flext_tests import {base_class}\n\n"
         elif base_class.startswith("Flext"):
-            base_import = f"from flext_core import {base_class}\n\n"
+            base_import_block = f"from flext_core import {base_class}\n\n"
         else:
-            base_import = ""
-        return (
-            f'"""{docstring}"""\n\n'
-            "from __future__ import annotations\n\n"
-            f"{base_import}"
-            f"class {class_name}({base_class}):\n"
-            f'    """{docstring}"""\n'
-            "\n"
-            "\n"
-            '__all__: list[str] = ["'
-            f"{class_name}"
-            '"]\n'
+            base_import_block = ""
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MODULE_SKELETON
         )
+        # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner): preserve
+        # the exact validated model identity across the template boundary.
+        context = m.Infra.ModuleSkeletonRenderContext(
+            class_name=class_name,
+            base_class=base_class,
+            base_import_block=base_import_block,
+            docstring=docstring,
+        )
+        rendered: p.Result[str] = u.Cli.template_render(template_path, context)
+        return rendered.unwrap()
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:
@@ -120,11 +69,7 @@ class FlextInfraUtilitiesCodegen:
         for line_number, line in enumerate(source_lines, 1):
             stripped = line.lstrip()
             indent = len(line) - len(stripped)
-            FlextInfraUtilitiesCodegen.update_class_stack(
-                class_stack,
-                stripped,
-                indent,
-            )
+            FlextInfraUtilitiesCodegen.update_class_stack(class_stack, stripped, indent)
             match = c.Infra.DETECTION_FINAL_DECL_RE.match(line)
             if match is None:
                 continue

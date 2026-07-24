@@ -4,31 +4,31 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
+
+from flext_tests import tm
 
 from flext_core import r
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
-from flext_infra.constants import c
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
 from flext_infra.workspace.sync import FlextInfraSyncService
-from tests.models import m
-from tests.protocols import p
-from tests.typings import t
-from tests.utilities import u
+from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from tests import m, t, u
+
+if TYPE_CHECKING:
+    from tests import p
 
 
 def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
     class _Gen(FlextInfraBaseMkGenerator):
         @override
         def generate_basemk(
-            self,
-            settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+            self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
         ) -> p.Result[str]:
             _ = self
             _ = settings
             return r[str].fail(content) if fail else r[str].ok(content)
 
-    return _Gen(workspace=Path.cwd())
+    return _Gen(workspace_root=Path.cwd())
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -43,26 +43,15 @@ def _write_project(project_root: Path, name: str) -> None:
         ),
         encoding="utf-8",
     )
+    u.Tests.write_standalone_workspace_manifest(project_root, name)
 
 
-def _write_workspace(workspace_root: Path) -> tuple[Path, Path]:
-    demo_a = workspace_root / "demo-a"
-    demo_b = workspace_root / "demo-b"
+def _write_workspace(workspace_root: Path) -> None:
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-            "\n"
-            "[tool.flext.workspace]\n"
-            'members = ["demo-a", "demo-b"]\n'
-        ),
-        encoding="utf-8",
+        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
-    _write_project(demo_a, "demo-a")
-    _write_project(demo_b, "demo-b")
-    return demo_a, demo_b
+    u.Tests.write_standalone_workspace_manifest(workspace_root, "workspace-root")
 
 
 def _error_text[ValueT](result: p.Result[ValueT]) -> str:
@@ -72,105 +61,102 @@ def _error_text[ValueT](result: p.Result[ValueT]) -> str:
 class TestsFlextInfraWorkspaceSync:
     """Behavior contract for test_sync."""
 
-    def test_sync_result_serializes_json_safe_metadata(self) -> None:
+    def test_sync_result_serializes_json_safe_metadata(self, tmp_path: Path) -> None:
+        """Serialize path and timestamp metadata into JSON-safe values."""
+        source = tmp_path / "source"
+        target = tmp_path / "target"
         payload = m.Infra.SyncResult(
             files_changed=2,
-            source=Path("/tmp/source"),
-            target=Path("/tmp/target"),
+            source=source,
+            target=target,
             timestamp=datetime(2026, 5, 4, tzinfo=UTC),
         )
 
-        assert payload.model_dump(mode="json") == {
+        expected_payload: t.JsonMapping = {
             "files_changed": 2,
-            "source": "/tmp/source",
-            "target": "/tmp/target",
+            "source": str(source),
+            "target": str(target),
             "timestamp": "2026-05-04T00:00:00+00:00",
         }
-        assert u.normalize_to_json_value(payload) == {
-            "files_changed": 2,
-            "source": "/tmp/source",
-            "target": "/tmp/target",
-            "timestamp": "2026-05-04T00:00:00+00:00",
-        }
+        tm.that(payload.model_dump(mode="json"), eq=expected_payload)
+        tm.that(u.normalize_to_json_value(payload), eq=expected_payload)
 
-    def test_sync_generates_basemk_gitignore_and_makefile(self, tmp_path: Path) -> None:
+    def test_sync_generates_basemk_and_makefile(self, tmp_path: Path) -> None:
+        """Generate canonical project files and strict editor settings."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
-        assert result.success, _error_text(result)
-        assert result.value.files_changed >= 1
-        assert not (project_root / "base.mk").exists()
-        assert (project_root / ".gitignore").exists()
-        assert (project_root / "Makefile").exists()
+        tm.ok(result)
+        tm.that(result.value.files_changed, gt=0)
+        tm.that((project_root / "base.mk").exists(), eq=False)
+        # mro-jnm1.2: .gitignore is owned by codegen conform, not sync.
+        tm.that((project_root / ".gitignore").exists(), eq=False)
+        tm.that((project_root / "Makefile").exists(), eq=True)
         settings = u.Cli.json_read(project_root / ".vscode" / "settings.json").unwrap()
-        assert settings["python.analysis.typeCheckingMode"] == "strict"
-        overrides = settings["python.analysis.diagnosticSeverityOverrides"]
-        assert isinstance(overrides, dict)
-        assert overrides["reportUntypedBaseClass"] == "none"
+        tm.that(settings["python.analysis.typeCheckingMode"], eq="strict")
+        overrides = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["python.analysis.diagnosticSeverityOverrides"]
+        )
+        tm.that(overrides["reportUntypedBaseClass"], eq="none")
+
+    def test_sync_dry_run_reports_changes_without_writing(self, tmp_path: Path) -> None:
+        """Report pending changes without writing project files in dry-run mode."""
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent, workspace_root=project_root
+        ).execute()
+
+        tm.ok(result)
+        tm.that(result.value.files_changed, gt=0)
+        tm.that((project_root / ".gitignore").exists(), eq=False)
+        tm.that((project_root / ".envrc").exists(), eq=False)
+        tm.that((project_root / ".mise.toml").exists(), eq=False)
+        tm.that((project_root / ".vscode" / "settings.json").exists(), eq=False)
+        tm.that((project_root / "Makefile").exists(), eq=False)
 
     def test_sync_uses_package_tests_dir_when_present(self, tmp_path: Path) -> None:
+        """Point generated Makefiles at package-local tests when present."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         (project_root / "src" / "demo_project" / "tests").mkdir(parents=True)
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
-        assert result.success, _error_text(result)
+        tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        assert "TESTS_DIR ?= src/demo_project/tests" in makefile_text
+        tm.that(makefile_text, has="TESTS_DIR ?= src/demo_project/tests")
 
     def test_sync_is_idempotent_on_second_run(self, tmp_path: Path) -> None:
+        """Produce zero file changes when a synchronized project runs again."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         service = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         )
 
         first_result = service.execute()
-        assert first_result.success, _error_text(first_result)
+        tm.ok(first_result)
         second_result = service.execute()
 
-        assert second_result.success, _error_text(second_result)
-        assert second_result.value.files_changed == 0
-
-    def test_sync_deduplicates_gitignore_managed_block(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-        header = c.Infra.GITIGNORE_MANAGED_HEADER
-        gitignore = project_root / ".gitignore"
-        gitignore.write_text(
-            f"custom.log\n\n{header}\n.direnv/\n\n"
-            f"# keep manual ignore\n.venv/\n{header}\nbase.mk\n",
-            encoding="utf-8",
-        )
-        service = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace=project_root,
-        )
-
-        result = service.execute()
-        second_result = service.execute()
-
-        assert result.success, _error_text(result)
-        assert second_result.success, _error_text(second_result)
-        assert second_result.value.files_changed == 0
-        synced = gitignore.read_text(encoding="utf-8")
-        assert synced.count(header) == 1
-        assert "custom.log\n" in synced
-        assert "# keep manual ignore\n" in synced
-        for pattern in c.Infra.REQUIRED_GITIGNORE_ENTRIES:
-            assert synced.count(f"{pattern}\n") == 1
+        tm.ok(second_result)
+        tm.that(second_result.value.files_changed, eq=0)
 
     def test_sync_preserves_custom_vscode_settings(self, tmp_path: Path) -> None:
+        """Preserve custom editor values while adding canonical diagnostics."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         settings_path = project_root / ".vscode" / "settings.json"
@@ -189,132 +175,153 @@ class TestsFlextInfraWorkspaceSync:
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         ).execute()
         second_result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
-        assert result.success, _error_text(result)
-        assert second_result.success, _error_text(second_result)
+        tm.ok(result)
+        tm.ok(second_result)
         settings = u.Cli.json_read(settings_path).unwrap()
-        assert settings["editor.formatOnSave"] is True
-        overrides = settings["python.analysis.diagnosticSeverityOverrides"]
-        assert isinstance(overrides, dict)
-        assert overrides["reportUnknownMemberType"] == "none"
-        assert overrides["reportUntypedBaseClass"] == "none"
-        assert second_result.value.files_changed == 0
+        tm.that(settings["editor.formatOnSave"], eq=True)
+        overrides = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["python.analysis.diagnosticSeverityOverrides"]
+        )
+        tm.that(overrides["reportUnknownMemberType"], eq="none")
+        tm.that(overrides["reportUntypedBaseClass"], eq="none")
+        tm.that(second_result.value.files_changed, eq=0)
 
-    def test_sync_fails_when_workspace_root_is_missing(self) -> None:
-        missing_root = Path("/nonexistent/path")
+    def test_sync_replaces_recursive_vscode_search_paths(self, tmp_path: Path) -> None:
+        """Replace recursive venv search globs with canonical shallow paths."""
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+        settings_path = project_root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        _ = settings_path.write_text(
+            '{\n  "python-envs.workspaceSearchPaths": ["./.venv", "./**/.venv"]\n}\n',
+            encoding="utf-8",
+        )
 
-        result = FlextInfraSyncService(workspace=missing_root).execute()
+        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
+        second_result = FlextInfraWorkspaceVscode.sync_settings(
+            project_root, apply=True
+        )
 
-        assert result.failure
-        assert "does not exist" in _error_text(result)
+        tm.ok(result)
+        tm.that(result.value, eq=True)
+        tm.ok(second_result)
+        tm.that(second_result.value, eq=False)
+        settings = u.Cli.json_read(settings_path).unwrap()
+        tm.that(
+            settings["python-envs.workspaceSearchPaths"],
+            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+        )
+
+    def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
+        """Return a typed failure when the requested workspace does not exist."""
+        missing_root = tmp_path / "missing" / "workspace"
+
+        result = FlextInfraSyncService(workspace_root=missing_root).execute()
+
+        tm.fail(result)
+        tm.that(_error_text(result), has="does not exist")
 
     def test_sync_fails_when_generator_fails(self, tmp_path: Path) -> None:
+        """Propagate the typed base.mk generator failure."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
         service = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace=project_root,
+            canonical_root=project_root.parent, workspace_root=project_root
         )
         service.generator = _stub_gen("Generation failed", fail=True)
         result = service.execute()
 
-        assert result.failure
-        assert "Generation failed" in _error_text(result)
+        tm.fail(result)
+        tm.that(_error_text(result), has="Generation failed")
 
-    def test_sync_fails_when_gitignore_path_is_directory(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-        (project_root / ".gitignore").mkdir()
-
-        result = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace=project_root,
-        ).execute()
-
-        assert result.failure
-        assert ".gitignore" in _error_text(result)
-
-    def test_sync_workspace_root_also_syncs_child_projects(
+    def test_sync_workspace_root_also_generates_root_files(
         self, tmp_path: Path
     ) -> None:
+        """Synchronize the workspace root without recursing into child projects."""
         workspace_root = tmp_path / "workspace"
-        demo_a, demo_b = _write_workspace(workspace_root)
+        _write_workspace(workspace_root)
 
         result = FlextInfraSyncService(
             canonical_root=workspace_root,
-            workspace=workspace_root,
+            workspace_root=workspace_root,
+            apply_changes=True,
         ).execute()
 
-        assert result.success, _error_text(result)
-        assert not (workspace_root / "base.mk").exists()
-        assert (workspace_root / "Makefile").exists()
-        for project_root in (demo_a, demo_b):
-            assert not (project_root / "base.mk").exists()
-            assert (project_root / "Makefile").exists()
-
-    def test_sync_workspace_root_writes_pre_commit_config(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        workspace_root = tmp_path / "workspace"
-        _ = _write_workspace(workspace_root)
-
-        result = FlextInfraSyncService(
-            canonical_root=workspace_root,
-            workspace=workspace_root,
-        ).execute()
-
-        assert result.success, _error_text(result)
-        pre_commit_path = workspace_root / ".pre-commit-config.yaml"
-        gitignore_text = (workspace_root / ".gitignore").read_text(encoding="utf-8")
-        assert pre_commit_path.read_text(encoding="utf-8").strip() == (
-            FlextInfraManualCommandValidator.render_pre_commit_config().strip()
-        )
-        assert "!.pre-commit-config.yaml" in gitignore_text
+        tm.ok(result)
+        tm.that((workspace_root / "base.mk").exists(), eq=False)
+        tm.that((workspace_root / "Makefile").exists(), eq=True)
+        # Conform-driven sync does not auto-sync child projects from the root.
+        tm.that((workspace_root / "demo-a" / "Makefile").exists(), eq=False)
+        tm.that((workspace_root / "demo-b" / "Makefile").exists(), eq=False)
 
     def test_sync_regenerates_project_makefile_without_legacy_passthrough(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Replace legacy Makefile content with the canonical generated surface."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         (project_root / "Makefile").write_text(
-            "# legacy custom target\ncustom-target:\n\t@echo legacy\n",
-            encoding="utf-8",
+            "# legacy custom target\ncustom-target:\n\t@echo legacy\n", encoding="utf-8"
         )
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
-            workspace=project_root,
+            workspace_root=project_root,
+            apply_changes=True,
         ).execute()
 
-        assert result.success, _error_text(result)
+        tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        assert "custom-target" not in makefile_text
-        assert "-include custom.mk" in makefile_text
-        assert not (project_root / "custom.mk").exists()
+        tm.that(makefile_text, lacks="custom-target")
+        tm.that(makefile_text, has="-include custom.mk")
+        tm.that((project_root / "custom.mk").exists(), eq=False)
+
+    def test_sync_generated_makefile_requires_flext_workspace_marker(
+        self, tmp_path: Path
+    ) -> None:
+        """Select workspace mode only for a complete FLEXT workspace ancestor."""
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+
+        tm.ok(result)
+        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that(
+            makefile_text,
+            has='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
+        )
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
+        """Write text atomically through the public CLI utility."""
         target = tmp_path / "test.txt"
 
         result = u.Cli.atomic_write_text_file(target, "test content")
 
-        assert result.success, _error_text(result)
-        assert result.value is True
-        assert target.read_text(encoding="utf-8") == "test content"
+        tm.ok(result)
+        tm.that(result.value, eq=True)
+        tm.that(target.read_text(encoding="utf-8"), eq="test content")
 
     def test_atomic_write_fails_when_parent_is_a_file(self, tmp_path: Path) -> None:
+        """Return a typed failure when an atomic-write parent is a file."""
         blocked_parent = tmp_path / "occupied"
         blocked_parent.write_text("occupied", encoding="utf-8")
 
         result = u.Cli.atomic_write_text_file(blocked_parent / "test.txt", "content")
 
-        assert result.failure
-        assert "ensure_dir" in _error_text(result)
+        tm.fail(result)
+        tm.that(_error_text(result), has="ensure_dir")

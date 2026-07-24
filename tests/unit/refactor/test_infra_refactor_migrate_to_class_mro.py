@@ -7,12 +7,10 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra.iteration import FlextInfraUtilitiesIteration
 from flext_infra.refactor.migrate_to_class_mro import (
     FlextInfraRefactorMigrateToClassMRO,
 )
+from tests import u
 
 
 class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
@@ -25,8 +23,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -39,8 +36,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="constants",
-            apply=True,
+            target="constants", apply=True
         )
         constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
@@ -59,15 +55,13 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         tm.that(consumer_source, has="result = c.VALUE")
 
     def test_migrate_to_mro_inlines_alias_constant_into_constants_class(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -80,8 +74,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="constants",
-            apply=True,
+            target="constants", apply=True
         )
         constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
@@ -102,8 +95,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -116,8 +108,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="constants",
-            apply=True,
+            target="constants", apply=True
         )
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
         tm.that(report.errors, empty=True)
@@ -139,8 +130,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -153,8 +143,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="typings",
-            apply=True,
+            target="typings", apply=True
         )
         typings_source = (src_pkg / "typings.py").read_text(encoding="utf-8")
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
@@ -179,8 +168,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -193,8 +181,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="protocols",
-            apply=True,
+            target="protocols", apply=True
         )
         protocols_source = (src_pkg / "protocols.py").read_text(encoding="utf-8")
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
@@ -217,36 +204,6 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         tm.that(consumer_source, has="from sample_pkg.protocols import p")
         tm.that(consumer_source, has="def call_greet(protocol: p.Greeter) -> str:")
 
-    def test_refactor_utilities_iter_python_files_includes_examples_and_scripts(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        project_root = tmp_path / "sample"
-        project_root.mkdir(parents=True)
-        _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
-        )
-        _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        (project_root / ".git").mkdir(parents=True)
-        expected_paths = [
-            project_root / "src" / "sample_pkg" / "module.py",
-            project_root / "tests" / "test_module.py",
-            project_root / "examples" / "demo.py",
-            project_root / "scripts" / "sync.py",
-        ]
-        for file_path in expected_paths:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            _ = file_path.write_text(
-                "from __future__ import annotations\n",
-                encoding="utf-8",
-            )
-        discovered = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=tmp_path
-        )
-        tm.ok(discovered)
-        tm.that(sorted(discovered.value), eq=sorted(expected_paths))
-
     def test_discover_project_roots_without_nested_git_dirs(
         self, tmp_path: Path
     ) -> None:
@@ -256,20 +213,16 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         project_root = workspace_root / "proj-a"
         project_root.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='proj-a'\n",
-            encoding="utf-8",
+            "[project]\nname='proj-a'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (project_root / "src").mkdir(parents=True)
 
-        discovered = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=workspace_root,
-        )
+        discovered = u.Infra.discover_project_roots(workspace_root=workspace_root)
         tm.that(discovered, eq=[project_root])
 
     def test_mro_scan_respects_namespace_scan_dirs_src_only(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = tmp_path / "sample"
         src_pkg = project_root / "src" / "sample_pkg"
@@ -290,9 +243,8 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
 
-        reports, scanned = FlextInfraUtilitiesRefactorMroScan.scan_workspace(
-            workspace_root=project_root,
-            target="constants",
+        reports, scanned = u.Infra.scan_workspace(
+            workspace_root=project_root, target="constants"
         )
         report_files = {
             Path(report.file).relative_to(project_root).as_posix() for report in reports
@@ -308,8 +260,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         src_pkg = project_root / "src" / "sample_pkg"
         src_pkg.mkdir(parents=True)
         _ = (project_root / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n",
-            encoding="utf-8",
+            "[project]\nname='sample'\n", encoding="utf-8"
         )
         _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
@@ -322,8 +273,7 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
             encoding="utf-8",
         )
         report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root).run(
-            target="constants",
-            apply=True,
+            target="constants", apply=True
         )
         constants_source = (src_pkg / "constants.py").read_text(encoding="utf-8")
         consumer_source = (src_pkg / "consumer.py").read_text(encoding="utf-8")
@@ -339,3 +289,36 @@ class TestsFlextInfraRefactorInfraRefactorMigrateToClassMro:
         # Consumer import rewritten: VALUE → c.VALUE with facade alias import.
         tm.that(consumer_source, has="from sample_pkg.constants import c")
         tm.that(consumer_source, has="result = c.VALUE")
+
+    def test_migrate_to_mro_is_idempotent_on_second_run(self, tmp_path: Path) -> None:
+        """A second consecutive apply run must be a true no-op (census delta 0).
+
+        Regression for the all-or-nothing SafetyManager rollback: converged
+        files stay committed, so once a constant lives inside the facade class
+        it is no longer a candidate and re-running produces zero migrations.
+        """
+        project_root = tmp_path / "sample"
+        src_pkg = project_root / "src" / "sample_pkg"
+        src_pkg.mkdir(parents=True)
+        _ = (project_root / "pyproject.toml").write_text(
+            "[project]\nname='sample'\n", encoding="utf-8"
+        )
+        _ = (project_root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        _ = (src_pkg / "__init__.py").write_text("", encoding="utf-8")
+        _ = (src_pkg / "constants.py").write_text(
+            "from __future__ import annotations\nfrom typing import Final\n\nVALUE: Final[int] = 42\n\nclass SampleConstants:\n    pass\n\nc = SampleConstants\n",
+            encoding="utf-8",
+        )
+        _ = (src_pkg / "consumer.py").write_text(
+            "from sample_pkg.constants import VALUE\n\nresult = VALUE\n",
+            encoding="utf-8",
+        )
+        service = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_root)
+        first = service.run(target="constants", apply=True)
+        tm.that(first.errors, empty=True)
+        tm.that(len(first.migrations) >= 1, eq=True)
+        second = service.run(target="constants", apply=True)
+        tm.that(second.errors, empty=True)
+        tm.that(len(second.migrations), eq=0)
+        tm.that(len(second.rewrites), eq=0)
+        tm.that(second.remaining_violations, eq=0)

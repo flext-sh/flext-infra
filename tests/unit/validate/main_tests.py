@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
@@ -16,8 +16,12 @@ from flext_infra import main as infra_main
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from tests.constants import c
-from tests.typings import t
+from tests import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 def _cli(*args: str) -> int:
@@ -31,10 +35,8 @@ class TestMainBaseMkValidate:
     def test_success(self, tmp_path: Path) -> None:
         """basemk-validate returns r[bool] based on base.mk match."""
         (tmp_path / "base.mk").write_text("# root")
-        result = FlextInfraBaseMkValidator(
-            workspace=tmp_path,
-        ).execute()
-        assert isinstance(result.success, bool)
+        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
+        tm.that(result.success, is_=bool)
 
     def test_with_violations(self, tmp_path: Path) -> None:
         """basemk-validate returns failure with mismatched base.mk."""
@@ -43,14 +45,12 @@ class TestMainBaseMkValidate:
         proj.mkdir()
         (proj / "pyproject.toml").write_text("")
         (proj / "base.mk").write_text("# different")
-        result = FlextInfraBaseMkValidator(
-            workspace=tmp_path,
-        ).execute()
+        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
         tm.that(result.failure, eq=True)
 
     def test_missing_root_basemk(self, tmp_path: Path) -> None:
         """basemk-validate returns failure when root base.mk missing."""
-        result = FlextInfraBaseMkValidator(workspace=tmp_path).execute()
+        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
         tm.that(result.failure, eq=True)
 
 
@@ -59,17 +59,14 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        result = FlextInfraInventoryService(workspace=tmp_path).execute()
+        result = FlextInfraInventoryService(workspace_root=tmp_path).execute()
         tm.that(result.success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        result = FlextInfraInventoryService(
-            workspace=tmp_path,
-            output_dir=output,
-        )
+        result = FlextInfraInventoryService(workspace_root=tmp_path, output_dir=output)
         result = result.execute()
         tm.that(result.success, eq=True)
 
@@ -81,7 +78,7 @@ class TestMainScan:
         """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
         result = FlextInfraTextPatternScanner(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             pattern="NONEXISTENT_PATTERN",
             include=["*.txt"],
             exclude=[],
@@ -94,7 +91,7 @@ class TestMainScan:
         """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
         result = FlextInfraTextPatternScanner(
-            workspace=tmp_path,
+            workspace_root=tmp_path,
             pattern="TODO",
             include=["*.txt"],
             exclude=[],
@@ -114,12 +111,12 @@ class TestMainCliRouting:
     def test_basemk_validate_routing(self, tmp_path: Path) -> None:
         """basemk-validate subcommand routes correctly."""
         result = _cli("basemk-validate", "--workspace", str(tmp_path))
-        assert result in {0, 1}
+        tm.that({0, 1}, has=result)
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""
         result = _cli("inventory", "--workspace", str(tmp_path))
-        assert result in {0, 1}
+        tm.that({0, 1}, has=result)
 
     def test_scan_routing(self, tmp_path: Path) -> None:
         """Scan subcommand routes correctly."""
@@ -133,7 +130,7 @@ class TestMainCliRouting:
             "--include",
             "*.txt",
         )
-        assert result in {0, 1}
+        tm.that({0, 1}, has=result)
 
     def test_no_command_returns_1(self) -> None:
         """No subcommand returns exit code 1."""
@@ -141,23 +138,19 @@ class TestMainCliRouting:
 
     def test_unknown_command_returns_error(self) -> None:
         """Unknown subcommand returns non-zero exit code."""
-        assert _cli("unknown") != 0
+        tm.that(_cli("unknown"), ne=0)
 
     def test_skill_validate_routing(self, tmp_path: Path) -> None:
         """skill-validate subcommand routes correctly."""
         result = _cli(
-            "skill-validate",
-            "--skill",
-            "test-skill",
-            "--workspace",
-            str(tmp_path),
+            "skill-validate", "--skill", "test-skill", "--workspace", str(tmp_path)
         )
-        assert result in {0, 1}
+        tm.that({0, 1}, has=result)
 
     def test_stub_validate_routing(self, tmp_path: Path) -> None:
         """stub-validate subcommand routes correctly."""
         result = _cli("stub-validate", "--workspace", str(tmp_path))
-        assert result in {0, 1}
+        tm.that({0, 1}, has=result)
 
 
 __all__: t.StrSequence = []

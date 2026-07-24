@@ -6,7 +6,9 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from tests.utilities import u
+from flext_tests import tm
+
+from tests import u
 
 
 class TestsFlextInfraInfraUtilities:
@@ -24,11 +26,7 @@ class TestsFlextInfraInfraUtilities:
             "        pass\n"
         )
 
-        block = u.Infra.extract_definition(
-            source,
-            "ExamplesFlextModels",
-            kind="class",
-        )
+        block = u.Infra.extract_definition(source, "ExamplesFlextModels", kind="class")
 
-        assert u.Infra.bracket_balance_line("class ExamplesFlextModels(") == 1
-        assert block == source.rstrip("\n")
+        tm.that(u.Infra.bracket_balance_line("class ExamplesFlextModels("), eq=1)
+        tm.that(block, eq=source.rstrip("\n"))

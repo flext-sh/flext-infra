@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra import c
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.models import m
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from tests import m
 
 
 class TestsFlextInfraInfraWorkspaceMigratorInternal:
+    """Tests for workspace migrator internals via the public surface."""
+
     @staticmethod
     def _write_project_files(
         tmp_path: Path,
@@ -60,10 +66,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             eq=True,
         )
 
-    def test_execute_surfaces_makefile_read_error(
-        self,
-        tmp_path: Path,
-    ) -> None:
+    def test_execute_surfaces_makefile_read_error(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(tmp_path, makefile=None)
         (project_root / "Makefile").mkdir()
         migrator = u.Tests.build_project_migrator(
@@ -77,24 +80,19 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         tm.that(any("Makefile read failed" in err for err in migration.errors), eq=True)
 
     def test_execute_tolerates_missing_makefile_non_dry_run(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_root = self._write_project_files(
             tmp_path,
             makefile=None,
             pyproject='[project]\ndependencies = ["flext-core"]\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
-        (project_root / c.Infra.ENVRC_FILENAME).write_text(
-            c.Infra.WORKSPACE_ENVRC_CONTENT,
-            encoding="utf-8",
-        )
+        FlextInfraWorkspaceEnvironment.sync_envrc(project_root)
+        mise_result = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
         (project_root / c.Infra.MISE_TOML_FILENAME).write_text(
-            c.Infra.WORKSPACE_MISE_TOML_CONTENT,
-            encoding="utf-8",
+            mise_result.value, encoding="utf-8"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
@@ -108,15 +106,8 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         tm.that(len(migration.errors), eq=0)
         tm.that(migration.changes, has="no changes needed")
 
-    def test_execute_surfaces_pyproject_write_error(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        project_root = self._write_project_files(
-            tmp_path,
-            pyproject="[tool.poetry]\n",
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
-        )
+    def test_execute_surfaces_pyproject_write_error(self, tmp_path: Path) -> None:
+        project_root = self._write_project_files(tmp_path, pyproject="[tool.poetry]\n")
         self._make_read_only(project_root / "pyproject.toml")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "test-proj"),
@@ -127,17 +118,13 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
         migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
-        tm.that(
-            any("TOML write" in err for err in migration.errors),
-            eq=True,
-        )
+        tm.that(any("TOML write" in err for err in migration.errors), eq=True)
 
     def test_execute_skips_flext_core_dependency_changes(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(
             tmp_path,
             name="flext-core",
             pyproject='[project]\nname = "flext-core"\nversion = "0.1.0"\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "flext-core"),
@@ -156,9 +143,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
     def test_invalid_workspace(self) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace=Path("/nonexistent"),
-            dry_run=False,
-            apply_changes=True,
+            workspace_root=Path("/nonexistent"), dry_run=False, apply_changes=True
         )
 
         result = migrator.execute()

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from typing import TYPE_CHECKING
+
+from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraDocAuditorReportMixin:
@@ -12,10 +15,7 @@ class FlextInfraDocAuditorReportMixin:
 
     @staticmethod
     def _audit_passed(
-        *,
-        issue_count: int,
-        params: m.Infra.AuditScopeParams,
-        scope_budget: int | None,
+        *, issue_count: int, params: m.Infra.AuditScopeParams, scope_budget: int | None
     ) -> bool:
         """Return strict/non-strict audit pass decision."""
         if not params.strict:
@@ -29,15 +29,22 @@ class FlextInfraDocAuditorReportMixin:
         issues: t.SequenceOf[m.Infra.AuditIssue],
         checks: t.StrSequence,
         params: m.Infra.AuditScopeParams,
+        docstring_coverage: m.Infra.DocstringCoverage | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Build the standard docs audit phase report."""
         default_budget, per_scope_budget = params.budgets or (None, {})
         scope_budget = per_scope_budget.get(scope.name, default_budget)
         issue_count = len(issues)
-        passed = self._audit_passed(
-            issue_count=issue_count,
-            params=params,
-            scope_budget=scope_budget,
+        coverage_breached = (
+            params.docstring_min is not None
+            and docstring_coverage is not None
+            and docstring_coverage.percent < params.docstring_min
+        )
+        passed = (
+            self._audit_passed(
+                issue_count=issue_count, params=params, scope_budget=scope_budget
+            )
+            and not coverage_breached
         )
         result = (
             c.Infra.ResultStatus.OK
@@ -45,6 +52,14 @@ class FlextInfraDocAuditorReportMixin:
             else c.Infra.ResultStatus.WARN
             if passed
             else c.Infra.ResultStatus.FAIL
+        )
+        message = (
+            f"docstring coverage {docstring_coverage.percent}% below minimum "
+            f"{params.docstring_min}%"
+            if coverage_breached and docstring_coverage is not None
+            else "audit passed"
+            if issue_count == 0
+            else f"found {issue_count} issue(s)"
         )
         return m.Infra.DocsPhaseReport(
             phase="audit",
@@ -55,9 +70,7 @@ class FlextInfraDocAuditorReportMixin:
                 if scope_budget is None
                 else f"issues:{issue_count};budget:{scope_budget}"
             ),
-            message=(
-                "audit passed" if issue_count == 0 else f"found {issue_count} issue(s)"
-            ),
+            message=message,
             checks=checks,
             strict=params.strict,
             passed=passed,

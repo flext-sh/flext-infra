@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, t, u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerRunMixin:
@@ -76,15 +76,76 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        project_paths: t.SequenceOf[Path] | None = None
-        if project_names:
-            selected_projects = u.Infra.resolve_projects(self.root, project_names)
-            if selected_projects.failure:
-                u.Cli.error(
-                    selected_projects.error or "failed to resolve selected projects",
+        # NOTE (multi-agent, mro-wkii.17): modernization writes only the
+        # requested workspace root and its configured members, never siblings.
+        include_root = not project_names or "." in project_names
+        selected_names = (
+            [name for name in project_names if name != "."]
+            if project_names
+            else list(u.Infra.workspace_member_names(self.root))
+        )
+        configured_member_paths = {
+            member_name: self.root / member_name
+            for member_name in u.Infra.workspace_member_names(self.root)
+        }
+        resolved_root = self.root.resolve()
+        outside_member_names = [
+            member_name
+            for member_name, member_path in configured_member_paths.items()
+            if not member_path.resolve().is_relative_to(resolved_root)
+        ]
+        if outside_member_names:
+            u.Cli.error(
+                "workspace members outside root: "
+                f"{', '.join(sorted(outside_member_names))}"
+            )
+            return 2
+        basename_aliases: dict[str, list[Path]] = {}
+        declared_name_aliases: dict[str, list[Path]] = {}
+        for configured_path in configured_member_paths.values():
+            basename_aliases.setdefault(configured_path.name, []).append(
+                configured_path
+            )
+            state_result = self._read_document_state(
+                configured_path / c.Infra.PYPROJECT_FILENAME
+            )
+            if state_result.failure:
+                continue
+            state = state_result.value
+            try:
+                declared_name = u.Infra.project_name_from_payload(
+                    state.pyproject_path, state.payload
                 )
-                return 2
-            project_paths = [project.path for project in selected_projects.value]
+            except c.EXC_TYPE_VALIDATION:
+                continue
+            declared_name_aliases.setdefault(declared_name, []).append(configured_path)
+        project_paths: t.MutableSequenceOf[Path] = []
+        missing_names: t.MutableSequenceOf[str] = []
+        ambiguous_names: t.MutableSequenceOf[str] = []
+        for project_name in selected_names:
+            project_path = configured_member_paths.get(project_name)
+            if project_path is None:
+                alias_matches: t.MutableSequenceOf[Path] = []
+                for alias_path in (
+                    *basename_aliases.get(project_name, []),
+                    *declared_name_aliases.get(project_name, []),
+                ):
+                    if alias_path not in alias_matches:
+                        alias_matches.append(alias_path)
+                if len(alias_matches) > 1:
+                    ambiguous_names.append(project_name)
+                    continue
+                project_path = alias_matches[0] if alias_matches else None
+            if project_path is None or not project_path.is_dir():
+                missing_names.append(project_name)
+                continue
+            project_paths.append(project_path)
+        if ambiguous_names:
+            u.Cli.error(f"ambiguous projects: {', '.join(sorted(ambiguous_names))}")
+            return 2
+        if missing_names:
+            u.Cli.error(f"unknown projects: {', '.join(sorted(missing_names))}")
+            return 2
         files_result = u.Infra.find_all_pyproject_files(
             self.root,
             skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
@@ -93,30 +154,55 @@ class FlextInfraPyprojectModernizerRunMixin:
         files: t.SequenceOf[Path] = (
             [] if files_result.failure else sorted(files_result.unwrap())
         )
-        root_state_result = self._read_document_state(
-            self.root / c.Infra.PYPROJECT_FILENAME
-        )
+        root_pyproject_path = self.root / c.Infra.PYPROJECT_FILENAME
+        if (
+            include_root
+            and root_pyproject_path.is_file()
+            and root_pyproject_path not in files
+        ):
+            files = sorted([root_pyproject_path, *files])
+        root_state_result = self._read_document_state(root_pyproject_path)
         if root_state_result.failure:
             return 2
         root_state = root_state_result.value
+        root_project_name: str | None = None
+        if include_root or self.rewrite_constraints:
+            try:
+                root_project_name = u.Infra.project_name_from_payload(
+                    root_state.pyproject_path, root_state.payload
+                )
+            except c.EXC_TYPE_VALIDATION as exc:
+                u.Cli.error(str(exc))
+                return 2
         canonical_dev: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload),
+            u.Infra.canonical_dev_dependencies_from_payload(root_state.payload)
         )
         locked_versions: t.MappingKV[str, str] = {}
         internal_names: t.StrSequence = ()
         if self.rewrite_constraints:
+            if root_project_name is None:
+                u.Cli.error("root project name required for constraint rewriting")
+                return 2
             lock_path = self.root / "uv.lock"
             locked_versions = u.Infra.locked_dependency_versions(lock_path)
             if not locked_versions:
                 u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
                 return 2
-            try:
-                root_project_name = u.Infra.project_name_from_payload(
-                    root_state.pyproject_path,
-                    root_state.payload,
+            member_lock_paths = tuple(
+                sorted(
+                    member_path / c.Infra.UV_LOCK_FILENAME
+                    for member_path in configured_member_paths.values()
+                    if (member_path / c.Infra.UV_LOCK_FILENAME).is_file()
                 )
-            except c.EXC_TYPE_VALIDATION as exc:
-                u.Cli.error(str(exc))
+            )
+            if member_lock_paths:
+                relative_paths = ", ".join(
+                    str(path.relative_to(self.root)) for path in member_lock_paths
+                )
+                u.Cli.error(
+                    "package-local uv.lock files conflict with root lock authority: "
+                    f"{relative_paths}"
+                )
                 return 2
             internal_names = tuple(
                 sorted(
@@ -151,7 +237,13 @@ class FlextInfraPyprojectModernizerRunMixin:
                 )
             if not changes:
                 continue
-            rel = str(file_path.relative_to(self.root))
+            resolved_file_path = file_path.resolve()
+            resolved_root = self.root.resolve()
+            rel = (
+                str(resolved_file_path.relative_to(resolved_root))
+                if resolved_file_path.is_relative_to(resolved_root)
+                else str(resolved_file_path)
+            )
             violations[rel] = changes
             total += len(changes)
         if violations:
@@ -159,18 +251,13 @@ class FlextInfraPyprojectModernizerRunMixin:
                 u.Cli.info(f"{rel_path}:")
                 for change in changes:
                     u.Cli.info(f"  - {change}")
-            u.Cli.info(
-                f"Total: {total} change(s) across {len(violations)} file(s)",
-            )
+            u.Cli.info(f"Total: {total} change(s) across {len(violations)} file(s)")
             if dry_run:
                 u.Cli.info("(dry-run — no files modified)")
         if check_mode and total > 0:
             return 1
         if not dry_run and (not self.skip_check):
-            return self._run_build_check(
-                document_states,
-                invalid_paths=invalid_paths,
-            )
+            return self._run_build_check(document_states, invalid_paths=invalid_paths)
         return 0
 
     def _run_build_check(

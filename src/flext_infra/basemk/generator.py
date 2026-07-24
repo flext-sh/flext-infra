@@ -8,13 +8,9 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
+from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraBaseMkGenerator(s[str]):
@@ -34,7 +30,7 @@ class FlextInfraBaseMkGenerator(s[str]):
 
     @property
     def _get_runner(self) -> p.Cli.CommandRunner:
-        """Return the command runner."""
+        """Command runner."""
         return u.Cli()
 
     @override
@@ -42,7 +38,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         """Execute."""
         settings = (
             FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
-                update={"project_name": self.project_name},
+                update={"project_name": self.project_name}
             )
             if self.project_name
             else None
@@ -50,18 +46,13 @@ class FlextInfraBaseMkGenerator(s[str]):
         result = self.generate_basemk(settings)
         if result.failure:
             return result
-        write_result = self.write(
-            result.value,
-            output=self.output,
-            stream=sys.stdout,
-        )
+        write_result = self.write(result.value, output=self.output, stream=sys.stdout)
         if write_result.failure:
             return r[str].fail(write_result.error or "write failed")
         return result
 
     def generate_basemk(
-        self,
-        settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None,
+        self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
     ) -> p.Result[str]:
         """Generate base.mk content from configuration."""
         config_result = FlextInfraBaseMkTemplateRenderer.normalize_config(settings)
@@ -69,7 +60,8 @@ class FlextInfraBaseMkGenerator(s[str]):
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
         render_result = (
-            self.template_renderer or FlextInfraBaseMkTemplateRenderer()
+            self.template_renderer
+            or FlextInfraBaseMkTemplateRenderer(workspace_root=self.workspace_root)
         ).render_all(config_value)
         if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")
@@ -99,8 +91,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         try:
             with tempfile.TemporaryDirectory(prefix="flext-basemk-") as temp_dir_name:
                 validation = self._validate_generated_output_in_dir(
-                    content,
-                    Path(temp_dir_name),
+                    content, Path(temp_dir_name)
                 )
                 if validation.failure:
                     return validation
@@ -109,9 +100,7 @@ class FlextInfraBaseMkGenerator(s[str]):
         return r[str].ok(content)
 
     def _validate_generated_output_in_dir(
-        self,
-        content: str,
-        temp_dir: Path,
+        self, content: str, temp_dir: Path
     ) -> p.Result[str]:
         """Validate generated content inside an already-created temp directory."""
         write_result = self._write_validation_makefiles(content, temp_dir)
@@ -132,15 +121,11 @@ class FlextInfraBaseMkGenerator(s[str]):
     @staticmethod
     def _write_validation_makefiles(content: str, temp_dir: Path) -> p.Result[bool]:
         """Write temporary Makefile pair used by base.mk validation."""
-        base_write = u.Cli.atomic_write_text_file(
-            temp_dir / c.Infra.BASE_MK,
-            content,
-        )
+        base_write = u.Cli.atomic_write_text_file(temp_dir / c.Infra.BASE_MK, content)
         if base_write.failure:
             return r[bool].fail(base_write.error or "temp base.mk write failed")
         makefile_write = u.Cli.atomic_write_text_file(
-            temp_dir / c.Infra.MAKEFILE_FILENAME,
-            "include base.mk\n",
+            temp_dir / c.Infra.MAKEFILE_FILENAME, "include base.mk\n"
         )
         if makefile_write.failure:
             return r[bool].fail(makefile_write.error or "temp Makefile write failed")

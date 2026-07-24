@@ -2,42 +2,34 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
+from flext_infra import t
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-class FlextInfra(
-    s[t.JsonDict],
-):
+    from flext_infra import p
+
+
+class FlextInfra(s[t.JsonDict]):
     """Thin public MRO facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
 
     def rope_workspace(
-        self,
-        workspace_root: Path | None = None,
-        *,
-        project_prefix: str = c.Infra.PKG_PREFIX_HYPHEN,
-        src_dir: str = c.Infra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = c.Infra.ROPE_IGNORED_RESOURCES,
+        self, workspace_root: Path | None = None
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
+        # NOTE (multi-agent, mro-wkii.17.24): Rope reads its source policy
+        # directly from config.Infra at the service boundary.
         resolved_root = (
             self.workspace_root if workspace_root is None else workspace_root
         )
-        return FlextInfraRopeWorkspace.open_workspace(
-            resolved_root,
-            project_prefix=project_prefix,
-            src_dir=src_dir,
-            ignored_resources=ignored_resources,
-        )
+        return FlextInfraRopeWorkspace.open_workspace(resolved_root)
 
     @override
     def execute(self) -> p.Result[t.JsonDict]:
@@ -51,7 +43,8 @@ class FlextInfra(
         return r[t.JsonDict].ok(report)
 
 
-infra = FlextInfra.fetch_global()
+infra: FlextInfra = FlextInfra.fetch_global()
+"""Shared FlextInfra facade instance."""
 
 
 __all__: list[str] = ["FlextInfra", "infra"]

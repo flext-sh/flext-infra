@@ -4,12 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, p, r, t, u
 
 
 class FlextInfraWorkspaceCheckReportsMixin:
@@ -49,7 +44,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     continue
                 gate_status = "PASS" if execution.result.passed else "FAIL"
                 lines.append(
-                    f"- {gate}: {gate_status} ({len(execution.issues)} issues)",
+                    f"- {gate}: {gate_status} ({len(execution.issues)} issues)"
                 )
                 lines.extend(f"  - {issue.formatted}" for issue in execution.issues)
             lines.append("")
@@ -57,8 +52,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
 
     @staticmethod
     def _generate_sarif(
-        results: t.SequenceOf[m.Infra.ProjectResult],
-        gates: t.StrSequence,
+        results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
         rules_by_id: dict[str, m.Infra.SarifRule] = {}
@@ -100,7 +94,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     rules=tuple(rules_by_id.values()),
                     results=tuple(sarif_results),
                 ),
-            ),
+            )
         )
 
     @staticmethod
@@ -116,19 +110,16 @@ class FlextInfraWorkspaceCheckReportsMixin:
         md_write_result = u.Cli.atomic_write_text_file(
             md_path,
             FlextInfraWorkspaceCheckReportsMixin._generate_markdown(
-                results,
-                resolved_gates,
-                timestamp,
+                results, resolved_gates, timestamp
             ),
         )
         if md_write_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                md_write_result.error or "failed to write markdown report",
+                md_write_result.error or "failed to write markdown report"
             )
         sarif_path = report_base / "check-report.sarif"
         sarif_report = FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
-            results,
-            resolved_gates,
+            results, resolved_gates
         )
         try:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
@@ -153,9 +144,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         if total_errors > 0:
             u.Cli.info("Errors by project:")
             for project in sorted(
-                results,
-                key=lambda item: item.total_errors,
-                reverse=True,
+                results, key=lambda item: item.total_errors, reverse=True
             ):
                 if project.total_errors == 0:
                     continue
@@ -165,7 +154,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
                     if gate in project.gates and project.gates[gate].error_count
                 )
                 u.Cli.error(
-                    f"{project.project:30s} {project.total_errors:6d}  ({breakdown})",
+                    f"{project.project:30s} {project.total_errors:6d}  ({breakdown})"
                 )
         return r[t.SequenceOf[m.Infra.ProjectResult]].ok(results)
 

@@ -8,24 +8,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import t
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProjectDiscovery(
-    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
+    FlextInfraUtilitiesProjectDiscoveryCandidatesMixin
 ):
     """Static helpers for discovering governed project roots in a workspace."""
 
     @classmethod
     def discover_project_roots(
-        cls,
-        workspace_root: Path,
-        *,
-        scan_dirs: frozenset[str] | None = None,
+        cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
         """Discover all project directories under workspace root.
 
@@ -51,12 +48,10 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         configured_members = FlextInfraUtilitiesPyproject.workspace_member_names(
-            workspace_root,
+            workspace_root
         )
         candidates = cls.discover_project_candidates(
-            workspace_root,
-            scan_dirs=scan_dirs,
-            include_attached=True,
+            workspace_root, scan_dirs=scan_dirs, include_attached=True
         )
         resolved_workspace_root = workspace_root.resolve()
         if not configured_members:

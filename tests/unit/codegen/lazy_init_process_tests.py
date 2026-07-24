@@ -1,45 +1,27 @@
-"""Tests for public lazy-init generation behavior."""
+"""End-to-end tests for canonical package initializer generation."""
 
 from __future__ import annotations
 
-import importlib
-import sys
 from pathlib import Path
 
-import pytest
+from flext_tests import tm
 
-from tests.constants import c
-from tests.typings import t
-from tests.utilities import u
+from tests import c, u
 
 
-class TestProcessDirectory:
-    """Test public lazy-init generation scenarios."""
+class TestsFlextInfraLazyInitProcessing:
+    """Validate recursive generation through the public service surface."""
 
     @staticmethod
-    def _generated_exports(package_root: Path) -> str:
-        part_exports = sorted(
-            package_root.glob("_exports_lazy_part_*.py"),
-            key=lambda path: path.name,
-        )
-        if part_exports:
-            return "\n".join(
-                path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in part_exports
-            )
-
-        exports_file = package_root / "_exports.py"
-        if exports_file.exists():
-            return exports_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-
-        return package_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
+    def _read(package_dir: Path) -> str:
+        """Read one generated package initializer."""
+        return package_dir.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
         )
 
-    def test_generates_init_from_sibling_files(self, tmp_path: Path) -> None:
-        """generate_inits() generates __init__.py from sibling exports."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-        )
+    def test_apply_generates_inline_lazy_public_root(self, tmp_path: Path) -> None:
+        """Generate the sole PEP 562 initializer at the production root."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
             class_name="FlextTestsModels",
@@ -48,546 +30,136 @@ class TestProcessDirectory:
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
+        content = self._read(package_root)
 
-        assert result == 0
-        init_content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        exports_content = self._generated_exports(package_root)
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
-        assert "_LAZY_IMPORTS" in init_content
-        assert "install_lazy_exports(" in init_content
-        assert '".models": (' in exports_content
-        assert "FlextTestsModels" in exports_content
-        assert f'"{"m"}"' in exports_content
+        tm.that(result, eq=0)
+        tm.that(content, contains="_LAZY_MODULES")
+        tm.that(content, contains="install_lazy_exports(")
+        tm.that(content, contains="__all__: tuple[str, ...]")
+        tm.that(content, lacks="__unit__")
+        compile(content, "__init__.py", "exec")
 
-    def test_check_only_does_not_write(self, tmp_path: Path) -> None:
-        """check_only mode reports without creating __init__.py."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-        )
+    def test_check_only_reports_drift_without_writing(self, tmp_path: Path) -> None:
+        """Report initializer drift while preserving every source byte."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-            docstring="Models.",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
-        original_init = (package_root / "__init__.py").read_text(encoding="utf-8")
+        init_path = package_root / c.Infra.INIT_PY
+        original = init_path.read_bytes()
+        service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = u.Tests.run_lazy_init(workspace_root, check_only=True)
+        result = service.generate_inits(check_only=True)
 
-        assert result == 0
-        assert (package_root / "__init__.py").read_text(
-            encoding="utf-8"
-        ) == original_init
+        tm.that(result, eq=0)
+        tm.that(init_path.read_bytes(), eq=original)
+        tm.that(str(init_path) in service.modified_files, eq=True)
 
-    def test_skips_directory_without_package(self, tmp_path: Path) -> None:
-        """Directories outside canonical package roots are skipped."""
-        random_dir = tmp_path / "random"
-        random_dir.mkdir()
-        (random_dir / "models.py").write_text("class Model: pass\n")
-
-        result = u.Tests.run_lazy_init(tmp_path)
-
-        assert result == 0
-        assert not (random_dir / "__init__.py").exists()
-
-    def test_does_not_generate_src_wrapper_init(self, tmp_path: Path) -> None:
-        """The ``src/`` layout directory is not an importable package surface."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
-        )
-        src_init = workspace_root / c.Infra.DEFAULT_SRC_DIR / c.Infra.INIT_PY
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        assert not src_init.exists()
-
-    def test_removes_stale_generated_non_importable_init(self, tmp_path: Path) -> None:
-        """Existing generated wrapper inits are removed when no package is importable."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
-        )
-        src_init = workspace_root / c.Infra.DEFAULT_SRC_DIR / c.Infra.INIT_PY
-        src_init.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\n"
-            "from __future__ import annotations\n\n"
-            "from models.base import FlextDemoModels\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        assert not src_init.exists()
-
-    def test_root_local_aliases_replace_parent_aliases(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Root generation keeps aliases redefined by local facade modules."""
-        parent_project = tmp_path / "flext-parent"
-        parent_package = parent_project / c.Infra.DEFAULT_SRC_DIR / "flext_parent"
-        child_project = tmp_path / "flext-child"
-        child_package = child_project / c.Infra.DEFAULT_SRC_DIR / "flext_child"
-        for project, project_name in (
-            (parent_project, "flext-parent"),
-            (child_project, "flext-child"),
-        ):
-            project.mkdir(parents=True)
-            (project / c.Infra.PYPROJECT_FILENAME).write_text(
-                f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-        parent_package.mkdir(parents=True)
-        child_package.mkdir(parents=True)
-        (parent_package / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        (child_package / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        for module_name, alias, suffix in (
-            ("models.py", "m", "Models"),
-            ("typings.py", "t", "Types"),
-            ("utilities.py", "u", "Utilities"),
-        ):
-            parent_class = f"FlextParent{suffix}"
-            child_class = f"FlextChild{suffix}"
-            (parent_package / module_name).write_text(
-                "from __future__ import annotations\n\n"
-                f"class {parent_class}:\n"
-                "    pass\n\n"
-                f"{alias} = {parent_class}\n"
-                f'__all__: list[str] = ["{parent_class}", "{alias}"]\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-            (child_package / module_name).write_text(
-                "from __future__ import annotations\n\n"
-                f"from flext_parent.{Path(module_name).stem} import {parent_class}, {alias}\n\n"
-                f"class {child_class}({parent_class}):\n"
-                "    pass\n\n"
-                f"{alias} = {child_class}\n"
-                f'__all__: list[str] = ["{child_class}", "{alias}"]\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-
-        result = u.Tests.run_lazy_init(tmp_path)
-
-        assert result == 0
-        init_content = (child_package / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        exports_content = self._generated_exports(child_package)
-        for module_key, alias, class_name in (
-            ('".models": (', "m", "FlextChildModels"),
-            ('".typings": (', "t", "FlextChildTypes"),
-            ('".utilities": (', "u", "FlextChildUtilities"),
-        ):
-            section = exports_content.split(module_key, maxsplit=1)[1].split(
-                "),",
-                maxsplit=1,
-            )[0]
-            assert f'"{alias}"' in section
-            assert f'"{class_name}"' in section
-        assert "flext_parent.models" not in exports_content
-        assert "flext_parent.typings" not in exports_content
-        assert "flext_parent.utilities" not in exports_content
-        assert "from flext_core.lazy import install_lazy_exports" in init_content
-
-    def test_leaf_package_uses_direct_lazy_map(self, tmp_path: Path) -> None:
-        """Packages without child packages do not emit merge-only arguments."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        mcp_dir = package_root / "mcp"
-        mcp_dir.mkdir(parents=True)
-        (mcp_dir / c.Infra.INIT_PY).write_text(
-            "",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        (mcp_dir / "tools.py").write_text(
-            "from __future__ import annotations\n\n"
-            "def quality_tool() -> str:\n"
-            '    return "ok"\n\n'
-            '__all__: list[str] = ["quality_tool"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        init_content = (mcp_dir / c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        assert "_LAZY_IMPORTS = build_lazy_import_map(" in init_content
-        assert "merge_lazy_imports" not in init_content
-        assert "exclude_names=" not in init_content
-        assert "module_name=__name__" not in init_content
-
-    def test_child_package_keeps_exports_without_root_leak(
+    def test_every_nested_level_is_empty_formatted_and_idempotent(
         self, tmp_path: Path
     ) -> None:
-        """Child package keeps its exports without leaking them through public root."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-        )
-        sub_dir = package_root / "sub"
-        sub_dir.mkdir(parents=True)
+        """Generate empty initializers at levels two, three, and four."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        level_two = package_root / "services"
+        level_three = level_two / "_parts"
+        level_four = level_three / "runtime"
+        for package_dir in (level_two, level_three, level_four):
+            package_dir.mkdir()
+            package_dir.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-            docstring="Models.",
+            level_four / "worker.py",
+            class_name="FlextTestsWorker",
+            alias="worker",
+            docstring="Worker.",
         )
-        u.Tests.write_lazy_init_namespace_module(
-            sub_dir / "service.py",
-            class_name="FlextTestsService",
-            alias="s",
-            docstring="Service.",
+        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+
+        apply_result = apply_service.generate_inits(check_only=False)
+        generated_paths = tuple(
+            package_dir / c.Infra.INIT_PY
+            for package_dir in (level_two, level_three, level_four)
         )
-        (sub_dir / "registry.py").write_text(
-            "from __future__ import annotations\n\n"
-            "ALL_STREAMS = {}\n\n"
-            '__all__: list[str] = ["ALL_STREAMS"]\n',
+        before = tuple(path.read_bytes() for path in generated_paths)
+        level_two_content, level_three_content, level_four_content = (
+            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
+        )
+        format_result = u.Cli.run_raw(
+            [
+                c.Infra.RUFF,
+                c.Infra.FORMAT,
+                "--check",
+                *(str(path) for path in generated_paths),
+            ],
+            cwd=workspace_root,
+        ).unwrap()
+        lint_result = u.Cli.run_raw(
+            [
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--no-fix",
+                *(str(path) for path in generated_paths),
+            ],
+            cwd=workspace_root,
+        ).unwrap()
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_result = check_service.generate_inits(check_only=True)
+        after = tuple(path.read_bytes() for path in generated_paths)
+
+        tm.that(apply_result, eq=0)
+        tm.that(level_two_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(level_three_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(level_four_content, contains="__all__: tuple[str, ...] = ()")
+        tm.that(level_four_content, lacks="from .worker import")
+        tm.that(level_four_content, lacks="FlextTestsWorker")
+        tm.that(level_four_content, lacks='"worker"')
+        tm.that(level_two_content, lacks="FlextTestsWorker")
+        tm.that(level_three_content, lacks="FlextTestsWorker")
+        tm.that(format_result.exit_code, eq=0)
+        tm.that(lint_result.exit_code, eq=0)
+        tm.that(check_result, eq=0)
+        tm.that(check_service.modified_files, empty=True)
+        tm.that(after, eq=before)
+
+    def test_manual_private_initializer_is_preserved(self, tmp_path: Path) -> None:
+        """Keep an authored static private facade byte-identical."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        private_dir = package_root / "_facade"
+        private_dir.mkdir()
+        private_dir.joinpath("runtime.py").write_text(
+            'class FlextTestsRuntime:\n    """Private runtime owner."""\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        parent_init = (package_root / "__init__.py").read_text(encoding="utf-8")
-        parent_exports = self._generated_exports(package_root)
-        child_init = (sub_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "FlextTestsModels" in parent_exports
-        assert "FlextTestsService" not in parent_exports
-        assert "ALL_STREAMS" not in parent_exports
-        assert "FlextTestsService" in child_init
-        assert "ALL_STREAMS" in child_init
-        assert "if TYPE_CHECKING:" in child_init
-        assert "install_lazy_exports(" in parent_init
-
-    @pytest.mark.parametrize(
-        ("surface", "family_dir", "file_name", "class_name"),
-        [
-            ("tests", "models", "mixins.py", "TestsFlextDemoModelsMixins"),
-            (
-                "examples",
-                "_utilities",
-                "helpers.py",
-                "ExamplesFlextDemoUtilitiesHelpers",
-            ),
-            ("scripts", "_protocols", "base.py", "ScriptsFlextDemoProtocolsBase"),
-        ],
-    )
-    def test_surface_root_includes_private_family_exports(
-        self,
-        tmp_path: Path,
-        surface: str,
-        family_dir: str,
-        file_name: str,
-        class_name: str,
-    ) -> None:
-        """Governed surface roots merge canonical exports from private family packages."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        surface_dir = workspace_root / surface
-        family_root = surface_dir / family_dir
-        family_root.mkdir(parents=True)
-        (surface_dir / c.Infra.INIT_PY).write_text("")
-        (family_root / c.Infra.INIT_PY).write_text("")
-        (family_root / file_name).write_text(f"class {class_name}:\n    pass\n")
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        init_content = (surface_dir / c.Infra.INIT_PY).read_text(
-            encoding="utf-8",
-        )
-        assert class_name in init_content
-
-    def test_generates_examples_tests_module_paths(self, tmp_path: Path) -> None:
-        """Test nested examples/tests packages keep the examples prefix."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            package_name="flext_test_root",
-        )
-        examples_tests_dir = workspace_root / "examples" / "tests"
-        examples_tests_dir.mkdir(parents=True)
-        u.Tests.write_lazy_init_namespace_module(
-            examples_tests_dir / "utilities.py",
-            class_name=("ExampleUtilities"),
-            alias="u",
-            docstring="Example tests.",
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        init_content = (examples_tests_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "ExampleUtilities" in init_content
-        assert f'"{"u"}"' in init_content
-
-    def test_generates_tests_root_with_static_analysis_hints(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test tests/ wrappers get the same static hints as src/ wrappers."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            package_name="flext_test_root",
-        )
-        tests_dir = workspace_root / "tests"
-        tests_dir.mkdir(parents=True)
-        u.Tests.write_lazy_init_namespace_module(
-            tests_dir / "typings.py",
-            class_name="TestsFlextTypes",
-            alias="t",
-            docstring="Typings.",
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        init_content = (tests_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "if TYPE_CHECKING:" in init_content
-        assert "__all__: list[str] = [" not in init_content
-        assert "publish_all=False" in init_content
-        assert "TestsFlextTypes" in init_content
-        assert f'"{"t"}"' in init_content
-
-    def test_subpackage_keeps_module_entries_without_symbol_exports(
-        self, tmp_path: Path
-    ) -> None:
-        """Generated subpackages keep importable modules without leaking internals."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            package_name="flext_test_root",
-        )
-        tests_dir = workspace_root / "tests"
-        unit_dir = tests_dir / "unit"
-        unit_dir.mkdir(parents=True)
-        (tests_dir / "__init__.py").write_text("", encoding="utf-8")
-        (unit_dir / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.write_lazy_init_namespace_module(
-            unit_dir / "typings.py",
-            class_name="TestsFlextDemoUnitTypes",
-            alias="t",
-            docstring="Typings.",
-        )
-        (unit_dir / "test_api.py").write_text(
-            "def test_smoke() -> None:\n    pass\n",
-            encoding="utf-8",
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        init_content = (unit_dir / "__init__.py").read_text(encoding="utf-8")
-        assert "TestsFlextDemoUnitTypes" in init_content
-        assert '".test_api": ("test_api",)' in init_content
-        assert "test_smoke" not in init_content
-
-    def test_generates_fixture_package_and_reexports_fixture_functions(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Fixture packages are generated automatically and merged into the root."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        fixture_dir = package_root / "_fixtures"
-        fixture_dir.mkdir()
-        (fixture_dir / "settings.py").write_text(
-            "from __future__ import annotations\n\n"
-            "def reset_settings() -> None:\n"
-            "    return None\n\n"
-            "def settings() -> None:\n"
-            "    return None\n\n"
-            "def settings_factory() -> None:\n"
-            "    return None\n",
+        init_path = private_dir / c.Infra.INIT_PY
+        init_path.write_text(
+            '"""Authored static private facade."""\n\n'
+            "from .runtime import FlextTestsRuntime\n\n"
+            '__all__ = ["FlextTestsRuntime"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        before = init_path.read_bytes()
 
         result = u.Tests.run_lazy_init(workspace_root)
 
-        assert result == 0
-        fixture_init = (fixture_dir / "__init__.py").read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        exports_content = self._generated_exports(package_root)
-        assert '"reset_settings"' in fixture_init
-        assert '"settings"' in fixture_init
-        assert '"settings_factory"' in fixture_init
-        assert '"reset_settings"' in exports_content
-        assert '"settings"' in exports_content
-        assert '"settings_factory"' in exports_content
+        tm.that(result, eq=0)
+        tm.that(init_path.read_bytes(), eq=before)
 
-    def test_handles_version_file(self, tmp_path: Path) -> None:
-        """Version exports are preserved in generated public wrappers."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-        )
+    def test_apply_removes_obsolete_generated_sidecars(self, tmp_path: Path) -> None:
+        """Remove retired generated manifests while writing the initializer."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextTestsModels",
-            alias="m",
-            docstring="Models.",
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
-        u.Tests.write_lazy_init_version_module(package_root)
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        content = (package_root / "__init__.py").read_text(encoding="utf-8")
-        assert f"from {package_root.name}.__version__ import *" not in content
-        assert (
-            f"from {package_root.name}.__version__ import __version__, __version_info__"
-            in content
-        )
-
-        src_root = workspace_root / c.Infra.DEFAULT_SRC_DIR
-        sys.path.insert(0, str(src_root))
-        try:
-            generated_package = importlib.import_module(package_root.name)
-            assert generated_package.__version__ == "0.1.0"
-            assert generated_package.__version_info__ == (0, 1, 0)
-        finally:
-            _ = sys.modules.pop(package_root.name, None)
-            sys.path.pop(0)
-
-    def test_root_settings_without_explicit_all_still_exports_class(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Root settings.py without __all__ still exports its facade settings class."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        (package_root / "settings.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoSettings:\n"
-            "    pass\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+        unit_path = package_root / "__unit__.py"
+        unit_path.write_text(
+            f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
         result = u.Tests.run_lazy_init(workspace_root)
 
-        assert result == 0
-        exports_content = self._generated_exports(package_root)
-        assert '".settings": (' in exports_content
-        assert '"FlextDemoSettings"' in exports_content
-
-    def test_private_family_base_without_all_keeps_class_export(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Private family base.py without __all__ still exports class from _typings."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        typings_dir = package_root / "_typings"
-        typings_dir.mkdir(parents=True)
-        (typings_dir / "base.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoBaseTypesMixin:\n"
-            "    pass\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        typings_init = (typings_dir / "__init__.py").read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        assert '".base": (' in typings_init
-        assert '"FlextDemoBaseTypesMixin"' in typings_init
-
-    def test_root_package_includes_settings_class_without_explicit_all(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Root generation keeps concrete settings classes even without ``__all__``."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py",
-            class_name="FlextDemoModels",
-            alias="m",
-            docstring="Models.",
-        )
-        (package_root / "settings.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoSettings:\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        exports_content = self._generated_exports(package_root)
-        assert '".settings": (' in exports_content
-        assert '"FlextDemoSettings"' in exports_content
-
-    def test_internal_family_package_keeps_class_exports_without_explicit_all(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Private family packages must not require ``__all__`` on member modules."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path,
-            project_name="flext-demo",
-            package_name="flext_demo",
-        )
-        constants_dir = package_root / "_constants"
-        constants_dir.mkdir(parents=True)
-        (constants_dir / "__init__.py").write_text("", encoding="utf-8")
-        (constants_dir / "base.py").write_text(
-            "from __future__ import annotations\n\n"
-            "class FlextDemoConstantsBase:\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-
-        result = u.Tests.run_lazy_init(workspace_root)
-
-        assert result == 0
-        content = (constants_dir / "__init__.py").read_text(encoding="utf-8")
-        assert '".base": ("FlextDemoConstantsBase",)' in content
-        assert "publish_all=False" in content
+        tm.that(result, eq=0)
+        tm.that(unit_path.exists(), eq=False)
 
 
-__all__: t.StrSequence = []
+__all__: list[str] = ["TestsFlextInfraLazyInitProcessing"]

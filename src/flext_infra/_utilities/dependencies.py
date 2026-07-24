@@ -7,17 +7,22 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-
-from tomlkit import TOMLDocument
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra import c
 from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,
 )
-from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tomlkit import TOMLDocument
+
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -46,20 +51,24 @@ class FlextInfraUtilitiesDependencies:
         version: str,
         *,
         policy: c.Infra.DependencyConstraintPolicy,
+        current_specifier: str = "",
     ) -> str:
-        """Return the canonical dependency specifier for one locked version."""
+        """Return the locked-version floor while retaining explicit safety caps."""
         normalized_version = version.strip()
         if not normalized_version:
             return ""
         if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
             return f"~={normalized_version}"
-        return f">={normalized_version}"
+        # mro-45r9: uv owns the floor; declared caps/exclusions remain compatibility SSOT.
+        preserved = tuple(
+            specifier.strip()
+            for specifier in current_specifier.split(",")
+            if specifier.strip().startswith(("<", "!="))
+        )
+        return ",".join((f">={normalized_version}", *preserved))
 
     @classmethod
-    def locked_dependency_versions(
-        cls,
-        lock_path: Path,
-    ) -> t.MappingKV[str, str]:
+    def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
         """Return normalized registry package versions from one ``uv.lock`` file."""
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
@@ -125,7 +134,10 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy)}"
+                            current_specifier = requirement_part.strip()[
+                                head_match.end() :
+                            ].strip()
+                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy, current_specifier=current_specifier)}"
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
@@ -154,7 +166,17 @@ class FlextInfraUtilitiesDependencies:
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
                 rewritten_specifier = cls.constraint_specifier(
-                    locked_version, policy=policy
+                    locked_version,
+                    policy=policy,
+                    current_specifier=(
+                        raw_value
+                        if isinstance(raw_value, str)
+                        else (
+                            str(raw_value.get(c.Infra.VERSION, ""))
+                            if isinstance(raw_value, Mapping)
+                            else ""
+                        )
+                    ),
                 )
                 if isinstance(raw_value, str):
                     result = (
@@ -195,8 +217,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def declared_dependency_names_from_payload(
-        cls,
-        payload: t.Infra.ContainerDict,
+        cls, payload: t.JsonMapping
     ) -> t.StrSequence:
         """Return normalized dependency names across supported dependency tables."""
         names: set[str] = set()
@@ -207,34 +228,26 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_project_dependency_names(
-        cls,
-        *,
-        payload: t.Infra.ContainerDict,
-        names: set[str],
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append project dependency names."""
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return
         cls._append_requirement_names(
-            raw_requirements=project.get(c.Infra.DEPENDENCIES),
-            names=names,
+            raw_requirements=project.get(c.Infra.DEPENDENCIES), names=names
         )
         optional_dependencies = project.get(c.Infra.OPTIONAL_DEPENDENCIES)
         if not isinstance(optional_dependencies, Mapping):
             return
         for raw_requirements in optional_dependencies.values():
             cls._append_requirement_names(
-                raw_requirements=raw_requirements,
-                names=names,
+                raw_requirements=raw_requirements, names=names
             )
 
     @classmethod
     def _append_dependency_group_names(
-        cls,
-        *,
-        payload: t.Infra.ContainerDict,
-        names: set[str],
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append dependency group names."""
         dependency_groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
@@ -242,16 +255,12 @@ class FlextInfraUtilitiesDependencies:
             return
         for raw_requirements in dependency_groups.values():
             cls._append_requirement_names(
-                raw_requirements=raw_requirements,
-                names=names,
+                raw_requirements=raw_requirements, names=names
             )
 
     @classmethod
     def _append_poetry_dependency_names(
-        cls,
-        *,
-        payload: t.Infra.ContainerDict,
-        names: set[str],
+        cls, *, payload: t.JsonMapping, names: set[str]
     ) -> None:
         """Append poetry dependency names."""
         tool = payload.get(c.Infra.TOOL)
@@ -261,8 +270,7 @@ class FlextInfraUtilitiesDependencies:
         if not isinstance(poetry, Mapping):
             return
         cls._append_mapping_dependency_names(
-            raw_mapping=poetry.get(c.Infra.DEPENDENCIES),
-            names=names,
+            raw_mapping=poetry.get(c.Infra.DEPENDENCIES), names=names
         )
         poetry_groups = poetry.get(c.Infra.GROUP)
         if not isinstance(poetry_groups, Mapping):
@@ -271,16 +279,12 @@ class FlextInfraUtilitiesDependencies:
             if not isinstance(raw_group, Mapping):
                 continue
             cls._append_mapping_dependency_names(
-                raw_mapping=raw_group.get(c.Infra.DEPENDENCIES),
-                names=names,
+                raw_mapping=raw_group.get(c.Infra.DEPENDENCIES), names=names
             )
 
     @classmethod
     def _append_requirement_names(
-        cls,
-        *,
-        raw_requirements: t.Infra.InfraValue,
-        names: set[str],
+        cls, *, raw_requirements: t.Infra.InfraValue, names: set[str]
     ) -> None:
         """Append requirement names."""
         if not isinstance(raw_requirements, list):
@@ -293,10 +297,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def _append_mapping_dependency_names(
-        cls,
-        *,
-        raw_mapping: t.Infra.InfraValue,
-        names: set[str],
+        cls, *, raw_mapping: t.Infra.InfraValue, names: set[str]
     ) -> None:
         """Append mapping dependency names."""
         if not isinstance(raw_mapping, Mapping):
@@ -309,10 +310,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def local_dependency_names_from_payload(
-        cls,
-        payload: t.Infra.ContainerDict,
-        *,
-        workspace_project_names: t.StrSequence = (),
+        cls, payload: t.JsonMapping, *, workspace_project_names: t.StrSequence = ()
     ) -> t.StrSequence:
         """Return workspace-local dependency names from one payload."""
         declared = set(cls.declared_dependency_names_from_payload(payload))
@@ -323,12 +321,12 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def project_dev_groups_from_payload(
-        payload: t.Infra.ContainerDict,
+        payload: t.JsonMapping,
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one normalized payload."""
         project = u.Cli.json_as_mapping(payload.get(c.Infra.PROJECT, None))
         optional = u.Cli.json_as_mapping(
-            project.get(c.Infra.OPTIONAL_DEPENDENCIES, None),
+            project.get(c.Infra.OPTIONAL_DEPENDENCIES, None)
         )
         groups = {
             str(group): tuple(
@@ -340,20 +338,17 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def project_dev_groups(
-        cls,
-        document: TOMLDocument,
+        cls, document: TOMLDocument
     ) -> t.MappingKV[str, t.StrSequence]:
         """Collect optional dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
-            return {}
+            # mro-j47u (codex): keep the empty mapping immutable and fully typed.
+            return MappingProxyType(dict[str, tuple[str, ...]]())
         return cls.project_dev_groups_from_payload(normalized)
 
     @classmethod
-    def canonical_dev_dependencies(
-        cls,
-        document: TOMLDocument,
-    ) -> t.StrSequence:
+    def canonical_dev_dependencies(cls, document: TOMLDocument) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
@@ -362,8 +357,7 @@ class FlextInfraUtilitiesDependencies:
 
     @classmethod
     def canonical_dev_dependencies_from_payload(
-        cls,
-        payload: t.Infra.ContainerDict,
+        cls, payload: t.JsonMapping
     ) -> t.StrSequence:
         """Merge all canonical dev dependency groups from one normalized payload."""
         groups = cls.project_dev_groups_from_payload(payload)
@@ -374,60 +368,30 @@ class FlextInfraUtilitiesDependencies:
         ])
 
     @classmethod
-    def workspace_dep_namespaces(
-        cls,
-        document: TOMLDocument,
-    ) -> t.StrSequence:
-        """Extract workspace-local dependency namespaces from one TOML document."""
+    def flext_dependency_namespaces(cls, document: TOMLDocument) -> t.StrSequence:
+        """Extract declared FLEXT dependency namespaces from one TOML document."""
         normalized = FlextInfraUtilitiesPyproject.normalized_toml_payload(document)
         if not normalized:
             return ()
-        return cls.workspace_dep_namespaces_from_payload(normalized)
+        return cls.flext_dependency_namespaces_from_payload(normalized)
 
     @classmethod
-    def workspace_dep_namespaces_from_payload(
-        cls,
-        payload: t.MappingKV[str, t.Infra.InfraValue],
+    def flext_dependency_namespaces_from_payload(
+        cls, payload: t.MappingKV[str, t.Infra.InfraValue]
     ) -> t.StrSequence:
-        """Extract workspace-local dependency namespaces from one normalized payload."""
-        result: t.StrSequence
+        """Extract every declared ``flext-*`` dependency as a Python namespace."""
+        # mro-j47u (codex): FLEXT dependencies are first-party contracts even
+        # when their uv source declaration is owned by an enclosing workspace.
         normalized = _validate_infra_payload(payload)
         if normalized is None:
-            result = ()
-        else:
-            tool = normalized.get(c.Infra.TOOL)
-            if not isinstance(tool, Mapping):
-                result = ()
-            else:
-                uv = tool.get("uv")
-                if not isinstance(uv, Mapping):
-                    result = ()
-                else:
-                    sources = uv.get("sources")
-                    if not isinstance(sources, Mapping):
-                        result = ()
-                    else:
-                        workspace_project_names = tuple(
-                            dependency_name
-                            for raw_name, raw_source in sources.items()
-                            if isinstance(raw_source, Mapping)
-                            if raw_source.get("workspace") is True
-                            if (dependency_name := cls.dep_name(str(raw_name)))
-                            is not None
-                        )
-                        if not workspace_project_names:
-                            result = ()
-                        else:
-                            result = tuple(
-                                sorted(
-                                    dependency_name.replace("-", "_")
-                                    for dependency_name in cls.local_dependency_names_from_payload(
-                                        normalized,
-                                        workspace_project_names=workspace_project_names,
-                                    )
-                                )
-                            )
-        return result
+            return ()
+        return tuple(
+            sorted(
+                name.replace("-", "_")
+                for name in cls.declared_dependency_names_from_payload(normalized)
+                if name == "flext" or name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
+            )
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDependencies"]

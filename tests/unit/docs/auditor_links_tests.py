@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests.models import m
-from tests.utilities import u
+from tests import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestAuditorToMarkdown:
@@ -21,9 +23,7 @@ class TestAuditorToMarkdown:
         """Test docs_audit_markdown with no issues."""
         (tmp_path / "docs").mkdir()
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         result = u.Infra.docs_audit_markdown(scope, [])
         tm.that(len(result), gte=0)
@@ -33,9 +33,7 @@ class TestAuditorToMarkdown:
         """Test docs_audit_markdown with issues."""
         (tmp_path / "docs").mkdir()
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issue = m.Infra.AuditIssue(
             file="README.md",
@@ -54,9 +52,7 @@ class TestAuditorBrokenLinks:
     def test_broken_link_issues_empty_scope(self, tmp_path: Path) -> None:
         """Test docs_broken_link_issues with no markdown files."""
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -67,9 +63,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](test.md)")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -80,9 +74,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](https://example.com)")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -93,9 +85,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](#section)")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -106,25 +96,20 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("```\n[link](nonexistent.md)\n```")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
 
     def test_broken_link_issues_with_should_skip_target_true(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Test docs_broken_link_issues skips targets when should_skip_target returns True."""
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[a, b]")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -135,9 +120,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](missing.md)")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         assert len(issues) > 0
@@ -149,9 +132,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[some text]")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)
@@ -162,9 +143,7 @@ class TestAuditorBrokenLinks:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("[link](some text)")
         scope = m.Infra.DocScope(
-            name="test",
-            path=tmp_path,
-            report_dir=tmp_path / "reports",
+            name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
         tm.that(len(issues), gte=0)

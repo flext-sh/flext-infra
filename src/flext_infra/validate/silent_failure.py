@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+from flext_infra import c, m, u
 from flext_infra.base import s
-from flext_infra.constants import c
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraSilentFailureValidator(s[bool]):
@@ -23,15 +22,10 @@ class FlextInfraSilentFailureValidator(s[bool]):
         str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
-    include_tests: Annotated[
-        bool, m.Field(description="Scan test trees in addition to source trees")
-    ] = True
-
     def _selected_projects(
-        self,
-        projects: t.SequenceOf[p.Infra.ProjectInfo],
+        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
     ) -> t.SequenceOf[p.Infra.ProjectInfo]:
-        """Selected projects."""
+        """Return the selected projects."""
         if self.project_filter is None:
             return projects
         selected = {
@@ -48,14 +42,12 @@ class FlextInfraSilentFailureValidator(s[bool]):
         )
         for project in projects:
             iter_result = u.Infra.iter_python_files(
-                project.path,
-                project_roots=[project.path],
-                include_tests=self.include_tests,
+                m.Infra.SourceScanRequest(project_roots=(project.path,))
             )
             if iter_result.failure:
                 return r[m.Infra.ValidationReport].fail(
                     iter_result.error
-                    or f"python file iteration failed for {project.name}",
+                    or f"python file iteration failed for {project.name}"
                 )
             rope_project = u.Infra.init_rope_project(project.path)
             try:
@@ -80,10 +72,8 @@ class FlextInfraSilentFailureValidator(s[bool]):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=list(issues),
-                summary=summary,
-            ),
+                passed=passed, violations=list(issues), summary=summary
+            )
         )
 
     @override

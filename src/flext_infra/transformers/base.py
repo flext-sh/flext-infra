@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraChangeTrackingTransformer:
@@ -15,11 +17,7 @@ class FlextInfraChangeTrackingTransformer:
     inherit :class:`FlextInfraRopeTransformer` instead.
     """
 
-    def __init__(
-        self,
-        *,
-        on_change: t.Infra.ChangeCallback = None,
-    ) -> None:
+    def __init__(self, *, on_change: t.Infra.ChangeCallback = None) -> None:
         """Initialize change tracking with an optional callback."""
         self._on_change = on_change
         self.changes: t.MutableSequenceOf[str] = []
@@ -47,9 +45,7 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         ...
 
     def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.Infra.TransformResult:
         """Read → apply_to_source → write if changed. Override for custom logic."""
         _ = rope_project

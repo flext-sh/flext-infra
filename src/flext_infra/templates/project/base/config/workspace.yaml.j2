@@ -1,0 +1,118 @@
+# Generated initially by `flext-infra codegen new`; this manifest is the
+# handwritten topology SSOT consumed by `flext-infra codegen conform`.
+# NOTE (multi-agent, mro-wkii.17 / agent: codex): conform never overwrites this
+# input. Add members or exclusions here, then run `make codegen`.
+version: {{ workspace_manifest_version }}
+name: {{ dist }}
+repository:
+  name: {{ dist }}
+  distribution: {{ dist }}
+  provider: {{ repository_provider }}
+  url: {{ repository_git_url }}
+  branch: {{ repository_branch }}
+  path: .
+  role: {{ make_profile }}
+  state: active
+  profile: {{ make_profile }}
+  checkout: {{ workspace_repository.checkout | tojson }}
+  codegen: {{ workspace_repository.codegen | tojson }}
+  package: {{ workspace_repository.package | tojson }}
+  editable: {{ workspace_repository.editable | tojson }}
+  read_only: {{ workspace_repository.read_only | tojson }}
+{%- if workspace_repository.extra_verbs %}
+  extra_verbs:
+{%- for verb in workspace_repository.extra_verbs %}
+    - name: {{ verb.name | tojson }}
+      default_what: {{ verb.default_what | tojson }}
+      apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- endfor %}
+{%- endif %}
+{%- if workspace_repository.script_dispatch %}
+  script_dispatch:
+    dispatcher: {{ workspace_repository.script_dispatch.dispatcher | tojson }}
+    roots:
+{%- for root in workspace_repository.script_dispatch.roots %}
+      - {{ root | tojson }}
+{%- endfor %}
+{%- endif %}
+project:
+  package_name: {{ package_name | tojson }}
+  class_stem: {{ class_stem | tojson }}
+  namespace: {{ ns | tojson }}
+  constant_name: {{ const_name | tojson }}
+  namespace_attribute: {{ ns_attr | tojson }}
+  alias: {{ alias | tojson }}
+  environment_prefix: {{ env_prefix | tojson }}
+  description: {{ description | tojson }}
+  version: {{ version | tojson }}
+  license: {{ license | tojson }}
+  author_name: {{ author_name | tojson }}
+  author_email: {{ author_email | tojson }}
+  upstream: {{ upstream | tojson }}
+  homepage: {{ homepage | tojson }}
+  documentation: {{ documentation | tojson }}
+  workspace_root_rel: {{ workspace_root_rel | tojson }}
+  year: {{ year }}
+# NOTE (multi-agent, mro-wkii.17 / agent: codex): the typed manifest context is
+# the sole topology owner; every declared member/exclusion round-trips here.
+members:
+{% for repository in workspace_repositories %}
+  - name: {{ repository.name | tojson }}
+    distribution: {{ repository.distribution | tojson }}
+    provider: {{ repository.provider | tojson }}
+    url: {{ repository.url | tojson }}
+    branch: {{ repository.branch | tojson }}
+    path: {{ repository.path | tojson }}
+    role: {{ repository.role | tojson }}
+    state: {{ repository.state | tojson }}
+    profile: {{ repository.profile | tojson }}
+    checkout: {{ repository.checkout | tojson }}
+    codegen: {{ repository.codegen | tojson }}
+    package: {{ repository.package | tojson }}
+    editable: {{ repository.editable | tojson }}
+    read_only: {{ repository.read_only | tojson }}
+{%- if repository.extra_verbs %}
+    extra_verbs:
+{%- for verb in repository.extra_verbs %}
+      - name: {{ verb.name | tojson }}
+        default_what: {{ verb.default_what | tojson }}
+        apply_guarded: {{ verb.apply_guarded | tojson }}
+{%- endfor %}
+{%- endif %}
+{%- if repository.script_dispatch %}
+    script_dispatch:
+      dispatcher: {{ repository.script_dispatch.dispatcher | tojson }}
+      roots:
+{%- for root in repository.script_dispatch.roots %}
+        - {{ root | tojson }}
+{%- endfor %}
+{%- endif %}
+{% else %}
+  []
+{%- endfor %}
+content_only:
+{% for repository in workspace_content_only %}
+  - name: {{ repository.name | tojson }}
+    distribution: {{ repository.distribution | tojson }}
+    provider: {{ repository.provider | tojson }}
+    url: {{ repository.url | tojson }}
+    branch: {{ repository.branch | tojson }}
+    path: {{ repository.path | tojson }}
+    role: {{ repository.role | tojson }}
+    state: {{ repository.state | tojson }}
+    profile: {{ repository.profile | tojson }}
+    checkout: {{ repository.checkout | tojson }}
+    codegen: {{ repository.codegen | tojson }}
+    package: {{ repository.package | tojson }}
+    editable: {{ repository.editable | tojson }}
+    read_only: {{ repository.read_only | tojson }}
+{% else %}
+  []
+{%- endfor %}
+exclusions:
+{% for exclusion in workspace_exclusions %}
+  - path: {{ exclusion.path | tojson }}
+    reason: {{ exclusion.reason | tojson }}
+{% else %}
+  []
+{%- endfor %}

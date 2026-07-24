@@ -2,18 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    s,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.workspace._migrator_artifacts import (
     FlextInfraProjectMigratorArtifactsMixin,
 )
@@ -21,6 +12,9 @@ from flext_infra.workspace._migrator_pyproject import (
     FlextInfraProjectMigratorPyprojectMixin,
 )
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraProjectMigrator(
@@ -37,9 +31,7 @@ class FlextInfraProjectMigrator(
     ] = None
 
     @staticmethod
-    def _workspace_root_project(
-        workspace_root: Path,
-    ) -> m.Infra.ProjectInfo | None:
+    def _workspace_root_project(workspace_root: Path) -> m.Infra.ProjectInfo | None:
         """Detect workspace root as a project if it has Makefile, pyproject.toml, and .git."""
         has_makefile = (workspace_root / c.Infra.MAKEFILE_FILENAME).is_file()
         has_pyproject = (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file()
@@ -58,10 +50,7 @@ class FlextInfraProjectMigrator(
     def execute(self) -> p.Result[t.SequenceOf[m.Infra.MigrationResult]]:
         """Execute the workspace migration flow."""
         dry_run = self.dry_run or not self.apply_changes
-        result = self.migrate(
-            workspace_root=self.workspace_root,
-            dry_run=dry_run,
-        )
+        result = self.migrate(workspace_root=self.workspace_root, dry_run=dry_run)
         if result.failure:
             return result
         migrations: t.SequenceOf[m.Infra.MigrationResult] = result.value
@@ -81,16 +70,13 @@ class FlextInfraProjectMigrator(
         return result
 
     def migrate(
-        self,
-        *,
-        workspace_root: Path,
-        dry_run: bool,
+        self, *, workspace_root: Path, dry_run: bool
     ) -> p.Result[t.SequenceOf[m.Infra.MigrationResult]]:
         """Build migration results for all discovered projects in a workspace."""
         resolved_root = workspace_root.resolve()
         if not resolved_root.exists():
             return r[t.SequenceOf[m.Infra.MigrationResult]].fail(
-                f"workspace root does not exist: {resolved_root}",
+                f"workspace root does not exist: {resolved_root}"
             )
         discovery = self.discovery
         projects_result = (
@@ -100,7 +86,7 @@ class FlextInfraProjectMigrator(
         )
         if projects_result.failure:
             return r[t.SequenceOf[m.Infra.MigrationResult]].fail(
-                projects_result.error or "workspace discovery failed",
+                projects_result.error or "workspace discovery failed"
             )
         projects_by_path: dict[Path, m.Infra.ProjectInfo] = {
             project.path.resolve(): project for project in projects_result.value
@@ -109,40 +95,27 @@ class FlextInfraProjectMigrator(
         if workspace_project is not None:
             projects_by_path.setdefault(resolved_root, workspace_project)
         projects = [
-            projects_by_path[path]
-            for path in sorted(projects_by_path, key=lambda current: str(current))
+            projects_by_path[path] for path in sorted(projects_by_path, key=str)
         ]
         migrations = [
-            self._migrate_project(
-                project=project,
-                dry_run=dry_run,
-            )
+            self._migrate_project(project=project, dry_run=dry_run)
             for project in projects
         ]
         return r[t.SequenceOf[m.Infra.MigrationResult]].ok(migrations)
 
     def _migrate_project(
-        self,
-        *,
-        project: p.Infra.ProjectInfo,
-        dry_run: bool,
+        self, *, project: p.Infra.ProjectInfo, dry_run: bool
     ) -> m.Infra.MigrationResult:
         """Migrate project."""
         changes: t.MutableSequenceOf[str] = []
         errors: t.MutableSequenceOf[str] = []
         for step_result in (
-            self._migrate_basemk(
-                project.path,
-                dry_run=dry_run,
-            ),
+            self._migrate_basemk(project.path, dry_run=dry_run),
             self._migrate_makefile(project.path, dry_run=dry_run),
             self._migrate_environment_files(project.path, dry_run=dry_run),
             self._migrate_pyproject(
-                project.path,
-                project_name=project.name,
-                dry_run=dry_run,
+                project.path, project_name=project.name, dry_run=dry_run
             ),
-            self._migrate_gitignore(project.path, dry_run=dry_run),
         ):
             if step_result.failure:
                 errors.append(step_result.error or "migration action failed")
@@ -151,9 +124,7 @@ class FlextInfraProjectMigrator(
         if not changes and not errors:
             changes.append("no changes needed")
         return m.Infra.MigrationResult(
-            project=project.name,
-            changes=changes,
-            errors=errors,
+            project=project.name, changes=changes, errors=errors
         )
 
 

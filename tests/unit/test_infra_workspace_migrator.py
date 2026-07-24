@@ -1,14 +1,19 @@
+"""Tests for the workspace migrator."""
+
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigrator:
@@ -52,18 +57,14 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has='python = "3.13"',
+            has='python = "3.13.11"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(
         self, tmp_path: Path
     ) -> None:
         project_root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="OLD_BASE\n",
-            makefile="",
-            pyproject=None,
-            gitignore=None,
+            tmp_path, base_mk="OLD_BASE\n", makefile="", pyproject=None, gitignore=None
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
@@ -112,14 +113,14 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_workspace_root_not_exists(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path / "nonexistent", dry_run=False, apply_changes=True
+            workspace_root=tmp_path / "nonexistent", dry_run=False, apply_changes=True
         )
         result = migrator.execute()
         tm.fail(result, has="does not exist")
 
     def test_migrator_discovery_failure(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path, dry_run=False, apply_changes=True
         )
         migrator.discovery = u.Tests.create_migrator_discovery(error="Discovery failed")
         result = migrator.execute()
@@ -127,7 +128,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
 
     def test_migrator_execute_returns_failure(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=False, apply_changes=True
+            workspace_root=tmp_path, dry_run=False, apply_changes=True
         )
         migrator.discovery = u.Tests.create_migrator_discovery(error="Execution failed")
         result = migrator.execute()
@@ -140,7 +141,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         (tmp_path / "tests").mkdir()
         (tmp_path / "src").mkdir()
         migrator = FlextInfraProjectMigrator(
-            workspace=tmp_path, dry_run=True, apply_changes=False
+            workspace_root=tmp_path, dry_run=True, apply_changes=False
         )
         migrator.discovery = u.Tests.create_migrator_discovery([])
         migrator.generator = u.Tests.create_migrator_generator("base.mk")
@@ -153,18 +154,12 @@ class TestsFlextInfraInfraWorkspaceMigrator:
             tmp_path,
             makefile="migrated",
             pyproject='[project]\ndependencies = ["flext-core @ ../flext-core"]\n',
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
         )
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
-        (project_root / ".envrc").write_text(
-            c.Infra.WORKSPACE_ENVRC_CONTENT,
-            encoding="utf-8",
-        )
-        (project_root / ".mise.toml").write_text(
-            c.Infra.WORKSPACE_MISE_TOML_CONTENT,
-            encoding="utf-8",
-        )
+        FlextInfraWorkspaceEnvironment.sync_envrc(project_root)
+        mise_result = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
+        (project_root / ".mise.toml").write_text(mise_result.value, encoding="utf-8")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base.mk",

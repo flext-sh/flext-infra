@@ -5,9 +5,14 @@ Tests the real CLI entry point.
 
 from __future__ import annotations
 
-from _pytest.capture import CaptureFixture
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra import main as infra_main
+
+if TYPE_CHECKING:
+    from _pytest.capture import CaptureFixture
 
 
 def test_fix_pyrefly_config_main_executes_real_cli_help(
@@ -15,5 +20,5 @@ def test_fix_pyrefly_config_main_executes_real_cli_help(
 ) -> None:
     exit_code = infra_main(["check", "fix-pyrefly-settings", "--help"])
     captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "usage:" in captured.out.lower()
+    tm.that(exit_code, eq=0)
+    tm.that(captured.out.lower(), has="usage:")

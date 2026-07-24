@@ -8,16 +8,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-    Mapping,
-)
-from pathlib import Path
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, r, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, p
 
 
 class FlextInfraDocAuditorMixin:
@@ -35,63 +34,78 @@ class FlextInfraDocAuditorMixin:
     @staticmethod
     def parse_audit_gate(
         audit_gate: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> t.Pair[int | None, t.IntMapping]:
+    ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
         """Extract default budget and per-scope budgets from an audit_gate mapping."""
         default_budget = audit_gate.get("max_issues_default")
         by_scope_raw_value = audit_gate.get("max_issues_by_scope")
         by_scope_raw: t.MappingKV[str, t.Infra.InfraValue] = {}
-        if isinstance(by_scope_raw_value, Mapping):
+        if by_scope_raw_value is not None:
+            if not isinstance(by_scope_raw_value, Mapping):
+                return r[t.Pair[int | None, t.IntMapping]].fail(
+                    "docs_validation.audit_gate.max_issues_by_scope must be a mapping"
+                )
             try:
                 by_scope_raw = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                    by_scope_raw_value,
-                    strict=True,
+                    by_scope_raw_value, strict=True
                 )
-            except c.ValidationError:
-                by_scope_raw = {}
+            except c.ValidationError as exc:
+                return r[t.Pair[int | None, t.IntMapping]].fail_op(
+                    "audit budget mapping validation", exc
+                )
         by_scope: t.MutableIntMapping = {}
         for name, value in by_scope_raw.items():
-            if isinstance(value, t.NUMERIC_TYPES):
-                by_scope[name] = int(value)
-        resolved_default = (
-            int(default_budget) if isinstance(default_budget, t.NUMERIC_TYPES) else None
-        )
-        return (resolved_default, by_scope)
+            if not isinstance(value, t.NUMERIC_TYPES):
+                return r[t.Pair[int | None, t.IntMapping]].fail(
+                    f"docs_validation.audit_gate.max_issues_by_scope.{name} must be numeric"
+                )
+            by_scope[name] = int(value)
+        if default_budget is not None and not isinstance(
+            default_budget, t.NUMERIC_TYPES
+        ):
+            return r[t.Pair[int | None, t.IntMapping]].fail(
+                "docs_validation.audit_gate.max_issues_default must be numeric"
+            )
+        resolved_default = int(default_budget) if default_budget is not None else None
+        return r[t.Pair[int | None, t.IntMapping]].ok((resolved_default, by_scope))
 
     @classmethod
     def load_audit_budgets(
-        cls,
-        workspace_root: Path,
-    ) -> t.Pair[int | None, t.IntMapping]:
+        cls, workspace_root: Path
+    ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
         """Load audit budgets from the nearest architecture settings."""
-        result: t.Pair[int | None, t.IntMapping]
+        empty: t.Pair[int | None, t.IntMapping] = (None, {})
         settings = cls.find_architecture_config(workspace_root)
         if settings is None:
-            result = (None, {})
-        else:
-            payload_result = u.Cli.json_read(settings)
-            if payload_result.failure or not isinstance(payload_result.value, Mapping):
-                result = (None, {})
-            else:
-                docs_validation = payload_result.value.get("docs_validation")
-                if not isinstance(docs_validation, Mapping):
-                    result = (None, {})
-                else:
-                    audit_gate = docs_validation.get("audit_gate")
-                    if not isinstance(audit_gate, Mapping):
-                        result = (None, {})
-                    else:
-                        try:
-                            validated_gate = (
-                                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
-                                    audit_gate,
-                                    strict=False,
-                                )
-                            )
-                        except c.ValidationError:
-                            result = (None, {})
-                        else:
-                            result = cls.parse_audit_gate(validated_gate)
-        return result
+            return r[t.Pair[int | None, t.IntMapping]].ok(empty)
+        payload_result = u.Cli.json_read(settings)
+        if payload_result.failure:
+            return r[t.Pair[int | None, t.IntMapping]].fail(
+                payload_result.error or f"reading audit config {settings}",
+                error_code=payload_result.error_code,
+            )
+        docs_validation = payload_result.value.get("docs_validation")
+        if docs_validation is None:
+            return r[t.Pair[int | None, t.IntMapping]].ok(empty)
+        if not isinstance(docs_validation, Mapping):
+            return r[t.Pair[int | None, t.IntMapping]].fail(
+                "docs_validation must be a mapping"
+            )
+        audit_gate = docs_validation.get("audit_gate")
+        if audit_gate is None:
+            return r[t.Pair[int | None, t.IntMapping]].ok(empty)
+        if not isinstance(audit_gate, Mapping):
+            return r[t.Pair[int | None, t.IntMapping]].fail(
+                "docs_validation.audit_gate must be a mapping"
+            )
+        try:
+            validated_gate = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+                audit_gate, strict=False
+            )
+        except c.ValidationError as exc:
+            return r[t.Pair[int | None, t.IntMapping]].fail_op(
+                "audit gate validation", exc
+            )
+        return cls.parse_audit_gate(validated_gate)
 
     @staticmethod
     def resolve_checks(check: str) -> t.Infra.StrSet:
@@ -117,8 +131,14 @@ class FlextInfraDocAuditorMixin:
         checks: t.Infra.StrSet,
         *,
         strict: bool,
+        docstring_coverage: m.Infra.DocstringCoverage | None = None,
         to_markdown_fn: Callable[
-            [m.Infra.DocScope, t.SequenceOf[m.Infra.AuditIssue]], t.StrSequence
+            [
+                m.Infra.DocScope,
+                t.SequenceOf[m.Infra.AuditIssue],
+                m.Infra.DocstringCoverage | None,
+            ],
+            t.StrSequence,
         ],
     ) -> None:
         """Persist JSON summary and markdown report to the scope report directory."""
@@ -131,6 +151,8 @@ class FlextInfraDocAuditorMixin:
             c.Infra.OperationMode.STRICT: strict,
             "report_dir": scope.report_dir.as_posix(),
         }
+        if docstring_coverage is not None:
+            summary["docstring_coverage"] = docstring_coverage.model_dump()
         issues_payload: t.JsonValue = [
             {
                 c.Infra.RK_FILE: issue.file,
@@ -144,13 +166,10 @@ class FlextInfraDocAuditorMixin:
             c.Infra.RK_SUMMARY: summary,
             "issues": issues_payload,
         }
-        _ = u.Cli.json_write(
-            scope.report_dir / "audit-summary.json",
-            summary_payload,
-        )
+        _ = u.Cli.json_write(scope.report_dir / "audit-summary.json", summary_payload)
         _ = u.Infra.write_markdown(
             scope.report_dir / "audit-report.md",
-            to_markdown_fn(scope, issues),
+            to_markdown_fn(scope, issues, docstring_coverage),
         )
 
 

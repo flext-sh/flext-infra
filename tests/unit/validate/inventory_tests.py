@@ -6,13 +6,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.inventory import FlextInfraInventoryService
-from tests.models import m
-from tests.typings import t
+from tests import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestInventoryServiceCore:
@@ -21,7 +25,7 @@ class TestInventoryServiceCore:
     def test_init_creates_service(self) -> None:
         """Service initializes with required attributes."""
         service = FlextInfraInventoryService()
-        assert service is not None
+        tm.that(service, none=False)
 
     def test_generate_empty_workspace(self, tmp_path: Path) -> None:
         """Empty workspace returns success with zero scripts."""
@@ -51,7 +55,7 @@ class TestInventoryServiceScripts:
         service = FlextInfraInventoryService()
         scripts = tmp_path / "scripts"
         scripts.mkdir()
-        (scripts / "test.py").write_text("#!/usr/bin/env python3\nprint('hello')")
+        (scripts / "test.py").write_text("#!/usr/bin/env python3\nu.Cli.print('hello')")
         tm.ok(service.generate(tmp_path))
 
     def test_generate_scans_bash_scripts(self, tmp_path: Path) -> None:

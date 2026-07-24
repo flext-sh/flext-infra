@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
+from flext_infra import c, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -21,10 +20,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
 
     @staticmethod
-    def _workspace_tool_command(
-        workspace: Path,
-        tool_name: str,
-    ) -> t.StrSequence:
+    def _workspace_tool_command(workspace: Path, tool_name: str) -> t.StrSequence:
         """Resolve one tool against the workspace venv before falling back to PATH."""
         tool_path = (workspace.resolve() / c.Infra.VENV_BIN_REL / tool_name).resolve()
         if tool_path.is_file():
@@ -51,15 +47,9 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _selected_lint_tools(
         gates: t.StrSequence | None = None,
     ) -> t.StrSequencePairTuple:
-        """Selected lint tools."""
+        """Return the selected lint tools."""
         env_gates = (
-            u.Cli
-            .process_env()
-            .get(
-                c.Infra.ENV_VAR_LINT_SNAPSHOT_GATES,
-                "",
-            )
-            .strip()
+            u.Cli.process_env().get(c.Infra.ENV_VAR_LINT_SNAPSHOT_GATES, "").strip()
         )
         resolved_gates = gates or tuple(
             gate.strip()
@@ -80,8 +70,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def selected_lint_tool_names(
-        cls,
-        gates: t.StrSequence | None = None,
+        cls, gates: t.StrSequence | None = None
     ) -> t.StrSequence:
         """Return the canonical lint tool names selected for a gate set."""
         return tuple(tool for tool, _ in cls._selected_lint_tools(gates))
@@ -98,9 +87,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
     def _command_cwd(py_file: Path, workspace: Path) -> Path:
         """Command cwd."""
         resolved_workspace = workspace.resolve()
-        project_root: Path | None = FlextInfraUtilitiesDiscovery.project_root(
-            py_file,
-        )
+        project_root: Path | None = FlextInfraUtilitiesDiscovery.project_root(py_file)
         if project_root is None:
             return resolved_workspace
         return project_root
@@ -112,17 +99,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def _new_file_lint_baseline(
-        cls,
-        py_file: Path,
-        workspace: Path,
-        *,
-        gates: t.StrSequence | None = None,
+        cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
     ) -> t.Infra.LintSnapshot:
-        """New file lint baseline."""
+        """Compute the lint baseline for a new file."""
         py_file.parent.mkdir(parents=True, exist_ok=True)
         py_file.write_text(
-            f"{c.Infra.FUTURE_ANNOTATIONS}\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            f"{c.Infra.FUTURE_ANNOTATIONS}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         try:
             return cls.lint_snapshot(py_file, workspace, gates=gates)
@@ -141,26 +123,18 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def _lint_snapshot_cache_key(
-        py_file: Path,
-        gate_key: t.StrSequence,
+        py_file: Path, gate_key: t.StrSequence
     ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
         try:
             raw_bytes = py_file.read_bytes()
         except OSError:
             return None
-        return (
-            str(py_file.resolve()),
-            hashlib.sha256(raw_bytes).hexdigest(),
-            gate_key,
-        )
+        return (str(py_file.resolve()), hashlib.sha256(raw_bytes).hexdigest(), gate_key)
 
     @classmethod
     def _execute_selected_lint_tools(
-        cls,
-        py_file: Path,
-        workspace: Path,
-        selected_tools: t.StrSequencePairTuple,
+        cls, py_file: Path, workspace: Path, selected_tools: t.StrSequencePairTuple
     ) -> t.Infra.LintSnapshot:
         """Execute selected lint tools."""
         command_cwd = cls._command_cwd(py_file, workspace)
@@ -169,8 +143,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         results: list[m.Infra.LintGateResult] = []
         ruff_template = next(
-            (tmpl for tool, tmpl in selected_tools if tool == "ruff"),
-            None,
+            (tmpl for tool, tmpl in selected_tools if tool == "ruff"), None
         )
         if ruff_template is not None:
             results.append(
@@ -182,7 +155,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     gate_timeout=gate_timeout,
                     tool_name="ruff",
                     template=ruff_template,
-                ),
+                )
             )
 
         remaining_tools = tuple(
@@ -193,7 +166,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         timeout_budget = max(1, gate_timeout + 10)
         pool = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, len(remaining_tools)),
+            max_workers=max(1, len(remaining_tools))
         )
         futures_by_tool = {
             pool.submit(
@@ -210,8 +183,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         }
         try:
             done, not_done = concurrent.futures.wait(
-                tuple(futures_by_tool),
-                timeout=timeout_budget,
+                tuple(futures_by_tool), timeout=timeout_budget
             )
             results.extend(future.result() for future in done)
             for future in not_done:
@@ -223,7 +195,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                         errors=(
                             f"timeout {timeout_budget}s: lint gate '{tool_name}' did not finish",
                         ),
-                    ),
+                    )
                 )
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
@@ -242,20 +214,42 @@ class FlextInfraUtilitiesProtectedEditLinting:
         template: t.StrSequence,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model."""
-        cmd = [
+        command: t.StrSequence = (
             *cls._workspace_tool_command(workspace, template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
-        ]
+        )
+        cmd = (
+            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
+            if tool_name == c.Infra.MYPY
+            else command
+        )
         run_result = u.Cli.run_raw(
             cmd,
             cwd=command_cwd,
             env=command_env,
-            timeout=gate_timeout,
+            timeout=FlextInfraUtilitiesResourceLimits.mypy_runner_timeout()
+            if tool_name == c.Infra.MYPY
+            else gate_timeout,
         )
         if run_result.failure:
-            gate_errors: t.StrSequence = (run_result.error or f"{tool_name} failed",)
+            error = run_result.error or f"{tool_name} failed"
+            gate_errors: t.StrSequence = (
+                FlextInfraUtilitiesResourceLimits.mypy_launch_failure_diagnostic(error)
+                if tool_name == c.Infra.MYPY
+                else error,
+            )
         elif run_result.success and run_result.value.exit_code != 0:
-            output = (run_result.value.stdout + run_result.value.stderr).strip()
+            resource_diagnostic = (
+                FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(
+                    run_result.value
+                )
+                if tool_name == c.Infra.MYPY
+                else None
+            )
+            output = (
+                resource_diagnostic
+                or (run_result.value.stdout + run_result.value.stderr).strip()
+            )
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
         else:
             gate_errors = ()
@@ -270,11 +264,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @classmethod
     def lint_snapshot(
-        cls,
-        py_file: Path,
-        workspace: Path,
-        *,
-        gates: t.StrSequence | None = None,
+        cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
     ) -> t.Infra.LintSnapshot:
         """Run selected lint tools on *py_file*, concurrent and content-cached."""
         selected_tools = cls._selected_lint_tools(gates)
@@ -290,9 +280,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
             return cached
 
         result = cls._execute_selected_lint_tools(
-            py_file=py_file,
-            workspace=workspace,
-            selected_tools=selected_tools,
+            py_file=py_file, workspace=workspace, selected_tools=selected_tools
         )
         if cache_key is not None:
             cls._snapshot_cache[cache_key] = dict(result)
@@ -316,10 +304,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
         snapshots_by_path: MutableMapping[Path, t.Infra.LintSnapshot] = {}
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(
-                1,
-                min(cls._SNAPSHOT_MAX_WORKERS, len(ordered_paths)),
-            ),
+            max_workers=max(1, min(cls._SNAPSHOT_MAX_WORKERS, len(ordered_paths)))
         ) as pool:
             futures_by_path = {
                 pool.submit(cls.lint_snapshot, path, workspace, gates=gates): path
@@ -332,8 +317,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
 
     @staticmethod
     def lint_new_errors(
-        before: t.Infra.LintSnapshot,
-        after: t.Infra.LintSnapshot,
+        before: t.Infra.LintSnapshot, after: t.Infra.LintSnapshot
     ) -> t.Infra.LintSnapshot:
         """Return only lint errors introduced relative to *before*."""
         return {
@@ -346,7 +330,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                     if (
                         normalized
                         := FlextInfraUtilitiesProtectedEditLinting._normalize_lint_line(
-                            line,
+                            line
                         )
                     )
                     and normalized
@@ -372,31 +356,19 @@ class FlextInfraUtilitiesProtectedEditLinting:
         gates: t.StrSequence | None = None,
     ) -> tuple[t.Infra.LintSnapshot, t.Infra.LintSnapshot]:
         """Preview lint output for ``updated_source`` while restoring the file."""
-        original_source = py_file.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        original_source = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         before = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
-            py_file,
-            workspace,
-            gates=gates,
+            py_file, workspace, gates=gates
         )
         if updated_source == original_source:
             return before, before
-        py_file.write_text(
-            updated_source,
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        py_file.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
         try:
             after = FlextInfraUtilitiesProtectedEditLinting.lint_snapshot(
-                py_file,
-                workspace,
-                gates=gates,
+                py_file, workspace, gates=gates
             )
         finally:
-            py_file.write_text(
-                original_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            py_file.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
         return before, after
 
 

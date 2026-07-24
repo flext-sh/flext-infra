@@ -6,14 +6,15 @@ Tests cover project discovery, pyproject file discovery, and error handling.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
-from tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import c, m, u
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestsFlextInfraDiscoveryInfraDiscovery:
@@ -40,14 +41,12 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         proj2 = tmp_path / "project2"
         proj2.mkdir()
         (proj2 / "pyproject.toml").write_text(
-            "[project]\nname='project2'\n",
-            encoding="utf-8",
+            "[project]\nname='project2'\n", encoding="utf-8"
         )
         invalid = tmp_path / "invalid"
         invalid.mkdir()
         (invalid / "pyproject.toml").write_text(
-            "[project]\nname='invalid'\n",
-            encoding="utf-8",
+            "[project]\nname='invalid'\n", encoding="utf-8"
         )
         hidden = tmp_path / ".hidden"
         hidden.mkdir()
@@ -58,49 +57,40 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         return tmp_path
 
     def test_discover_projects_happy_path(
-        self,
-        service: u.Infra,
-        workspace_with_projects: Path,
+        self, service: u.Infra, workspace_with_projects: Path
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
         projects = result.value
-        assert len(projects) == 2
-        assert projects[0].name == "project1"
-        assert projects[1].name == "project2"
-        assert projects[0].has_tests is True
-        assert projects[0].has_src is True
-        assert projects[1].has_src is False
-        assert projects[1].has_tests is False
-        assert projects[0].workspace_role == c.Infra.WorkspaceProjectRole.ATTACHED
+        tm.that(len(projects), eq=2)
+        tm.that(projects[0].name, eq="project1")
+        tm.that(projects[1].name, eq="project2")
+        tm.that(projects[0].has_tests, eq=True)
+        tm.that(projects[0].has_src, eq=True)
+        tm.that(projects[1].has_src, eq=False)
+        tm.that(projects[1].has_tests, eq=False)
+        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
         assert (
             projects[1].workspace_role == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
         )
 
     def test_discover_projects_empty_workspace(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         result = service.discover_projects(tmp_path)
         tm.ok(result)
-        assert result.value == []
+        tm.that(result.value, eq=[])
 
-    def test_discover_projects_nonexistent_path(
-        self,
-        service: u.Infra,
-    ) -> None:
+    def test_discover_projects_nonexistent_path(self, service: u.Infra) -> None:
         nonexistent = Path("/nonexistent/path/to/workspace")
         result = service.discover_projects(nonexistent)
         tm.fail(result)
-        assert isinstance(result.error, str)
-        assert isinstance(result.error, str)
-        assert "discovery failed" in result.error
+        tm.that(result.error, is_=str)
+        tm.that(result.error, is_=str)
+        tm.that(result.error, has="discovery failed")
 
     def test_find_all_pyproject_files_happy_path(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         (tmp_path / "project1").mkdir()
         (tmp_path / "project1" / "pyproject.toml").touch()
@@ -111,31 +101,26 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
         files = result.value
-        assert len(files) == 3
+        tm.that(len(files), eq=3)
         assert all(f.name == "pyproject.toml" for f in files)
 
     def test_find_all_pyproject_files_with_skip_dirs(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         (tmp_path / "project1").mkdir()
         (tmp_path / "project1" / "pyproject.toml").touch()
         (tmp_path / "skip_me").mkdir()
         (tmp_path / "skip_me" / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(
-            tmp_path,
-            skip_dirs=frozenset({"skip_me"}),
+            tmp_path, skip_dirs=frozenset({"skip_me"})
         )
         tm.ok(result)
         files = result.value
-        assert len(files) == 1
-        assert "skip_me" not in str(files[0])
+        tm.that(len(files), eq=1)
+        tm.that(str(files[0]), lacks="skip_me")
 
     def test_find_all_pyproject_files_with_project_paths(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         proj1 = tmp_path / "project1"
         proj2 = tmp_path / "project2"
@@ -146,33 +131,27 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         result = service.find_all_pyproject_files(tmp_path, project_paths=[proj1])
         tm.ok(result)
         files = result.value
-        assert len(files) == 1
-        assert files[0].parent == proj1
+        tm.that(len(files), eq=1)
+        tm.that(files[0].parent, eq=proj1)
 
     def test_discover_projects_result_type(
-        self,
-        service: u.Infra,
-        workspace_with_projects: Path,
+        self, service: u.Infra, workspace_with_projects: Path
     ) -> None:
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
         projects: t.SequenceOf[m.Infra.ProjectInfo] = result.value
         for item in projects:
-            assert isinstance(item, m.Infra.ProjectInfo)
+            tm.that(item, is_=m.Infra.ProjectInfo)
 
     def test_discover_projects_empty_workspace_v2(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         result = service.discover_projects(tmp_path)
         tm.ok(result)
-        assert result.value == []
+        tm.that(result.value, eq=[])
 
     def test_discover_projects_prefers_workspace_children_over_root_project(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace-root'\ndependencies=['flext-core>=0.1.0']\n\n"
@@ -189,8 +168,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         project2 = tmp_path / "project2"
         project2.mkdir()
         (project2 / "pyproject.toml").write_text(
-            "[project]\nname='project2'\n",
-            encoding="utf-8",
+            "[project]\nname='project2'\n", encoding="utf-8"
         )
 
         result = service.discover_projects(tmp_path)
@@ -199,9 +177,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that([project.name for project in result.value], eq=["project1", "project2"])
 
     def test_discover_projects_derives_package_name_from_hatch_packages(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         project = tmp_path / "project1"
         package_dir = project / "src" / "custom_pkg"
@@ -219,30 +195,69 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         result = service.discover_projects(tmp_path)
 
         tm.ok(result)
-        assert len(result.value) == 1
-        assert result.value[0].package_name == "custom_pkg"
+        tm.that(len(result.value), eq=1)
+        tm.that(result.value[0].package_name, eq="custom_pkg")
 
     def test_discover_projects_accepts_standalone_governed_root_without_core_dep(
-        self,
-        service: u.Infra,
-        tmp_path: Path,
+        self, service: u.Infra, tmp_path: Path
     ) -> None:
         package_dir = tmp_path / "src" / "demo_pkg"
         package_dir.mkdir(parents=True)
         (package_dir / "__init__.py").write_text("", encoding="utf-8")
         (tmp_path / "Makefile").write_text("check:\n\t@true\n", encoding="utf-8")
         (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='demo-project'\nversion='0.1.0'\n",
-            encoding="utf-8",
+            "[project]\nname='demo-project'\nversion='0.1.0'\n", encoding="utf-8"
         )
 
         result = service.discover_projects(tmp_path)
 
         tm.ok(result)
-        assert len(result.value) == 1
-        assert result.value[0].path == tmp_path.resolve()
-        assert result.value[0].name == "demo-project"
-        assert result.value[0].package_name == "demo_pkg"
+        tm.that(len(result.value), eq=1)
+        tm.that(result.value[0].path, eq=tmp_path.resolve())
+        tm.that(result.value[0].name, eq="demo-project")
+        tm.that(result.value[0].package_name, eq="demo_pkg")
+
+    def test_discover_python_dirs_skips_workspace_excluded_dirs(
+        self, service: u.Infra, tmp_path: Path
+    ) -> None:
+        """Manifest-excluded vendored trees are never Python source roots."""
+        config_dir = tmp_path / "config"
+        config_dir.mkdir()
+        (config_dir / "workspace.yaml").write_text(
+            "version: 2\n"
+            "name: demo\n"
+            "repository:\n"
+            "  name: demo\n"
+            "  distribution: demo\n"
+            "  provider: datacosmos-br\n"
+            "  url: https://github.com/datacosmos-br/demo.git\n"
+            "  branch: main\n"
+            "  path: .\n"
+            "  role: standalone\n"
+            "  state: active\n"
+            "  profile: standalone\n"
+            "  checkout: independent\n"
+            "  codegen: conform\n"
+            "  package: true\n"
+            "  editable: false\n"
+            "  read_only: false\n"
+            "members: []\n"
+            "content_only: []\n"
+            "exclusions:\n"
+            "  - path: data\n"
+            "    reason: vendored document submodules\n",
+            encoding="utf-8",
+        )
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        (src_dir / "module.py").write_text("X = 1\n", encoding="utf-8")
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "vendored.py").write_text("Y = 2\n", encoding="utf-8")
+
+        discovered = service.discover_python_dirs(tmp_path)
+
+        tm.that(discovered, eq=["src"])
 
 
 __all__: t.StrSequence = []

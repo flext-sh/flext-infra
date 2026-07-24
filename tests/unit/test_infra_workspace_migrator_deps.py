@@ -2,23 +2,25 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorDeps:
+    """Tests for workspace migrator dependency handling."""
+
     @staticmethod
     def _build_migrator(
-        tmp_path: Path,
-        *,
-        pyproject: str,
-        base_mk: str = "base",
+        tmp_path: Path, *, pyproject: str, base_mk: str = "base"
     ) -> FlextInfraProjectMigrator:
         project_root = tmp_path / "project-a"
         project_root.mkdir(parents=True)
@@ -48,10 +50,7 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
         )
 
     def test_missing_poetry_table_adds_dependency_change(self, tmp_path: Path) -> None:
-        migrator = self._build_migrator(
-            tmp_path,
-            pyproject="[tool]\n",
-        )
+        migrator = self._build_migrator(tmp_path, pyproject="[tool]\n")
         migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(migrator.execute())
         tm.that(
             any("flext-core dependency" in change for change in migrations[0].changes),
@@ -59,12 +58,10 @@ class TestsFlextInfraInfraWorkspaceMigratorDeps:
         )
 
     def test_non_mapping_poetry_dependencies_add_dependency_change(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         migrator = self._build_migrator(
-            tmp_path,
-            pyproject="[tool.poetry]\ndependencies = []\n",
+            tmp_path, pyproject="[tool.poetry]\ndependencies = []\n"
         )
         migrations: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(migrator.execute())
         tm.that(

@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/flext-sh/flext-infra/schemas/workspace.schema.json",
+  "$comment": "NOTE(mro-wkii.17, agent codex): strict local workspace topology SSOT.",
+  "title": "FLEXT Workspace Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "repository",
+    "members",
+    "content_only",
+    "exclusions"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "name": {
+      "$ref": "#/$defs/name"
+    },
+    "repository": {
+      "$ref": "#/$defs/repository"
+    },
+    "project": {
+      "$ref": "#/$defs/project"
+    },
+    "members": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
+    "content_only": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/exclusion"
+      }
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:\\.|[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)$",
+      "not": {
+        "pattern": "(^|/)\\.\\.(/|$)"
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "distribution",
+        "provider",
+        "url",
+        "branch",
+        "path",
+        "role",
+        "state",
+        "profile",
+        "checkout",
+        "codegen",
+        "package",
+        "editable",
+        "read_only"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "distribution": {
+          "$ref": "#/$defs/name"
+        },
+        "provider": {
+          "$ref": "#/$defs/name"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.git$"
+        },
+        "branch": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "role": {
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone",
+            "content-only",
+            "excluded"
+          ]
+        },
+        "state": {
+          "enum": [
+            "active",
+            "content-only",
+            "excluded"
+          ]
+        },
+        "profile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "workspace-root",
+            "workspace-member",
+            "standalone",
+            null
+          ]
+        },
+        "checkout": {
+          "enum": [
+            "root",
+            "submodule",
+            "independent"
+          ]
+        },
+        "codegen": {
+          "enum": [
+            "conform",
+            "python",
+            "none"
+          ]
+        },
+        "package": {
+          "type": "boolean"
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "extra_verbs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/makeVerb"
+          }
+        },
+        "script_dispatch": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "dispatcher",
+            "roots"
+          ],
+          "properties": {
+            "dispatcher": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "roots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/relativePath"
+              }
+            }
+          }
+        }
+      }
+    },
+    "makeVerb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "default_what"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "default_what": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "apply_guarded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "class_stem",
+        "namespace",
+        "constant_name",
+        "namespace_attribute",
+        "alias",
+        "environment_prefix",
+        "description",
+        "version",
+        "license",
+        "author_name",
+        "author_email",
+        "upstream",
+        "homepage",
+        "documentation",
+        "workspace_root_rel",
+        "year"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "class_stem": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "constant_name": {
+          "$ref": "#/$defs/name"
+        },
+        "namespace_attribute": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "alias": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "environment_prefix": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*_$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author_email": {
+          "type": "string",
+          "minLength": 3
+        },
+        "upstream": {
+          "enum": [
+            "flext_core",
+            "flext_cli"
+          ]
+        },
+        "homepage": {
+          "type": "string",
+          "format": "uri"
+        },
+        "documentation": {
+          "type": "string",
+          "format": "uri"
+        },
+        "workspace_root_rel": {
+          "type": "string",
+          "pattern": "^(?:\\.|\\.\\.(?:/\\.\\.)*)$"
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 2025
+        }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

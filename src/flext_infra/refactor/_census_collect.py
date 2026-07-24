@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rope.base.exceptions import RopeError
-
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra.models import m
-from flext_infra.protocols import p
+from flext_infra import m, u
 from flext_infra.refactor._census_rules_dispatch import (
     FlextInfraRefactorCensusRulesDispatchMixin,
 )
-from flext_infra.refactor._census_validate import (
-    FlextInfraRefactorCensusValidateMixin,
-)
-from flext_infra.typings import t
+from flext_infra.refactor._census_validate import FlextInfraRefactorCensusValidateMixin
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
-    *FlextInfraConstantsRope.RUNTIME_ERRORS,
-    RopeError,
+    *u.Infra.rope_runtime_errors(),
+    *u.Infra.rope_error_types(),
     RecursionError,
     SyntaxError,
     ValueError,
@@ -29,8 +26,7 @@ _ROPE_SAFE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 
 
 class FlextInfraRefactorCensusCollectMixin(
-    FlextInfraRefactorCensusRulesDispatchMixin,
-    FlextInfraRefactorCensusValidateMixin,
+    FlextInfraRefactorCensusRulesDispatchMixin, FlextInfraRefactorCensusValidateMixin
 ):
     """Scan one module (inventory + rules) and assemble the WorkspaceReport."""
 
@@ -166,7 +162,7 @@ class FlextInfraRefactorCensusCollectMixin(
                 report_projects
                 | set(project_objects)
                 | set(project_violations)
-                | set(project_fixes),
+                | set(project_fixes)
             )
         )
         project_reports = tuple(
@@ -196,7 +192,6 @@ class FlextInfraRefactorCensusCollectMixin(
             fixes_total=sum(len(report.fixes) for report in project_reports),
             duplicates=duplicates,
             unused_count=sum(report.unused_count for report in project_reports),
-            test_only_count=sum(report.test_only_count for report in project_reports),
             removal_candidate_count=sum(
                 report.removal_candidate_count for report in project_reports
             ),

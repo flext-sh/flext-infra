@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import textwrap
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
-from flext_infra.models import m
+from flext_infra import c, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import m, t
 
 
 class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
@@ -46,9 +46,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
             if "@staticmethod" not in func_src:
                 func_src = f"@staticmethod\n{func_src}"
             updated = u.Infra.append_to_class_body(
-                updated,
-                ns,
-                textwrap.indent(func_src, "    "),
+                updated, ns, textwrap.indent(func_src, "    ")
             )
             self._record_change(f"Moved {name} into {ns}")
         updated = self._rewrite_calls(updated)
@@ -74,8 +72,7 @@ class FlextInfraHelperConsolidationTransformer(FlextInfraRopeTransformer):
         if not getattr(policy, attr, True):
             return False
         allowed: bool = u.Infra.target_allowed(
-            policy=policy,
-            target_namespace=target_ns,
+            policy=policy, target_namespace=target_ns
         )
         return allowed
 

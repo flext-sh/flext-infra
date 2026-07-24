@@ -38,9 +38,7 @@ class FlextInfraConstantsCodegenDetection:
         re.MULTILINE,
     )
     "Regex: NAME: Final[TYPE] = VALUE (with optional inline comment)."
-    DETECTION_CLASS_DECL_RE: Final[t.RegexPattern] = re.compile(
-        r"class\s+(\w+)",
-    )
+    DETECTION_CLASS_DECL_RE: Final[t.RegexPattern] = re.compile(r"class\s+(\w+)")
     "Regex: class ClassName (captures class name)."
     DETECTION_CANONICAL_ALIASES: Final[frozenset[str]] = frozenset({
         "c",

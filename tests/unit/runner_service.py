@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_tests import r
 
-from tests.protocols import p
-from tests.typings import t
-from tests.utilities import u
+from tests import t, u
+
+if TYPE_CHECKING:
+    from tests import p
 
 
 class RealSubprocessRunner:
+    """Shared runner-service test helper."""
+
     subprocess_utility: type[u.Cli] = u.Cli
     allowed_commands: frozenset[str] = frozenset({"echo", "pwd", "ls", "git"})
 

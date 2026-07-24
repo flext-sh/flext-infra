@@ -6,17 +6,23 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests.models import m
+from tests import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 @pytest.fixture
 def builder() -> FlextInfraDocBuilder:
+    """Provide the public documentation builder service."""
     return FlextInfraDocBuilder()
 
 
@@ -24,12 +30,10 @@ class TestBuilderCore:
     """Core build invocation tests."""
 
     def test_build_with_valid_scope_returns_success(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
+        self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with valid scope returns success."""
-        reports = tm.ok(builder.build(tmp_path))
+        reports: t.SequenceOf[m.Infra.DocsPhaseReport] = tm.ok(builder.build(tmp_path))
         tm.that(len(reports), gte=0)
 
     def test_build_report_frozen(self) -> None:
@@ -52,23 +56,31 @@ class TestBuilderCore:
     ) -> None:
         """Build runs with each option variant and returns a railway result."""
         if "output_dir" in kwargs:
-            output_dir = kwargs["output_dir"]
-            assert isinstance(output_dir, str)
-            tm.ok(builder.build(tmp_path, output_dir=str(tmp_path / output_dir)))
+            match kwargs["output_dir"]:
+                case str() as output_dir:
+                    tm.ok(
+                        builder.build(tmp_path, output_dir=str(tmp_path / output_dir))
+                    )
+                case invalid:
+                    pytest.fail(f"invalid output_dir test case: {invalid!r}")
         else:
-            projects = kwargs.get("projects")
-            assert isinstance(projects, list)
-            tm.ok(builder.build(tmp_path, projects=projects))
+            match kwargs.get("projects"):
+                case list() as projects:
+                    tm.ok(builder.build(tmp_path, projects=projects))
+                case invalid:
+                    pytest.fail(f"invalid projects test case: {invalid!r}")
 
     @pytest.mark.parametrize("status", ["OK", "FAIL", "SKIP"])
-    def test_build_report_result_field_values(self, status: str) -> None:
+    def test_build_report_result_field_values(
+        self, status: str, tmp_path: Path
+    ) -> None:
         """Test BuildReport result field accepts valid values."""
         report = m.Infra.DocsPhaseReport(
             phase="build",
             scope="test",
             result=status,
             reason="Test reason",
-            site_dir="/tmp/site",
+            site_dir=str(tmp_path / "site"),
         )
         tm.that(report.result, eq=status)
 
@@ -84,9 +96,7 @@ class TestBuilderCore:
         tm.that(report.site_dir, eq="/path/to/site")
 
     def test_build_with_multiple_projects_returns_list(
-        self,
-        builder: FlextInfraDocBuilder,
-        tmp_path: Path,
+        self, builder: FlextInfraDocBuilder, tmp_path: Path
     ) -> None:
         """Test build with multiple projects returns list of reports."""
         result = builder.build(tmp_path, projects=["proj1", "proj2"])

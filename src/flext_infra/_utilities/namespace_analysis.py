@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra import c
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import m, t
 
 
 class FlextInfraUtilitiesRefactorNamespaceMro(
@@ -28,8 +30,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         """Rewrite mro completeness violations."""
         _ = parse_failures
         violations_by_file: t.MappingKV[
-            Path,
-            t.MutableSequenceOf[m.Infra.MROCompletenessViolation],
+            Path, t.MutableSequenceOf[m.Infra.MROCompletenessViolation]
         ] = defaultdict(list)
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)
@@ -64,13 +65,11 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if not changed:
                 continue
             imports = FlextInfraUtilitiesRefactorNamespaceMro._build_missing_imports(
-                lines=lines,
-                new_bases=new_bases,
+                lines=lines, new_bases=new_bases
             )
             rewritten_lines = (
                 FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
-                    lines=lines,
-                    imports=imports,
+                    lines=lines, imports=imports
                 )
             )
             _ = file_path.write_text(
@@ -121,16 +120,14 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
 
     @staticmethod
     def _build_missing_imports(
-        *,
-        lines: t.StrSequence,
-        new_bases: t.Infra.StrSet,
+        *, lines: t.StrSequence, new_bases: t.Infra.StrSet
     ) -> t.StrSequence:
         """Build missing imports."""
         existing_imports: t.Infra.StrSet = set()
         for line in lines:
             parsed = (
                 FlextInfraUtilitiesRefactorNamespaceMro._parse_simple_from_import_line(
-                    line,
+                    line
                 )
             )
             if parsed is None:
@@ -144,10 +141,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         ]
 
     @staticmethod
-    def rewrite_missing_future_annotations(
-        *,
-        py_files: t.SequenceOf[Path],
-    ) -> None:
+    def rewrite_missing_future_annotations(*, py_files: t.SequenceOf[Path]) -> None:
         """Rewrite missing future annotations."""
         for file_path in py_files:
             if file_path.name == c.Infra.PY_TYPED:
@@ -162,12 +156,10 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             if not lines:
                 continue
             rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
-                lines=lines,
-                imports=["", c.Infra.FUTURE_ANNOTATIONS, ""],
+                lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
             )
             _ = file_path.write_text(
-                "\n".join(rewritten).rstrip() + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                "\n".join(rewritten).rstrip() + "\n", encoding=c.Cli.ENCODING_DEFAULT
             )
 
 

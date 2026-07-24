@@ -1,24 +1,19 @@
-"""Wrapper-root namespace refactor command for tests/examples/scripts aliases."""
+"""Wrapper-root namespace refactor command for production script aliases."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.refactor._wrapper_rewrite import (
     FlextInfraWrapperRootNamespaceRewriteMixin,
     _WrapperRewriteAccumulator,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class FlextInfraWrapperRootNamespaceRefactor(
@@ -49,8 +44,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
         accumulator = _WrapperRewriteAccumulator()
-        metadata = u.read_project_constants("flext-infra")
-        metadata_aliases = frozenset(metadata.RUNTIME_ALIAS_NAMES)
+        metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         for file_path in py_files:
             self._process_wrapper_file(
                 file_path,
@@ -65,16 +59,12 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if not self.effective_dry_run and accumulator.wrapper_candidates:
             for wrapper in self._WRAPPER_PACKAGES:
                 u.Infra.rewrite_import_violations(
-                    py_files=accumulator.wrapper_candidates,
-                    project_package=wrapper,
+                    py_files=accumulator.wrapper_candidates, project_package=wrapper
                 )
-        report_payload = self._build_report_payload(
-            len(py_files),
-            accumulator,
-        )
+        report_payload = self._build_report_payload(len(py_files), accumulator)
         if self.check_only and accumulator.changed_files:
             return r[t.JsonPayload].fail(
-                "pending wrapper-root namespace rewrites detected",
+                "pending wrapper-root namespace rewrites detected"
             )
         return r[t.JsonPayload].ok(report_payload)
 
@@ -83,16 +73,16 @@ class FlextInfraWrapperRootNamespaceRefactor(
     ) -> p.Result[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]]:
         """Resolve project paths and discover Python files + runtime alias map."""
         resolved = u.Infra.resolve_projects(
-            self.workspace_root,
-            self.project_names or (),
+            self.workspace_root, self.project_names or ()
         )
         if resolved.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
             ].fail(resolved.error or "project resolution failed")
         iter_result = u.Infra.iter_python_files(
-            self.workspace_root,
-            project_roots=[project.path for project in resolved.value],
+            m.Infra.SourceScanRequest(
+                project_roots=tuple(project.path for project in resolved.value)
+            )
         )
         if iter_result.failure:
             return r[
@@ -103,16 +93,13 @@ class FlextInfraWrapperRootNamespaceRefactor(
             for project in resolved.value
             if (layout := u.Infra.layout(project.path)) is not None
         }
-        metadata = u.read_project_constants("flext-infra")
         return r[
             tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-        ].ok(
-            (
-                iter_result.value,
-                project_runtime_aliases,
-                frozenset(metadata.FACADE_MODULE_NAMES),
-            ),
-        )
+        ].ok((
+            iter_result.value,
+            project_runtime_aliases,
+            u.facade_module_names(c.Infra.PKG_INFRA_UNDERSCORE),
+        ))
 
     def _persist_updates(self, updates: Mapping[Path, str]) -> str | None:
         """Write batched updates via the protected pipeline; ``None`` on success."""
@@ -121,8 +108,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         ok, report = u.Infra.protected_source_writes(
             dict(updates),
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root,
-                skip_pytest=True,
+                workspace=self.workspace_root, skip_pytest=True
             ),
         )
         if ok:
@@ -130,9 +116,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         return " ; ".join(report[:5]) or "protected write failed"
 
     def _build_report_payload(
-        self,
-        files_scanned: int,
-        accumulator: _WrapperRewriteAccumulator,
+        self, files_scanned: int, accumulator: _WrapperRewriteAccumulator
     ) -> t.MutableJsonMapping:
         """Build the canonical JSON payload from the accumulated wrapper run state."""
         mode_value = (

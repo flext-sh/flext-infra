@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-import rope.refactor.importutils as rope_importutils
-from rope.base.exceptions import RefactoringError, ResourceNotFoundError
-from rope.base.project import Project
-from rope.base.pyobjectsdef import PyModule
-from rope.base.resources import File
-from rope.refactor.importutils.module_imports import ModuleImports
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRopeCorePyModuleMixin:
@@ -26,10 +22,7 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
 
     @staticmethod
     def find_identifier_offset_in_lines(
-        lines: t.SequenceOf[str],
-        *,
-        line: int,
-        symbol: str,
+        lines: t.SequenceOf[str], *, line: int, symbol: str
     ) -> int | None:
         """Return the absolute offset of one exact identifier token on a line.
 
@@ -55,32 +48,32 @@ class FlextInfraUtilitiesRopeCorePyModuleMixin:
 
     @staticmethod
     def get_pymodule(
-        rope_project: Project,
-        resource: File,
-    ) -> PyModule:
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+    ) -> t.Infra.RopePyModule:
         """Resolve one concrete rope PyModule through the validated API boundary."""
         pymodule = rope_project.get_pymodule(resource)
-        if not isinstance(pymodule, PyModule):
+        if not FlextInfraUtilitiesRopeRuntime.is_pymodule(pymodule):
             msg = "rope project returned non-PyModule"
             raise TypeError(msg)
-        return pymodule
+        result: t.Infra.RopePyModule = pymodule
+        return result
 
     @staticmethod
     def get_module_imports(
-        rope_project: Project,
-        resource: File,
-    ) -> ModuleImports | None:
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+    ) -> t.Infra.RopeModuleImports | None:
         """Get module imports."""
         try:
-            module_imports = rope_importutils.get_module_imports(
+            module_imports = FlextInfraUtilitiesRopeRuntime.module_imports_for_pymodule(
                 rope_project,
                 FlextInfraUtilitiesRopeCorePyModuleMixin.get_pymodule(
                     rope_project, resource
                 ),
             )
-        except (RefactoringError, ResourceNotFoundError, AttributeError):
+        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), TypeError):
             return None
-        return module_imports
+        result: t.Infra.RopeModuleImports | None = module_imports
+        return result
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeCorePyModuleMixin"]

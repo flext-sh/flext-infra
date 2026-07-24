@@ -8,8 +8,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
-from tests.utilities import u
+from tests import u
 
 
 class TestsFlextInfraInfraReportingCore:
@@ -22,82 +23,64 @@ class TestsFlextInfraInfraReportingCore:
         return service_cls
 
     def test_resolve_report_dir_project_scope(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting project-level report directory."""
         result = service.resolve_report_dir(tmp_path, "project", "check")
-        assert isinstance(result, Path)
-        assert result.name == "check"
-        assert ".reports" in str(result)
-        assert "workspace" not in str(result)
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="check")
+        tm.that(str(result), has=".reports")
+        tm.that(str(result), lacks="workspace")
 
     def test_resolve_report_dir_workspace_scope(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting workspace-level report directory."""
         result = service.resolve_report_dir(tmp_path, "workspace", "validate")
-        assert isinstance(result, Path)
-        assert result.name == "validate"
-        assert ".reports" in str(result)
-        assert "workspace" in str(result)
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="validate")
+        tm.that(str(result), has=".reports")
+        tm.that(str(result), has="workspace")
 
     def test_resolve_report_dir_with_string_root(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting report directory with string root path."""
         result = service.resolve_report_dir(str(tmp_path), "project", "test")
-        assert isinstance(result, Path)
-        assert result.name == "test"
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="test")
 
     def test_resolve_report_path_project_scope(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting project-level report file path."""
         result = service.resolve_report_path(
             tmp_path, "project", "check", "report.json"
         )
-        assert isinstance(result, Path)
-        assert result.name == "report.json"
-        assert ".reports" in str(result)
-        assert "check" in str(result)
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="report.json")
+        tm.that(str(result), has=".reports")
+        tm.that(str(result), has="check")
 
     def test_resolve_report_path_workspace_scope(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting workspace-level report file path."""
         result = service.resolve_report_path(
-            tmp_path,
-            "workspace",
-            "validate",
-            "summary.log",
+            tmp_path, "workspace", "validate", "summary.log"
         )
-        assert isinstance(result, Path)
-        assert result.name == "summary.log"
-        assert ".reports" in str(result)
-        assert "workspace" in str(result)
-        assert "validate" in str(result)
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="summary.log")
+        tm.that(str(result), has=".reports")
+        tm.that(str(result), has="workspace")
+        tm.that(str(result), has="validate")
 
     def test_resolve_report_path_with_string_root(
-        self,
-        service: type[u.Cli],
-        tmp_path: Path,
+        self, service: type[u.Cli], tmp_path: Path
     ) -> None:
         """Test getting report file path with string root."""
         result = service.resolve_report_path(
-            str(tmp_path),
-            "project",
-            "test",
-            "results.xml",
+            str(tmp_path), "project", "test", "results.xml"
         )
-        assert isinstance(result, Path)
-        assert result.name == "results.xml"
+        tm.that(result, is_=Path)
+        tm.that(result.name, eq="results.xml")

@@ -3,139 +3,126 @@
 from __future__ import annotations
 
 import shutil
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tests.models import m
-from tests.utilities import u
+from flext_tests import tm
 
+from tests import m, u
 
-def test_sync_github_workflows_reports_create_operations(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-    )
-
-    result = u.Infra.sync_github_workflows(
-        m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace)),
-    )
-
-    assert result.success
-    report = result.unwrap()
-    assert report.mode == "dry-run"
-    assert report.summary == {"create": 2}
-    assert [operation.project for operation in report.operations] == [
-        "flext-a",
-        "flext-b",
-    ]
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
-def test_sync_github_workflows_apply_writes_ci_files_and_report(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        source_workflow=(
-            "name: CI\n"
-            "jobs:\n"
-            "  ci:\n"
-            "    steps:\n"
-            "      - name: Boot (advisory)\n"
-            "        run: make boot\n"
-            "      - name: Val (advisory)\n"
-            "        run: make val\n"
-        ),
-    )
-    report_path = tmp_path / "sync-report.json"
+class TestsInfraGithub:
+    """Verify GitHub automation through the public infrastructure facade."""
 
-    result = u.Infra.sync_github_workflows(
-        m.Infra.GithubWorkflowSyncRequest(
-            workspace=str(workspace),
-            apply=True,
-            report=str(report_path),
-        ),
-    )
+    def test_sync_reports_create_operations(self, tmp_path: Path) -> None:
+        """Report one create operation for every discovered project."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a", "flext-b")
+        )
 
-    assert result.success
-    assert report_path.is_file()
-    for project_name in ("flext-a", "flext-b"):
-        destination = workspace / project_name / ".github/workflows/ci.yml"
-        content = destination.read_text(encoding="utf-8")
-        assert destination.is_file()
-        assert "name: CI" in content
-        assert "- name: Setup (advisory)" in content
-        assert "run: make setup" in content
-        assert "run: make val" in content
-        assert "run: make boot" not in content
+        result = u.Infra.sync_github_workflows(
+            m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace))
+        )
 
+        tm.ok(result)
+        report = result.unwrap()
+        tm.that(report.mode, eq="dry-run")
+        tm.that(report.summary, eq={"create": 2})
+        tm.that(
+            [operation.project for operation in report.operations],
+            eq=["flext-a", "flext-b"],
+        )
 
-def test_sync_github_workflows_prunes_noncanonical_files(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
-    extra_workflow = workspace / "flext-a/.github/workflows/extra.yml"
-    extra_workflow.parent.mkdir(parents=True, exist_ok=True)
-    extra_workflow.write_text("name: Extra\n", encoding="utf-8")
+    def test_sync_apply_writes_ci_files_and_report(self, tmp_path: Path) -> None:
+        """Write the adapted workflow and the requested structured report."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path,
+            project_names=("flext-a", "flext-b"),
+            source_workflow=(
+                "name: CI\n"
+                "jobs:\n"
+                "  ci:\n"
+                "    steps:\n"
+                "      - name: Boot (blocking)\n"
+                "        run: make boot\n"
+                "      - name: Val (advisory)\n"
+                "        run: make val\n"
+            ),
+        )
+        report_path = tmp_path / "sync-report.json"
 
-    result = u.Infra.sync_github_workflows(
-        m.Infra.GithubWorkflowSyncRequest(
-            workspace=str(workspace),
-            apply=True,
-            prune=True,
-        ),
-    )
+        result = u.Infra.sync_github_workflows(
+            m.Infra.GithubWorkflowSyncRequest(
+                workspace=str(workspace), apply=True, report=str(report_path)
+            )
+        )
 
-    assert result.success
-    report = result.unwrap()
-    assert report.summary == {"create": 1, "prune": 1}
-    assert not extra_workflow.exists()
+        tm.ok(result)
+        tm.that(report_path.is_file(), eq=True)
+        for project_name in ("flext-a", "flext-b"):
+            destination = workspace / project_name / ".github/workflows/ci.yml"
+            content = destination.read_text(encoding="utf-8")
+            tm.that(destination.is_file(), eq=True)
+            tm.that(content, has="name: CI")
+            tm.that(content, has="- name: Setup (blocking)")
+            tm.that(content, has="run: make setup")
+            tm.that(content, has="run: make val")
+            tm.that(content, lacks="run: make boot")
 
+    def test_sync_prunes_noncanonical_files(self, tmp_path: Path) -> None:
+        """Remove noncanonical workflow files only when pruning is requested."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a",)
+        )
+        extra_workflow = workspace / "flext-a/.github/workflows/extra.yml"
+        extra_workflow.parent.mkdir(parents=True, exist_ok=True)
+        extra_workflow.write_text("name: Extra\n", encoding="utf-8")
 
-def test_lint_github_workflows_writes_report(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
-    report_path = tmp_path / "lint-report.json"
+        result = u.Infra.sync_github_workflows(
+            m.Infra.GithubWorkflowSyncRequest(
+                workspace=str(workspace), apply=True, prune=True
+            )
+        )
 
-    result = u.Infra.lint_github_workflows(
-        m.Infra.GithubWorkflowLintRequest(
-            workspace=str(workspace),
-            report=str(report_path),
-            strict=True,
-        ),
-    )
+        tm.ok(result)
+        report = result.unwrap()
+        tm.that(report.summary, eq={"create": 1, "prune": 1})
+        tm.that(extra_workflow.exists(), eq=False)
 
-    assert result.success
-    outcome = result.unwrap()
-    assert report_path.is_file()
-    if shutil.which("actionlint") is None:
-        assert outcome.status == "skipped"
-    else:
-        assert outcome.status == "ok"
+    def test_lint_writes_report(self, tmp_path: Path) -> None:
+        """Write a lint report and expose the real actionlint availability."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a",)
+        )
+        report_path = tmp_path / "lint-report.json"
 
+        result = u.Infra.lint_github_workflows(
+            m.Infra.GithubWorkflowLintRequest(
+                workspace=str(workspace), report=str(report_path), strict=True
+            )
+        )
 
-def test_run_github_pull_request_fails_for_minimal_repo(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
+        tm.ok(result)
+        outcome = result.unwrap()
+        tm.that(report_path.is_file(), eq=True)
+        if shutil.which("actionlint") is None:
+            tm.that(outcome.status, eq="skipped")
+        else:
+            tm.that(outcome.status, eq="ok")
 
-    result = u.Infra.run_github_pull_request(
-        m.Infra.GithubPullRequestRequest(
-            repo_root=str(workspace / "flext-a"),
-            action="status",
-        ),
-    )
+    def test_pull_request_fails_for_minimal_repo(self, tmp_path: Path) -> None:
+        """Return a typed failure when the repository lacks PR state."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a",)
+        )
 
-    assert result.failure
-    assert "PR operation exited with code" in (result.error or "")
+        result = u.Infra.run_github_pull_request(
+            m.Infra.GithubPullRequestRequest(
+                repo_root=str(workspace / "flext-a"), action="status"
+            )
+        )
+
+        tm.fail(result)
+        tm.that((result.error or ""), has="PR operation exited with code")

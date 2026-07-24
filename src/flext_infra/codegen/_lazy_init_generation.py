@@ -2,24 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c, u
 from flext_infra.codegen._lazy_init_generation_io import (
     FlextInfraCodegenLazyInitGenerationIOMixin,
 )
 from flext_infra.codegen._lazy_init_generation_registry import (
     FlextInfraCodegenLazyInitGenerationRegistryMixin,
 )
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+    from pathlib import Path
+
+    from flext_infra import m, t
+    from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 
+# mro-i6nq.10: Root manifests and initializers are synchronized as one artifact set.
 class FlextInfraCodegenLazyInitGenerationMixin(
     FlextInfraCodegenLazyInitGenerationIOMixin,
     FlextInfraCodegenLazyInitGenerationRegistryMixin,
@@ -36,6 +37,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         *,
         check_only: bool,
         planner: FlextInfraCodegenLazyInitPlanner,
+        target_package_dir: Path | None = None,
     ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
         total = ok = errors = 0
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
@@ -48,14 +50,22 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                     if self.workspace_root in pkg_dir.parents
                     else pkg_dir
                 )
-                u.Cli.info(
-                    f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}",
-                )
+                u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
             result, exports = self._process_directory(
                 pkg_dir,
                 check_only=check_only,
                 dir_exports=dir_exports,
                 planner=planner,
+                process=(
+                    target_package_dir is None
+                    or pkg_dir.resolve() == target_package_dir.resolve()
+                    or (
+                        target_package_dir.name == c.Infra.DIR_TESTS
+                        and pkg_dir.resolve().is_relative_to(
+                            target_package_dir.resolve()
+                        )
+                    )
+                ),
             )
             if exports:
                 dir_exports[str(pkg_dir.resolve())] = exports
@@ -65,6 +75,11 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 errors += 1
             else:
                 ok += 1
+            if (
+                target_package_dir is not None
+                and pkg_dir.resolve() == target_package_dir.resolve()
+            ):
+                break
         return total, ok, errors, dir_exports
 
     def _process_directory(
@@ -74,19 +89,17 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         check_only: bool,
         dir_exports: t.MappingKV[str, t.LazyAliasMap],
         planner: FlextInfraCodegenLazyInitPlanner,
+        process: bool = True,
     ) -> t.Infra.LazyInitProcessResult:
         """Process directory."""
         result: t.Infra.LazyInitProcessResult
         failed_lazy_map: t.MutableLazyAliasMap
         try:
-            plan = planner.build_plan(
-                pkg_dir,
-                dir_exports=dir_exports,
-            )
+            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
         except ValueError as exc:
             u.Cli.error(
                 f"export collision in {pkg_dir}: {exc}; "
-                "correct the source exports before regenerating __init__.py",
+                "correct the source exports before regenerating __init__.py"
             )
             failed_lazy_map = {}
             result = (-1, failed_lazy_map)
@@ -95,14 +108,15 @@ class FlextInfraCodegenLazyInitGenerationMixin(
             failed_lazy_map = {}
             result = (-1, failed_lazy_map)
         else:
-            result = self._process_plan(plan, check_only=check_only)
+            result = (
+                self._process_plan(plan, check_only=check_only)
+                if process
+                else (None, dict(plan.lazy_map))
+            )
         return result
 
     def _process_plan(
-        self,
-        plan: m.Infra.LazyInitPlan,
-        *,
-        check_only: bool,
+        self, plan: m.Infra.LazyInitPlan, *, check_only: bool
     ) -> t.Infra.LazyInitProcessResult:
         """Process a resolved lazy-init plan."""
         if plan.action == c.Infra.LazyInitAction.SKIP:
@@ -114,107 +128,6 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         if check_only:
             return self._check_write_init(plan)
         return self._write_init(plan)
-
-    def _check_remove_init(
-        self,
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.Infra.LazyInitWriteResult:
-        """Record generated init removals without mutating check-only runs."""
-        init_path = plan.context.init_path
-        if init_path.is_file():
-            self._modified_files.add(str(init_path))
-        return (0, dict(plan.lazy_map))
-
-    def _remove_init(
-        self,
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.Infra.LazyInitWriteResult:
-        """Remove init."""
-        init_path = plan.context.init_path
-        if not init_path.is_file():
-            return (0, dict(plan.lazy_map))
-        try:
-            init_path.unlink()
-        except OSError as exc:
-            u.Cli.error(f"removing generated init {init_path}: {exc}")
-            return (-1, dict(plan.lazy_map))
-        self._modified_files.add(str(init_path))
-        rel_path = (
-            init_path.relative_to(self.workspace_root)
-            if self.workspace_root in init_path.parents
-            else init_path
-        )
-        u.Cli.info(f"  CLEAN: {rel_path} — removed generated init")
-        return (0, dict(plan.lazy_map))
-
-    def _write_init(
-        self,
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.Infra.LazyInitWriteResult:
-        """Write init."""
-        init_path = plan.context.init_path
-        try:
-            generated = self._render_init(plan)
-            previous = self._read_previous_init(plan)
-            registry_exit = self._write_generated_registry(plan, generated)
-            write_exit = self._write_changed_init(plan, generated, previous)
-        except c.EXC_OS_VALUE as exc:
-            u.Cli.error(f"generating {init_path}: {exc}")
-            return (-1, dict(plan.lazy_map))
-        if registry_exit < 0 or write_exit < 0:
-            return (-1, dict(plan.lazy_map))
-        rel_path = (
-            init_path.relative_to(self.workspace_root)
-            if self.workspace_root in init_path.parents
-            else init_path
-        )
-        u.Cli.info(f"  OK: {rel_path} — {len(plan.exports)} exports")
-        return (0, dict(plan.lazy_map))
-
-    def _check_write_init(
-        self,
-        plan: m.Infra.LazyInitPlan,
-    ) -> t.Infra.LazyInitWriteResult:
-        """Record generated file drift without mutating check-only runs."""
-        init_path = plan.context.init_path
-        try:
-            generated = self._render_init(plan)
-            previous = self._read_previous_init(plan)
-            registry_exit = self._write_generated_registry(
-                plan,
-                generated,
-                check_only=True,
-            )
-        except c.EXC_OS_VALUE as exc:
-            u.Cli.error(f"checking generated init {init_path}: {exc}")
-            return (-1, dict(plan.lazy_map))
-        if registry_exit < 0:
-            return (-1, dict(plan.lazy_map))
-        if previous != generated:
-            self._modified_files.add(str(init_path))
-        rel_path = (
-            init_path.relative_to(self.workspace_root)
-            if self.workspace_root in init_path.parents
-            else init_path
-        )
-        u.Cli.info(f"  CHECK: {rel_path} — {len(plan.exports)} exports")
-        return (0, dict(plan.lazy_map))
-
-    @staticmethod
-    def _render_init(plan: m.Infra.LazyInitPlan) -> str:
-        """Render generated __init__.py content for a lazy-init plan."""
-        return FlextInfraCodegenGeneration.generate_file(
-            plan.exports,
-            plan.lazy_map,
-            plan.inline_constants,
-            plan.context.current_pkg,
-            eager_imports=plan.eager_dunders,
-            type_checking_imports=plan.type_checking_map,
-            wildcard_runtime_modules=plan.wildcard_runtime_modules,
-            child_packages_for_lazy=plan.child_packages_for_lazy,
-            excluded_lazy_names=plan.excluded_lazy_names,
-            registry_wrapper=plan.registry_wrapper,
-        )
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitGenerationMixin"]

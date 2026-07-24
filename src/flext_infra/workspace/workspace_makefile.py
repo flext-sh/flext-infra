@@ -19,16 +19,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, t, u
 from flext_infra.workspace._workspace_makefile_template import (
     FlextInfraWorkspaceMakefileTemplateMixin,
 )
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMixin):
@@ -39,11 +42,13 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
     to change workspace-level verbs; then run ``make sync`` to propagate.
     """
 
-    def generate(self, workspace_root: Path) -> p.Result[bool]:
+    def generate(self, workspace_root: Path, *, apply: bool = True) -> p.Result[bool]:
         """Regenerate the workspace root Makefile from the stored template.
 
         Args:
             workspace_root: Path to the workspace root (contains Makefile).
+            apply: If True, write the Makefile; otherwise only report whether
+                it would change.
 
         Returns:
             r with True if Makefile was written, False if unchanged,
@@ -51,12 +56,28 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
 
         """
         makefile = workspace_root / c.Infra.MAKEFILE_FILENAME
+        workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root.resolve()
+        )
+        if workspace_result.failure:
+            return r[bool].fail(
+                workspace_result.error or "workspace manifest validation failed"
+            )
+        editable_distributions = tuple(
+            repository.distribution
+            for repository in workspace_result.value.members
+            if repository.package and repository.editable
+        )
 
         if not self.template_path.exists():
-            return self._bootstrap_template(makefile)
+            return self._bootstrap_template(
+                makefile, apply=apply, editable_distributions=editable_distributions
+            )
 
         pr_branch = self._current_branch(workspace_root)
-        render_result = self._render_template(pr_branch=pr_branch)
+        render_result = self._render_template(
+            pr_branch=pr_branch, editable_distributions=editable_distributions
+        )
         if render_result.failure:
             return r[bool].fail(render_result.error or "template render failed")
         content = render_result.value
@@ -68,9 +89,13 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
             if u.Cli.sha256_content(read.value) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
 
+        if not apply:
+            return r[bool].ok(True)
         return u.Cli.atomic_write_text_file(makefile, content)
 
-    def _bootstrap_template(self, makefile: Path) -> p.Result[bool]:
+    def _bootstrap_template(
+        self, makefile: Path, *, apply: bool, editable_distributions: t.StrSequence
+    ) -> p.Result[bool]:
         """Create the template from the current Makefile (one-time bootstrap)."""
         result: p.Result[bool]
         if not makefile.exists():
@@ -88,10 +113,14 @@ class FlextInfraWorkspaceMakefileGenerator(FlextInfraWorkspaceMakefileTemplateMi
                     template_content = self._build_template_lines(content)
 
                     try:
+                        if not apply:
+                            result = r[bool].ok(True)
+                            return result
                         result = self._write_bootstrap_template(
                             makefile=makefile,
                             pr_branch=pr_branch,
                             template_content=template_content,
+                            editable_distributions=editable_distributions,
                         )
                     except OSError as exc:
                         result = r[bool].fail_op("template bootstrap", exc)

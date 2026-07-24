@@ -1,0 +1,1398 @@
+Infra:
+  codegen:
+    # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
+    version: 1
+
+    toolchain:
+      # Single-source language-runtime versions (exact patch pins chosen by the
+      # package-version updater). Derived as computed fields on ToolchainSpec:
+      #   python_minor_version    -> major.minor of python_version (3.13)
+      #   python_required_version -> >={python_version},<{major}.{minor+1}
+      #   uv_required_version     -> =={uv_version}
+      # A version bump touches ONLY python_version / uv_version. Linter pins
+      # live in the pyproject dependency groups (dependency_profiles).
+      python_version: "3.13.11"
+      uv_version: "0.11.29"
+      uv_link_mode: copy
+      # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
+      # .mise.toml and the ci-matrix workflow kind leg.
+      kubectl_version: "1.32.0"
+      helm_version: "3.19.4"
+      kind_version: "0.31.0"
+
+    providers:
+      - name: flext-sh
+        organization: flext-sh
+        base_url: https://github.com/flext-sh
+        branch: 0.12.0-dev
+      - name: datacosmos-br
+        organization: datacosmos-br
+        base_url: https://github.com/datacosmos-br
+        branch: main
+
+    profiles:
+      - name: workspace-root
+        environment_scope: root
+        setup_scope: root-and-members
+        execution_scope: root
+        discovery_scope: manifest
+      - name: workspace-member
+        environment_scope: root-when-attached
+        setup_scope: delegate-root-when-attached
+        execution_scope: root-when-attached
+        discovery_scope: none
+      - name: standalone
+        environment_scope: self
+        setup_scope: self
+        execution_scope: self
+        discovery_scope: none
+
+    make:
+      selector: WHAT
+      apply_variable: APPLY
+      apply_value: Y
+      verbs:
+        - name: help
+          default_what: usage
+          apply_guarded: false
+        - name: setup
+          default_what: environment
+          apply_guarded: false
+        - name: deps
+          default_what: check
+          apply_guarded: false
+        - name: build
+          default_what: artifacts
+          apply_guarded: false
+        - name: check
+          default_what: all
+          apply_guarded: false
+        - name: test
+          default_what: all
+          apply_guarded: false
+        - name: format
+          default_what: check
+          apply_guarded: true
+        - name: run
+          default_what: default
+          apply_guarded: false
+        - name: status
+          default_what: diagnostics
+          apply_guarded: false
+        - name: docs
+          default_what: check
+          apply_guarded: false
+        - name: clean
+          default_what: generated
+          apply_guarded: false
+        - name: release
+          default_what: status
+          apply_guarded: false
+        - name: codegen
+          default_what: check
+          apply_guarded: true
+      custom_handler_policy:
+        filename: custom.mk
+        target_pattern: "^(_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)(-[a-z0-9][a-z0-9-]*)?)$"
+        allow_public_targets: false
+        allow_generated_target_redefinition: false
+        allow_toolchain_declarations: false
+        allow_setup_declarations: false
+        allow_help_declarations: false
+
+    # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
+    # resources. VS Code files.exclude/search.exclude (vscode_exclude),
+    # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
+    # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
+    # computed fields. Add a tool cache/build dir here only — never in the
+    # consuming projections. Ordering reproduces the historical derived maps.
+    artifacts:
+      - { name: __pycache__, source_scan_ignore: true }
+      - { name: __pyrefly_virtual__ }
+      - { name: .agents }
+      - { name: .beads }
+      - { name: .benchmarks }
+      - { name: .cache, source_scan_ignore: true }
+      # mro-j47u: agent worktrees are duplicate repositories, never production input.
+      - { name: .claude, source_scan_ignore: true }
+      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
+      # watch/source-scan projections (order-sensitive, after .claude).
+      - { name: .direnv, source_scan_ignore: true }
+      - { name: .code-review-graph }
+      - { name: .codegraph }
+      - { name: .dolt }
+      - { name: .dolt_dropped_databases }
+      - { name: .doltcfg }
+      - { name: .hypothesis }
+      - { name: .git, gitignore: false, source_scan_ignore: true }
+      - { name: .mypy_cache, source_scan_ignore: true }
+      - { name: .omo }
+      - { name: .pylance_cache, vscode_exclude: false }
+      - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .reports, source_scan_ignore: true }
+      - { name: .ropeproject }
+      - { name: .ruff_cache, source_scan_ignore: true }
+      - { name: .scope }
+      - { name: .serena }
+      - { name: .sisyphus }
+      - { name: .state }
+      - { name: .superpowers }
+      - { name: .trash }
+      - { name: .turbo }
+      - { name: .venv, source_scan_ignore: true }
+      - { name: .venv.* }
+      - { name: "*.egg-info", vscode_exclude: false }
+      - { name: build, source_scan_ignore: true }
+      - { name: dist, source_scan_ignore: true }
+      - { name: node_modules, source_scan_ignore: true }
+      - { name: site, watch_exclude: false }
+      - { name: target }
+      - {
+          name: .pyrefly_cache,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: .tox,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: conftest.py,
+          is_dir: false,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: dist-packages,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: legado,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: site-packages,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: vendor,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      - {
+          name: venv,
+          gitignore: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+          source_scan_ignore: true,
+        }
+      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
+      - { name: .flext-deps, vscode_exclude: false, watch_exclude: false }
+      - {
+          name: .flext-sync.lock,
+          is_dir: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+      - {
+          name: .sync.lock,
+          is_dir: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+      - { name: .planning, vscode_exclude: false, watch_exclude: false }
+      - {
+          name: skill-create-output,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+      - {
+          name: .debug-journal.md,
+          is_dir: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+      - {
+          name: .mcp.json,
+          is_dir: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+      - {
+          name: CLAUDE.local.md,
+          is_dir: false,
+          vscode_exclude: false,
+          watch_exclude: false,
+        }
+
+    vscode:
+      # Canonical .vscode/settings.json content injected with merge semantics:
+      # scalar/list keys are enforced, map keys are union-merged (project entries
+      # are preserved). Recursive "**" venv search globs are forbidden: they make
+      # the Python Environments locator (pet) walk entire repository trees and
+      # hang interpreter discovery on large monorepos.
+      scalar_settings:
+        files.autoSave: afterDelay
+        python.analysis.diagnosticMode: workspace
+        python.analysis.typeCheckingMode: strict
+        python.defaultInterpreterPath: ${workspaceFolder}/.venv/bin/python
+        python.terminal.activateEnvInCurrentTerminal: true
+        python.terminal.activateEnvironment: true
+        ruff.configurationPreference: filesystemFirst
+        ruff.format.preview: true
+        ruff.importStrategy: fromEnvironment
+        ruff.lint.preview: true
+        ruff.nativeServer: on
+        shellcheck.useWorkspaceRootAsCwd: true
+      list_settings:
+        python-envs.workspaceSearchPaths:
+          - ./.venv
+          - ./*/.venv
+          - ./apps/*/.venv
+      map_union_settings:
+        python.analysis.diagnosticSeverityOverrides:
+          reportUntypedBaseClass: none
+        terminal.integrated.env.linux:
+          PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
+          VIRTUAL_ENV: ${workspaceFolder}/.venv
+
+    managed_files:
+      - path: .env.example
+        owner: codegen
+        policy: create-only
+      - path: .envrc
+        owner: environment
+        policy: create-only
+      - path: .gitignore
+        owner: codegen
+        policy: merge
+      - path: .gitmodules
+        owner: codegen
+        policy: full
+      - path: .mise.toml
+        owner: environment
+        policy: merge
+      - path: .pre-commit-config.yaml
+        owner: pre-commit
+        policy: full
+      - path: .python-version
+        owner: codegen
+        policy: full
+      - path: .vscode/settings.json
+        owner: vscode
+        policy: merge
+      - path: LICENSE
+        owner: codegen
+        policy: create-only
+      - path: Makefile
+        owner: make
+        policy: full
+      - path: README.md
+        owner: codegen
+        policy: create-only
+      - path: base.mk
+        owner: make
+        policy: delegated
+      - path: config/workspace.yaml
+        owner: workspace
+        policy: manual
+      - path: custom.mk
+        owner: custom
+        policy: manual
+      - path: pyproject.toml
+        owner: codegen
+        policy: merge
+      - path: workspace_custom.mk
+        owner: custom
+        policy: manual
+
+    scaffold:
+      build:
+        backend: hatchling.build
+        requirements: [hatchling]
+      project:
+        readme: README.md
+        supported_licenses: [MIT, Proprietary]
+        classifiers:
+          - "Development Status :: 4 - Beta"
+          - "Intended Audience :: Developers"
+          - "Operating System :: OS Independent"
+          - "Programming Language :: Python :: 3 :: Only"
+          - "Programming Language :: Python :: 3.13"
+          - "Topic :: Software Development :: Libraries :: Python Modules"
+          - "Typing :: Typed"
+        keywords: [clean-architecture, flext, integration, typed]
+        dependency_profiles:
+          # NOTE (multi-agent, cosmos-main-iz7g.1): the workspace manifest
+          # declares flext_core as its upstream; conformance must model it.
+          - upstream: flext_core
+            runtime:
+              - flext-core
+              - pydantic>=2.13.3
+              - pydantic-settings>=2.14.0
+            codegen: [flext-infra]
+            dev:
+              - flext-tests
+              - mypy>=2.3.0
+              - pyrefly>=1.1.1,<1.2
+              - pyright>=1.1.411,<1.2
+              - pytest>=9.0.3,<10
+              - ruff>=0.15.12,<0.16
+              - vulture>=2.16,<3
+              - yamlfix>=1.19.1,<2
+          - upstream: flext_cli
+            runtime:
+              - flext-cli
+              - flext-core
+              - pydantic>=2.13.3
+              - pydantic-settings>=2.14.0
+            codegen: [flext-infra]
+            dev:
+              - flext-tests
+              # mro-45r9/mro-wkii.17.30: floor lets uv select latest mypy (2.3.0 verified 0 new errors on flext-core+flext-infra); no upper cap so DBT workspaces stay resolvable.
+              - mypy>=2.3.0
+              - pyrefly>=1.1.1,<1.2
+              - pyright>=1.1.411,<1.2
+              - pytest>=9.0.3,<10
+              - ruff>=0.15.12,<0.16
+              - vulture>=2.16,<3
+              - yamlfix>=1.19.1,<2
+      ping_example:
+        command_name: ping
+        help_text: Return the configured health response.
+        success_message: pong
+        enabled_default: true
+        reply: pong
+        disabled_reply: disabled
+      # mro-jnm1.2: the first section is merged AFTER the artifact-SSOT derived
+      # patterns by the CodegenConfigSpec.gitignore_sections projection
+      # (deduplicated, SSOT wins); declare here only what the SSOT cannot
+      # express (file globs, secrets, editor/OS noise). Per-project exception
+      # fields are added by mro-jnm1.3.
+      gitignore_sections:
+        - name: Python and build artifacts
+          patterns:
+            - "*.py[cod]"
+            - "*$py.class"
+            - .eggs/
+            - .coverage
+            - htmlcov/
+        - name: FLEXT
+          patterns: ["*.tpl.rej"]
+        - name: Environment and secrets
+          patterns:
+            [
+              .env,
+              .env.*,
+              "*.key",
+              "*.pem",
+              "*.p12",
+              "*.pfx",
+              credentials.json,
+              secrets.yaml,
+              secrets.yml,
+            ]
+        - name: Editors and OS
+          patterns:
+            [.idea/, "*.swp", "*.swo", "*~", .DS_Store, Thumbs.db, Desktop.ini]
+
+    templates:
+      root: project
+      entries:
+        - source: base/README.md.j2
+          destination: README.md
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/LICENSE.j2
+          destination: LICENSE
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/gitignore.j2
+          destination: .gitignore
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/python-version.j2
+          destination: .python-version
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/env.example.j2
+          destination: .env.example
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.mise.toml.j2
+          destination: .mise.toml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # Multi-environment CI base: reusable ci-matrix workflow + per-distro
+        # clean-machine images validating bootstrap and make verbs everywhere.
+        - source: base/.github/workflows/ci-matrix.yml.j2
+          destination: .github/workflows/ci-matrix.yml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/ubuntu.Dockerfile.j2
+          destination: ci/docker/ubuntu.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/debian.Dockerfile.j2
+          destination: ci/docker/debian.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/fedora.Dockerfile.j2
+          destination: ci/docker/fedora.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/alpine.Dockerfile.j2
+          destination: ci/docker/alpine.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/ci/docker/arch.Dockerfile.j2
+          destination: ci/docker/arch.Dockerfile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
+        # environment activation is owned by mise + the generated Makefile.
+        - source: base/gitmodules.j2
+          destination: .gitmodules
+          profiles: [workspace-root]
+          delegate: render
+          overwrite: true
+        - source: base/Makefile.j2
+          destination: Makefile
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/custom.mk.j2
+          destination: custom.mk
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/pyproject.toml.j2
+          destination: pyproject.toml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/config/workspace.yaml.j2
+          destination: config/workspace.yaml
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: manifest
+          overwrite: false
+        - source: base/src/__init__.py.j2
+          destination: "src/{package_name}/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/api.py.j2
+          destination: "src/{package_name}/api.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/cli.py.j2
+          destination: "src/{package_name}/cli.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/__main__.py.j2
+          destination: "src/{package_name}/__main__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/base.py.j2
+          destination: "src/{package_name}/base.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/models.py.j2
+          destination: "src/{package_name}/models.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/typings.py.j2
+          destination: "src/{package_name}/typings.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/protocols.py.j2
+          destination: "src/{package_name}/protocols.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/constants.py.j2
+          destination: "src/{package_name}/constants.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/utilities.py.j2
+          destination: "src/{package_name}/utilities.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_config.py.j2
+          destination: "src/{package_name}/_config.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_settings.py.j2
+          destination: "src/{package_name}/_settings.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/py.typed.j2
+          destination: "src/{package_name}/py.typed"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/services/__init__.py.j2
+          destination: "src/{package_name}/services/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
+        - source: base/src/services/ping.py.j2
+          destination: "src/{package_name}/services/ping.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
+        # by FlextConfig from the project-root config directory.
+        - source: base/src/config/ns.yaml.j2
+          destination: "config/{ns}.yaml"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
+        # the canonical public models/config/settings facets, never parallel parts.
+        - source: base/src/_models/__init__.py.j2
+          destination: "src/{package_name}/_models/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_models/ping.py.j2
+          destination: "src/{package_name}/_models/ping.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_models/config.py.j2
+          destination: "src/{package_name}/_models/config.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_models/settings.py.j2
+          destination: "src/{package_name}/_models/settings.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_constants/__init__.py.j2
+          destination: "src/{package_name}/_constants/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_constants/config.py.j2
+          destination: "src/{package_name}/_constants/config.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_constants/settings.py.j2
+          destination: "src/{package_name}/_constants/settings.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_protocols/__init__.py.j2
+          destination: "src/{package_name}/_protocols/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_protocols/config.py.j2
+          destination: "src/{package_name}/_protocols/config.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_protocols/ping.py.j2
+          destination: "src/{package_name}/_protocols/ping.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_protocols/settings.py.j2
+          destination: "src/{package_name}/_protocols/settings.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_typings/__init__.py.j2
+          destination: "src/{package_name}/_typings/__init__.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/src/_typings/base.py.j2
+          destination: "src/{package_name}/_typings/base.py"
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/tests/__init__.py.j2
+          destination: tests/__init__.py
+          profiles: [workspace-root, workspace-member, standalone]
+          delegate: render
+          overwrite: false
+
+    repositories:
+      - name: flext
+        distribution: flext
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext.git
+        branch: 0.12.0-dev
+        path: .
+        role: workspace-root
+        state: active
+        profile: workspace-root
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
+      - name: flext-api
+        distribution: flext-api
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-api.git
+        branch: 0.12.0-dev
+        path: flext-api
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-auth
+        distribution: flext-auth
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-auth.git
+        branch: 0.12.0-dev
+        path: flext-auth
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-cli
+        distribution: flext-cli
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-cli.git
+        branch: 0.12.0-dev
+        path: flext-cli
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-core
+        distribution: flext-core
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-core.git
+        branch: 0.12.0-dev
+        path: flext-core
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-db-oracle
+        distribution: flext-db-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-db-oracle.git
+        branch: 0.12.0-dev
+        path: flext-db-oracle
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-ldap
+        distribution: flext-dbt-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-ldap.git
+        branch: 0.12.0-dev
+        path: flext-dbt-ldap
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-ldif
+        distribution: flext-dbt-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-ldif.git
+        branch: 0.12.0-dev
+        path: flext-dbt-ldif
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-oracle
+        distribution: flext-dbt-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-oracle.git
+        branch: 0.12.0-dev
+        path: flext-dbt-oracle
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-dbt-oracle-wms
+        distribution: flext-dbt-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-dbt-oracle-wms.git
+        branch: 0.12.0-dev
+        path: flext-dbt-oracle-wms
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-grpc
+        distribution: flext-grpc
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-grpc.git
+        branch: 0.12.0-dev
+        path: flext-grpc
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-infra
+        distribution: flext-infra
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-infra.git
+        branch: 0.12.0-dev
+        path: flext-infra
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-ldap
+        distribution: flext-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-ldap.git
+        branch: 0.12.0-dev
+        path: flext-ldap
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-ldif
+        distribution: flext-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-ldif.git
+        branch: 0.12.0-dev
+        path: flext-ldif
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-meltano
+        distribution: flext-meltano
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-meltano.git
+        branch: 0.12.0-dev
+        path: flext-meltano
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-observability
+        distribution: flext-observability
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-observability.git
+        branch: 0.12.0-dev
+        path: flext-observability
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-oracle-oic
+        distribution: flext-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-oracle-oic.git
+        branch: 0.12.0-dev
+        path: flext-oracle-oic
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-oracle-wms
+        distribution: flext-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-oracle-wms.git
+        branch: 0.12.0-dev
+        path: flext-oracle-wms
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-plugin
+        distribution: flext-plugin
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-plugin.git
+        branch: 0.12.0-dev
+        path: flext-plugin
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-quality
+        distribution: flext-quality
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-quality.git
+        branch: 0.12.0-dev
+        path: flext-quality
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-ldap
+        distribution: flext-tap-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-ldap.git
+        branch: 0.12.0-dev
+        path: flext-tap-ldap
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-ldif
+        distribution: flext-tap-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-ldif.git
+        branch: 0.12.0-dev
+        path: flext-tap-ldif
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle
+        distribution: flext-tap-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle.git
+        branch: 0.12.0-dev
+        path: flext-tap-oracle
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle-oic
+        distribution: flext-tap-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle-oic.git
+        branch: 0.12.0-dev
+        path: flext-tap-oracle-oic
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tap-oracle-wms
+        distribution: flext-tap-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tap-oracle-wms.git
+        branch: 0.12.0-dev
+        path: flext-tap-oracle-wms
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-ldap
+        distribution: flext-target-ldap
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-ldap.git
+        branch: 0.12.0-dev
+        path: flext-target-ldap
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-ldif
+        distribution: flext-target-ldif
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-ldif.git
+        branch: 0.12.0-dev
+        path: flext-target-ldif
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle
+        distribution: flext-target-oracle
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle.git
+        branch: 0.12.0-dev
+        path: flext-target-oracle
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle-oic
+        distribution: flext-target-oracle-oic
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle-oic.git
+        branch: 0.12.0-dev
+        path: flext-target-oracle-oic
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-target-oracle-wms
+        distribution: flext-target-oracle-wms
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-target-oracle-wms.git
+        branch: 0.12.0-dev
+        path: flext-target-oracle-wms
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-tests
+        distribution: flext-tests
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-tests.git
+        branch: 0.12.0-dev
+        path: flext-tests
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: flext-web
+        distribution: flext-web
+        provider: flext-sh
+        url: https://github.com/flext-sh/flext-web.git
+        branch: 0.12.0-dev
+        path: flext-web
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: cosmos-main
+        distribution: cosmos-main
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-main.git
+        branch: main
+        path: .
+        role: workspace-root
+        state: active
+        profile: workspace-root
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
+        extra_verbs:
+          - { name: auth, default_what: all }
+          - { name: bead, default_what: all }
+          - { name: bootstrap, default_what: all }
+          - { name: charts, default_what: all }
+          - { name: converge, default_what: all }
+          - { name: done-check, default_what: all }
+          - { name: gitops, default_what: all }
+          - { name: incidente, default_what: all }
+          - { name: nodepool, default_what: all }
+          - { name: packages, default_what: all }
+          - { name: repair, default_what: all }
+          - { name: scaffold, default_what: all }
+          - { name: secret, default_what: all }
+          - { name: sync, default_what: all }
+        script_dispatch:
+          dispatcher: scripts/dispatch.py
+          roots:
+            - scripts
+            - apps/cosmos-charts/scripts
+            - apps/cosmos-gitops/scripts
+      - name: cosmos-charts
+        distribution: cosmos-charts
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-charts.git
+        branch: main
+        path: apps/cosmos-charts
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+        extra_verbs:
+          - { name: charts, default_what: all }
+          - { name: chart-release, default_what: all }
+          - { name: bead, default_what: all }
+        script_dispatch:
+          dispatcher: scripts/dispatch.py
+          roots:
+            - scripts
+      - name: cosmos-gitops
+        distribution: cosmos-gitops
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-gitops.git
+        branch: main
+        path: apps/cosmos-gitops
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+        extra_verbs:
+          - { name: gitops, default_what: all }
+          - { name: bead, default_what: all }
+        script_dispatch:
+          dispatcher: scripts/dispatch.py
+          roots:
+            - scripts
+      - name: cosmos-old
+        distribution: cosmos-old
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-old.git
+        branch: main
+        path: apps/cosmos-old
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-inventory
+        distribution: cosmos-inventory
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos.git
+        branch: develop
+        path: cosmos/inventory
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-automation
+        distribution: cosmos-automation
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-automation-artifacts.git
+        branch: main
+        path: cosmos/automation
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-frontend
+        distribution: cosmos-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-frontend.git
+        branch: main
+        path: cosmos/frontend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-observability
+        distribution: cosmos-observability
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-observability.git
+        branch: main
+        path: cosmos/observability
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-templates
+        distribution: cosmos-templates
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-templates.git
+        branch: main
+        path: cosmos/templates
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-zabbix
+        distribution: cosmos-zabbix
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-zabbix.git
+        branch: dev
+        path: cosmos/zabbix
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-monitoring
+        distribution: cosmos-monitoring
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-monitoring.git
+        branch: main
+        path: cosmos/monitoring
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-hook
+        distribution: cosmos-hook
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-hook.git
+        branch: dev
+        path: cosmos/hook
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-backend
+        distribution: cosmosec-backend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-backend.git
+        branch: dev
+        path: cosmos/sec-backend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-frontend
+        distribution: cosmosec-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-frontend.git
+        branch: main
+        path: cosmos/sec-frontend
+        role: content-only
+        state: content-only
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: ai-hub
+        distribution: ai-hub
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/ai-hub.git
+        branch: main
+        path: .
+        role: standalone
+        state: active
+        profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
+      - name: algar-oud-mig
+        distribution: algar-oud-mig
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/algar-oud-mig.git
+        branch: 0.12.0-dev
+        path: .
+        role: standalone
+        state: active
+        profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
+      - name: gruponos-meltano-native
+        distribution: gruponos-meltano-native
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/gruponos-meltano-native.git
+        branch: 0.12.0-dev
+        path: .
+        role: standalone
+        state: active
+        profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
+      - name: cosmos-docgen
+        distribution: cosmos-docgen
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-docgen.git
+        branch: main
+        path: .
+        role: standalone
+        state: active
+        profile: standalone
+        checkout: independent
+        codegen: conform
+        package: true
+        editable: false
+        read_only: false
+
+    workspaces:
+      - name: flext
+        repository: flext
+        manifest: config/workspace.yaml
+      - name: cosmos-main
+        repository: cosmos-main
+        manifest: config/workspace.yaml

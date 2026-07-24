@@ -6,16 +6,13 @@ import difflib
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
+from flext_infra import c, t
 from flext_infra._utilities.protected_edit_linting import (
     FlextInfraUtilitiesProtectedEditLinting,
 )
-from flext_infra.constants import c
-from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesProtectedEditPreview(
-    FlextInfraUtilitiesProtectedEditLinting,
-):
+class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):
     """Preview and revert-report helpers for protected edit workflows."""
 
     @staticmethod
@@ -24,8 +21,7 @@ class FlextInfraUtilitiesProtectedEditPreview(
         workspace: Path,
         gates: t.StrSequence | None = None,
     ) -> tuple[
-        MutableMapping[Path, str | None],
-        MutableMapping[Path, t.Infra.LintSnapshot],
+        MutableMapping[Path, str | None], MutableMapping[Path, t.Infra.LintSnapshot]
     ]:
         """Preview write baselines."""
         before_sources: MutableMapping[Path, str | None] = {}
@@ -33,18 +29,14 @@ class FlextInfraUtilitiesProtectedEditPreview(
         existing_paths: list[Path] = []
         for path in updates:
             if path.exists():
-                before_sources[path] = path.read_text(
-                    encoding=c.Cli.ENCODING_DEFAULT,
-                )
+                before_sources[path] = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
                 existing_paths.append(path)
                 continue
             before_sources[path] = None
         if existing_paths:
             before_lints.update(
                 FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
-                    tuple(existing_paths),
-                    workspace,
-                    gates=gates,
+                    tuple(existing_paths), workspace, gates=gates
                 )
             )
         for path in updates:
@@ -52,27 +44,20 @@ class FlextInfraUtilitiesProtectedEditPreview(
                 continue
             before_lints[path] = (
                 FlextInfraUtilitiesProtectedEditPreview._new_file_lint_baseline(
-                    path,
-                    workspace,
-                    gates=gates,
+                    path, workspace, gates=gates
                 )
             )
         return before_sources, before_lints
 
     @staticmethod
-    def _restore_preview_sources(
-        before_sources: t.MappingKV[Path, str | None],
-    ) -> None:
+    def _restore_preview_sources(before_sources: t.MappingKV[Path, str | None]) -> None:
         """Restore preview sources."""
         for path, original_source in before_sources.items():
             if original_source is None:
                 if path.exists():
                     path.unlink()
                 continue
-            path.write_text(
-                original_source,
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
 
     @staticmethod
     def _reverted_report_lines(
@@ -84,9 +69,7 @@ class FlextInfraUtilitiesProtectedEditPreview(
     ) -> list[str]:
         """Reverted report lines."""
         rel = FlextInfraUtilitiesProtectedEditPreview._relative_path(path, workspace)
-        modified = path.read_text(
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
+        modified = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         diff = list(
             difflib.unified_diff(
                 before_source.splitlines(keepends=True),
@@ -119,24 +102,18 @@ class FlextInfraUtilitiesProtectedEditPreview(
         reports: list[str] = []
         failed = False
         after_lints = FlextInfraUtilitiesProtectedEditPreview.lint_snapshots(
-            tuple(updates),
-            workspace,
-            gates=gates,
+            tuple(updates), workspace, gates=gates
         )
         for path in updates:
             new_errors = FlextInfraUtilitiesProtectedEditPreview.lint_new_errors(
-                before_lints[path],
-                after_lints[path],
+                before_lints[path], after_lints[path]
             )
             if not new_errors:
                 continue
             failed = True
             reports.extend(
                 FlextInfraUtilitiesProtectedEditPreview._reverted_report_lines(
-                    path,
-                    workspace,
-                    before_sources[path] or "",
-                    new_errors,
+                    path, workspace, before_sources[path] or "", new_errors
                 )
             )
         return (not failed, reports)
@@ -159,31 +136,22 @@ class FlextInfraUtilitiesProtectedEditPreview(
         }
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditPreview._preview_write_baselines(
-                normalized_updates,
-                workspace,
-                gates=gates,
+                normalized_updates, workspace, gates=gates
             )
         )
 
         try:
             for path, updated_source in normalized_updates.items():
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(
-                    updated_source,
-                    encoding=c.Cli.ENCODING_DEFAULT,
-                )
+                path.write_text(updated_source, encoding=c.Cli.ENCODING_DEFAULT)
             if post_write is not None:
                 post_write()
             return FlextInfraUtilitiesProtectedEditPreview._preview_write_reports(
-                normalized_updates,
-                before_sources,
-                before_lints,
-                workspace,
-                gates=gates,
+                normalized_updates, before_sources, before_lints, workspace, gates=gates
             )
         finally:
             FlextInfraUtilitiesProtectedEditPreview._restore_preview_sources(
-                before_sources,
+                before_sources
             )
 
 

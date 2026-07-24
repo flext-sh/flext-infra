@@ -1,0 +1,634 @@
+Infra:
+  tooling:
+    # mro-j47u (codex): canonical validated tooling and suppression-policy SSOT.
+    tools:
+      codespell:
+        check-filenames: true
+        ignore-words-list: crate,nd
+      # mro-j47u (codex): non-linter tool sections are config-owned as well.
+      deptry:
+        known-first-party: [flext_core]
+        pep621-dev-dependency-groups: [dev]
+      hatch:
+        allow-direct-references: true
+        packaged-data-dirs: [config, templates]
+      ruff:
+        # P0 law: lint covers every tracked Python surface. No excludes over
+        # legado, examples, tests, or scripts code anywhere in this config.
+        exclude:
+          - .git
+          - .mypy_cache
+          - .pytest_cache
+          - .ruff_cache
+          - .venv
+          - __pycache__
+          - "**/__pyrefly_virtual__/**"
+          - archive
+          - backup
+          - build
+          - dist
+          - htmlcov
+          - temp-backup
+          - typings
+          - vendor
+          - venv
+        # tests, examples, and scripts are dev/tooling source roots (see `src`
+        # below), not installed packages: they hold namespace/command modules
+        # loaded by path (e.g. the scripts/<verb>/<what> dispatch pattern), so
+        # ruff must not demand an __init__.py (INP001) there.
+        namespace-packages: [tests, examples, scripts]
+        fix: false
+        line-length: 88
+        preview: true
+        respect-gitignore: true
+        show-fixes: true
+        src: [src, tests, examples, scripts]
+        target-version: py313
+        format:
+          docstring-code-format: true
+          indent-style: space
+          line-ending: lf
+          quote-style: double
+          skip-magic-trailing-comma: true
+        lint:
+          select:
+            - ALL
+          # mro-j47u (codex): banned API messages are policy data, never template literals.
+          banned-api:
+            argparse: "Use cli.register_result_command + Pydantic model from flext_cli."
+            click:
+              "Use flext_cli.cli application, registration, execution, and invocation\
+              \ methods."
+            rich: "Use cli.print / cli.display_message / cli.render_panel / cli.render_table."
+            typer: "Use cli.create_app_with_common_params / cli.register_command from flext_cli."
+          ignore:
+            - get-attr-with-constant
+            - set-attr-with-constant
+            - assert-raises-exception
+            - blind-except
+            - complex-structure
+            - missing-trailing-comma
+            - missing-copyright-notice
+            - incorrect-blank-line-before-class
+            - multi-line-summary-second-line
+            - non-imperative-mood
+            - undocumented-param
+            - missing-return-type-private-function
+            - docstring-missing-returns
+            - docstring-extraneous-returns
+            - docstring-missing-yields
+            - docstring-missing-exception
+            - docstring-extraneous-exception
+            - line-too-long
+            - commented-out-code
+            - boolean-positional-value-in-call
+            - logging-f-string
+            - invalid-first-argument-name-for-method
+            - camelcase-imported-as-lowercase
+            - mixed-case-variable-in-global-scope
+            - unnecessary-placeholder
+            - too-many-public-methods
+            - too-many-return-statements
+            - too-many-branches
+            - too-many-arguments
+            - too-many-locals
+            - too-many-statements
+            - too-many-positional-arguments
+            - too-many-nested-blocks
+            - no-self-use
+            - redefined-loop-name
+            - unnecessary-lambda
+            - bad-dunder-method-name
+            - snake-case-type-alias
+            - bad-quotes-inline-string
+            - hardcoded-sql-expression
+            - ambiguous-unicode-character-string
+            - ambiguous-unicode-character-docstring
+            - ambiguous-unicode-character-comment
+            - collection-literal-concatenation
+            - typing-only-first-party-import
+            - typing-only-third-party-import
+            - typing-only-standard-library-import
+            - raise-vanilla-args
+            - try-consider-else
+            - raise-within-try
+            - non-pep695-type-alias
+            - blank-line-with-whitespace
+          ignored-rule-rationales:
+            unsorted-imports:
+              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
+              semantic c-t-p-m-u dependency order in FLEXT facades.
+            import-outside-top-level:
+              Public facade models are imported lazily only at validation and
+              construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
+          isort:
+            combine-as-imports: true
+            force-single-line: false
+            split-on-trailing-comma: false
+          per-file-ignores:
+            "**/.vulture_whitelist.py": [ALL]
+            "**/*_pb2*.py": [ALL]
+            # Test suites: pytest idioms that are correct-by-design in test code
+            # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
+            # justified per UNIVERSAL_CORE r19 — never a blanket mask):
+            #  - assert: bare asserts are the pytest assertion mechanism.
+            #  - undocumented-public-method/-function/-class: test methods,
+            #    helper functions, and TestsXxx container classes are structural,
+            #    not public API, so docstrings add no value.
+            #  - magic-value-comparison (PLR2004): tests assert against literal
+            #    expected values (assert x == 3); extracting every literal to a
+            #    named constant harms readability and is not real code debt.
+            #  - compare-to-empty-string (PLC1901): `assert x == ""` asserts an
+            #    exact empty-string result and is clearer than `assert not x`.
+            # NOT exempted (real defects, fixed in test code): import-private-name
+            # (PLC2701) and private-member-access (SLF001) — tests must exercise the
+            # PUBLIC facade only (flext test public-only law).
+            "**/tests/**":
+              - assert
+              - undocumented-public-method
+              - undocumented-public-function
+              - undocumented-public-class
+              - magic-value-comparison
+              - compare-to-empty-string
+            # __init__.py facade roots are AUTO-GENERATED by codegen (lazy-init
+            # exports); their shape is owned by the generator, not hand-written.
+            "**/__init__.py":
+              - builtin-import-shadowing
+              - any-type
+              - undocumented-public-init
+              - unused-import
+              - undefined-local-with-import-star
+              - undefined-local-with-import-star-usage
+              - undefined-export
+              - implicit-namespace-package
+              - invalid-module-name
+              - import-private-name
+              - non-empty-init-module
+              - runtime-import-in-type-checking-block
+
+      mypy:
+        plugins: [pydantic.mypy, returns.contrib.mypy.returns_plugin]
+        # mro-j47u: every retained global exclusion carries its tested rationale;
+        # generated pyprojects receive this evidence as managed comments.
+        disabled-error-codes:
+          assignment: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
+          attr-defined: PEP 562 facade members inherited through MRO are invisible to Mypy.
+          call-arg: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
+          misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
+          name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.
+          prop-decorator: Mypy loses Pydantic computed-field descriptors across composed MRO.
+          valid-type: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
+        boolean-settings:
+          # Discovery + namespace (retained)
+          ignore_missing_imports: true
+          namespace_packages: true
+          explicit_package_bases: true
+          # Safe strict flags aligned with pyrefly (already 0/31 workspace-wide).
+          # Noisier flags (disallow_untyped_defs, disallow_any_unimported,
+          # ignore_missing_imports=false) are deferred to a follow-up cycle to
+          # avoid surfacing ~20 unrelated stub issues in the same PR.
+          check_untyped_defs: true
+          extra_checks: true
+          local_partial_types: true
+          no_implicit_reexport: true
+          # strict_concatenate is deprecated in mypy 1.20+; extra_checks covers it
+          strict_equality: true
+          warn_redundant_casts: true
+          warn_return_any: true
+          warn_unreachable: true
+          warn_unused_ignores: true
+        string-settings:
+          follow_imports: normal
+        overrides:
+          # CLI registration modules: flext-cli ResultCommandRoute is an
+          # intentionally type-erased contract for heterogeneous batch
+          # registration; Mypy arg-type rejects precise handler signatures
+          # (Callable[[InputModel], r[OutputModel]]) at registration although
+          # the dispatcher validates input models at runtime. Documented
+          # checker disagreement at the facade-CLI boundary (cosmos-docgen
+          # AGENTS.md). Scoped to CLI registration modules only.
+          - modules: ["*.cli"]
+            disable-error-codes: [arg-type]
+            justification: >-
+              Type-erased ResultCommandRoute batch registration (flext-cli)
+              rejects precise handler signatures under Mypy arg-type; the
+              dispatcher enforces input models at runtime. Documented
+              facade-CLI boundary disagreement, scoped to CLI modules.
+          # Fail-loud exhaustive enum dispatch (ADR-001): Mypy over-narrows
+          # the enum through the branch chain and flags the live defensive
+          # guard as unreachable; the guard is the required runtime contract
+          # for future ChartPrimitive members.
+          - modules:
+              ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
+            disable-error-codes: [unreachable]
+            justification: >-
+              Mypy over-narrows exhaustive ChartPrimitive dispatch and
+              rejects the live fail-loud guard (ADR-001) as unreachable;
+              the guard is the required runtime contract for future enum
+              members (cosmos-docgen HEAD pyproject documented rationale).
+      pydantic-mypy:
+        init_forbid_extra: true
+        init_typed: true
+        warn_required_dynamic_aliases: true
+        warn-untyped-fields: true
+      pyright:
+        strict-settings:
+          pythonPlatform: Linux
+          pythonVersion: "3.13"
+          typeCheckingMode: strict
+        extended-settings:
+          reportArgumentType: none
+          reportAttributeAccessIssue: none
+          reportCallIssue: none
+          reportConstantRedefinition: error
+          reportIncompatibleMethodOverride: error
+          reportIncompatibleVariableOverride: none
+          reportInconsistentConstructor: error
+          reportInvalidTypeForm: none
+          reportMissingImports: error
+          reportMissingModuleSource: error
+          reportMissingTypeStubs: none
+          reportPrivateUsage: warning
+          reportUnknownArgumentType: none
+          reportUnknownLambdaType: none
+          reportUnknownMemberType: none
+          reportUnknownParameterType: none
+          reportUnknownVariableType: none
+          reportUnnecessaryCast: error
+          reportUnnecessaryComparison: warning
+          reportUnnecessaryIsInstance: warning
+          reportUnreachable: none
+          reportUnsupportedDunderAll: none
+          reportUntypedBaseClass: none
+          reportUntypedFunctionDecorator: none
+          reportUnusedClass: error
+          reportUnusedFunction: error
+          reportUnusedImport: error
+          reportUnusedVariable: error
+        lazy-import-suppressions:
+          reportAssignmentType: none
+          reportAttributeAccessIssue: "none"
+          reportGeneralTypeIssues: none
+          reportInvalidTypeForm: none
+          reportPrivateImportUsage: "none"
+          reportUnknownArgumentType: "none"
+          reportUnknownLambdaType: "none"
+          reportUnknownMemberType: none
+          reportUnknownParameterType: "none"
+          reportUnknownVariableType: "none"
+          reportUnusedImport: "none"
+        global-suppression-rationales:
+          reportAssignmentType:
+            Pyright rejects the canonical class-alias rebind after
+            MRO facade composition although runtime and the other analyzers resolve it.
+          reportGeneralTypeIssues:
+            Pyright groups the same valid MRO facade alias rebind
+            under its broad general diagnostic in every execution environment.
+        source-env-suppressions:
+          reportReturnType: "none"
+        test-like-env-suppressions:
+          reportArgumentType: "none"
+          reportReturnType: "none"
+        path-rules:
+          # mro-wkii.17 (codex): source and tracked consumer surfaces are all
+          # first-class environments so no analyzer can hide their diagnostics.
+          source-dir: src
+          project-root: .
+          env-dirs: [src, tests, examples, scripts]
+          test-like-dirs: [tests, examples, scripts]
+          default-excludes:
+            - "**/node_modules"
+            - "**/__pycache__"
+            - "**/__pyrefly_virtual__/**"
+            - "**/.mypy_cache"
+            - "**/.ruff_cache"
+            - "**/.pytest_cache"
+            - "**/.*"
+            - .git
+            - .reports
+            - vendor
+            - .venv
+            - "**/.venv"
+            - "**/.venv/**"
+            - "**/venv"
+            - "**/venv/**"
+            - "**/site-packages"
+            - "**/site-packages/**"
+            - "**/dist-packages"
+            - "**/dist-packages/**"
+            - "**/tests/fixtures"
+            - "**/tests/fixtures/**"
+          root-typings-paths: []
+          project-typings-paths: []
+          ignored-diagnostic-globs: []
+          # mro-j47u (codex): Rope 1.14/latest has no public PEP 695 walker
+          # registration API. This existing-path-only environment is the tested
+          # vendor boundary; broad src code keeps reportPrivateUsage=error.
+          diagnostic-path-overrides:
+            - root: src/flext_infra/_utilities/rope_patch
+              reportPrivateUsage: none
+              rationale: >-
+                Rope 1.14 and upstream master require private walker handler
+                registration for Python 3.13 PEP 695 source regions.
+          source-report-private-usage: error
+          test-like-report-private-usage: none
+          other-report-private-usage: none
+          root-venv-path: .
+          project-venv-path: ..
+          venv-name: .venv
+      coverage:
+        fail-under:
+          core: 45
+          domain: 30
+          platform: 25
+          integration: 20
+          app: 15
+        show-missing: true
+        skip-covered: false
+        precision: 2
+        exclude-also:
+          - "if _t.TYPE_CHECKING:"
+          - "if TYPE_CHECKING:"
+          - "if typing.TYPE_CHECKING:"
+        omit: ["*/dependency_injector/providers.pyx"]
+      pyrefly:
+        disable-project-excludes-heuristics: true
+        ignore-errors-in-generated-code: true
+        python-version: "3.13"
+        use-ignore-files: false
+        strict-errors:
+          # --- type safety ---
+          - bad-argument-count
+          - bad-argument-type
+          - bad-assignment
+          - bad-class-definition
+          - bad-context-manager
+          - bad-dunder-all
+          - bad-function-definition
+          - bad-index
+          - bad-instantiation
+          - bad-keyword-argument
+          - bad-match
+          - bad-param-name-override
+          - bad-raise
+          - bad-return
+          - bad-specialization
+          - bad-typed-dict
+          - bad-typed-dict-key
+          - bad-unpacking
+          - deprecated
+          - implicit-abstract-class
+          - implicit-any
+          - implicit-import
+          - implicitly-defined-attribute
+          - inconsistent-inheritance
+          - inconsistent-overload
+          - invalid-annotation
+          - invalid-argument
+          - invalid-decorator
+          - invalid-inheritance
+          - invalid-literal
+          - invalid-overload
+          - invalid-param-spec
+          - invalid-pattern
+          - invalid-self-type
+          - invalid-super-call
+          - invalid-type-alias
+          - invalid-type-var
+          - invalid-type-var-tuple
+          - invalid-variance
+          - invalid-yield
+          - missing-argument
+          - missing-attribute
+          - missing-import
+          - missing-module-attribute
+          - missing-override-decorator
+          - missing-source
+          - missing-source-for-stubs
+          - no-access
+          - no-matching-overload
+          - not-a-type
+          - not-async
+          - not-callable
+          - not-iterable
+          - not-required-key-access
+          - open-unpacking
+          - protocol-implicitly-defined-attribute
+          - read-only
+          - redefinition
+          - redundant-cast
+          - redundant-condition
+          - unannotated-attribute
+          - unannotated-parameter
+          - unannotated-return
+          - unbound-name
+          - unexpected-keyword
+          - unexpected-positional-argument
+          - unknown-name
+          - unnecessary-comparison
+          - unnecessary-type-conversion
+          - unreachable
+          - unresolvable-dunder-all
+          - unsafe-overlap
+          - unsupported
+          - unsupported-delete
+          - unsupported-operation
+          - untyped-import
+          - unused-coroutine
+          - unused-ignore
+          - variance-mismatch
+          - inconsistent-overload-default
+        disabled-errors:
+          - abstract-method-call
+          - bad-override
+          - non-convergent-recursion
+          - non-exhaustive-match
+        project-exclude-globs:
+          - "**/__pycache__"
+          - "**/__pyrefly_virtual__/**"
+          - "**/node_modules"
+          - "**/.venv/**"
+          - "**/*_pb2*.py"
+          - "**/*_pb2_grpc*.py"
+          - "**/site-packages/**"
+          - "**/typings/**"
+          - "**/venv/**"
+          - "**/vendor/**"
+          - ".venv/**"
+          - "typings/**"
+          - "vendor/**"
+        path-rules:
+          env-dirs: [src, tests, examples, scripts]
+          source-dir: src
+          project-root: .
+          root-typings-paths: []
+          project-typings-paths: []
+          workspace-include-children: false
+          workspace-include-child-env-dirs: []
+          include-path-dependencies-in-search-path: true
+          project-shared-search-paths: ["."]
+      pytest:
+        # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        min-version: "8.0"
+        python-classes: ["Test*"]
+        python-files: ["*_test.py", "*_tests.py", "test_*.py"]
+        # mro-pulj (codex): collect executable tests and markdown/docstring Python
+        # snippets; docs/examples/scripts are first-class documented surfaces.
+        test-paths: [tests, src, docs, examples, scripts, .]
+        # pytest applies filterwarnings last-entry-wins; the conform phase +
+        # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
+        # "error" to survive re-conform. Only module::/once:: sort after 'error'
+        # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
+        # lose. module:: keeps FlextMroViolation (and its FlextSmellViolation
+        # subclass) VISIBLE-but-non-fatal, matching the non-strict enforcement
+        # policy (flext-tests registers default::{category}); all other warnings
+        # stay fatal. See flext-core test_enforcement_warning_visibility.
+        filter-warnings:
+          [error, "module::flext_core._constants.enforcement.FlextMroViolation"]
+        standard-markers:
+          - "smoke: public-interface smoke tests"
+          - "unit: unit tests"
+          - "integration: integration tests"
+          - "performance: performance and benchmark tests"
+          - "slow: slow-running tests"
+          - "docker: tests requiring Docker"
+          - "e2e: end-to-end integration tests"
+          - "edge_cases: edge case tests"
+          - "stress: stress tests"
+          - "resilience: resilience tests"
+        standard-addopts:
+          - --strict-markers
+          - --markdown-docs
+          - --durations=10
+          # operator law 2026-07-20: any test over 10s is a grave test defect,
+          # surfaced as an explicit TIMEOUT failure (never accommodated).
+          - --timeout=10
+      tomlsort:
+        all: true
+        in_place: true
+        sort_first: [project, build-system, tool, dependency-groups]
+      vulture:
+        # NOTE (multi-agent, mro-j47u): Vulture 2.16 reports keyword-bearing
+        # Protocol signature parameters as unused variables at 100% confidence,
+        # even with --ignore-decorators @runtime_checkable. The declaration-only
+        # protocol facet is excluded; production models and runtime code remain scanned.
+        exclude: ["*/_protocols/*"]
+        min-confidence: 100
+        paths: [src]
+        verbose: false
+      yamlfix:
+        line_length: 88
+        preserve_quotes: true
+        whitelines: 1
+        section_whitelines: 1
+        explicit_start: false
+
+    project-type-overrides:
+      core:
+        pyright: {}
+      domain:
+        pyright:
+          reportMissingModuleSource: "warning"
+      platform:
+        pyright: {}
+      integration:
+        pyright:
+          reportMissingModuleSource: "none"
+          reportMissingTypeStubs: "none"
+      app:
+        pyright: {}
+    lazy-init:
+      root-namespace-files:
+        - api.py
+        - base.py
+        - base_selection.py
+        - cli.py
+        - constants.py
+        - container.py
+        - context.py
+        - decorators.py
+        - dispatcher.py
+        - docker.py
+        - domains.py
+        - exceptions.py
+        - files.py
+        - handlers.py
+        - helpers.py
+        - infra.py
+        - lazy.py
+        - loggings.py
+        - main.py
+        - tmatchers.py
+        - mixins.py
+        - models.py
+        - protocols.py
+        - registry.py
+        - result.py
+        - runtime.py
+        - service.py
+        - services.py
+        - settings.py
+        - shared.py
+        - tap.py
+        - typings.py
+        - utilities.py
+        - validator.py
+      public-file-aliases:
+        base.py: s
+        constants.py: c
+        docker.py: tk
+        domains.py: td
+        files.py: tf
+        helpers.py: h
+        tmatchers.py: tm
+        models.py: m
+        protocols.py: p
+        service.py: s
+        typings.py: t
+        utilities.py: u
+        validator.py: tv
+      public-file-suffixes:
+        constants.py: Constants
+        docker.py: Docker
+        domains.py: Domains
+        files.py: Files
+        helpers.py: Helpers
+        lazy.py: Lazy
+        tmatchers.py: MatchersUtilities
+        models.py: Models
+        protocols.py: Protocols
+        typings.py: Types
+        utilities.py: Utilities
+        validator.py: Validator
+      private-family-tokens:
+        c: [Constants]
+        m: [Models]
+        p: [Protocols]
+        t: [Types, Typing]
+        u: [Utilities]
+      surface-prefixes:
+        tests: Tests
+        examples: Examples
+        scripts: Scripts
+      inherited-exports:
+        src: [c, d, e, h, m, p, r, s, t, u, x]
+        tests:
+          - c
+          - d
+          - e
+          - h
+          - m
+          - p
+          - r
+          - s
+          - t
+          - u
+          - x
+          - td
+          - tf
+          - tk
+          - tm
+          - tv
+        examples: [c, d, e, h, m, p, r, s, t, u, x]
+        scripts: [c, d, e, h, m, p, r, s, t, u, x]
+      main-export-files: [cli.py, main.py]

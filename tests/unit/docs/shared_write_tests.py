@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.models import m
-from tests.utilities import u
+from flext_tests import tm
+
+from tests import m, t, u
+
+_MIN_MARKDOWN_NEWLINES = 3
 
 
 def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
@@ -14,25 +17,21 @@ def test_json_write_round_trips_dict_payload(tmp_path: Path) -> None:
     result = u.Cli.json_write(json_file, {"key": "value", "number": 42})
     read_result = u.Cli.json_read(json_file)
 
-    assert result.success
-    assert read_result.success
-    assert read_result.unwrap() == {"key": "value", "number": 42}
+    tm.ok(result)
+    tm.ok(read_result)
+    expected: t.JsonMapping = {"key": "value", "number": 42}
+    tm.that(read_result.unwrap(), eq=expected)
 
 
 def test_json_write_accepts_pydantic_model(tmp_path: Path) -> None:
     json_file = tmp_path / "report.json"
     report = m.Infra.DocsPhaseReport(
-        phase="audit",
-        scope="root",
-        items=[],
-        checks=[],
-        strict=False,
-        passed=True,
+        phase="audit", scope="root", items=[], checks=[], strict=False, passed=True
     )
 
     result = u.Cli.json_write(json_file, report)
 
-    assert result.success
+    tm.ok(result)
     assert json_file.exists()
 
 
@@ -42,8 +41,8 @@ def test_write_markdown_writes_exact_content(tmp_path: Path) -> None:
 
     result = u.Infra.write_markdown(md_file, lines)
 
-    assert result.success
-    assert md_file.read_text() == "Line 1\nLine 2\nLine 3\n"
+    tm.ok(result)
+    tm.that(md_file.read_text(), eq="Line 1\nLine 2\nLine 3\n")
 
 
 def test_write_markdown_preserves_empty_lines(tmp_path: Path) -> None:
@@ -51,12 +50,12 @@ def test_write_markdown_preserves_empty_lines(tmp_path: Path) -> None:
 
     result = u.Infra.write_markdown(md_file, ["# Title", "", "", "Content"])
 
-    assert result.success
-    assert md_file.read_text().count("\n") >= 3
+    tm.ok(result)
+    assert md_file.read_text().count("\n") >= _MIN_MARKDOWN_NEWLINES
 
 
 def test_write_markdown_fails_for_non_directory_parent() -> None:
     result = u.Infra.write_markdown(Path("/dev/null/test.md"), ["test"])
 
-    assert result.failure
-    assert "markdown write error" in (result.error or "")
+    tm.fail(result)
+    tm.that((result.error or ""), has="markdown write error")

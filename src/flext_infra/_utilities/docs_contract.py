@@ -2,44 +2,40 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Mapping,
-)
-from pathlib import Path
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
+from flext_infra import c, m, t
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocsContract:
     """Contract helpers for docs services."""
 
     @staticmethod
-    def docs_workspace_contract(
-        workspace_root: Path,
-    ) -> t.Infra.ContainerDict:
+    def docs_workspace_contract(workspace_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(workspace_root)
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(workspace_root)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
-            workspace_root,
-            "exclude_docs",
+            workspace_root, "exclude_docs"
         )
         project_meta_value = payload.get(c.Infra.PROJECT)
-        project_meta: t.Infra.ContainerDict = (
+        project_meta: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_meta_value)
             if isinstance(project_meta_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
         project_urls_value = project_meta.get("urls")
-        project_urls: t.Infra.ContainerDict = (
+        project_urls: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_urls_value)
             if isinstance(project_urls_value, Mapping)
             else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
         )
-        return t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "name": str(project_meta.get("name", "flext")).strip() or "flext",
             "description": str(project_meta.get("description", "")).strip(),
             "version": str(project_meta.get(c.Infra.VERSION, "")).strip(),
@@ -57,14 +53,11 @@ class FlextInfraUtilitiesDocsContract:
             ).strip(),
             "exclude_docs": list(exclude_docs),
         })
+        return result
 
     @staticmethod
     def docs_write_if_needed(
-        path: Path,
-        content: str,
-        *,
-        apply: bool,
-        overwrite: bool = True,
+        path: Path, content: str, *, apply: bool, overwrite: bool = True
     ) -> m.Infra.GeneratedFile:
         """Write generated content only when needed and allowed."""
         if path.exists() and not overwrite:

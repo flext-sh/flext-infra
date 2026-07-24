@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from tests.models import m
-from tests.typings import t
+from tests import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 def _extractor(
@@ -23,7 +27,7 @@ def _extractor(
 ) -> FlextInfraPytestDiagExtractor:
     return FlextInfraPytestDiagExtractor(
         junit=junit,
-        log=log,
+        log_path=log,
         failed=failed,
         errors=errors,
         warnings=warnings,
@@ -37,7 +41,7 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
-            ' failures="0" errors="0" skipped="0"></testsuite></testsuites>',
+            ' failures="0" errors="0" skipped="0"></testsuite></testsuites>'
         )
         log = tmp_path / "log.txt"
         log.write_text("")
@@ -51,8 +55,7 @@ class TestPytestDiagExtractorBehavior:
         tm.that(report.error_count, eq=0)
 
     def test_extract_falls_back_to_log_when_xml_missing_or_invalid(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         log = tmp_path / "log.txt"
         log.write_text("FAILED test_case.py::test_foo")
@@ -78,7 +81,7 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="1" errors="0" skipped="0"><testcase name="test_fail"'
             ' classname="TC"><failure message="fail">Traceback</failure>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         fail_report: m.Infra.PytestDiagnostics = tm.ok(
@@ -92,7 +95,7 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="1" skipped="0"><testcase name="test_err"'
             ' classname="TC"><error message="err">Trace</error>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         err_report: m.Infra.PytestDiagnostics = tm.ok(
@@ -108,7 +111,7 @@ class TestPytestDiagExtractorBehavior:
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="0" skipped="1"><testcase name="test_skip"'
             ' classname="TC"><skipped message="skip"/>'
-            "</testcase></testsuite></testsuites>",
+            "</testcase></testsuite></testsuites>"
         )
 
         skip_report: m.Infra.PytestDiagnostics = tm.ok(
@@ -120,7 +123,7 @@ class TestPytestDiagExtractorBehavior:
         slow_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="2">'
             '<testcase name="fast" time="0.1"/><testcase name="slow" time="5.5"/>'
-            "</testsuite></testsuites>",
+            "</testsuite></testsuites>"
         )
 
         slow_report: m.Infra.PytestDiagnostics = tm.ok(
@@ -132,14 +135,13 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests="0"/></testsuites>'
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
             _extractor(junit, tmp_path / "missing.txt").extract(
-                junit,
-                tmp_path / "missing.txt",
-            ),
+                junit, tmp_path / "missing.txt"
+            )
         )
 
         tm.that(report.warning_count, eq=0)
@@ -148,7 +150,7 @@ class TestPytestDiagExtractorBehavior:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
-            '<testsuite name="t" tests="0"/></testsuites>',
+            '<testsuite name="t" tests="0"/></testsuites>'
         )
         log_is_dir = tmp_path / "log_is_dir"
         log_is_dir.mkdir()
@@ -165,7 +167,7 @@ class TestPytestDiagExtractorBehavior:
             "=== short test summary info ===\n"
             "=== warnings summary ===\n"
             "DeprecationWarning: test warning\n"
-            "-- Docs: https://docs.pytest.org/\n",
+            "-- Docs: https://docs.pytest.org/\n"
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
@@ -195,7 +197,7 @@ class TestPytestDiagExtractorBehavior:
             "=== slowest durations ===\n"
             "5.50s call     test_case.py::test_slow\n"
             "0.50s call     test_case.py::test_fast\n"
-            "=== 2 passed in 6.00s ===\n",
+            "=== 2 passed in 6.00s ===\n"
         )
 
         report: m.Infra.PytestDiagnostics = tm.ok(
@@ -211,13 +213,13 @@ class TestPytestDiagExtractorBehavior:
             '<testcase name="test_fail" classname="TC" time="2.5">'
             '<failure message="fail">Traceback</failure></testcase>'
             '<testcase name="test_skip" classname="TC" time="0.1">'
-            '<skipped message="skip"/></testcase></testsuite></testsuites>',
+            '<skipped message="skip"/></testcase></testsuite></testsuites>'
         )
         log = tmp_path / "log.txt"
         log.write_text(
             "=== warnings summary ===\n"
             "DeprecationWarning: test warning\n"
-            "-- Docs: https://docs.pytest.org/\n",
+            "-- Docs: https://docs.pytest.org/\n"
         )
         extractor = _extractor(
             junit,

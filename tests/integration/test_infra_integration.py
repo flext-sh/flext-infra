@@ -12,9 +12,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -22,14 +23,18 @@ from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 pytestmark = [pytest.mark.integration]
 
 
 class TestsFlextInfraIntegrationInfraIntegration:
+    """Integration tests for the public FlextInfra surface."""
+
     @pytest.mark.integration
     def test_workspace_detector_and_orchestrator_share_state(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Test that FlextInfraWorkspaceDetector and orchestrator share state.
 
@@ -43,13 +48,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         (workspace_root / ".git").mkdir()
         detector = FlextInfraWorkspaceDetector()
         orchestrator = FlextInfraOrchestratorService(verb="test")
-        assert detector is not None
-        assert orchestrator is not None
-        assert isinstance(detector, FlextInfraWorkspaceDetector)
-        assert isinstance(orchestrator, FlextInfraOrchestratorService)
+        tm.that(detector, none=False)
+        tm.that(orchestrator, none=False)
+        tm.that(detector, is_=FlextInfraWorkspaceDetector)
+        tm.that(orchestrator, is_=FlextInfraOrchestratorService)
 
     @pytest.mark.integration
-    def test_workspace_detector_returns_flext_result(self, tmp_path: Path) -> None:
+    def test_workspace_detector_returns_flext_result(self) -> None:
         """Test that workspace detector operations return r.
 
         Validates:
@@ -57,8 +62,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         - Result typing is correct
         """
         detector = FlextInfraWorkspaceDetector()
-        assert detector is not None
-        assert isinstance(detector, FlextInfraWorkspaceDetector)
+        tm.that(detector, none=False)
+        tm.that(detector, is_=FlextInfraWorkspaceDetector)
 
     @pytest.mark.integration
     def test_basemk_template_renderer_and_generator_flow(self, tmp_path: Path) -> None:
@@ -73,10 +78,10 @@ class TestsFlextInfraIntegrationInfraIntegration:
         output_dir.mkdir()
         renderer = FlextInfraBaseMkTemplateRenderer()
         generator = FlextInfraBaseMkGenerator()
-        assert renderer is not None
-        assert generator is not None
-        assert isinstance(renderer, FlextInfraBaseMkTemplateRenderer)
-        assert isinstance(generator, FlextInfraBaseMkGenerator)
+        tm.that(renderer, none=False)
+        tm.that(generator, none=False)
+        tm.that(renderer, is_=FlextInfraBaseMkTemplateRenderer)
+        tm.that(generator, is_=FlextInfraBaseMkGenerator)
 
     @pytest.mark.integration
     def test_basemk_generator_generates_valid_content(self, tmp_path: Path) -> None:
@@ -84,9 +89,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         _ = tmp_path
         generator = FlextInfraBaseMkGenerator()
         generated = generator.execute()
-        assert generated.success
-        assert isinstance(generated.value, str)
-        assert "check" in generated.value
+        tm.ok(generated)
+        tm.that(generated.value, is_=str)
+        tm.that(generated.value, has="check")
 
     @pytest.mark.integration
     def test_output_singleton_has_expected_methods(self) -> None:
@@ -129,8 +134,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
         """
         initial_value = 10
         result = r[int].ok(initial_value).map(lambda x: x * 2).map(lambda x: x + 5)
-        assert result.success
-        assert result.value == 25
+        tm.ok(result)
+        tm.that(result.value, eq=25)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_flat_map(self) -> None:
@@ -148,8 +153,8 @@ class TestsFlextInfraIntegrationInfraIntegration:
             .flat_map(lambda x: r[int].ok(x * 2))
             .flat_map(lambda x: r[int].ok(x + 5))
         )
-        assert result.success
-        assert result.value == 25
+        tm.ok(result)
+        tm.that(result.value, eq=25)
 
     @pytest.mark.integration
     def test_service_result_chaining_failure_propagation(self) -> None:
@@ -165,12 +170,12 @@ class TestsFlextInfraIntegrationInfraIntegration:
             r[int]
             .ok(initial_value)
             .flat_map(lambda x: r[int].ok(x * 2))
-            .flat_map(lambda x: r[int].fail("intentional error"))
+            .flat_map(lambda _: r[int].fail("intentional error"))
             .flat_map(lambda x: r[int].ok(x + 5))
         )
-        assert result.failure
-        assert isinstance(result.error, str)
-        assert "intentional error" in result.error
+        tm.fail(result)
+        tm.that(result.error, is_=str)
+        tm.that(result.error, has="intentional error")
 
     @pytest.mark.integration
     def test_service_result_chaining_with_mixed_operations(self) -> None:
@@ -189,11 +194,11 @@ class TestsFlextInfraIntegrationInfraIntegration:
             .flat_map(lambda x: r[int].ok(x + 3))
             .map(lambda x: x * 2)
         )
-        assert result.success
-        assert result.value == 26
+        tm.ok(result)
+        tm.that(result.value, eq=26)
 
     @pytest.mark.integration
-    def test_discover_projects_via_mro(self, tmp_path: Path) -> None:
+    def test_discover_projects_via_mro(self) -> None:
         """Test u.Infra.discover_projects flow.
 
         Validates:
@@ -204,7 +209,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         assert callable(u.Infra.resolve_workspace_root_or_cwd)
 
     @pytest.mark.integration
-    def test_path_utilities_via_mro(self, tmp_path: Path) -> None:
+    def test_path_utilities_via_mro(self) -> None:
         """Test u.Infra path utility methods are available via MRO."""
         assert callable(u.Infra.resolve_project_root)
 
@@ -214,33 +219,32 @@ class TestsFlextInfraIntegrationInfraIntegration:
         repo_root = tmp_path / "repo"
         repo_root.mkdir()
         init_result = u.Cli.run_checked(["git", "init"], cwd=repo_root)
-        assert init_result.success
+        tm.ok(init_result)
         email_result = u.Cli.run_checked(
             ["git", "config", "user.email", "infra@example.com"], cwd=repo_root
         )
-        assert email_result.success
+        tm.ok(email_result)
         name_result = u.Cli.run_checked(
             ["git", "config", "user.name", "Infra Test"], cwd=repo_root
         )
-        assert name_result.success
+        tm.ok(name_result)
         sample_file = repo_root / "README.md"
         _ = sample_file.write_text("infra test\n", encoding="utf-8")
         add_result = u.Cli.run_checked(["git", "add", "README.md"], cwd=repo_root)
-        assert add_result.success
+        tm.ok(add_result)
         commit_result = u.Cli.run_checked(
             ["git", "commit", "-m", "initial"], cwd=repo_root
         )
-        assert commit_result.success
+        tm.ok(commit_result)
         branch_result = u.Cli.capture(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_root,
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_root
         )
-        assert branch_result.success
-        assert branch_result.value != ""
+        tm.ok(branch_result)
+        tm.that(branch_result.value, ne="")
 
     @pytest.mark.integration
     def test_command_runner_capture_executes_real_command(self) -> None:
         """Test u.Cli.capture with a real external command."""
         capture_result = u.Cli.capture(["python3", "-c", "print('infra-ok')"])
-        assert capture_result.success
-        assert capture_result.value == "infra-ok"
+        tm.ok(capture_result)
+        tm.that(capture_result.value, eq="infra-ok")

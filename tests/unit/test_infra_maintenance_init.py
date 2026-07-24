@@ -6,6 +6,7 @@ Tests lazy loading and __getattr__ fallthrough behavior.
 from __future__ import annotations
 
 import pytest
+from flext_tests import tm
 
 import flext_infra.maintenance
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
@@ -21,9 +22,10 @@ class TestsFlextInfraInfraMaintenanceInit:
 
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""
-        assert FlextInfraPythonVersionEnforcer is not None
+        tm.that(FlextInfraPythonVersionEnforcer, none=False)
 
-    def test_dir_returns_all_exports(self) -> None:
-        """Test dir() returns all exported symbols."""
+    def test_package_does_not_reexport_leaf_implementations(self) -> None:
+        """Keep maintenance implementations available only from leaf owners."""
         exports = dir(flext_infra.maintenance)
-        assert "FlextInfraPythonVersionEnforcer" in exports
+        tm.that(flext_infra.maintenance.__all__, eq=())
+        tm.that(exports, lacks="FlextInfraPythonVersionEnforcer")

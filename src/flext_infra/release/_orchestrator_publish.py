@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.utilities import u
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, p
 
 logger = u.fetch_logger(__name__)
 
@@ -23,27 +24,20 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     if TYPE_CHECKING:
 
         def _generate_notes(
-            self,
-            ctx: m.Infra.ReleasePhaseDispatchConfig,
-            output_path: Path,
+            self, ctx: m.Infra.ReleasePhaseDispatchConfig, output_path: Path
         ) -> p.Result[bool]: ...
 
         def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
 
         def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
 
-    def phase_publish(
-        self,
-        ctx: m.Infra.ReleasePhaseDispatchConfig,
-    ) -> p.Result[bool]:
+    def phase_publish(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
         workspace_root = ctx.workspace_root
         tag = ctx.tag
         notes_dir = (
             u.Cli.resolve_report_dir(
-                workspace_root,
-                c.Infra.PROJECT,
-                c.Infra.RK_RELEASE,
+                workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
             )
             / tag
         )
@@ -56,9 +50,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         if notes_result.failure:
             return notes_result
         if not notes_path.exists():
-            return r[bool].fail(
-                f"release notes generation did not create {notes_path}",
-            )
+            return r[bool].fail(f"release notes generation did not create {notes_path}")
         if not ctx.dry_run:
             apply_result = self._publish_apply(
                 workspace_root=workspace_root,
@@ -83,10 +75,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     ) -> p.Result[bool]:
         """Apply changelog, tag, and optional push for publish phase."""
         changelog_result = u.Infra.update_changelog(
-            workspace_root,
-            version,
-            tag,
-            notes_path,
+            workspace_root, version, tag, notes_path
         )
         if changelog_result.failure:
             return changelog_result

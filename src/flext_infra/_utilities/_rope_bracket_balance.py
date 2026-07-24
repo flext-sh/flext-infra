@@ -15,10 +15,7 @@ class FlextInfraUtilitiesRopeBracketBalanceMixin:
 
     @staticmethod
     def _extend_block_through_open_brackets(
-        source: str,
-        block: str,
-        *,
-        match_end: int,
+        source: str, block: str, *, match_end: int
     ) -> str:
         r"""Extend ``block`` when its regex capture ends mid-bracket-group.
 

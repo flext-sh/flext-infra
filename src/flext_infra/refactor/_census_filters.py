@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorCensusFiltersMixin:
@@ -39,8 +40,7 @@ class FlextInfraRefactorCensusFiltersMixin:
             ):
                 continue
             canonical = min(
-                definitions,
-                key=lambda item: (item.project, item.file_path, item.line),
+                definitions, key=lambda item: (item.project, item.file_path, item.line)
             )
             duplicates.append(
                 m.Infra.Census.DuplicateGroup(
@@ -101,13 +101,11 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _named_object(
-        objects: tuple[m.Infra.Census.Object, ...],
-        name: str,
+        objects: tuple[m.Infra.Census.Object, ...], name: str
     ) -> m.Infra.Census.Object | None:
         """Named object."""
         return next(
-            (item for item in objects if name in {item.scope_path, item.name}),
-            None,
+            (item for item in objects if name in {item.scope_path, item.name}), None
         )
 
     @staticmethod
@@ -123,16 +121,11 @@ class FlextInfraRefactorCensusFiltersMixin:
         )
         if not target_name:
             return None
-        return FlextInfraRefactorCensusFiltersMixin._named_object(
-            objects,
-            target_name,
-        )
+        return FlextInfraRefactorCensusFiltersMixin._named_object(objects, target_name)
 
     @staticmethod
-    def _runtime_alias_target_name(
-        convention: m.Infra.RopeModuleConvention,
-    ) -> str:
-        """Expected runtime alias target name."""
+    def _runtime_alias_target_name(convention: m.Infra.RopeModuleConvention) -> str:
+        """Return the expected runtime alias target name."""
         layout = convention.project_layout
         family = convention.module_policy.expected_family or ""
         if layout is None or not family:
@@ -141,10 +134,7 @@ class FlextInfraRefactorCensusFiltersMixin:
 
     @staticmethod
     def _rewrite_runtime_alias_source(
-        source: str,
-        *,
-        alias: str,
-        target_name: str,
+        source: str, *, alias: str, target_name: str
     ) -> str:
         """Rewrite runtime alias source."""
         filtered_lines = [
@@ -156,9 +146,7 @@ class FlextInfraRefactorCensusFiltersMixin:
         if cleaned_source:
             cleaned_source = f"{cleaned_source}\n"
         updated_source: str = u.Infra.ensure_runtime_alias(
-            cleaned_source,
-            alias=alias,
-            target_name=target_name,
+            cleaned_source, alias=alias, target_name=target_name
         )
         return updated_source
 

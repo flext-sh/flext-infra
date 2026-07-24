@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.pattern_modernizer import (
     FlextInfraRefactorPatternModernizer,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _transform(source: str) -> str:
@@ -20,53 +25,53 @@ class TestsFlextInfraTransformersPatternModernizer:
     """Behavior contract for FlextInfraRefactorPatternModernizer."""
 
     def test_print_replaced_with_logger_info_and_logger_injected(self) -> None:
-        source = 'from flext_core import c\n\ndef foo():\n    print("hello")\n'
+        source = 'from flext_core import c\n\ndef foo():\n    u.Cli.print("hello")\n'
         code = _transform(source)
-        assert 'logger.info("hello")' in code
-        assert "logger = u.fetch_logger(__name__)" in code
-        assert "from flext_core import c, u" in code
-        assert 'print("hello")' not in code
+        tm.that(code, has='logger.info("hello")')
+        tm.that(code, has="logger = u.fetch_logger(__name__)")
+        tm.that(code, has="from flext_core import c, u")
+        tm.that(code, lacks='u.Cli.print("hello")')
 
     def test_existing_logger_is_reused(self) -> None:
-        source = 'logger = u.fetch_logger(__name__)\n\ndef foo():\n    print("hello")\n'
+        source = 'logger = u.fetch_logger(__name__)\n\ndef foo():\n    u.Cli.print("hello")\n'
         code = _transform(source)
-        assert code.count("logger = u.fetch_logger(__name__)") == 1
-        assert 'logger.info("hello")' in code
+        tm.that(code.count("logger = u.fetch_logger(__name__)"), eq=1)
+        tm.that(code, has='logger.info("hello")')
 
     def test_breakpoint_replaced_with_pass(self) -> None:
         source = "def foo():\n    breakpoint()\n"
         code = _transform(source)
-        assert "breakpoint()" not in code
-        assert "    pass\n" in code
+        tm.that(code, lacks="breakpoint()")
+        tm.that(code, has="    pass\n")
 
     def test_import_pdb_removed(self) -> None:
         source = "import pdb\n\ndef foo():\n    pdb.set_trace()\n"
         code = _transform(source)
-        assert "import pdb" not in code
+        tm.that(code, lacks="import pdb")
 
     def test_from_pdb_import_removed(self) -> None:
         source = "from pdb import set_trace\n\ndef foo():\n    set_trace()\n"
         code = _transform(source)
-        assert "from pdb import set_trace" not in code
+        tm.that(code, lacks="from pdb import set_trace")
 
     def test_bare_except_fixed(self) -> None:
         source = "def foo():\n    try:\n        pass\n    except:\n        pass\n"
         code = _transform(source)
-        assert "except Exception:" in code
-        assert "except:\n" not in code
+        tm.that(code, has="except Exception:")
+        tm.that(code, lacks="except:\n")
 
     def test_open_gets_encoding(self) -> None:
         source = 'def foo():\n    with open("x.txt") as f:\n        pass\n'
         code = _transform(source)
-        assert 'open("x.txt", encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", encoding="utf-8")')
 
     def test_open_with_mode_gets_encoding(self) -> None:
         source = 'def foo():\n    with open("x.txt", "w") as f:\n        pass\n'
         code = _transform(source)
-        assert 'open("x.txt", "w", encoding="utf-8")' in code
+        tm.that(code, has='open("x.txt", "w", encoding="utf-8")')
 
     def test_open_with_encoding_unchanged(self) -> None:
         source = 'def foo():\n    with open("x.txt", encoding="latin-1") as f:\n        pass\n'
         code = _transform(source)
-        assert 'encoding="latin-1"' in code
-        assert 'encoding="utf-8"' not in code
+        tm.that(code, has='encoding="latin-1"')
+        tm.that(code, lacks='encoding="utf-8"')

@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tests.constants import c
-from tests.utilities import u
+from flext_tests import tm
+
+from tests import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_docs_has_adr_reference_detects_marker(tmp_path: Path) -> None:
     skill = tmp_path / "SKILL.md"
     skill.write_text("# Skill\n\nADR: documented.\n", encoding="utf-8")
 
-    assert u.Infra.docs_has_adr_reference(skill) is True
+    tm.that(u.Infra.docs_has_adr_reference(skill), eq=True)
 
 
 def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> None:
@@ -25,25 +29,22 @@ def test_docs_load_required_skills_reads_architecture_config(tmp_path: Path) -> 
 
     result = u.Infra.docs_load_required_skills(tmp_path)
 
-    assert result.success
-    assert result.value == ["rules-docs", "readme-standardization"]
+    tm.ok(result)
+    tm.that(result.value, eq=["rules-docs", "readme-standardization"])
 
 
 def test_docs_write_todo_writes_only_for_project_scopes(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     scopes = u.Infra.build_scopes(
-        workspace,
-        projects=["flext-a"],
-        output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        workspace, projects=["flext-a"], output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR
     )
 
-    assert scopes.success
+    tm.ok(scopes)
     root_scope, project_scope = scopes.value
     root_result = u.Infra.docs_write_todo(root_scope, apply_mode=True)
     project_result = u.Infra.docs_write_todo(project_scope, apply_mode=True)
-    assert root_result.success and root_result.value is False
-    assert project_result.success and project_result.value is True
+    assert root_result.success
+    assert root_result.value is False
+    assert project_result.success
+    assert project_result.value is True
     assert (workspace / "flext-a/TODOS.md").exists()

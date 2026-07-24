@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraDependencyDetectionRunnersMixin:
@@ -22,11 +22,10 @@ class FlextInfraDependencyDetectionRunnersMixin:
         # Conversion helper provided by the concrete analyzer; declared for static
         # resolution only (runtime impl lives on the concrete via MRO).
         def _to_toml_config(
-            self,
-            payload: t.MappingKV[str, t.Infra.InfraValue],
-        ) -> t.Infra.ContainerDict: ...
+            self, payload: t.MappingKV[str, t.Infra.InfraValue]
+        ) -> t.JsonMapping: ...
 
-    def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+    def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Read plain; concrete analyzer supplies the real reader."""
         _ = path
         msg = "_read_plain must be implemented by the concrete analyzer"
@@ -39,7 +38,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         cwd: Path | None = None,
         timeout: int | None = None,
         env: t.StrMapping | None = None,
-    ) -> p.Result[m.Cli.CommandOutput]:
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Run raw command; concrete analyzer supplies the real runner."""
         _ = cmd, cwd, timeout, env
         msg = "_run_raw must be implemented by the concrete analyzer"
@@ -53,11 +52,11 @@ class FlextInfraDependencyDetectionRunnersMixin:
         config_path: Path | None = None,
         json_output_path: Path | None = None,
         extend_exclude: t.StrSequence | None = None,
-    ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
+    ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
         """Run deptry analysis on a project and parse JSON output."""
         settings = config_path or project_path / c.Infra.PYPROJECT_FILENAME
         if not settings.exists():
-            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok(([], 0))
+            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok(([], 0))
         out_file = json_output_path or project_path / ".deptry-report.json"
         cmd: t.MutableSequenceOf[str] = [
             str(venv_bin / c.Infra.DEPTRY),
@@ -71,24 +70,20 @@ class FlextInfraDependencyDetectionRunnersMixin:
         if extend_exclude:
             for excluded in extend_exclude:
                 cmd.extend(["--extend-exclude", excluded])
-        result = self._run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
-        )
+        result = self._run_raw(cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_MEDIUM)
         if result.failure:
-            return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                result.error or "deptry execution failed",
+            return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
+                result.error or "deptry execution failed"
             )
-        issues: t.SequenceOf[t.Infra.ContainerDict] = []
+        issues: t.SequenceOf[t.JsonMapping] = []
         if out_file.exists():
             loaded_result = u.Cli.files_read_json(out_file)
             if loaded_result.failure:
-                return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                    loaded_result.error or "deptry JSON output unreadable/invalid",
+                return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
+                    loaded_result.error or "deptry JSON output unreadable/invalid"
                 )
             if isinstance(loaded_result.value, list):
-                normalized_issues: t.MutableSequenceOf[t.Infra.ContainerDict] = []
+                normalized_issues: t.MutableSequenceOf[t.JsonMapping] = []
                 for item in loaded_result.value:
                     if not isinstance(item, Mapping):
                         continue
@@ -104,21 +99,20 @@ class FlextInfraDependencyDetectionRunnersMixin:
                 try:
                     out_file.unlink()
                 except OSError as exc:
-                    return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].fail(
-                        f"failed to cleanup deptry temp output: {exc}",
+                    return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].fail(
+                        f"failed to cleanup deptry temp output: {exc}"
                     )
-        cmd_result: m.Cli.CommandOutput = result.value
-        return r[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]].ok((
+        cmd_result: p.Cli.CommandOutput = result.value
+        return r[t.Pair[t.SequenceOf[t.JsonMapping], int]].ok((
             issues,
             cmd_result.exit_code,
         ))
 
     def run_mypy_stub_hints(
-        self,
-        project_path: Path,
+        self, project_path: Path
     ) -> p.Result[t.Pair[t.StrSequence, t.StrSequence]]:
         """Run mypy via the command runner to detect missing stubs and hint packages."""
-        cmd: t.StrSequence = [
+        cmd = u.Infra.mypy_limited_command((
             sys.executable,
             "-m",
             c.Infra.MYPY,
@@ -126,17 +120,19 @@ class FlextInfraDependencyDetectionRunnersMixin:
             "--config-file",
             c.Infra.PYPROJECT_FILENAME,
             "--no-error-summary",
-        ]
+        ))
         result = self._run_raw(
-            cmd,
-            cwd=project_path,
-            timeout=c.Infra.TIMEOUT_MEDIUM,
+            cmd, cwd=project_path, timeout=u.Infra.mypy_runner_timeout()
         )
         if result.failure:
             return r[t.Pair[t.StrSequence, t.StrSequence]].fail(
-                result.error or "mypy execution failed"
+                u.Infra.mypy_launch_failure_diagnostic(
+                    result.error or "Mypy process launch failed"
+                )
             )
-        command_output: m.Cli.CommandOutput = result.value
+        command_output: p.Cli.CommandOutput = result.value
+        if resource_diagnostic := u.Infra.mypy_failure_diagnostic(command_output):
+            return r[t.Pair[t.StrSequence, t.StrSequence]].fail(resource_diagnostic)
         output = f"{command_output.stdout}\n{command_output.stderr}"
         hinted = {
             match.group(1).strip()
@@ -154,9 +150,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         ))
 
     def run_pip_check(
-        self,
-        workspace_root: Path,
-        venv_bin: Path,
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[t.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
@@ -173,7 +167,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
             return r[t.Pair[t.StrSequence, int]].fail(
                 result.error or "pip check failed"
             )
-        cmd_result: m.Cli.CommandOutput = result.value
+        cmd_result: p.Cli.CommandOutput = result.value
         output = cmd_result.stdout
         lines = output.strip().splitlines() if output else []
         return r[t.Pair[t.StrSequence, int]].ok((lines, cmd_result.exit_code))

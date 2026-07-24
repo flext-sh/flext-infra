@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
@@ -24,9 +25,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
 
     @override
     def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.Infra.TransformResult:
         """Apply MRO redeclaration removal. Returns (new_source, changes)."""
         source = resource.read()
@@ -38,9 +37,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         for parent_info in class_infos:
             parent_name = parent_info.name
             nested_names = u.Infra.get_class_nested_classes(
-                rope_project,
-                resource,
-                parent_name,
+                rope_project, resource, parent_name
             )
             for nested_name in nested_names:
                 source = self._strip_parent_base(
@@ -65,11 +62,7 @@ class FlextInfraRefactorMRORemover(FlextInfraRopeTransformer):
         nested_class: str,
     ) -> str:
         """Remove base referencing parent_name from nested_class definition."""
-        nested_bases = u.Infra.get_class_bases(
-            rope_project,
-            resource,
-            nested_class,
-        )
+        nested_bases = u.Infra.get_class_bases(rope_project, resource, nested_class)
         has_parent_base = any(
             base == parent_name or base.startswith(f"{parent_name}.")
             for base in nested_bases

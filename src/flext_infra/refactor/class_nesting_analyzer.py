@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
+from flext_infra import c, m, t, u
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
+    from flext_infra import p
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
@@ -52,7 +51,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 continue
             try:
                 typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                    scan_result.value.get(c.Infra.RK_VIOLATIONS, []),
+                    scan_result.value.get(c.Infra.RK_VIOLATIONS, [])
                 )
                 parsed_violations: t.SequenceOf[m.Infra.LooseClassViolation] = [
                     m.Infra.LooseClassViolation.model_validate(item)
@@ -77,7 +76,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                     target_namespace = mapped_entry.target_namespace
                     confidence = mapped_entry.confidence
                     rewrite_scope = cls._normalize_rewrite_scope(
-                        mapped_entry.rewrite_scope,
+                        mapped_entry.rewrite_scope
                     )
                 elif parsed_violation.expected_prefix:
                     target_namespace = parsed_violation.expected_prefix
@@ -89,7 +88,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
                         target_namespace=target_namespace,
                         confidence=confidence,
                         rewrite_scope=rewrite_scope,
-                    ),
+                    )
                 )
                 confidence_counts[confidence] += 1
                 per_file_counts[normalized_file] += 1
@@ -102,8 +101,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _group_targets_by_project_root(
-        cls,
-        files: t.SequenceOf[Path],
+        cls, files: t.SequenceOf[Path]
     ) -> t.MappingKV[Path, t.Infra.StrSet]:
         """Group targets by project root."""
         grouped: MutableMapping[Path, t.Infra.StrSet] = {}
@@ -119,7 +117,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
 
     @classmethod
     def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:
-        """Module path for file."""
+        """Return the module path for a file."""
         src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
         resolved = file_path.resolve()
         try:
@@ -138,21 +136,21 @@ class FlextInfraRefactorClassNestingAnalyzer:
             typed_doc = u.Cli.yaml_load_mapping(mapping_path)
         except c.EXC_OS_TYPE as exc:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
-                str(exc),
+                str(exc)
             )
         raw_nesting = typed_doc.get(c.Infra.RK_CLASS_NESTING)
         if not isinstance(raw_nesting, list):
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].ok({})
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                raw_nesting,
+                raw_nesting
             )
             entries: t.SequenceOf[m.Infra.ClassNestingMapping] = [
                 m.Infra.ClassNestingMapping.model_validate(item) for item in typed_items
             ]
         except c.ValidationError as exc:
             return r[t.MappingKV[t.Pair[str, str], m.Infra.ClassNestingMapping]].fail(
-                str(exc),
+                str(exc)
             )
         index: MutableMapping[t.StrPair, m.Infra.ClassNestingMapping] = {}
         for entry in entries:
@@ -176,11 +174,7 @@ class FlextInfraRefactorClassNestingAnalyzer:
         if not isinstance(raw_scope, str):
             return default_scope
         candidate: str = u.norm_str(raw_scope, case="lower")
-        if candidate in {
-            c.Infra.RK_FILE,
-            c.Infra.PROJECT,
-            c.Infra.RK_WORKSPACE,
-        }:
+        if candidate in {c.Infra.RK_FILE, c.Infra.PROJECT, c.Infra.RK_WORKSPACE}:
             return candidate
         return default_scope
 

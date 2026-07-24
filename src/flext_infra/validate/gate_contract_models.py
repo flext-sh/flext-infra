@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated, ClassVar, Self
+from typing import Annotated, ClassVar
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m
 
 
 class FlextInfraGateContractModels:
@@ -38,12 +36,6 @@ class FlextInfraGateContractModels:
         severity: Annotated[str, m.Field(description="Severity")] = (
             c.Infra.GateSeverity.ERROR.value
         )
-
-        @classmethod
-        def create(cls, payload: t.JsonMapping) -> Self:
-            """Validate one violation payload."""
-            violation: Self = cls.model_validate(payload)
-            return violation
 
     class ScriptInfo(m.BaseModel):
         """Validation result for one script."""

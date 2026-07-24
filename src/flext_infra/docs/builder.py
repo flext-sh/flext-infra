@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, p, t
 
 
 class FlextInfraDocBuilder(FlextInfraDocServiceBase):
@@ -48,10 +48,7 @@ class FlextInfraDocBuilder(FlextInfraDocServiceBase):
 
     def _build_scope(self, scope: m.Infra.DocScope) -> m.Infra.DocsPhaseReport:
         """Build one scope via the docs build utilities and persist its reports."""
-        report = u.Infra.docs_run_mkdocs(
-            scope,
-            runner=self._runner,
-        )
+        report = u.Infra.docs_run_mkdocs(scope, runner=self._runner)
         u.Infra.docs_write_build_reports(scope, report)
         self.logger.info(
             "docs_build_scope_completed",

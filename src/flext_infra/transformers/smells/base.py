@@ -8,11 +8,12 @@ are provably equivalent under FLEXT law.
 from __future__ import annotations
 
 from abc import abstractmethod
-from pathlib import Path
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_infra.models import m
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, t
 
 
 class FlextInfraSmellFixer:
@@ -32,14 +33,11 @@ class FlextInfraSmellFixer:
 
     def can_fix(self, issue: m.Infra.Issue) -> bool:
         """Return True when this fixer handles the given issue code."""
-        return issue.code == self.tag
+        issue_code: str = issue.code
+        return issue_code == self.tag
 
     @abstractmethod
-    def fix(
-        self,
-        project_dir: Path,
-        issue: m.Infra.Issue,
-    ) -> tuple[bool, list[str]]:
+    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
         """Attempt to fix ``issue`` in ``project_dir / issue.file``.
 
         Returns ``(fixed, changes)``. ``fixed`` is True only when the source

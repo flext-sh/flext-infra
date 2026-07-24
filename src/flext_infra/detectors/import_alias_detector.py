@@ -6,12 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra import (
-    c,
-    m,
-    t,
-    u,
-)
+from flext_infra import c, m, t, u
 
 
 class FlextInfraImportAliasDetector:
@@ -31,12 +26,11 @@ class FlextInfraImportAliasDetector:
         source = resource.read()
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return []
-        metadata = u.read_project_constants("flext-infra")
+        runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         source_lines = source.splitlines()
         violations: list[m.Infra.ImportAliasViolation] = []
         for from_import in u.Infra.get_absolute_from_imports(
-            ctx.rope_project,
-            resource,
+            ctx.rope_project, resource
         ):
             if not (
                 from_import.module_name.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
@@ -50,7 +44,7 @@ class FlextInfraImportAliasDetector:
             alias_names = sorted(
                 name
                 for name, alias in from_import.names_and_aliases
-                if alias is None and name in metadata.RUNTIME_ALIAS_NAMES
+                if alias is None and name in runtime_aliases
             )
             if not alias_names:
                 continue
@@ -62,8 +56,7 @@ class FlextInfraImportAliasDetector:
                 m.Infra.ImportAliasViolation(
                     file=str(file_path),
                     line=u.Infra.find_import_line(
-                        lines=source_lines,
-                        module_name=from_import.module_name,
+                        lines=source_lines, module_name=from_import.module_name
                     ),
                     current_import=current_import,
                     suggested_import=(

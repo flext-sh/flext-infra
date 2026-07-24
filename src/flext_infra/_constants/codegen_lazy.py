@@ -21,16 +21,40 @@ class FlextInfraConstantsCodegenLazy:
     "Root public ABI contract module consumed by lazy-init planning."
     ROOT_EXPORTS_DIR: Final[str] = "_constants"
     "Directory under each package where lazy-init registries must live."
+    GENERATED_EXPORT_SIDECAR_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:_exports(?:_lazy(?:_part_[0-9]+)?)?|_lazy_exports)\.py$"
+    )
+    "Regex matching every generated lazy-export sidecar filename "
+    "(``_exports.py``, ``_exports_lazy.py``, ``_exports_lazy_part_N.py``, "
+    "``_lazy_exports.py``); these reserved names are superseded by the inline "
+    "``__init__.py`` lazy map — excluded from lazy-init discovery and swept by cleanup."
+    # mro-pulj (codex): these parallel root registries are superseded atomically
+    # by the inline map and must never participate in source discovery.
+    OBSOLETE_ROOT_SUPPORT_NAMES: Final[frozenset[str]] = frozenset({
+        "_root_exports",
+        "_root_exports_parts",
+        "_root_typing",
+        "_root_typing_parts",
+    })
+    "Closed set of retired root registry module and package names."
+    ROOT_TEMPLATE_RUNTIME_IMPORTS: Final[frozenset[str]] = frozenset({
+        "build_lazy_import_map",
+        "install_lazy_exports",
+    })
+    "Names bound eagerly by the canonical root initializer template."
+    TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
+        r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
+    )
+    "Test-module filenames forbidden from installable package export maps."
     INIT_PY: Final[str] = "__init__.py"
     "Standard Python package initializer filename."
+    # mro-wkii.17.26 (codex): cleanup is the only owner of retired init artifacts.
+    OBSOLETE_GENERATED_INIT_FILES: Final[t.StrSequence] = ("__unit__.py",)
+    "Generated initializer artifacts removed during every codegen pass."
     INIT_PYI: Final[str] = "__init__.pyi"
     "Typing stub paired with generated thin package initializers."
-    STUB_STRING_LITERAL_LIMIT: Final[int] = 50
-    "Maximum string-literal length accepted by Ruff for ``.pyi`` files."
     ROOT_PUBLIC_EXPORTS_SUFFIX: Final[str] = "_PUBLIC_EXPORTS"
     "Suffix for tuple constants that declare frozen public root exports."
-    LAZY_REGISTRY_PART_SIZE: Final[int] = 32
-    "Maximum lazy import entry groups emitted per generated registry part."
     ALL_SCAN_PATTERNS: Final[t.StrSequence] = (
         "src/**/__init__.py",
         "tests/**/__init__.py",
@@ -44,10 +68,13 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root import surfaces generated as private lazy plumbing, not public ABI."
+    # mro-pulj (codex): pytest must register fixture plugins before importing
+    # them, so their private package initializer is always side-effect free.
+    PRIVATE_FIXTURE_PACKAGE_NAME: Final[str] = "_fixtures"
+    "Private pytest-plugin package whose generated initializer stays empty."
 
     BARE_IMPORT_FROM_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+import\s",
-        re.MULTILINE,
+        r"^from\s+import\s", re.MULTILINE
     )
     "Regex: malformed ``from import`` statement (missing module name)."
 
@@ -76,28 +103,6 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_INTERNAL_CHILD_PACKAGES: Final[frozenset[str]] = frozenset({
-        "_constants",
-        "_models",
-        "_protocols",
-        "_typings",
-        "_utilities",
-        "basemk",
-        "check",
-        "codegen",
-        "deps",
-        "detectors",
-        "docs",
-        "fixers",
-        "gates",
-        "maintenance",
-        "refactor",
-        "release",
-        "transformers",
-        "validate",
-        "workspace",
-    })
-    "Child packages whose implementation exports do not bubble into root APIs."
     PUBLIC_ROOT_MODULE_EXPORTS: Final[frozenset[str]] = frozenset({"basemk"})
     "Internal child packages exported at the root as module objects only."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({
@@ -125,23 +130,37 @@ class FlextInfraConstantsCodegenLazy:
         "lazy",
         "normalize_lazy_imports",
     })
+    # mro-pulj (codex): these remain direct inline lazy imports without
+    # widening the explicit wildcard contract or requiring root sidecars.
     "Public-module symbols withheld from generated root-facade __all__."
     PUBLIC_ROOT_ALIAS_ORDER: Final[t.StrSequence] = (
         "c",
+        "t",
+        "p",
+        "m",
+        "u",
         "d",
         "e",
         "h",
-        "infra",
-        "m",
-        "main",
-        "p",
         "r",
         "s",
-        "t",
-        "u",
         "x",
+        "infra",
+        "main",
     )
-    "Canonical order for public root aliases and operational entry points."
+    "Canonical dependency order for public aliases and operational entry points."
+    # mro-wkii.17 (Codex): static analyzers bind local facade classes, not rebinds.
+    PUBLIC_ROOT_TYPING_FACADE_SUFFIXES: Final[t.MappingKV[str, str]] = (
+        MappingProxyType({
+            "c": "Constants",
+            "t": "Types",
+            "p": "Protocols",
+            "m": "Models",
+            "u": "Utilities",
+            "s": "ServiceBase",
+        })
+    )
+    "Named local facade suffixes used by generated TYPE_CHECKING aliases."
     ROOT_WRAPPER_SEGMENTS: Final[frozenset[str]] = frozenset({
         "docs",
         "src",

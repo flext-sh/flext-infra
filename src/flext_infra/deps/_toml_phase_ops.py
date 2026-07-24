@@ -10,10 +10,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, t, u
 
 
 class FlextInfraTomlPhaseOps:
@@ -30,7 +27,7 @@ class FlextInfraTomlPhaseOps:
         if isinstance(operation, m.Infra.Deps.Toml.SetOp):
             if u.Cli.toml_sync_value(tbl, operation.key, operation.value):
                 out.append(
-                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+                    f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}"
                 )
             return
         if isinstance(operation, m.Infra.Deps.Toml.ListOp):
@@ -42,10 +39,7 @@ class FlextInfraTomlPhaseOps:
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
                 return
             if u.Cli.toml_sync_string_list(
-                tbl,
-                operation.key,
-                operation.values,
-                sort_values=operation.sort,
+                tbl, operation.key, operation.values, sort_values=operation.sort
             ):
                 out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             return
@@ -63,7 +57,7 @@ class FlextInfraTomlPhaseOps:
             case c.Infra.TomlOperationKind.SET:
                 if u.Cli.toml_mapping_sync_value(tbl, operation.key, operation.value):
                     out.append(
-                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}",
+                        f"{u.Cli.toml_dot_path(pfx, operation.key)} set to {operation.value}"
                     )
             case c.Infra.TomlOperationKind.LIST:
                 if operation.strategy in {
@@ -75,19 +69,13 @@ class FlextInfraTomlPhaseOps:
                     ):
                         out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} updated")
                 elif u.Cli.toml_mapping_sync_string_list(
-                    tbl,
-                    operation.key,
-                    operation.values,
-                    sort_values=operation.sort,
+                    tbl, operation.key, operation.values, sort_values=operation.sort
                 ):
                     out.append(f"{u.Cli.toml_dot_path(pfx, operation.key)} set")
             case c.Infra.TomlOperationKind.REMOVE:
                 FlextInfraTomlPhaseOps._remove_payload_operation(
                     tbl, operation, out, pfx
                 )
-            case _:
-                msg = f"unsupported TOML operation kind: {operation.kind}"
-                raise ValueError(msg)
 
     @staticmethod
     def _remove_operation(
@@ -107,7 +95,7 @@ class FlextInfraTomlPhaseOps:
             return
         if u.Cli.toml_remove_key_if_present(target, operation.key):
             out.append(
-                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed"
             )
 
     @staticmethod
@@ -127,7 +115,7 @@ class FlextInfraTomlPhaseOps:
             return
         if u.Cli.toml_mapping_remove_key_if_present(target, operation.key):
             out.append(
-                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed",
+                f"{u.Cli.toml_dot_path(pfx, *operation.table_path, operation.key)} removed"
             )
 
 

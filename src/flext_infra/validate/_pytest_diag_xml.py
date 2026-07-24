@@ -9,14 +9,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from defusedxml import ElementTree as DefusedET
 
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, p
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class _DiagResult:
@@ -64,8 +66,7 @@ class FlextInfraPytestDiagXmlMixin:
 
     @staticmethod
     def _process_testcase(
-        case: p.Infra.XmlElementLike,
-        diag: _DiagResult,
+        case: p.Infra.XmlElementLike, diag: _DiagResult
     ) -> t.Pair[float, str]:
         """Process a single testcase element; returns (seconds, label)."""
         classname = case.attrib.get("classname", "")
@@ -80,11 +81,11 @@ class FlextInfraPytestDiagXmlMixin:
             diag.error_traces.append(
                 FlextInfraPytestDiagXmlMixin._build_trace_chunk(
                     "FAILURE", label, failure
-                ),
+                )
             )
         if (error := case.find(c.Infra.ERROR)) is not None:
             diag.error_traces.append(
-                FlextInfraPytestDiagXmlMixin._build_trace_chunk("ERROR", label, error),
+                FlextInfraPytestDiagXmlMixin._build_trace_chunk("ERROR", label, error)
             )
         if (skipped := case.find("skipped")) is not None:
             reason = (
@@ -108,15 +109,14 @@ class FlextInfraPytestDiagXmlMixin:
         if root is None:
             return False
         slow_rows: t.MutableSequenceOf[t.Pair[float, str]] = []
+        # NOTE (multi-agent, mro-f8vk / kimi): Element.iter() never yields
+        # None; the dropped guard was dead code. _as_xml_element below stays
+        # as the live XmlElementLike union guard.
         for case_raw in root.iter("testcase"):
-            if case_raw is None:
-                continue
             case = FlextInfraPytestDiagXmlMixin._as_xml_element(case_raw)
             if case is None:
                 continue
-            slow_rows.append(
-                FlextInfraPytestDiagXmlMixin._process_testcase(case, diag),
-            )
+            slow_rows.append(FlextInfraPytestDiagXmlMixin._process_testcase(case, diag))
         if slow_rows:
             diag.slow_entries = [
                 f"{secs:.6f}s | {label}"

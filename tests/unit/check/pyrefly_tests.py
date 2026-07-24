@@ -6,11 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestFlextInfraConfigFixer:
@@ -19,34 +22,36 @@ class TestFlextInfraConfigFixer:
     def test_init_creates_instance(self) -> None:
         """Test that fixer initializes with default workspace root."""
         fixer = FlextInfraConfigFixer()
-        assert fixer is not None
+        tm.that(fixer, none=False)
 
     def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
         """Test that fixer accepts custom workspace root."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        assert fixer is not None
+        tm.that(fixer, none=False)
 
     def test_execute_returns_failure(self) -> None:
         """Test that execute() returns failure with helpful message."""
         fixer = FlextInfraConfigFixer()
         result = fixer.execute()
         tm.fail(result)
-        assert isinstance(result.error, str)
-        assert isinstance(result.error, str)
-        assert "Use execute_command() directly" in result.error
+        tm.that(result.error, is_=str)
+        tm.that(result.error, is_=str)
+        tm.that(result.error, has="Use execute_command() directly")
 
     def test_run_with_empty_projects(self, tmp_path: Path) -> None:
         """Test that run() handles empty project list."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run([])
         tm.ok(result)
-        assert isinstance(result.value, list)
+        tm.that(result.value, is_=list)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
-        """Test that run() handles nonexistent projects gracefully."""
+        """Test that run() fails closed for an inaccessible explicit project."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         result = fixer.run(["nonexistent"])
-        tm.ok(result)
+
+        tm.fail(result)
+        tm.that(result.error, has="explicit project path is not accessible")
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Test that run() respects dry_run flag."""
@@ -66,8 +71,8 @@ class TestFlextInfraConfigFixer:
         missing_file = tmp_path / "nonexistent.toml"
         result = fixer.process_file(missing_file)
         tm.fail(result)
-        assert isinstance(result.error, str)
-        assert "not found" in result.error or "failed to read" in result.error
+        tm.that(result.error, is_=str)
+        tm.that(result.error, has="not found")
 
     def test_process_file_with_valid_toml(self, tmp_path: Path) -> None:
         """Test that process_file handles valid TOML without pyrefly section."""
@@ -76,7 +81,7 @@ class TestFlextInfraConfigFixer:
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
         tm.ok(result)
-        assert result.value == []
+        tm.that(result.value, eq=[])
 
     def test_process_file_with_invalid_toml(self, tmp_path: Path) -> None:
         """Test that process_file handles invalid TOML gracefully."""
@@ -85,8 +90,8 @@ class TestFlextInfraConfigFixer:
         pyproject.write_text("[invalid toml")
         result = fixer.process_file(pyproject)
         tm.fail(result)
-        assert isinstance(result.error, str)
-        assert "TOML parse failed" in result.error
+        tm.that(result.error, is_=str)
+        tm.that(result.error, has="TOML parse failed")
 
     def test_process_file_with_dry_run(self, tmp_path: Path) -> None:
         """Test that process_file with dry_run doesn't modify file."""
@@ -96,4 +101,4 @@ class TestFlextInfraConfigFixer:
         pyproject.write_text(original_content)
         result = fixer.process_file(pyproject, dry_run=True)
         tm.ok(result)
-        assert pyproject.read_text() == original_content
+        tm.that(pyproject.read_text(), eq=original_content)

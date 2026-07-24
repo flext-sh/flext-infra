@@ -12,20 +12,19 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+from flext_infra import c, m
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.codegen._fixer_workspace import FlextInfraCodegenFixerWorkspaceMixin
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenFixer(
-    FlextInfraProjectSelectionServiceBase[str],
-    FlextInfraCodegenFixerWorkspaceMixin,
+    FlextInfraProjectSelectionServiceBase[str], FlextInfraCodegenFixerWorkspaceMixin
 ):
     """Rope-oriented auto-fixer for namespace violations (Rules 1-5)."""
 
@@ -55,10 +54,8 @@ class FlextInfraCodegenFixer(
             if result.violations_fixed
         )
         lines.append(
-            (
-                f"Auto-fix: {total_fixed} fixed, {total_skipped} skipped"
-                f" across {len(results)} projects"
-            ),
+            f"Auto-fix: {total_fixed} fixed, {total_skipped} skipped"
+            f" across {len(results)} projects"
         )
         return r[str].ok("\n".join(lines))
 

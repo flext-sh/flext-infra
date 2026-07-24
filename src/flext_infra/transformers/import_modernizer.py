@@ -6,12 +6,13 @@ and adds missing runtime alias imports to the module header.
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
@@ -38,9 +39,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
 
     @override
     def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.Infra.TransformResult:
         """Apply import modernization via rope utilities."""
         source = resource.read()
@@ -69,9 +68,8 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         core_pkg = c.Infra.PKG_CORE_UNDERSCORE
         self.aliases_present.update(
             u.Infra.collect_from_import_bound_names(
-                source,
-                module_name=core_pkg,
-            ).intersection(self._runtime_aliases),
+                source, module_name=core_pkg
+            ).intersection(self._runtime_aliases)
         )
 
     def _rewrite_forbidden_imports(self, source: str) -> str:
@@ -83,9 +81,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             line = lines[i]
             stripped = line.lstrip()
             next_i, rewritten, handled = self._consume_forbidden_multiline_import(
-                lines,
-                i,
-                stripped,
+                lines, i, stripped
             )
             if handled:
                 if rewritten is not None:
@@ -93,8 +89,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
                 i = next_i
                 continue
             rewritten_single = self._rewrite_forbidden_single_line_import(
-                line,
-                stripped,
+                line, stripped
             )
             if rewritten_single is not line:
                 if rewritten_single is not None:
@@ -106,15 +101,10 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         return "".join(result)
 
     def _consume_forbidden_multiline_import(
-        self,
-        lines: t.StrSequence,
-        start: int,
-        stripped_line: str,
+        self, lines: t.StrSequence, start: int, stripped_line: str
     ) -> tuple[int, str | None, bool]:
         """Consume one forbidden parenthesized import statement when present."""
-        from_match = c.Infra.FROM_IMPORT_CAPTURE_PAREN_OPEN_RE.match(
-            stripped_line,
-        )
+        from_match = c.Infra.FROM_IMPORT_CAPTURE_PAREN_OPEN_RE.match(stripped_line)
         if from_match is None:
             return start, None, False
         module = from_match.group(1)
@@ -129,9 +119,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
         return end + 1, self._filter_import_names(module, full_text), True
 
     def _rewrite_forbidden_single_line_import(
-        self,
-        original_line: str,
-        stripped_line: str,
+        self, original_line: str, stripped_line: str
     ) -> str | None:
         """Rewrite one forbidden single-line import or return the original line."""
         from_single = c.Infra.FROM_IMPORT_LINE_TRIM_RE.match(stripped_line)
@@ -142,11 +130,7 @@ class FlextInfraRefactorImportModernizer(FlextInfraRopeTransformer):
             return original_line
         return self._filter_import_names(module, original_line)
 
-    def _filter_import_names(
-        self,
-        module: str,
-        import_text: str,
-    ) -> str | None:
+    def _filter_import_names(self, module: str, import_text: str) -> str | None:
         """Filter names from an import statement. Returns None to remove entirely."""
         # Extract all names from the import text
         names_part = (

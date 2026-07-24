@@ -4,7 +4,7 @@ Conservative AST rewrites for CLI anti-patterns:
 
 - Remove ``import`` / ``from`` statements for ``typer``, ``click``,
   ``argparse``, ``rich`` and ``tabulate``.
-- Rewrite ``print(msg)`` → ``cli.display_text(msg)`` when ``cli`` has been
+- Rewrite ``u.Cli.print(msg)`` → ``cli.display_text(msg)`` when ``cli`` has been
   imported from ``flext_cli``.
 - Flag direct ``typer.Typer()``, ``click.group()`` / ``click.command()`` and
   ``argparse.ArgumentParser()`` instantiations for manual conversion.
@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
@@ -30,9 +32,13 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
     _description = "migrate legacy CLI constructs to the flext_cli facade"
 
     _CLI_PKG: ClassVar[str] = "flext_cli"
-    _BANNED_MODULES: ClassVar[frozenset[str]] = frozenset(
-        {"typer", "click", "argparse", "rich", "tabulate"},
-    )
+    _BANNED_MODULES: ClassVar[frozenset[str]] = frozenset({
+        "typer",
+        "click",
+        "argparse",
+        "rich",
+        "tabulate",
+    })
     _MANUAL_ATTRS: ClassVar[dict[str, frozenset[str]]] = {
         "typer": frozenset({"Typer"}),
         "click": frozenset({"group", "command"}),
@@ -59,9 +65,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
 
         for module, attr in visitor.manual_conversions:
             if module in visitor.removed_modules:
-                self._record_change(
-                    f"Manual conversion required for {module}.{attr}()",
-                )
+                self._record_change(f"Manual conversion required for {module}.{attr}()")
 
         for change in visitor.changes:
             self._record_change(change)
@@ -122,13 +126,27 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
 
         @override
         def visit_Call(self, node: ast.Call) -> None:
-            """Rewrite ``print()`` and flag banned direct instantiations."""
+            """Rewrite ``print()`` / ``u.Cli.print()`` and flag banned direct instantiations."""
             func = node.func
             if isinstance(func, ast.Name) and func.id == "print":
                 self._maybe_rewrite_print(node)
+            elif self._is_u_cli_print(func):
+                self._maybe_rewrite_u_cli_print(node)
             elif isinstance(func, ast.Attribute):
                 self._maybe_flag_manual_conversion(func)
             self.generic_visit(node)
+
+        @staticmethod
+        def _is_u_cli_print(func: ast.expr) -> bool:
+            """Return True for ``u.Cli.print`` attribute access."""
+            return (
+                isinstance(func, ast.Attribute)
+                and func.attr == "print"
+                and isinstance(func.value, ast.Attribute)
+                and func.value.attr == "Cli"
+                and isinstance(func.value.value, ast.Name)
+                and func.value.value.id == "u"
+            )
 
         def _maybe_rewrite_print(self, node: ast.Call) -> None:
             """Rewrite ``print(msg)`` when ``cli`` is imported from ``flext_cli``."""
@@ -138,7 +156,23 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
                 return
             call_text = self.node_text(node)
             new_call = re.sub(
-                r"\bprint\b",
+                r"\bprint\b", f"{self._cli_symbol}.display_text", call_text, count=1
+            )
+            self.append_rewrite(
+                node,
+                new_call,
+                f"Replaced u.Cli.print() with {self._cli_symbol}.display_text()",
+            )
+
+        def _maybe_rewrite_u_cli_print(self, node: ast.Call) -> None:
+            """Rewrite ``u.Cli.print(msg)`` when ``cli`` is imported from ``flext_cli``."""
+            if self._cli_symbol is None:
+                return
+            if len(node.args) != 1 or node.keywords:
+                return
+            call_text = self.node_text(node)
+            new_call = re.sub(
+                r"\bu\.Cli\.print\b",
                 f"{self._cli_symbol}.display_text",
                 call_text,
                 count=1,
@@ -146,7 +180,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             self.append_rewrite(
                 node,
                 new_call,
-                f"Replaced print() with {self._cli_symbol}.display_text()",
+                f"Replaced u.Cli.print() with {self._cli_symbol}.display_text()",
             )
 
         def _maybe_flag_manual_conversion(self, func: ast.Attribute) -> None:
@@ -159,8 +193,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             if module not in banned:
                 return
             attrs = FlextInfraRefactorCliModernizer._manual_attrs().get(
-                module,
-                frozenset(),
+                module, frozenset()
             )
             if func.attr in attrs:
                 self.manual_conversions.append((module, func.attr))

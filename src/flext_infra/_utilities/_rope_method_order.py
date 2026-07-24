@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c
+
+if TYPE_CHECKING:
+    from flext_infra import m, t
 
 
 class FlextInfraUtilitiesRopeMethodOrderMixin:
@@ -23,8 +24,7 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
 
     @staticmethod
     def matches_method_rule(
-        method: m.Infra.MethodInfo,
-        rule: m.Infra.MethodOrderRule,
+        method: m.Infra.MethodInfo, rule: m.Infra.MethodOrderRule
     ) -> bool:
         """Check if a method matches an ordering rule."""
         decorators = set(method.decorators)
@@ -56,8 +56,7 @@ class FlextInfraUtilitiesRopeMethodOrderMixin:
 
     @staticmethod
     def build_method_sort_key(
-        method: m.Infra.MethodInfo,
-        order_config: t.SequenceOf[m.Infra.MethodOrderRule],
+        method: m.Infra.MethodInfo, order_config: t.SequenceOf[m.Infra.MethodOrderRule]
     ) -> tuple[int, int, str]:
         """Build a sort key tuple for method ordering."""
         cls = FlextInfraUtilitiesRopeMethodOrderMixin

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-from flext_cli import t
+if TYPE_CHECKING:
+    from flext_cli import t
 
 
 class FlextInfraConstantsDeps:
@@ -15,22 +16,9 @@ class FlextInfraConstantsDeps:
     # NOTE: Hardcoded base path constants removed.
     # All tool settings phases now use dynamic discovery via
     # u.Infra.discover_python_dirs() (SSOT in FlextInfraUtilitiesDiscovery).
-    GIT_REF_RE: Final[t.RegexPattern] = re.compile(
-        r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$",
-    )
-    GITHUB_REPO_URL_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?:git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?|https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:\.git)?)$",
-    )
-    GITHUB_OWNER_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
-        re.compile(r"^git@github\.com:(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-        re.compile(r"^https://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-        re.compile(r"^http://github\.com/(?P<owner>[^/]+)/[^/]+(?:\.git)?$"),
-    )
-    PEP621_PATH_RE: Final[t.RegexPattern] = re.compile(r"@\s*(?:file:)?(?P<path>.+)$")
     SKIP_DIRS: Final[frozenset[str]] = frozenset({
         ".archive",
         ".claude.disabled",
-        ".flext-deps",
         ".git",
         ".mypy_cache",
         ".pytest_cache",
@@ -45,15 +33,9 @@ class FlextInfraConstantsDeps:
         "vendor",
     })
     DEP_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
-    FLEXT_DEPS_DIR: Final[str] = ".flext-deps"
-    PEP621_PATH_DEP_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<name>[A-Za-z0-9_.-]+)\s*@\s*(?:file:(?://)?)?(?P<path>.+)$",
-    )
-    PEP621_NAME_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?P<name>[A-Za-z0-9_.-]+)",
-    )
+    PEP621_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*(?P<name>[A-Za-z0-9_.-]+)")
     PEP621_REQUIREMENT_HEAD_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)",
+        r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
     BANNER: Final[str] = (
         "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"

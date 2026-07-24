@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-    MutableMapping,
-)
+from collections.abc import Callable, MutableMapping
 from importlib import import_module
-from pathlib import Path
-from types import ModuleType
+from typing import TYPE_CHECKING
 
-from flext_cli.utilities import u
+from flext_cli import u
+from flext_infra import c, m
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from types import ModuleType
+
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocsBuild:
@@ -50,15 +50,10 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def _load_mkdocs_config(
-        load: Callable[..., object],
-        settings: Path,
-        site_dir: Path,
+        load: Callable[..., object], settings: Path, site_dir: Path
     ) -> MutableMapping[str, object]:
         """Load and validate a MkDocs config mapping."""
-        config_raw = load(
-            config_file_path=str(settings),
-            site_dir=str(site_dir),
-        )
+        config_raw = load(config_file_path=str(settings), site_dir=str(site_dir))
         if not isinstance(config_raw, MutableMapping):
             msg = "mkdocs.config.load_config did not return a mutable mapping"
             raise OSError(msg)
@@ -66,9 +61,7 @@ class FlextInfraUtilitiesDocsBuild:
 
     @staticmethod
     def docs_run_mkdocs(
-        scope: m.Infra.DocScope,
-        *,
-        runner: p.Cli.CommandRunner,
+        scope: m.Infra.DocScope, *, runner: p.Cli.CommandRunner
     ) -> m.Infra.DocsPhaseReport:
         """Run MkDocs directly through the MkDocs Python API for one scope."""
         settings = scope.path / "mkdocs.yml"
@@ -175,9 +168,7 @@ class FlextInfraUtilitiesDocsBuild:
         site_dir.parent.mkdir(parents=True, exist_ok=True)
         try:
             config_obj = FlextInfraUtilitiesDocsBuild._load_mkdocs_config(
-                load,
-                settings,
-                site_dir,
+                load, settings, site_dir
             )
             config_obj["strict"] = True
             _ = build(config_obj, dirty=False)
@@ -186,9 +177,52 @@ class FlextInfraUtilitiesDocsBuild:
             raise OSError(msg) from exc
 
     @staticmethod
+    def docs_serve_mkdocs(
+        scope: m.Infra.DocScope, *, dev_addr: str, livereload: bool, strict: bool
+    ) -> m.Infra.DocsPhaseReport:
+        """Serve one scope through the MkDocs Python serve API (blocking)."""
+        settings = scope.path / "mkdocs.yml"
+        if not settings.exists():
+            return m.Infra.DocsPhaseReport(
+                phase="serve",
+                scope=scope.name,
+                result="SKIP",
+                reason="mkdocs.yml not found",
+                site_dir="",
+                passed=True,
+            )
+        try:
+            serve_module = import_module("mkdocs.commands.serve")
+            serve_fn = FlextInfraUtilitiesDocsBuild._module_callable(
+                serve_module, "serve"
+            )
+            serve_fn(
+                config_file=str(settings),
+                livereload=livereload,
+                dev_addr=dev_addr,
+                strict=strict,
+            )
+        except c.EXC_OS_VALUE as exc:
+            return m.Infra.DocsPhaseReport(
+                phase="serve",
+                scope=scope.name,
+                result=c.Infra.ResultStatus.FAIL,
+                reason=str(exc) or "mkdocs serve failed",
+                site_dir="",
+                passed=False,
+            )
+        return m.Infra.DocsPhaseReport(
+            phase="serve",
+            scope=scope.name,
+            result=c.Infra.ResultStatus.OK,
+            reason="dev server stopped",
+            site_dir="",
+            passed=True,
+        )
+
+    @staticmethod
     def docs_write_build_reports(
-        scope: m.Infra.DocScope,
-        report: m.Infra.DocsPhaseReport,
+        scope: m.Infra.DocScope, report: m.Infra.DocsPhaseReport
     ) -> None:
         """Persist the standard build summary and markdown report."""
         _ = u.Cli.json_write(

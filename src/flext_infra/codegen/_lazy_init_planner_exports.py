@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
@@ -19,8 +17,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
         _module_exports_cache: dict[
-            tuple[str, bool, bool, bool, bool, bool],
-            t.LazyAliasMap,
+            tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
         _version_module_name: str
 
@@ -34,41 +31,53 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         ) -> m.Infra.RopePackageIndexEntry | None: ...
 
         def _add(
-            self,
-            index: t.MutableLazyAliasMap,
-            name: str,
-            target: t.StrPair,
+            self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair
         ) -> None: ...
 
         @staticmethod
         def _publish(name: str, *, allow_main: bool) -> bool: ...
 
     def _package_exports(
-        self,
-        context: m.Infra.LazyInitPackageContext,
+        self, context: m.Infra.LazyInitPackageContext
     ) -> t.MutableLazyAliasMap:
         """Return the lazy export map for a package (excluding child packages)."""
-        if self._is_private_test_fixture_package(
-            context.pkg_dir,
-            context.surface,
-        ):
+        if self._is_private_test_fixture_package(context.pkg_dir, context.surface):
             return {}
         package_entry = self._package_entry(context.pkg_dir)
         if package_entry is None:
             return {}
         index: t.MutableLazyAliasMap = {}
-        skip_names = {c.Infra.INIT_PY, "__main__.py", self._version_module_name}
+        # mro-i6nq.10: Generated support modules are output, never public input.
+        skip_names = {
+            c.Infra.INIT_PY,
+            "__main__.py",
+            self._version_module_name,
+            *c.Infra.OBSOLETE_GENERATED_INIT_FILES,
+        }
         for module_entry in package_entry.modules:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            if py_file.name in skip_names or (
-                child_entry is not None and child_entry.package_name
-            ):
+            # mro-pulj: test artifacts never enter an installable package ABI.
+            test_only_source_module = (
+                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+                and c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name)
+                is not None
+            )
+            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
+            # (>5 boolean expressions); retired/generated/test modules are
+            # never semantic input for the lazy export map.
+            is_generated_or_test = (
+                py_file.name in skip_names
+                or c.Infra.GENERATED_EXPORT_SIDECAR_RE.match(py_file.name)
+                or py_file.stem in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
+                or test_only_source_module
+            )
+            is_child_package = child_entry is not None and child_entry.package_name
+            if is_generated_or_test or is_child_package:
                 continue
             convention = self.rope_workspace.convention(
-                py_file,
-                rel_path=py_file.relative_to(context.pkg_dir),
+                py_file, rel_path=py_file.relative_to(context.pkg_dir)
             )
             policy = convention.module_policy
             if not policy.include_in_lazy_init or not module_entry.module_name:
@@ -82,14 +91,14 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             targets = self._module_exports(
                 py_file,
                 convention.module_name,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_main": policy.allow_main_export,
-                    "allow_assignments": (
+                export_options=m.Infra.ExportOptions(
+                    allow_main=policy.allow_main_export,
+                    allow_assignments=(
                         policy.allow_type_alias or policy.expected_alias is not None
                     ),
-                    "allow_functions": policy.is_fixture_module,
-                    "require_explicit_all": require_explicit_all,
-                }),
+                    allow_functions=policy.is_fixture_module,
+                    require_explicit_all=require_explicit_all,
+                ),
             )
             if require_explicit_all and not targets:
                 msg = (
@@ -114,8 +123,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 self._add(index, py_file.stem, (module_entry.module_name, ""))
                 continue
             for name, target in targets.items():
-                if isinstance(target, tuple):
-                    self._add(index, name, target)
+                self._add(index, name, target)
         return index
 
     def _module_exports(

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, override
 
+from flext_infra import c, m, p, t, u
 from flext_infra.codegen._lazy_init_planner_aliases import (
     FlextInfraCodegenLazyInitPlannerAliasesMixin,
 )
@@ -23,14 +24,9 @@ from flext_infra.codegen._lazy_init_planner_exports import (
 from flext_infra.codegen._lazy_init_planner_parents import (
     FlextInfraCodegenLazyInitPlannerParentsMixin,
 )
-from flext_infra.codegen._lazy_init_planner_public_api import (
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+from flext_infra.codegen._lazy_init_planner_public_root import (
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
@@ -38,16 +34,14 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     rope_workspace: Annotated[
         p.Infra.RopeWorkspaceDsl,
-        t.SkipValidation,
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
     lazy_init: m.Infra.LazyInitConfig = m.Field(
-        description="Validated lazy-init policy document",
+        description="Validated lazy-init policy document"
     )
 
     _module_exports_cache: dict[
-        tuple[str, bool, bool, bool, bool, bool],
-        t.LazyAliasMap,
+        tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
     ] = u.PrivateAttr(default_factory=dict)
     _package_exports_cache: dict[str, frozenset[str]] = u.PrivateAttr(
         default_factory=dict
@@ -70,7 +64,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     @property
     def collision_count(self) -> int:
-        """Return the number of export collisions resolved so far."""
+        """Number of export collisions resolved so far."""
         return self._collision_count
 
 
@@ -82,23 +76,28 @@ class FlextInfraCodegenLazyInitPlanner(
     FlextInfraCodegenLazyInitPlannerCollisionMixin,
     FlextInfraCodegenLazyInitPlannerParentsMixin,
     FlextInfraCodegenLazyInitPlannerCacheMixin,
-    FlextInfraCodegenLazyInitPlannerPublicApiMixin,
+    FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 ):
     """Resolve lazy-init plans using one shared Rope workspace index."""
 
     @override
     def build_plan(
-        self,
-        pkg_dir: Path,
-        *,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
+        self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
+        is_test_child_package = (
+            context.surface == c.Infra.DIR_TESTS
+            and context.current_pkg != c.Infra.DIR_TESTS
+        )
         empty_action: c.Infra.LazyInitAction = (
-            c.Infra.LazyInitAction.REMOVE
-            if context.generated_init
-            else c.Infra.LazyInitAction.SKIP
+            c.Infra.LazyInitAction.WRITE
+            if is_test_child_package
+            else (
+                c.Infra.LazyInitAction.REMOVE
+                if context.generated_init
+                else c.Infra.LazyInitAction.SKIP
+            )
         )
         if not context.importable:
             return m.Infra.LazyInitPlan(context=context, action=empty_action)
@@ -106,9 +105,7 @@ class FlextInfraCodegenLazyInitPlanner(
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
             f"{context.current_pkg}.{c.Infra.DUNDER_VERSION}",
-            export_options=m.Infra.ExportOptions.model_validate({
-                "include_dunder": True
-            }),
+            export_options=m.Infra.ExportOptions(include_dunder=True),
         )
         child_lazy = self._merge_children(context.pkg_dir, lazy_map, dir_exports)
         # Version-submodule dunders are emitted as eager imports rather than
@@ -139,29 +136,48 @@ class FlextInfraCodegenLazyInitPlanner(
             and context.current_pkg.startswith(c.Infra.PKG_PREFIX_UNDERSCORE)
             and u.Infra.matches_project_namespace_package(context.current_pkg)
         )
-        if is_public_project_root:
-            self._promote_public_root_eager_aliases(
-                current_pkg=context.current_pkg,
-                lazy_map=lazy_map,
-                eager_imports=eager_dunders,
-            )
+        is_test_facade_root = (
+            context.current_pkg == c.Infra.DIR_TESTS
+            and context.pkg_dir.name == c.Infra.DIR_TESTS
+            and context.surface == c.Infra.DIR_TESTS
+        )
+        is_facade_root = is_public_project_root or is_test_facade_root
         export_names = {*lazy_map, *eager_dunders}
-        if is_public_project_root:
-            export_names, lazy_map, child_lazy, excluded_lazy_names = (
-                self._filter_public_root_exports(
-                    context=context,
-                    export_names=export_names,
-                    lazy_map=lazy_map,
-                    eager_names=frozenset(eager_dunders),
-                    child_packages=child_lazy,
-                    dir_exports=dir_exports,
-                )
+        if is_facade_root:
+            # mro-pulj (codex) + ulw follow-up: __all__ is the one public
+            # contract (dir()/star-import/docs already respect it). Do NOT
+            # narrow lazy_map/_LAZY_MODULES to match -- internal fragments across
+            # the package rely on lazy __getattr__ resolving the root facade
+            # (`from flext_core import c`) during their own eager import chain;
+            # pruning the lazy map to the public subset breaks that resolution
+            # with a circular ImportError the moment any pruned name is touched
+            # before __init__ finishes executing. Only export_names (-> __all__)
+            # is filtered; lazy_map stays the full discovered set.
+            export_names, _unused_filtered_lazy_map = self._filter_public_root_exports(
+                context=context,
+                export_names=export_names,
+                lazy_map=lazy_map,
+                eager_names=frozenset(eager_dunders),
             )
+            child_lazy = ()
+            excluded_lazy_names = ()
+        preserve_manual_init = (
+            not is_facade_root
+            and context.init_path.is_file()
+            and not context.generated_init
+            and bool(
+                context.init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).strip()
+            )
+        )
         type_checking_map = dict(lazy_map)
         all_export_names = tuple(sorted(export_names))
-        return m.Infra.LazyInitPlan(
+        plan = m.Infra.LazyInitPlan(
             context=context,
-            action=c.Infra.LazyInitAction.WRITE,
+            action=(
+                c.Infra.LazyInitAction.SKIP
+                if preserve_manual_init
+                else c.Infra.LazyInitAction.WRITE
+            ),
             exports=u.Infra.ordered_namespace_exports(
                 package_dir=context.pkg_dir,
                 package_name=context.current_pkg,
@@ -173,11 +189,12 @@ class FlextInfraCodegenLazyInitPlanner(
             wildcard_runtime_modules=(),
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
-            registry_wrapper=self._lazy_import_registry_wrapper(
-                context.pkg_dir,
-                context.current_pkg,
-            ),
         )
+        # mro-pulj (codex): publish the dependency-complete bottom-up plan so
+        # later alias resolution never rebuilds this package without children.
+        self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
+        self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
+        return plan
 
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""

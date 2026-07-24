@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import p, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m, t
 
 
 class FlextInfraRefactorCensusInventoryMixin:
@@ -26,8 +27,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
     @classmethod
     def _build_parent_inventory(
-        cls,
-        workspace_root: Path,
+        cls, workspace_root: Path
     ) -> t.MappingKV[str, t.StrSequence]:
         """Inventory governed-package alias top-level facade names.
 
@@ -62,7 +62,10 @@ class FlextInfraRefactorCensusInventoryMixin:
                 module = __import__(pkg_name)
             except ImportError:
                 continue
-            for alias_name in u.read_project_constants(pkg_name).FACADE_ALIAS_NAMES:
+            import_name = pkg_name.replace("-", "_")
+            for alias_name, module_name, _ in u.lazy_alias_suffixes(import_name):
+                if module_name.split(".", 1)[0] != import_name:
+                    continue
                 alias = getattr(module, alias_name, None)
                 if alias is None:
                     continue
@@ -83,10 +86,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
     @classmethod
     def parent_alias_collisions(
-        cls,
-        report: m.Infra.Census.WorkspaceReport,
-        *,
-        workspace_root: Path,
+        cls, report: m.Infra.Census.WorkspaceReport, *, workspace_root: Path
     ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 

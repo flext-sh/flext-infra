@@ -10,14 +10,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra import c, u
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraProjectMakefileUpdater:
@@ -32,12 +34,16 @@ class FlextInfraProjectMakefileUpdater:
         identical to the file already on disk.
     """
 
-    def update(self, project_root: Path, *, canonical_root: Path) -> p.Result[bool]:
+    def update(
+        self, project_root: Path, *, canonical_root: Path, apply: bool = True
+    ) -> p.Result[bool]:
         """Regenerate project Makefile from pyproject.toml.
 
         Args:
             project_root: Root directory of the project.
             canonical_root: Workspace canonical root (reserved for future use).
+            apply: If True, write the Makefile; otherwise only report whether
+                it would change.
 
         Returns:
             r with True if Makefile was written, False if unchanged,
@@ -50,24 +56,24 @@ class FlextInfraProjectMakefileUpdater:
         if not pyproject.exists():
             result = r[bool].ok(False)
         else:
-            try:
-                meta = u.read_project_metadata(project_root)
-            except (FileNotFoundError, ValueError) as exc:
-                result = r[bool].fail_op("pyproject.toml parse", exc)
+            metadata_result = u.read_project_metadata(project_root)
+            if metadata_result.failure:
+                result = r[bool].fail(
+                    metadata_result.error or "pyproject.toml metadata load failed"
+                )
             else:
+                meta = metadata_result.value
                 bootstrap_result = (
                     FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
                 )
                 if bootstrap_result.failure:
                     result = r[bool].fail(
-                        bootstrap_result.error or "bootstrap template read failed",
+                        bootstrap_result.error or "bootstrap template read failed"
                     )
                 else:
                     bootstrap = bootstrap_result.value
                     new_content = self._build_makefile(
-                        meta,
-                        bootstrap,
-                        tests_dir=self._tests_dir(project_root, meta),
+                        meta, bootstrap, tests_dir=self._tests_dir(project_root, meta)
                     )
                     makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
 
@@ -79,10 +85,14 @@ class FlextInfraProjectMakefileUpdater:
                             new_content
                         ):
                             result = r[bool].ok(False)
+                        elif not apply:
+                            result = r[bool].ok(True)
                         else:
                             result = u.Cli.atomic_write_text_file(
                                 makefile_path, new_content
                             )
+                    elif not apply:
+                        result = r[bool].ok(True)
                     else:
                         result = u.Cli.atomic_write_text_file(
                             makefile_path, new_content
@@ -90,31 +100,38 @@ class FlextInfraProjectMakefileUpdater:
         return result
 
     @staticmethod
-    def _tests_dir(project_root: Path, meta: m.ProjectMetadata) -> str:
+    def _tests_dir(project_root: Path, meta: p.ProjectMetadata) -> str:
         """Return the project test directory used by generated Makefiles."""
-        package_tests = (
-            project_root
-            / c.Infra.DEFAULT_SRC_DIR
-            / meta.package_name
-            / c.Infra.DIR_TESTS
-        )
-        if meta.package_name and package_tests.is_dir():
-            return (
-                Path(c.Infra.DEFAULT_SRC_DIR) / meta.package_name / c.Infra.DIR_TESTS
-            ).as_posix()
-        return c.Infra.DIR_TESTS
+        src_dir: str = c.Infra.DEFAULT_SRC_DIR
+        tests_dir: str = c.Infra.DIR_TESTS
+        package_name: str = meta.package_name
+        package_tests = project_root / src_dir / package_name / tests_dir
+        if package_name and package_tests.is_dir():
+            return (Path(src_dir) / package_name / tests_dir).as_posix()
+        return tests_dir
+
+    @staticmethod
+    def _python_selector(requires_python: str) -> str:
+        """Derive the bare ``major.minor`` interpreter selector for Make.
+
+        The generated Makefile feeds ``PYTHON_VERSION`` into
+        ``command -v python$(PYTHON_VERSION)`` in the standalone bootstrap
+        (``makefile_bootstrap.mk.j2``), so it must be an interpreter suffix
+        like ``3.13`` — NOT the PEP 440 requirement specifier
+        (``>=3.13,<3.14``) that ``requires-python`` carries. Mirrors the
+        canonical derivation in ``environment.workspace_python_version``.
+        """
+        match = re.search(r">=\s*(3\.\d+)", requires_python)
+        return match.group(1) if match else requires_python
 
     @staticmethod
     def _build_makefile(
-        meta: m.ProjectMetadata,
-        bootstrap: str,
-        *,
-        tests_dir: str,
+        meta: p.ProjectMetadata, bootstrap: str, *, tests_dir: str
     ) -> str:
         """Build the fully-generated Makefile content."""
-        title = f"# {meta.name}"
-        if meta.description:
-            title += f" - {meta.description}"
+        title = f"# {meta.project.name}"
+        if meta.project.description:
+            title += f" - {meta.project.description}"
         sep = "# " + "=" * 77
         lines = [
             sep,
@@ -125,8 +142,8 @@ class FlextInfraProjectMakefileUpdater:
             "# DO NOT EDIT — put custom targets in custom.mk instead.",
             sep,
             "",
-            f"PROJECT_NAME := {meta.name}",
-            f"PYTHON_VERSION ?= {meta.requires_python}",
+            f"PROJECT_NAME := {meta.project.name}",
+            f"PYTHON_VERSION ?= {FlextInfraProjectMakefileUpdater._python_selector(meta.project.requires_python)}",
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
             f"TESTS_DIR ?= {tests_dir}",
             bootstrap,

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.typings import t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorTypingUnifierRewriteMixin:
@@ -41,14 +42,12 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
                 continue
             prefix, alias_name = container
             content, end_index = self._extract_square_bracket_content(
-                text,
-                index + len(prefix) - 1,
+                text, index + len(prefix) - 1
             )
             rewritten_content, nested_changes = self._rewrite_type_expression(content)
             if prefix.lower().startswith("tuple["):
                 replacement = self._rewrite_tuple_annotation(
-                    original_prefix=prefix,
-                    rewritten_content=rewritten_content,
+                    original_prefix=prefix, rewritten_content=rewritten_content
                 )
             else:
                 replacement = f"{alias_name}[{rewritten_content}]"
@@ -57,7 +56,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
             changes.extend(nested_changes)
             if original != replacement:
                 changes.append(
-                    f"Canonicalized built-in annotation {original} -> {replacement}",
+                    f"Canonicalized built-in annotation {original} -> {replacement}"
                 )
             index = end_index
         return "".join(result), changes
@@ -72,16 +71,14 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
             if container is not None:
                 prefix, alias_name = container
                 content, end_index = self._extract_square_bracket_content(
-                    text,
-                    index + len(prefix) - 1,
+                    text, index + len(prefix) - 1
                 )
                 rewritten_content, nested_changes = self._rewrite_type_expression(
-                    content,
+                    content
                 )
                 if prefix.lower().startswith("tuple["):
                     replacement = self._rewrite_tuple_annotation(
-                        original_prefix=prefix,
-                        rewritten_content=rewritten_content,
+                        original_prefix=prefix, rewritten_content=rewritten_content
                     )
                 else:
                     replacement = f"{alias_name}[{rewritten_content}]"
@@ -90,7 +87,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
                 changes.extend(nested_changes)
                 if original != replacement:
                     changes.append(
-                        f"Canonicalized built-in annotation {original} -> {replacement}",
+                        f"Canonicalized built-in annotation {original} -> {replacement}"
                     )
                 index = end_index
                 continue
@@ -100,7 +97,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
                 result.append(replacement)
                 if original != replacement:
                     changes.append(
-                        f"Canonicalized built-in annotation {original} -> {replacement}",
+                        f"Canonicalized built-in annotation {original} -> {replacement}"
                     )
                 index = end_index
                 continue
@@ -130,10 +127,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return not before or not (before.isalnum() or before == "_")
 
     @staticmethod
-    def _match_simple_type_alias(
-        text: str,
-        index: int,
-    ) -> tuple[str, str, int] | None:
+    def _match_simple_type_alias(text: str, index: int) -> tuple[str, str, int] | None:
         """Return a leaf-type rewrite for ``Any``/``typing.Any``/``object``."""
         for token in ("typing.Any", "Any", "object"):
             if not text.startswith(token, index):
@@ -167,10 +161,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
         return text[open_index + 1 :], len(text)
 
     def _rewrite_tuple_annotation(
-        self,
-        *,
-        original_prefix: str,
-        rewritten_content: str,
+        self, *, original_prefix: str, rewritten_content: str
     ) -> str:
         """Rewrite one ``tuple[...]`` annotation into the canonical ``t.*`` alias."""
         cls = FlextInfraRefactorTypingUnifierRewriteMixin
