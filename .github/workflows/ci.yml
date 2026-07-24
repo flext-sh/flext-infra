@@ -33,8 +33,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Setup (blocking)
-        run: make setup
+      - name: Boot (blocking)
+        run: make boot
 
       - name: Check (blocking)
         run: make check

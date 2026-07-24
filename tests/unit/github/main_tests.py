@@ -36,7 +36,7 @@ class TestsInfraGithub:
         )
 
     def test_sync_apply_writes_ci_files_and_report(self, tmp_path: Path) -> None:
-        """Write the adapted workflow and the requested structured report."""
+        """Write the canonical workflow verbatim and the requested report."""
         workspace = u.Tests.create_github_workspace(
             tmp_path,
             project_names=("flext-a", "flext-b"),
@@ -66,10 +66,10 @@ class TestsInfraGithub:
             content = destination.read_text(encoding="utf-8")
             tm.that(destination.is_file(), eq=True)
             tm.that(content, has="name: CI")
-            tm.that(content, has="- name: Setup (blocking)")
-            tm.that(content, has="run: make setup")
+            tm.that(content, has="- name: Boot (blocking)")
+            tm.that(content, has="run: make boot")
             tm.that(content, has="run: make val")
-            tm.that(content, lacks="run: make boot")
+            tm.that(content, lacks="run: make setup")
 
     def test_sync_prunes_noncanonical_files(self, tmp_path: Path) -> None:
         """Remove noncanonical workflow files only when pruning is requested."""

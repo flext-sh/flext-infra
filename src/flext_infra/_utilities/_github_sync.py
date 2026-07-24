@@ -33,13 +33,6 @@ class FlextInfraUtilitiesGithubSyncMixin:
         return r[str].ok(header + body)
 
     @classmethod
-    def _github_render_project_template(cls, rendered_template: str) -> str:
-        """Adapt workspace workflow commands to standalone project bootstrap semantics."""
-        return rendered_template.replace(
-            "- name: Boot (blocking)", "- name: Setup (blocking)"
-        ).replace("run: make boot", "run: make setup")
-
-    @classmethod
     def _github_resolve_source_workflow(
         cls, workspace_root: Path, source_workflow: Path | None = None
     ) -> p.Result[Path]:
