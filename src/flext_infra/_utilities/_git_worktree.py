@@ -270,6 +270,14 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[str].fail(update_result.error or "failed to activate checkpoint")
         return r[str].ok(checkpoint_sha)
 
+    @staticmethod
+    def _transaction_exclusion_pathspecs() -> tuple[str, ...]:
+        """Pathspecs that exclude tool-cache directories from operation deltas."""
+        return tuple(
+            f":(exclude){name}"
+            for name in sorted(c.Infra.WORKTREE_TRANSACTION_EXCLUDED_DIRS)
+        )
+
     @classmethod
     def git_repository_delta(
         cls, repository: m.Infra.RepositoryWorktree
@@ -282,18 +290,36 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if head_result.failure
                 else "isolated command moved repository HEAD"
             )
-        stage_result = cls.git_capture(repository.worktree_root, ("add", "-A", "-f"))
+        exclusions = cls._transaction_exclusion_pathspecs()
+        stage_result = cls.git_capture(
+            repository.worktree_root, ("add", "-A", "-f", *exclusions)
+        )
         if stage_result.failure:
             return r[m.Infra.RepositoryDelta].fail(
                 stage_result.error or "failed to stage operation delta"
             )
         names_result = cls.git_capture(
             repository.worktree_root,
-            ("diff", "--cached", "--name-only", "-z", repository.checkpoint_sha),
+            (
+                "diff",
+                "--cached",
+                "--name-only",
+                "-z",
+                repository.checkpoint_sha,
+                "--",
+                *exclusions,
+            ),
         )
         patch_result = cls.git_capture_bytes(
             repository.worktree_root,
-            ("diff", "--cached", "--binary", repository.checkpoint_sha, "--"),
+            (
+                "diff",
+                "--cached",
+                "--binary",
+                repository.checkpoint_sha,
+                "--",
+                *exclusions,
+            ),
         )
         if names_result.failure or patch_result.failure:
             return r[m.Infra.RepositoryDelta].fail(

@@ -63,6 +63,11 @@ class FlextInfraConstantsSourceCode:
         "htmlcov",
     }
     "Directories excluded when cloning a project tree for post-apply validation."
+    WORKTREE_TRANSACTION_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".pyrefly_cache",
+        ".cache",
+    }
+    "Cache directories excluded from isolated worktree transaction deltas."
 
     # --- Encoding (was: class Encoding) ---
     ENCODING_DEFAULT: Final[str] = "utf-8"

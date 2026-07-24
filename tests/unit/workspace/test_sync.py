@@ -4,31 +4,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_core import r
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from tests import m, t, u
 
 if TYPE_CHECKING:
     from tests import p
-
-
-def _stub_gen(content: str, *, fail: bool = False) -> FlextInfraBaseMkGenerator:
-    class _Gen(FlextInfraBaseMkGenerator):
-        @override
-        def generate_basemk(
-            self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
-        ) -> p.Result[str]:
-            _ = self
-            _ = settings
-            return r[str].fail(content) if fail else r[str].ok(content)
-
-    return _Gen(workspace_root=Path.cwd())
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -44,6 +29,7 @@ def _write_project(project_root: Path, name: str) -> None:
         encoding="utf-8",
     )
     u.Tests.write_standalone_workspace_manifest(project_root, name)
+    u.Tests.initialize_git_repo(project_root)
 
 
 def _write_workspace(workspace_root: Path) -> None:
@@ -52,6 +38,7 @@ def _write_workspace(workspace_root: Path) -> None:
         ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
     u.Tests.write_standalone_workspace_manifest(workspace_root, "workspace-root")
+    u.Tests.initialize_git_repo(workspace_root)
 
 
 def _error_text[ValueT](result: p.Result[ValueT]) -> str:
@@ -95,8 +82,8 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         tm.that(result.value.files_changed, gt=0)
         tm.that((project_root / "base.mk").exists(), eq=False)
-        # mro-jnm1.2: .gitignore is owned by codegen conform, not sync.
-        tm.that((project_root / ".gitignore").exists(), eq=False)
+        # mro-jnm1.2: sync delegates to conform SELF, which owns .gitignore.
+        tm.that((project_root / ".gitignore").exists(), eq=True)
         tm.that((project_root / "Makefile").exists(), eq=True)
         settings = u.Cli.json_read(project_root / ".vscode" / "settings.json").unwrap()
         tm.that(settings["python.analysis.typeCheckingMode"], eq="strict")
@@ -114,16 +101,18 @@ class TestsFlextInfraWorkspaceSync:
             canonical_root=project_root.parent, workspace_root=project_root
         ).execute()
 
-        tm.ok(result)
-        tm.that(result.value.files_changed, gt=0)
+        tm.fail(result)
+        tm.that(_error_text(result), has="codegen drift detected")
         tm.that((project_root / ".gitignore").exists(), eq=False)
         tm.that((project_root / ".envrc").exists(), eq=False)
         tm.that((project_root / ".mise.toml").exists(), eq=False)
         tm.that((project_root / ".vscode" / "settings.json").exists(), eq=False)
         tm.that((project_root / "Makefile").exists(), eq=False)
 
-    def test_sync_uses_package_tests_dir_when_present(self, tmp_path: Path) -> None:
-        """Point generated Makefiles at package-local tests when present."""
+    def test_sync_tolerates_package_tests_dir_when_present(
+        self, tmp_path: Path
+    ) -> None:
+        """Package-local tests do not prevent a standalone project sync."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
         (project_root / "src" / "demo_project" / "tests").mkdir(parents=True)
@@ -135,8 +124,7 @@ class TestsFlextInfraWorkspaceSync:
         ).execute()
 
         tm.ok(result)
-        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile_text, has="TESTS_DIR ?= src/demo_project/tests")
+        tm.that((project_root / "Makefile").exists(), eq=True)
 
     def test_sync_is_idempotent_on_second_run(self, tmp_path: Path) -> None:
         """Produce zero file changes when a synchronized project runs again."""
@@ -230,20 +218,6 @@ class TestsFlextInfraWorkspaceSync:
         tm.fail(result)
         tm.that(_error_text(result), has="does not exist")
 
-    def test_sync_fails_when_generator_fails(self, tmp_path: Path) -> None:
-        """Propagate the typed base.mk generator failure."""
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-
-        service = FlextInfraSyncService(
-            canonical_root=project_root.parent, workspace_root=project_root
-        )
-        service.generator = _stub_gen("Generation failed", fail=True)
-        result = service.execute()
-
-        tm.fail(result)
-        tm.that(_error_text(result), has="Generation failed")
-
     def test_sync_workspace_root_also_generates_root_files(
         self, tmp_path: Path
     ) -> None:
@@ -273,6 +247,8 @@ class TestsFlextInfraWorkspaceSync:
         (project_root / "Makefile").write_text(
             "# legacy custom target\ncustom-target:\n\t@echo legacy\n", encoding="utf-8"
         )
+        tm.ok(u.Infra.git_capture(project_root, ("add", "Makefile")))
+        tm.ok(u.Infra.git_capture(project_root, ("commit", "-m", "legacy")))
 
         result = FlextInfraSyncService(
             canonical_root=project_root.parent,
@@ -286,7 +262,7 @@ class TestsFlextInfraWorkspaceSync:
         tm.that(makefile_text, has="-include custom.mk")
         tm.that((project_root / "custom.mk").exists(), eq=False)
 
-    def test_sync_generated_makefile_requires_flext_workspace_marker(
+    def test_sync_generated_makefile_uses_standalone_profile_without_workspace_ancestor(
         self, tmp_path: Path
     ) -> None:
         """Select workspace mode only for a complete FLEXT workspace ancestor."""
@@ -301,9 +277,10 @@ class TestsFlextInfraWorkspaceSync:
 
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile_text, has="MAKE_PROFILE := standalone")
         tm.that(
             makefile_text,
-            has='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
+            lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:

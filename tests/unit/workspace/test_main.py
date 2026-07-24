@@ -27,6 +27,7 @@ def _write_project(project_root: Path, name: str) -> None:
         encoding="utf-8",
     )
     u.Tests.write_standalone_workspace_manifest(project_root, name)
+    u.Tests.initialize_git_repo(project_root)
 
 
 def _write_workspace(workspace_root: Path) -> None:
@@ -36,7 +37,15 @@ def _write_workspace(workspace_root: Path) -> None:
         encoding="utf-8",
     )
     (workspace_root / "pyproject.toml").write_text(
-        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
+        (
+            "[project]\n"
+            'name = "workspace-root"\n'
+            'version = "0.1.0"\n'
+            "\n"
+            "[tool.flext.workspace]\n"
+            'members = ["demo-a"]\n'
+        ),
+        encoding="utf-8",
     )
     config_dir = workspace_root / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -92,7 +101,15 @@ def _write_orchestratable_workspace(
         encoding="utf-8",
     )
     (workspace_root / "pyproject.toml").write_text(
-        '[project]\nname = "workspace-root"\nversion = "0.1.0"\n', encoding="utf-8"
+        (
+            "[project]\n"
+            'name = "workspace-root"\n'
+            'version = "0.1.0"\n'
+            "\n"
+            "[tool.flext.workspace]\n"
+            'members = ["demo"]\n'
+        ),
+        encoding="utf-8",
     )
     config_dir = workspace_root / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -181,8 +198,10 @@ class TestsFlextInfraWorkspaceMain:
             apply_changes=False,
         ).execute()
 
-        tm.ok(result)
-        assert result.value.files_changed >= 1
+        tm.fail(result)
+        error = result.error or ""
+        tm.that(error, has="codegen drift detected")
+        tm.that(error, has="Makefile")
 
     def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
         result = FlextInfraOrchestratorService(

@@ -12,6 +12,9 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from tests import u
 
 
+pytestmark = pytest.mark.timeout(60)
+
+
 @pytest.fixture
 def pyright_content() -> str:
     """Provide minimal Pyright configuration content."""

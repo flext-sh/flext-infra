@@ -503,8 +503,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     f"  class_stem: {class_stem}\n"
                     f"  namespace: {namespace}\n"
                     f"  constant_name: {name}\n"
-                    f"  namespace_attribute: {name}\n"
-                    f"  alias: {name}\n"
+                    f"  namespace_attribute: {package_name}\n"
+                    f"  alias: {package_name}\n"
                     f"  environment_prefix: {env_prefix}\n"
                     f'  description: "Demo {name}"\n'
                     '  version: "0.1.0"\n'
