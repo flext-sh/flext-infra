@@ -20,6 +20,8 @@ from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 
+pytestmark = pytest.mark.timeout(120)
+
 if TYPE_CHECKING:
     from pathlib import Path
 

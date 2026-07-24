@@ -6,11 +6,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 from tests import m, t, u
+
+pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from tests import p
