@@ -79,11 +79,22 @@ class FlextInfraEnsureRuffConfigPhase:
         if loaded.failure:
             msg = loaded.error or f"project config load failed: {config_dir}"
             raise ValueError(msg)
-        merged: t.MutableJsonMapping = {}
+        per_file_ignores: t.MutableMapping[str, set[str]] = {}
         for document in loaded.value.values():
-            merged.update(document.data)
-        project_config = m.Infra.ProjectConfigDocument.model_validate(merged)
-        return project_config.ManagedArtifacts.Ruff.per_file_ignores
+            managed = document.data.get("ManagedArtifacts")
+            if not managed:
+                continue
+            project_config = m.Infra.ProjectConfigDocument.model_validate({
+                "ManagedArtifacts": managed
+            })
+            for (
+                pattern,
+                rules,
+            ) in project_config.ManagedArtifacts.Ruff.per_file_ignores.items():
+                per_file_ignores.setdefault(pattern, set()).update(rules)
+        return {
+            pattern: tuple(sorted(rules)) for pattern, rules in per_file_ignores.items()
+        }
 
     def _per_file_ignores(self, project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
         """Compose global policy with the current project's managed additions."""
