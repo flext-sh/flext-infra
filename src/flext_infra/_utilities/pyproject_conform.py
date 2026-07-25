@@ -60,6 +60,7 @@ class FlextInfraUtilitiesPyprojectConform:
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
+            repositories=repositories,
             workspace=workspace,
             required_version=toolchain.uv_required_version,
             link_mode=toolchain.uv_link_mode,
@@ -107,7 +108,10 @@ class FlextInfraUtilitiesPyprojectConform:
             cls._validate_root_uv_sources(source, workspace=workspace)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                project_name=project_name,
+                repositories=repositories,
+                workspace=workspace,
             )
         )
         if sources_result.failure:
@@ -215,16 +219,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 reference_result.error
                 or f"repository resolution failed: {dependency_name}"
             )
-        reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
-            return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
-            )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
         marker_text = marker.strip()
         return r[str].ok(
-            f"{canonical}; {marker_text}" if separator and marker_text else canonical
+            f"{head}; {marker_text}" if separator and marker_text else head
         )
 
     @staticmethod
@@ -250,16 +247,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Convert a validated repository URL into a PEP 508 Git transport URL."""
-        if url.startswith("https://"):
-            return r[str].ok(f"git+{url}")
-        ssh_prefix = "git@github.com:"
-        if url.startswith(ssh_prefix):
-            return r[str].ok(f"git+ssh://git@github.com/{url.removeprefix(ssh_prefix)}")
-        return r[str].fail(f"unsupported repository URL for direct Git metadata: {url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -406,6 +393,7 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         required_version: str | None = None,
         link_mode: str | None = None,
@@ -453,11 +441,21 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_remove_key_if_present(tool, "uv")
             return r[bool].ok(True)
         workspace_names = {member.distribution for member in workspace.members}
+        repository_sources = {
+            repository.distribution: {
+                "git": repository.url,
+                "branch": repository.branch,
+            }
+            for repository in repositories
+            if repository.distribution != project_name
+            and repository.distribution not in workspace_names
+        }
         for source_name in tuple(sources):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
             if source_name.startswith("flext-") and (
-                not workspace_root or source_name not in workspace_names
+                not workspace_root
+                or source_name not in workspace_names | repository_sources.keys()
             ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
@@ -465,6 +463,8 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_mapping_table(
                     sources, member.distribution, {"workspace": True}
                 )
+            for distribution, source in repository_sources.items():
+                u.Cli.toml_sync_mapping_table(sources, distribution, source)
         elif not tuple(sources):
             u.Cli.toml_remove_key_if_present(uv, "sources")
         if not workspace_root and not tuple(uv):

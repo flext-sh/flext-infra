@@ -236,10 +236,7 @@ mypy_path = [".", "src", "../flext-core/src"]
         tm.that(root_rendered, has='link-mode = "copy"')
         tm.that(root_rendered, has='constraint-dependencies = [\n    "uv==0.11.28",')
         tm.that(root_rendered, has='override-dependencies = ["pathspec>=1.0.0"]')
-        tm.that(
-            root_rendered,
-            has='dependencies = [\n    "flext-core[async] @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",',
-        )
+        tm.that(root_rendered, has='dependencies = [\n    "flext-core[async]",')
         tm.that(root_rendered, has="[tool.uv.workspace]")
         tm.that(root_rendered, has='members = [\n    "flext-core",')
         tm.that(root_rendered, has="[tool.uv.sources.flext-core]")
@@ -350,10 +347,10 @@ tag = "v0.22.9"
         tm.that(member_second.success, eq=True)
         tm.that(member_second.value, eq=member_rendered)
         for expected in (
-            "flext-core[async] @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev; python_version >= '3.13'",
-            "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-            "flext-web @ git+https://github.com/flext-sh/flext-web.git@0.12.0-dev",
+            "flext-core[async]; python_version >= '3.13'",
+            '"flext-infra"',
+            '"flext-tests"',
+            '"flext-web"',
             "[tool.uv.sources.beartype]",
             'tag = "v0.22.9"',
         ):
@@ -387,22 +384,31 @@ workspace = true
         tm.that(empty_uv_second.value, eq=empty_uv_rendered)
         tm.that("[tool.uv]" not in empty_uv_rendered, eq=True)
 
-    def test_workspace_root_renders_inline_git_urls_for_flext_deps(self) -> None:
-        """Root flext-* deps render inline PEP508 Git URLs, never plain names."""
-        repositories = (
-            _member_ref("flext-core"),
-            _member_ref("flext-cli"),
-            _member_ref("flext-tests"),
-            _member_ref("flext-infra"),
+    def test_workspace_root_owns_internal_dependency_sources(self) -> None:
+        """Keep published metadata bare and source resolution exclusively at root."""
+        member = _member_ref("flext-member-alpha")
+        external = _member_ref("flext-external-beta").model_copy(
+            update={
+                "url": "https://example.invalid/org/flext-external-beta.git",
+                "branch": "fixture-branch",
+                "path": Path("elsewhere/flext-external-beta"),
+            }
         )
+        repositories = (member, external)
         workspace = _cosmos_workspace()
+        workspace = workspace.model_copy(update={"members": (member,)})
         toolchain = _toolchain()
-        root_source = """[project]
-name = "cosmos-main"
-dependencies = ["flext-core", "flext-cli", "requests>=2"]
+        root_name = workspace.repository.distribution
+        root_source = f"""[project]
+name = "{root_name}"
+dependencies = [
+    "flext-member-alpha[feature] @ file:///tmp/flext-member-alpha; python_version >= '3.13'",
+    "flext-external-beta>=9.9",
+    "requests>=2",
+]
 
 [dependency-groups]
-dev = ["flext-tests", "pytest>=8"]
+dev = ["flext-external-beta @ ../flext-external-beta", "pytest>=8"]
 """
         first = u.Infra.pyproject_conform(
             root_source,
@@ -413,18 +419,18 @@ dev = ["flext-tests", "pytest>=8"]
         tm.that(first.success, eq=True)
         rendered = first.value
         for expected in (
-            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+            "flext-member-alpha[feature]; python_version >= '3.13'",
+            '"flext-external-beta"',
+            "[tool.uv.sources.flext-member-alpha]",
+            "workspace = true",
+            "[tool.uv.sources.flext-external-beta]",
+            f'git = "{external.url}"',
+            f'branch = "{external.branch}"',
         ):
             tm.that(rendered, has=expected)
-        # NOTE: no bare plain flext-* requirement survives at the workspace root.
-        for bare in ('"flext-core"', '"flext-cli"', '"flext-tests"', '"flext-infra"'):
-            tm.that(bare not in rendered, eq=True, msg=bare)
-        # NOTE: [tool.uv.sources] keeps only {workspace=true} members, no flext-*.
-        tm.that("[tool.uv.sources.flext-" not in rendered, eq=True)
-        tm.that(rendered, has="[tool.uv.sources.cosmos-charts]")
-        tm.that(rendered, has="workspace = true")
+        for forbidden in ("file://", "../flext-external-beta", ">=9.9"):
+            tm.that(forbidden not in rendered, eq=True, msg=forbidden)
+        tm.that(f"[tool.uv.sources.{root_name}]" not in rendered, eq=True)
         second = u.Infra.pyproject_conform(
             rendered,
             repositories=repositories,
@@ -434,8 +440,8 @@ dev = ["flext-tests", "pytest>=8"]
         tm.that(second.success, eq=True)
         tm.that(second.value, eq=rendered)
 
-    def test_relative_path_flext_deps_are_rewritten_to_inline_git_urls(self) -> None:
-        """The no-relative-path law: file://, ../ and {path=} never survive."""
+    def test_member_internal_deps_are_bare_without_duplicate_sources(self) -> None:
+        """Members publish bare requirements and carry no internal source mapping."""
         repositories = (
             _member_ref("flext-core"),
             _member_ref("flext-cli"),
@@ -467,11 +473,7 @@ path = "../flext-cli"
         )
         tm.that(first.success, eq=True)
         rendered = first.value
-        for expected in (
-            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-        ):
+        for expected in ('"flext-core"', '"flext-cli"', '"flext-tests"'):
             tm.that(rendered, has=expected)
         for forbidden in ("../", "file://", "editable = true", "workspace = false"):
             tm.that(forbidden not in rendered, eq=True, msg=forbidden)
