@@ -34,7 +34,6 @@ class TestsRootArtifactOwnership:
             "config/workspace.yaml": "manual",
             "custom.mk": "manual",
             "pyproject.toml": "merge",
-            "workspace_custom.mk": "manual",
         }
 
         configured = {
@@ -69,10 +68,8 @@ class TestsRootArtifactOwnership:
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
             "custom.mk": b"# manual project extension\n",
-            "workspace_custom.mk": b"# manual workspace extension\n",
         }
         (root / "custom.mk").write_bytes(manual["custom.mk"])
-        (root / "workspace_custom.mk").write_bytes(manual["workspace_custom.mk"])
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(

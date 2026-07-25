@@ -2,11 +2,11 @@
 
 Manages the root ``Makefile`` in a FLEXT workspace.  The file is
 100% generated from a Jinja2 template stored inside ``flext_infra``.
-Custom workspace targets go in ``workspace_custom.mk`` (auto-included).
+Custom workspace targets go in ``custom.mk`` (auto-included).
 
 Bootstrap flow (first run, no template yet):
   - Reads the current ``Makefile`` and registers it as the canonical template.
-  - Adds ``@generated`` header and ``-include workspace_custom.mk``.
+  - Adds ``@generated`` header and ``-include custom.mk``.
   - Parameterises ``PR_BRANCH`` from the current git branch.
 
 Subsequent runs:

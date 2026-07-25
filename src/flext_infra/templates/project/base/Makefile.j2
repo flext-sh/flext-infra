@@ -18,8 +18,13 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+# A workspace root orchestrates its members, so its lint and type scope is the
+# union of every member's source and tests. Members are expanded from the
+# manifest SSOT, never listed by hand, and the paths stay existence-filtered so
+# a member without one of the trees cannot break the gate.
+WORKSPACE_CHECK_PATHS :={% if make_profile == "workspace-root" %}{% for member in workspace_members %} $(wildcard $(PROJECT_ROOT)/{{ member }}/src) $(wildcard $(PROJECT_ROOT)/{{ member }}/tests){% endfor %}{% endif %}
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %} $(WORKSPACE_CHECK_PATHS)
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %} $(WORKSPACE_CHECK_PATHS)
 
 {% include "base_mypy_limit.mk.j2" %}
 
@@ -69,7 +74,10 @@ UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif
 _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
 {% endif %}
 
--include custom.mk
+# The custom Make surface is the single extension point for every profile: it
+# carries the project's own commands, WHATs and hooks. Its name comes from the
+# constants SSOT, so there is no per-profile variant and no second surface.
+{{ makefile_custom_include }}
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \

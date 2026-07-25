@@ -315,9 +315,6 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
-      - path: workspace_custom.mk
-        owner: custom
-        policy: manual
 
     scaffold:
       build:

@@ -188,10 +188,10 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
 
     @pytest.mark.timeout(60)
     def test_workspace_makefile_runs_custom_verb_hooks(self, tmp_path: Path) -> None:
-        """A root verb runs workspace_custom.mk pre-<verb> before its dispatch body."""
+        """A root verb runs custom.mk pre-<verb> before its dispatch body."""
         workspace_root = _write_workspace_root(tmp_path)
         tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
-        (workspace_root / "workspace_custom.mk").write_text(
+        (workspace_root / "custom.mk").write_text(
             ".PHONY: pre-check post-check\n"
             "pre-check:\n\t@echo WS_HOOK_PRE_CHECK\n"
             "post-check:\n\t@echo WS_HOOK_POST_CHECK\n",

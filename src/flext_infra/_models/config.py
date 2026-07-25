@@ -606,6 +606,13 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
+        makefile_custom_include: Annotated[
+            str,
+            m.Field(
+                min_length=1,
+                description=("Make directive that includes the custom Make surface"),
+            ),
+        ]
         workspace_manifest_version: Annotated[
             int,
             m.Field(

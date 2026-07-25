@@ -1000,6 +1000,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_git_url=repository.url,
                 repository_branch=repository.branch,
                 workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_repository=repository,
                 year=project.year,
                 workspace_members=tuple(
