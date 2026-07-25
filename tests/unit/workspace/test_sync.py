@@ -286,6 +286,23 @@ class TestsFlextInfraWorkspaceSync:
             lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
 
+    def test_sync_standalone_bootstrap_uses_uv_and_public_console(self, tmp_path: Path) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+
+        tm.ok(result)
+        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile_text, has="uv sync")
+        tm.that(makefile_text, has="uv run flext-infra")
+        tm.that(makefile_text, lacks="pip install flext-infra")
+        tm.that(makefile_text, lacks="python -m flext_infra")
+
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""
         target = tmp_path / "test.txt"
