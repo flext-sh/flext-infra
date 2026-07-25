@@ -60,6 +60,7 @@ class FlextInfraUtilitiesPyprojectConform:
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
+            repositories=repositories,
             workspace=workspace,
             required_version=toolchain.uv_required_version,
             link_mode=toolchain.uv_link_mode,
@@ -92,6 +93,14 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
+        if cls._is_workspace_root(project_name=project_name, workspace=workspace):
+            sources_result = cls._validate_root_uv_sources(
+                source, repositories=repositories, workspace=workspace
+            )
+            if sources_result.failure:
+                return r[str].fail(
+                    sources_result.error or "uv source conformance failed"
+                )
         normalized = cls._normalize_requirements(
             source,
             repositories=repositories,
@@ -104,10 +113,13 @@ class FlextInfraUtilitiesPyprojectConform:
             source, project_name=project_name, workspace=workspace
         )
         sources_result = (
-            cls._validate_root_uv_sources(source, workspace=workspace)
+            r[bool].ok(True)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                project_name=project_name,
+                repositories=repositories,
+                workspace=workspace,
             )
         )
         if sources_result.failure:
@@ -186,11 +198,17 @@ class FlextInfraUtilitiesPyprojectConform:
                     normalized.error or f"normalize dependency group {key} failed"
                 )
             normalized_items.append(normalized.value)
-        canonical = (
-            FlextInfraUtilitiesDependencies.dedupe_specs(normalized_items)
-            if canonicalize_all
-            else tuple(normalized_items)
-        )
+        canonical = tuple(dict.fromkeys(normalized_items))
+        if canonicalize_all:
+            canonical = tuple(
+                sorted(
+                    canonical,
+                    key=lambda requirement: (
+                        FlextInfraUtilitiesDependencies.dep_name(requirement) or "",
+                        requirement,
+                    ),
+                )
+            )
         u.Cli.toml_sync_string_list(container, key, canonical)
         return r[bool].ok(True)
 
@@ -215,13 +233,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 reference_result.error
                 or f"repository resolution failed: {dependency_name}"
             )
-        reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
-            return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
-            )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
+        canonical = head
         marker_text = marker.strip()
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
@@ -250,16 +262,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Convert a validated repository URL into a PEP 508 Git transport URL."""
-        if url.startswith("https://"):
-            return r[str].ok(f"git+{url}")
-        ssh_prefix = "git@github.com:"
-        if url.startswith(ssh_prefix):
-            return r[str].ok(f"git+ssh://git@github.com/{url.removeprefix(ssh_prefix)}")
-        return r[str].fail(f"unsupported repository URL for direct Git metadata: {url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -406,6 +408,7 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         required_version: str | None = None,
         link_mode: str | None = None,
@@ -430,6 +433,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if required_version is not None and link_mode is not None:
             u.Cli.toml_sync_value(uv, "required-version", required_version)
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
+            u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
         if workspace_root:
             if constraint_dependencies is not None:
                 u.Cli.toml_sync_string_list(
@@ -446,34 +450,80 @@ class FlextInfraUtilitiesPyprojectConform:
         else:
             u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
-        if sources is None and workspace_root:
-            sources = u.Cli.toml_ensure_table(uv, "sources")
-        if sources is None:
-            if not workspace_root and not tuple(uv):
-                u.Cli.toml_remove_key_if_present(tool, "uv")
-            return r[bool].ok(True)
-        workspace_names = {member.distribution for member in workspace.members}
-        for source_name in tuple(sources):
-            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
-            # TOML tables in place so conformance cannot accumulate blank trivia.
-            if source_name.startswith("flext-") and (
-                not workspace_root or source_name not in workspace_names
-            ):
-                u.Cli.toml_remove_key_if_present(sources, source_name)
-        if workspace_root:
-            for member in workspace.members:
-                u.Cli.toml_sync_mapping_table(
-                    sources, member.distribution, {"workspace": True}
-                )
-        elif not tuple(sources):
+        if not workspace_root:
             u.Cli.toml_remove_key_if_present(uv, "sources")
+        else:
+            resolved_result = cls._resolved_root_sources(
+                repositories=repositories, workspace=workspace
+            )
+            if resolved_result.failure:
+                return r[bool].fail(
+                    resolved_result.error or "repository resolution failed"
+                )
+            if sources is None:
+                sources = u.Cli.toml_ensure_table(uv, "sources")
+            current_sources = u.Cli.toml_as_mapping(sources)
+            if current_sources != resolved_result.value:
+                for source_name in tuple(sources):
+                    u.Cli.toml_remove_key_if_present(sources, source_name)
+                for source_name, source in resolved_result.value.items():
+                    u.Cli.toml_sync_mapping_table(sources, source_name, source)
         if not workspace_root and not tuple(uv):
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)
 
+    @classmethod
+    def _resolved_root_sources(
+        cls,
+        *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        workspace: p.Infra.WorkspaceSpec,
+    ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
+        """Resolve the exact root source map from typed workspace metadata."""
+        member_names = {member.distribution for member in workspace.members}
+        candidates = (
+            *repositories,
+            workspace.repository,
+            *workspace.members,
+            *workspace.content_only,
+        )
+        for distribution in dict.fromkeys(item.distribution for item in candidates):
+            reference_result = cls._repository_reference(
+                distribution, repositories=candidates
+            )
+            if reference_result.failure:
+                return r.fail(reference_result.error or "repository resolution failed")
+        resolved: dict[str, dict[str, t.JsonValue]] = {
+            member.distribution: {"workspace": True} for member in workspace.members
+        }
+        seen: set[str] = set()
+        for repository in repositories:
+            distribution = repository.distribution
+            if distribution in seen:
+                continue
+            seen.add(distribution)
+            reference_result = cls._repository_reference(
+                distribution, repositories=candidates
+            )
+            if reference_result.failure:
+                return r.fail(reference_result.error or "repository resolution failed")
+            reference = reference_result.value
+            if (
+                not reference.package
+                or not distribution.startswith("flext-")
+                or distribution == workspace.repository.distribution
+                or distribution in member_names
+            ):
+                continue
+            resolved[distribution] = {"git": reference.url, "branch": reference.branch}
+        return r.ok(resolved)
+
     @staticmethod
     def _validate_root_uv_sources(
-        document: t.Cli.TomlDocument, *, workspace: p.Infra.WorkspaceSpec
+        document: t.Cli.TomlDocument,
+        *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
@@ -485,6 +535,10 @@ class FlextInfraUtilitiesPyprojectConform:
         uv = tool.get("uv")
         if not isinstance(uv, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv]")
+        if "override-dependencies" in uv:
+            return r[bool].fail(
+                "root pyproject must not define tool.uv.override-dependencies"
+            )
         uv_workspace = uv.get("workspace")
         if not isinstance(uv_workspace, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.workspace]")
@@ -500,22 +554,23 @@ class FlextInfraUtilitiesPyprojectConform:
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
-        expected_names = {member.distribution for member in workspace.members}
-        managed_names = {
-            str(name) for name in sources if str(name).startswith("flext-")
-        }
-        if managed_names != expected_names:
+        resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
+            repositories=repositories, workspace=workspace
+        )
+        if resolved_result.failure:
+            return r[bool].fail(resolved_result.error or "repository resolution failed")
+        expected_sources = resolved_result.value
+        if tuple(str(name) for name in sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")
-        for member in workspace.members:
-            source = sources.get(member.distribution)
+        for source_name, expected_source in expected_sources.items():
+            source = sources.get(source_name)
             if (
                 not isinstance(source, Mapping)
-                or source.get("workspace") is not True
-                or {str(key) for key in source} != {"workspace"}
+                or tuple(str(key) for key in source) != tuple(expected_source)
+                or dict(source) != expected_source
             ):
                 return r[bool].fail(
-                    "root uv source is not exclusively workspace-backed: "
-                    f"{member.distribution}"
+                    f"root uv workspace sources differ from workspace SSOT: {source_name}"
                 )
         return r[bool].ok(True)
 

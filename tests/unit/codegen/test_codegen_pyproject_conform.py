@@ -2,75 +2,97 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 
 
-def _member_ref(distribution: str) -> m.Infra.RepositoryRef:
-    """Build one flext-sh workspace member repository reference."""
+def _repository(
+    distribution: str,
+    *,
+    url: str,
+    branch: str,
+    path: str,
+    role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+    package: bool = True,
+) -> m.Infra.RepositoryRef:
     return m.Infra.RepositoryRef(
         name=distribution,
         distribution=distribution,
-        url=f"https://github.com/flext-sh/{distribution}.git",
-        branch="0.12.0-dev",
-        path=Path(distribution),
-        role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        provider="flext-sh",
-        profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-        checkout=c.Infra.CheckoutKind.SUBMODULE,
+        url=url,
+        branch=branch,
+        path=Path(path),
+        role=role,
+        provider="example",
+        profile=(
+            c.Infra.MakeProfile.WORKSPACE_ROOT
+            if role == c.Infra.RepositoryRole.WORKSPACE_ROOT
+            else c.Infra.MakeProfile.WORKSPACE_MEMBER
+        ),
+        checkout=(
+            c.Infra.CheckoutKind.ROOT
+            if role == c.Infra.RepositoryRole.WORKSPACE_ROOT
+            else c.Infra.CheckoutKind.SUBMODULE
+        ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=True,
-        editable=True,
+        package=package,
+        editable=role != c.Infra.RepositoryRole.WORKSPACE_ROOT,
         read_only=False,
     )
 
 
-def _cosmos_workspace() -> m.Infra.WorkspaceSpec:
-    """Build a cosmos-main-like root whose members are not flext projects."""
-    root = m.Infra.RepositoryRef(
-        name="cosmos-main",
-        distribution="cosmos-main",
-        url="https://github.com/datacosmos-br/cosmos-main.git",
-        branch="main",
-        path=Path(),
+def _fixtures() -> tuple[
+    m.Infra.WorkspaceSpec, tuple[m.Infra.RepositoryRef, ...], m.Infra.ToolchainSpec
+]:
+    root = _repository(
+        "fleet-root",
+        url="https://git.example/root/fleet-root.git",
+        branch="root-line",
+        path="",
         role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-        provider="datacosmos-br",
-        profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-        checkout=c.Infra.CheckoutKind.ROOT,
-        codegen=c.Infra.CodegenKind.CONFORM,
         package=False,
-        editable=False,
-        read_only=False,
     )
-    charts = m.Infra.RepositoryRef(
-        name="cosmos-charts",
-        distribution="cosmos-charts",
-        url="https://github.com/datacosmos-br/cosmos-charts.git",
-        branch="main",
-        path=Path("apps/cosmos-charts"),
-        role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        provider="datacosmos-br",
-        profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-        checkout=c.Infra.CheckoutKind.SUBMODULE,
-        codegen=c.Infra.CodegenKind.CONFORM,
-        package=True,
-        editable=True,
-        read_only=False,
+    member = _repository(
+        "flext-member",
+        url="https://git.example/work/flext-member.git",
+        branch="member-line",
+        path="packages/member",
     )
-    return m.Infra.WorkspaceSpec(
+    external = _repository(
+        "flext-external",
+        url="ssh://git@git.example/deps/flext-external.git",
+        branch="feature/arbitrary",
+        path="vendor/external",
+    )
+    tests = _repository(
+        "flext-tests",
+        url="https://git.example/tools/flext-tests.git",
+        branch="tests-line",
+        path="tools/tests",
+    )
+    infra = _repository(
+        "flext-infra",
+        url="https://git.example/tools/flext-infra.git",
+        branch="infra-line",
+        path="tools/infra",
+    )
+    non_package = _repository(
+        "flext-docs",
+        url="https://git.example/deps/flext-docs.git",
+        branch="docs-line",
+        path="docs",
+        package=False,
+    )
+    workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name="cosmos-main",
+        name="fleet-root",
         repository=root,
-        members=(charts,),
+        members=(member,),
     )
-
-
-def _toolchain() -> m.Infra.ToolchainSpec:
-    """Build the canonical 0.12 toolchain specification."""
-    return m.Infra.ToolchainSpec(
+    toolchain = m.Infra.ToolchainSpec(
         python_version="3.13.11",
         uv_version="0.11.29",
         uv_link_mode="copy",
@@ -78,409 +100,325 @@ def _toolchain() -> m.Infra.ToolchainSpec:
         helm_version="3.19.4",
         kind_version="0.31.0",
     )
+    return workspace, (external, member, tests, infra, non_package), toolchain
+
+
+def _payload(rendered: str) -> t.JsonDict:
+    return dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(tomllib.loads(rendered)))
+
+
+def _table(payload: t.JsonDict, key: str) -> t.JsonDict:
+    return dict(t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload[key]))
 
 
 class TestsFlextInfraCodegenPyprojectConform:
     """Exercise only the public u.Infra conformance contract."""
 
-    def test_root_workspace_and_autonomous_member_are_idempotent(self) -> None:
-        """Keep the root local while rendering member dependencies from Git."""
-        # NOTE (multi-agent, mro-wkii.17.9): one real public round-trip proves
-        # migration and a byte-identical second render without mocks or writes.
-        root = m.Infra.RepositoryRef(
-            name="flext",
-            distribution="flext",
-            url="https://github.com/flext-sh/flext.git",
-            branch="0.12.0-dev",
-            path=Path(),
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            provider="flext-sh",
-            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-            checkout=c.Infra.CheckoutKind.ROOT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=False,
-            editable=False,
-            read_only=False,
-        )
-        core = m.Infra.RepositoryRef(
-            name="flext-core",
-            distribution="flext-core",
-            url="https://github.com/flext-sh/flext-core.git",
-            branch="0.12.0-dev",
-            path=Path("flext-core"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            provider="flext-sh",
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
-        infra = m.Infra.RepositoryRef(
-            name="flext-infra",
-            distribution="flext-infra",
-            url="https://github.com/flext-sh/flext-infra.git",
-            branch="0.12.0-dev",
-            path=Path("flext-infra"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            provider="flext-sh",
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
-        tests = m.Infra.RepositoryRef(
-            name="flext-tests",
-            distribution="flext-tests",
-            url="https://github.com/flext-sh/flext-tests.git",
-            branch="0.12.0-dev",
-            path=Path("flext-tests"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            provider="flext-sh",
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
-        web = m.Infra.RepositoryRef(
-            name="flext-web",
-            distribution="flext-web",
-            url="https://github.com/flext-sh/flext-web.git",
-            branch="0.12.0-dev",
-            path=Path("flext-web"),
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            provider="flext-sh",
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=True,
-            read_only=False,
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="flext",
-            repository=root,
-            members=(core, infra, tests, web),
-        )
-        toolchain = m.Infra.ToolchainSpec(
-            python_version="3.13.11",
-            uv_version="0.11.28",
-            uv_link_mode="copy",
-            kubectl_version="1.32.0",
-            helm_version="3.19.4",
-            kind_version="0.31.0",
-        )
-        repositories = (core, infra, tests, web)
-        root_source = """[project]
-name = "flext"
-dependencies = ["flext-core[async] @ file:///home/marlonsc/flext/flext-core", "requests>=2"]
-
-[project.optional-dependencies]
-dev = ["flext-tests @ ../flext-tests", "pytest>=8"]
-docs = ["mkdocs>=1"]
-
-[dependency-groups]
-codegen = ["flext-infra"]
-dev = ["ruff>=0.12"]
-workspace = []
-
-[tool.poetry]
-name = "legacy"
-
-[tool.uv]
-required-version = ">=0.9"
-override-dependencies = ["pathspec>=1.0.0"]
-
-[tool.uv.workspace]
-members = ["flext-core"]
-
-[tool.uv.sources.flext-core]
-path = "../flext-core"
-editable = true
-marker = "python_version >= '3.13'"
-
-[tool.pyrefly]
-search-path = [".", "src", "../flext-core/src"]
-
-[tool.pyright]
-extraPaths = [".", "src", "../flext-core/src"]
-venvPath = "/home/marlonsc/flext"
-
-[tool.mypy]
-mypy_path = [".", "src", "../flext-core/src"]
-"""
-
-        root_first = u.Infra.pyproject_conform(
-            root_source,
-            repositories=repositories,
-            workspace=workspace,
-            toolchain=toolchain,
-        )
-        tm.that(root_first.success, eq=True)
-        root_rendered = root_first.value
-        root_second = u.Infra.pyproject_conform(
-            root_rendered,
-            repositories=repositories,
-            workspace=workspace,
-            toolchain=toolchain,
-        )
-        tm.that(root_second.success, eq=True)
-        tm.that(root_rendered, eq=root_second.value)
-        tm.that(root_rendered, has='required-version = "==0.11.28"')
-        tm.that(root_rendered, has='link-mode = "copy"')
-        tm.that(root_rendered, has='constraint-dependencies = [\n    "uv==0.11.28",')
-        tm.that(root_rendered, has='override-dependencies = ["pathspec>=1.0.0"]')
-        tm.that(
-            root_rendered,
-            has='dependencies = [\n    "flext-core[async] @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",',
-        )
-        tm.that(root_rendered, has="[tool.uv.workspace]")
-        tm.that(root_rendered, has='members = [\n    "flext-core",')
-        tm.that(root_rendered, has="[tool.uv.sources.flext-core]")
-        tm.that(root_rendered, has="workspace = true")
-        tm.that(root_rendered, has='search-path = [\n    ".",\n    "src",\n]')
-        tm.that(root_rendered, has='extraPaths = [\n    ".",\n    "src",\n]')
-        tm.that(root_rendered, has='mypy_path = [\n    ".",\n    "src",\n]')
-        for forbidden in (
-            "[tool.poetry]",
-            "../flext",
-            "/home/marlonsc",
-            "editable = true",
-            "marker =",
-            "\npath =",
-            "venvPath",
-        ):
-            tm.that(forbidden not in root_rendered, eq=True, msg=forbidden)
-
-        root_overlay_source = """[project]
-name = "flext"
-
-[tool.uv.sources.flext-core]
-workspace = true
-
-[tool.uv.sources.flext-infra]
-workspace = true
-
-[tool.uv.sources.flext-tests]
-workspace = true
-
-[tool.uv.sources.flext-web]
-workspace = true
-
-[tool.uv]
-override-dependencies = ["pathspec>=1.0.0"]
-
-[tool.uv.workspace]
-members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
-"""
-        root_overlay = u.Infra.pyproject_dependencies_conform(
-            root_overlay_source, repositories=repositories, workspace=workspace
-        )
-        tm.that(root_overlay.success, eq=True)
-        tm.that(root_overlay.value, has='override-dependencies = ["pathspec>=1.0.0"]')
-        tm.that(
-            root_overlay.value,
-            has='[dependency-groups]\nworkspace = [\n    "flext-core",',
-        )
-        root_overlay_second = u.Infra.pyproject_dependencies_conform(
-            root_overlay.value, repositories=repositories, workspace=workspace
-        )
-        tm.that(root_overlay_second.success, eq=True)
-        tm.that(root_overlay_second.value, eq=root_overlay.value)
-
-        invalid_root_overlay_source = root_overlay_source.replace(
-            "[tool.uv.sources.flext-core]\nworkspace = true",
-            '[tool.uv.sources.flext-core]\nworkspace = true\ngit = "https://github.com/flext-sh/flext-core.git"',
-        )
-        invalid_root_overlay = u.Infra.pyproject_dependencies_conform(
-            invalid_root_overlay_source, repositories=repositories, workspace=workspace
-        )
-        tm.that(invalid_root_overlay.failure, eq=True)
-        tm.that(
-            invalid_root_overlay.error or "",
-            has="root uv source is not exclusively workspace-backed: flext-core",
-        )
-
-        member_source = """[project]
-name = "flext-api"
+    def test_full_conform_uses_bare_metadata_and_exact_root_sources(self) -> None:
+        workspace, repositories, toolchain = _fixtures()
+        source = """[project]
+name = "fleet-root"
 dependencies = [
-    "flext-core[async]>=0.12; python_version >= '3.13'",
-    "flext-web @ ../flext-web",
-    "zeta>=1",
-    "alpha>=1",
+    "flext-external[fast] @ https://old.example/archive.whl; python_version >= '3.12'",
+    "flext-external[fast]>=9; python_version >= '3.12'",
+    "flext-external[slow] @ ../external",
     "requests>=2",
 ]
 
 [project.optional-dependencies]
-dev = ["flext-tests", "pytest>=8"]
-docs = ["mkdocs>=1"]
+docs = ["flext-external[docs] @ file:///tmp/external; sys_platform == 'linux'"]
 
 [dependency-groups]
-codegen = ["flext-infra"]
-dev = ["ruff>=0.12"]
-workspace = ["stale-member"]
+dev = ["flext-external[test]==1", "pytest>=8"]
+codegen = ["flext-external[codegen] @ git+https://old.example/repo.git@old"]
+
+[tool.uv]
+override-dependencies = ["stale>=1"]
+
+[tool.uv.workspace]
+members = ["stale"]
+
+[tool.uv.sources.stale]
+path = "../stale"
+
+[tool.uv.sources.fleet-root]
+workspace = true
+
+[tool.uv.sources.flext-member]
+git = "https://wrong.example/member.git"
+branch = "wrong"
+"""
+        first = u.Infra.pyproject_conform(
+            source, repositories=repositories, workspace=workspace, toolchain=toolchain
+        )
+        tm.that(first.success, eq=True, msg=first.error)
+        payload = _payload(first.value)
+        project = _table(payload, "project")
+        dependencies = project["dependencies"]
+        tm.that(
+            dependencies,
+            eq=[
+                "flext-external[fast]; python_version >= '3.12'",
+                "flext-external[slow]",
+                "requests>=2",
+            ],
+        )
+        optional = _table(project, "optional-dependencies")
+        tm.that(optional["docs"], eq=["flext-external[docs]; sys_platform == 'linux'"])
+        groups = _table(payload, "dependency-groups")
+        tm.that(groups["dev"], has="flext-external[test]")
+        tm.that(groups["codegen"], has="flext-external[codegen]")
+        uv = _table(_table(payload, "tool"), "uv")
+        tm.that("override-dependencies" not in uv, eq=True)
+        tm.that(uv["workspace"], eq={"members": ["packages/member"]})
+        tm.that(
+            _table(uv, "sources"),
+            eq={
+                "flext-member": {"workspace": True},
+                "flext-external": {
+                    "git": "ssh://git@git.example/deps/flext-external.git",
+                    "branch": "feature/arbitrary",
+                },
+                "flext-tests": {
+                    "git": "https://git.example/tools/flext-tests.git",
+                    "branch": "tests-line",
+                },
+                "flext-infra": {
+                    "git": "https://git.example/tools/flext-infra.git",
+                    "branch": "infra-line",
+                },
+            },
+        )
+        tm.that(
+            tuple(_table(uv, "sources")),
+            eq=("flext-member", "flext-external", "flext-tests", "flext-infra"),
+        )
+        second = u.Infra.pyproject_conform(
+            first.value,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(second.success, eq=True)
+        tm.that(second.value, eq=first.value)
+
+    def test_dependency_only_root_validates_exact_typed_resolution(self) -> None:
+        workspace, repositories, _ = _fixtures()
+        source = """[project]
+name = "fleet-root"
+dependencies = ["flext-external[one] @ ../old", "flext-external[two]>=4"]
+
+[tool.uv.workspace]
+members = ["packages/member"]
+
+[tool.uv.sources.flext-member]
+workspace = true
+
+[tool.uv.sources.flext-external]
+git = "ssh://git@git.example/deps/flext-external.git"
+branch = "feature/arbitrary"
+
+[tool.uv.sources.flext-tests]
+git = "https://git.example/tools/flext-tests.git"
+branch = "tests-line"
+
+[tool.uv.sources.flext-infra]
+git = "https://git.example/tools/flext-infra.git"
+branch = "infra-line"
+"""
+        first = u.Infra.pyproject_dependencies_conform(
+            source, repositories=repositories, workspace=workspace
+        )
+        tm.that(first.success, eq=True, msg=first.error)
+        tm.that(
+            _table(_payload(first.value), "project")["dependencies"],
+            eq=["flext-external[one]", "flext-external[two]"],
+        )
+        second = u.Infra.pyproject_dependencies_conform(
+            first.value, repositories=repositories, workspace=workspace
+        )
+        tm.that(second.success, eq=True)
+        tm.that(second.value, eq=first.value)
+
+    def test_non_root_removes_workspace_and_sources(self) -> None:
+        workspace, repositories, _ = _fixtures()
+        source = """[project]
+name = "flext-member"
+dependencies = ["flext-external @ https://old.example/archive.whl"]
 
 [tool.uv]
 required-version = ">=0.9"
 
 [tool.uv.workspace]
-members = ["../flext-core"]
+members = ["stale"]
 
-[tool.uv.sources.flext-core]
-workspace = true
-
-[tool.uv.sources.beartype]
-git = "https://github.com/beartype/beartype.git"
-tag = "v0.22.9"
+[tool.uv.sources.flext-external]
+git = "https://old.example/repo.git"
 """
-        member_first = u.Infra.pyproject_dependencies_conform(
-            member_source, repositories=repositories, workspace=workspace
+        result = u.Infra.pyproject_dependencies_conform(
+            source, repositories=repositories, workspace=workspace
         )
-        tm.that(member_first.success, eq=True)
-        member_rendered = member_first.value
-        member_second = u.Infra.pyproject_dependencies_conform(
-            member_rendered, repositories=repositories, workspace=workspace
-        )
-        tm.that(member_second.success, eq=True)
-        tm.that(member_second.value, eq=member_rendered)
-        for expected in (
-            "flext-core[async] @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev; python_version >= '3.13'",
-            "flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-            "flext-web @ git+https://github.com/flext-sh/flext-web.git@0.12.0-dev",
-            "[tool.uv.sources.beartype]",
-            'tag = "v0.22.9"',
-        ):
-            tm.that(member_rendered, has=expected)
-        for forbidden in (
-            "[tool.uv.workspace]",
-            "[tool.uv.sources.flext-core]",
-            "workspace = true",
-            "../flext",
-            "stale-member",
-            "constraint-dependencies",
-        ):
-            tm.that(forbidden not in member_rendered, eq=True, msg=forbidden)
-
-        empty_uv_source = """[project]
-name = "flext-api"
-dependencies = ["flext-core"]
-
-[tool.uv.sources.flext-core]
-workspace = true
-"""
-        empty_uv_first = u.Infra.pyproject_dependencies_conform(
-            empty_uv_source, repositories=repositories, workspace=workspace
-        )
-        tm.that(empty_uv_first.success, eq=True)
-        empty_uv_rendered = empty_uv_first.value
-        empty_uv_second = u.Infra.pyproject_dependencies_conform(
-            empty_uv_rendered, repositories=repositories, workspace=workspace
-        )
-        tm.that(empty_uv_second.success, eq=True)
-        tm.that(empty_uv_second.value, eq=empty_uv_rendered)
-        tm.that("[tool.uv]" not in empty_uv_rendered, eq=True)
-
-    def test_workspace_root_renders_inline_git_urls_for_flext_deps(self) -> None:
-        """Root flext-* deps render inline PEP508 Git URLs, never plain names."""
-        repositories = (
-            _member_ref("flext-core"),
-            _member_ref("flext-cli"),
-            _member_ref("flext-tests"),
-            _member_ref("flext-infra"),
-        )
-        workspace = _cosmos_workspace()
-        toolchain = _toolchain()
-        root_source = """[project]
-name = "cosmos-main"
-dependencies = ["flext-core", "flext-cli", "requests>=2"]
-
-[dependency-groups]
-dev = ["flext-tests", "pytest>=8"]
-"""
-        first = u.Infra.pyproject_conform(
-            root_source,
-            repositories=repositories,
-            workspace=workspace,
-            toolchain=toolchain,
-        )
-        tm.that(first.success, eq=True)
-        rendered = first.value
-        for expected in (
-            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-        ):
-            tm.that(rendered, has=expected)
-        # NOTE: no bare plain flext-* requirement survives at the workspace root.
-        for bare in ('"flext-core"', '"flext-cli"', '"flext-tests"', '"flext-infra"'):
-            tm.that(bare not in rendered, eq=True, msg=bare)
-        # NOTE: [tool.uv.sources] keeps only {workspace=true} members, no flext-*.
-        tm.that("[tool.uv.sources.flext-" not in rendered, eq=True)
-        tm.that(rendered, has="[tool.uv.sources.cosmos-charts]")
-        tm.that(rendered, has="workspace = true")
-        second = u.Infra.pyproject_conform(
-            rendered,
-            repositories=repositories,
-            workspace=workspace,
-            toolchain=toolchain,
+        tm.that(result.success, eq=True, msg=result.error)
+        uv = _table(_table(_payload(result.value), "tool"), "uv")
+        tm.that(uv, eq={"required-version": ">=0.9"})
+        second = u.Infra.pyproject_dependencies_conform(
+            result.value, repositories=repositories, workspace=workspace
         )
         tm.that(second.success, eq=True)
-        tm.that(second.value, eq=rendered)
+        tm.that(second.value, eq=result.value)
 
-    def test_relative_path_flext_deps_are_rewritten_to_inline_git_urls(self) -> None:
-        """The no-relative-path law: file://, ../ and {path=} never survive."""
-        repositories = (
-            _member_ref("flext-core"),
-            _member_ref("flext-cli"),
-            _member_ref("flext-tests"),
-            _member_ref("flext-infra"),
-        )
-        workspace = _cosmos_workspace()
-        toolchain = _toolchain()
-        relative_source = """[project]
-name = "cosmos-main"
-dependencies = ["flext-core @ file://../flext-core", "flext-cli @ ../flext-cli"]
+    def test_full_non_root_removes_empty_uv_and_is_idempotent(self) -> None:
+        workspace, repositories, toolchain = _fixtures()
+        source = """[project]
+name = "flext-member"
+dependencies = ["flext-external[fast] @ ../external; python_version > '3.11'"]
+
+[project.optional-dependencies]
+docs = ["flext-external[docs]>=8"]
 
 [dependency-groups]
-dev = ["flext-tests @ file:///home/marlonsc/flext/flext-tests"]
+dev = ["flext-external[test] @ file:///tmp/external"]
 
-[tool.uv.sources.flext-core]
-path = "../flext-core"
+[tool.uv.workspace]
+members = ["stale"]
+
+[tool.uv.sources.flext-external]
+path = "../external"
 editable = true
-
-[tool.uv.sources.flext-cli]
-workspace = false
-path = "../flext-cli"
 """
         first = u.Infra.pyproject_conform(
-            relative_source,
-            repositories=repositories,
-            workspace=workspace,
-            toolchain=toolchain,
+            source, repositories=repositories, workspace=workspace, toolchain=toolchain
         )
-        tm.that(first.success, eq=True)
-        rendered = first.value
-        for expected in (
-            "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
-            "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-            "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
-        ):
-            tm.that(rendered, has=expected)
-        for forbidden in ("../", "file://", "editable = true", "workspace = false"):
-            tm.that(forbidden not in rendered, eq=True, msg=forbidden)
-        tm.that("[tool.uv.sources.flext-" not in rendered, eq=True)
+        tm.that(first.success, eq=True, msg=first.error)
+        payload = _payload(first.value)
+        tm.that(
+            _table(payload, "project")["dependencies"],
+            eq=["flext-external[fast]; python_version > '3.11'"],
+        )
+        tm.that(
+            _table(_table(payload, "project"), "optional-dependencies")["docs"],
+            eq=["flext-external[docs]"],
+        )
+        tm.that(_table(payload, "dependency-groups")["dev"], has="flext-external[test]")
+        tm.that(
+            _table(_table(payload, "tool"), "uv"),
+            eq={"required-version": "==0.11.29", "link-mode": "copy"},
+        )
         second = u.Infra.pyproject_conform(
-            rendered,
+            first.value,
             repositories=repositories,
             workspace=workspace,
             toolchain=toolchain,
         )
         tm.that(second.success, eq=True)
-        tm.that(second.value, eq=rendered)
+        tm.that(second.value, eq=first.value)
+
+    def test_dependency_only_root_rejects_override_and_source_drift(self) -> None:
+        workspace, repositories, _ = _fixtures()
+        valid = """[project]
+name = "fleet-root"
+
+[tool.uv]
+override-dependencies = ["stale"]
+
+[tool.uv.workspace]
+members = ["packages/member"]
+
+[tool.uv.sources.flext-member]
+workspace = true
+
+[tool.uv.sources.flext-external]
+git = "ssh://git@git.example/deps/flext-external.git"
+branch = "feature/arbitrary"
+
+[tool.uv.sources.flext-tests]
+git = "https://git.example/tools/flext-tests.git"
+branch = "tests-line"
+
+[tool.uv.sources.flext-infra]
+git = "https://git.example/tools/flext-infra.git"
+branch = "infra-line"
+"""
+        override = u.Infra.pyproject_dependencies_conform(
+            valid, repositories=repositories, workspace=workspace
+        )
+        tm.that(override.failure, eq=True)
+        tm.that(override.error or "", has="override-dependencies")
+        drift = valid.replace('override-dependencies = ["stale"]\n\n', "").replace(
+            'branch = "feature/arbitrary"', 'branch = "wrong"'
+        )
+        drift_result = u.Infra.pyproject_dependencies_conform(
+            drift, repositories=repositories, workspace=workspace
+        )
+        tm.that(drift_result.failure, eq=True)
+        tm.that(drift_result.error or "", has="sources differ")
+        exact = valid.replace('override-dependencies = ["stale"]\n\n', "")
+        wrong_order = exact.replace(
+            "[tool.uv.sources.flext-member]\nworkspace = true\n\n"
+            "[tool.uv.sources.flext-external]\n"
+            'git = "ssh://git@git.example/deps/flext-external.git"\n'
+            'branch = "feature/arbitrary"',
+            "[tool.uv.sources.flext-external]\n"
+            'git = "ssh://git@git.example/deps/flext-external.git"\n'
+            'branch = "feature/arbitrary"\n\n'
+            "[tool.uv.sources.flext-member]\nworkspace = true",
+        )
+        order_result = u.Infra.pyproject_dependencies_conform(
+            wrong_order, repositories=repositories, workspace=workspace
+        )
+        tm.that(order_result.failure, eq=True)
+        tm.that(order_result.error or "", has="sources differ")
+        extra_key = wrong_order.replace(
+            'branch = "feature/arbitrary"',
+            'branch = "feature/arbitrary"\ntag = "forbidden"',
+        )
+        extra_result = u.Infra.pyproject_dependencies_conform(
+            extra_key, repositories=repositories, workspace=workspace
+        )
+        tm.that(extra_result.failure, eq=True)
+        tm.that(extra_result.error or "", has="sources differ")
+
+    def test_unknown_and_conflicting_repository_resolution_fail_closed(self) -> None:
+        workspace, repositories, toolchain = _fixtures()
+        unknown = u.Infra.pyproject_conform(
+            '[project]\nname = "fleet-root"\ndependencies = ["flext-unknown"]\n',
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(unknown.failure, eq=True)
+        tm.that(unknown.error or "", has="lacks required distribution")
+        conflicting = (
+            *repositories,
+            _repository(
+                "flext-external",
+                url="https://other.example/flext-external.git",
+                branch="other",
+                path="other",
+            ),
+        )
+        conflict = u.Infra.pyproject_conform(
+            '[project]\nname = "fleet-root"\ndependencies = ["flext-external"]\n',
+            repositories=conflicting,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(conflict.failure, eq=True)
+        tm.that(conflict.error or "", has="catalog conflicts")
+        member_conflict = (
+            *repositories,
+            _repository(
+                "flext-member",
+                url="https://other.example/flext-member.git",
+                branch="other",
+                path="other-member",
+            ),
+        )
+        member_result = u.Infra.pyproject_conform(
+            '[project]\nname = "fleet-root"\ndependencies = []\n',
+            repositories=member_conflict,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(member_result.failure, eq=True)
+        tm.that(member_result.error or "", has="catalog conflicts")
