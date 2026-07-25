@@ -7,7 +7,7 @@ SHELL := /bin/sh
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := workspace-member
 WORKSPACE_ROOT_REL := ..
-WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
+WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 
@@ -17,6 +17,8 @@ PROJECTS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
+FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
+export FLEXT_INFRA_PYTHON
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
@@ -32,7 +34,6 @@ export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 
 _DEFAULT_help := usage
-_DEFAULT_setup := environment
 _DEFAULT_deps := check
 _DEFAULT_build := artifacts
 _DEFAULT_check := all
@@ -66,6 +67,15 @@ ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
+RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+MISE := $(shell command -v mise 2>/dev/null)
+override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
+override VIRTUAL_ENV := $(RUNTIME_VENV)
+override PATH := $(RUNTIME_VENV)/bin:/usr/local/bin:/usr/bin:/bin
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
@@ -74,7 +84,10 @@ CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
+UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@0.11.29 -- uv
+UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -84,7 +97,6 @@ UV_SYNC_FLAGS := --all-extras --all-groups
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
-	_builtin_setup_environment \
 	_builtin_deps_check \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
@@ -139,43 +151,79 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		uv lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
 
-$(PUBLIC_VERBS):
+$(filter-out setup,$(PUBLIC_VERBS)):
 	$(call _dispatch)
+
+setup:
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
+
+ifeq ($(ATTACHED_MEMBER),Y)
+	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup
+else
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+endif
+
 
 _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [workspace-member]' ''
 
+
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage'
 
-	@printf '  %-10s WHAT=%s\n' 'setup' 'environment'
+
+
+	@printf '  %-10s\n' 'setup'
+
+
 
 	@printf '  %-10s WHAT=%s\n' 'deps' 'check'
 
+
+
 	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts'
+
+
 
 	@printf '  %-10s WHAT=%s\n' 'check' 'all'
 
+
+
 	@printf '  %-10s WHAT=%s\n' 'test' 'all'
+
+
 
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'format' 'check'
 
+
+
 	@printf '  %-10s WHAT=%s\n' 'run' 'default'
+
+
 
 	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics'
 
+
+
 	@printf '  %-10s WHAT=%s\n' 'docs' 'check'
+
+
 
 	@printf '  %-10s WHAT=%s\n' 'clean' 'generated'
 
+
+
 	@printf '  %-10s WHAT=%s\n' 'release' 'status'
 
+
+
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check'
+
 
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
@@ -189,27 +237,6 @@ _builtin_help_usage:
 		fi; \
 	fi
 
-ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
-	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
-	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
-else ifeq ($(MAKE_PROFILE),workspace-member)
-ifeq ($(ATTACHED_MEMBER),Y)
-_builtin_setup_environment:
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
-else
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-endif
-else
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-endif
-
 _builtin_deps_check:
 	$(call _run_for_selected_projects,--check)
 
@@ -222,7 +249,7 @@ _builtin_deps_upgrade:
 	$(call _run_for_selected_projects,--upgrade)
 
 _builtin_build_artifacts:
-	@uv build --project "$(PROJECT_ROOT)"
+	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -234,7 +261,7 @@ _builtin_check_all:
 	@$(UV_RUN) vulture
 
 _builtin_test_all:
-	@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests"
+	@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests" $(ARGS)
 
 _builtin_format_check:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -251,10 +278,10 @@ _builtin_run_default:
 _builtin_status_diagnostics:
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@uv --version
-	@uv lock --project "$(PROJECT_ROOT)" --check
-	@if [ -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		uv pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
+	@$(UV) --version
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
+		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
@@ -270,13 +297,13 @@ _builtin_clean_generated:
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
 _builtin_release_status:
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_codegen_check:
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_codegen_apply:
 	$(call _require_apply)
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply

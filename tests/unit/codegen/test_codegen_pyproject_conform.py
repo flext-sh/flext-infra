@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, t, u
 
 
 def _member_ref(distribution: str) -> m.Infra.RepositoryRef:
@@ -74,6 +74,7 @@ def _toolchain() -> m.Infra.ToolchainSpec:
         python_version="3.13.11",
         uv_version="0.11.29",
         uv_link_mode="copy",
+        taplo_version=config.Infra.codegen.toolchain.taplo_version,
         kubectl_version="1.32.0",
         helm_version="3.19.4",
         kind_version="0.31.0",
@@ -172,6 +173,7 @@ class TestsFlextInfraCodegenPyprojectConform:
             python_version="3.13.11",
             uv_version="0.11.28",
             uv_link_mode="copy",
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
             kubectl_version="1.32.0",
             helm_version="3.19.4",
             kind_version="0.31.0",
@@ -484,3 +486,66 @@ path = "../flext-cli"
         )
         tm.that(second.success, eq=True)
         tm.that(second.value, eq=rendered)
+
+    def test_scoped_uv_exclusion_preserves_direct_dev_dependency(self) -> None:
+        """Emit the configured uv edge exclusion without removing its direct source."""
+        repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == "flext-infra"
+        )
+        tests_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == "flext-tests"
+        )
+        selected = tuple(
+            item
+            for item in config.Infra.codegen.uv_exclude_dependencies
+            if item.project == repository.distribution
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=repository.name,
+            repository=repository,
+        )
+        source = (
+            f'[project]\nname = "{repository.distribution}"\n'
+            'dependencies = ["flext-cli"]\n\n'
+            '[dependency-groups]\ndev = ["flext-tests"]\n'
+        )
+        first = u.Infra.pyproject_conform(
+            source,
+            repositories=config.Infra.codegen.repositories,
+            workspace=workspace,
+            toolchain=config.Infra.codegen.toolchain,
+            uv_exclude_dependencies=selected,
+        )
+        rendered = tm.ok(first)
+        parsed = u.Cli.toml_parse_text(rendered)
+        assert parsed is not None
+        payload = u.Cli.toml_as_mapping(parsed)
+        assert payload is not None
+        dependency_groups = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            payload["dependency-groups"]
+        )
+        dev = t.Infra.STR_SEQ_ADAPTER.validate_python(dependency_groups["dev"])
+        tm.that(
+            any(tests_repository.distribution in requirement for requirement in dev),
+            eq=True,
+        )
+        expected = [
+            item.model_dump(mode="json", exclude_none=True) for item in selected
+        ]
+        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["tool"])
+        uv = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool["uv"])
+        exclusions = t.Cli.JSON_LIST_ADAPTER.validate_python(uv["exclude-dependencies"])
+        tm.that(exclusions, eq=expected)
+        second = u.Infra.pyproject_conform(
+            rendered,
+            repositories=config.Infra.codegen.repositories,
+            workspace=workspace,
+            toolchain=config.Infra.codegen.toolchain,
+            uv_exclude_dependencies=selected,
+        )
+        tm.that(tm.ok(second), eq=rendered)

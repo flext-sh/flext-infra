@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
 from tests import t, u
 
@@ -21,6 +22,96 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
+
+    def test_modernizer_uses_git_topology_for_analyzer_virtualenvs(
+        self, tmp_path: Path
+    ) -> None:
+        """Distinguish an attached submodule from an independent linked worktree."""
+        child_origin = tmp_path / "child-origin"
+        child_origin.mkdir()
+        tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))
+        pyproject_text = "[project]\nname = 'fixture-child'\nversion = '0.1.0'\n"
+        (child_origin / "pyproject.toml").write_text(pyproject_text, encoding="utf-8")
+        tm.ok(u.Cli.run_raw(["git", "add", "pyproject.toml"], cwd=child_origin))
+        tm.ok(
+            u.Cli.run_raw(
+                [
+                    "git",
+                    "-c",
+                    "user.name=FLEXT Tests",
+                    "-c",
+                    "user.email=tests@flext.dev",
+                    "commit",
+                    "-m",
+                    "fixture",
+                ],
+                cwd=child_origin,
+            )
+        )
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        tm.ok(u.Cli.run_raw(["git", "init"], cwd=workspace))
+        tm.ok(
+            u.Cli.run_raw(
+                [
+                    "git",
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(child_origin),
+                    "attached",
+                ],
+                cwd=workspace,
+            )
+        )
+        linked = tmp_path / "linked"
+        tm.ok(
+            u.Cli.run_raw(
+                ["git", "worktree", "add", "--detach", str(linked)], cwd=child_origin
+            )
+        )
+        attached = workspace / "attached"
+        for project_dir in (attached, linked):
+            changes = FlextInfraPyprojectModernizer(
+                workspace_root=project_dir,
+                apply_changes=True,
+                skip_comments=True,
+                skip_check=True,
+            ).process_file(
+                project_dir / "pyproject.toml",
+                canonical_dev=(),
+                dry_run=False,
+                skip_comments=True,
+            )
+            tm.that(changes, lacks="failed to resolve")
+
+        attached_payload = u.Cli.toml_mapping_from_text(
+            (attached / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        linked_payload = u.Cli.toml_mapping_from_text(
+            (linked / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        if attached_payload is None or linked_payload is None:
+            message = "modernized pyproject must remain valid TOML"
+            raise AssertionError(message)
+        attached_tool = u.Cli.json_as_mapping(attached_payload["tool"])
+        linked_tool = u.Cli.json_as_mapping(linked_payload["tool"])
+        attached_pyrefly = u.Cli.json_as_mapping(attached_tool["pyrefly"])
+        linked_pyrefly = u.Cli.json_as_mapping(linked_tool["pyrefly"])
+        attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
+        linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        tm.that(
+            attached_pyrefly["python-interpreter-path"],
+            eq=f"{rules.project_venv_path}/{rules.venv_name}/bin/python",
+        )
+        tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
+        tm.that(
+            linked_pyrefly["python-interpreter-path"],
+            eq=f"{rules.root_venv_path}/{rules.venv_name}/bin/python",
+        )
+        tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
 
     def test_ensure_pyrefly_config_sets_fields_root(
         self, tool_config_document: m.Infra.ToolConfigDocument

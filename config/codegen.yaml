@@ -19,6 +19,13 @@ Infra:
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
       kind_version: "0.31.0"
+      taplo_version: "0.10.0"
+
+    uv_exclude_dependencies:
+      - project: flext-infra
+        package:
+          name: flext-tests
+        dependencies: [flext-infra]
 
     providers:
       - name: flext-sh
@@ -316,7 +323,7 @@ Infra:
         policy: manual
       - path: custom.mk
         owner: custom
-        policy: manual
+        policy: create-only
       - path: pyproject.toml
         owner: codegen
         policy: merge

@@ -81,39 +81,26 @@ ifndef WORKSPACE_ROOT
 WORKSPACE_ROOT := $(BASE_MK_DIR)
 endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
-ifeq ($(wildcard $(WORKSPACE_VENV)),)
-ACTIVE_VENV := $(PROJECT_ROOT)/.venv
-export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := true
-export POETRY_VIRTUALENVS_CREATE := true
-else
 ACTIVE_VENV := $(WORKSPACE_VENV)
-export POETRY_VIRTUALENVS_PATH := $(WORKSPACE_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := false
-export POETRY_VIRTUALENVS_CREATE := false
-endif
 else
 WORKSPACE_ROOT := $(PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
-export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := true
-export POETRY_VIRTUALENVS_CREATE := true
 endif
 
-override UV_PROJECT := $(CANONICAL_PROJECT_ROOT)
+override UV_PROJECT := $(WORKSPACE_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
-export UV_PROJECT UV_PROJECT_ENVIRONMENT
+override VIRTUAL_ENV := $(ACTIVE_VENV)
+override PATH := $(ACTIVE_VENV)/bin:/usr/local/bin:/usr/bin:/bin
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
 VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
-export VIRTUAL_ENV := $(ACTIVE_VENV)
-
-export PATH := $(ACTIVE_VENV)/bin:$(PATH)
-
-# Poetry command (uses workspace venv automatically)
-POETRY := poetry
+UV_VERSION := 0.11.29
+UV := mise exec uv@$(UV_VERSION) -- uv
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
 
 # Quality tool (flext-quality with fallback)
 QUALITY_CMD ?= flext-quality
@@ -144,7 +131,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate
+BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra validate
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -172,7 +159,7 @@ if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Running in standalone mode (workspace features unavailable)."; \
-elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
+elif [ "$(filter boot setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
 	echo "ERROR: [preflight] No venv found at $(ACTIVE_VENV). Run 'make boot' in $(PROJECT_NAME)."; \
 	exit 1; \
 fi
@@ -199,12 +186,13 @@ ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
 endif
 PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
-# mro-wkii.17.27 (codex): boot provisions the venv before normal commands use it.
-PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra
-PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
+PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_INFRA_SRC)
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
+PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check
 PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen
-PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps
+PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) deps
 PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs
 PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github
 PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) refactor
@@ -375,18 +363,16 @@ boot: ## Complete setup
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
-	$(Q)uv lock
-	$(Q)uv sync --all-extras --all-groups
-	# mro-j47u: extra-paths imports flext_core and only mutates pyright/mypy
-	# paths, so it must run AFTER the environment exists (uv lock + sync). A
-	# fresh checkout cannot import flext_infra before its deps are installed.
+	$(Q)$(UV) sync --all-extras --all-groups
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
+	$(Q)$(UV) lock
+	$(Q)$(UV) sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
 		hooks_path=$$(git config --get core.hooksPath || true); \
 		if [ -n "$$hooks_path" ]; then \
 			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
 		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
-			uv run pre-commit install; \
+			$(UV) run pre-commit install; \
 		else \
 			echo "INFO: skipping pre-commit install (no pre-commit config)"; \
 		fi; \
@@ -401,7 +387,7 @@ build: ## Build distributable artifacts
 
 _build_impl:
 	$(Q)build_start=$$(date +%s) && \
-	mise exec -- uv build --project "$(CURDIR)" --no-sources && \
+	$(UV) build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
 check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)

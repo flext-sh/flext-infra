@@ -18,6 +18,7 @@ from flext_tests import tm
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -70,6 +71,7 @@ class TestCodegenConform:
         tm.that(first.value.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").is_file(), eq=True)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
+        tm.that((root / ".env.example").is_file(), eq=True)
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part
@@ -145,6 +147,86 @@ class TestCodegenConform:
             )
         )
         tm.that(existing_tree, eq=new_tree)
+
+    def test_manifestless_existing_root_plans_artifacts_without_project_spec(
+        self, infra_git_repo: Path
+    ) -> None:
+        root = infra_git_repo
+        repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == "flext-infra"
+        )
+        dist = repository.distribution
+        create_only = {
+            "LICENSE": "existing license\n",
+            "README.md": "# Existing repository\n",
+            "custom.mk": "_custom_status:\n\t@true\n",
+        }
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{dist}"\nversion = "0.12.0.dev0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        for relative, content in create_only.items():
+            tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Seed manifest-less tree"], cwd=root
+            )
+        )
+
+        derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        tm.that(derived.repository, eq=repository)
+        tm.that(derived.project, eq=None)
+
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+        )
+        initial_plan = tm.ok(
+            FlextInfraCodegenConform(workspace_root=root).plan(request)
+        )
+        plans = {
+            file.path.relative_to(root).as_posix(): file for file in initial_plan.files
+        }
+        env_plan = plans[".env.example"]
+        tm.that(env_plan.owner, eq="codegen")
+        tm.that(env_plan.policy, eq="create-only")
+        tm.that(env_plan.changed, eq=False)
+        tm.that(env_plan.blocked, eq=False)
+        tm.that(env_plan.current_sha256, eq="")
+        tm.that((root / ".env.example").exists(), eq=False)
+        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+            tm.that(plans[required].changed, eq=True)
+
+        applied = FlextInfraCodegenConform.execute_request(request)
+        tm.ok(applied)
+        for relative, content in create_only.items():
+            tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
+        tm.that((root / "Makefile").is_file(), eq=True)
+        tm.that((root / ".mise.toml").is_file(), eq=True)
+        tm.that((root / ".python-version").is_file(), eq=True)
+        tm.that((root / ".gitignore").is_file(), eq=True)
+        tm.that((root / ".env.example").exists(), eq=False)
+        tm.that(root / ".env.example" in applied.value.written_files, eq=False)
+
+        fixed_point = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+        )
+        tm.ok(fixed_point)
+        tm.that(fixed_point.value.written_files, eq=())
 
     def test_workspace_uv_plan_owns_root_lock_and_editable_repositories(
         self, tmp_path: Path

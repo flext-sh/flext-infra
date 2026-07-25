@@ -7,7 +7,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra {{ make.CLI_GROUP_VALIDATE }}
+BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra {{ make.CLI_GROUP_VALIDATE }}
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -35,7 +35,7 @@ if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Running in standalone mode (workspace features unavailable)."; \
-elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
+elif [ "$(filter boot setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
 	echo "ERROR: [preflight] No venv found at $(ACTIVE_VENV). Run 'make boot' in $(PROJECT_NAME)."; \
 	exit 1; \
 fi

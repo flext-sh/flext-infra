@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -168,8 +169,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
+        source_roots = [*cls._source_roots(worktree_root)]
+        inherited_python_path = os.environ.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
+        for raw_path in inherited_python_path.split(
+            c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR
+        ):
+            path = Path(raw_path)
+            if raw_path and path.is_dir() and path not in source_roots:
+                source_roots.append(path)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
-            str(path) for path in cls._source_roots(worktree_root)
+            str(path) for path in source_roots
         )
         return {
             c.Infra.WORKTREE_TRANSACTION_ENV: "1",

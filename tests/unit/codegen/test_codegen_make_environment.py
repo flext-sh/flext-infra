@@ -151,10 +151,49 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
+        tm.that("MISE := $(shell command -v mise 2>/dev/null)" in makefile, eq=True)
         tm.that(
-            'UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            f"exec uv@{config.Infra.codegen.toolchain.uv_version} -- uv" in makefile,
             eq=True,
         )
-        tm.that('uv sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
-        tm.that('uv build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
-        tm.that('uv pip install --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+        tm.that(
+            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            eq=True,
+        )
+        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) pip check --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+        tm.that("FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)" in makefile, eq=True)
+        tm.that("@$(PROJECT_FLEXT_INFRA) codegen conform" in makefile, eq=True)
+        tm.that("Archived invalid environment:" in makefile, eq=False)
+
+    def test_generated_test_forwards_public_args(self, tmp_path: Path) -> None:
+        """Forward focused test arguments through the public generated Make verb."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text()
+
+        tm.that(
+            '@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests" $(ARGS)' in makefile, eq=True
+        )
+
+    def test_generated_bare_setup_owns_complete_environment_recipe(
+        self, tmp_path: Path
+    ) -> None:
+        """Expose complete setup directly without a public WHAT selector."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
+        makefile = (project_root / "Makefile").read_text()
+
+        tm.that('setup:\n\t@if [ -n "$(strip $(WHAT))" ]' in makefile, eq=True)
+        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) pip install --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+        tm.that('$(UV) pip check --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+        tm.that("_builtin_setup_environment" in makefile, eq=False)
+        tm.that("setup WHAT=" in makefile, eq=False)
+        tm.that("'setup' 'environment'" in makefile, eq=False)
+        tm.that("_builtin_check_all" in makefile, eq=True)
+        tm.that("_builtin_test_all" in makefile, eq=True)
+        tm.that("_builtin_build_artifacts" in makefile, eq=True)

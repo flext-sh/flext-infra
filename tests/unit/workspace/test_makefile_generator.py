@@ -8,6 +8,7 @@ import pytest
 from flext_tests import tm
 
 from flext_cli import cli
+from flext_infra import config
 from flext_infra.workspace.workspace_makefile import (
     FlextInfraWorkspaceMakefileGenerator,
 )
@@ -80,7 +81,11 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             makefile_text,
             [
                 'WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)',
-                'WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra',
+                "FLEXT_INFRA_PYTHON ?= $(PY)",
+                "MISE := $(shell command -v mise 2>/dev/null)",
+                f"UV_VERSION := {config.Infra.codegen.toolchain.uv_version}",
+                "UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv",
+                'WORKSPACE_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)"',
                 "WORKSPACE_INFRA_WORKSPACE := $(WORKSPACE_FLEXT_INFRA) workspace",
                 "ORCHESTRATOR := $(WORKSPACE_INFRA_WORKSPACE) orchestrate",
                 "ORCHESTRATOR_PROJECTS :=",
@@ -110,6 +115,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
                 "WORKSPACE_INFRA_RELEASE := $(WORKSPACE_FLEXT_INFRA) release run",
                 "WORKSPACE_INFRA_VALIDATE := $(WORKSPACE_FLEXT_INFRA) validate",
                 "WORKSPACE_INFRA_GITHUB := $(WORKSPACE_FLEXT_INFRA) github",
+                'test -x "$(FLEXT_INFRA_PYTHON)"',
             ],
         )
 
@@ -349,7 +355,7 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             makefile_text,
             [
                 'WORKSPACE_EDITABLE_REINSTALL_FLAGS := --reinstall-package "canonical-distribution"',
-                "uv sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS)",
+                "$(UV) sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS)",
             ],
         )
         tm.that(makefile_text.count("$(WORKSPACE_EDITABLE_REINSTALL_FLAGS)"), eq=1)

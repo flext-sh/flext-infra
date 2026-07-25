@@ -2,12 +2,10 @@ export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
 VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
-export VIRTUAL_ENV := $(ACTIVE_VENV)
-
-export PATH := $(ACTIVE_VENV)/bin:$(PATH)
-
-# Poetry command (uses workspace venv automatically)
-POETRY := {{ settings.package_manager }}
+UV_VERSION := {{ uv_version }}
+UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
 
 # Quality tool (flext-quality with fallback)
 QUALITY_CMD ?= flext-quality

@@ -63,6 +63,9 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        taplo_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
 
         @m.computed_field()
         @property
@@ -96,6 +99,31 @@ class FlextInfraConfigModels:
         ]
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
+
+    class UvPackageSelectorSpec(_ConfigContract):
+        """Package selector for one official uv scoped dependency exclusion."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Selected package name")]
+        version: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional selected package version expression"),
+        ] = None
+
+    class UvScopedDependencyExclusionSpec(_ConfigContract):
+        """Project-routed official uv scoped dependency exclusion."""
+
+        project: Annotated[
+            t.NonEmptyStr,
+            m.Field(exclude=True, description="Owning project distribution route"),
+        ]
+        package: Annotated[
+            FlextInfraConfigModels.UvPackageSelectorSpec,
+            m.Field(description="Package whose transitive edge is scoped"),
+        ]
+        dependencies: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Excluded transitive dependency names"),
+        ]
 
     class ProfileSpec(_ConfigContract):
         """Execution semantics for one generated Make profile."""
@@ -195,13 +223,19 @@ class FlextInfraConfigModels:
         ]
 
     class ManagedFileSpec(_ConfigContract):
-        """One versioned file owned by codegen."""
+        """One versioned file governed by codegen lifecycle policy."""
 
         path: Annotated[Path, m.Field(description="Repository-relative file path")]
         owner: Annotated[t.NonEmptyStr, m.Field(description="Canonical owner")]
         policy: Annotated[
             Literal["full", "merge", "create-only", "delegated", "manual"],
-            m.Field(description="Conform ownership and mutation policy"),
+            m.Field(
+                description=(
+                    "Conform ownership and mutation policy; create-only files are "
+                    "emitted during creation, preserved when present, and never "
+                    "backfilled into existing trees"
+                )
+            ),
         ]
 
     class TemplateEntrySpec(_ConfigContract):
@@ -397,6 +431,67 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+    class MakefileRenderSpec(_ConfigContract):
+        """Typed artifact-specific input for the generated project Makefile."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(description="Selected repository Make profile"),
+        ]
+        workspace_root_rel: Annotated[
+            t.NonEmptyStr, m.Field(description="Relative workspace root path")
+        ]
+        workspace_members: Annotated[
+            tuple[str, ...], m.Field(description="Declared workspace member paths")
+        ] = ()
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Repositories editable from the selected workspace"),
+        ] = ()
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
+        ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
+        ]
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(description="Repository-specific public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(description="Optional script command dispatch contract"),
+        ] = None
+        mypy_memory_limit_mb: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
+        ]
+        mypy_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
+        ]
+        mypy_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
+        mypy_signal_exit_offset: Annotated[
+            int, m.Field(gt=0, description="Shell signal exit-code offset")
+        ]
+        prlimit_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter executable")
+        ]
+        prlimit_address_space_option: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter option")
+        ]
+        timeout_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Wall-time limiter executable")
+        ]
+        timeout_kill_after_seconds: Annotated[
+            int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
@@ -728,6 +823,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
         ]
+        uv_exclude_dependencies: Annotated[
+            tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
+            m.Field(description="Project-scoped official uv dependency exclusions"),
+        ] = ()
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(description="Ordered Git providers"),
@@ -779,7 +878,7 @@ class FlextInfraConfigModels:
         @property
         def vscode_search_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``search.exclude`` entries from the artifact SSOT."""
-            return self.vscode_files_exclude_map
+            return dict(self.vscode_files_exclude_map)
 
         @m.computed_field()
         @property

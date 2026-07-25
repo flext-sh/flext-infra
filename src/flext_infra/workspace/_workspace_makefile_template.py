@@ -11,7 +11,7 @@ from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
 from flext_core import r
-from flext_infra import c, p, t, u
+from flext_infra import c, config, p, t, u
 
 
 class FlextInfraWorkspaceMakefileTemplateMixin:
@@ -167,6 +167,7 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
             pr_branch=pr_branch,
             make=c.Infra,
             editable_distributions=editable_distributions,
+            uv_version=config.Infra.codegen.toolchain.uv_version,
         )
         return rendered
 

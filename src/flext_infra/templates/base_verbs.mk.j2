@@ -3,12 +3,13 @@ ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
 endif
 PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
-# mro-wkii.17.27 (codex): boot provisions the venv before normal commands use it.
-PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra
-PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
+PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_INFRA_SRC)
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
+PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_CHECK }}
 PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_CODEGEN }}
-PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) {{ make.CLI_GROUP_DEPS }}
+PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_DEPS }}
 PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_DOCS }}
 PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_GITHUB }}
 PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) {{ make.CLI_GROUP_REFACTOR }}
@@ -107,17 +108,16 @@ boot: ## Complete setup
 	$(call _run_verb_hooks,post,boot,$(WHAT))
 
 _boot_impl:
-	# mro-j47u: generated boot consumes the sole public extra-paths route after the initial sync.
-	$(Q)uv sync --all-extras --all-groups
+	$(Q)$(UV) sync --all-extras --all-groups
 	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
-	$(Q)uv lock
-	$(Q)uv sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
+	$(Q)$(UV) lock
+	$(Q)$(UV) sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
 		hooks_path=$$(git config --get core.hooksPath || true); \
 		if [ -n "$$hooks_path" ]; then \
 			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
 		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
-			uv run pre-commit install; \
+			$(UV) run pre-commit install; \
 		else \
 			echo "INFO: skipping pre-commit install (no pre-commit config)"; \
 		fi; \
@@ -132,7 +132,7 @@ build: ## Build distributable artifacts
 
 _build_impl:
 	$(Q)build_start=$$(date +%s) && \
-	mise exec -- uv build --project "$(CURDIR)" --no-sources && \
+	$(UV) build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
 check: ## Run lint gates (CHECK_GATES={{ make.PROJECT_CHECK_GATES_ALLOWED }} to select)

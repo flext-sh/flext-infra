@@ -26,6 +26,10 @@ SHELL := /usr/bin/bash
 .DEFAULT_GOAL := help
 
 WORKSPACE_VENV := $(CURDIR)/.venv
+FLEXT_INFRA_PYTHON ?= $(PY)
+MISE := $(shell command -v mise 2>/dev/null)
+UV_VERSION := {{ uv_version }}
+UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv
 
 # Determine required python version from pyproject.toml and find matching executable
 PYTHON_REQ_VERSION := $(shell awk -F'"' '/requires-python/ {match($$2, /3\.[0-9]+/); print substr($$2, RSTART, RLENGTH)}' pyproject.toml)
@@ -38,7 +42,7 @@ UV_CACHE_DIR ?= /tmp/uv-cache
 override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)
 WORKSPACE_BOOT_LOCK ?= /tmp/flext-workspace-boot.lock
 export UV_CACHE_DIR
-export UV_PROJECT_ENVIRONMENT
+export UV_PROJECT_ENVIRONMENT FLEXT_INFRA_PYTHON
 {% for variable_name, default_value in make.WORKSPACE_VARIABLE_DEFAULTS -%}
 {% if default_value -%}
 {{ variable_name }} ?= {{ default_value }}
@@ -86,8 +90,8 @@ WORKSPACE_PYTHONPATH := $(shell \
 		[ "$$skip" = "0" ] && [ -d "$(CURDIR)/$$d/src" ] && printf "$(CURDIR)/$$d/src:"; \
 	done)$(CURDIR)/src
 WORKSPACE_PYTHON := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(PY)
-FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PR_BRANCH="$(PR_BRANCH)" PYTHONPATH="$(WORKSPACE_PYTHONPATH)" uv run --all-packages python -m scripts.dispatch
-WORKSPACE_FLEXT_INFRA := FLEXT_WORKSPACE_ROOT="$(CURDIR)" $(WORKSPACE_PYTHON) -m flext_infra
+FLEXT_MAKE_DISPATCH := {{ dispatch_environment() }} PR_BRANCH="$(PR_BRANCH)" PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(UV) run --all-packages python -m scripts.dispatch
+WORKSPACE_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; FLEXT_WORKSPACE_ROOT="$(CURDIR)" env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(WORKSPACE_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 WORKSPACE_INFRA_CHECK := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CHECK }}
 WORKSPACE_INFRA_CODEGEN := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_CODEGEN }}
 WORKSPACE_INFRA_DEPS := $(WORKSPACE_FLEXT_INFRA) {{ make.CLI_GROUP_DEPS }}
@@ -230,13 +234,13 @@ endef
 define ENSURE_WORKSPACE_RUNTIME
 echo "Ensuring workspace runtime dependencies in .venv..."; \
 log_file="/tmp/flext-workspace-runtime-sync.log"; \
-if uv lock >"$$log_file" 2>&1; then \
+if $(UV) lock >"$$log_file" 2>&1; then \
 	:; \
 else \
 	cat "$$log_file"; \
 	exit 1; \
 fi; \
-if uv sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS) >>"$$log_file" 2>&1; then \
+if $(UV) sync --all-packages --all-groups --all-extras $(WORKSPACE_EDITABLE_REINSTALL_FLAGS) >>"$$log_file" 2>&1; then \
 	:; \
 else \
 	cat "$$log_file"; \
@@ -316,7 +320,7 @@ _boot_submodules: ## Initialize declared submodules without touching the environ
 _boot_venv: ## Repair the root workspace environment from the existing lock
 	$(Q)$(PREFLIGHT_CHECK)
 	$(Q)mkdir -p "$(UV_CACHE_DIR)"
-	$(Q)flock -x "$(WORKSPACE_BOOT_LOCK)" uv sync --locked --all-packages --all-groups --all-extras --reinstall
+	$(Q)flock -x "$(WORKSPACE_BOOT_LOCK)" sh -eu -c 'venv="$(WORKSPACE_VENV)"; if [ -e "$$venv" ] || [ -L "$$venv" ]; then if [ ! -x "$(PY)" ]; then archive="$$venv.invalid.$$(date -u +%Y%m%dT%H%M%SZ)"; mv "$$venv" "$$archive"; echo "Archived invalid environment: $$archive"; fi; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT UV_PROJECT="$(CURDIR)" UV_PROJECT_ENVIRONMENT="$(WORKSPACE_VENV)" $(UV) sync --project "$(CURDIR)" --locked --all-packages --all-groups --all-extras --reinstall; test -x "$(PY)"'
 
 _boot_default: ## Initialize submodules, repair .venv, then complete workspace setup
 	$(Q)$(MAKE) --no-print-directory _boot_submodules
@@ -333,7 +337,7 @@ _boot_default: ## Initialize submodules, repair .venv, then complete workspace s
 	fi
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1 && [ -f .pre-commit-config.yaml ]; then \
 		echo "Installing pre-commit hooks (workspace root)..."; \
-		uv run --all-packages pre-commit install || exit 1; \
+		$(UV) run --all-packages pre-commit install || exit 1; \
 	else \
 		echo "INFO: skipping pre-commit install (no git repository or config)"; \
 	fi
@@ -354,7 +358,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 	log_file="/tmp/flext-upgrade-workspace.log"; \
 	start_ts=$$(date +%s); \
 	printf " resolve ... "; \
-	if uv lock --upgrade >"$$log_file" 2>&1; then \
+	if $(UV) lock --upgrade >"$$log_file" 2>&1; then \
 		echo "ok"; \
 	else \
 		echo "failed"; \
@@ -362,7 +366,7 @@ _up: ## Refresh workspace lock/install + rewrite dependency constraints + depend
 		exit 1; \
 	fi; \
 	printf " install ... "; \
-	if uv sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
+	if $(UV) sync --all-packages --all-groups --all-extras >>"$$log_file" 2>&1; then \
 		elapsed=$$(( $$(date +%s) - start_ts )); \
 		echo "ok ($${elapsed}s)"; \
 	else \
@@ -413,7 +417,7 @@ _constraints: ## Rewrite dependency constraints from uv.lock (policy=floor). Use
 	$(Q)$(ENSURE_PROJECTS_EXIST)
 	$(Q)echo "Refreshing workspace dependency resolution..."; \
 		log_file="/tmp/flext-constraints-lock.log"; \
-		if uv lock --upgrade >"$$log_file" 2>&1; then \
+		if $(UV) lock --upgrade >"$$log_file" 2>&1; then \
 			rm -f "$$log_file"; \
 		else \
 			cat "$$log_file"; \

@@ -157,7 +157,7 @@ exclude_also = [
   "if _t.TYPE_CHECKING:",
   "if typing.TYPE_CHECKING:",
 ]
-fail_under = 25
+fail_under = 45
 precision = 2
 show_missing = true
 skip_covered = false
@@ -266,12 +266,9 @@ project-excludes = [
   "vendor/**",
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
-python-interpreter-path = "../.venv/bin/python"
+python-interpreter-path = "./.venv/bin/python"
 python-version = "3.13"
-search-path = [
-    ".",
-    "src",
-]
+search-path = [".", "src"]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -684,6 +681,12 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 [tool.uv]
 link-mode = "copy"
 required-version = "==0.11.29"
+
+[[tool.uv.exclude-dependencies]]
+dependencies = ["flext-infra"]
+
+[tool.uv.exclude-dependencies.package]
+name = "flext-tests"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

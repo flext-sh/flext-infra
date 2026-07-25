@@ -27,6 +27,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         toolchain: p.Infra.ToolchainSpec,
+        uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -64,6 +65,7 @@ class FlextInfraUtilitiesPyprojectConform:
             required_version=toolchain.uv_required_version,
             link_mode=toolchain.uv_link_mode,
             constraint_dependencies=(f"uv{toolchain.uv_required_version}",),
+            exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -345,6 +347,15 @@ class FlextInfraUtilitiesPyprojectConform:
         )
 
     @staticmethod
+    def _owns_uv_root_policy(
+        *, project_name: str, workspace: p.Infra.WorkspaceSpec
+    ) -> bool:
+        """Identify autonomous and multi-project roots that own uv root policy."""
+        return not workspace.members or (
+            project_name == workspace.repository.distribution
+        )
+
+    @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete legacy packaging owners superseded by canonical conformance."""
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
@@ -410,6 +421,7 @@ class FlextInfraUtilitiesPyprojectConform:
         required_version: str | None = None,
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
+        exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         if (required_version is None) != (link_mode is None):
@@ -417,19 +429,40 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_root = cls._is_workspace_root(
             project_name=project_name, workspace=workspace
         )
+        owns_uv_root_policy = cls._owns_uv_root_policy(
+            project_name=project_name, workspace=workspace
+        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if not workspace_root and required_version is None:
+            if (
+                not workspace_root
+                and required_version is None
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not workspace_root and required_version is None:
+            if (
+                not workspace_root
+                and required_version is None
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         if required_version is not None and link_mode is not None:
             u.Cli.toml_sync_value(uv, "required-version", required_version)
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
+        exclude_payload = list(
+            t.Cli.JSON_LIST_ADAPTER.validate_python([
+                item.model_dump(mode="json", exclude_none=True)
+                for item in exclude_dependencies
+            ])
+        )
+        if owns_uv_root_policy and exclude_payload:
+            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         if workspace_root:
             if constraint_dependencies is not None:
                 u.Cli.toml_sync_string_list(

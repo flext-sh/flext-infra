@@ -17,11 +17,11 @@ else
 # then restarts with base.mk loaded. All standard verbs become available.
 # =============================================================================
 
-PYTHON_VERSION ?= 3.13
-PYTHON_CMD := $(firstword $(shell command -v python$(PYTHON_VERSION) python3 python 2>/dev/null))
 BOOTSTRAP_VENV := .venv
-BOOTSTRAP_PIP := $(BOOTSTRAP_VENV)/bin/pip
 BOOTSTRAP_PYTHON := $(BOOTSTRAP_VENV)/bin/python
+MISE := $(shell command -v mise 2>/dev/null)
+UV_VERSION := {{ uv_version }}
+UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv
 FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 FLEXT_INFRA_DEPS_GROUP := {{ make.CLI_GROUP_DEPS }}
 
@@ -29,27 +29,9 @@ FLEXT_INFRA_DEPS_GROUP := {{ make.CLI_GROUP_DEPS }}
 
 base.mk: Makefile
 	@echo "==> Resolving base.mk for $(PROJECT_NAME)..."
-	@if [ -d "$(BOOTSTRAP_VENV)" ] && $(BOOTSTRAP_PYTHON) -c 'import flext_infra' 2>/dev/null; then \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	elif $(PYTHON_CMD) -c 'import flext_infra' 2>/dev/null; then \
-		$(PYTHON_CMD) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	else \
-		echo "==> flext-infra not found. Bootstrapping standalone environment..."; \
-		if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-			echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-			if [ -z "$(PYTHON_CMD)" ]; then \
-				echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-				exit 1; \
-			fi; \
-			$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-			$(BOOTSTRAP_PIP) install -q -U pip; \
-		fi; \
-		$(BOOTSTRAP_PIP) install -q flext-infra; \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	fi
+	@$(MAKE) --no-print-directory _bootstrap-venv
+	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
+		--project-name $(PROJECT_NAME) --output $@
 	@test -s $@ || { echo "ERROR: base.mk generation failed"; rm -f $@; exit 1; }
 	@echo "==> base.mk generated. Restarting make..."
 
@@ -61,31 +43,17 @@ ifeq ("$(wildcard base.mk)", "")
 .PHONY: _bootstrap-venv venv setup
 
 _bootstrap-venv:
-	@if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-		echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-		if [ -z "$(PYTHON_CMD)" ]; then \
-			echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-			exit 1; \
-		fi; \
-		$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-		$(BOOTSTRAP_PIP) install -q -U pip; \
-	fi
+	@venv="$(BOOTSTRAP_VENV)"; if [ -e "$$venv" ] || [ -L "$$venv" ]; then if [ ! -x "$(BOOTSTRAP_PYTHON)" ]; then archive="$$venv.invalid.$$(date -u +%Y%m%dT%H%M%SZ)"; mv "$$venv" "$$archive" || exit 2; echo "Archived invalid environment: $$archive"; fi; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT UV_PROJECT="$(CURDIR)" UV_PROJECT_ENVIRONMENT="$(CURDIR)/$(BOOTSTRAP_VENV)" $(UV) sync --project "$(CURDIR)" --all-extras --all-groups; test -x "$(BOOTSTRAP_PYTHON)"
 
 venv: _bootstrap-venv ## Create standalone virtual environment
-	@$(BOOTSTRAP_PIP) install -q -U pip poetry
 	@echo "Virtual environment ready at $(BOOTSTRAP_VENV)"
 
 setup: venv ## Full standalone setup (venv + dependencies + base.mk)
-	@echo "==> Installing project dependencies..."
-	@$(BOOTSTRAP_PIP) install -q flext-infra
-	# mro-j47u: generated bootstrap consumes the sole public extra-paths route.
 	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) extra-paths \
 		--apply \
 		--workspace "$(CURDIR)"
-	@$(BOOTSTRAP_VENV)/bin/poetry lock
-	@$(BOOTSTRAP_VENV)/bin/poetry install --all-extras --all-groups
 	@if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(BOOTSTRAP_VENV)/bin/poetry run pre-commit install; \
+		$(UV) run --project "$(CURDIR)" --no-sync pre-commit install; \
 	fi
 	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
