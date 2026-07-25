@@ -202,6 +202,51 @@ branch = "wrong"
         tm.that(second.success, eq=True)
         tm.that(second.value, eq=first.value)
 
+    def test_full_conform_preserves_distinct_dev_dependency_variants(self) -> None:
+        workspace, repositories, toolchain = _fixtures()
+        source = f'''[project]
+name = "{workspace.name}"
+
+[project.optional-dependencies]
+dev = ["flext-external[docs]; python_version >= '3.13'"]
+
+[dependency-groups]
+dev = ["flext-external[test]; python_version < '3.13'"]
+codegen = [
+    "flext-infra[docs]; python_version >= '3.13'",
+    "flext-infra[test]; python_version < '3.13'",
+]
+'''
+        first = u.Infra.pyproject_conform(
+            source, repositories=repositories, workspace=workspace, toolchain=toolchain
+        )
+        tm.that(first.success, eq=True, msg=first.error)
+        groups = _table(_payload(first.value), "dependency-groups")
+        tm.that(
+            groups["dev"],
+            eq=[
+                "flext-external[docs]; python_version >= '3.13'",
+                "flext-external[test]; python_version < '3.13'",
+                "flext-tests",
+            ],
+        )
+        tm.that(
+            groups["codegen"],
+            eq=[
+                "flext-infra[docs]; python_version >= '3.13'",
+                "flext-infra[test]; python_version < '3.13'",
+                "flext-infra",
+            ],
+        )
+        second = u.Infra.pyproject_conform(
+            first.value,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
+        )
+        tm.that(second.success, eq=True, msg=second.error)
+        tm.that(second.value, eq=first.value)
+
     def test_dependency_only_root_validates_exact_typed_resolution(self) -> None:
         workspace, repositories, _ = _fixtures()
         source = """[project]
@@ -377,6 +422,51 @@ branch = "infra-line"
         )
         tm.that(extra_result.failure, eq=True)
         tm.that(extra_result.error or "", has="sources differ")
+
+    def test_full_conform_rewrites_wrong_source_order_and_is_idempotent(self) -> None:
+        workspace, repositories, toolchain = _fixtures()
+        repository_by_name = {
+            repository.distribution: repository for repository in repositories
+        }
+        external = repository_by_name["flext-external"]
+        tests = repository_by_name["flext-tests"]
+        infra = repository_by_name["flext-infra"]
+        member = workspace.members[0]
+        source = f'''[project]
+name = "{workspace.name}"
+
+[tool.uv.workspace]
+members = ["{member.path.as_posix()}"]
+
+[tool.uv.sources.flext-external]
+git = "{external.url}"
+branch = "{external.branch}"
+
+[tool.uv.sources.{member.distribution}]
+workspace = true
+
+[tool.uv.sources.flext-tests]
+git = "{tests.url}"
+branch = "{tests.branch}"
+
+[tool.uv.sources.flext-infra]
+git = "{infra.url}"
+branch = "{infra.branch}"
+'''
+        first = u.Infra.pyproject_conform(
+            source, repositories=repositories, workspace=workspace, toolchain=toolchain
+        )
+        tm.that(first.success, eq=True, msg=first.error)
+        sources = _table(_table(_table(_payload(first.value), "tool"), "uv"), "sources")
+        tm.that(
+            tuple(sources),
+            eq=(member.distribution, "flext-external", "flext-tests", "flext-infra"),
+        )
+        second = u.Infra.pyproject_conform(
+            first.value, repositories=repositories, workspace=workspace, toolchain=toolchain
+        )
+        tm.that(second.success, eq=True, msg=second.error)
+        tm.that(second.value, eq=first.value)
 
     def test_unknown_and_conflicting_repository_resolution_fail_closed(self) -> None:
         workspace, repositories, toolchain = _fixtures()

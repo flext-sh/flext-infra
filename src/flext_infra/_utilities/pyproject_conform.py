@@ -289,7 +289,7 @@ class FlextInfraUtilitiesPyprojectConform:
         u.Cli.toml_sync_string_list(
             groups,
             str(c.Infra.DEV),
-            FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
+            tuple(dict.fromkeys(item.strip() for item in dev if item.strip())),
         )
 
         codegen = list(u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")))
@@ -298,7 +298,7 @@ class FlextInfraUtilitiesPyprojectConform:
         u.Cli.toml_sync_string_list(
             groups,
             "codegen",
-            FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
+            tuple(dict.fromkeys(item.strip() for item in codegen if item.strip())),
         )
         cls._sync_workspace_dependency_group(
             document, project_name=project_name, workspace=workspace
@@ -463,7 +463,10 @@ class FlextInfraUtilitiesPyprojectConform:
             if sources is None:
                 sources = u.Cli.toml_ensure_table(uv, "sources")
             current_sources = u.Cli.toml_as_mapping(sources)
-            if current_sources != resolved_result.value:
+            if (
+                tuple(current_sources) != tuple(resolved_result.value)
+                or current_sources != resolved_result.value
+            ):
                 for source_name in tuple(sources):
                     u.Cli.toml_remove_key_if_present(sources, source_name)
                 for source_name, source in resolved_result.value.items():
