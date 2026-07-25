@@ -65,18 +65,27 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.that(roots, has=attached.resolve())
 
-    def test_discover_project_roots_includes_external_sibling(
+    def test_discover_project_roots_includes_attached_external_sibling(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "flext"
+        """A sibling joins discovery by declaring itself attached."""
+        # mro-4gbp: selection is declarative and name-agnostic - the sibling
+        # opts in through its own pyproject, never through a name the engine
+        # knows. No patching: the real public surface is exercised.
+        sibling_name = "neighbour-workspace"
+        workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="flext"\nversion="0.1.0"\n', encoding="utf-8"
+            '[project]\nname="root-workspace"\nversion="0.1.0"\n', encoding="utf-8"
         )
-        external = tmp_path / ".ai-hub"
-        (external / c.Infra.DEFAULT_SRC_DIR / "ai_hub").mkdir(parents=True)
+        external = tmp_path / sibling_name
+        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(
+            parents=True
+        )
         (external / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="ai-hub"\nversion="0.1.0"\ndependencies=["flext-core"]\n',
+            f'[project]\nname="{sibling_name}"\nversion="0.1.0"\n'
+            'dependencies=["flext-core"]\n'
+            "\n[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
 
@@ -277,19 +286,25 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.that(result.value, has=included_file)
         tm.that(result.value, lacks=hidden_file)
 
-    def test_find_all_pyproject_files_includes_external_workspace_siblings(
+    def test_find_all_pyproject_files_includes_attached_workspace_siblings(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "flext"
+        """Sibling pyprojects are found when the sibling declares itself attached."""
+        # mro-4gbp: declarative, name-agnostic opt-in through the sibling's own
+        # pyproject. No patching: the real public surface is exercised.
+        sibling_name = "neighbour-data"
+        workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='flext'\n", encoding="utf-8"
+            "[project]\nname='root-workspace'\n", encoding="utf-8"
         )
-        external = tmp_path / "gruponos-data"
-        (external / "src" / "gruponos_data").mkdir(parents=True)
+        external = tmp_path / sibling_name
+        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_data").mkdir(parents=True)
         external_pyproject = external / c.Infra.PYPROJECT_FILENAME
         external_pyproject.write_text(
-            "[project]\nname='gruponos-data'\ndependencies=['flext-core']\n",
+            f"[project]\nname='{sibling_name}'\nversion='0.1.0'\n"
+            "dependencies=['flext-core']\n"
+            "\n[tool.flext.workspace]\nattached = true\n",
             encoding="utf-8",
         )
 

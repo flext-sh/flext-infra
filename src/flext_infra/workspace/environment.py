@@ -10,7 +10,7 @@ from flext_core import r
 from flext_infra import c, config, u
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceEnvironment:
@@ -254,12 +254,8 @@ class FlextInfraWorkspaceEnvironment:
 
     @staticmethod
     def is_generated_environment_text(content: str) -> bool:
-        """Return True when content carries a known generated marker."""
-        markers: t.StrSequence = (
-            c.Infra.WORKSPACE_ENV_GENERATED_MARKER,
-            *c.Infra.WORKSPACE_ENV_LEGACY_MARKERS,
-        )
-        return any(marker in content for marker in markers)
+        """Return True when content carries the canonical generated marker."""
+        return c.Infra.WORKSPACE_ENV_GENERATED_MARKER in content
 
 
 __all__: list[str] = ["FlextInfraWorkspaceEnvironment"]

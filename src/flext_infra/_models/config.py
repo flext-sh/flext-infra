@@ -63,6 +63,18 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        environment_path_prepends: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Extra directories the generated shell activation prepends "
+                    "to PATH when they exist. Installation data expressed as "
+                    "shell-expandable paths; empty by default so the engine "
+                    "never names a specific tool installation."
+                ),
+            ),
+        ] = ()
 
         @m.computed_field()
         @property

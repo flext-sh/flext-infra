@@ -324,18 +324,18 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
     def test_manifestless_repo_derives_spec_from_catalog(self, tmp_path: Path) -> None:
         """Derive a generic minimal spec from the catalog when no manifest exists."""
-        catalog_name = next(
-            declared.name
-            for declared in config.Infra.codegen.repositories
-            if declared.role is c.Infra.RepositoryRole.STANDALONE
-        )
+        # mro-4gbp: the engine catalog declares only repositories it owns, so the
+        # fixture is derived from whatever this engine publishes - never a
+        # hardcoded name and never a downstream consumer.
+        declared = config.Infra.codegen.repositories[0]
         (tmp_path / "pyproject.toml").write_text(
-            f'[project]\nname = "{catalog_name}"\nversion = "0.0.0"\n', encoding="utf-8"
+            f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
+            encoding="utf-8",
         )
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
-        assert spec.name == catalog_name
-        assert spec.repository.role is c.Infra.RepositoryRole.STANDALONE
-        assert spec.version == c.Infra.WORKSPACE_MANIFEST_VERSION
+        tm.that(spec.name, eq=declared.name)
+        tm.that(spec.repository.role, eq=declared.role)
+        tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
 
     def test_manifestless_repo_absent_from_catalog_fails_closed(
         self, tmp_path: Path

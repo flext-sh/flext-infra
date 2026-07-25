@@ -140,12 +140,25 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         failed = 0
         skipped = 0
         started_total = time.monotonic()
+        # mro-9v0d: emit a deterministic, machine-parseable orchestration report
+        # so a caller can attribute every project outcome and the child exit code.
+        u.Cli.emit_raw(
+            f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
+            f"projects={','.join(projects)}"
+            + (f" gates={self._gates_of(make_args)}" if self._gates_of(make_args) else "")
+            + "\n"
+        )
         for idx, project in enumerate(projects, start=1):
-            u.Cli.progress(idx, total, project, verb)
+            u.Cli.emit_raw(f"[{idx}/{total}] START {project} {verb}\n")
             cmd_output, succeeded = self._execute_project(
                 project, verb, idx, make_args=effective_make_args
             )
             results.append(cmd_output)
+            state = "PASS" if succeeded else "FAIL"
+            u.Cli.emit_raw(
+                f"[{idx}/{total}] {state} {project} {verb} "
+                f"exit={cmd_output.exit_code} duration={cmd_output.duration:.2f}s\n"
+            )
             if succeeded:
                 success += 1
             else:
@@ -154,20 +167,29 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                     skipped = total - idx
                     break
         elapsed_total = time.monotonic() - started_total
-        u.Cli.summary(
-            m.Infra.SummaryStats(
-                verb=verb,
-                total=total,
-                success=success,
-                failed=failed,
-                skipped=skipped,
-                elapsed=elapsed_total,
-            )
+        failed_project = next(
+            (
+                project
+                for project, output in zip(projects, results, strict=False)
+                if output.exit_code != 0
+            ),
+            "",
         )
+        exit_code = next(
+            (output.exit_code for output in results if output.exit_code != 0), 0
+        )
+        u.Cli.emit_raw(
+            f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
+            f"passed={success} failed={failed} skipped={skipped} exit={exit_code}\n"
+        )
+        _ = elapsed_total
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
-            return r.fail(f"orchestration completed with failures: {failed}")
+            return r.fail(
+                f"orchestration completed with failures: {failed} "
+                f"(first failure {failed_project} exit code {exit_code})"
+            )
         return r.ok(results)
 
     def _run_project(
@@ -186,6 +208,12 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
+        # mro-9v0d: GNU make exits 2 for any failed recipe, so recover the
+        # child's real exit code from make's own error line in the log.
+        if return_code != 0:
+            child_code = u.Infra.extract_make_child_exit_code(log_path)
+            if child_code is not None:
+                return_code = child_code
         stderr = "" if proc_result.success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:
@@ -222,6 +250,15 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         if any(make_arg.startswith("FAIL_FAST=") for make_arg in make_args):
             return make_args
         return (*make_args, "FAIL_FAST=1")
+
+    @staticmethod
+    def _gates_of(make_args: t.StrSequence) -> str:
+        """Return the gate selection carried by make arguments, if declared."""
+        prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
+        for make_arg in make_args:
+            if make_arg.startswith(prefix):
+                return make_arg[len(prefix) :]
+        return ""
 
 
 __all__: list[str] = ["FlextInfraWorkspaceOrchestratorExecutionMixin"]

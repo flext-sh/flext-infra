@@ -57,8 +57,9 @@ class FlextInfraEnsurePackagingPhase:
         Projects whose distribution name resolves to ``src/<name>`` build via
         hatchling default file selection and need no explicit targets (the
         workspace root is the canonical case). Standalone projects whose
-        import package differs from the distribution name (e.g. cosmos-docgen
-        shipping ``src/dcdoc``) must receive explicit bounded targets, or
+        import package differs from the distribution name (for example a
+        project shipping ``src/<other_name>``) must receive explicit bounded
+        targets, or
         hatchling cannot determine the wheel contents. Only data directories
         that actually exist at the project root are force-included, keeping
         the wheel free of phantom paths.

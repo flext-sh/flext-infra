@@ -200,7 +200,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Family letter to MRO chain mapping"),
         ]
 
-    # NOTE (multi-agent, cosmos-main-15bi): the two models below replace the
+    # NOTE (multi-agent): the two models below replace the
     # dataclass payloads that lived in refactor/_wrapper_rewrite.py and
     # refactor/classvar_constant_autofix.py (deep-FLEXT: models only in m).
     class WrapperRewriteAccumulator(m.ArbitraryTypesModel):
