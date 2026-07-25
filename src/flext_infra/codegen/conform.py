@@ -1097,7 +1097,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if target and target_re.fullmatch(target):
                 continue
             return r[bool].fail(
-                f"custom.mk line {line_number} is not a private custom handler"
+                f"{c.Infra.CUSTOM_MAKE_FILENAME} line {line_number} "
+                f"is not a private custom handler"
             )
         return r[bool].ok(True)
 

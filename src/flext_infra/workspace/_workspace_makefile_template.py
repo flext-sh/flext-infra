@@ -65,7 +65,10 @@ class FlextInfraWorkspaceMakefileTemplateMixin:
             "# =============================================================================\n",
             f"{c.Infra.MAKEFILE_GENERATED_MARKER}\n",
             "# Run 'make sync' from workspace root to regenerate this file.\n",
-            "# DO NOT EDIT — put custom targets in workspace_custom.mk instead.\n",
+            (
+                "# DO NOT EDIT — put custom targets in "
+                f"{c.Infra.CUSTOM_MAKE_FILENAME} instead.\n"
+            ),
             "# =============================================================================\n",
         )
 
