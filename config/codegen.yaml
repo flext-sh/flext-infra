@@ -437,6 +437,7 @@ Infra:
           patterns:
             - "!.mise.toml"
             - "!.default-python-packages"
+            - "!.python-version"
         - name: "Docker configuration"
           patterns:
             - "!.dockerignore"

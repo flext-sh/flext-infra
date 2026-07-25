@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, t
+from flext_infra import c, config, t
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 
 CodegenSpec = type(config.Infra.codegen)
@@ -247,16 +247,23 @@ class TestsCodegenArtifactSsot:
     def test_gitignore_sections_header_order(self, codegen: CodegenSpec) -> None:
         """The projection preserves the declared section order (P0: no frozen names).
 
-        Ignore files are order-sensitive, so the contract is that the derived
-        sections appear in the order the SSOT declares them. Retyping today's
-        section names here would freeze a config-owned value and break on any
-        legitimate policy change, so the expectation is read from the same
-        scaffold SSOT the projection consumes.
+        Ignore files are order-sensitive, so the contract is that the declared
+        sections appear first, in the order the SSOT declares them. Retyping
+        today's section names here would freeze a config-owned value and break
+        on any legitimate policy change, so the expectation is read from the
+        same scaffold SSOT the projection consumes.
+
+        Derived artifacts are appended as one trailing section, so the declared
+        names are an ordered prefix rather than the whole sequence.
         """
         declared = [section.name for section in codegen.scaffold.gitignore_sections]
         derived = [section.name for section in codegen.gitignore_sections]
 
-        assert derived == declared
+        assert derived[: len(declared)] == declared
+        assert derived[len(declared) :] in (
+            [],
+            [c.Infra.GITIGNORE_DERIVED_SECTION_NAME],
+        )
 
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""

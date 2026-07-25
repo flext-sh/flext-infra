@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
@@ -859,7 +860,7 @@ class FlextInfraConfigModels:
             if derived:
                 sections.append(
                     FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
-                        name=self.GITIGNORE_DERIVED_SECTION_NAME,
+                        name=FlextInfraConstantsSharedInfra.GITIGNORE_DERIVED_SECTION_NAME,
                         patterns=tuple(derived),
                     )
                 )

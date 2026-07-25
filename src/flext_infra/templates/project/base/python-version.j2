@@ -1,2 +1,4 @@
-{# NOTE (multi-agent, mro-wkii.17.4 / agent: codex): exact fleet Python pin. #}
+{# Exact fleet Python pin. The whitespace-control marker below strips this
+   comment's newline: .python-version is read as a bare version string, so a
+   leading blank line makes the generated file drift against the pin forever. -#}
 {{ python_toolchain_version }}
