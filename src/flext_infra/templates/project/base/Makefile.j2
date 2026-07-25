@@ -17,6 +17,9 @@ PROJECTS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
+export UV_PROJECT := $(PROJECT_ROOT)
+export UV_PROJECT_ENVIRONMENT := $(PROJECT_ROOT)/.venv
+export VIRTUAL_ENV := $(UV_PROJECT_ENVIRONMENT)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
@@ -184,11 +187,11 @@ _builtin_help_usage:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:
 	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
+	@uv pip check --python "$(UV_PROJECT_ENVIRONMENT)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment:
