@@ -207,11 +207,33 @@ class TestsCodegenArtifactSsot:
     # P6 — gitignore_sections ---------------------------------------------
 
     def test_gitignore_sections_dedup_and_merge(self, codegen: CodegenSpec) -> None:
-        """Headline dedup law + artifact patterns are a subset of the flat body."""
+        """Every derived artifact is governed, and repeats stay where declared.
+
+        Global uniqueness is NOT the law: an ignore file is order-sensitive, so
+        repeating ``.beads/*`` after an intervening ``!.beads/`` is what keeps
+        that directory scanned. Deduplicating the repeat silently un-ignores its
+        contents, so only the appended artifact tail is deduplicated.
+
+        Nor are artifact patterns unconditionally appended: when the SSOT already
+        governs a path -- including re-allowing it with ``!`` -- appending a bare
+        ignore would contradict the declared policy. The law is therefore that
+        every artifact is *accounted for*, either governed or appended.
+        """
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
-        assert len(flat) == len(set(flat))
-        assert set(codegen.gitignore_artifact_patterns) <= set(flat)
+        governed = {
+            pattern.lstrip("!")
+            for section in codegen.scaffold.gitignore_sections
+            for pattern in section.patterns
+        }
+
+        unaccounted = [
+            pattern
+            for pattern in codegen.gitignore_artifact_patterns
+            if pattern not in flat and pattern not in governed
+        ]
+
+        assert unaccounted == []
 
     def test_gitignore_sections_static_origin_proof(self, codegen: CodegenSpec) -> None:
         """Environment patterns reach .gitignore from the static section only."""
@@ -223,13 +245,18 @@ class TestsCodegenArtifactSsot:
         assert "!.env.example" not in codegen.gitignore_artifact_patterns
 
     def test_gitignore_sections_header_order(self, codegen: CodegenSpec) -> None:
-        """Section headers are present in declared order (bodies not pinned)."""
-        assert [section.name for section in codegen.gitignore_sections] == [
-            "Python and build artifacts",
-            "FLEXT",
-            "Environment and secrets",
-            "Editors and OS",
-        ]
+        """The projection preserves the declared section order (P0: no frozen names).
+
+        Ignore files are order-sensitive, so the contract is that the derived
+        sections appear in the order the SSOT declares them. Retyping today's
+        section names here would freeze a config-owned value and break on any
+        legitimate policy change, so the expectation is read from the same
+        scaffold SSOT the projection consumes.
+        """
+        declared = [section.name for section in codegen.scaffold.gitignore_sections]
+        derived = [section.name for section in codegen.gitignore_sections]
+
+        assert derived == declared
 
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""

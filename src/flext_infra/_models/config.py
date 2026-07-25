@@ -821,33 +821,48 @@ class FlextInfraConfigModels:
         def gitignore_sections(
             self,
         ) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
-            """Derived canonical ``.gitignore`` sections (SSOT first, deduplicated)."""
+            """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
+
+            Ignore files are order-sensitive: a pattern placed before a
+            catch-all such as ``/*`` is dead, and a directory ignored before
+            its own ``!`` negation is never re-allowed. The declared sections
+            are therefore emitted in their declared order, and derived artifact
+            patterns are appended -- never prepended -- so a whitelist policy
+            expressed in the SSOT survives the projection intact.
+            """
             scaffold_sections = self.scaffold.gitignore_sections
-            first = scaffold_sections[0]
-            merged: t.MutableSequenceOf[str] = list(self.gitignore_artifact_patterns)
-            seen = set(merged)
-            for pattern in first.patterns:
-                if pattern not in seen:
-                    seen.add(pattern)
-                    merged.append(pattern)
+            # A declared section may already govern a derived artifact, in
+            # either direction: a whitelist re-allows `.agents/` with `!`, so
+            # appending a bare `.agents/` ignore would contradict the declared
+            # policy. Only artifacts the SSOT never mentions are appended.
+            governed = {
+                pattern.lstrip("!")
+                for section in scaffold_sections
+                for pattern in section.patterns
+            }
+            derived: t.MutableSequenceOf[str] = []
+            for pattern in self.gitignore_artifact_patterns:
+                if pattern not in governed and pattern not in derived:
+                    derived.append(pattern)
             sections: t.MutableSequenceOf[
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
-            ] = [
-                FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
-                    name=first.name, patterns=tuple(merged)
-                )
-            ]
-            for section in scaffold_sections[1:]:
-                patterns = tuple(
-                    pattern for pattern in section.patterns if pattern not in seen
-                )
-                seen.update(patterns)
-                if patterns:
-                    sections.append(
-                        FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
-                            name=section.name, patterns=patterns
-                        )
+            ] = []
+            # Declared sections are emitted verbatim. Cross-section dedup is
+            # unsound for ignore files: repeating `.beads/*` after an
+            # intervening `!.beads/` is what keeps the directory scanned, so
+            # dropping the repeat silently un-ignores its contents.
+            sections.extend(scaffold_sections)
+            # Derived artifacts are appended as their own trailing section: an
+            # ignore file is evaluated in order, so injecting them into the
+            # first section would place them before any `!` negation the policy
+            # declares later and silently un-ignore governed paths.
+            if derived:
+                sections.append(
+                    FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
+                        name=self.GITIGNORE_DERIVED_SECTION_NAME,
+                        patterns=tuple(derived),
                     )
+                )
             return tuple(sections)
 
         @m.computed_field()
