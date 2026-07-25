@@ -52,6 +52,32 @@ class TestsFlextInfraDepsModernizerWorkspace:
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
 
+    def test_modernizer_distinguishes_exact_workspace_root_assignment(
+        self, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        pyproject = project / c.Infra.PYPROJECT_FILENAME
+        source = '[project]\nname = "flext-demo"\nversion = "0.1.0"\n'
+        pyproject.write_text(source, encoding="utf-8")
+        package_init = project / "src" / "flext_demo" / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=project, skip_check=True, skip_comments=True
+        )
+        before = tm.ok(modernizer.conform_source(source, path=pyproject))
+        (project / "Makefile").write_text(
+            "WORKSPACE_ROOT_REL := ..\n", encoding="utf-8"
+        )
+
+        with_relative_marker = tm.ok(modernizer.conform_source(source, path=pyproject))
+        (project / "Makefile").write_text("WORKSPACE_ROOT := ..\n", encoding="utf-8")
+        with_exact_marker = tm.ok(modernizer.conform_source(source, path=pyproject))
+
+        tm.that(with_relative_marker, eq=before)
+        tm.that(with_exact_marker, ne=before)
+
     def test_main_applies_only_selected_projects(
         self, modernizer_workspace_with_projects: Path
     ) -> None:

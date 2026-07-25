@@ -136,9 +136,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if read.success:
             for raw_line in read.value.splitlines():
                 stripped = raw_line.strip()
-                if not stripped.startswith("WORKSPACE_ROOT") or ":=" not in stripped:
+                key, separator, value = stripped.partition(":=")
+                if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
                     continue
-                _, _, value = stripped.partition(":=")
                 if value.strip().startswith(".."):
                     return True
         return False
