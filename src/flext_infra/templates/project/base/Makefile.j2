@@ -20,6 +20,9 @@ PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+MISE := $(shell command -v mise 2>/dev/null)
+UV_VERSION := {{ uv_version }}
+UV = $(if $(MISE),$(MISE) exec uv@$(UV_VERSION) -- uv,sh -c 'printf "%s\n" "ERROR: mise executable not found on caller PATH" >&2; exit 2' --)
 
 {% include "base_mypy_limit.mk.j2" %}
 
@@ -58,7 +61,7 @@ CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN = $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
@@ -153,7 +156,7 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		uv lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
 endef
 
@@ -183,23 +186,23 @@ _builtin_help_usage:
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	@$(UV) pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
+	@$(UV) pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment:
 	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
 endif
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
 endif
 
 _builtin_deps_check:
@@ -214,7 +217,7 @@ _builtin_deps_upgrade:
 	$(call _run_for_selected_projects,--upgrade)
 
 _builtin_build_artifacts:
-	@uv build --project "$(PROJECT_ROOT)"
+	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -243,10 +246,10 @@ _builtin_run_default:
 _builtin_status_diagnostics:
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@uv --version
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) --version
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		uv pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
+		$(UV) pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
@@ -262,7 +265,7 @@ _builtin_clean_generated:
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
 _builtin_release_status:
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
