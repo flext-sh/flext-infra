@@ -8,55 +8,16 @@ from flext_core import r
 from flext_infra import c, m, p, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
-from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-from flext_infra.workspace.workspace_makefile import (
-    FlextInfraWorkspaceMakefileGenerator,
-)
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
-    """Per-artifact sync steps (base.mk, Makefile) under the lock.
+    """Per-artifact sync steps under the lock.
 
     Composed into FlextInfraSyncService via MRO; each step is idempotent
     (SHA256 / exact-line compare) and surfaces generator/IO failures as r.fail.
     Inherits the generator field + ``_get_generator`` from the workspace base.
     """
-
-    def _sync_makefile_if_needed(
-        self, resolved: Path, effective_root: Path | None, *, apply: bool
-    ) -> p.Result[int]:
-        """Sync workspace or project Makefile and surface generator failures."""
-        is_workspace_root = self._is_workspace_root(resolved, effective_root)
-        if is_workspace_root:
-            workspace_makefile_result = FlextInfraWorkspaceMakefileGenerator().generate(
-                resolved, apply=apply
-            )
-            if workspace_makefile_result.failure:
-                return r[int].fail(
-                    workspace_makefile_result.error
-                    or "workspace Makefile generation failed"
-                )
-            return r[int].ok(1 if workspace_makefile_result.value else 0)
-        if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
-            makefile_result = self._sync_project_makefile(
-                resolved, effective_root or resolved, apply=apply
-            )
-            if makefile_result.failure:
-                return r[int].fail(
-                    makefile_result.error or "project Makefile generation failed"
-                )
-            return r[int].ok(1 if makefile_result.value else 0)
-        return r[int].ok(0)
-
-    @staticmethod
-    def _sync_project_makefile(
-        workspace_root: Path, canonical_root: Path, *, apply: bool
-    ) -> p.Result[bool]:
-        """Sync the generated section of a project Makefile from pyproject.toml."""
-        return FlextInfraProjectMakefileUpdater().update(
-            workspace_root, canonical_root=canonical_root, apply=apply
-        )
 
     @staticmethod
     def _is_workspace_root(workspace_root: Path, canonical_root: Path | None) -> bool:

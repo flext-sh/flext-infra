@@ -33,32 +33,6 @@ class FlextInfraConstantsWorkspace:
     )
     "Sibling directory patterns for FLEXT-managed external workspaces."
 
-    MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
-        (
-            'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
-            "python -m flext_infra workspace detect",
-        ),
-        (
-            'python3 "$(WORKSPACE_ROOT)/scripts/sync.py"',
-            "python -m flext_infra workspace sync --apply",
-        ),
-        (
-            'python "$(WORKSPACE_ROOT)/scripts/check/fix_pyrefly_config.py"',
-            "python -m flext_infra check fix-pyrefly-settings",
-        ),
-        (
-            'python "$(WORKSPACE_ROOT)/scripts/check/workspace_check.py"',
-            "python -m flext_infra check run",
-        ),
-        (
-            '$(VENV_PYTHON) "$(BASE_MK_DIR)/scripts/core/pytest_diag_extract.py"',
-            "$(VENV_PYTHON) -m flext_infra validate pytest-diag",
-        ),
-        (
-            'python3 "$(WORKSPACE_ROOT)/scripts/github/pr_manager.py"',
-            "python3 -m flext_infra github pr",
-        ),
-    )
     # NOTE (mro-jnm1.2): the .gitignore body is derived from the artifact SSOT
     # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
     # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
@@ -95,16 +69,6 @@ class FlextInfraConstantsWorkspace:
     # Environments locator (pet) walk entire trees and hang discovery.
     # mro-sltx (backport 0.20): .envrc/.mise.toml content moved to Jinja templates
     # templates/workspace_{envrc.sh,mise.toml}.j2, rendered from validated toolchain.
-
-    MAKEFILE_INCLUDE_OLD: Final[str] = (
-        'ifneq ("$(wildcard ../base.mk)", "")\n'
-        "include ../base.mk\n"
-        "else\n"
-        "include base.mk\n"
-        "endif"
-    )
-
-    MAKEFILE_BOOTSTRAP_TEMPLATE: Final[str] = "makefile_bootstrap.mk.j2"
 
     MAKEFILE_TEMPLATE_NAME: Final[str] = "workspace_makefile.mk.j2"
     "Jinja2 template filename for workspace Makefile generation."
