@@ -113,6 +113,69 @@ class TestsFlextInfraWorkspaceMakefileGenerator:
             ],
         )
 
+    def test_workspace_makefile_generator_uses_manifest_project_inventory(
+        self, tmp_path: Path
+    ) -> None:
+        """Render project discovery from the validated workspace manifest."""
+        workspace_root = _write_workspace_root(tmp_path)
+        _write_workspace_manifest(
+            workspace_root,
+            members=(
+                "\n"
+                "  - name: member-path\n"
+                "    distribution: canonical-distribution\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/member-path.git\n"
+                "    branch: main\n"
+                "    path: member-path\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false"
+            ),
+        )
+
+        tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+        makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
+
+        tm.that(makefile_text, has="ALL_PROJECTS := member-path")
+        tm.that(makefile_text, lacks=[".gitmodules", "tool.uv.workspace"])
+
+    def test_workspace_makefile_generator_isolates_root_runtime_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """Bind generated root commands to the root workspace environment."""
+        workspace_root = _write_workspace_root(tmp_path)
+
+        tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+        makefile_text = (workspace_root / "Makefile").read_text(encoding="utf-8")
+
+        _assert_contains_all(
+            makefile_text,
+            [
+                "override UV_PROJECT := $(CURDIR)",
+                "override UV_PROJECT_ENVIRONMENT := $(WORKSPACE_VENV)",
+                "override VIRTUAL_ENV := $(WORKSPACE_VENV)",
+                "override PATH := $(WORKSPACE_VENV)/bin:$(PATH)",
+                "export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH",
+            ],
+        )
+
+    def test_workspace_makefile_generator_is_idempotent(self, tmp_path: Path) -> None:
+        """Leave the generated Makefile unchanged after the first write."""
+        workspace_root = _write_workspace_root(tmp_path)
+        generator = FlextInfraWorkspaceMakefileGenerator()
+
+        tm.ok(generator.generate(workspace_root), eq=True)
+        first = (workspace_root / "Makefile").read_bytes()
+        tm.ok(generator.generate(workspace_root), eq=False)
+
+        tm.that((workspace_root / "Makefile").read_bytes(), eq=first)
+
     def test_workspace_makefile_generator_reuses_mod_and_boot_feedback(
         self, tmp_path: Path
     ) -> None:

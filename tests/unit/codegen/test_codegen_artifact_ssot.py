@@ -231,6 +231,19 @@ class TestsCodegenArtifactSsot:
             "Editors and OS",
         ]
 
+    def test_workspace_root_makefile_has_one_generation_owner(
+        self, codegen: CodegenSpec
+    ) -> None:
+        """Reserve the workspace-root Makefile for the workspace generator."""
+        makefile_entries = [
+            entry
+            for entry in codegen.templates.entries
+            if entry.destination == "Makefile"
+        ]
+
+        assert len(makefile_entries) == 1
+        assert "workspace-root" not in makefile_entries[0].profiles
+
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""
         sections = codegen.gitignore_sections
