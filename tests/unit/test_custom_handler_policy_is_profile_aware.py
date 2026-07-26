@@ -69,3 +69,18 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
 
         tm.that(validate(content, strict).failure, eq=True)
         tm.that(validate(content, permissive).success, eq=True)
+
+    def test_policy_keys_are_normalised_to_profile_values(self) -> None:
+        """Lookup succeeds for both a raw string and its StrEnum member.
+
+        ``MakeProfile`` is a ``StrEnum``, so a key declared in YAML and the same
+        profile passed as an enum member must resolve to ONE entry. If the two
+        forms produced separate keys, a lookup would silently miss and fall back
+        to the strict base policy -- exactly the failure that made conform
+        reject the workspace root's own custom surface.
+        """
+        policies = config.Infra.codegen.make.custom_handler_policies
+        profile = c.Infra.MakeProfile.WORKSPACE_ROOT
+
+        tm.that(all(isinstance(key, str) for key in policies), eq=True)
+        tm.that(policies[profile] is policies[profile.value], eq=True)

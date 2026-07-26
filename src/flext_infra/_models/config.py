@@ -252,14 +252,19 @@ class FlextInfraConfigModels:
             it is conforming.
             """
             base = self.custom_handler_policy
+            overrides = self.custom_handler_profile_overrides
+            # Keys are normalised to the profile's string value: MakeProfile is a
+            # StrEnum, so a raw YAML key and its enum member must land on the SAME
+            # entry. Mixing both would make a lookup silently miss and fall back to
+            # the strict base policy.
             return {
-                profile: (
+                str(profile): (
                     base.model_copy(update=override.model_dump(exclude_none=True))
-                    if (override := self.custom_handler_profile_overrides.get(profile))
+                    if (override := overrides.get(str(profile)))
                     else base
                 )
                 for profile in (
-                    *self.custom_handler_profile_overrides,
+                    *overrides,
                     *FlextInfraConstantsCodegenProject.MakeProfile,
                 )
             }
