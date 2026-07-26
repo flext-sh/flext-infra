@@ -383,6 +383,19 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
+        profiles: Annotated[
+            tuple[FlextInfraConstantsCodegenProject.MakeProfile, ...],
+            m.Field(
+                description=(
+                    "Make profiles this section applies to; empty means every "
+                    "profile (universal). Sections that only make sense at the "
+                    "superproject root (member-directory allowlists, workspace "
+                    "manifest, submodule/Beads coordination) declare "
+                    "[workspace-root] so members and standalone projects never "
+                    "receive the phantom entries."
+                )
+            ),
+        ] = ()
 
     class ScaffoldSpec(_ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
@@ -590,6 +603,7 @@ class FlextInfraConfigModels:
             (``flext-grpc`` -> ``FLEXT_GRPC_``) without a per-project overlay.
             """
             return f"{self.dist.upper().replace('-', '_')}_"
+
         const_name: Annotated[
             t.NonEmptyStr, m.Field(description="Configured constant project name")
         ]

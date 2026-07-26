@@ -397,6 +397,7 @@ Infra:
             - "/*/"
             - "!/LICENSE"
         - name: "Allow all FLEXT ecosystem project directories"
+          profiles: [workspace-root]
           patterns:
             - "!flext-*/"
         - name: "WHITELIST: Workspace Directories"
@@ -414,13 +415,16 @@ Infra:
             - "!.claude/"
             - "!.claude-plugin/"
             - "!/config/"
-            - "!/config/workspace.yaml"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
+        - name: "Workspace manifest (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           patterns:
             - "!scripts/"
@@ -429,10 +433,14 @@ Infra:
             - "scripts/*.py"
             - "scripts/*.sh"
             - "scripts/*.md"
-            - "scripts/maintenance/"
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
+        - name: "Workspace maintenance tooling (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "scripts/maintenance/"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
+          profiles: [workspace-root]
           patterns:
             - "!.beads/"
             - ".beads/*"
@@ -474,8 +482,11 @@ Infra:
         - name: "Git configuration"
           patterns:
             - "!.gitignore"
-            - "!.gitmodules"
             - "!.gitattributes"
+        - name: "Submodule catalog (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!.gitmodules"
         - name: "direnv environment (no secrets \u2014 venv activation only)"
           patterns:
             - "!.envrc"
@@ -485,9 +496,12 @@ Infra:
             - "!.env.test"
             - "!.env.example"
             - "!.env.template"
-        - name: "WHITELIST: Contents Inside Allowed Directories"
+        - name: "Member contents allowlist (superproject root only)"
+          profiles: [workspace-root]
           patterns:
             - "!flext-*/**"
+        - name: "WHITELIST: Contents Inside Allowed Directories"
+          patterns:
             - "!docker/**"
             - "!docs/**"
             - "!examples/**"
@@ -692,7 +706,8 @@ Infra:
         - name: "--- workspace-migrate: required ignores (auto-managed) ---"
           patterns:
             - "!base.mk"
-        - name: "FINAL BEADS TRACKING POLICY"
+        - name: "Beads/Dolt coordination state (superproject root only)"
+          profiles: [workspace-root]
           patterns:
             - "!.beads/"
             - ".beads/*"
@@ -700,8 +715,10 @@ Infra:
             - "!.beads/config.yaml"
             - ".beads/proxieddb/"
             - ".dolt/"
-            - "*.db"
             - ".beads-credential-key"
+        - name: "FINAL BEADS TRACKING POLICY"
+          patterns:
+            - "*.db"
             - ".worktrees/"
             - "legado/"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"

@@ -990,10 +990,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
+        # Emit only the .gitignore sections that apply to this profile: a
+        # section with no declared profiles is universal; a workspace-root-only
+        # section (member-directory allowlist, workspace manifest, submodule/
+        # Beads coordination) never reaches a member or standalone .gitignore.
+        profile_gitignore_sections = tuple(
+            section
+            for section in codegen.gitignore_sections
+            if not section.profiles or profile in section.profiles
+        )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 scaffold=codegen.scaffold,
-                gitignore_sections=codegen.gitignore_sections,
+                gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
