@@ -15,6 +15,7 @@ from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
 from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
 )
+from flext_infra._models.refactor_renames import FlextInfraModelsRefactorRenames
 from flext_infra._models.refactor_violations import FlextInfraModelsRefactorViolations
 
 
@@ -22,6 +23,7 @@ class FlextInfraModelsRefactor(
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorCensus,
+    FlextInfraModelsRefactorRenames,
     FlextInfraModelsRefactorViolations,
 ):
     """Models for refactor workflows and related tools.

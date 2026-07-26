@@ -42,6 +42,7 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
+        MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
     @unique

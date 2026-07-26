@@ -413,8 +413,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[bool].fail(
                     f"repository is not classified in codegen catalog: {local.name}"
                 )
-            local_payload = local.model_dump(mode="json")
-            known_payload = known.model_dump(mode="json")
+            consumer_fields = {"extra_verbs", "script_dispatch"}
+            local_payload = local.model_dump(mode="json", exclude=consumer_fields)
+            known_payload = known.model_dump(mode="json", exclude=consumer_fields)
             if local_payload != known_payload:
                 return r[bool].fail(
                     f"workspace repository differs from catalog: {local.name}"
@@ -550,6 +551,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and entry.destination != c.Infra.PYPROJECT_FILENAME
             ):
                 continue
+            if (
+                surface is c.Infra.CodegenConformSurface.MAKEFILE
+                and entry.destination != c.Infra.MAKEFILE_FILENAME
+            ):
+                continue
             source = (templates_root / entry.source).resolve()
             if not source.is_relative_to(templates_root) or not source.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -638,6 +644,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"managed file planning failed: {entry.destination}"
                 )
             planned.append(file_plan.value)
+        if surface is c.Infra.CodegenConformSurface.MAKEFILE:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
         pyproject_entry = next(
             (
                 item
@@ -752,16 +760,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"pyproject dependency planning failed: {pyproject}"
                 )
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
-        prepared_result = u.Infra.pyproject_conform(
-            pyproject_read.value,
-            repositories=codegen.repositories,
-            workspace=workspace,
-            toolchain=codegen.toolchain,
-        )
-        if prepared_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                prepared_result.error or f"pyproject preparation failed: {pyproject}"
-            )
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
@@ -776,6 +774,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 tooling_context.error or f"tooling render failed: {pyproject}"
+            )
+        if surface is c.Infra.CodegenConformSurface.MAKEFILE:
+            return self._plan_existing_templates(
+                root=root,
+                repository=repository,
+                workspace=workspace,
+                codegen=codegen,
+                tooling_runtime=tooling_context.value,
+                surface=surface,
+            )
+        prepared_result = u.Infra.pyproject_conform(
+            pyproject_read.value,
+            repositories=codegen.repositories,
+            workspace=workspace,
+            toolchain=codegen.toolchain,
+        )
+        if prepared_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                prepared_result.error or f"pyproject preparation failed: {pyproject}"
             )
         # NOTE (multi-agent, mro-45r9): dependency-derived tooling consumes the
         # canonical groups first; the final pass restores the Git-source contract.
@@ -814,6 +831,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
             codegen=codegen,
             tooling_runtime=tooling_context.value,
+            surface=surface,
         )
         if managed_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -838,6 +856,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        surface: c.Infra.CodegenConformSurface,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
         if repository.profile is None:
@@ -857,6 +876,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
+            if (
+                surface is c.Infra.CodegenConformSurface.MAKEFILE
+                and managed.path != Path(c.Infra.MAKEFILE_FILENAME)
+            ):
+                continue
             if managed.policy in {"delegated", "manual"} or managed.path == Path(
                 c.Infra.PYPROJECT_FILENAME
             ):

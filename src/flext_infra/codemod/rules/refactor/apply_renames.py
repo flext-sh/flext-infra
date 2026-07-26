@@ -1,37 +1,16 @@
-"""Generic symbol-rename engine driven by a CSV substitution list.
-
-One reusable engine for ANY ``old,new`` rename list — not tied to a specific
-domain. Each CSV is a self-contained SSOT; this script is the single mechanism
-that applies any of them. A new rename campaign adds a new CSV, never a new
-script or a parallel ast-grep rule.
-
-CSV schema: a header ``old,new`` then one ``old,new`` pair per line.
-
-Application is prefix-safe and idempotent:
-* pairs are applied longest-old-first so a short name (``files_read_yaml``)
-  never shadows a longer one (``files_read_yaml_model``);
-* pass 1 rewrites real code nodes via ``ast-grep run -p <old> -r <new>``
-  (AST-aware, exact word boundaries), executed through ``u.Cli.run_raw``;
-* pass 2 rewrites the same token inside comments and docstrings with a
-  word-boundary regex, which ast-grep code patterns do not visit;
-* a domain-first name never re-matches, so re-running is a no-op.
-
-Usage:
-    apply_renames.py --csv <list.csv> --check <dir>...   # report, no writes
-    apply_renames.py --csv <list.csv> --apply <dir>...   # rewrite in place
-"""  # ruff:ignore[implicit-namespace-package]
+"""Generic symbol-rename engine driven by an ``old,new`` CSV list."""  # ruff:ignore[implicit-namespace-package]
 
 from __future__ import annotations
 
-import argparse
-import csv
 import re
-import sys
 from pathlib import Path
+from typing import Final
 
-from flext_cli import u
+from flext_cli import cli, u
+from flext_core import r
+from flext_infra import m, p, t
 
-_SKIP_DIRS = {
+_SKIP_DIRS: Final[frozenset[str]] = frozenset({
     "__pycache__",
     "legado",
     "legacy",
@@ -41,9 +20,8 @@ _SKIP_DIRS = {
     ".mypy_cache",
     ".ruff_cache",
     ".pytest_cache",
-}
-# Binary / generated extensions never rewritten (regenerable, not source text).
-_SKIP_SUFFIXES = {
+})
+_SKIP_SUFFIXES: Final[frozenset[str]] = frozenset({
     ".db",
     ".pyc",
     ".pyo",
@@ -59,111 +37,210 @@ _SKIP_SUFFIXES = {
     ".whl",
     ".lock",
     ".bak",
-}
-_ASTGREP = "ast-grep"
+})
+_ASTGREP: Final[str] = "ast-grep"
+_RENAME_COLUMNS: Final[int] = 2
 
 
-def _pairs(csv_path: Path) -> list[tuple[str, str]]:
-    """Load ``(old, new)`` pairs from ``csv_path``, longest-old first."""
-    with csv_path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        if reader.fieldnames != ["old", "new"]:
-            message = (
-                f"{csv_path}: header must be exactly 'old,new', got {reader.fieldnames}"
+class FlextInfraApplyRenames:
+    """Execute prefix-safe, idempotent renames from one CSV source of truth."""
+
+    @staticmethod
+    def _pairs(csv_path: Path) -> p.Result[t.SequenceOf[tuple[str, str]]]:
+        """Load validated rename pairs longest source name first."""
+        read_result = u.Cli.files_read_text(csv_path)
+        if read_result.failure:
+            return r[t.SequenceOf[tuple[str, str]]].fail(
+                read_result.error or f"failed to read rename list: {csv_path}"
             )
-            raise SystemExit(message)
-        rows = [(r["old"].strip(), r["new"].strip()) for r in reader]
-    for old, new in rows:
-        if not old or not new:
-            message = f"{csv_path}: empty old/new in a row"
-            raise SystemExit(message)
-    return sorted(rows, key=lambda p: len(p[0]), reverse=True)
+        rows_result = u.Cli.csv_loads(read_result.value)
+        if rows_result.failure:
+            return r[t.SequenceOf[tuple[str, str]]].fail(
+                rows_result.error or f"failed to parse rename list: {csv_path}"
+            )
+        rows = rows_result.value
+        if not rows or rows[0] != ["old", "new"]:
+            return r[t.SequenceOf[tuple[str, str]]].fail(
+                f"{csv_path}: header must be exactly 'old,new'"
+            )
+        pairs: list[tuple[str, str]] = []
+        for row in rows[1:]:
+            if len(row) != _RENAME_COLUMNS or not row[0].strip() or not row[1].strip():
+                return r[t.SequenceOf[tuple[str, str]]].fail(
+                    f"{csv_path}: every row must contain non-empty old,new values"
+                )
+            pairs.append((row[0].strip(), row[1].strip()))
+        return r[t.SequenceOf[tuple[str, str]]].ok(
+            tuple(sorted(pairs, key=lambda pair: len(pair[0]), reverse=True))
+        )
 
+    @staticmethod
+    def _roots(values: t.StrSequence) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve existing scan directories from the validated request."""
+        roots = tuple(Path(value).resolve() for value in values)
+        missing = tuple(path for path in roots if not path.is_dir())
+        if missing:
+            return r[t.SequenceOf[Path]].fail(
+                f"rename root is not a directory: {missing[0]}"
+            )
+        return r[t.SequenceOf[Path]].ok(roots)
 
-def _text_files(roots: list[str]) -> list[Path]:
-    """Return every text file under ``roots``, skipping vendored/binary trees."""
-    out: list[Path] = []
-    for root in roots:
-        base = Path(root)
-        if not base.exists():
-            continue
-        for path in base.rglob("*"):
-            if not path.is_file():
+    @staticmethod
+    def _text_files(roots: t.SequenceOf[Path]) -> t.SequenceOf[Path]:
+        """Collect text candidates while excluding generated and binary trees."""
+        files: list[Path] = []
+        for root in roots:
+            files.extend(
+                path
+                for path in root.rglob("*")
+                if (
+                    path.is_file()
+                    and not _SKIP_DIRS.intersection(path.parts)
+                    and path.suffix not in _SKIP_SUFFIXES
+                )
+            )
+        return tuple(files)
+
+    @staticmethod
+    def _scan(
+        files: t.SequenceOf[Path], pairs: t.SequenceOf[tuple[str, str]]
+    ) -> p.Result[tuple[int, int, t.StrSequence]]:
+        """Collect pending occurrences, affected files, and report lines."""
+        occurrences = 0
+        affected_files = 0
+        lines: list[str] = []
+        for path in files:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
                 continue
-            if _SKIP_DIRS & set(path.parts):
-                continue
-            if path.suffix in _SKIP_SUFFIXES:
-                continue
-            out.append(path)
-    return out
+            except OSError as exc:
+                return r[tuple[int, int, t.StrSequence]].fail(
+                    f"failed to read rename target {path}: {exc}"
+                )
+            file_occurrences = 0
+            for old, _new in pairs:
+                for match in re.finditer(rf"\b{re.escape(old)}\b", text):
+                    line = text.count("\n", 0, match.start()) + 1
+                    lines.append(f"{path}:{line}: {old}")
+                    occurrences += 1
+                    file_occurrences += 1
+            affected_files += file_occurrences > 0
+        return r[tuple[int, int, t.StrSequence]].ok((
+            occurrences,
+            affected_files,
+            tuple(lines),
+        ))
 
-
-def _check(files: list[Path], pairs: list[tuple[str, str]]) -> int:
-    """Report every ``old`` occurrence across all text files without writing."""
-    hits = 0
-    for path in files:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        for old, _ in pairs:
-            for match in re.finditer(rf"\b{re.escape(old)}\b", text):
-                line = text.count("\n", 0, match.start()) + 1
-                u.Cli.emit_raw(f"{path}:{line}: {old}\n")
-                hits += 1
-    return hits
-
-
-def _apply(files: list[Path], roots: list[str], pairs: list[tuple[str, str]]) -> int:
-    """Rewrite Python code via ast-grep, then every text file via regex."""
-    # Pass 1: AST-aware code rewrite via ast-grep over the .py roots only.
-    for old, new in pairs:
-        u.Cli.run_raw([_ASTGREP, "run", "-p", old, "-r", new, "-U", *roots])
-    # Pass 2: word-boundary regex over ALL text files (comments, docstrings,
-    # .toml lint messages, .md docs) that ast-grep code patterns never visit.
-    changed = 0
-    for path in files:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        new_text = text
+    @staticmethod
+    def _apply(
+        files: t.SequenceOf[Path],
+        roots: t.SequenceOf[Path],
+        pairs: t.SequenceOf[tuple[str, str]],
+    ) -> p.Result[bool]:
+        """Rewrite code nodes first, then remaining text occurrences."""
+        root_args = tuple(str(root) for root in roots)
         for old, new in pairs:
-            new_text = re.sub(rf"\b{re.escape(old)}\b", new, new_text)
-        if new_text != text:
-            path.write_text(new_text, encoding="utf-8")
-            changed += 1
-    return changed
+            run_result = u.Cli.run_raw((
+                _ASTGREP,
+                "run",
+                "-p",
+                old,
+                "-r",
+                new,
+                "-U",
+                *root_args,
+            ))
+            if run_result.failure:
+                return r[bool].fail(run_result.error or "ast-grep execution failed")
+            output = run_result.value
+            if output.exit_code != 0:
+                detail = output.stderr.strip() or output.stdout.strip()
+                return r[bool].fail(
+                    detail or f"ast-grep failed while renaming {old} to {new}"
+                )
+        for path in files:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            except OSError as exc:
+                return r[bool].fail(f"failed to read rename target {path}: {exc}")
+            updated = text
+            for old, new in pairs:
+                updated = re.sub(rf"\b{re.escape(old)}\b", new, updated)
+            if updated != text:
+                write_result = u.Cli.atomic_write_text_file(path, updated)
+                if write_result.failure:
+                    return r[bool].fail(
+                        write_result.error or f"failed to write rename target: {path}"
+                    )
+        return r[bool].ok(True)
+
+    @classmethod
+    def run(
+        cls, params: m.Infra.ApplyRenamesInput
+    ) -> p.Result[m.Infra.ApplyRenamesReport]:
+        """Run a check or apply pass from the canonical request model."""
+        csv_path = Path(params.csv).resolve()
+        if not csv_path.is_file():
+            return r[m.Infra.ApplyRenamesReport].fail(
+                f"rename CSV not found: {csv_path}"
+            )
+        pairs_result = cls._pairs(csv_path)
+        if pairs_result.failure:
+            return r[m.Infra.ApplyRenamesReport].from_failure(pairs_result)
+        roots_result = cls._roots(params.roots)
+        if roots_result.failure:
+            return r[m.Infra.ApplyRenamesReport].from_failure(roots_result)
+        files = cls._text_files(roots_result.value)
+        scan_result = cls._scan(files, pairs_result.value)
+        if scan_result.failure:
+            return r[m.Infra.ApplyRenamesReport].from_failure(scan_result)
+        occurrences, affected_files, lines = scan_result.value
+        if lines and not params.apply:
+            cli.display_text("\n".join(lines))
+        if params.apply:
+            apply_result = cls._apply(files, roots_result.value, pairs_result.value)
+            if apply_result.failure:
+                return r[m.Infra.ApplyRenamesReport].from_failure(apply_result)
+        report = m.Infra.ApplyRenamesReport(
+            label=csv_path.stem,
+            files_scanned=len(files),
+            occurrences=occurrences if not params.apply else 0,
+            files_changed=affected_files if params.apply else 0,
+            applied=params.apply,
+        )
+        cli.display_text(cls.render_text(report))
+        return r[m.Infra.ApplyRenamesReport].ok(report)
+
+    @staticmethod
+    def render_text(report: m.Infra.ApplyRenamesReport) -> str:
+        """Render a concise rename summary for the CLI boundary."""
+        if report.applied:
+            return (
+                f"{report.label}: rewrote {report.files_changed} file(s) "
+                f"across {report.files_scanned} scanned"
+            )
+        return (
+            f"{report.label}: {report.occurrences} occurrence(s) "
+            f"across {report.files_scanned} file(s)"
+        )
+
+    @classmethod
+    def execute_command(
+        cls, params: m.Infra.ApplyRenamesInput
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Execute the canonical CLI route and fail on pending check results."""
+        result = cls.run(params)
+        if result.failure:
+            return r[t.Cli.ResultValue].from_failure(result)
+        report = result.value
+        if not report.applied and report.occurrences:
+            return r[t.Cli.ResultValue].fail(
+                f"{report.occurrences} pending rename occurrence(s)"
+            )
+        return r[t.Cli.ResultValue].ok(True)
 
 
-def main() -> int:
-    """Parse arguments and run the check or apply pass over the CSV list."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--csv", required=True, help="path to an old,new rename list")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="report only")
-    mode.add_argument("--apply", action="store_true", help="rewrite in place")
-    parser.add_argument("roots", nargs="+", help="directories to scan")
-    args = parser.parse_args()
-
-    csv_path = Path(args.csv)
-    if not csv_path.is_file():
-        message = f"csv not found: {csv_path}"
-        raise SystemExit(message)
-
-    pairs = _pairs(csv_path)
-    files = _text_files(args.roots)
-    label = csv_path.stem
-
-    if args.check:
-        hits = _check(files, pairs)
-        u.Cli.emit_raw(f"{label}: {hits} occurrence(s) across {len(files)} file(s)\n")
-        return 1 if hits else 0
-
-    changed = _apply(files, args.roots, pairs)
-    u.Cli.emit_raw(f"{label}: rewrote {changed} file(s) across {len(files)} scanned\n")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+__all__: list[str] = ["FlextInfraApplyRenames"]

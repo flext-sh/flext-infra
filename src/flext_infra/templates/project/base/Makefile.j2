@@ -55,6 +55,12 @@ ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
+RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
+override VIRTUAL_ENV := $(RUNTIME_VENV)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV
+
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
@@ -228,13 +234,13 @@ _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) python -m mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) vulture
+	@$(UV_RUN) python -m vulture
 
 _builtin_test_all:
-	@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests"
+	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
 
 _builtin_format_check:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -275,8 +281,8 @@ _builtin_release_status:
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_codegen_check:
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_codegen_apply:
 	$(call _require_apply)
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
