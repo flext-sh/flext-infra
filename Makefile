@@ -85,6 +85,13 @@ CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
+# Workspace-root gate verbs fan out across declared members through the generic
+# `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
+# from the constants SSOT, never hardcoded here). Members and standalone projects
+# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
+WORKSPACE_ORCHESTRATE := $(UV_RUN) python -m flext_infra workspace orchestrate
+ORCHESTRATED_VERBS := build check clean docs scan test val
+
 UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
@@ -235,6 +242,7 @@ _builtin_deps_upgrade:
 	$(call _require_apply)
 	$(call _run_for_selected_projects,--upgrade)
 
+
 _builtin_build_artifacts:
 	@uv build --project "$(PROJECT_ROOT)"
 
@@ -249,6 +257,7 @@ _builtin_check_all:
 
 _builtin_test_all:
 	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
+
 
 _builtin_format_check:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -272,6 +281,7 @@ _builtin_status_diagnostics:
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
+
 _builtin_docs_check:
 	@test -s "$(PROJECT_ROOT)/README.md"
 
@@ -282,6 +292,7 @@ _builtin_clean_generated:
 		-prune -exec rm -rf {} +
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
+
 
 _builtin_release_status:
 	@uv lock --project "$(PROJECT_ROOT)" --check
