@@ -443,6 +443,11 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
+            # The lockfile pins the exact resolved graph. A uv workspace MEMBER
+            # has none (resolution happens once at the root), but the root and
+            # any standalone distribution must commit theirs or every checkout
+            # re-resolves and the build stops being reproducible.
+            - "!uv.lock"
             - "!ruff-shared.toml"
         - name: "mise toolchain pinning"
           patterns:
