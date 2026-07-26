@@ -18,8 +18,13 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
+# A workspace root orchestrates its members, so its lint and type scope is the
+# union of every member's source and tests. Members are expanded from the
+# manifest SSOT, never listed by hand, and the paths stay existence-filtered so
+# a member without one of the trees cannot break the gate.
+WORKSPACE_CHECK_PATHS :=
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(WORKSPACE_CHECK_PATHS)
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(WORKSPACE_CHECK_PATHS)
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -66,6 +71,12 @@ ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
+RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+override UV_PROJECT := $(RUNTIME_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
+override VIRTUAL_ENV := $(RUNTIME_VENV)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV
+
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
 ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
@@ -80,6 +91,9 @@ UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
 UV_SYNC_FLAGS := --all-extras --all-groups
 
 
+# The custom Make surface is the single extension point for every profile: it
+# carries the project's own commands, WHATs and hooks. Its name comes from the
+# constants SSOT, so there is no per-profile variant and no second surface.
 -include custom.mk
 
 _BUILTIN_HANDLERS := \
@@ -228,13 +242,13 @@ _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) python -m mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) vulture
+	@$(UV_RUN) python -m vulture
 
 _builtin_test_all:
-	@$(UV_RUN) pytest "$(PROJECT_ROOT)/tests"
+	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
 
 _builtin_format_check:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -275,8 +289,8 @@ _builtin_release_status:
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_codegen_check:
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_codegen_apply:
 	$(call _require_apply)
-	@$(UV_RUN) flext-infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
