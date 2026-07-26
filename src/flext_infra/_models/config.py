@@ -579,6 +579,17 @@ class FlextInfraConfigModels:
         ]
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+
+        @m.computed_field()
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name.
+
+            Mirrors each project's own ``SettingsConfigDict(env_prefix=...)`` so
+            the generated ``.env.example`` documents the real runtime variable
+            (``flext-grpc`` -> ``FLEXT_GRPC_``) without a per-project overlay.
+            """
+            return f"{self.dist.upper().replace('-', '_')}_"
         const_name: Annotated[
             t.NonEmptyStr, m.Field(description="Configured constant project name")
         ]
