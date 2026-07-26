@@ -119,7 +119,6 @@ class FlextInfraConstantsSharedInfra:
         "flext-core/src/flext_core/_utilities/project_metadata.py",
         "flext-infra/src/flext_infra/_utilities/iteration.py",
         "flext-infra/src/flext_infra/workspace/project_makefile.py",
-        "flext-infra/src/flext_infra/workspace/workspace_makefile.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (

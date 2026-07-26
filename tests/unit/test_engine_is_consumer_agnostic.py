@@ -37,7 +37,9 @@ def owned_provider() -> str:
         ),
         None,
     )
-    tm.that(entry, ne=None, msg=f"engine absent from its own catalog: {distribution}")
+    if entry is None:
+        msg = f"engine absent from its own catalog: {distribution}"
+        raise AssertionError(msg)
     return entry.provider
 
 

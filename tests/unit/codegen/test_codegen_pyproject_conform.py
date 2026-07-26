@@ -239,10 +239,7 @@ mypy_path = [".", "src", "../flext-core/src"]
         # mro-sw2l.1: an attached member resolves through [tool.uv.sources]
         # workspace=true, so it must NOT also carry a git source. Extras are
         # preserved; only the contradictory second source is dropped.
-        tm.that(
-            root_rendered,
-            has='dependencies = [\n    "flext-core[async]",',
-        )
+        tm.that(root_rendered, has='dependencies = [\n    "flext-core[async]",')
         tm.that(root_rendered, has="[tool.uv.workspace]")
         tm.that(root_rendered, has='members = [\n    "flext-core",')
         tm.that(root_rendered, has="[tool.uv.sources.flext-core]")

@@ -79,9 +79,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             '[project]\nname="root-workspace"\nversion="0.1.0"\n', encoding="utf-8"
         )
         external = tmp_path / sibling_name
-        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(
-            parents=True
-        )
+        (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(parents=True)
         (external / c.Infra.PYPROJECT_FILENAME).write_text(
             f'[project]\nname="{sibling_name}"\nversion="0.1.0"\n'
             'dependencies=["flext-core"]\n'

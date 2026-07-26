@@ -82,5 +82,5 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         policies = config.Infra.codegen.make.custom_handler_policies
         profile = c.Infra.MakeProfile.WORKSPACE_ROOT
 
-        tm.that(all(isinstance(key, str) for key in policies), eq=True)
+        tm.that(set(policies), eq={member.value for member in c.Infra.MakeProfile})
         tm.that(policies[profile] is policies[profile.value], eq=True)

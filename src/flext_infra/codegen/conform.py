@@ -1036,6 +1036,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 flext_git_base_url=provider.base_url,
                 flext_git_branch=provider.branch,
                 make_profile=profile,
+                orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                 workspace_root_rel=workspace_root_rel,
                 repository_provider=repository.provider,
                 repository_git_url=repository.url,

@@ -145,7 +145,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         u.Cli.emit_raw(
             f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
             f"projects={','.join(projects)}"
-            + (f" gates={self._gates_of(make_args)}" if self._gates_of(make_args) else "")
+            + (
+                f" gates={self._gates_of(make_args)}"
+                if self._gates_of(make_args)
+                else ""
+            )
             + "\n"
         )
         for idx, project in enumerate(projects, start=1):

@@ -789,10 +789,12 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # mro-9v0d: the workspace root Makefile has ONE generation owner:
-          # FlextInfraWorkspaceMakefileGenerator (workspace_makefile.mk.j2).
-          # Listing workspace-root here would create a second, competing owner.
-          profiles: [workspace-member, standalone]
+          # mro-4x83.3: base/Makefile.j2 is the SINGLE owner of the generated
+          # Makefile for every profile, including workspace-root. The template
+          # renders the workspace-root orchestration (member gate fan-out via the
+          # generic `flext-infra workspace orchestrate` primitive) behind its own
+          # profile gate, so there is exactly one generator and no divergent copy.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/custom.mk.j2

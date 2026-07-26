@@ -712,6 +712,23 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Gate verbs a workspace-root Makefile fans out across members "
+                    "through the generic workspace orchestrate primitive"
+                )
+            ),
+        ] = ()
+        workspace_cli_group: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "CLI group name for the flext-infra workspace orchestrate route"
+                )
+            ),
+        ] = ""
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""

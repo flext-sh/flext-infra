@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import tomllib
+from pathlib import Path
 
 from flext_tests import tm
 
@@ -29,16 +30,16 @@ _BRANCH = _PROVIDER_SPEC.branch
 def _repository(
     distribution: str,
     *,
-    role: object,
+    role: c.Infra.RepositoryRole,
     path: str,
-    checkout: object,
-) -> object:
+    checkout: c.Infra.CheckoutKind,
+) -> m.Infra.RepositoryRef:
     return m.Infra.RepositoryRef(
         name=distribution,
         distribution=distribution,
         url=f"https://github.com/flext-sh/{distribution}.git",
         branch=_BRANCH,
-        path=path,
+        path=Path(path),
         role=role,
         provider=_PROVIDER,
         checkout=checkout,
@@ -49,7 +50,7 @@ def _repository(
     )
 
 
-def _workspace() -> object:
+def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name="workspace-root",

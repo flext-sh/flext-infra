@@ -24,11 +24,6 @@ from flext_tests import tm
 from flext_infra import c, config, u
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
-
-
 def _ssot_patterns() -> tuple[str, ...]:
     """Return every ignore pattern declared by the config SSOT."""
     return tuple(

@@ -1,9 +1,9 @@
-"""Tests that exactly one generator owns the workspace root Makefile.
+"""Exactly one generator owns every generated Makefile, including the root.
 
-Two owners writing the same path is a defect on its own; so is each owner
-including a different custom surface. Both generators must include the single
-custom.mk surface, so a target defined there is picked up regardless of which
-generator produced the file.
+The conform engine (``base/Makefile.j2``) is the SINGLE owner of the generated
+Makefile for every profile. The workspace-root profile is served by the same
+template — its member gate fan-out is rendered behind a profile gate — so there
+is no second, divergent generator.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -20,8 +20,8 @@ from flext_infra import c, config
 
 
 class TestsFlextInfraRootMakefileSingleOwner:
-    def test_generic_template_entry_excludes_the_workspace_root(self) -> None:
-        """The root profile is served by its dedicated generator only."""
+    def test_single_makefile_entry_owns_every_profile(self) -> None:
+        """One render entry owns the Makefile for all three profiles."""
         entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
@@ -29,23 +29,26 @@ class TestsFlextInfraRootMakefileSingleOwner:
         )
 
         tm.that(entries, len=1)
-        tm.that(entries[0].profiles, lacks=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(entries[0].profiles, has=c.Infra.MakeProfile.STANDALONE)
 
-    def test_both_generators_agree_on_one_custom_include(self) -> None:
-        """A single custom-include name exists across both Makefile templates."""
+    def test_no_divergent_workspace_makefile_template_remains(self) -> None:
+        """The retired dedicated workspace Makefile template no longer exists."""
+        templates_root = Path(flext_infra.__file__).resolve().parent / "templates"
+        dedicated = templates_root / "workspace_makefile.mk.j2"
+
+        tm.that(dedicated.exists(), eq=False)
+
+    def test_generic_template_carries_the_single_custom_include(self) -> None:
+        """The sole template injects the one custom-include directive from SSOT."""
         templates_root = Path(flext_infra.__file__).resolve().parent / "templates"
         generic = (templates_root / "project" / "base" / "Makefile.j2").read_text(
             encoding="utf-8"
         )
-        dedicated = (templates_root / "workspace_makefile.mk.j2").read_text(
-            encoding="utf-8"
-        )
 
-        # Both generators must include the SAME single custom surface, so a
-        # target written in it is never silently dropped. The generic template
-        # injects the directive from the constants SSOT; the dedicated one is
-        # a captured Makefile and carries the literal directive.
-        tm.that(dedicated, has=c.Infra.MAKEFILE_CUSTOM_INCLUDE)
         tm.that(generic, has="{{ makefile_custom_include }}")
-        tm.that(dedicated, lacks="workspace_custom.mk")
         tm.that(generic, lacks="workspace_custom.mk")
+
+
+__all__: tuple[str, ...] = ()
