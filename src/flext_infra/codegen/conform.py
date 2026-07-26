@@ -934,37 +934,61 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed template context from manifest data."""
         project = workspace.project
-        if project is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                f"workspace manifest has no project metadata: {workspace.name}"
-            )
         profile = c.Infra.MakeProfile(repository.profile)
         provider = next(
             (item for item in codegen.providers if item.name == repository.provider),
             None,
         )
-        if provider is None:
-            return r[m.Infra.ProjectRenderContext].fail(
-                f"repository provider is not configured: {repository.provider}"
-            )
+        repository_url = repository.url.removesuffix(".git")
+        git_base_url = (
+            provider.base_url
+            if provider is not None
+            else repository_url.rsplit("/", 1)[0]
+        )
+        git_branch = provider.branch if provider is not None else repository.branch
         dependency_profile = next(
             (
                 item
                 for item in codegen.scaffold.project.dependency_profiles
-                if item.upstream == project.upstream
+                if project is not None and item.upstream == project.upstream
             ),
             None,
         )
-        if dependency_profile is None:
+        if project is not None and dependency_profile is None:
             return r[m.Infra.ProjectRenderContext].fail(
                 f"unsupported scaffold upstream: {project.upstream}"
             )
-        if project.license not in codegen.scaffold.project.supported_licenses:
+        if (
+            project is not None
+            and project.license not in codegen.scaffold.project.supported_licenses
+        ):
             supported = ", ".join(codegen.scaffold.project.supported_licenses)
             return r[m.Infra.ProjectRenderContext].fail(
                 f"unsupported scaffold license: {project.license}; "
                 f"supported licenses: {supported}"
             )
+        project_context = (
+            (None,) * 16
+            if project is None
+            else (
+                project.constant_name,
+                project.package_name,
+                project.class_stem,
+                project.namespace,
+                project.namespace_attribute,
+                project.alias,
+                project.environment_prefix,
+                project.upstream,
+                project.description,
+                project.version,
+                project.license,
+                project.author_name,
+                project.author_email,
+                project.homepage,
+                project.documentation,
+                project.year,
+            )
+        )
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -973,7 +997,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root_rel = (
             Path(*(".." for _ in repository.path.parts)).as_posix()
             if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
-            else project.workspace_root_rel
+            else "."
         )
         packaged_data_dirs = (
             tuple(
@@ -1015,18 +1039,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling=config.Infra.tooling,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                const_name=project.constant_name,
-                package_name=project.package_name,
+                const_name=project_context[0],
+                package_name=project_context[1],
                 packaged_data_dirs=packaged_data_dirs,
-                class_stem=project.class_stem,
-                ns=project.namespace,
-                ns_attr=project.namespace_attribute,
-                alias=project.alias,
-                env_prefix=project.environment_prefix,
-                upstream=project.upstream,
-                description=project.description,
-                version=project.version,
-                license=project.license,
+                class_stem=project_context[2],
+                ns=project_context[3],
+                ns_attr=project_context[4],
+                alias=project_context[5],
+                env_prefix=project_context[6],
+                upstream=project_context[7],
+                description=project_context[8],
+                version=project_context[9],
+                license=project_context[10],
                 python_version=codegen.toolchain.python_minor_version,
                 python_toolchain_version=codegen.toolchain.python_version,
                 python_required_version=codegen.toolchain.python_required_version,
@@ -1036,13 +1060,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
-                author_name=project.author_name,
-                author_email=project.author_email,
-                repository=project.homepage,
-                homepage=project.homepage,
-                documentation=project.documentation,
-                flext_git_base_url=provider.base_url,
-                flext_git_branch=provider.branch,
+                author_name=project_context[11],
+                author_email=project_context[12],
+                repository=project_context[13],
+                homepage=project_context[13],
+                documentation=project_context[14],
+                flext_git_base_url=git_base_url,
+                flext_git_branch=git_branch,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1053,7 +1077,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_manifest_version=c.Infra.WORKSPACE_MANIFEST_VERSION,
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_repository=repository,
-                year=project.year,
+                year=project_context[15],
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
