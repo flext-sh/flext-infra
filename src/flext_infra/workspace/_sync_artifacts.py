@@ -14,9 +14,6 @@ from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-from flext_infra.workspace.workspace_makefile import (
-    FlextInfraWorkspaceMakefileGenerator,
-)
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
@@ -32,18 +29,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         resolved: Path,
         effective_root: Path | None,
     ) -> p.Result[int]:
-        """Sync workspace or project Makefile and surface generator failures."""
-        is_workspace_root = self._is_workspace_root(resolved, effective_root)
-        if is_workspace_root:
-            workspace_makefile_result = FlextInfraWorkspaceMakefileGenerator().generate(
-                resolved
-            )
-            if workspace_makefile_result.failure:
-                return r[int].fail(
-                    workspace_makefile_result.error
-                    or "workspace Makefile generation failed",
-                )
-            return r[int].ok(1 if workspace_makefile_result.value else 0)
+        """Sync the canonical generated Makefile section for any profile."""
         if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
                 resolved,

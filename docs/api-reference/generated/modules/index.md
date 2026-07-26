@@ -151,4 +151,3 @@ These pages are generated from public modules and their docstrings.
 - [flext_infra.workspace.rope](workspace/rope.md)
 - [flext_infra.workspace.sandbox_orchestrator](workspace/sandbox_orchestrator.md)
 - [flext_infra.workspace.sync](workspace/sync.md)
-- [flext_infra.workspace.workspace_makefile](workspace/workspace_makefile.md)

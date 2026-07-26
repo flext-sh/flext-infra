@@ -38,9 +38,6 @@ if TYPE_CHECKING:
     from flext_infra.workspace.vscode import (
         FlextInfraWorkspaceVscode as FlextInfraWorkspaceVscode,
     )
-    from flext_infra.workspace.workspace_makefile import (
-        FlextInfraWorkspaceMakefileGenerator as FlextInfraWorkspaceMakefileGenerator,
-    )
 _LAZY_IMPORTS = build_lazy_import_map(
     {
         ".base": ("FlextInfraWorkspaceGeneratorBase",),
@@ -53,7 +50,6 @@ _LAZY_IMPORTS = build_lazy_import_map(
         ".sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
         ".sync": ("FlextInfraSyncService",),
         ".vscode": ("FlextInfraWorkspaceVscode",),
-        ".workspace_makefile": ("FlextInfraWorkspaceMakefileGenerator",),
     },
 )
 
