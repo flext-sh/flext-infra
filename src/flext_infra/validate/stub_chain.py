@@ -31,10 +31,10 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     all_projects: Annotated[
         bool, m.Field(alias="all", description="Validate all projects")
     ] = False
-    runner: Annotated[
-        p.Cli.CommandRunner | None,
-        m.Field(exclude=True, description="Optional command runner"),
-    ] = None
+
+    @property
+    def _get_runner(self) -> p.Cli.CommandRunner:
+        return u.Cli()
 
     @override
     @property
@@ -235,8 +235,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     def _run_mypy_hints(self, project_dir: Path) -> t.StrSequence:
         """Run mypy and extract install-package hints."""
-        runner = self.runner or u.Cli()
-        result = runner.run(
+        result = self._get_runner.run(
             [
                 c.Infra.POETRY,
                 c.Infra.VERB_RUN,
@@ -260,8 +259,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     def _run_pyrefly_missing(self, project_dir: Path) -> t.StrSequence:
         """Run pyrefly check and extract missing imports."""
-        runner = self.runner or u.Cli()
-        result = runner.run(
+        result = self._get_runner.run(
             [
                 c.Infra.POETRY,
                 c.Infra.VERB_RUN,
