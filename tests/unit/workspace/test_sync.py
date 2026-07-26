@@ -10,8 +10,8 @@ import pytest
 from flext_tests import tm
 
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-from tests import m, t, u
+from flext_infra import config
+from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -197,19 +197,28 @@ class TestsFlextInfraWorkspaceSync:
             encoding="utf-8",
         )
 
-        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
-        second_result = FlextInfraWorkspaceVscode.sync_settings(
-            project_root, apply=True
-        )
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+        second_result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
 
         tm.ok(result)
-        tm.that(result.value, eq=True)
         tm.ok(second_result)
-        tm.that(second_result.value, eq=False)
+        tm.that(second_result.value.files_changed, eq=0)
         settings = u.Cli.json_read(settings_path).unwrap()
         tm.that(
             settings["python-envs.workspaceSearchPaths"],
-            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ]
+            ),
         )
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:

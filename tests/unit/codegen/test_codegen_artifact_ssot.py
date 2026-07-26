@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, t
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_infra.services.codegen import FlextInfraCodegen
 
 CodegenSpec = type(config.Infra.codegen)
 
@@ -277,7 +277,7 @@ class TestsCodegenArtifactSsot:
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
         settings: t.MutableJsonMapping = {}
-        FlextInfraWorkspaceVscode.apply_canonical_settings(
+        FlextInfraCodegen._apply_canonical_settings(
             settings, Path("/nonexistent-workspace-root")
         )
         files_exclude = settings["files.exclude"]

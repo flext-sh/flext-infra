@@ -9,7 +9,7 @@ from flext_infra import c, m, p, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_infra.services.codegen import FlextInfraCodegen
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
@@ -90,7 +90,29 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     @staticmethod
     def _sync_vscode_settings(workspace_root: Path, *, apply: bool) -> p.Result[bool]:
         """Sync canonical VS Code settings for Python workspaces."""
-        return FlextInfraWorkspaceVscode.sync_settings(workspace_root, apply=apply)
+        if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            return r[bool].ok(False)
+        settings_path = (
+            workspace_root
+            / c.Infra.VSCODE_DIRNAME
+            / c.Infra.VSCODE_SETTINGS_FILENAME
+        )
+        rendered = FlextInfraCodegen.render_vscode_settings(workspace_root)
+        if rendered.failure:
+            return r[bool].fail(rendered.error or "VS Code settings merge failed")
+        current = ""
+        if settings_path.is_file():
+            read_current = u.Cli.files_read_text(settings_path)
+            if read_current.failure:
+                return r[bool].fail(
+                    read_current.error or "VS Code settings read failed"
+                )
+            current = read_current.value
+        if current == rendered.value:
+            return r[bool].ok(False)
+        if not apply:
+            return r[bool].ok(True)
+        return u.Cli.atomic_write_text_file(settings_path, rendered.value)
 
     @staticmethod
     def _is_flext_infra_root(workspace_root: Path) -> bool:
