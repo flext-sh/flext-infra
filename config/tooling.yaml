@@ -128,6 +128,12 @@ Infra:
           per-file-ignores:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
+            # Command surfaces are dispatched by FILE NAME, not imported as
+            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
+            # spelling rather than an invalid module name. Scoped to the
+            # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
+            # justified per rule, never a blanket mask).
+            "scripts/cmd/**/*.py": [invalid-module-name]
             # Test suites: pytest idioms that are correct-by-design in test code
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask):

@@ -95,6 +95,17 @@ Infra:
         allow_setup_declarations: false
         allow_help_declarations: false
 
+      # Per-profile overrides of custom_handler_policy. A workspace MEMBER only
+      # extends the generated verbs, so its custom.mk stays private-handler
+      # only (the base policy above). A workspace ROOT orchestrates the members,
+      # so it legitimately owns public orchestration targets and the variables
+      # they read; applying the member rule to the root made conform reject the
+      # root's own surface on every run and blocked the whole transaction.
+      custom_handler_profile_overrides:
+        workspace-root:
+          allow_public_targets: true
+          allow_toolchain_declarations: true
+
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources

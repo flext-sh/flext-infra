@@ -186,6 +186,30 @@ class FlextInfraConfigModels:
         )
         allow_help_declarations: bool = m.Field(description="Permit help declarations")
 
+    class CustomHandlerPolicyOverride(_ConfigContract):
+        """Per-profile relaxation of the strict custom-handler contract.
+
+        Every field is optional: a profile declares ONLY what it relaxes, so a
+        new permission added to the base policy propagates automatically
+        instead of having to be repeated in each profile.
+        """
+
+        allow_public_targets: bool | None = m.Field(
+            default=None, description="Permit public targets"
+        )
+        allow_generated_target_redefinition: bool | None = m.Field(
+            default=None, description="Permit generated target redefinition"
+        )
+        allow_toolchain_declarations: bool | None = m.Field(
+            default=None, description="Permit toolchain declarations"
+        )
+        allow_setup_declarations: bool | None = m.Field(
+            default=None, description="Permit setup declarations"
+        )
+        allow_help_declarations: bool | None = m.Field(
+            default=None, description="Permit help declarations"
+        )
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -206,6 +230,39 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
+        custom_handler_profile_overrides: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
+            m.Field(
+                default_factory=dict,
+                description="Per-profile overrides of the custom handler policy",
+            ),
+        ]
+
+        @m.computed_field()
+        @property
+        def custom_handler_policies(
+            self,
+        ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
+            """Effective custom-handler policy for every Make profile.
+
+            The base policy states the strictest contract (private handlers
+            only). A profile whose custom surface legitimately owns more --
+            a workspace root orchestrating its members -- declares only the
+            fields it relaxes, so the engine never has to know which project
+            it is conforming.
+            """
+            base = self.custom_handler_policy
+            return {
+                profile: (
+                    base.model_copy(update=override.model_dump(exclude_none=True))
+                    if (override := self.custom_handler_profile_overrides.get(profile))
+                    else base
+                )
+                for profile in (
+                    *self.custom_handler_profile_overrides,
+                    *FlextInfraConstantsCodegenProject.MakeProfile,
+                )
+            }
 
     class ManagedFileSpec(_ConfigContract):
         """One versioned file owned by codegen."""

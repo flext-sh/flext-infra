@@ -24,6 +24,21 @@ from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 if TYPE_CHECKING:
     from flext_infra.protocols import p
 
+# A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
+# Matched at column 0 only, so an indented recipe line is never mistaken for
+# a declaration.
+_ASSIGNMENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*(?::?:|\?|\+)?=")
+# GNU Make directives that scope or include a declaration rather than define a
+# target. `include` is listed so a profile that forbids declarations also
+# forbids pulling them in from elsewhere.
+_DIRECTIVE_RE = re.compile(
+    r"^(?:export|unexport|override|include|-include|sinclude|vpath)\b"
+)
+
+# Conditional control flow. These select which declarations apply; they never
+# define a target, so they are structural and always permitted.
+_CONDITIONAL_RE = re.compile(r"^(?:else\b|endif\b|ifeq\b|ifneq\b|ifdef\b|ifndef\b)")
+
 
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
@@ -805,7 +820,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 managed_result.error or f"managed template planning failed: {root}"
             )
         planned.extend(managed_result.value)
-        custom_result = self._plan_existing_custom(root, codegen)
+        custom_result = self._plan_existing_custom(
+            root, codegen, profile=repository.profile
+        )
         if custom_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 custom_result.error or f"custom Make validation failed: {root}"
@@ -1037,10 +1054,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _plan_existing_custom(
-        self, root: Path, config: m.Infra.CodegenConfigSpec
+        self,
+        root: Path,
+        config: m.Infra.CodegenConfigSpec,
+        *,
+        profile: str | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Validate an existing custom Make surface without creating one."""
-        path = root / config.make.custom_handler_policy.filename
+        """Validate an existing custom Make surface without creating one.
+
+        The contract is selected from the config by Make profile: a workspace
+        root orchestrates its members and may own public targets, while a
+        member only extends the generated verbs. The engine therefore never
+        needs to know which project it is conforming.
+        """
+        policy = config.make.custom_handler_policies.get(
+            profile or "", config.make.custom_handler_policy
+        )
+        path = root / policy.filename
         if path.exists() and not path.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"custom Make destination is not a regular file: {path}"
@@ -1052,9 +1082,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        validation = self._validate_custom_make(
-            read.value, config.make.custom_handler_policy
-        )
+        validation = self.validate_custom_make(read.value, policy)
         if validation.failure:
             diagnostic = validation.error or f"invalid custom Make handlers: {path}"
             rejection_path = Path(f"{path}.rej")
@@ -1080,15 +1108,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ))
 
     @staticmethod
-    def _validate_custom_make(
+    def validate_custom_make(
         content: str, policy: m.Infra.CustomHandlerPolicy
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
+        in_define = False
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
+            # `define NAME ... endef` is a multi-line variable. Its body is
+            # arbitrary text, so it is consumed wholesale and governed by the
+            # same permission as any other declaration.
+            if in_define:
+                in_define = not raw_line.startswith("endef")
+                continue
+            if raw_line.startswith("define "):
+                if not policy.allow_toolchain_declarations:
+                    return r[bool].fail(
+                        f"{policy.filename} line {line_number} "
+                        f"declares a macro, which this profile forbids"
+                    )
+                in_define = True
+                continue
             if not raw_line or raw_line.lstrip().startswith("#"):
                 continue
             if raw_line[0].isspace():
+                continue
+            if _CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
                 names = raw_line.partition(":")[2].split()
@@ -1097,9 +1142,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
             if target and target_re.fullmatch(target):
                 continue
+            # A variable assignment or a GNU Make directive that scopes one
+            # (export/unexport/override) is a toolchain declaration, not a
+            # target, and is governed by that permission.
+            if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
+                if policy.allow_toolchain_declarations:
+                    continue
+                return r[bool].fail(
+                    f"{policy.filename} line {line_number} "
+                    f"declares a variable, which this profile forbids"
+                )
+            if target and policy.allow_public_targets:
+                continue
             return r[bool].fail(
-                f"{c.Infra.CUSTOM_MAKE_FILENAME} line {line_number} "
-                f"is not a private custom handler"
+                f"{policy.filename} line {line_number} is not a private custom handler"
             )
         return r[bool].ok(True)
 

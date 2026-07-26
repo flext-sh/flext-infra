@@ -56,8 +56,7 @@ def _interpreter_at_parse_time(surface: Path) -> tuple[str, ...]:
         for number, line in enumerate(
             surface.read_text(encoding="utf-8").splitlines(), start=1
         )
-        if _IMMEDIATE_SHELL.match(line)
-        and _INTERPRETER_RUN.search(line) is not None
+        if _IMMEDIATE_SHELL.match(line) and _INTERPRETER_RUN.search(line) is not None
     )
 
 
