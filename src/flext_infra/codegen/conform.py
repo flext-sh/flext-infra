@@ -401,18 +401,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _validate_workspace_catalog(
         config: m.Infra.CodegenConfigSpec, workspace: m.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
-        """Require declared fleet members to match their global Git contracts."""
+        """Generate catalog-absent repositories from their validated manifests.
+
+        Repositories present in the catalog are additionally checked for consistency.
+        """
         local_refs = (workspace.repository, *workspace.members, *workspace.content_only)
         for local in local_refs:
             known = next(
                 (item for item in config.repositories if item.name == local.name), None
             )
             if known is None:
-                if local is workspace.repository and not workspace.members:
-                    continue
-                return r[bool].fail(
-                    f"repository is not classified in codegen catalog: {local.name}"
-                )
+                continue
             consumer_fields = {"extra_verbs", "script_dispatch"}
             local_payload = local.model_dump(mode="json", exclude=consumer_fields)
             known_payload = known.model_dump(mode="json", exclude=consumer_fields)
