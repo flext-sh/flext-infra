@@ -21,12 +21,9 @@ class FlextInfraInternalSyncRepoMixin:
     """Repository mapping, ref resolution, and workspace detection methods."""
 
     log: p.Logger
-    toml: p.Infra.TomlReader | None
 
     def _read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
         """Read plain."""
-        if self.toml is not None:
-            return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
             return r[t.Infra.ContainerDict].fail(
