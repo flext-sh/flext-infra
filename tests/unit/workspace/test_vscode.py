@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
+from flext_infra import c, config
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 
 
@@ -55,10 +56,16 @@ class TestsFlextInfraWorkspaceVscode:
             doc["python.defaultInterpreterPath"],
             eq="${workspaceFolder}/.venv/bin/python",
         )
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            doc["python-envs.workspaceSearchPaths"],
-            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+            search_paths,
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ]
+            ),
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
         tm.that(doc["files.exclude"]["**/dbt_packages"], eq=True)
         tm.that(doc["files.exclude"]["**/.venv"], eq=True)
         tm.that(doc["files.watcherExclude"]["**/.venv/**"], eq=True)
@@ -103,16 +110,18 @@ class TestsFlextInfraWorkspaceVscode:
 
         tm.ok(result)
         doc = json.loads(result.value)
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            doc["python-envs.workspaceSearchPaths"],
+            search_paths,
             eq=[
-                "./.venv",
-                "./*/.venv",
-                "./apps/*/.venv",
+                *config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ],
                 "./apps/a/.venv",
                 "./libs/b/.venv",
             ],
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_jsonc_comments_and_trailing_commas_are_tolerated(
         self, tmp_path: Path
