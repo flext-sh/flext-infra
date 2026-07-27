@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -57,6 +57,92 @@ class FlextInfraModelsWorkspace:
                 description="Operational role relative to the uv workspace root",
             ),
         ] = c.Infra.WorkspaceProjectRole.ATTACHED
+
+    class MakeVerbSpec(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=False)
+
+        name: Annotated[str, m.Field(description="Public Make verb name")]
+        default_what: Annotated[
+            str, m.Field(description="Default WHAT selector for the verb")
+        ]
+
+    class ScriptDispatchSpec(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=False)
+
+        dispatcher: Annotated[
+            str, m.Field(description="Workspace-relative dispatcher path")
+        ]
+        roots: Annotated[
+            tuple[str, ...], m.Field(description="Ordered command discovery roots")
+        ]
+
+    class RepositoryRef(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=False)
+
+        name: Annotated[str, m.Field(description="Catalog key")]
+        distribution: Annotated[str, m.Field(description="Distribution name")]
+        provider: Annotated[str, m.Field(description="Repository provider key")]
+        url: Annotated[str, m.Field(description="Canonical Git clone URL")]
+        branch: Annotated[str, m.Field(description="Required Git branch")]
+        path: Annotated[Path, m.Field(description="Workspace-relative path")]
+        role: Annotated[
+            Literal["workspace-root", "workspace-member", "content-only"],
+            m.Field(description="Repository topology role"),
+        ]
+        state: Annotated[
+            Literal["active", "content-only"],
+            m.Field(description="Repository lifecycle state"),
+        ]
+        profile: Annotated[
+            Literal["workspace-root", "workspace-member"] | None,
+            m.Field(description="Generated Make profile"),
+        ]
+        checkout: Annotated[
+            Literal["root", "submodule"],
+            m.Field(description="Physical checkout topology"),
+        ]
+        codegen: Annotated[
+            Literal["conform", "none"],
+            m.Field(description="Repository code-generation policy"),
+        ]
+        package: Annotated[
+            bool, m.Field(description="Repository publishes a Python package")
+        ]
+        editable: Annotated[
+            bool, m.Field(description="Repository is an editable dependency")
+        ]
+        read_only: Annotated[
+            bool, m.Field(description="Repository rejects generated mutations")
+        ]
+        extra_verbs: Annotated[
+            tuple[FlextInfraModelsWorkspace.MakeVerbSpec, ...],
+            m.Field(description="Additional public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraModelsWorkspace.ScriptDispatchSpec | None,
+            m.Field(description="Optional script command dispatch routing"),
+        ] = None
+
+    class WorkspaceSpec(m.ContractModel):
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(strict=False)
+
+        version: Annotated[Literal[2], m.Field(description="Manifest version")]
+        name: Annotated[str, m.Field(description="Workspace name")]
+        repository: Annotated[
+            FlextInfraModelsWorkspace.RepositoryRef,
+            m.Field(description="Root repository Git contract"),
+        ]
+        members: Annotated[
+            tuple[FlextInfraModelsWorkspace.RepositoryRef, ...],
+            m.Field(description="Ordered active member contracts"),
+        ] = ()
+        content_only: Annotated[
+            tuple[FlextInfraModelsWorkspace.RepositoryRef, ...],
+            m.Field(description="Ordered content-only contracts"),
+        ] = ()
+        exclusions: Annotated[
+            tuple[str, ...], m.Field(description="Excluded workspace paths")
+        ] = ()
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.
