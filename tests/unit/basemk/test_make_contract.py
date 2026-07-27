@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from tests import m, p, u
 
@@ -80,16 +79,6 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         + "  mkdir -p .venv/bin\n"
         + '  cp "$(dirname "$0")/python" .venv/bin/python\n'
         + "fi\nexit 0\n",
-    )
-
-
-def _write_mise_stub(bin_dir: Path, log_path: Path, *, exit_code: int) -> None:
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    _write_executable(
-        bin_dir / "mise",
-        '#!/bin/sh\nprintf \'mise %s\\n\' "$*" >> "'
-        + str(log_path)
-        + f'"\nexit {exit_code}\n',
     )
 
 
@@ -306,33 +295,30 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(missing.exit_code, ne=0)
         tm.that(missing.stdout + missing.stderr, has="no custom handler")
 
-    def test_make_build_uses_mise_uv_and_propagates_failure(
+    def test_make_build_uses_uv_and_propagates_failure(
         self, tmp_path: Path
     ) -> None:
-        """Fail the target when the Mise-managed uv builder fails."""
+        """Fail the target when the uv builder fails."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
-        _write_mise_stub(bin_dir, log_path, exit_code=23)
+        _write_executable(
+            bin_dir / "uv",
+            '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "'
+            + str(log_path)
+            + '"\nexit 23\n',
+        )
         _write_project(tmp_path)
 
         result = _run_make(
             tmp_path,
             "build",
-            f"MISE={bin_dir / 'mise'}",
             env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
         )
 
         tm.that(result.exit_code, ne=0)
-        tm.that(result.stdout + result.stderr, lacks="mise executable not found")
         tm.that(
             log_path.read_text(encoding="utf-8").splitlines(),
-            eq=[
-                (
-                    "mise exec "
-                    f"uv@{config.Infra.codegen.toolchain.uv_version} -- uv "
-                    f"build --project {tmp_path} --no-sources"
-                )
-            ],
+            eq=[f"build --project {tmp_path} --no-sources"],
         )
         tm.that(result.stdout, lacks="Build complete")
 
@@ -838,15 +824,14 @@ class TestsFlextInfraBasemkMakeContract:
 
         tm.that(result.exit_code, eq=0)
         log_lines = log_path.read_text(encoding="utf-8").splitlines()
-        uv_command = f"exec uv@{config.Infra.codegen.toolchain.uv_version} -- uv"
-        initial_sync = f"mise {uv_command} sync --all-extras --all-groups"
+        initial_sync = "uv sync --all-extras --all-groups"
         extra_paths = (
             "run python -m flext_infra deps extra-paths --apply --workspace "
             f"{project_root}"
         )
-        lock = f"mise {uv_command} lock"
+        lock = "uv lock"
         reinstall_sync = (
-            f"mise {uv_command} sync --all-extras --all-groups "
+            "uv sync --all-extras --all-groups "
             "--reinstall-package demo-project"
         )
         tm.that(log_lines, has=[initial_sync, extra_paths, lock, reinstall_sync])

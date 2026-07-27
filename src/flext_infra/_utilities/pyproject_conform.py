@@ -64,6 +64,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
+            repositories=repositories,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
             exclude_dependencies=uv_exclude_dependencies,
@@ -293,7 +294,7 @@ class FlextInfraUtilitiesPyprojectConform:
         canonical = f"{head} @ {url_result.value}@{reference_result.value.branch}"
         marker_text = marker.strip()
         return r[str].ok(
-            f"{canonical}; {marker_text}" if separator and marker_text else canonical
+            f"{head}; {marker_text}" if separator and marker_text else head
         )
 
     @staticmethod
@@ -533,27 +534,39 @@ class FlextInfraUtilitiesPyprojectConform:
         else:
             u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
-        if not workspace_root:
-            u.Cli.toml_remove_key_if_present(uv, "sources")
-        else:
-            resolved_result = cls._resolved_root_sources(
-                repositories=repositories, workspace=workspace
-            )
-            if resolved_result.failure:
-                return r[bool].fail(
-                    resolved_result.error or "repository resolution failed"
-                )
-            if sources is None:
-                sources = u.Cli.toml_ensure_table(uv, "sources")
-            current_sources = u.Cli.toml_as_mapping(sources)
-            if (
-                tuple(current_sources) != tuple(resolved_result.value)
-                or current_sources != resolved_result.value
+        if sources is None and workspace_root:
+            sources = u.Cli.toml_ensure_table(uv, "sources")
+        if sources is None:
+            if not workspace_root and not tuple(uv):
+                u.Cli.toml_remove_key_if_present(tool, "uv")
+            return r[bool].ok(True)
+        workspace_names = {member.distribution for member in workspace.members}
+        repository_sources = {
+            repository.distribution: {
+                "git": repository.url,
+                "branch": repository.branch,
+            }
+            for repository in repositories
+            if repository.distribution != project_name
+            and repository.distribution not in workspace_names
+        }
+        for source_name in tuple(sources):
+            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
+            # TOML tables in place so conformance cannot accumulate blank trivia.
+            if source_name.startswith("flext-") and (
+                not workspace_root
+                or source_name not in workspace_names | repository_sources.keys()
             ):
-                for source_name in tuple(sources):
-                    u.Cli.toml_remove_key_if_present(sources, source_name)
-                for source_name, source in resolved_result.value.items():
-                    u.Cli.toml_sync_mapping_table(sources, source_name, source)
+                u.Cli.toml_remove_key_if_present(sources, source_name)
+        if workspace_root:
+            for member in workspace.members:
+                u.Cli.toml_sync_mapping_table(
+                    sources, member.distribution, {"workspace": True}
+                )
+            for distribution, source in repository_sources.items():
+                u.Cli.toml_sync_mapping_table(sources, distribution, source)
+        elif not tuple(sources):
+            u.Cli.toml_remove_key_if_present(uv, "sources")
         if not workspace_root and not tuple(uv):
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)

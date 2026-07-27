@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import config, m, main as infra_main
+from flext_infra import m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
@@ -52,8 +52,7 @@ class TestsFlextInfraBasemkRenderer:
             rendered,
             has=[
                 "MISE := $(shell command -v mise 2>/dev/null)",
-                f"UV_VERSION := {config.Infra.codegen.toolchain.uv_version}",
-                "UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv",
+                "UV ?= uv",
             ],
         )
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")

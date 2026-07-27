@@ -176,11 +176,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Portable uv installation link mode."""
             ...
 
-        @property
-        def uv_required_version(self) -> str:
-            """Required uv version expression."""
-            ...
-
     @runtime_checkable
     class TemplateEntrySpec(Protocol):
         """Template-entry fields consumed by scaffold root selection."""

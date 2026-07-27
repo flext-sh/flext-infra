@@ -150,10 +150,7 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text()
 
         tm.that("override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True)
-        tm.that(
-            f"exec uv@{config.Infra.codegen.toolchain.uv_version} -- uv" in makefile,
-            eq=True,
-        )
+        tm.that("UV ?= uv" in makefile, eq=True)
         tm.that('UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile, eq=True)
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)

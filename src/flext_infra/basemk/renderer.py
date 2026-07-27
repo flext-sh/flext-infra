@@ -11,7 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
