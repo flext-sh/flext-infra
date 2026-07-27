@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
+from flext_infra import c, config
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_infra import config
 from tests import c, m, t, u
@@ -212,14 +213,16 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
         settings = u.Cli.json_read(settings_path).unwrap()
+        search_paths = settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            settings["python-envs.workspaceSearchPaths"],
+            search_paths,
             eq=list(
                 config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]
             ),
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""
