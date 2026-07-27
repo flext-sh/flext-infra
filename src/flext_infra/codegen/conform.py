@@ -1315,10 +1315,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _plan_existing_custom(
-        self, root: Path, config: m.Infra.CodegenConfigSpec
+        self,
+        root: Path,
+        config: m.Infra.CodegenConfigSpec,
+        *,
+        profile: str | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Validate an existing custom Make surface without creating one."""
-        path = root / config.make.custom_handler_policy.filename
+        """Validate the handwritten Make surface against its profile contract."""
+        policy = config.make.custom_handler_policies.get(
+            profile or "", config.make.custom_handler_policy
+        )
+        path = root / policy.filename
         if path.exists() and not path.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"custom Make destination is not a regular file: {path}"
@@ -1330,9 +1337,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        validation = self._validate_custom_make(
-            read.value, config.make.custom_handler_policy
-        )
+        validation = self.validate_custom_make(read.value, policy)
         if validation.failure:
             diagnostic = validation.error or f"invalid custom Make handlers: {path}"
             rejection_path = Path(f"{path}.rej")
@@ -1358,15 +1363,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ))
 
     @staticmethod
-    def _validate_custom_make(
+    def validate_custom_make(
         content: str, policy: m.Infra.CustomHandlerPolicy
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
+        in_define = False
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
+            if in_define:
+                in_define = not raw_line.startswith("endef")
+                continue
+            if raw_line.startswith("define "):
+                if not policy.allow_toolchain_declarations:
+                    return r[bool].fail(
+                        f"{policy.filename} line {line_number} "
+                        "declares a macro, which this profile forbids"
+                    )
+                in_define = True
+                continue
             if not raw_line or raw_line.lstrip().startswith("#"):
                 continue
             if raw_line[0].isspace():
+                continue
+            if _CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
                 names = raw_line.partition(":")[2].split()
@@ -1375,8 +1394,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
             if target and target_re.fullmatch(target):
                 continue
+            if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
+                if policy.allow_toolchain_declarations:
+                    continue
+                return r[bool].fail(
+                    f"{policy.filename} line {line_number} "
+                    "declares a variable, which this profile forbids"
+                )
+            if target and policy.allow_public_targets:
+                continue
             return r[bool].fail(
-                f"custom.mk line {line_number} is not a private custom handler"
+                f"{policy.filename} line {line_number} is not a private custom handler"
             )
         return r[bool].ok(True)
 

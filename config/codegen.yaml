@@ -100,6 +100,10 @@ Infra:
         allow_toolchain_declarations: false
         allow_setup_declarations: false
         allow_help_declarations: false
+      custom_handler_profile_overrides:
+        workspace-root:
+          allow_public_targets: true
+          allow_toolchain_declarations: true
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
