@@ -17,6 +17,9 @@ PROJECTS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
+export UV_PROJECT := $(PROJECT_ROOT)
+export UV_PROJECT_ENVIRONMENT := $(PROJECT_ROOT)/.venv
+export VIRTUAL_ENV := $(UV_PROJECT_ENVIRONMENT)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 # A workspace root orchestrates its members, so its lint and type scope is the
 # union of every member's source and tests. Members are expanded from the
@@ -238,11 +241,11 @@ _builtin_require_environment:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(RUNTIME_PYTHON)"
+	@uv pip check --python "$(UV_PROJECT_ENVIRONMENT)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
