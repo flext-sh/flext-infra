@@ -97,6 +97,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             _PYPROJECT,
             repositories=(workspace.repository, *workspace.members),
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -118,6 +119,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             external,
             repositories=(workspace.repository, *workspace.members),
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
         document = tomllib.loads(tm.ok(result))
@@ -129,3 +131,74 @@ class TestsFlextInfraPyprojectConformTopologySources:
             document["project"]["dependencies"],
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
+
+    def test_attached_member_uses_workspace_provenance(self) -> None:
+        workspace = _workspace()
+        attached = (
+            '[project]\nname = "flext-api"\nversion = "0.1.0"\n'
+            'dependencies = ["flext-core"]\n'
+        )
+
+        result = u.Infra.pyproject_dependencies_conform(
+            attached,
+            repositories=(workspace.repository, *workspace.members),
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
+
+    def test_attached_member_rejects_explicit_source(self) -> None:
+        workspace = _workspace()
+        member = workspace.members[0]
+        attached = (
+            '[project]\nname = "flext-api"\nversion = "0.1.0"\n'
+            f'dependencies = ["{member.distribution} @ git+{member.url}@{member.branch}"]\n'
+        )
+
+        result = u.Infra.pyproject_dependencies_conform(
+            attached,
+            repositories=(workspace.repository, *workspace.members),
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+        tm.that(result.failure, eq=True)
+        tm.that(
+            result.error or "", has="attached workspace dependency declares Git source"
+        )
+
+        local_result = u.Infra.pyproject_dependencies_conform(
+            attached.replace(
+                f"git+{member.url}@{member.branch}",
+                "file:///home/marlonsc/flext/flext-core",
+            ),
+            repositories=(workspace.repository, *workspace.members),
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+        tm.that(local_result.failure, eq=True)
+        tm.that(
+            local_result.error or "",
+            has="attached workspace dependency declares Git source",
+        )
+
+    def test_standalone_rejects_workspace_source_without_git_requirement(self) -> None:
+        workspace = _workspace()
+
+        result = u.Infra.pyproject_dependencies_conform(
+            _PYPROJECT,
+            repositories=(workspace.repository, *workspace.members),
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        rendered = tm.ok(result)
+        member = workspace.members[0]
+        tm.that(
+            rendered,
+            has=f"{member.distribution} @ git+{member.url}@{member.branch}",
+        )
+        tm.that("workspace = true" not in rendered, eq=True)

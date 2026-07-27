@@ -680,6 +680,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             initial_tooling.value,
             repositories=codegen.repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
         )
         if prepared_result.failure:
@@ -699,6 +700,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             final_tooling.value,
             repositories=codegen.repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
         )
         if pyproject_result.failure:
@@ -740,11 +742,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
+        workspace_mode = (
+            c.Infra.WorkspaceMode.WORKSPACE
+            if root == workspace_root or repository in workspace.members
+            else c.Infra.WorkspaceMode.STANDALONE
+        )
         if surface is c.Infra.CodegenConformSurface.DEPENDENCIES:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
                 repositories=codegen.repositories,
                 workspace=workspace,
+                workspace_mode=workspace_mode,
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -788,6 +796,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_read.value,
             repositories=codegen.repositories,
             workspace=workspace,
+            workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
         )
         if prepared_result.failure:
@@ -807,6 +816,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tooling_result.value,
             repositories=codegen.repositories,
             workspace=workspace,
+            workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
         )
         if pyproject_result.failure:

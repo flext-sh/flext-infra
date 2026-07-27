@@ -220,6 +220,7 @@ mypy_path = [".", "src", "../flext-core/src"]
             root_source,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             toolchain=toolchain,
         )
         tm.that(root_first.success, eq=True)
@@ -228,6 +229,7 @@ mypy_path = [".", "src", "../flext-core/src"]
             root_rendered,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             toolchain=toolchain,
         )
         tm.that(root_second.success, eq=True)
@@ -280,7 +282,10 @@ override-dependencies = ["pathspec>=1.0.0"]
 members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
 """
         root_overlay = u.Infra.pyproject_dependencies_conform(
-            root_overlay_source, repositories=repositories, workspace=workspace
+            root_overlay_source,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
         tm.that(root_overlay.success, eq=True)
         tm.that(root_overlay.value, has='override-dependencies = ["pathspec>=1.0.0"]')
@@ -289,7 +294,10 @@ members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
             has='[dependency-groups]\nworkspace = [\n    "flext-core",',
         )
         root_overlay_second = u.Infra.pyproject_dependencies_conform(
-            root_overlay.value, repositories=repositories, workspace=workspace
+            root_overlay.value,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
         tm.that(root_overlay_second.success, eq=True)
         tm.that(root_overlay_second.value, eq=root_overlay.value)
@@ -299,7 +307,10 @@ members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
             '[tool.uv.sources.flext-core]\nworkspace = true\ngit = "https://github.com/flext-sh/flext-core.git"',
         )
         invalid_root_overlay = u.Infra.pyproject_dependencies_conform(
-            invalid_root_overlay_source, repositories=repositories, workspace=workspace
+            invalid_root_overlay_source,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
         tm.that(invalid_root_overlay.failure, eq=True)
         tm.that(
@@ -340,12 +351,18 @@ git = "https://github.com/beartype/beartype.git"
 tag = "v0.22.9"
 """
         member_first = u.Infra.pyproject_dependencies_conform(
-            member_source, repositories=repositories, workspace=workspace
+            member_source,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
         tm.that(member_first.success, eq=True)
         member_rendered = member_first.value
         member_second = u.Infra.pyproject_dependencies_conform(
-            member_rendered, repositories=repositories, workspace=workspace
+            member_rendered,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
         tm.that(member_second.success, eq=True)
         tm.that(member_second.value, eq=member_rendered)
@@ -376,12 +393,18 @@ dependencies = ["flext-core"]
 workspace = true
 """
         empty_uv_first = u.Infra.pyproject_dependencies_conform(
-            empty_uv_source, repositories=repositories, workspace=workspace
+            empty_uv_source,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
         tm.that(empty_uv_first.success, eq=True)
         empty_uv_rendered = empty_uv_first.value
         empty_uv_second = u.Infra.pyproject_dependencies_conform(
-            empty_uv_rendered, repositories=repositories, workspace=workspace
+            empty_uv_rendered,
+            repositories=repositories,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
         tm.that(empty_uv_second.success, eq=True)
         tm.that(empty_uv_second.value, eq=empty_uv_rendered)
@@ -408,6 +431,7 @@ dev = ["flext-tests", "pytest>=8"]
             root_source,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=toolchain,
         )
         tm.that(first.success, eq=True)
@@ -429,6 +453,7 @@ dev = ["flext-tests", "pytest>=8"]
             rendered,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=toolchain,
         )
         tm.that(second.success, eq=True)
@@ -463,6 +488,7 @@ path = "../flext-cli"
             relative_source,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=toolchain,
         )
         tm.that(first.success, eq=True)
@@ -480,6 +506,7 @@ path = "../flext-cli"
             rendered,
             repositories=repositories,
             workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=toolchain,
         )
         tm.that(second.success, eq=True)
