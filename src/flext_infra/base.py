@@ -27,35 +27,6 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-    settings_type: Annotated[
-        type | None,
-        m.Field(
-            exclude=True,
-            description="Internal settings type for runtime bootstrap",
-        ),
-    ] = None
-    runtime_settings: Annotated[
-        p.Settings | None,
-        m.Field(
-            exclude=True,
-            description="Internal runtime settings instance for service execution",
-        ),
-    ] = None
-    settings_overrides: Annotated[
-        t.JsonMapping | None,
-        m.Field(
-            exclude=True,
-            description="Internal settings override mapping for service bootstrap",
-        ),
-    ] = None
-    initial_context: Annotated[
-        p.Context | None,
-        m.Field(
-            exclude=True,
-            description="Internal execution context overrides for service bootstrap",
-        ),
-    ] = None
-
     @property
     @override
     def settings(self) -> cli_p.Cli.Settings:

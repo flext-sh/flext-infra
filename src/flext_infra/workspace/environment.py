@@ -7,6 +7,7 @@ from pathlib import Path
 
 from flext_core import r
 from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 from flext_infra.utilities import u
@@ -117,7 +118,7 @@ class FlextInfraWorkspaceEnvironment:
             return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
         changed = False
-        for name, value in tool_pins_result.value.items():
+        for name, value in tool_pins_result.value.root.items():
             if u.Cli.toml_value(tools, name) == value:
                 continue
             tools[name] = value
@@ -140,25 +141,25 @@ class FlextInfraWorkspaceEnvironment:
         return r[bool].ok(True)
 
     @classmethod
-    def mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
+    def mise_tool_pins(cls, workspace_root: Path) -> p.Result[p.RootDict[str]]:
         """Return canonical mise tool pins for one workspace."""
         mapping = u.Cli.toml_mapping_from_text(c.Infra.WORKSPACE_MISE_TOML_CONTENT)
         if mapping is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template is invalid")
+            return r[p.RootDict[str]].fail("canonical .mise.toml template is invalid")
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        pins: dict[str, str] = {}
+            return r[p.RootDict[str]].fail("canonical .mise.toml template lacks [tools]")
+        pins: t.MutableMappingKV[str, str] = {}
         for name, value in tools.items():
             if not isinstance(value, str):
-                return r[dict[str, str]].fail(
+                return r[p.RootDict[str]].fail(
                     f"canonical .mise.toml [tools].{name} must be a string",
                 )
             pins[name] = value
         python_version = cls.workspace_python_version(workspace_root)
         if python_version is not None:
             pins["python"] = python_version
-        return r[dict[str, str]].ok(pins)
+        return r[p.RootDict[str]].ok(m.Cli.SuccessSummaryDetails(root=pins))
 
     @staticmethod
     def has_pyproject(workspace_root: Path) -> bool:

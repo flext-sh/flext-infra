@@ -24,15 +24,13 @@ TESTS_FLEXT_INFRA_UNIT_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "modernizer_workspace_with_projects",
             "real_docs_project",
             "real_makefile_project",
+            "real_python_package",
+            "real_toml_project",
         ),
         ".fixtures_git": ("real_git_repo",),
         ".github": ("github",),
         ".io": ("io",),
         ".workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
-        ".workspace.test_makefile_dry_run": ("TestsFlextInfraWorkspaceMakefileDryRun",),
-        ".workspace.test_makefile_generator": (
-            "TestsFlextInfraWorkspaceMakefileGenerator",
-        ),
         ".workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
         ".workspace.test_sync_environment": (
             "TestsFlextInfraWorkspaceSyncEnvironment",

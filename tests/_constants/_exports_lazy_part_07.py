@@ -7,6 +7,7 @@ from flext_core.lazy import build_lazy_import_map
 
 TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
     {
+        "._constants": ("_constants",),
         ".settings": ("TestsFlextInfraSettings",),
         ".typings": ("TestsFlextInfraTypes",),
         ".unit._utilities.test_discovery_consolidated": (
@@ -58,13 +59,10 @@ TESTS_FLEXT_INFRA_LAZY_IMPORTS_PART_07 = build_lazy_import_map(
             "TestsFlextInfraTransformersTestsModernizer",
         ),
         ".unit.workspace.test_main": ("TestsFlextInfraWorkspaceMain",),
-        ".unit.workspace.test_makefile_dry_run": (
-            "TestsFlextInfraWorkspaceMakefileDryRun",
-        ),
-        ".unit.workspace.test_makefile_generator": (
-            "TestsFlextInfraWorkspaceMakefileGenerator",
-        ),
         ".unit.workspace.test_sync": ("TestsFlextInfraWorkspaceSync",),
+        ".unit.workspace.test_sync_environment": (
+            "TestsFlextInfraWorkspaceSyncEnvironment",
+        ),
         ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
         ".utilities": ("TestsFlextInfraUtilities",),
     },
