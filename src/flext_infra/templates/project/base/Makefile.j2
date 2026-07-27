@@ -14,6 +14,10 @@ UV_LINK_MODE := {{ uv_link_mode }}
 APPLY ?= N
 ARGS ?=
 PROJECTS ?=
+# Public selector documented by base.mk. Forwarded to the test recipe so a
+# focused run stays inside the canonical Make surface instead of forcing a
+# loose pytest invocation.
+PYTEST_ARGS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -257,7 +261,7 @@ _builtin_check_all:
 	@$(UV_RUN) python -m vulture
 
 _builtin_test_all:
-	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
+	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests" $(PYTEST_ARGS)
 {% endif %}
 
 _builtin_format_check:
