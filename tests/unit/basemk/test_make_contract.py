@@ -360,10 +360,9 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             rendered,
             has=[
-                "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
-                "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
-                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
-                'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
+                "INFRA_PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python)",
+                "PROJECT_INFRA_BOOT := $(PROJECT_INFRA_ROOT)",
+                "PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH $(INFRA_PYTHON) -m flext_infra",
                 'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
                 'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen',
                 'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
@@ -371,6 +370,7 @@ class TestsFlextInfraBasemkMakeContract:
                 'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
                 'PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate',
             ],
+            lacks=["PROJECT_INFRA_HOME", "PROJECT_INFRA_SRC", "flext-infra/src"],
         )
 
     def test_rendered_base_mk_sanitizes_validation_env(self) -> None:
@@ -378,7 +378,8 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate',
+            has="BASE_INFRA_VALIDATE := $(PROJECT_INFRA_ROOT) validate",
+            lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
         )
 
     def test_rendered_base_mk_validates_canonical_root_in_workspace_preflight(
