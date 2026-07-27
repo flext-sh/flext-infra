@@ -24,9 +24,7 @@ PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
-MISE := $(shell command -v mise 2>/dev/null)
-UV_VERSION := {{ uv_version }}
-UV = $(if $(MISE),$(MISE) exec uv@$(UV_VERSION) -- uv,sh -c 'printf "%s\n" "ERROR: mise executable not found on caller PATH" >&2; exit 2' --)
+UV ?= uv
 
 {% include "base_mypy_limit.mk.j2" %}
 

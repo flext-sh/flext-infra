@@ -6,8 +6,8 @@ FROM alpine:3.21
 RUN apk add --no-cache \
       bash ca-certificates curl git make build-base
 
-# mise is the toolchain installer; .mise.toml pins python {{ python_toolchain_version }}
-# and uv {{ uv_version }} via the config SSOT.
+# mise installs the Python and deployment toolchain declared in .mise.toml.
+# uv is supplied by the caller environment and remains intentionally unpinned.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

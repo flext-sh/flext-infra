@@ -111,8 +111,7 @@ workspace = true
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
         toolchain = m.Infra.ToolchainSpec(
-            python_version="3.13.11",
-            uv_version="0.11.28",
+            python_version="3.13",
             uv_link_mode="copy",
             kubectl_version="1.32.0",
             helm_version="3.19.4",
