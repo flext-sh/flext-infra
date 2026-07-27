@@ -75,6 +75,32 @@ def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_un
     assert all(report.result == "OK" for report in validation.value)
 
 
+def test_generated_collection_rules_pointer_stays_within_consumer_limit(
+    tmp_path: Path,
+) -> None:
+    """Keep the generated Collection Rules pointer within the Markdown limit."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+
+    result = FlextInfraDocGenerator().generate(
+        m.Infra.DocsGenerateRequest(
+            workspace_root=workspace, projects=["flext-a"], apply=True
+        )
+    )
+
+    tm.ok(result)
+    lines = (
+        (workspace / "flext-a/docs/index.md").read_text(encoding="utf-8").splitlines()
+    )
+    section_start = lines.index("## Collection Rules")
+    section_end = next(
+        index
+        for index in range(section_start + 1, len(lines))
+        if lines[index].startswith("## ")
+    )
+    collection_rules_lines = [line for line in lines[section_start:section_end] if line]
+    tm.that(max(map(len, collection_rules_lines)), le=240)
+
+
 def test_generate_preserves_declared_export_order_and_is_idempotent(
     tmp_path: Path,
 ) -> None:

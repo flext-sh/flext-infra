@@ -18,13 +18,11 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
-# A workspace root orchestrates its members, so its lint and type scope is the
-# union of every member's source and tests. Members are expanded from the
-# manifest SSOT, never listed by hand, and the paths stay existence-filtered so
-# a member without one of the trees cannot break the gate.
-WORKSPACE_CHECK_PATHS :=
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(WORKSPACE_CHECK_PATHS)
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(WORKSPACE_CHECK_PATHS)
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
+MISE := $(shell command -v mise 2>/dev/null)
+UV_VERSION_SELECTOR := 0.11
+UV = $(if $(MISE),$(MISE) exec uv@$(UV_VERSION_SELECTOR) -- uv,sh -c 'printf "%s\n" "ERROR: mise executable not found on caller PATH" >&2; exit 2' --)
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -103,9 +101,6 @@ PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT
 UV_SYNC_FLAGS := --all-extras --all-groups
 
 
-# The custom Make surface is the single extension point for every profile: it
-# carries the project's own commands, WHATs and hooks. Its name comes from the
-# constants SSOT, so there is no per-profile variant and no second surface.
 -include custom.mk
 
 _BUILTIN_HANDLERS := \
@@ -320,10 +315,10 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) python -m mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) python -m vulture
+	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
 	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
@@ -351,7 +346,6 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-
 _builtin_docs_check:
 	@test -s "$(PROJECT_ROOT)/README.md"
 
@@ -363,8 +357,8 @@ _builtin_clean_generated:
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
-
 _builtin_release_status:
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet

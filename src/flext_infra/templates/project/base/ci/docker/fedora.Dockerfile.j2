@@ -8,8 +8,8 @@ RUN dnf install -y \
       bash ca-certificates curl git make gcc gcc-c++ libatomic \
     && dnf clean all
 
-# mise is the toolchain installer; .mise.toml pins python {{ python_toolchain_version }}
-# and uv {{ uv_version }} via the config SSOT.
+# mise installs the current python {{ python_version_selector }} patch
+# and uv {{ uv_version_selector }} via the config SSOT.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

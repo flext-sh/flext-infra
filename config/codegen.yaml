@@ -4,14 +4,12 @@ Infra:
     version: 1
 
     toolchain:
-      # Single-source language-runtime versions (exact patch pins chosen by the
-      # package-version updater). Derived as computed fields on ToolchainSpec:
-      #   python_minor_version    -> major.minor of python_version (3.13)
-      #   python_required_version -> >={python_version},<{major}.{minor+1}
-      # A version bump touches ONLY python_version / uv_version. Linter pins
-      # live in the shared scaffold.project dependency requirements.
-      python_version: "3.13.11"
-      uv_version: "0.11.29"
+      # Single-source language-runtime selectors. Python keeps an exact runtime
+      # patch; uv deliberately selects a compatible minor line. Derived fields:
+      #   python_required_version -> >=3.13,<3.14
+      # Linter pins live in the shared scaffold.project dependency requirements.
+      python_version_selector: "3.13"
+      uv_version_selector: "0.11"
       uv_link_mode: copy
       # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
       # .mise.toml and the ci-matrix workflow kind leg.
@@ -344,12 +342,12 @@ Infra:
           # The floor lets uv select a compatible current Mypy while preserving
           # downstream workspace resolution.
           - mypy>=2.3.0
-          - pyrefly>=1.1.1,<1.2
-          - pyright>=1.1.411,<1.2
-          - pytest>=9.0.3,<10
-          - ruff>=0.15.12,<0.16
-          - vulture>=2.16,<3
-          - yamlfix>=1.19.1,<2
+          - pyrefly>=1.1.1
+          - pyright>=1.1.411
+          - pytest>=9.0.3
+          - ruff>=0.15.12
+          - vulture>=2.16
+          - yamlfix>=1.19.1
         dependency_profiles:
           # NOTE: a workspace manifest may declare an upstream distribution;
           # conformance must model that upstream relationship generically.

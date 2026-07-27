@@ -33,7 +33,7 @@ class FlextInfraEnsureMypyConfigPhase:
             # mro-j47u (codex): tool Python derives from the codegen toolchain SSOT.
             .value(
                 c.Infra.PYTHON_VERSION_UNDERSCORE,
-                config.Infra.codegen.toolchain.python_minor_version,
+                config.Infra.codegen.toolchain.python_version_selector,
             )
             .list(
                 c.Infra.PLUGINS,

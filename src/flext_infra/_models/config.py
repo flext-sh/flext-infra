@@ -37,20 +37,20 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime versions shared by generated projects.
 
-        Only the exact-patch ``python_version`` (e.g. ``3.13.11``) and
-        ``uv_version`` are declared (single source, chosen by the package-version
-        updater). Every PEP 440 expression and the major.minor selector are
-        derived, so a version bump touches exactly one value. Linters/type-
-        checkers are NOT here: their pins live in the pyproject dependency
-        groups (dependency_profiles).
+        Python and uv use major.minor compatibility selectors so mise resolves
+        the current patch without exact-version maintenance bottlenecks. Linters
+        and type checkers live in the shared pyproject dependency requirements.
         """
 
-        python_version: Annotated[
+        VERSION_SELECTOR_PARTS: ClassVar[int] = 2
+
+        python_version_selector: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Exact Python patch version, e.g. '3.13.11'"),
+            m.Field(description="Compatible Python major.minor selector, e.g. '3.13'"),
         ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv version, e.g. '0.11.29'")
+        uv_version_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Compatible uv major.minor selector, e.g. '0.11'"),
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
@@ -80,22 +80,25 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
 
-        @m.computed_field()
-        @property
-        def python_minor_version(self) -> str:
-            """Python major.minor selector derived from the exact patch."""
-            major, _, rest = self.python_version.partition(".")
-            minor, _, _patch = rest.partition(".")
-            return f"{major}.{minor}"
+        @m.field_validator("python_version_selector", "uv_version_selector")
+        @classmethod
+        def validate_version_selector(cls, value: str) -> str:
+            """Reject exact patches and non-mise compatibility selectors."""
+            parts = value.split(".")
+            if len(parts) != cls.VERSION_SELECTOR_PARTS or any(
+                not part.isdigit() for part in parts
+            ):
+                msg = "toolchain versions must be non-exact major.minor selectors"
+                raise ValueError(msg)
+            return value
 
         @m.computed_field()
         @property
         def python_required_version(self) -> str:
-            """PEP 440 requirement: exact patch floor, next-minor ceiling."""
-            major, _, rest = self.python_version.partition(".")
-            minor, _, _patch = rest.partition(".")
+            """Allow every patch in the selected Python release line."""
+            major, minor = self.python_version_selector.split(".")
             next_minor = int(minor) + 1
-            return f">={self.python_version},<{major}.{next_minor}"
+            return f">={self.python_version_selector},<{major}.{next_minor}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -538,8 +541,16 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Repositories editable from the selected workspace"),
         ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared content-only workspace repositories"),
+        ] = ()
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
+        ]
+        uv_version_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Compatible uv major.minor toolchain selector"),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -679,6 +690,10 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
+        uv_version_selector: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Compatible uv major.minor toolchain selector"),
+        ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
@@ -786,7 +801,7 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
+        python_version_selector: Annotated[
             t.NonEmptyStr, m.Field(description="Python toolchain version selector")
         ]
         python_required_version: Annotated[

@@ -5,8 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
+import pytest
 from flext_cli import u
-from flext_infra import m
+from packaging.requirements import Requirement
+
+from flext_infra import config, m
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
@@ -64,3 +67,37 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
     assert tuple(
         repository.model_dump(mode="json") for repository in workspace_repositories
     ) == tuple(repository.model_dump(mode="json") for repository in cosmos)
+
+
+@pytest.mark.parametrize(
+    ("field", "exact_patch"),
+    [("python_version_selector", "3.13.11"), ("uv_version_selector", "0.11.29")],
+)
+def test_toolchain_rejects_exact_patch_selectors(field: str, exact_patch: str) -> None:
+    """Keep runtime selectors on compatible major.minor release lines."""
+    payload = config.Infra.codegen.toolchain.model_dump()
+    payload[field] = exact_patch
+
+    with pytest.raises(ValueError, match=r"non-exact major\.minor"):
+        m.Infra.ToolchainSpec.model_validate(payload)
+
+
+def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
+    """Keep library requirements floor-only and let uv own concrete resolution."""
+    project = config.Infra.codegen.scaffold.project
+    requirements = [
+        *project.codegen_requirements,
+        *project.development_requirements,
+        *(
+            requirement
+            for profile in project.dependency_profiles
+            for requirement in profile.runtime
+        ),
+    ]
+    forbidden = {"<", "<=", "==", "===", "~="}
+
+    for raw_requirement in requirements:
+        parsed = Requirement(raw_requirement)
+        assert forbidden.isdisjoint(
+            specifier.operator for specifier in parsed.specifier
+        ), raw_requirement

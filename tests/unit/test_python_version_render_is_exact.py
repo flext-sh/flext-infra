@@ -1,4 +1,4 @@
-r"""Tests that the rendered ``.python-version`` carries only the pin.
+r"""Tests that ``.python-version`` carries only the release-line selector.
 
 ``.python-version`` is consumed by tooling that reads the file as a bare version
 string. A Jinja comment line in the template ends with a newline, so the render
@@ -32,13 +32,13 @@ def _render_python_version() -> str:
     )
     template = environment.get_template("project/base/python-version.j2")
     return template.render(
-        python_toolchain_version=config.Infra.codegen.toolchain.python_version
+        python_version_selector=config.Infra.codegen.toolchain.python_version_selector
     )
 
 
-class TestsFlextInfraPythonVersionRenderIsExact:
-    def test_render_is_the_pin_and_nothing_else(self) -> None:
-        """The rendered file is exactly the configured pin plus one newline."""
-        expected = f"{config.Infra.codegen.toolchain.python_version}\n"
+class TestsFlextInfraPythonVersionRender:
+    def test_render_is_the_selector_and_nothing_else(self) -> None:
+        """Render the compatible release line plus one newline."""
+        expected = f"{config.Infra.codegen.toolchain.python_version_selector}\n"
 
         tm.that(_render_python_version(), eq=expected)

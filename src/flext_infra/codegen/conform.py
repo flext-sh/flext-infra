@@ -466,9 +466,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if known is None:
                 continue
-            consumer_fields = {"extra_verbs", "script_dispatch"}
-            local_payload = local.model_dump(mode="json", exclude=consumer_fields)
-            known_payload = known.model_dump(mode="json", exclude=consumer_fields)
+            local_payload = local.model_dump(mode="json")
+            known_payload = known.model_dump(mode="json")
             if local_payload != known_payload:
                 return r[bool].fail(
                     f"workspace repository differs from catalog: {local.name}"
@@ -637,6 +636,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
+                continue
+            if (
+                contract.destinations is not None
+                and entry.destination not in contract.destinations
+            ):
                 continue
             if not contract.delegates:
                 continue
@@ -946,9 +950,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         planned.extend(managed_result.value)
         if contract.custom:
-            custom_result = self._plan_existing_custom(
-                root, codegen, profile=repository.profile
-            )
+            custom_result = self._plan_existing_custom(root, codegen)
             if custom_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     custom_result.error or f"custom Make validation failed: {root}"
@@ -966,7 +968,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         contract: SurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Plan existing-tree templates from artifact-specific typed owners."""
+        """Render configured overwrite-owned templates for an existing tree."""
         if repository.profile is None:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"active repository has no Make profile: {repository.name}"
@@ -1096,7 +1098,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         item.path.as_posix() for item in workspace.members
                     ),
                     workspace_repositories=members,
+                    workspace_content_only=tuple(workspace.content_only),
                     uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_version_selector=codegen.toolchain.uv_version_selector,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1151,8 +1155,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                python_version=codegen.toolchain.python_minor_version,
+                python_version=codegen.toolchain.python_version_selector,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_version_selector=codegen.toolchain.uv_version_selector,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1235,6 +1240,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
+        # Emit only the .gitignore sections that apply to this profile: a
+        # section with no declared profiles is universal; a workspace-root-only
+        # section (member-directory allowlist, workspace manifest, submodule/
+        # Beads coordination) never reaches a member or standalone .gitignore.
         profile_gitignore_sections = tuple(
             section
             for section in codegen.gitignore_sections
@@ -1242,6 +1251,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
+                scaffold=codegen.scaffold,
+                gitignore_sections=profile_gitignore_sections,
+                dependency_profile=dependency_profile,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1253,8 +1265,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                python_version=codegen.toolchain.python_minor_version,
+                python_version=codegen.toolchain.python_version_selector,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_version_selector=codegen.toolchain.uv_version_selector,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1266,9 +1279,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_repositories=members,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
-                scaffold=codegen.scaffold,
-                gitignore_sections=profile_gitignore_sections,
-                dependency_profile=dependency_profile,
                 tooling=config.Infra.tooling,
                 const_name=project.constant_name,
                 package_name=project.package_name,
@@ -1282,7 +1292,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 description=project.description,
                 version=project.version,
                 license=project.license,
-                python_toolchain_version=codegen.toolchain.python_version,
+                python_version_selector=codegen.toolchain.python_version_selector,
                 python_required_version=codegen.toolchain.python_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
@@ -1328,23 +1338,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _plan_existing_custom(
-        self,
-        root: Path,
-        config: m.Infra.CodegenConfigSpec,
-        *,
-        profile: str | None = None,
+        self, root: Path, config: m.Infra.CodegenConfigSpec
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Validate an existing custom Make surface without creating one.
-
-        The contract is selected from the config by Make profile: a workspace
-        root orchestrates its members and may own public targets, while a
-        member only extends the generated verbs. The engine therefore never
-        needs to know which project it is conforming.
-        """
-        policy = config.make.custom_handler_policies.get(
-            profile or "", config.make.custom_handler_policy
-        )
-        path = root / policy.filename
+        """Validate an existing custom Make surface without creating one."""
+        path = root / config.make.custom_handler_policy.filename
         if path.exists() and not path.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"custom Make destination is not a regular file: {path}"
@@ -1356,7 +1353,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 read.error or f"custom Make read failed: {path}"
             )
-        validation = self.validate_custom_make(read.value, policy)
+        validation = self.validate_custom_make(
+            read.value, config.make.custom_handler_policy
+        )
         if validation.failure:
             diagnostic = validation.error or f"invalid custom Make handlers: {path}"
             rejection_path = Path(f"{path}.rej")
@@ -1387,27 +1386,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[bool]:
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
-        in_define = False
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
-            # `define NAME ... endef` is a multi-line variable. Its body is
-            # arbitrary text, so it is consumed wholesale and governed by the
-            # same permission as any other declaration.
-            if in_define:
-                in_define = not raw_line.startswith("endef")
-                continue
-            if raw_line.startswith("define "):
-                if not policy.allow_toolchain_declarations:
-                    return r[bool].fail(
-                        f"{policy.filename} line {line_number} "
-                        f"declares a macro, which this profile forbids"
-                    )
-                in_define = True
-                continue
             if not raw_line or raw_line.lstrip().startswith("#"):
                 continue
             if raw_line[0].isspace():
-                continue
-            if _CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
                 names = raw_line.partition(":")[2].split()
@@ -1416,20 +1398,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
             if target and target_re.fullmatch(target):
                 continue
-            # A variable assignment or a GNU Make directive that scopes one
-            # (export/unexport/override) is a toolchain declaration, not a
-            # target, and is governed by that permission.
-            if _ASSIGNMENT_RE.match(raw_line) or _DIRECTIVE_RE.match(raw_line):
-                if policy.allow_toolchain_declarations:
-                    continue
-                return r[bool].fail(
-                    f"{policy.filename} line {line_number} "
-                    f"declares a variable, which this profile forbids"
-                )
-            if target and policy.allow_public_targets:
-                continue
             return r[bool].fail(
-                f"{policy.filename} line {line_number} is not a private custom handler"
+                f"custom.mk line {line_number} is not a private custom handler"
             )
         return r[bool].ok(True)
 
@@ -1539,7 +1509,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_root=root,
             environment_root=environment_root,
             lock_path=environment_root / c.Infra.UV_LOCK_FILENAME,
-            python_version=config.toolchain.python_version,
+            python_version=config.toolchain.python_version_selector,
             groups=groups,
             editable_repositories=editable_repositories,
         )
