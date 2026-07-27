@@ -42,7 +42,3 @@ jobs:
       - name: Test (advisory)
         continue-on-error: true
         run: make test
-
-      - name: Val (advisory)
-        continue-on-error: true
-        run: make val

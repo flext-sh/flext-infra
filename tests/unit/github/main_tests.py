@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import shutil
-from typing import TYPE_CHECKING
+from pathlib import Path
 
+from flext_infra import config
 from flext_tests import tm
 
 from tests import m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class TestsInfraGithub:
@@ -126,3 +125,36 @@ class TestsInfraGithub:
 
         tm.fail(result)
         tm.that((result.error or ""), has="PR operation exited with code")
+
+    def test_every_workflow_make_verb_exists_in_the_codegen_ssot(self) -> None:
+        """Reject any CI workflow verb absent from the canonical verb SSOT.
+
+        ``config/codegen.yaml`` declares the only public Make verbs a generated
+        Makefile exposes. A workflow that invokes anything else can never run:
+        the workspace CI historically called ``make boot`` and ``make val``,
+        neither of which the SSOT declares, so the first blocking step failed
+        with "No rule to make target". Comparing against the SSOT (instead of
+        hardcoding verb names) keeps this test correct when the SSOT changes.
+        """
+        declared = {
+            verb.name for verb in config.Infra.codegen.make.verbs  # type: ignore[attr-defined]
+        }
+        workspace_root = Path(__file__).resolve().parents[3].parent
+        workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(
+            (workspace_root / ".github/workflows").glob("*.yml")
+        )
+        invoked: dict[str, set[str]] = {}
+        for workflow in workflows:
+            if not workflow.is_file():
+                continue
+            verbs = {
+                match.group(1)
+                for match in re.finditer(
+                    r"run:\s*make\s+([a-z][a-z0-9-]*)", workflow.read_text("utf-8")
+                )
+            }
+            undeclared = verbs - declared
+            if undeclared:
+                invoked[str(workflow.relative_to(workspace_root))] = undeclared
+
+        tm.that(invoked, eq={})

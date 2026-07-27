@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from flext_tests import tm
 
 from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -43,6 +44,35 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
     tm.that((workspace / ".reports/docs/generate-summary.json").exists(), eq=True)
     tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
     tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
+
+
+def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_unowned(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["flext-a"], apply=True
+    )
+    generator = FlextInfraDocGenerator()
+
+    first = generator.generate(request)
+    tm.ok(first)
+    catalog = workspace / "docs/projects/generated/catalog.md"
+    tm.that(catalog.exists(), eq=True)
+
+    second = generator.generate(request)
+    tm.ok(second)
+    tm.that(catalog.exists(), eq=True)
+
+    for relative_path in (
+        "docs/architecture/README.md",
+        "docs/projects/README.md",
+        "docs/api-reference/README.md",
+    ):
+        (workspace / relative_path).unlink()
+    validation = FlextInfraDocValidator().validate_workspace(request)
+    tm.ok(validation)
+    assert all(report.result == "OK" for report in validation.value)
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(
