@@ -522,6 +522,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Generated directive including the custom Make surface"),
+        ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -547,6 +551,14 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(description="Workspace-root gate verbs routed through orchestration"),
+        ] = ()
+        workspace_cli_group: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="CLI group for workspace orchestration"),
+        ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]

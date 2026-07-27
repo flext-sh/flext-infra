@@ -93,7 +93,7 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
-    def test_attached_member_rejects_direct_source(self) -> None:
+    def test_attached_member_removes_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
@@ -105,7 +105,5 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "", has="attached workspace dependency declares Git source"
-        )
+        document = tomllib.loads(tm.ok(result))
+        tm.that(document["project"]["dependencies"], eq=[member.distribution])

@@ -64,7 +64,6 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
-            repositories=repositories,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
             exclude_dependencies=uv_exclude_dependencies,
@@ -270,11 +269,6 @@ class FlextInfraUtilitiesPyprojectConform:
         head = head_match.group("head").strip()
         marker_text = marker.strip()
         if dependency_name in attached:
-            if "@" in requirement_part:
-                return r[str].fail(
-                    "attached workspace dependency declares Git source: "
-                    f"{dependency_name}"
-                )
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )

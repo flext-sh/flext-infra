@@ -1065,6 +1065,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
                     make_profile=profile,
+                    makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=workspace_root_rel,
                     workspace_members=tuple(
                         item.path.as_posix() for item in workspace.members
@@ -1074,6 +1075,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
+                    orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
+                    workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
