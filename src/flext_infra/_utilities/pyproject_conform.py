@@ -294,7 +294,7 @@ class FlextInfraUtilitiesPyprojectConform:
         canonical = f"{head} @ {url_result.value}@{reference_result.value.branch}"
         marker_text = marker.strip()
         return r[str].ok(
-            f"{head}; {marker_text}" if separator and marker_text else head
+            f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod

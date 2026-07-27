@@ -8,7 +8,6 @@ Infra:
       # package-version updater). Derived as computed fields on ToolchainSpec:
       #   python_minor_version    -> major.minor of python_version (3.13)
       #   python_required_version -> >={python_version},<{major}.{minor+1}
-      #   uv_required_version     -> =={uv_version}
       # A version bump touches ONLY python_version / uv_version. Linter pins
       # live in the pyproject dependency groups (dependency_profiles).
       python_version: "3.13.11"
