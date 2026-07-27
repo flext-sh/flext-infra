@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 
@@ -37,10 +37,16 @@ class TestsVscodeOwnerMerge:
         doc = json.loads(plan.rendered)
         tm.that(doc["python.languageServer"], eq="None")
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            doc["python-envs.workspaceSearchPaths"],
-            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+            search_paths,
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ]
+            ),
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_merge_reaches_fixed_point_after_apply(self, tmp_path: Path) -> None:
         """Replan a written merge artifact with zero residual drift."""

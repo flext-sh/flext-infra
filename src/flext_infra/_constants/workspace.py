@@ -28,9 +28,12 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE_MEMBER = "member"
         ATTACHED = "attached"
 
-    # mro-4gbp: sibling workspace discovery patterns moved to the config SSOT
-    # (codegen.external_workspace_patterns). The engine declares no consumer
-    # directory of its own.
+    EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
+        ".ai-hub",
+        "algar-*",
+        "gruponos-*",
+    )
+    "Sibling directory patterns for FLEXT-managed external workspaces."
 
     MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
         (

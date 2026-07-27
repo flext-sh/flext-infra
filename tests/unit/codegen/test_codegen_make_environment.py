@@ -5,103 +5,183 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
 
 class TestsCodegenMakeEnvironment:
-    def test_generated_make_overrides_inherited_uv_environment(
-        self, tmp_path: Path
+    """Prove generated operations ignore the caller shell environment."""
+
+    @staticmethod
+    def _render_makefile(
+        tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> tuple[Path, Path]:
+        repository = m.Infra.RepositoryRef(
+            name="fixture-project",
+            distribution="fixture-project",
+            url="https://github.com/flext-sh/fixture-project.git",
+            branch=config.Infra.codegen.providers[0].branch,
+            path=Path(),
+            role=c.Infra.RepositoryRole(profile.value),
+            provider="flext-sh",
+            profile=profile,
+            checkout=c.Infra.CheckoutKind.ROOT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
+        )
+        project_root = tmp_path / profile.value / "fixture-project"
+        workspace_root = (
+            project_root.parent
+            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+            else project_root
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="fixture-project",
+            repository=repository,
+            project=m.Infra.ProjectSpec(
+                package_name="fixture_project",
+                class_stem="FixtureProject",
+                namespace="FixtureProject",
+                constant_name="fixture-project",
+                namespace_attribute="fixture_project",
+                alias="fixture_project",
+                environment_prefix="FIXTURE_PROJECT_",
+                description="Fixture project",
+                version="0.12.0",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                homepage="https://github.com/flext-sh/fixture-project",
+                documentation="https://github.com/flext-sh/fixture-project",
+                workspace_root_rel=(
+                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
+                ),
+                year=2026,
+            ),
+            members=(),
+        )
+        request = m.Infra.CodegenConformRequest(
+            root=project_root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(
+                workspace_root=workspace_root,
+                request=request,
+                initial_workspace=workspace,
+            ).plan(request)
+        )
+        makefile = next(
+            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
+        )
+        project_root.mkdir(parents=True)
+        tm.ok(
+            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
+        )
+        return project_root, workspace_root
+
+    @pytest.mark.parametrize(
+        ("profile", "attached"),
+        [
+            (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
+            (c.Infra.MakeProfile.WORKSPACE_MEMBER, True),
+            (c.Infra.MakeProfile.WORKSPACE_MEMBER, False),
+            (c.Infra.MakeProfile.STANDALONE, False),
+        ],
+    )
+    def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
-        root = tmp_path / "demo-root"
-        created = FlextInfraCodegenProjectNew(
-            name="demo-root",
-            kind=c.Infra.ProjectKind.EXTERNAL,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        ).execute()
-        tm.ok(created)
-        makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="$(UV_RUN) python -m pytest")
-        tm.that(makefile, has="$(UV_RUN) python -m flext_infra codegen conform")
-        (root / "custom.mk").write_text(
-            "_custom_check_probe:\n"
-            "\t@printf '%s\\n%s\\n%s\\n' "
-            "'$(UV_PROJECT)' '$(UV_PROJECT_ENVIRONMENT)' '$(VIRTUAL_ENV)'\n",
-            encoding="utf-8",
+        """Every generated shell receives the profile-resolved runtime venv."""
+        project_root, workspace_root = self._render_makefile(tmp_path, profile)
+        runtime_root = workspace_root if attached else project_root
+        runtime_bin = runtime_root / ".venv" / "bin"
+        runtime_bin.mkdir(parents=True)
+        runtime_python = runtime_bin / "python"
+        runtime_python.write_text("#!/bin/sh\nexit 0\n")
+        runtime_python.chmod(0o755)
+        hostile_venv = tmp_path / "hostile" / ".venv"
+        hostile_bin = hostile_venv / "bin"
+        hostile_bin.mkdir(parents=True)
+        hostile_python = hostile_bin / "python"
+        hostile_python.write_text("#!/bin/sh\nexit 0\n")
+        hostile_python.chmod(0o755)
+        probe = (
+            "probe:; @printf '%s\\n' "
+            "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
+            "'VIRTUAL_ENV=$(VIRTUAL_ENV)' "
+            "'PATH=$(PATH)'; command -v python"
         )
-        hostile_root = tmp_path / "hostile"
-        hostile_venv = hostile_root / ".venv"
-        active_env = os.environ.copy()
-        active_env.update({
-            "UV_PROJECT": str(hostile_root),
-            "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
-            "VIRTUAL_ENV": str(hostile_venv),
-        })
-
-        result = u.Cli.run_raw(
-            ["make", "check", "WHAT=probe"], cwd=root, env=active_env
-        )
-
-        output = tm.ok(result).stdout.splitlines()
-        tm.that(output, eq=[str(root), str(root / ".venv"), str(root / ".venv")])
-
-    def test_makefile_surface_applies_only_makefile(self, tmp_path: Path) -> None:
-        root = tmp_path / "demo-root"
-        created = FlextInfraCodegenProjectNew(
-            name="demo-root",
-            kind=c.Infra.ProjectKind.EXTERNAL,
-            output_root=root,
-            provider="flext-sh",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            year=2026,
-            apply_changes=True,
-        ).execute()
-        tm.ok(created)
-        custom = root / "custom.mk"
-        custom_content = ".PHONY: public-handler\npublic-handler:\n\t@true\n"
-        custom.write_text(custom_content, encoding="utf-8")
-        (root / "Makefile").write_text("stale\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "tests@flext.sh"], cwd=root
+        output = tm.ok(
+            u.Cli.capture(
+                [
+                    "make",
+                    "--no-print-directory",
+                    "--eval",
+                    probe,
+                    "probe",
+                    f"SUPERPROJECT_ROOT={workspace_root if attached else ''}",
+                ],
+                cwd=project_root,
+                env={
+                    **os.environ,
+                    "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
+                    "VIRTUAL_ENV": str(hostile_venv),
+                    "PATH": f"{hostile_bin}:{os.environ['PATH']}",
+                },
             )
-        )
-        tm.ok(
-            u.Cli.run_checked(["git", "config", "user.name", "FLEXT Tests"], cwd=root)
-        )
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
-            )
-        )
+        ).splitlines()
+        tm.that(output[0], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
+        tm.that(output[1], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
+        tm.that(output[2].split(":", maxsplit=1)[0], eq=f"PATH={runtime_bin}")
+        tm.that(output[3], eq=str(runtime_python))
 
-        result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
+    def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
+        """All generated uv operations use the profile-owned environment."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
         )
+        makefile = (project_root / "Makefile").read_text()
 
-        applied = tm.ok(result)
-        tm.that(tuple(path.name for path in applied.written_files), eq=("Makefile",))
-        tm.that(custom.read_text(encoding="utf-8"), eq=custom_content)
+        tm.that(
+            "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
+        )
+        tm.that("UV ?= uv" in makefile, eq=True)
+        tm.that(
+            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            eq=True,
+        )
+        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
+    def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
-__all__: tuple[str, ...] = ()
+        for required in (
+            "UV ?= uv",
+            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            "--no-install-project",
+            '--editable "$(PROJECT_ROOT)"',
+            "git submodule update --init --recursive",
+            'refs/heads/$$branch',
+        ):
+            tm.that(makefile, has=required)
+        for forbidden in (
+            "mise exec -- uv",
+            "uv@",
+            "WHAT=environment",
+            "define _setup_submodules",
+            "SETUP_BRANCH :=",
+        ):
+            tm.that(makefile, lacks=forbidden)

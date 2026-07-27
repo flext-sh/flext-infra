@@ -41,6 +41,7 @@ _MAKE_TEST_ENV_KEYS = (
     "MFLAGS",
     "MAKELEVEL",
     "GNUMAKEFLAGS",
+    "FLEXT_INFRA_PYTHON",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -81,16 +82,6 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
     )
 
 
-def _write_mise_stub(bin_dir: Path, log_path: Path, *, exit_code: int) -> None:
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    _write_executable(
-        bin_dir / "mise",
-        '#!/bin/sh\nprintf \'mise %s\\n\' "$*" >> "'
-        + str(log_path)
-        + f'"\nexit {exit_code}\n',
-    )
-
-
 def _write_venv_python_stub(
     project_root: Path, log_path: Path, *, include_env: bool = False
 ) -> None:
@@ -108,6 +99,19 @@ def _write_venv_python_stub(
         + '"\nexit 0\n'
     )
     _write_executable(venv_bin / "python", body)
+
+
+def _write_managed_python_stub(path: Path, log_path: Path) -> None:
+    _write_executable(
+        path,
+        "#!/usr/bin/env bash\nprintf "
+        "'PYTHONPATH=%s MYPYPATH=%s VIRTUAL_ENV=%s UV_PROJECT=%s "
+        "UV_PROJECT_ENVIRONMENT=%s python %s\\n' "
+        '"${PYTHONPATH-unset}" "${MYPYPATH-unset}" "${VIRTUAL_ENV-unset}" '
+        '"${UV_PROJECT-unset}" "${UV_PROJECT_ENVIRONMENT-unset}" "$*" >> "'
+        + str(log_path)
+        + '"\nexit 0\n',
+    )
 
 
 def _write_pytest_diag_python_stub(
@@ -291,13 +295,14 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(missing.exit_code, ne=0)
         tm.that(missing.stdout + missing.stderr, has="no custom handler")
 
-    def test_make_build_uses_mise_uv_and_propagates_failure(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail the target when the Mise-managed uv builder fails."""
+    def test_make_build_uses_uv_and_propagates_failure(self, tmp_path: Path) -> None:
+        """Fail the target when the uv builder fails."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
-        _write_mise_stub(bin_dir, log_path, exit_code=23)
+        _write_executable(
+            bin_dir / "uv",
+            '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "' + str(log_path) + '"\nexit 23\n',
+        )
         _write_project(tmp_path)
 
         result = _run_make(
@@ -307,7 +312,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, ne=0)
         tm.that(
             log_path.read_text(encoding="utf-8").splitlines(),
-            eq=[f"mise exec -- uv build --project {tmp_path} --no-sources"],
+            eq=[f"build --project {tmp_path} --no-sources"],
         )
         tm.that(result.stdout, lacks="Build complete")
 
@@ -360,25 +365,83 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             rendered,
             has=[
+                "FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)",
                 "PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra",
                 "PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src",
-                'PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra',
-                'PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra',
+                "PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_INFRA_SRC)",
+                'PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)"',
+                'PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra',
                 'PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check',
                 'PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen',
-                'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps',
+                'PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) deps',
                 'PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs',
                 'PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github',
                 'PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate',
             ],
         )
 
+    def test_make_managed_infra_python_isolated_from_consumer_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """Run flext-infra only through the explicit sanitized managed interpreter."""
+        log_path = tmp_path / "tool.log"
+        managed_python = tmp_path / "managed" / "bin" / "python"
+        managed_python.parent.mkdir(parents=True)
+        _write_managed_python_stub(managed_python, log_path)
+        _write_project(tmp_path)
+        _write_venv_python_stub(tmp_path, log_path)
+
+        result = _run_make(
+            tmp_path,
+            "check",
+            "CHECK_GATES=mypy",
+            env={
+                "FLEXT_INFRA_PYTHON": str(managed_python),
+                "PYTHONPATH": str(tmp_path / "hostile-pythonpath"),
+                "MYPYPATH": str(tmp_path / "hostile-mypypath"),
+                "VIRTUAL_ENV": str(tmp_path / "hostile-venv"),
+                "UV_PROJECT": str(tmp_path / "hostile-project"),
+                "UV_PROJECT_ENVIRONMENT": str(tmp_path / "hostile-uv-venv"),
+            },
+        )
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(
+            log_path.read_text(encoding="utf-8"),
+            has=(
+                "PYTHONPATH="
+                f"{tmp_path / 'src'} MYPYPATH=unset VIRTUAL_ENV=unset "
+                "UV_PROJECT=unset UV_PROJECT_ENVIRONMENT=unset "
+                f"python -m flext_infra check run --workspace {tmp_path}"
+            ),
+        )
+
+    def test_make_fails_before_infra_execution_without_managed_python(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a missing managed interpreter without falling back to Python."""
+        log_path = tmp_path / "tool.log"
+        _write_project(tmp_path)
+        _write_venv_python_stub(tmp_path, log_path)
+
+        result = _run_make(
+            tmp_path,
+            "check",
+            "CHECK_GATES=mypy",
+            env={"FLEXT_INFRA_PYTHON": str(tmp_path / "missing-python")},
+        )
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(result.stdout + result.stderr, has="FLEXT_INFRA_PYTHON")
+        tm.that(log_path.exists(), eq=False)
+
     def test_rendered_base_mk_sanitizes_validation_env(self) -> None:
         """Verify base validation clears inherited Python import paths."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra validate',
+            has="BASE_INFRA_VALIDATE := $(PROJECT_INFRA_ROOT) validate",
+            lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
         )
 
     def test_rendered_base_mk_validates_canonical_root_in_workspace_preflight(

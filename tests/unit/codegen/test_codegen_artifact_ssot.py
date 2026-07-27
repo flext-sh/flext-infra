@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, t
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_infra.services.codegen import FlextInfraCodegen
 
 CodegenSpec = type(config.Infra.codegen)
 
@@ -265,6 +265,19 @@ class TestsCodegenArtifactSsot:
             [c.Infra.GITIGNORE_DERIVED_SECTION_NAME],
         )
 
+    def test_workspace_root_makefile_has_one_generation_owner(
+        self, codegen: CodegenSpec
+    ) -> None:
+        """Reserve the workspace-root Makefile for the workspace generator."""
+        makefile_entries = [
+            entry
+            for entry in codegen.templates.entries
+            if entry.destination == "Makefile"
+        ]
+
+        assert len(makefile_entries) == 1
+        assert "workspace-root" not in makefile_entries[0].profiles
+
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""
         sections = codegen.gitignore_sections
@@ -277,7 +290,7 @@ class TestsCodegenArtifactSsot:
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
         settings: t.MutableJsonMapping = {}
-        FlextInfraWorkspaceVscode.apply_canonical_settings(
+        FlextInfraCodegen._apply_canonical_settings(
             settings, Path("/nonexistent-workspace-root")
         )
         files_exclude = settings["files.exclude"]

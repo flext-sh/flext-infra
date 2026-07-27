@@ -253,3 +253,17 @@ class TestsFlextInfraDepsModernizerMainExtra:
         tm.that(output, has="pyproject.toml:")
         tm.that(output, lacks=str(external_pyproject.resolve()))
         tm.that(output, lacks="not in the subpath")
+
+    def test_conform_source_preserves_taplo_process_error(self, tmp_path: Path) -> None:
+        """Return the exact formatter process failure from the public conform path."""
+        (tmp_path / ".taplo.toml").write_text('include = ["/x/["]\n', encoding="utf-8")
+        source = '[project]\nname = "sample"\nversion = "0.1.0"\n'
+        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+
+        result = modernizer.conform_source(source, path=tmp_path / "pyproject.toml")
+
+        error = tm.fail(result)
+        tm.that(error, has=["invalid configuration", "error parsing glob"])
+        tm.that(
+            error, lacks=["couldn't exec process", "pyproject tooling render failed"]
+        )

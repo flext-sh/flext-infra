@@ -6,6 +6,7 @@
 # WHITELIST: Workspace Directories
 !docker/
 !docs/
+!config/
 !examples/
 !.github/
 !src/
@@ -80,6 +81,7 @@ scripts/*.md
 # WHITELIST: Contents Inside Allowed Directories
 !docker/**
 !docs/**
+!config/**
 !examples/**
 !.github/**
 !src/**
@@ -300,6 +302,10 @@ base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts
+base.mk
+!.pre-commit-config.yaml
+
+# Derived build and tool artifacts
 __pyrefly_virtual__/
 .benchmarks/
 .cache/
@@ -337,3 +343,32 @@ skill-create-output/
 .debug-journal.md
 .mcp.json
 CLAUDE.local.md
+*.py[cod]
+*$py.class
+.eggs/
+.coverage
+htmlcov/
+
+# FLEXT
+*.tpl.rej
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+secrets.yaml
+secrets.yml
+
+# Editors and OS
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini

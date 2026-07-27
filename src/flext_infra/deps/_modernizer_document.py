@@ -93,7 +93,17 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = ["taplo", "format", "-", "--stdin-filepath", str(path)]
+        cmd = [
+            "mise",
+            "exec",
+            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
+            "--",
+            "taplo",
+            "format",
+            "-",
+            "--stdin-filepath",
+            str(path),
+        ]
         config_path = self.root / ".taplo.toml"
         if config_path.is_file():
             cmd.extend(["--config", str(config_path)])
@@ -136,9 +146,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if read.success:
             for raw_line in read.value.splitlines():
                 stripped = raw_line.strip()
-                if not stripped.startswith("WORKSPACE_ROOT") or ":=" not in stripped:
+                key, separator, value = stripped.partition(":=")
+                if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
                     continue
-                _, _, value = stripped.partition(":=")
                 if value.strip().startswith(".."):
                     return True
         return False
@@ -160,8 +170,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_root = path.parent.resolve() == self.root.resolve() and not (
-            self._project_is_flext_child(path.parent)
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return [child_result.error or "failed to resolve project Git topology"]
+        is_root = (
+            path.parent.resolve() == self.root.resolve() and not child_result.value
         )
         project_kind = "core"
         if not is_root:

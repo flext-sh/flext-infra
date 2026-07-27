@@ -22,17 +22,15 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-# A workspace root orchestrates its members, so its lint and type scope is the
-# union of every member's source and tests. Members are expanded from the
-# manifest SSOT, never listed by hand, and the paths stay existence-filtered so
-# a member without one of the trees cannot break the gate.
-WORKSPACE_CHECK_PATHS :={% if make_profile == "workspace-root" %}{% for member in workspace_members %} $(wildcard $(PROJECT_ROOT)/{{ member }}/src) $(wildcard $(PROJECT_ROOT)/{{ member }}/tests){% endfor %}{% endif %}
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %} $(WORKSPACE_CHECK_PATHS)
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %} $(WORKSPACE_CHECK_PATHS)
+RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+MISE := $(shell command -v mise 2>/dev/null)
+UV_VERSION := {{ uv_version }}
+UV = $(if $(MISE),$(MISE) exec uv@$(UV_VERSION) -- uv,sh -c 'printf "%s\n" "ERROR: mise executable not found on caller PATH" >&2; exit 2' --)
 
 {% include "base_mypy_limit.mk.j2" %}
 
-{% for verb in make.verbs -%}
+{% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
 {% for verb in extra_verbs -%}
@@ -60,10 +58,12 @@ RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
-export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV
+override PATH := $(RUNTIME_VENV)/bin:/usr/local/bin:/usr/bin:/bin
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
@@ -77,10 +77,13 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE := $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
+WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
+UV ?= uv
+UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
@@ -91,14 +94,10 @@ UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif
 _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
 {% endif %}
 
-# The custom Make surface is the single extension point for every profile: it
-# carries the project's own commands, WHATs and hooks. Its name comes from the
-# constants SSOT, so there is no per-profile variant and no second surface.
-{{ makefile_custom_include }}
+-include custom.mk
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
-	_builtin_setup_environment \
 	_builtin_deps_check \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
@@ -178,19 +177,28 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		uv lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
 
-$(PUBLIC_VERBS):
+$(filter-out setup,$(PUBLIC_VERBS)):
 	$(call _dispatch)
+
+setup:
+	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
+	@$(MAKE) --no-print-directory _builtin_setup_environment
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
 {% for verb in make.verbs %}
+{% if verb.name == "setup" %}
+	@printf '  %-10s\n' 'setup'
+{% else %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
+{% endif %}
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
 {% endfor %}
@@ -206,28 +214,64 @@ _builtin_help_usage:
 		fi; \
 	fi
 
+# A project owns the sources it declares. Setup makes the tree exactly what the
+# manifest declares, using nothing outside the tree: every declared submodule is
+# initialised recursively at its recorded gitlink and placed on the branch
+# declared in .gitmodules. It is a no-op when the project declares no
+# submodules, and it converges on re-run. It never moves a branch that holds
+# work the superproject does not record: that is an error, never a warning, so
+# setup can never report success over a tree that is not what it declares.
+_builtin_setup_submodules:
+	@set -eu; \
+	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
+	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
+	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
+	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		branch=$$(git config -f "$$toplevel/.gitmodules" "submodule.$$name.branch" || true); \
+		if [ -z "$$branch" ]; then exit 0; fi; \
+		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
+			git checkout --quiet -b "$$branch"; \
+		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
+			git checkout --quiet "$$branch"; \
+		else \
+			printf "ERROR: %s: branch %s is at %s but the superproject records %s\n" "$$name" "$$branch" "$$(git rev-parse --short "refs/heads/$$branch")" "$$(git rev-parse --short HEAD)" >&2; \
+			printf "Reconcile that branch with the recorded gitlink, then re-run setup\n" >&2; \
+			exit 1; \
+		fi'
+
+_builtin_require_environment:
+	@if [ ! -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
+		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_ROOT)/.venv/bin/python" >&2; \
+		exit 2; \
+	fi
+
 ifeq ($(MAKE_PROFILE),workspace-root)
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
+	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
-_builtin_setup_environment:
+_builtin_setup_environment: _builtin_setup_submodules
 	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
 else
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 else
-_builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 
-_builtin_deps_check:
+_builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
 
 _builtin_deps_lock:
@@ -238,62 +282,53 @@ _builtin_deps_upgrade:
 	$(call _require_apply)
 	$(call _run_for_selected_projects,--upgrade)
 
-{% if make_profile == "workspace-root" %}
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-_builtin_check_all:
+_builtin_check_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb check $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
-_builtin_test_all:
+_builtin_test_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
-	@uv build --project "$(PROJECT_ROOT)"
+	@$(UV) build --project "$(PROJECT_ROOT)"
 
-_builtin_check_all:
+_builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) python -m mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) python -m vulture
+	@$(UV_RUN) vulture
 
-_builtin_test_all:
+_builtin_test_all: _builtin_require_environment
 	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests" $(PYTEST_ARGS)
 {% endif %}
 
-_builtin_format_check:
+_builtin_format_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_format_apply:
+_builtin_format_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
-_builtin_run_default:
+_builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-_builtin_status_diagnostics:
+_builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@uv --version
-	@uv lock --project "$(PROJECT_ROOT)" --check
-	@if [ -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		uv pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
+	@$(UV) --version
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
+		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-{% if make_profile == "workspace-root" %}
-_builtin_docs_check:
-	@$(WORKSPACE_ORCHESTRATE) --verb docs $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-
-_builtin_clean_generated:
-	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb clean $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
-{% else %}
 _builtin_docs_check:
 	@test -s "$(PROJECT_ROOT)/README.md"
 
@@ -304,16 +339,16 @@ _builtin_clean_generated:
 		-prune -exec rm -rf {} +
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
-{% endif %}
 
 _builtin_release_status:
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
 _builtin_codegen_check:
-	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_codegen_apply:
+_builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
-	@$(UV_RUN) python -m flext_infra codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply

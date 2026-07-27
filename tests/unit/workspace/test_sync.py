@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
+from flext_infra import c, config
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-from tests import m, t, u
+from flext_infra import config
+from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -197,20 +198,31 @@ class TestsFlextInfraWorkspaceSync:
             encoding="utf-8",
         )
 
-        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
-        second_result = FlextInfraWorkspaceVscode.sync_settings(
-            project_root, apply=True
-        )
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+        second_result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
 
         tm.ok(result)
-        tm.that(result.value, eq=True)
         tm.ok(second_result)
-        tm.that(second_result.value, eq=False)
+        tm.that(second_result.value.files_changed, eq=0)
         settings = u.Cli.json_read(settings_path).unwrap()
+        search_paths = settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            settings["python-envs.workspaceSearchPaths"],
-            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+            search_paths,
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ]
+            ),
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""
@@ -281,10 +293,39 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
+        tm.that(makefile_text, has="UV_RUN := uv run")
+        tm.that(makefile_text, has="_builtin_setup_environment:")
+        tm.that(makefile_text, lacks="poetry")
+        tm.that(makefile_text, lacks="pip install")
+        tm.that(makefile_text, lacks="_bootstrap-venv")
+        tm.that(makefile_text, lacks="BOOTSTRAP_VENV")
         tm.that(
             makefile_text,
             lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
+        dry_run = u.Cli.capture(
+            ["make", "--dry-run", "help"], cwd=project_root, timeout=30
+        )
+        tm.ok(dry_run)
+
+    def test_sync_standalone_bootstrap_uses_uv_and_public_console(
+        self, tmp_path: Path
+    ) -> None:
+        project_root = tmp_path / "project"
+        _write_project(project_root, "demo-project")
+
+        result = FlextInfraSyncService(
+            canonical_root=project_root.parent,
+            workspace_root=project_root,
+            apply_changes=True,
+        ).execute()
+
+        tm.ok(result)
+        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile_text, has="uv sync")
+        tm.that(makefile_text, has="uv run flext-infra")
+        tm.that(makefile_text, lacks="pip install flext-infra")
+        tm.that(makefile_text, lacks="python -m flext_infra")
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""
