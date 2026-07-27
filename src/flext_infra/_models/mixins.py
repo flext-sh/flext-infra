@@ -6,9 +6,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
+from flext_infra import c, t
 from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
-from flext_infra.constants import c
-from flext_infra.typings import t
 
 
 class FlextInfraModelsMixins:
@@ -43,7 +42,7 @@ class FlextInfraModelsMixins:
         projects: Annotated[
             t.StrSequence | None,
             m.Field(
-                description="Projects to process; repeat --projects NAME as needed",
+                description="Projects to process; repeat --projects NAME as needed"
             ),
         ] = None
         module: Annotated[
@@ -53,7 +52,7 @@ class FlextInfraModelsMixins:
                     "Dotted module path to scope verb to a single module "
                     "(e.g. flext_core.result). Mutually compatible with "
                     "--projects/--workspace; narrows the run."
-                ),
+                )
             ),
         ] = None
         namespace: Annotated[
@@ -62,7 +61,7 @@ class FlextInfraModelsMixins:
                 description=(
                     "Alias namespace (c|m|p|t|u|r|e|h|s|x[.<Domain>]) to scope "
                     "the verb to a single facade slot."
-                ),
+                )
             ),
         ] = None
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
@@ -70,12 +69,12 @@ class FlextInfraModelsMixins:
 
         @property
         def workspace_path(self) -> Path:
-            """Return the resolved workspace path for CLI execution."""
+            """Resolved workspace path for CLI execution."""
             return Path(self.workspace).resolve()
 
         @property
         def project_names(self) -> t.StrSequence | None:
-            """Return normalized project names from repeated selectors."""
+            """Normalized project names from repeated selectors."""
             return ub.normalize_sequence_values(self.projects)
 
     class ReadMixin(ScopeMixin):
@@ -95,12 +94,12 @@ class FlextInfraModelsMixins:
 
         @property
         def report_path(self) -> Path | None:
-            """Return the resolved report path when provided."""
+            """Resolved report path when provided."""
             return ub.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
-            """Return the resolved output directory when provided."""
+            """Resolved output directory when provided."""
             return ub.normalize_optional_path(self.output_dir)
 
     class WriteMixin(ScopeMixin):
@@ -116,28 +115,22 @@ class FlextInfraModelsMixins:
             m.Field(
                 description="Apply changes instead of running in dry-run mode",
                 json_schema_extra={
-                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS),
+                    "typer_param_decls": list(c.Infra.CLI_APPLY_OPTION_DECLS)
                 },
             ),
         ] = False
-        gates: Annotated[
-            t.StrSequence,
-            m.Field(
-                default_factory=lambda: tuple(
-                    gate.strip()
-                    for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
-                    if gate.strip()
-                ),
-                description="Gate names for post-transform validation",
+        gates: t.StrSequence = m.Field(
+            default_factory=lambda: tuple(
+                gate.strip()
+                for gate in c.Infra.SAFE_EXECUTION_DEFAULT_GATES.split(",")
+                if gate.strip()
             ),
-        ]
+            description="Gate names for post-transform validation",
+        )
 
         @m.field_validator("gates", mode="before")
         @classmethod
-        def _parse_gates(
-            cls,
-            value: str | t.SequenceOf[str] | None,
-        ) -> t.StrSequence:
+        def _parse_gates(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
             if value is None:
                 return ()
@@ -300,8 +293,7 @@ class FlextInfraModelsMixins:
         """Shared safety checkpoint reference field."""
 
         checkpoint_ref: Annotated[
-            str,
-            m.Field(description="Safety checkpoint reference"),
+            str, m.Field(description="Safety checkpoint reference")
         ] = ""
 
     class ProjectNamesOptionalMixin:
@@ -314,10 +306,9 @@ class FlextInfraModelsMixins:
     class ProjectNamesListMixin:
         """Shared concrete project-name collection."""
 
-        project_names: Annotated[
-            t.StrSequence,
-            m.Field(default_factory=tuple),
-        ] = m.Field(default_factory=tuple)
+        project_names: Annotated[t.StrSequence, m.Field(default_factory=tuple)] = (
+            m.Field(default_factory=tuple)
+        )
 
 
 __all__: list[str] = ["FlextInfraModelsMixins"]

@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import pytest
+from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from tests import m, t
 
 pytestmark = [pytest.mark.integration]
 
@@ -24,16 +26,28 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         self._class_nesting_gate = None
 
     @override
-    def _load_class_nesting_config(self) -> t.Infra.ContainerDict:
+    def _load_class_nesting_config(self) -> t.JsonMapping:
         return u.Cli.yaml_load_mapping(self._config_path)
+
+    def apply_rule(
+        self,
+        rope_project: t.Infra.RopeProject,
+        resource: t.Infra.RopeResource,
+        *,
+        dry_run: bool,
+    ) -> m.Infra.Result:
+        """Expose class nesting through the integration harness contract."""
+        return self._apply_file_rule_selection(
+            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
+            {},
+            rope_project,
+            resource,
+            dry_run=dry_run,
+        )
 
 
 def _apply_rule(
-    workspace_root: Path,
-    file_path: Path,
-    config_path: Path,
-    *,
-    dry_run: bool,
+    workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
     rule = _FileRuleHarness(config_path)
     rope_project = u.Infra.init_rope_project(workspace_root)
@@ -41,13 +55,7 @@ def _apply_rule(
         resource = u.Infra.get_resource_from_path(rope_project, file_path)
         if resource is None:
             raise FileNotFoundError(file_path)
-        return rule._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
+        return rule.apply_rule(rope_project, resource, dry_run=dry_run)
     finally:
         rope_project.close()
 
@@ -81,7 +89,14 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         )
         config_path = tmp_path / "class-nesting-mappings.yml"
         config_path.write_text(
-            f"confidence_threshold: low\nclass_nesting:\n  - loose_name: ResultHelpers\n    current_file: {target_file.as_posix()}\n    target_namespace: FlextUtilities\n    target_name: ResultHelpers\n    confidence: high\nhelper_consolidation: []\n",
+            "confidence_threshold: low\n"
+            "class_nesting:\n"
+            "  - loose_name: ResultHelpers\n"
+            f"    current_file: {target_file.as_posix()}\n"
+            "    target_namespace: FlextUtilities\n"
+            "    target_name: ResultHelpers\n"
+            "    confidence: high\n"
+            "helper_consolidation: []\n",
             encoding="utf-8",
         )
         result = _apply_rule(tmp_path, target_file, config_path, dry_run=False)
@@ -89,8 +104,8 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         # to enforce against), so the refactor proceeds gracefully and the loose
         # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
         # mapping config.
-        assert result.success, result.error
-        assert result.modified
-        assert result.refactored_code is not None
-        assert "class FlextUtilities:" in result.refactored_code
-        assert "class ResultHelpers:" in result.refactored_code
+        tm.that(result.success, eq=True)
+        tm.that(result.modified, eq=True)
+        tm.that(result.refactored_code, none=False)
+        tm.that(result.refactored_code, has="class FlextUtilities:")
+        tm.that(result.refactored_code, has="class ResultHelpers:")

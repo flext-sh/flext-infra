@@ -3,62 +3,48 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import (
-    Generator,
-)
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from rope.base.project import Project
-
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra import config, t
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
 from flext_infra._utilities._rope_core_resources import (
     FlextInfraUtilitiesRopeCoreResourcesMixin,
 )
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.rope_pep695_patch import (
+from flext_infra._utilities.rope_patch.pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
-from flext_infra.typings import t
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeCore(
-    FlextInfraUtilitiesRopeCoreResourcesMixin,
-    FlextInfraUtilitiesRopeCorePyModuleMixin,
+    FlextInfraUtilitiesRopeCoreResourcesMixin, FlextInfraUtilitiesRopeCorePyModuleMixin
 ):
     """Core Rope lifecycle helpers."""
 
     @staticmethod
-    def init_rope_project(
-        workspace_root: Path,
-        *,
-        project_prefix: str = FlextInfraConstantsSharedInfra.PKG_PREFIX_HYPHEN,
-        src_dir: str = FlextInfraConstantsSharedInfra.DEFAULT_SRC_DIR,
-        ignored_resources: t.StrSequence = FlextInfraConstantsRope.ROPE_IGNORED_RESOURCES,
-    ) -> Project:
+    def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject:
         """Create a rope Project over workspace_root with no disk artifacts."""
-        _ = (project_prefix, src_dir)
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
         discovered_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            resolved_root,
+            resolved_root
         )
         project_roots = tuple(
             project_root
             for project_root in discovered_roots
             if project_root.resolve().is_relative_to(resolved_root)
         )
+        # NOTE (multi-agent, mro-wkii.17.24): Rope consumes the same validated
+        # production roots and exclusions as every source scanner.
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
             for project_root in project_roots
-            for dir_name in FlextInfraUtilitiesNamespaceConfig.namespace_scan_dirs(
-                project_root,
-            )
+            for dir_name in config.Infra.source_scan.roots
             if (scan_path := project_root / dir_name).is_dir()
             and scan_path.resolve().is_relative_to(resolved_root)
         })
@@ -71,19 +57,20 @@ class FlextInfraUtilitiesRopeCore(
                 message="Delete once deprecated functions are gone",
                 category=DeprecationWarning,
             )
-            return Project(
+            project: t.Infra.RopeProject = FlextInfraUtilitiesRopeRuntime.new_project(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
-                ignored_resources=list(ignored_resources),
+                # NOTE (mro-jnm1.1 / mro-jnm1.4): ignore names derive from the
+                # codegen artifact SSOT (single source, no per-consumer copies).
+                ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                 source_folders=source_folders,
             )
+            return project
 
     @staticmethod
     @contextmanager
-    def open_project(
-        workspace_root: Path,
-    ) -> Generator[Project]:
+    def open_project(workspace_root: Path) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary."""
         rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
         try:

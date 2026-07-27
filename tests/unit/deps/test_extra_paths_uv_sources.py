@@ -1,22 +1,29 @@
+"""Test extra paths uv sources behavior."""
+
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 class TestsFlextInfraExtraPathsUvSources:
+    """Test flext infra extra paths uv sources behavior."""
+
     def test_pyrefly_search_paths_include_uv_source_path_dependencies_at_root(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify pyrefly search paths include uv source path dependencies at root."""
         consumer = tmp_path / "ai-hub"
         consumer.mkdir()
         (consumer / ".git").mkdir()
-        (consumer / "aihub").mkdir()
-        (consumer / "aihub" / "__init__.py").write_text("", encoding="utf-8")
+        (consumer / "ai_hub").mkdir()
+        (consumer / "ai_hub" / "__init__.py").write_text("", encoding="utf-8")
         (consumer / "pyproject.toml").write_text(
             (
                 "[project]\n"
@@ -40,8 +47,7 @@ class TestsFlextInfraExtraPathsUvSources:
             (dep_root / ".git").mkdir()
             (dep_root / "Makefile").write_text("", encoding="utf-8")
             (dep_root / "pyproject.toml").write_text(
-                f"[project]\nname = '{dep_name}'\n",
-                encoding="utf-8",
+                f"[project]\nname = '{dep_name}'\n", encoding="utf-8"
             )
             dep_src = dep_root / "src" / package_name
             dep_src.mkdir(parents=True)

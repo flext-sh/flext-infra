@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraNamespaceGate(FlextInfraGate):
@@ -24,15 +26,13 @@ class FlextInfraNamespaceGate(FlextInfraGate):
 
     @override
     def check(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run NS-000..003 validation scoped to ``project_dir``."""
         _ = ctx
         started = time.monotonic()
         validator = FlextInfraNamespaceValidator()
-        report_result = validator.validate_project(project_dir, scan_tests=False)
+        report_result = validator.validate_project(project_dir)
         passed = report_result.success and report_result.value.passed
         errors: list[str] = []
         if report_result.failure:
@@ -65,10 +65,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """No external tool — execution happens in ``check``."""
         _ = project_dir, ctx, check_dirs
@@ -76,10 +73,7 @@ class FlextInfraNamespaceGate(FlextInfraGate):
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Unused — ``check`` is overridden directly."""
         _ = result, project_dir, ctx

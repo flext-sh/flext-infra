@@ -9,13 +9,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+from flext_tests import tm
 
-from tests.constants import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import c, u
+
+if TYPE_CHECKING:
+    from tests import m, t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -39,8 +41,8 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
 @pytest.fixture
 def deptry_report_payload() -> t.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
-    assert parsed is not None
-    assert parsed.success
+    tm.that(parsed, none=False)
+    tm.ok(parsed)
     return parsed.value
 
 
@@ -102,7 +104,7 @@ def real_python_package(tmp_path: Path) -> Path:
     src_dir.mkdir(parents=True)
     (src_dir / "__init__.py").write_text('"""Test package."""\n__version__ = "0.1.0"\n')
     (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "test-pkg"\nversion = "0.1.0"\n',
+        '[project]\nname = "test-pkg"\nversion = "0.1.0"\n'
     )
     return project_root
 
@@ -113,16 +115,16 @@ def real_workspace(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
     (workspace_root / "Makefile").write_text(
-        ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n",
+        ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n"
     )
     (workspace_root / "pyproject.toml").write_text(
-        '[project]\nname = "workspace"\nversion = "0.1.0"\n',
+        '[project]\nname = "workspace"\nversion = "0.1.0"\n'
     )
     for i in range(1, 4):
         project_dir = workspace_root / f"project_{i}"
         project_dir.mkdir()
         (project_dir / "pyproject.toml").write_text(
-            f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n',
+            f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n'
         )
         src_dir = project_dir / "src" / f"project_{i}"
         src_dir.mkdir(parents=True)
@@ -135,8 +137,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
     workspace = tmp_path / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        _modernizer_workspace_pyproject(),
-        encoding="utf-8",
+        _modernizer_workspace_pyproject(), encoding="utf-8"
     )
     return workspace
 
@@ -144,19 +145,16 @@ def modernizer_workspace(tmp_path: Path) -> Path:
 @pytest.fixture
 def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
     (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        _modernizer_workspace_pyproject("selected", "ignored"),
-        encoding="utf-8",
+        _modernizer_workspace_pyproject("selected", "ignored"), encoding="utf-8"
     )
     _ = u.Tests.mk_project(
-        modernizer_workspace,
-        "selected",
-        pyproject=_modernizer_pyproject("selected"),
+        modernizer_workspace, "selected", pyproject=_modernizer_pyproject("selected")
     )
     _ = u.Tests.mk_project(
-        modernizer_workspace,
-        "ignored",
-        pyproject=_modernizer_pyproject("ignored"),
+        modernizer_workspace, "ignored", pyproject=_modernizer_pyproject("ignored")
     )
+    # FLEXT: public modernizer commands fail loud outside a real Git workspace.
+    u.Tests.initialize_git_repo(modernizer_workspace)
     return modernizer_workspace
 
 
@@ -171,15 +169,13 @@ def real_docs_project(tmp_path: Path) -> Path:
     (docs_dir / "index.md").write_text("# Index\n")
     (project_root / "README.md").write_text("# Project\n")
     (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "docs-project"\nversion = "0.1.0"\n',
+        '[project]\nname = "docs-project"\nversion = "0.1.0"\n'
     )
     return project_root
 
 
 @pytest.fixture
-def rope_workspace(
-    tmp_path: Path,
-) -> t.Pair[t.Infra.RopeProject, Path]:
+def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
     """Create a real rope workspace with semantic-analysis fixtures."""
     workspace_root = tmp_path / "rope_workspace"
     package_root = workspace_root / "src" / "rope_demo"
@@ -209,7 +205,7 @@ def rope_workspace(
         encoding="utf-8",
     )
 
-    rope_project = u.Infra.init_rope_project(workspace_root, project_prefix="__never__")
+    rope_project = u.Infra.init_rope_project(workspace_root)
     return rope_project, workspace_root
 
 
@@ -220,8 +216,7 @@ def models_resource(
     """Return the Rope resource for the semantic models fixture module."""
     rope_project, workspace_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project,
-        workspace_root / "src" / "rope_demo" / "models.py",
+        rope_project, workspace_root / "src" / "rope_demo" / "models.py"
     )
     assert resource is not None
     return resource
@@ -234,8 +229,7 @@ def services_resource(
     """Return the Rope resource for the semantic services fixture module."""
     rope_project, workspace_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project,
-        workspace_root / "src" / "rope_demo" / "services.py",
+        rope_project, workspace_root / "src" / "rope_demo" / "services.py"
     )
     assert resource is not None
     return resource

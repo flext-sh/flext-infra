@@ -6,8 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_core import r
-from flext_infra.base import s
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -15,35 +14,29 @@ from flext_infra.check.workspace_check_gates import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraWorkspaceChecker(
-    s[bool],
-    FlextInfraWorkspaceCheckGatesMixin,
-    FlextInfraWorkspaceCheckReportsMixin,
+    s[bool], FlextInfraWorkspaceCheckGatesMixin, FlextInfraWorkspaceCheckReportsMixin
 ):
     """Run workspace quality gates and generate reports."""
 
+    _workspace_root: Path = u.PrivateAttr()
+    _registry: FlextInfraGateRegistry = u.PrivateAttr()
+    _default_reports_dir: Path = u.PrivateAttr()
+
     def __init__(
-        self,
-        workspace_root: Path | None = None,
-        *,
-        workspace: Path | None = None,
+        self, workspace_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize workspace checker services and paths."""
-        self._workspace_root = u.Infra.resolve_workspace_root_or_cwd(
-            workspace_root or workspace,
+        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
+            workspace_root or workspace
         )
+        super().__init__(workspace_root=resolved_workspace)
+        self._workspace_root = self.workspace_root
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Cli.resolve_report_dir(
-            self._workspace_root,
-            c.Infra.PROJECT,
-            c.Infra.VERB_CHECK,
+            self._workspace_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
         )
         dir_result = u.Cli.ensure_dir(report_dir)
         if dir_result.failure:
@@ -81,11 +74,7 @@ class FlextInfraWorkspaceChecker(
         return r[bool].fail("Use execute_command() directly")
 
     @classmethod
-    @override
-    def execute_command(
-        cls,
-        params: m.Infra.RunCommand,
-    ) -> p.Result[bool]:
+    def execute_payload(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
         checker = cls(workspace_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
@@ -130,11 +119,10 @@ class FlextInfraWorkspaceChecker(
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
                 tuple(
                     m.Infra.CheckProjectTarget.from_workspace_name(
-                        params.workspace_path,
-                        project_name,
+                        params.workspace_path, project_name
                     )
                     for project_name in requested
-                ),
+                )
             )
         discovered = u.Infra.resolve_projects(params.workspace_path, ())
         if discovered.failure:
@@ -154,19 +142,17 @@ class FlextInfraWorkspaceChecker(
     def format(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run format checks for one project."""
         return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.FORMAT, project_dir).result,
+            self._run_gate(c.Infra.FORMAT, project_dir).result
         )
 
     def lint(self, project_dir: Path) -> p.Result[m.Infra.GateResult]:
         """Run lint checks for one project."""
         return r[m.Infra.GateResult].ok(
-            self._run_gate(c.Infra.LINT, project_dir).result,
+            self._run_gate(c.Infra.LINT, project_dir).result
         )
 
     def run_project(
-        self,
-        project: str,
-        gates: t.StrSequence,
+        self, project: str, gates: t.StrSequence
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run selected gates for one project."""
         return self.run_projects([project], list(gates))
@@ -184,18 +170,17 @@ class FlextInfraWorkspaceChecker(
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                resolved_gates_result.error or "invalid gates",
+                resolved_gates_result.error or "invalid gates"
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                dir_ensure.error or "failed to create report directory",
+                dir_ensure.error or "failed to create report directory"
             )
         effective_ctx = ctx or m.Infra.GateContext(
-            workspace=self._workspace_root,
-            reports_dir=report_base,
+            workspace=self._workspace_root, reports_dir=report_base
         )
         outcome = self._run_project_loop(
             self._project_targets(projects),
@@ -203,15 +188,10 @@ class FlextInfraWorkspaceChecker(
             effective_ctx,
             fail_fast=fail_fast,
         )
-        return self._write_reports_and_summary(
-            resolved_gates,
-            report_base,
-            outcome,
-        )
+        return self._write_reports_and_summary(resolved_gates, report_base, outcome)
 
     def _project_targets(
-        self,
-        projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget],
+        self, projects: t.StrSequence | t.SequenceOf[m.Infra.CheckProjectTarget]
     ) -> t.SequenceOf[m.Infra.CheckProjectTarget]:
         """Return typed project targets from public names or internal selections."""
         targets: list[m.Infra.CheckProjectTarget] = []
@@ -221,9 +201,8 @@ class FlextInfraWorkspaceChecker(
                 continue
             targets.append(
                 m.Infra.CheckProjectTarget.from_workspace_name(
-                    self._workspace_root,
-                    project,
-                ),
+                    self._workspace_root, project
+                )
             )
         return tuple(targets)
 

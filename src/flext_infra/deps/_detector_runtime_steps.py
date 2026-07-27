@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-    Mapping,
-    MutableMapping,
-)
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, p, t
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class FlextInfraDependencyDetectorRuntimeSteps:
@@ -24,20 +21,16 @@ class FlextInfraDependencyDetectorRuntimeSteps:
     _pip_check_factory: Callable[..., m.Infra.PipCheckReport]
 
     def _validate_environment(
-        self,
-        params: m.Infra.DetectCommand,
-        root: Path,
-        venv_bin: Path,
+        self, params: m.Infra.DetectCommand, root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.SequenceOf[Path], Path]]:
         """Discover projects and verify deptry binary; return ``(projects, limits_path)``."""
         detector = self._detector
         projects_result = detector.deps.discover_project_paths(
-            root,
-            projects_filter=params.project_names,
+            root, projects_filter=params.project_names
         )
         if projects_result.failure:
             return r[tuple[t.SequenceOf[Path], Path]].fail(
-                projects_result.error or "project discovery failed",
+                projects_result.error or "project discovery failed"
             )
         projects: t.SequenceOf[Path] = projects_result.value
         if not projects:
@@ -47,7 +40,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if not deptry_path.exists():
             detector.log.error("deps_deptry_missing", path=str(deptry_path))
             return r[tuple[t.SequenceOf[Path], Path]].fail(
-                f"Deptry executable not found at {deptry_path}",
+                f"Deptry executable not found at {deptry_path}"
             )
         limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
         limits_path = params.limits_path or limits_default
@@ -66,7 +59,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if not limits_data:
             return r[bool].ok(False)
         python_payload = limits_data.get(c.Infra.PYTHON)
-        python_cfg: t.Infra.ContainerDict = (
+        python_cfg: t.JsonMapping = (
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(python_payload)
             if isinstance(python_payload, Mapping)
             else {}
@@ -74,8 +67,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         version_value = python_cfg.get(c.Infra.VERSION)
         python_version = str(version_value) if version_value is not None else None
         report_model.dependency_limits = self._dependency_limits_factory(
-            python_version=python_version,
-            limits_path=str(limits_path),
+            python_version=python_version, limits_path=str(limits_path)
         )
         return r[bool].ok(True)
 
@@ -89,10 +81,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         limits_path: Path,
         params: m.Infra.DetectCommand,
         do_typings: bool,
-        projects_report: MutableMapping[
-            str,
-            MutableMapping[str, t.Infra.InfraValue],
-        ],
+        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
     ) -> p.Result[bool]:
         """Run deptry + optional typings detection/apply for one project."""
         detector = self._detector
@@ -129,10 +118,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         venv_bin: Path,
         limits_path: Path,
         params: m.Infra.DetectCommand,
-        projects_report: MutableMapping[
-            str,
-            MutableMapping[str, t.Infra.InfraValue],
-        ],
+        projects_report: MutableMapping[str, MutableMapping[str, t.Infra.InfraValue]],
     ) -> p.Result[bool]:
         """Detect required typings for a project and optionally add them via poetry."""
         detector = self._detector
@@ -142,12 +128,11 @@ class FlextInfraDependencyDetectorRuntimeSteps:
         if not params.quiet:
             detector.log.info("deps_typings_detect_running", project=project_name)
         typings_result = typing_deps.get_required_typings(
-            project_path,
-            limits_path=limits_path,
+            project_path, limits_path=limits_path
         )
         if typings_result.failure:
             return r[bool].fail(
-                typings_result.error or "typing dependency detection failed",
+                typings_result.error or "typing dependency detection failed"
             )
         typings_report = typings_result.value
         projects_report[project_name][c.Infra.DIR_TYPINGS] = typings_report.model_dump()
@@ -166,9 +151,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             poetry_failed = run_outcome.failure or run_outcome.value.exit_code != 0
             if poetry_failed:
                 detector.log.warning(
-                    "deps_typings_add_failed",
-                    project=project_name,
-                    package=package,
+                    "deps_typings_add_failed", project=project_name, package=package
                 )
         return r[bool].ok(True)
 

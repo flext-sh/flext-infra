@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 def _transform_source(
-    tmp_path: Path,
-    source: str,
-    mappings: t.MappingKV[str, str],
+    tmp_path: Path, source: str, mappings: t.MappingKV[str, str]
 ) -> str:
     file_path = tmp_path / "helper_consolidation.py"
     file_path.write_text(source, encoding="utf-8")
@@ -39,33 +43,33 @@ class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
         source = '\ndef util_helper(x: int) -> int:\n    """Helper docstring."""\n    return x * 2\n'
         mappings = {"util_helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert "@staticmethod" in modified
-        assert "class FlextUtilities:" in modified
-        assert "def util_helper" in modified
+        tm.that(modified, has="@staticmethod")
+        tm.that(modified, has="class FlextUtilities:")
+        tm.that(modified, has="def util_helper")
 
     def test_helper_type_hints_preserved(self, tmp_path: Path) -> None:
         """Test that type hints are preserved."""
         source = "\ndef typed_helper(x: int, y: str) -> bool:\n    return True\n"
         mappings = {"typed_helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert "x: int" in modified
-        assert "y: str" in modified
-        assert "-> bool" in modified
+        tm.that(modified, has="x: int")
+        tm.that(modified, has="y: str")
+        tm.that(modified, has="-> bool")
 
     def test_helper_docstring_preserved(self, tmp_path: Path) -> None:
         """Test that docstrings are preserved."""
         source = '\ndef documented_helper():\n    """This is a documented helper."""\n    pass\n'
         mappings = {"documented_helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert "This is a documented helper" in modified
+        tm.that(modified, has="This is a documented helper")
 
     def test_multiple_helpers_same_namespace(self, tmp_path: Path) -> None:
         """Test multiple helpers consolidated into same namespace."""
         source = "\ndef helper_one():\n    pass\n\ndef helper_two():\n    pass\n"
         mappings = {"helper_one": "FlextUtilities", "helper_two": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert modified.count("def helper_") == 2
-        assert "class FlextUtilities:" in modified
+        tm.that(modified.count("def helper_"), eq=2)
+        tm.that(modified, has="class FlextUtilities:")
 
     def test_unmapped_helper_preserved(self, tmp_path: Path) -> None:
         """Test that unmapped helpers stay at module level."""
@@ -74,7 +78,7 @@ class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
         )
         mappings = {"mapped_helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert "def unmapped_helper()" in modified
+        tm.that(modified, has="def unmapped_helper()")
         lines = modified.strip().split("\n")
         unmapped_line = next(line for line in lines if "unmapped_helper" in line)
         assert not unmapped_line.startswith(" ")
@@ -84,12 +88,12 @@ class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
         source = "\nclass FlextUtilities:\n    pass\n\ndef new_helper():\n    pass\n"
         mappings = {"new_helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert modified.count("class FlextUtilities:") == 1
-        assert "def new_helper" in modified
+        tm.that(modified.count("class FlextUtilities:"), eq=1)
+        tm.that(modified, has="def new_helper")
 
     def test_helper_call_references_updated(self, tmp_path: Path) -> None:
         """Test that internal calls to helpers are updated."""
         source = "\ndef helper():\n    pass\n\ndef caller():\n    helper()\n"
         mappings = {"helper": "FlextUtilities"}
         modified = _transform_source(tmp_path, source, mappings)
-        assert "FlextUtilities.helper()" in modified
+        tm.that(modified, has="FlextUtilities.helper()")

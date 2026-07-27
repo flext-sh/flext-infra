@@ -6,12 +6,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraInternalImportDetector:
@@ -47,10 +49,15 @@ class FlextInfraInternalImportDetector:
         return importer_parts[: len(public_prefix)] == public_prefix
 
     @staticmethod
-    def _has_private_module_part(fqn: str) -> bool:
+    def _is_private_module_part(part: str) -> bool:
+        """Return whether a module path segment is private."""
+        return part.startswith("_") and part not in c.Infra.DUNDER_ALLOWED
+
+    @classmethod
+    def _has_private_module_part(cls, fqn: str) -> bool:
         """Return whether the resolved import path crosses a private module."""
         parts = fqn.split(".")
-        return any(part.startswith("_") for part in parts[:-1])
+        return any(cls._is_private_module_part(part) for part in parts[:-1])
 
     @classmethod
     def facade_assembly_exempt(cls, importer_module: str, fqn: str) -> bool:
@@ -64,14 +71,12 @@ class FlextInfraInternalImportDetector:
             return False
         file_name = file_path.name
         return file_name.startswith(
-            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX,
+            c.Infra.NAMESPACE_PYTEST_MODULE_PREFIX
         ) or file_name.endswith(tuple(c.Infra.NAMESPACE_PYTEST_MODULE_SUFFIXES))
 
     @classmethod
     def _project_whitebox_test_exempt(
-        cls,
-        ctx: m.Infra.DetectorContext,
-        fqn: str,
+        cls, ctx: m.Infra.DetectorContext, fqn: str
     ) -> bool:
         """Return whether a pytest test module imports its own package internals."""
         if not cls._is_pytest_test_module(ctx.file_path):
@@ -100,23 +105,23 @@ class FlextInfraInternalImportDetector:
         imports = u.Infra.get_semantic_module_imports(rope_project, res)
 
         def violates_internal_import(local: str, fqn: str) -> bool:
+            _ = local
             private_module = FlextInfraInternalImportDetector._has_private_module_part(
                 fqn
             )
+            private_symbol = FlextInfraInternalImportDetector._is_private_module_part(
+                fqn.rsplit(".", maxsplit=1)[-1]
+            )
             facade_exempt = private_module and (
                 FlextInfraInternalImportDetector._facade_assembly_exempt(
-                    current_module,
-                    fqn,
+                    current_module, fqn
                 )
             )
             whitebox_exempt = (
-                FlextInfraInternalImportDetector._project_whitebox_test_exempt(
-                    ctx,
-                    fqn,
-                )
+                FlextInfraInternalImportDetector._project_whitebox_test_exempt(ctx, fqn)
             )
             return (
-                (local.startswith("_") or private_module)
+                (private_symbol or private_module)
                 and not facade_exempt
                 and not whitebox_exempt
             )

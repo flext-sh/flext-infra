@@ -1,168 +1,163 @@
-"""Standard generated lazy-init package assembly."""
+"""Canonical public-root and static-subpackage initializer rendering."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from flext_infra import c, m
 from flext_infra.codegen._codegen_generation_renderers import (
     FlextInfraCodegenGenerationRenderersMixin,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
+# mro-wkii.17.26 (codex): Keep lazy loading only at the public package root and
+# bind Ruff validation to each target project's real initializer path.
 class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin
 ):
-    """Assemble standard generated package files from typed template context."""
+    """Render the two canonical generated initializer forms."""
 
     @staticmethod
-    def _type_checking_filtered(
-        type_checking_imports: t.LazyAliasMap | None,
-        lazy_filtered: t.LazyAliasMap,
-        wildcard_runtime_module_set: frozenset[str],
-        *,
-        publish_all: bool,
-        public_export_set: frozenset[str],
-    ) -> t.LazyAliasMap:
-        """Return the static import map used by generated TYPE_CHECKING blocks."""
-        source = type_checking_imports or lazy_filtered
-        return {
-            name: val
-            for name, val in source.items()
-            if val[0] not in wildcard_runtime_module_set
-            and (not publish_all or name in public_export_set)
+    def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
+        """Return supported static imports with local facade classes as aliases."""
+        source = plan.type_checking_map or plan.lazy_map
+        public_names = frozenset(plan.exports)
+        wildcard_modules = frozenset(plan.wildcard_runtime_modules)
+        # mro-pulj (codex): direct imports outside __all__ remain statically
+        # declared because they are part of the established root interface.
+        filtered: dict[str, t.StrPair] = {
+            name: target
+            for name, target in source.items()
+            if name in public_names
+            and target[0] not in wildcard_modules
+            and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
         }
+        for (
+            alias_name,
+            class_suffix,
+        ) in c.Infra.PUBLIC_ROOT_TYPING_FACADE_SUFFIXES.items():
+            alias_target = filtered.get(alias_name)
+            if alias_target is None or alias_target[1] != alias_name:
+                continue
+            module_name = alias_target[0]
+            candidates = tuple(
+                export_name
+                for export_name, target in filtered.items()
+                if target == (module_name, export_name)
+                and export_name.endswith(class_suffix)
+            )
+            if len(candidates) == 1:
+                filtered[alias_name] = (module_name, candidates[0])
+        return filtered
 
     @classmethod
-    def _runtime_import_block(
-        cls,
-        wildcard_runtime_modules: t.StrSequence | None,
-        runtime_imports: t.LazyAliasMap,
-    ) -> t.StrSequence:
-        """Return runtime import lines for eager and wildcard imports."""
-        runtime_import_lines = cls._generate_import_lines(
-            cls._group_imports(runtime_imports),
-        )
-        runtime_import_block: t.MutableSequenceOf[str] = [
+    def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
+        """Render eager and wildcard runtime imports."""
+        lines: t.MutableSequenceOf[str] = [
             f"from {module} import *"
-            for module in sorted(set(wildcard_runtime_modules or ()))
+            for module in sorted(set(plan.wildcard_runtime_modules))
         ]
-        if runtime_import_block and runtime_import_lines:
-            runtime_import_block.append("")
-        runtime_import_block.extend(runtime_import_lines)
-        return tuple(runtime_import_block)
-
-    @staticmethod
-    def _should_emit_type_checking(
-        current_pkg: str,
-        type_checking_filtered: t.LazyAliasMap,
-        *,
-        publish_all: bool,
-    ) -> bool:
-        """Return whether this package owns static TYPE_CHECKING exports."""
-        if not type_checking_filtered:
-            return False
-        if publish_all:
-            return True
-        if current_pkg.split(".", maxsplit=1)[0].startswith(
-            c.Infra.PKG_PREFIX_UNDERSCORE
-        ):
-            return True
-        return current_pkg in {
-            c.Infra.DIR_EXAMPLES,
-            c.Infra.DIR_TESTS,
-        }
+        eager_lines: t.MutableSequenceOf[str] = []
+        eager_groups = cls._group_imports(plan.eager_dunders)
+        previous_top: str | None = None
+        for module in sorted(eager_groups, key=str.lower):
+            top = module.split(".", maxsplit=1)[0]
+            if previous_top is not None and top != previous_top:
+                eager_lines.append("")
+            parts = tuple(
+                cls._format_import_part(imported_name, export_name)
+                for export_name, imported_name in sorted(eager_groups[module])
+                if imported_name
+            )
+            eager_lines.extend(cls._format_import("", module, parts))
+            previous_top = top
+        if lines and eager_lines:
+            lines.append("")
+        lines.extend(eager_lines)
+        return "\n".join(lines)
 
     @classmethod
-    def _standard_render_context(
-        cls,
-        current_pkg: str,
-        inline_constants: t.StrMapping,
-        published_exports: t.StrSequence,
-        lazy_filtered: t.LazyAliasMap,
-        type_checking_filtered: t.LazyAliasMap,
-        runtime_import_block: t.StrSequence,
-        children_lazy: t.StrSequence,
-        rendered_child_module_paths: t.StrSequence,
-        merged_excluded_lazy_names: t.StrSequence,
-    ) -> m.Infra.LazyInitStandardRender:
-        """Build the typed render context for a standard package."""
-        publish_all = cls._is_public_api_root_namespace(current_pkg)
-        lazy_entry_names = (
-            tuple(sorted(lazy_filtered)) if publish_all else published_exports
-        )
+    def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
+        """Build one inline lazy context for a public package root."""
+        current_pkg = plan.context.current_pkg
+        # mro-pulj (codex): rendering is fail-closed even if a caller constructs
+        # a plan with implementation-only entries. Only the planner-approved
+        # public exports can become package attributes.
+        public_names = frozenset(plan.exports)
+        lazy_map = {
+            name: target
+            for name, target in plan.lazy_map.items()
+            if name in public_names
+        }
         lazy_entries = cls._build_lazy_entries(
-            lazy_entry_names,
-            lazy_filtered,
-            (current_pkg, frozenset(children_lazy), not publish_all),
+            tuple(lazy_map),
+            lazy_map,
+            (current_pkg, frozenset(plan.child_packages_for_lazy), True),
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
+        type_checking = cls._type_checking_filtered(plan)
         type_checking_lines = (
             cls.generate_type_checking(
-                cls._group_imports(type_checking_filtered),
+                cls._group_imports(type_checking),
                 include_flext_types=False,
                 child_packages=(),
                 local_package_root=current_pkg,
             )
-            if cls._should_emit_type_checking(
-                current_pkg,
-                type_checking_filtered,
-                publish_all=publish_all,
-            )
+            if type_checking
             else ()
         )
-        docstring_pkg = current_pkg if publish_all else current_pkg.rsplit(".", 1)[-1]
-        return m.Infra.LazyInitStandardRender(
+        return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
-            docstring=cls._format_root_package_docstring(docstring_pkg),
-            type_checking_enabled=bool(type_checking_lines),
-            use_merge_lazy_imports=bool(rendered_child_module_paths),
-            runtime_import_lines="\n".join(runtime_import_block),
-            child_module_paths=rendered_child_module_paths,
-            excluded_lazy_names=merged_excluded_lazy_names,
-            inline_constants=tuple(sorted(inline_constants.items())),
-            eager_export_names=tuple(
-                name for name in published_exports if name not in lazy_filtered
-            ),
+            docstring=cls._format_root_package_docstring(current_pkg),
+            current_pkg=current_pkg,
+            runtime_import_lines=cls._runtime_import_lines(plan),
+            type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
-            type_checking_lines="\n".join(type_checking_lines),
-            exports=published_exports,
-            publish_all=publish_all,
+            # mro-pulj (codex): direct import and wildcard publication share the
+            # same public symbol set; template helpers are eager plumbing only.
+            direct_imports=tuple(
+                sorted({
+                    *lazy_map,
+                    *plan.eager_dunders,
+                    *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS,
+                })
+            ),
+            exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 
     @classmethod
-    def _render_standard_file(
-        cls,
-        context: m.Infra.LazyInitStandardRender,
-    ) -> str:
-        """Render a non-bootstrap generated package file."""
-        out: t.MutableSequenceOf[str] = [
-            context.autogen_header,
-            context.docstring,
-            "",
-        ]
-        preamble = cls.get_template(c.Infra.TEMPLATE_PREAMBLE_STANDARD).render(
-            **context.model_dump(mode="python"),
+    def _static_context(
+        cls, plan: m.Infra.LazyInitPlan
+    ) -> m.Infra.StaticPackageInitRender:
+        """Build a side-effect-free private or non-production initializer."""
+        return m.Infra.StaticPackageInitRender(
+            autogen_header=c.Infra.AUTOGEN_HEADER,
+            docstring=cls._format_root_package_docstring(
+                plan.context.current_pkg.rsplit(".", maxsplit=1)[-1]
+            ),
         )
-        out.extend(preamble.splitlines())
-        if not context.runtime_import_lines:
-            out.append("")
-        body = cls.get_template(c.Infra.TEMPLATE_BODY).render(
-            **context.model_dump(mode="python"),
+
+    @classmethod
+    def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
+        """Render one inline lazy public-root initializer."""
+        return cls._render_model(
+            c.Infra.TEMPLATE_ROOT_INIT,
+            cls._root_context(plan),
+            target_filename=str(plan.context.init_path),
         )
-        body_lines = body.splitlines()
-        out.extend(
-            cls._collapse_blank_runs(
-                body_lines[1:] if body_lines and not body_lines[0] else body_lines
-            )
+
+    @classmethod
+    def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:
+        """Render one explicit static or empty subpackage initializer."""
+        return cls._render_model(
+            c.Infra.TEMPLATE_STATIC_INIT,
+            cls._static_context(plan),
+            target_filename=str(plan.context.init_path),
         )
-        out.append("")
-        getattr_content = cls.get_template(
-            c.Infra.TEMPLATE_GETATTR_STANDARD,
-        ).render(**context.model_dump(mode="python"))
-        out.extend(getattr_content.splitlines())
-        return "\n".join(out) + "\n"
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationStandardMixin"]

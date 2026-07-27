@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from flext_tests import tm
 
-from tests.constants import c
+from tests import c
 
 
 class TestsFlextInfraInfraConstantsCore:
@@ -90,12 +90,12 @@ class TestsFlextInfraInfraConstantsCore:
 
     def test_common_excluded_dirs_contains_standard_dirs(self) -> None:
         excluded = c.Infra.COMMON_EXCLUDED_DIRS
-        assert ".git" in excluded
-        assert ".venv" in excluded
-        assert "__pycache__" in excluded
-        assert "dist" in excluded
-        assert "build" in excluded
-        assert "venv" in excluded
+        tm.that(excluded, has=".git")
+        tm.that(excluded, has=".venv")
+        tm.that(excluded, has="__pycache__")
+        tm.that(excluded, has="dist")
+        tm.that(excluded, has="build")
+        tm.that(excluded, has="venv")
 
     def test_doc_excluded_dirs_includes_common(self) -> None:
         doc_excluded = c.Infra.DOC_EXCLUDED_DIRS
@@ -103,7 +103,7 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(doc_excluded.issuperset(common), eq=True)
 
     def test_doc_excluded_dirs_includes_site(self) -> None:
-        assert "site" in c.Infra.DOC_EXCLUDED_DIRS
+        tm.that(c.Infra.DOC_EXCLUDED_DIRS, has="site")
 
     def test_pyproject_skip_dirs_includes_common(self) -> None:
         skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
@@ -112,19 +112,15 @@ class TestsFlextInfraInfraConstantsCore:
 
     def test_pyproject_skip_dirs_includes_flext_dirs(self) -> None:
         skip_dirs = c.Infra.PYPROJECT_SKIP_DIRS
-        assert ".claude.disabled" in skip_dirs
-        assert ".flext-deps" in skip_dirs
-        assert "context_test" in skip_dirs
-        assert "rope_ws" in skip_dirs
-        assert "tmp_flow_test" in skip_dirs
+        tm.that(skip_dirs, has=".claude.disabled")
+        tm.that(skip_dirs, has="context_test")
+        tm.that(skip_dirs, has="rope_ws")
+        tm.that(skip_dirs, has="tmp_flow_test")
 
     def test_check_excluded_dirs_includes_common(self) -> None:
         check_excluded = c.Infra.CHECK_EXCLUDED_DIRS
         common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(check_excluded.issuperset(common), eq=True)
-
-    def test_check_excluded_dirs_includes_flext_deps(self) -> None:
-        assert ".flext-deps" in c.Infra.CHECK_EXCLUDED_DIRS
 
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)

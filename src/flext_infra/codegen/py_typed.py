@@ -11,15 +11,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
+from flext_infra import c, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenPyTyped(s[bool]):
@@ -69,9 +70,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
                         marker.unlink()
                     removed += 1
         mode = "check" if check_only else "apply"
-        u.Cli.info(
-            f"py.typed {mode}: {created} created, {removed} removed",
-        )
+        u.Cli.info(f"py.typed {mode}: {created} created, {removed} removed")
         return created + removed
 
 

@@ -6,18 +6,24 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestLoadAuditBudgets:
+    """Tests for docs auditor budget handling."""
+
     def test_no_config(self, tmp_path: Path) -> None:
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=None)
         tm.that(by_scope, empty=True)
 
@@ -29,11 +35,11 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5,
                     "max_issues_by_scope": {"test-project": 3},
-                },
-            },
+                }
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
 
@@ -41,9 +47,9 @@ class TestLoadAuditBudgets:
         arch_dir = tmp_path / "docs/architecture"
         arch_dir.mkdir(parents=True, exist_ok=True)
         (arch_dir / "architecture_config.json").write_text("{invalid json}")
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
-        tm.that(default, eq=None)
-        tm.that(by_scope, empty=True)
+        result = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        tm.fail(result)
+        tm.that(result.error, contains="json_read")
 
     def test_float_values(self, tmp_path: Path) -> None:
         arch_dir = tmp_path / "docs/architecture"
@@ -53,11 +59,11 @@ class TestLoadAuditBudgets:
                 "audit_gate": {
                     "max_issues_default": 5.5,
                     "max_issues_by_scope": {"test-project": 3.7},
-                },
-            },
+                }
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=5)
         tm.that(by_scope.get("test-project"), eq=3)
 
@@ -66,10 +72,10 @@ class TestLoadAuditBudgets:
         arch_dir.mkdir(parents=True, exist_ok=True)
         config_data: t.JsonMapping = {
             "docs_validation": {
-                "audit_gate": {"max_issues_by_scope": {"test-project": 3}},
-            },
+                "audit_gate": {"max_issues_by_scope": {"test-project": 3}}
+            }
         }
         u.Cli.json_write(arch_dir / "architecture_config.json", config_data)
-        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path)
+        default, by_scope = FlextInfraDocAuditor.load_audit_budgets(tmp_path).unwrap()
         tm.that(default, eq=None)
         tm.that(by_scope.get("test-project"), eq=3)

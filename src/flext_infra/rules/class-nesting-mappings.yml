@@ -485,12 +485,6 @@ class_nesting:
   target_name: FlextInfraExtraPathsManager
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraInternalDependencySyncService
-  current_file: flext-core/src/flext_infra/deps/internal_sync.py
-  target_namespace: FlextDepsInternalSync
-  target_name: FlextInfraInternalDependencySyncService
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: ConsolidateGroupsPhase
   current_file: flext-core/src/flext_infra/deps/modernizer.py
   target_namespace: FlextDepsModernizer

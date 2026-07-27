@@ -1,34 +1,29 @@
-"""Parent-package resolution (constants-module walk) for the lazy-init planner."""
+"""Rope-semantic parent resolution for the lazy-init planner."""
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
-from flext_infra.codegen._lazy_init_planner_parent_ast import (
-    FlextInfraCodegenLazyInitPlannerParentAstMixin,
-)
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
-class FlextInfraCodegenLazyInitPlannerParentsMixin(
-    FlextInfraCodegenLazyInitPlannerParentAstMixin,
-):
+class FlextInfraCodegenLazyInitPlannerParentsMixin:
+    """Resolve inherited packages from Rope scopes and import names only."""
+
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
 
+        def _module_file(self, module_path: str) -> Path | None: ...
+
         def _export_names_for_package(self, package_name: str) -> frozenset[str]: ...
 
-    @override
     def _parents_from_constants_module(
-        self,
-        module_path: Path,
-        current_pkg: str,
-        visited: set[str] | None = None,
+        self, module_path: Path, current_pkg: str, visited: set[str] | None = None
     ) -> t.StrSequence:
         """Extract upstream package parents from a constants module.
 
@@ -69,31 +64,22 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
             is not None
             and str(module_file.resolve()) not in seen
             for parent in self._parents_from_constants_module(
-                module_file,
-                current_pkg,
-                seen,
+                module_file, current_pkg, seen
             )
         )
-        rope_parents = tuple(
-            dict.fromkeys(
+        # mro-j47u (codex): Rope state is the sole parent fact source; the old
+        # stdlib-AST fallback duplicated this exact import/class walk.
+        parents: list[str] = []
+        for package_name in (*base_packages, *declared_packages, *same_package_parents):
+            if (
                 package_name
-                for package_name in (
-                    *base_packages,
-                    *declared_packages,
-                    *same_package_parents,
-                )
-                if package_name and package_name != current_pkg
-            )
-        )
-        ast_parents = self._parents_from_constants_ast(
-            module_path,
-            current_pkg,
-            seen,
-        )
-        return tuple(dict.fromkeys((*rope_parents, *ast_parents)))
+                and package_name != current_pkg
+                and package_name not in parents
+            ):
+                parents.append(package_name)
+        return tuple(parents)
 
     @staticmethod
-    @override
     def _module_path_from_target(target: str) -> str:
         """Strip the trailing CapWords class name (if any) to yield a module path.
 
@@ -127,10 +113,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
             else None
         )
         if canonical_target is not None:
+            # mro-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
             canonical_package = canonical_target[0]
-            if not isinstance(canonical_package, str):
-                msg = f"Invalid runtime alias package for {alias_name}: {canonical_target!r}"
-                raise TypeError(msg)
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:
@@ -147,7 +131,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin(
                 return f"{package_name}"
         return ""
 
-    @override
     def _package_name_from_target(self, target: str) -> str:
         """Return the longest workspace package name matching the dotted target."""
         parts = tuple(part for part in target.split(".") if part)

@@ -7,13 +7,17 @@ that the gate detects violations universally and accepts clean code.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
 from flext_infra.gates.silent_failure import FlextInfraSilentFailureGate
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 _DIRTY_UTILITIES = (
     "from __future__ import annotations\n\n"

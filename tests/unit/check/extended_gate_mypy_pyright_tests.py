@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from flext_tests import tm
 
 from flext_infra import m, p, r
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from tests.utilities import TestsFlextInfraUtilities as u
+from tests import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.gates.base_gate import FlextInfraGate
 
 
 class TestTypeGates:
@@ -22,9 +26,7 @@ class TestTypeGates:
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(
-        *results: p.Result[m.Cli.CommandOutput],
-    ) -> p.Cli.CommandRunner:
+    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -67,6 +69,7 @@ class TestTypeGates:
     )
     def test_check(
         self,
+        *,
         tmp_path: Path,
         gate_class: type[FlextInfraGate],
         project_has_src: bool,

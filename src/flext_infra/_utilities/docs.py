@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra import c, m, t
 from flext_infra._utilities._docs_scope_build import (
     FlextInfraUtilitiesDocsScopeBuildMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
@@ -37,9 +37,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         )
 
     @staticmethod
-    def iter_scope_markdown_files(
-        scope: m.Infra.DocScope,
-    ) -> t.SequenceOf[Path]:
+    def iter_scope_markdown_files(scope: m.Infra.DocScope) -> t.SequenceOf[Path]:
         """Collect markdown files governed by one docs scope."""
         scope_root = scope.path
         files = FlextInfraUtilitiesDocs.iter_markdown_files(scope_root)
@@ -61,8 +59,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             if not (
                 path.is_relative_to(docs_root)
                 and FlextInfraUtilitiesDocsScope.is_excluded_doc_path(
-                    scope_root,
-                    path.relative_to(docs_root),
+                    scope_root, path.relative_to(docs_root)
                 )
             )
         ]
@@ -73,9 +70,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             u.write_file(
-                path,
-                "\n".join(lines).rstrip() + "\n",
-                encoding=c.Cli.ENCODING_DEFAULT,
+                path, "\n".join(lines).rstrip() + "\n", encoding=c.Cli.ENCODING_DEFAULT
             )
             return r[bool].ok(True)
         except OSError as exc:
@@ -86,13 +81,9 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         """Convert a heading title to a GitHub-compatible anchor slug."""
         normalized: str = u.norm_str(text, case="lower")
         alnum_only: str = c.Infra.ANCHOR_NON_ALNUM_RE.sub("", normalized)
-        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub(
-            "-",
-            alnum_only,
-        )
+        collapsed_whitespace: str = c.Infra.ANCHOR_WHITESPACE_RE.sub("-", alnum_only)
         slug: str = c.Infra.ANCHOR_DASH_COLLAPSE_RE.sub(
-            "-",
-            collapsed_whitespace,
+            "-", collapsed_whitespace
         ).strip("-")
         return slug
 
@@ -134,24 +125,19 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
         *,
         projects: t.StrSequence | None,
         output_dir: Path | str,
-        handler: Callable[
-            [m.Infra.DocScope],
-            m.Infra.DocsPhaseReport,
-        ],
+        handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
-            workspace_root=workspace_root,
-            projects=projects,
-            output_dir=output_dir,
+            workspace_root=workspace_root, projects=projects, output_dir=output_dir
         )
         if scopes_result.failure:
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error",
+                scopes_result.error or "scope error"
             )
-        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok(
-            [handler(scope) for scope in scopes_result.value],
-        )
+        return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
+            handler(scope) for scope in scopes_result.value
+        ])
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocs"]

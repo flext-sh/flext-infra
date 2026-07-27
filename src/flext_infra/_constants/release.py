@@ -14,6 +14,7 @@ class FlextInfraConstantsRelease:
     """Release infrastructure constants."""
 
     RELEASE_PHASE_ALL: Final[str] = "all"
+    VERSION_RELEASE_SEGMENTS: Final[int] = 3
 
     class ReleasePhase(StrEnum):
         """Canonical release phases for workspace orchestration."""
@@ -37,8 +38,7 @@ class FlextInfraConstantsRelease:
         ReleasePhase.PUBLISH,
     })
     VERSION_RE: Final[t.RegexPattern] = re.compile(
-        r"^version\s*=\s*['\"](.+?)['\"]",
-        re.MULTILINE,
+        r"^version\s*=\s*['\"](.+?)['\"]", re.MULTILINE
     )
 
 

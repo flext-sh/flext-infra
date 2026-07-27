@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra._models.mro_scan import FlextInfraModelsMroScan
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesMroScanSource:
@@ -22,15 +24,12 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def find_facade(
-        cls,
-        source: str,
-        spec: FlextInfraModelsMroScan.MROTargetSpec,
+        cls, source: str, spec: FlextInfraModelsMroScan.MROTargetSpec
     ) -> str:
         """Find the facade class name for a target file."""
         alias_pattern = re.compile(
             cls._FACADE_ALIAS_TEMPLATE.format(
-                alias=re.escape(spec.family_alias),
-                suffix=re.escape(spec.class_suffix),
+                alias=re.escape(spec.family_alias), suffix=re.escape(spec.class_suffix)
             )
         )
         if alias_match := alias_pattern.search(source):
@@ -46,9 +45,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def candidates(
-        cls,
-        source: str,
-        spec: FlextInfraModelsMroScan.MROTargetSpec,
+        cls, source: str, spec: FlextInfraModelsMroScan.MROTargetSpec
     ) -> t.SequenceOf[FlextInfraModelsMroScan.MROSymbolCandidate]:
         """Return movable top-level symbols for the target family."""
         tree = ast.parse(source)
@@ -61,9 +58,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def _candidate_from_node(
-        cls,
-        node: ast.stmt,
-        spec: FlextInfraModelsMroScan.MROTargetSpec,
+        cls, node: ast.stmt, spec: FlextInfraModelsMroScan.MROTargetSpec
     ) -> FlextInfraModelsMroScan.MROSymbolCandidate | None:
         alias = spec.family_alias
         if alias == "t":
@@ -74,8 +69,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def _constant_candidate(
-        cls,
-        node: ast.stmt,
+        cls, node: ast.stmt
     ) -> FlextInfraModelsMroScan.MROSymbolCandidate | None:
         name = cls._assignment_name(node)
         if name is None or name.islower() or cls._CONSTANT_PATTERN.match(name) is None:
@@ -84,8 +78,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def _typing_candidate(
-        cls,
-        node: ast.stmt,
+        cls, node: ast.stmt
     ) -> FlextInfraModelsMroScan.MROSymbolCandidate | None:
         name = cls._typing_name(node)
         if name is None or cls._IDENTIFIER_PATTERN.match(name) is None:
@@ -95,8 +88,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @classmethod
     def _protocol_candidate(
-        cls,
-        node: ast.stmt,
+        cls, node: ast.stmt
     ) -> FlextInfraModelsMroScan.MROSymbolCandidate | None:
         if not isinstance(node, ast.ClassDef) or not cls._is_protocol_class(node):
             return None
@@ -104,10 +96,7 @@ class FlextInfraUtilitiesMroScanSource:
 
     @staticmethod
     def _candidate(
-        *,
-        node: ast.stmt,
-        name: str,
-        kind: str,
+        *, node: ast.stmt, name: str, kind: str
     ) -> FlextInfraModelsMroScan.MROSymbolCandidate:
         line = (
             min(decorator.lineno for decorator in node.decorator_list)

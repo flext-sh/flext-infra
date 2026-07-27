@@ -6,17 +6,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from importlib.resources import files
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_core import r
-from flext_infra._models.deps_tool_config import (
-    FlextInfraModelsDepsToolSettings as mdts,
-)
 from flext_infra.constants import c
-from flext_infra.protocols import p
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesBase:
@@ -26,50 +24,6 @@ class FlextInfraUtilitiesBase:
     Generic ``validate`` and ``deep`` methods use PEP 695 type parameters
     so callers can validate ANY shape with a single SSOT helper.
     """
-
-    _tool_config_cache: p.Result[mdts.ToolConfigDocument] | None = None
-
-    @staticmethod
-    def _load_tool_config_cached() -> p.Result[mdts.ToolConfigDocument]:
-        """Load, validate, and cache ``tool_config.yml`` for dependency tooling."""
-        cached = FlextInfraUtilitiesBase._tool_config_cache
-        if cached is not None:
-            return cached
-        try:
-            result = FlextInfraUtilitiesBase._load_tool_config_uncached()
-        except (
-            FileNotFoundError,
-            OSError,
-            TypeError,
-            c.ValidationError,
-            ValueError,
-        ) as exc:
-            result = r[mdts.ToolConfigDocument].fail(
-                f"failed to load tool_config.yml: {exc}",
-            )
-        FlextInfraUtilitiesBase._tool_config_cache = result
-        return result
-
-    @staticmethod
-    def _load_tool_config_uncached() -> p.Result[mdts.ToolConfigDocument]:
-        """Read and validate the dependency tool configuration once."""
-        raw_text = (
-            files("flext_infra.deps")
-            .joinpath("tool_config.yml")
-            .read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        )
-        parsed = u.Cli.yaml_parse(raw_text)
-        if parsed.failure:
-            return r[mdts.ToolConfigDocument].fail(
-                parsed.error or "tool_config.yml parse failed",
-            )
-        validated = mdts.ToolConfigDocument.model_validate(parsed.value)
-        return r[mdts.ToolConfigDocument].ok(validated)
-
-    @staticmethod
-    def load_tool_config() -> p.Result[mdts.ToolConfigDocument]:
-        """Return cached dependency tool configuration."""
-        return FlextInfraUtilitiesBase._load_tool_config_cached()
 
     @staticmethod
     def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
@@ -124,7 +78,7 @@ class FlextInfraUtilitiesBase:
         if phase not in phases:
             valid = ", ".join(sorted(phases)) or "(none)"
             return r[t.StrSequence].fail(
-                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})",
+                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})"
             )
         return r[t.StrSequence].ok((phase,))
 

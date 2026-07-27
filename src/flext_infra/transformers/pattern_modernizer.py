@@ -2,7 +2,7 @@
 
 Applies safe, syntactic transformations that do not require type inference:
 
-- ``print(...)`` → ``logger.info(...)`` and injects a module-level logger.
+- ``u.Cli.print(...)`` → ``logger.info(...)`` and injects a module-level logger.
 - ``breakpoint()`` / ``import pdb; pdb.set_trace()`` → removed.
 - Bare ``except:`` → ``except Exception:``.
 - ``open(path, mode)`` without ``encoding`` → ``open(path, mode, encoding="utf-8")``.
@@ -15,16 +15,17 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
@@ -89,9 +90,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
     def _ensure_u_import(cls, source: str) -> str:
         """Ensure ``from flext_core import u`` is present."""
         pkg_match = re.search(
-            r"^from\s+flext_core\s+import\s+([^\n]+)",
-            source,
-            re.MULTILINE,
+            r"^from\s+flext_core\s+import\s+([^\n]+)", source, re.MULTILINE
         )
         if pkg_match:
             names = pkg_match.group(1).strip()
@@ -123,13 +122,36 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                     call_text = self.node_text(value)
                     new_call = re.sub(r"\bprint\b", "logger.info", call_text, count=1)
                     self.append_rewrite(
-                        node, new_call, "Replaced print() with logger.info()"
+                        node, new_call, "Replaced u.Cli.print() with logger.info()"
                     )
                     return
                 if value.func.id == "breakpoint":
                     self.append_rewrite(node, "pass", "Replaced breakpoint() with pass")
                     return
+            elif isinstance(value, ast.Call) and self._is_u_cli_print(value):
+                self.needs_logger = True
+                call_text = self.node_text(value)
+                new_call = re.sub(
+                    r"\bu\.Cli\.print\b", "logger.info", call_text, count=1
+                )
+                self.append_rewrite(
+                    node, new_call, "Replaced u.Cli.print() with logger.info()"
+                )
+                return
             self.generic_visit(node)
+
+        @staticmethod
+        def _is_u_cli_print(value: ast.Call) -> bool:
+            """Return True for ``u.Cli.print(...)`` calls."""
+            func = value.func
+            return (
+                isinstance(func, ast.Attribute)
+                and func.attr == "print"
+                and isinstance(func.value, ast.Attribute)
+                and func.value.attr == "Cli"
+                and isinstance(func.value.value, ast.Name)
+                and func.value.value.id == "u"
+            )
 
         @override
         def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
@@ -145,9 +167,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                     new_line = f"{indent}except Exception:\n"
                     start = self._offset(lineno, 0)
                     end = start + len(line)
-                    self.rewrites.append(
-                        FlextInfraSourceRewrite(start, end, new_line),
-                    )
+                    self.rewrites.append(FlextInfraSourceRewrite(start, end, new_line))
                     self.changes.append("Fixed bare except: → except Exception:")
             self.generic_visit(node)
 
@@ -163,9 +183,7 @@ class FlextInfraRefactorPatternModernizer(FlextInfraRopeTransformer):
                 if call_text.endswith(")"):
                     new_call = call_text[:-1] + ', encoding="utf-8")'
                     self.append_rewrite(
-                        node,
-                        new_call,
-                        'Added encoding="utf-8" to open()',
+                        node, new_call, 'Added encoding="utf-8" to open()'
                     )
             self.generic_visit(node)
 

@@ -1,20 +1,27 @@
+"""Test modernizer helpers behavior."""
+
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import tomlkit
 import tomlkit.items
 from flext_tests import tm
-from tomlkit.toml_document import TOMLDocument
 
-from tests.constants import c
-from tests.typings import t
-from tests.utilities import u
+from tests import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tomlkit.toml_document import TOMLDocument
+
+    from tests import t
 
 
 @pytest.fixture
 def doc() -> TOMLDocument:
+    """Provide a mutable TOML document fixture."""
     return tomlkit.document()
 
 
@@ -23,9 +30,7 @@ def _toml_item(value: str | int | t.StrSequence) -> tomlkit.items.Item:
         return tomlkit.items.String.from_raw(value)
     if isinstance(value, int):
         return tomlkit.items.Integer(
-            value,
-            trivia=tomlkit.items.Trivia(),
-            raw=str(value),
+            value, trivia=tomlkit.items.Trivia(), raw=str(value)
         )
     str_items: list[tomlkit.items.Item] = [
         tomlkit.items.String.from_raw(v) for v in value
@@ -64,7 +69,8 @@ class TestsFlextInfraDepsModernizerHelpers:
         ],
     )
     def test_dep_name(self, raw: str, expected: str | None) -> None:
-        assert u.Infra.dep_name(raw) == expected
+        """Verify dep name."""
+        tm.that(u.Infra.dep_name(raw), eq=expected)
 
     @pytest.mark.parametrize(
         ("specs", "expected_length", "expected_names", "check_sorted"),
@@ -81,8 +87,10 @@ class TestsFlextInfraDepsModernizerHelpers:
         specs: t.StrSequence,
         expected_length: int,
         expected_names: t.StrSequence,
+        *,
         check_sorted: bool,
     ) -> None:
+        """Verify dedupe specs."""
         deduped = u.Infra.dedupe_specs(specs)
         tm.that(deduped, length=expected_length)
         names = [u.Infra.dep_name(spec) for spec in deduped]
@@ -91,29 +99,27 @@ class TestsFlextInfraDepsModernizerHelpers:
         if check_sorted and len(deduped) > 1:
             left = u.Infra.dep_name(deduped[0])
             right = u.Infra.dep_name(deduped[1])
-            assert left is not None
-            assert right is not None
-            assert left < right
+            tm.that(left, none=False)
+            tm.that(right, none=False)
+            if left is None or right is None:
+                pytest.fail("deduplicated dependency names must be present")
+            tm.that(left < right, eq=True)
 
     @pytest.mark.parametrize(
         ("value", "expected"),
-        [
-            ("test", "test"),
-            (None, None),
-            ({"key": "value"}, {"key": "value"}),
-        ],
+        [("test", "test"), (None, None), ({"key": "value"}, {"key": "value"})],
     )
     def test_unwrap_item(
-        self,
-        value: t.Cli.TomlMappingSource | None,
-        expected: t.Infra.InfraValue,
+        self, value: t.Cli.TomlMappingSource | None, expected: t.Infra.InfraValue
     ) -> None:
+        """Verify unwrap item."""
         actual = None if value is None else u.Cli.toml_unwrap_item(value)
-        assert actual == expected
+        tm.that(actual, eq=expected)
 
     def test_unwrap_item_toml_item(self, doc: TOMLDocument) -> None:
+        """Verify unwrap item toml item."""
         doc["key"] = "value"
-        assert u.Cli.toml_unwrap_item(doc["key"]) == "value"
+        tm.that(u.Cli.toml_unwrap_item(doc["key"]), eq="value")
 
     @pytest.mark.parametrize(
         ("value", "expected"),
@@ -126,41 +132,39 @@ class TestsFlextInfraDepsModernizerHelpers:
         ],
     )
     def test_as_string_list(
-        self,
-        value: tomlkit.items.Item | None,
-        expected: t.StrSequence,
+        self, value: tomlkit.items.Item | None, expected: t.StrSequence
     ) -> None:
+        """Verify as string list."""
         actual: t.StrSequence = (
             [] if value is None else u.Cli.toml_as_string_list(value)
         )
-        assert list(actual) == list(expected)
+        tm.that(list(actual), eq=list(expected))
 
     def test_as_string_list_toml_item(self, doc: TOMLDocument) -> None:
+        """Verify as string list toml item."""
         doc["items"] = ["a", "b"]
         items_array: tomlkit.items.Item = _toml_item(["a", "b"])
-        assert u.Cli.toml_as_string_list(items_array) == ["a", "b"]
+        tm.that(u.Cli.toml_as_string_list(items_array), eq=["a", "b"])
         doc["value"] = 42
         int_val: tomlkit.items.Item = _toml_item(42)
-        assert u.Cli.toml_as_string_list(int_val) == []
+        tm.that(u.Cli.toml_as_string_list(int_val), eq=[])
 
     @pytest.mark.parametrize(
-        ("items", "expected"),
-        [(["a", "b", "c"], 3), ([], 0), (["single"], 1)],
+        ("items", "expected"), [(["a", "b", "c"], 3), ([], 0), (["single"], 1)]
     )
     def test_array(self, items: t.StrSequence, expected: int) -> None:
+        """Verify TOML array construction preserves item count."""
         tm.that(len(u.Cli.toml_array(items)), eq=expected)
 
-    @pytest.mark.parametrize(
-        "mode",
-        ["new", "existing", "replace-non-table"],
-    )
+    @pytest.mark.parametrize("mode", ["new", "existing", "replace-non-table"])
     def test_ensure_table(self, mode: str) -> None:
+        """Verify ensure table."""
         parent = tomlkit.table()
         if mode == "existing":
             existing = tomlkit.table()
             parent["key"] = existing
             ensured = u.Cli.toml_ensure_table(parent, "key")
-            assert ensured is existing
+            tm.that(ensured is existing, eq=True)
             return
         if mode == "replace-non-table":
             parent["key"] = "string_value"
@@ -194,14 +198,16 @@ class TestsFlextInfraDepsModernizerHelpers:
         expected_dev: t.StrSequence,
         expected_docs: t.StrSequence,
     ) -> None:
+        """Verify project dev groups."""
         groups = u.Infra.project_dev_groups(_doc_with_optional_deps(optional_deps))
-        assert list(groups.get("dev", [])) == list(expected_dev)
-        assert list(groups.get("docs", [])) == list(expected_docs)
+        tm.that(list(groups.get("dev", [])), eq=list(expected_dev))
+        tm.that(list(groups.get("docs", [])), eq=list(expected_docs))
 
     def test_project_dev_groups_missing_sections(self, doc: TOMLDocument) -> None:
-        assert u.Infra.project_dev_groups(doc) == {}
+        """Verify project dev groups missing sections."""
+        tm.that(u.Infra.project_dev_groups(doc), eq={})
         doc["project"] = {"name": "test"}
-        assert u.Infra.project_dev_groups(doc) == {}
+        tm.that(u.Infra.project_dev_groups(doc), eq={})
 
     @pytest.mark.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
@@ -225,16 +231,19 @@ class TestsFlextInfraDepsModernizerHelpers:
         self,
         optional_deps: t.MappingKV[str, t.StrSequence],
         expected_length: int,
+        *,
         expect_pytest: bool,
     ) -> None:
+        """Verify canonical dev dependencies."""
         result = u.Infra.canonical_dev_dependencies(
             _doc_with_optional_deps(optional_deps)
         )
         tm.that(result, length=expected_length)
         if expect_pytest:
-            assert any("pytest" in item for item in result)
+            tm.that(any("pytest" in item for item in result), eq=True)
 
     def test_declared_dependency_names_collects_all_supported_groups(self) -> None:
+        """Verify declared dependency names collects all supported groups."""
         doc = tomlkit.document()
         doc["project"] = {
             "dependencies": ["requests>=2.0"],
@@ -243,16 +252,11 @@ class TestsFlextInfraDepsModernizerHelpers:
                 "docs": ["mkdocs>=1.6"],
             },
         }
-        doc["dependency-groups"] = {
-            "test": ["flext-tests", "coverage>=7.0"],
-        }
+        doc["dependency-groups"] = {"test": ["flext-tests", "coverage>=7.0"]}
         doc["tool"] = {
             "poetry": {
-                "dependencies": {
-                    "python": ">=3.13,<3.14",
-                    "flext-api": "^0.1.0",
-                },
-            },
+                "dependencies": {"python": ">=3.13,<3.14", "flext-api": "^0.1.0"}
+            }
         }
 
         result = u.Infra.declared_dependency_names(doc)
@@ -262,9 +266,9 @@ class TestsFlextInfraDepsModernizerHelpers:
         tm.that(result, has="flext-tests")
 
     def test_locked_dependency_versions_skips_non_registry_sources(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify locked dependency versions skips non registry sources."""
         lock_path = tmp_path / "uv.lock"
         lock_path.write_text(
             (
@@ -284,11 +288,11 @@ class TestsFlextInfraDepsModernizerHelpers:
         )
 
         tm.that(
-            u.Infra.locked_dependency_versions(lock_path),
-            eq={"requests": "2.32.4"},
+            u.Infra.locked_dependency_versions(lock_path), eq={"requests": "2.32.4"}
         )
 
     def test_rewrite_requirement_constraint_preserves_extras_and_markers(self) -> None:
+        """Verify rewrite requirement constraint preserves extras and markers."""
         tm.that(
             u.Infra.rewrite_requirement_constraint(
                 "httpx[socks]>=0.1; python_version < '3.14'",

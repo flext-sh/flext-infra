@@ -6,7 +6,7 @@ from types import MappingProxyType
 from typing import Annotated
 
 from flext_cli import m
-from flext_infra.typings import t
+from flext_infra import t
 
 
 class FlextInfraModelsDepsToolConfigLinters:
@@ -61,6 +61,13 @@ class FlextInfraModelsDepsToolConfigLinters:
                 description="Quote style for ruff formatter output.",
             ),
         ]
+        skip_magic_trailing_comma: Annotated[
+            bool,
+            m.Field(
+                alias="skip-magic-trailing-comma",
+                description="Collapse short comma-terminated constructs onto one line.",
+            ),
+        ]
 
     class RuffIsortConfig(m.ArbitraryTypesModel):
         """Ruff isort settings loaded from YAML."""
@@ -91,13 +98,25 @@ class FlextInfraModelsDepsToolConfigLinters:
         """Ruff lint settings loaded from YAML."""
 
         select: Annotated[
-            t.StrSequence,
-            m.Field(description="Ruff lint rule selectors."),
+            t.StrSequence, m.Field(description="Ruff lint rule selectors.")
         ] = m.Field(default_factory=tuple)
         ignore: Annotated[
-            t.StrSequence,
-            m.Field(description="Ruff lint rule ignore list."),
+            t.StrSequence, m.Field(description="Ruff lint rule ignore list.")
         ] = m.Field(default_factory=tuple)
+        ignored_rule_rationales: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="ignored-rule-rationales",
+                description="Global Ruff exclusions mapped to verified architecture rationales.",
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        banned_api: Annotated[
+            t.StrMapping,
+            m.Field(
+                alias="banned-api",
+                description="Forbidden direct APIs and their canonical alternatives.",
+            ),
+        ]
         isort: FlextInfraModelsDepsToolConfigLinters.RuffIsortConfig = m.Field(
             description="Ruff isort configuration"
         )
@@ -109,12 +128,53 @@ class FlextInfraModelsDepsToolConfigLinters:
             ),
         ]
 
+    class ProjectRuffConfig(m.ArbitraryTypesModel):
+        """Project-owned Ruff additions for generated managed artifacts."""
+
+        per_file_ignores: Annotated[
+            t.MappingKV[str, t.StrSequence],
+            m.Field(
+                description="Project-local per-file rules merged with global policy."
+            ),
+        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+
+    class ProjectManagedArtifactsConfig(m.ArbitraryTypesModel):
+        """Project-owned configuration for generated artifacts."""
+
+        Ruff: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.ProjectRuffConfig,
+            m.Field(description="Ruff additions owned by the current project."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigLinters.ProjectRuffConfig()
+            )
+        )
+
+    class ProjectConfigDocument(m.ArbitraryTypesModel):
+        """Relevant managed-artifact slice loaded from project config files."""
+
+        ManagedArtifacts: Annotated[
+            FlextInfraModelsDepsToolConfigLinters.ProjectManagedArtifactsConfig,
+            m.Field(description="Project-local managed artifact configuration."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigLinters.ProjectManagedArtifactsConfig()
+            )
+        )
+
     class RuffConfig(m.ArbitraryTypesModel):
         """Ruff top-level settings loaded from YAML."""
 
         exclude: Annotated[
             t.StrSequence,
             m.Field(description="Directory/file globs excluded from ruff checks."),
+        ] = m.Field(default_factory=tuple)
+        namespace_packages: Annotated[
+            t.StrSequence,
+            m.Field(
+                alias="namespace-packages",
+                description="Intentional PEP 420 namespace roots checked by Ruff.",
+            ),
         ] = m.Field(default_factory=tuple)
         fix: Annotated[bool, m.Field(description="Enable automatic ruff fixes")]
         line_length: Annotated[
@@ -172,7 +232,7 @@ class FlextInfraModelsDepsToolConfigLinters:
                     "this override. AGENTS.md:319 forbids suppressions without "
                     "evidence; leave empty only for strictly transitional overrides "
                     "with a TODO in the module comment."
-                ),
+                )
             ),
         ] = ""
 
@@ -185,14 +245,16 @@ class FlextInfraModelsDepsToolConfigLinters:
         exclude: Annotated[
             str,
             m.Field(
-                description="Regex used to exclude generated or fixture-like paths from mypy.",
+                description="Regex used to exclude generated or fixture-like paths from mypy."
             ),
         ] = ""
         disabled_error_codes: Annotated[
-            t.StrSequence,
+            t.StrMapping,
             m.Field(
                 alias="disabled-error-codes",
-                description="Mypy error codes disabled by default.",
+                description=(
+                    "Mypy error codes mapped to their tested facade-MRO rationale."
+                ),
             ),
         ]
         boolean_settings: Annotated[
@@ -255,6 +317,4 @@ class FlextInfraModelsDepsToolConfigLinters:
         ] = False
 
 
-__all__: list[str] = [
-    "FlextInfraModelsDepsToolConfigLinters",
-]
+__all__: list[str] = ["FlextInfraModelsDepsToolConfigLinters"]

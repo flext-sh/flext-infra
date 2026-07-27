@@ -9,17 +9,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
+from flext_infra import c, m, t, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraCodegenCensus(s[str]):
@@ -30,7 +30,7 @@ class FlextInfraCodegenCensus(s[str]):
         """Execute the census directly from the validated CLI service model."""
         if self.apply_changes:
             return r[str].fail(
-                "census is read-only; use flext-infra codegen auto-fix --apply",
+                "census is read-only; use flext-infra codegen auto-fix --apply"
             )
         try:
             reports = self.run()
@@ -54,10 +54,8 @@ class FlextInfraCodegenCensus(s[str]):
             if report.total > 0
         ]
         lines.append(
-            (
-                f"Total: {total_violations} violations ({total_fixable} fixable)"
-                f" across {len(reports)} projects"
-            ),
+            f"Total: {total_violations} violations ({total_fixable} fixable)"
+            f" across {len(reports)} projects"
         )
         return r[str].ok("\n".join(lines))
 
@@ -89,7 +87,7 @@ class FlextInfraCodegenCensus(s[str]):
         *,
         projects: t.SequenceOf[p.Infra.ProjectInfo] | None = None,
     ) -> t.SequenceOf[m.Infra.CensusReport]:
-        """Standard path: census all projects in workspace."""
+        """Census all projects in workspace using the standard path."""
         if projects is not None:
             selected_projects = tuple(projects)
         else:
@@ -99,16 +97,10 @@ class FlextInfraCodegenCensus(s[str]):
             )
         return [self._census_project(project) for project in selected_projects]
 
-    def _census_project(
-        self,
-        project: p.Infra.ProjectInfo,
-    ) -> m.Infra.CensusReport:
+    def _census_project(self, project: p.Infra.ProjectInfo) -> m.Infra.CensusReport:
         """Run census on a single project."""
         violations_result = u.Infra.parse_namespace_validation(
-            FlextInfraNamespaceValidator().validate_project(
-                project.path,
-                scan_tests=True,
-            ),
+            FlextInfraNamespaceValidator().validate_project(project.path)
         )
         violations = (
             list(violations_result.unwrap()) if violations_result.success else []

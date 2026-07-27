@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, m, t
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesGithubSyncMixin:
@@ -22,9 +23,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
     def _github_render_template(cls, template_path: Path) -> p.Result[str]:
         """Github render template."""
         try:
-            body = template_path.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            body = template_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
             return r[str].fail(f"failed to read template: {exc}")
         header_template = c.Infra.GENERATED_SHELL_HEADER
@@ -37,14 +36,12 @@ class FlextInfraUtilitiesGithubSyncMixin:
     def _github_render_project_template(cls, rendered_template: str) -> str:
         """Adapt workspace workflow commands to standalone project bootstrap semantics."""
         return rendered_template.replace(
-            "- name: Boot (advisory)", "- name: Setup (advisory)"
+            "- name: Boot (blocking)", "- name: Setup (blocking)"
         ).replace("run: make boot", "run: make setup")
 
     @classmethod
     def _github_resolve_source_workflow(
-        cls,
-        workspace_root: Path,
-        source_workflow: Path | None = None,
+        cls, workspace_root: Path, source_workflow: Path | None = None
     ) -> p.Result[Path]:
         """Github resolve source workflow."""
         if source_workflow is not None:
@@ -63,8 +60,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
 
     @classmethod
     def _github_sync_project(
-        cls,
-        ctx: m.Infra.GithubWorkflowSyncContext,
+        cls, ctx: m.Infra.GithubWorkflowSyncContext
     ) -> p.Result[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]]:
         """Github sync project."""
         operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
@@ -74,11 +70,9 @@ class FlextInfraUtilitiesGithubSyncMixin:
                 cls._github_prune_workflows(ctx, operations)
         except OSError as exc:
             return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].fail(
-                f"sync error: {exc}",
+                f"sync error: {exc}"
             )
-        return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].ok(
-            operations,
-        )
+        return r[t.SequenceOf[m.Infra.GithubWorkflowSyncOperation]].ok(operations)
 
     @classmethod
     def _github_sync_ci_yml(
@@ -90,52 +84,42 @@ class FlextInfraUtilitiesGithubSyncMixin:
         destination = ctx.ci_destination
         rel_path = str(destination.relative_to(ctx.project_root))
         if destination.exists():
-            current = destination.read_text(
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
+            current = destination.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             if current != ctx.rendered_template:
                 if ctx.apply:
                     _ = destination.write_text(
-                        ctx.rendered_template,
-                        encoding=c.Cli.ENCODING_DEFAULT,
+                        ctx.rendered_template, encoding=c.Cli.ENCODING_DEFAULT
                     )
                 operations.append(
-                    m.Infra.GithubWorkflowSyncOperation.model_validate(
-                        {
-                            "project": ctx.project_name,
-                            "path": rel_path,
-                            "action": "update",
-                            "reason": "force overwrite ci.yml",
-                        },
-                    ),
+                    m.Infra.GithubWorkflowSyncOperation(
+                        project=ctx.project_name,
+                        path=rel_path,
+                        action="update",
+                        reason="force overwrite ci.yml",
+                    )
                 )
             else:
                 operations.append(
-                    m.Infra.GithubWorkflowSyncOperation.model_validate(
-                        {
-                            "project": ctx.project_name,
-                            "path": rel_path,
-                            "action": "noop",
-                            "reason": "already synced",
-                        },
-                    ),
+                    m.Infra.GithubWorkflowSyncOperation(
+                        project=ctx.project_name,
+                        path=rel_path,
+                        action="noop",
+                        reason="already synced",
+                    )
                 )
         else:
             if ctx.apply:
                 ctx.workflows_dir.mkdir(parents=True, exist_ok=True)
                 _ = destination.write_text(
-                    ctx.rendered_template,
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    ctx.rendered_template, encoding=c.Cli.ENCODING_DEFAULT
                 )
             operations.append(
-                m.Infra.GithubWorkflowSyncOperation.model_validate(
-                    {
-                        "project": ctx.project_name,
-                        "path": rel_path,
-                        "action": "create",
-                        "reason": "missing ci.yml",
-                    },
-                ),
+                m.Infra.GithubWorkflowSyncOperation(
+                    project=ctx.project_name,
+                    path=rel_path,
+                    action="create",
+                    reason="missing ci.yml",
+                )
             )
 
     @staticmethod
@@ -145,7 +129,7 @@ class FlextInfraUtilitiesGithubSyncMixin:
     ) -> None:
         """Remove non-canonical workflow files from a project."""
         candidates = sorted(ctx.workflows_dir.glob("*.yml")) + sorted(
-            ctx.workflows_dir.glob("*.yaml"),
+            ctx.workflows_dir.glob("*.yaml")
         )
         for path in candidates:
             if path.name in c.Infra.MANAGED_FILES:
@@ -153,14 +137,12 @@ class FlextInfraUtilitiesGithubSyncMixin:
             if ctx.apply:
                 path.unlink()
             operations.append(
-                m.Infra.GithubWorkflowSyncOperation.model_validate(
-                    {
-                        "project": ctx.project_name,
-                        "path": str(path.relative_to(ctx.project_root)),
-                        "action": "prune",
-                        "reason": "remove non-canonical workflow",
-                    },
-                ),
+                m.Infra.GithubWorkflowSyncOperation(
+                    project=ctx.project_name,
+                    path=str(path.relative_to(ctx.project_root)),
+                    action="prune",
+                    reason="remove non-canonical workflow",
+                )
             )
 
 

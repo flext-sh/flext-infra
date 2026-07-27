@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, t, u
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceOrchestratorExecutionMixin:
@@ -45,13 +45,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         return env
 
     def _execute_project(
-        self,
-        project: str,
-        verb: str,
-        idx: int,
-        *,
-        make_args: t.StrSequence,
-    ) -> t.Pair[m.Cli.CommandOutput, bool]:
+        self, project: str, verb: str, idx: int, *, make_args: t.StrSequence
+    ) -> t.Pair[p.Cli.CommandOutput, bool]:
         """Run one project and return ``(output, succeeded)``."""
         output_result = self._run_project(project, verb, idx, make_args=make_args)
         if output_result.failure:
@@ -64,13 +59,12 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 ),
                 False,
             )
-        cmd_output: m.Cli.CommandOutput = output_result.value
+        cmd_output: p.Cli.CommandOutput = output_result.value
         return (cmd_output, cmd_output.exit_code == 0)
 
     @staticmethod
     def _collect_failures(
-        projects: t.StrSequence,
-        results: t.SequenceOf[m.Cli.CommandOutput],
+        projects: t.StrSequence, results: t.SequenceOf[p.Cli.CommandOutput]
     ) -> t.SequenceOf[t.Triple[str, int, Path]]:
         """Collect failing projects with parsed error counters."""
         failures: t.MutableSequenceOf[t.Triple[str, int, Path]] = []
@@ -102,23 +96,20 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         *,
         fail_fast: bool = False,
         make_args: t.StrSequence = (),
-    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+    ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute ``make <verb>`` across projects and return collected outputs."""
         u.Cli.header("Workspace Orchestration")
         try:
             return self._orchestrate_checked(
-                projects,
-                verb,
-                fail_fast=fail_fast,
-                make_args=make_args,
+                projects, verb, fail_fast=fail_fast, make_args=make_args
             )
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail_op("Orchestration", exc)
+            # mro-wkii.17 (Codex): keep type-only protocols out of runtime factories.
+            return r.fail_op("Orchestration", exc)
 
     @staticmethod
     def _failure_summary(
-        verb: str,
-        failures: t.SequenceOf[t.Triple[str, int, Path]],
+        verb: str, failures: t.SequenceOf[t.Triple[str, int, Path]]
     ) -> None:
         """Print compact failure summary for orchestrated projects."""
         if not failures:
@@ -134,33 +125,44 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         *,
         fail_fast: bool,
         make_args: t.StrSequence,
-    ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+    ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
         """Execute a validated orchestration run with progress accounting."""
         allowed_verbs = c.Infra.ORCHESTRATED_PROJECT_VERBS
         if verb not in allowed_verbs:
             allowed = ", ".join(allowed_verbs)
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
-                f"unsupported orchestrate verb '{verb}' (allowed: {allowed})",
-            )
+            return r.fail(f"unsupported orchestrate verb '{verb}' (allowed: {allowed})")
         effective_make_args = self._normalize_fail_fast_make_args(
-            make_args,
-            fail_fast=fail_fast,
+            make_args, fail_fast=fail_fast
         )
-        results: t.MutableSequenceOf[m.Cli.CommandOutput] = []
+        results: t.MutableSequenceOf[p.Cli.CommandOutput] = []
         total = len(projects)
         success = 0
         failed = 0
         skipped = 0
         started_total = time.monotonic()
+        # mro-9v0d: emit a deterministic, machine-parseable orchestration report
+        # so a caller can attribute every project outcome and the child exit code.
+        u.Cli.emit_raw(
+            f"scope={c.Infra.RK_WORKSPACE} verb={verb} "
+            f"projects={','.join(projects)}"
+            + (
+                f" gates={self._gates_of(make_args)}"
+                if self._gates_of(make_args)
+                else ""
+            )
+            + "\n"
+        )
         for idx, project in enumerate(projects, start=1):
-            u.Cli.progress(idx, total, project, verb)
+            u.Cli.emit_raw(f"[{idx}/{total}] START {project} {verb}\n")
             cmd_output, succeeded = self._execute_project(
-                project,
-                verb,
-                idx,
-                make_args=effective_make_args,
+                project, verb, idx, make_args=effective_make_args
             )
             results.append(cmd_output)
+            state = "PASS" if succeeded else "FAIL"
+            u.Cli.emit_raw(
+                f"[{idx}/{total}] {state} {project} {verb} "
+                f"exit={cmd_output.exit_code} duration={cmd_output.duration:.2f}s\n"
+            )
             if succeeded:
                 success += 1
             else:
@@ -169,38 +171,37 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                     skipped = total - idx
                     break
         elapsed_total = time.monotonic() - started_total
-        u.Cli.summary(
-            m.Infra.SummaryStats(
-                verb=verb,
-                total=total,
-                success=success,
-                failed=failed,
-                skipped=skipped,
-                elapsed=elapsed_total,
-            )
+        failed_project = next(
+            (
+                project
+                for project, output in zip(projects, results, strict=False)
+                if output.exit_code != 0
+            ),
+            "",
         )
+        exit_code = next(
+            (output.exit_code for output in results if output.exit_code != 0), 0
+        )
+        u.Cli.emit_raw(
+            f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
+            f"passed={success} failed={failed} skipped={skipped} exit={exit_code}\n"
+        )
+        _ = elapsed_total
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
-            return r[t.SequenceOf[m.Cli.CommandOutput]].fail(
-                f"orchestration completed with failures: {failed}",
+            return r.fail(
+                f"orchestration completed with failures: {failed} "
+                f"(first failure {failed_project} exit code {exit_code})"
             )
-        return r[t.SequenceOf[m.Cli.CommandOutput]].ok(results)
+        return r.ok(results)
 
     def _run_project(
-        self,
-        project: str,
-        verb: str,
-        _index: int,
-        *,
-        make_args: t.StrSequence,
-    ) -> p.Result[m.Cli.CommandOutput]:
+        self, project: str, verb: str, _index: int, *, make_args: t.StrSequence
+    ) -> p.Result[p.Cli.CommandOutput]:
         """Execute make verb for one project and capture output path/metrics."""
         log_path = u.Cli.resolve_report_path(
-            Path.cwd(),
-            c.Infra.RK_WORKSPACE,
-            verb,
-            self._project_log_filename(project),
+            Path.cwd(), c.Infra.RK_WORKSPACE, verb, self._project_log_filename(project)
         )
         _ = u.Cli.ensure_dir(log_path.parent)
         started = time.monotonic()
@@ -211,12 +212,16 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         return_code: int = proc_result.unwrap() if proc_result.success else 1
+        # mro-9v0d: GNU make exits 2 for any failed recipe, so recover the
+        # child's real exit code from make's own error line in the log.
+        if return_code != 0:
+            child_code = u.Infra.extract_make_child_exit_code(log_path)
+            if child_code is not None:
+                return_code = child_code
         stderr = "" if proc_result.success else proc_result.error or ""
         elapsed = time.monotonic() - started
         if return_code == 0:
-            u.Cli.info(
-                f"  ✓ {project} completed in {int(elapsed)}s  ({log_path})",
-            )
+            u.Cli.info(f"  ✓ {project} completed in {int(elapsed)}s  ({log_path})")
         else:
             error_count, error_lines = u.Infra.extract_errors(log_path)
             u.Cli.project_failure(
@@ -236,14 +241,12 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 stderr=stderr,
                 exit_code=return_code,
                 duration=round(elapsed, 2),
-            ),
+            )
         )
 
     @staticmethod
     def _normalize_fail_fast_make_args(
-        make_args: t.StrSequence,
-        *,
-        fail_fast: bool,
+        make_args: t.StrSequence, *, fail_fast: bool
     ) -> t.StrSequence:
         """Propagate fail-fast intent to make command invocation."""
         if not fail_fast:
@@ -252,7 +255,14 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             return make_args
         return (*make_args, "FAIL_FAST=1")
 
+    @staticmethod
+    def _gates_of(make_args: t.StrSequence) -> str:
+        """Return the gate selection carried by make arguments, if declared."""
+        prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
+        for make_arg in make_args:
+            if make_arg.startswith(prefix):
+                return make_arg[len(prefix) :]
+        return ""
 
-__all__: list[str] = [
-    "FlextInfraWorkspaceOrchestratorExecutionMixin",
-]
+
+__all__: list[str] = ["FlextInfraWorkspaceOrchestratorExecutionMixin"]

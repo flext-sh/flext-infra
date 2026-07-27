@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
+from flext_infra import c
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import m, p, t
 
 
 class FlextInfraRefactorService:
@@ -21,8 +22,7 @@ class FlextInfraRefactorService:
         self.config_path = config_path or Path(__file__).parent / "settings.yml"
         self.rule_loader = FlextInfraRefactorRuleLoader(self.config_path)
         self.orchestrator = FlextInfraRefactorOrchestrator(
-            self.rule_loader,
-            safety_manager=FlextInfraRefactorSafetyManager(),
+            self.rule_loader, safety_manager=FlextInfraRefactorSafetyManager()
         )
 
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
@@ -33,8 +33,7 @@ class FlextInfraRefactorService:
         self,
     ) -> p.Result[
         t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind,
-            c.Infra.RefactorFileRuleKind,
+            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
         ]
     ]:
         """Delegate rule loading to the dedicated refactor loader."""
@@ -71,11 +70,7 @@ class FlextInfraRefactorService:
         gates: t.StrSequence | None = None,
     ) -> m.Infra.Result:
         """Delegate single-file refactoring to the dedicated orchestrator."""
-        return self.orchestrator.refactor_file(
-            file_path,
-            dry_run=dry_run,
-            gates=gates,
-        )
+        return self.orchestrator.refactor_file(file_path, dry_run=dry_run, gates=gates)
 
     def refactor_files(
         self,
@@ -86,9 +81,7 @@ class FlextInfraRefactorService:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate multi-file refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_files(
-            file_paths,
-            dry_run=dry_run,
-            gates=gates,
+            file_paths, dry_run=dry_run, gates=gates
         )
 
     def refactor_project(

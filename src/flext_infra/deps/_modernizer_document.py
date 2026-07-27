@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra.constants import c
+from flext_infra import c, config, m, t, u
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.phases.consolidate_groups import FlextInfraConsolidateGroupsPhase
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
@@ -18,6 +16,7 @@ from flext_infra.deps.phases.ensure_mypy import FlextInfraEnsureMypyConfigPhase
 from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
+from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
@@ -25,12 +24,15 @@ from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfig
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra import p
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:
@@ -38,35 +40,23 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     if TYPE_CHECKING:
         # Members provided by sibling mixins / the facade at runtime via MRO.
-        _tool_config: m.Infra.ToolConfigDocument
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
 
         @property
         def root(self) -> Path: ...
 
-        @property
-        def paths_manager(self) -> FlextInfraExtraPathsManager: ...
-
         def _ensure_build_system_payload(
-            self,
-            payload: t.MutableJsonMapping,
+            self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
         def _remove_empty_poetry_groups_payload(
-            self,
-            payload: t.MutableJsonMapping,
+            self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        def _reorder_document_inplace(
-            self,
-            doc: t.Cli.TomlDocument,
-        ) -> None: ...
+        def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
 
     def _classify_project(
-        self,
-        project_dir: Path,
-        *,
-        payload: t.Infra.ContainerDict | None = None,
+        self, project_dir: Path, *, payload: t.JsonMapping | None = None
     ) -> p.Result[str]:
         """Classify project kind for pyright/coverage settings selection."""
         classifier = FlextInfraProjectClassifier(project_dir, pyproject_payload=payload)
@@ -79,7 +69,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         read = u.Cli.files_read_text(path)
         if read.failure:
             return r[m.Infra.PyprojectDocumentState].fail(
-                read.error or f"failed to read {path}",
+                read.error or f"failed to read {path}"
             )
         original_rendered = read.value
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
@@ -87,42 +77,33 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             return r[m.Infra.PyprojectDocumentState].fail(f"invalid TOML: {path}")
         try:
             payload = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
-                payload_source,
+                payload_source
             )
         except c.ValidationError as exc:
             return r[m.Infra.PyprojectDocumentState].fail_op(
                 "TOML payload validation", exc
             )
         return r[m.Infra.PyprojectDocumentState].ok(
-            m.Infra.PyprojectDocumentState.model_validate(
-                {
-                    "pyproject_path": path,
-                    "original_rendered": original_rendered,
-                    "payload": payload,
-                },
-            ),
+            m.Infra.PyprojectDocumentState(
+                pyproject_path=path,
+                original_rendered=original_rendered,
+                payload=payload,
+            )
         )
 
-    def _format_rendered_pyproject(
-        self,
-        path: Path,
-        rendered: str,
-    ) -> p.Result[str]:
+    def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
+        cmd = ["taplo", "format", "-", "--stdin-filepath", str(path)]
         config_path = self.root / ".taplo.toml"
         if config_path.is_file():
             cmd.extend(["--config", str(config_path)])
+        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
+        format_cwd = next(
+            (candidate for candidate in self.root.parents if candidate.is_dir()),
+            self.root,
+        )
         format_result = u.Cli.run_raw(
-            cmd,
-            cwd=self.root,
-            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
         )
         if format_result.failure:
             return r[str].fail(format_result.error or "taplo format failed")
@@ -131,6 +112,36 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             detail = (output.stderr or output.stdout).strip()
             return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
         return r[str].ok(output.stdout)
+
+    def _project_is_flext_child(self, project_dir: Path) -> bool:
+        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
+
+        A workspace *root* owns the canonical virtualenv locally
+        (``<project>/.venv``); a *child* (any flext-based consumer repo)
+        references the parent workspace venv (``../.venv``). This keeps the
+        pyright ``venvPath`` / pyrefly interpreter classification correct even
+        when ``deps modernize`` is invoked from inside the child itself (so
+        ``workspace_root`` defaults to the child dir). The committed
+        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
+        no virtualenv exists at modernize time.
+        """
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        venv_name = rules.venv_name
+        if (project_dir / venv_name).is_dir():
+            return False
+        if (project_dir.parent / venv_name).is_dir():
+            return True
+        makefile = project_dir / "Makefile"
+        read = u.Cli.files_read_text(makefile)
+        if read.success:
+            for raw_line in read.value.splitlines():
+                stripped = raw_line.strip()
+                if not stripped.startswith("WORKSPACE_ROOT") or ":=" not in stripped:
+                    continue
+                _, _, value = stripped.partition(":=")
+                if value.strip().startswith(".."):
+                    return True
+        return False
 
     def _process_document_state(
         self,
@@ -143,18 +154,24 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
+        declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_root = path.parent.resolve() == self.root.resolve()
+        is_root = path.parent.resolve() == self.root.resolve() and not (
+            self._project_is_flext_child(path.parent)
+        )
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
                 project_kind = kind_result.value
+        # mro-j47u (codex): declared roots are topology facts only during atomic
+        # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
+        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
@@ -167,63 +184,76 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 )
             )
         changes.extend(
-            FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev),
+            FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
         changes.extend(
-            FlextInfraEnsurePytestConfigPhase(self._tool_config).apply_payload(payload),
-        )
-        changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(self._tool_config).apply_payload(
-                payload,
-                is_root=is_root,
-                project_dir=path.parent,
-                paths_manager=self.paths_manager,
-            ),
-        )
-        changes.extend(
-            FlextInfraEnsureMypyConfigPhase(self._tool_config).apply_payload(payload),
-        )
-        changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
                 payload
-            ),
+            )
         )
+        # mro-j47u (codex): Pyrefly derives its include globs from the canonical
+        # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(self._tool_config).apply_payload(
-                payload
-            ),
-        )
-        changes.extend(
-            FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path),
-        )
-        changes.extend(
-            FlextInfraEnsureRuffConfigPhase(self._tool_config).apply_payload(
-                payload,
-                path=path,
-            ),
-        )
-        changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
                 project_kind=project_kind,
-                paths_manager=self.paths_manager,
-            ),
+                paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
+            )
         )
         changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(self._tool_config).apply_payload(
+            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
-                project_kind=project_kind,
-            ),
-        )
-        changes.extend(
-            self.paths_manager.sync_payload(
-                payload,
-                project_dir=path.parent,
                 is_root=is_root,
-            ),
+                project_dir=path.parent,
+                paths_manager=paths_manager,
+                declared_python_dirs=declared_python_dirs,
+            )
+        )
+        changes.extend(
+            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(payload)
+        )
+        changes.extend(
+            FlextInfraEnsurePydanticMypyConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
+        )
+        changes.extend(
+            FlextInfraEnsureFormattingToolingPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
+        )
+        changes.extend(
+            FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
+        )
+        changes.extend(
+            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+                payload, path=path
+            )
+        )
+        changes.extend(
+            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+                payload, path=path, is_root=is_root
+            )
+        )
+        # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
+        changes.extend(
+            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
+        )
+        changes.extend(
+            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
+                payload, project_kind=project_kind
+            )
+        )
+        changes.extend(
+            paths_manager.sync_payload(
+                payload, project_dir=path.parent, is_root=is_root
+            )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
         self._reorder_document_inplace(doc)
@@ -238,10 +268,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rendered = formatted_result.value
         normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
+        state.rendered = normalized_rendered
         if normalized_rendered == normalized_original:
-            return []
+            return ()
         if not dry_run:
-            u.write_file(path, rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            # Persist the same normalized value used for change detection.
+            u.write_file(path, normalized_rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
 
 

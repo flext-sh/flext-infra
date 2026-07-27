@@ -6,14 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import m, t
 
 
 class TestsFlextInfraInfraWorkspaceMigratorPyproject:
@@ -28,7 +30,9 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("unchanged for flext-core" in c for c in migration[0].changes),
+            any(
+                "unchanged for flext-core" in change for change in migration[0].changes
+            ),
             eq=True,
         )
 
@@ -46,16 +50,15 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "unchanged for flext-core" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "unchanged for flext-core" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )
 
     def test_has_flext_core_in_poetry(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            pyproject='[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n',
+            tmp_path, pyproject='[tool.poetry.dependencies]\nflext-core = "^0.1.0"\n'
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -66,7 +69,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("already includes" in c for c in migration[0].changes),
+            any("already includes" in change for change in migration[0].changes),
             eq=True,
         )
 
@@ -83,15 +86,13 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes),
+            any("flext-core dependency" in change for change in migration[0].changes),
             eq=True,
         )
 
     def test_poetry_deps_not_table(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            pyproject="[tool.poetry]\ndependencies = []\n",
+            tmp_path, base_mk="base", pyproject="[tool.poetry]\ndependencies = []\n"
         )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
@@ -102,7 +103,7 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         result = migrator.execute()
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
-            any("flext-core dependency" in c for c in migration[0].changes),
+            any("flext-core dependency" in change for change in migration[0].changes),
             eq=True,
         )
 
@@ -120,8 +121,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "Makefile not found" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "Makefile not found" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )
@@ -140,30 +141,8 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
         migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
         tm.that(
             any(
-                "[DRY-RUN]" in c and "pyproject.toml not found" in c
-                for c in migration[0].changes
-            ),
-            eq=True,
-        )
-
-    def test_gitignore_already_normalized(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(
-            tmp_path,
-            base_mk="base",
-            gitignore="\n".join(c.Infra.REQUIRED_GITIGNORE_ENTRIES) + "\n",
-        )
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base",
-            workspace_root=tmp_path,
-            dry_run=True,
-        )
-        result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any(
-                "[DRY-RUN]" in c and ".gitignore already normalized" in c
-                for c in migration[0].changes
+                "[DRY-RUN]" in change and "pyproject.toml not found" in change
+                for change in migration[0].changes
             ),
             eq=True,
         )

@@ -5,11 +5,13 @@ Replaces try/except ImportError fallback blocks with the primary import.
 
 from __future__ import annotations
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
@@ -17,9 +19,7 @@ class FlextInfraRefactorImportBypassRemover(FlextInfraRopeTransformer):
 
     @override
     def transform(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.Infra.TransformResult:
         """Remove try/except ImportError fallback blocks, keep the primary import."""
         source = resource.read()

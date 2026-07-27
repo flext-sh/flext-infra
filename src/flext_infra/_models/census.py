@@ -5,10 +5,9 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
+from flext_cli import m
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraModelsCensus:
@@ -28,9 +27,7 @@ class FlextInfraModelsCensus:
 
             surface: Annotated[
                 str,
-                m.Field(
-                    description="Reference surface (src/tests/examples/scripts)",
-                ),
+                m.Field(description="Reference surface (src/tests/examples/scripts)"),
             ] = c.Infra.DEFAULT_SRC_DIR
 
         class Object(
@@ -52,98 +49,44 @@ class FlextInfraModelsCensus:
                 ),
             ]
             module_name: Annotated[
-                str,
-                m.Field(
-                    description="Fully-qualified module name for the object",
-                ),
+                str, m.Field(description="Fully-qualified module name for the object")
             ] = ""
             scope_path: Annotated[
-                str,
-                m.Field(
-                    description="Canonical owner/scope path for the object",
-                ),
+                str, m.Field(description="Canonical owner/scope path for the object")
             ] = ""
             actual_tier: Annotated[
-                str,
-                m.Field(
-                    description="Tier derived from file location",
-                ),
+                str, m.Field(description="Tier derived from file location")
             ] = ""
             expected_tier: Annotated[
-                str,
-                m.Field(
-                    description="Tier determined by classifier",
-                ),
+                str, m.Field(description="Tier determined by classifier")
             ] = ""
             is_facade_member: Annotated[
-                bool,
-                m.Field(
-                    description="Whether object is exposed via facade MRO",
-                ),
+                bool, m.Field(description="Whether object is exposed via facade MRO")
             ] = False
             references_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(
-                    description="Number of references excluding the definition site",
+                    description="Number of references excluding the definition site"
                 ),
             ] = 0
             runtime_references_count: Annotated[
                 t.NonNegativeInt,
-                m.Field(
-                    description="Number of references from runtime/source modules",
-                ),
-            ] = 0
-            test_references_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(
-                    description="Number of references from test modules",
-                ),
-            ] = 0
-            example_references_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(
-                    description="Number of references from example modules",
-                ),
+                m.Field(description="Number of references from runtime/source modules"),
             ] = 0
             script_references_count: Annotated[
                 t.NonNegativeInt,
-                m.Field(
-                    description="Number of references from script modules",
-                ),
+                m.Field(description="Number of references from script modules"),
             ] = 0
             runtime_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
+                FlextInfraModelsCensus.Census.ReferenceSite, ...
             ] = m.Field(
-                default_factory=tuple,
-                description="Runtime/source reference sites",
-            )
-            test_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
-            ] = m.Field(
-                default_factory=tuple,
-                description="Test reference sites",
-            )
-            example_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
-            ] = m.Field(
-                default_factory=tuple,
-                description="Example reference sites",
+                default_factory=tuple, description="Runtime/source reference sites"
             )
             script_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
-            ] = m.Field(
-                default_factory=tuple,
-                description="Script reference sites",
-            )
+                FlextInfraModelsCensus.Census.ReferenceSite, ...
+            ] = m.Field(default_factory=tuple, description="Script reference sites")
             fingerprint: Annotated[
-                str,
-                m.Field(
-                    description="Normalized Rope-derived semantic fingerprint",
-                ),
+                str, m.Field(description="Normalized Rope-derived semantic fingerprint")
             ] = ""
 
         class RemovalCandidate(
@@ -157,65 +100,36 @@ class FlextInfraModelsCensus:
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Candidate object name"),
+                t.NonEmptyStr, m.Field(description="Candidate object name")
             ]
-            object_kind: Annotated[
-                str,
-                m.Field(description="Candidate object kind"),
-            ]
+            object_kind: Annotated[str, m.Field(description="Candidate object kind")]
             scope_path: Annotated[
-                str,
-                m.Field(description="Canonical owner/scope path for the candidate"),
+                str, m.Field(description="Canonical owner/scope path for the candidate")
             ] = ""
-            reason: Annotated[
-                str,
-                m.Field(description="Candidate reason (unused or test_only)"),
-            ]
+            reason: Annotated[str, m.Field(description="Candidate reason (unused)")]
             suggested_action: Annotated[
-                str,
-                m.Field(description="Suggested removal action for this candidate"),
+                str, m.Field(description="Suggested removal action for this candidate")
             ]
             runtime_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
+                FlextInfraModelsCensus.Census.ReferenceSite, ...
             ] = m.Field(
                 default_factory=tuple,
                 description="Runtime/source references blocking full deletion",
             )
-            test_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
-            ] = m.Field(
-                default_factory=tuple,
-                description="Test references supporting this candidate",
-            )
-            example_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
-            ] = m.Field(
-                default_factory=tuple,
-                description="Example references supporting this candidate",
-            )
             script_reference_sites: tuple[
-                FlextInfraModelsCensus.Census.ReferenceSite,
-                ...,
+                FlextInfraModelsCensus.Census.ReferenceSite, ...
             ] = m.Field(
                 default_factory=tuple,
                 description="Script references supporting this candidate",
             )
 
-        class Violation(
-            mm.ProjectNameMixin,
-            m.ArbitraryTypesModel,
-        ):
+        class Violation(mm.ProjectNameMixin, m.ArbitraryTypesModel):
             """Detected census violation with fix metadata."""
 
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Name of the violating object"),
+                t.NonEmptyStr, m.Field(description="Name of the violating object")
             ]
             object_kind: Annotated[
                 str,
@@ -226,15 +140,12 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 m.Field(
-                    description="Violation kind (misplaced/duplicate/unused/missing_mro_base/flat_alias/wrong_tier)",
+                    description="Violation kind (misplaced/duplicate/unused/missing_mro_base/flat_alias/wrong_tier)"
                 ),
             ]
-            severity: Annotated[
-                str,
-                m.Field(
-                    description="Severity level",
-                ),
-            ] = c.Infra.GateSeverity.WARNING.value
+            severity: Annotated[str, m.Field(description="Severity level")] = (
+                c.Infra.GateSeverity.WARNING.value
+            )
             file_path: Annotated[str, m.Field(description="File containing violation")]
             line: Annotated[t.NonNegativeInt, m.Field(description="Line number")] = 0
             fixable: Annotated[
@@ -253,8 +164,7 @@ class FlextInfraModelsCensus:
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             object_name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Name of the fixed object"),
+                t.NonEmptyStr, m.Field(description="Name of the fixed object")
             ]
             action: Annotated[
                 str,
@@ -316,53 +226,39 @@ class FlextInfraModelsCensus:
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             name: Annotated[
-                t.NonEmptyStr,
-                m.Field(description="Shared object name across projects"),
+                t.NonEmptyStr, m.Field(description="Shared object name across projects")
             ]
             kind: Annotated[str, m.Field(description="Object kind")]
             definitions: list[FlextInfraModelsCensus.Census.Object] = m.Field(
                 description="All definitions of this object"
             )
             canonical: Annotated[
-                str,
-                m.Field(
-                    description="Most-upstream project (canonical source)",
-                ),
+                str, m.Field(description="Most-upstream project (canonical source)")
             ] = ""
             value_identical: Annotated[
                 bool,
-                m.Field(
-                    description="Whether all definitions have identical values",
-                ),
+                m.Field(description="Whether all definitions have identical values"),
             ] = False
 
-        class ProjectReport(
-            mm.ProjectNameMixin,
-            m.ArbitraryTypesModel,
-        ):
+        class ProjectReport(mm.ProjectNameMixin, m.ArbitraryTypesModel):
             """Per-project census summary."""
 
             model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
             objects: tuple[FlextInfraModelsCensus.Census.Object, ...] = m.Field(
-                default_factory=tuple,
-                description="Objects discovered for this project",
+                default_factory=tuple, description="Objects discovered for this project"
             )
             objects_total: Annotated[
                 t.NonNegativeInt, m.Field(description="Total objects discovered")
             ] = 0
             objects_by_kind: Annotated[
-                t.IntMapping,
-                m.Field(
-                    description="Object count per kind",
-                ),
+                t.IntMapping, m.Field(description="Object count per kind")
             ] = m.Field(default_factory=lambda: MappingProxyType({}))
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
                 default_factory=tuple, description="Detected violations"
             )
             fixes: tuple[FlextInfraModelsCensus.Census.Fix, ...] = m.Field(
-                default_factory=tuple,
-                description="Proposed or applied fixes",
+                default_factory=tuple, description="Proposed or applied fixes"
             )
             violations_total: Annotated[
                 t.NonNegativeInt, m.Field(description="Total violation count")
@@ -374,17 +270,12 @@ class FlextInfraModelsCensus:
                 t.NonNegativeInt,
                 m.Field(description="Objects with no non-definition references"),
             ] = 0
-            test_only_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Objects referenced only from tests"),
-            ] = 0
             removal_candidate_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(description="Objects eligible for aggressive removal review"),
             ] = 0
             removal_candidates: tuple[
-                FlextInfraModelsCensus.Census.RemovalCandidate,
-                ...,
+                FlextInfraModelsCensus.Census.RemovalCandidate, ...
             ] = m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates for this project",
@@ -417,10 +308,6 @@ class FlextInfraModelsCensus:
             unused_count: Annotated[
                 t.NonNegativeInt, m.Field(description="Total unused objects")
             ] = 0
-            test_only_count: Annotated[
-                t.NonNegativeInt,
-                m.Field(description="Total objects referenced only from tests"),
-            ] = 0
             removal_candidate_count: Annotated[
                 t.NonNegativeInt,
                 m.Field(
@@ -428,8 +315,7 @@ class FlextInfraModelsCensus:
                 ),
             ] = 0
             removal_candidates: tuple[
-                FlextInfraModelsCensus.Census.RemovalCandidate,
-                ...,
+                FlextInfraModelsCensus.Census.RemovalCandidate, ...
             ] = m.Field(
                 default_factory=tuple,
                 description="Explicit aggressive-removal candidates across workspace",

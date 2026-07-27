@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
+    from flext_infra import t
 
 
 class FlextInfraRefactorMROImportRewriterFileOpsMixin:
@@ -24,23 +27,16 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         workspace_root: Path,
         module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
         project_names: t.StrSequence | None = None,
-    ) -> t.MappingKV[
-        Path,
-        t.MappingKV[str, t.Pair[str, t.StrMapping]],
-    ]:
+    ) -> t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]:
         """Collect file moves."""
         rope_project = u.Infra.init_rope_project(workspace_root)
         module_file_moves: MutableMapping[
-            Path,
-            MutableMapping[str, t.Pair[str, t.StrMapping]],
+            Path, MutableMapping[str, t.Pair[str, t.StrMapping]]
         ] = {}
         try:
             for module_name, module_move in module_moves.items():
                 cls._collect_module_occurrences(
-                    rope_project,
-                    module_name,
-                    module_move,
-                    module_file_moves,
+                    rope_project, module_name, module_move, module_file_moves
                 )
         finally:
             rope_project.close()
@@ -57,8 +53,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         module_name: str,
         module_move: t.Pair[str, t.StrMapping],
         module_file_moves: MutableMapping[
-            Path,
-            MutableMapping[str, t.Pair[str, t.StrMapping]],
+            Path, MutableMapping[str, t.Pair[str, t.StrMapping]]
         ],
     ) -> None:
         """Find rope occurrences for one module's symbols and merge into file_moves."""
@@ -67,18 +62,10 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
             return
         facade_alias, symbol_paths = module_move
         for symbol_name, target_path in symbol_paths.items():
-            offset = u.Infra.find_definition_offset(
-                rope_project,
-                resource,
-                symbol_name,
-            )
+            offset = u.Infra.find_definition_offset(rope_project, resource, symbol_name)
             if offset is None:
                 continue
-            for occurrence in u.Infra.find_occurrences(
-                rope_project,
-                resource,
-                offset,
-            ):
+            for occurrence in u.Infra.find_occurrences(rope_project, resource, offset):
                 resource_like = getattr(occurrence, "resource", None)
                 if resource_like is None:
                     continue
@@ -96,14 +83,8 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
 
     @staticmethod
     def _merge_file_moves(
-        file_moves: t.MappingKV[
-            Path,
-            MutableMapping[str, t.Pair[str, t.StrMapping]],
-        ],
-    ) -> t.MappingKV[
-        Path,
-        t.MappingKV[str, t.Pair[str, t.StrMapping]],
-    ]:
+        file_moves: t.MappingKV[Path, MutableMapping[str, t.Pair[str, t.StrMapping]]],
+    ) -> t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]:
         """Merge file moves."""
         return {
             file_path: {
@@ -118,35 +99,25 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
         cls,
         *,
         workspace_root: Path,
-        file_moves: t.MappingKV[
-            Path,
-            t.MappingKV[str, t.Pair[str, t.StrMapping]],
-        ],
+        file_moves: t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]],
         module_moves: t.MappingKV[str, t.Pair[str, t.StrMapping]],
         project_names: t.StrSequence | None = None,
-    ) -> t.MappingKV[
-        Path,
-        t.MappingKV[str, t.Pair[str, t.StrMapping]],
-    ]:
+    ) -> t.MappingKV[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]]:
         """Expand file moves."""
-        expanded: MutableMapping[
-            Path,
-            t.MappingKV[str, t.Pair[str, t.StrMapping]],
-        ] = dict(file_moves)
+        expanded: MutableMapping[Path, t.MappingKV[str, t.Pair[str, t.StrMapping]]] = (
+            dict(file_moves)
+        )
         for file_path in cls._iter_workspace_python_files(
-            workspace_root=workspace_root,
-            project_names=project_names,
+            workspace_root=workspace_root, project_names=project_names
         ):
             expanded.setdefault(file_path.resolve(), module_moves)
         return expanded
 
     @staticmethod
     def _iter_workspace_python_files(
-        *,
-        workspace_root: Path,
-        project_names: t.StrSequence | None = None,
+        *, workspace_root: Path, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[Path]:
-        """Iter workspace python files."""
+        """Iterate workspace Python files."""
         paths: list[Path] = []
         project_name_set: set[str] = set(project_names or ())
         for project_root in u.Infra.discover_project_roots(
@@ -155,9 +126,7 @@ class FlextInfraRefactorMROImportRewriterFileOpsMixin:
             if project_name_set and project_root.name not in project_name_set:
                 continue
             iter_result = u.Infra.iter_python_files(
-                workspace_root=workspace_root,
-                project_roots=[project_root],
-                src_dirs=u.Infra.namespace_scan_dirs(project_root),
+                m.Infra.SourceScanRequest(project_roots=(project_root,))
             )
             if iter_result.failure:
                 continue

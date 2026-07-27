@@ -1,15 +1,13 @@
-"""Phase: Ensure standard pytest configuration without removing project-specific entries."""
+"""Phase: Ensure canonical fail-closed pytest configuration."""
 
 from __future__ import annotations
 
-from flext_infra.constants import c
+from flext_infra import c, m, t
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraEnsurePytestConfigPhase:
-    """Ensure standard pytest configuration without removing project-specific entries."""
+    """Ensure canonical pytest policy while preserving extension declarations."""
 
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to compose canonical pytest defaults."""
@@ -17,49 +15,51 @@ class FlextInfraEnsurePytestConfigPhase:
 
     def _phase(self) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pytest phase definition."""
+        pytest = self._tool_config.tools.pytest
         return (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("pytest")
             .table(c.Infra.PYTEST, c.Infra.INI_OPTIONS)
-            .value(c.Infra.MINVERSION, "8.0")
+            # mro-j47u (codex): no pytest policy literal survives outside config.
+            .value(c.Infra.MINVERSION, pytest.min_version)
             .list(
                 c.Infra.PYTHON_CLASSES,
-                ("Test*",),
+                pytest.python_classes,
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .list(
                 c.Infra.PYTHON_FILES,
-                ("*_test.py", "*_tests.py", "test_*.py"),
+                pytest.python_files,
                 strategy=c.Infra.TomlMergeMode.MERGE,
+            )
+            # mro-wkii.17 (codex): replace stale collection roots and warning bypasses.
+            .list(
+                "testpaths", pytest.test_paths, strategy=c.Infra.TomlMergeMode.REPLACE
             )
             .list(
                 c.Infra.ADDOPTS,
-                self._tool_config.tools.pytest.standard_addopts,
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                pytest.standard_addopts,
+                # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .list(
                 c.Infra.MARKERS,
-                self._tool_config.tools.pytest.standard_markers,
+                pytest.standard_markers,
                 strategy=c.Infra.TomlMergeMode.MERGE,
             )
             .list(
                 "filterwarnings",
-                (
-                    "ignore:.*cannot collect test class.*because it has a __init__ constructor.*:pytest.PytestCollectionWarning",
-                ),
-                strategy=c.Infra.TomlMergeMode.MERGE,
+                pytest.filter_warnings,
+                strategy=c.Infra.TomlMergeMode.REPLACE,
             )
             .build()
         )
 
     def apply(self, doc: t.Cli.TomlDocument) -> t.StrSequence:
-        """Apply pytest defaults while preserving project-specific ini options."""
+        """Apply canonical pytest policy while preserving extension declarations."""
         return FlextInfraTomlPhaseService.apply_phases(doc, self._phase())
 
-    def apply_payload(
-        self,
-        payload: t.MutableJsonMapping,
-    ) -> t.StrSequence:
+    def apply_payload(self, payload: t.MutableJsonMapping) -> t.StrSequence:
         """Apply pytest defaults directly to one normalized payload."""
         return FlextInfraTomlPhaseService.apply_payload_phases(payload, self._phase())
 

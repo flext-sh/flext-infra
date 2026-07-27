@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from tests.models import m
-from tests.utilities import u
+from flext_tests import tm
+
+from tests import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
-def test_run_github_workspace_pull_requests_aggregates_results(
-    tmp_path: Path,
-) -> None:
+def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
@@ -19,17 +21,15 @@ def test_run_github_workspace_pull_requests_aggregates_results(
 
     result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace),
-            action="status",
-            fail_fast=False,
-        ),
+            workspace=str(workspace), action="status", fail_fast=False
+        )
     )
 
-    assert result.success
+    tm.ok(result)
     report = result.unwrap()
-    assert report.total == 2
-    assert report.success == 1
-    assert report.fail == 1
+    tm.that(report.total, eq=2)
+    tm.that(report.success, eq=1)
+    tm.that(report.fail, eq=1)
 
 
 def test_run_github_workspace_pull_requests_respects_project_selection(
@@ -43,25 +43,21 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
 
     result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace),
-            projects=["flext-a", "flext-b"],
-            fail_fast=False,
-        ),
+            workspace=str(workspace), projects=["flext-a", "flext-b"], fail_fast=False
+        )
     )
 
-    assert result.success
+    tm.ok(result)
     report = result.unwrap()
     report_dir = workspace / ".reports/workspace/pr"
-    assert report.total == 2
-    assert report.fail == 0
+    tm.that(report.total, eq=2)
+    tm.that(report.fail, eq=0)
     assert (report_dir / "flext-a.log").is_file()
     assert (report_dir / "flext-b.log").is_file()
     assert not (report_dir / "flext-c.log").exists()
 
 
-def test_run_github_workspace_pull_requests_honors_fail_fast(
-    tmp_path: Path,
-) -> None:
+def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
         tmp_path,
         project_names=("flext-a", "flext-b"),
@@ -70,13 +66,12 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(
 
     result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace),
-            fail_fast=True,
-        ),
+            workspace=str(workspace), fail_fast=True
+        )
     )
 
-    assert result.success
+    tm.ok(result)
     report_dir = workspace / ".reports/workspace/pr"
-    assert result.unwrap().fail == 1
+    tm.that(result.unwrap().fail, eq=1)
     assert (report_dir / "flext-a.log").is_file()
     assert not (report_dir / "flext-b.log").exists()

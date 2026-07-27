@@ -13,23 +13,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from rope.base.exceptions import ModuleNotFoundError as RopeModuleNotFoundError
-from rope.base.pyobjects import PyClass
-from rope.base.resources import File
-from rope.refactor import occurrences
-from rope.refactor.occurrences import worder
-
+from flext_infra import m, u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra.typings import t
 
 if TYPE_CHECKING:
-    from rope.base.project import Project
+    from flext_infra import t
 
 
 _DOCSTRING_DELIMITER_COUNT = 2
 _CLASSVAR_DECLARATION_PATTERN = re.compile(
-    r"^([A-Z][A-Z0-9_]*:\s*)ClassVar\[(.*)\](\s*=)",
-    re.DOTALL,
+    r"^([A-Z][A-Z0-9_]*:\s*)ClassVar\[(.*)\](\s*=)", re.DOTALL
 )
 
 
@@ -65,41 +58,36 @@ class FlextInfraRefactorClassvarConstantAutofix:
         """Build an autofix plan without touching disk."""
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
             return FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
-                project,
-                class_full_name,
-                constant_name,
-                constants_module,
+                project, class_full_name, constant_name, constants_module
             )
 
     @staticmethod
     def _plan_with_project(
-        project: Project,
+        project: t.Infra.RopeProject,
         class_full_name: str,
         constant_name: str,
         constants_module: str,
     ) -> ClassvarConstantAutofixPlan:
         class_module, class_name = class_full_name.rsplit(".", maxsplit=1)
-        source_mod = project.get_module(class_module)
+        source_mod = project.get_module(class_module, project.root)
         source_resource = source_mod.get_resource()
-        if not isinstance(source_resource, File):
+        if not u.Infra.is_resource(source_resource):
             msg = f"{class_module} did not resolve to a file resource"
             raise TypeError(msg)
         pyclass = source_mod.get_attribute(class_name).get_object()
-        if not isinstance(pyclass, PyClass):
-            # Expected PyClass; if rope gives something else, fail loud.
+        if not u.Infra.is_runtime_pyclass(pyclass):
             msg = f"{class_full_name} did not resolve to a class"
             raise TypeError(msg)
         source_text = source_resource.read()
         class_lineno = _class_start_lineno(source_text, class_name)
         declaration_line = _extract_declaration_line(
-            source_text,
-            class_name,
-            constant_name,
-            class_lineno,
+            source_text, class_name, constant_name, class_lineno
         )
         target_resource = _target_resource_for_module(
             project,
             constants_module,
+            class_module=class_module,
+            source_resource=source_resource,
         )
         return ClassvarConstantAutofixPlan(
             class_module=class_module,
@@ -120,38 +108,28 @@ class FlextInfraRefactorClassvarConstantAutofix:
         constants_module: str,
         *,
         dry_run: bool = False,
-    ) -> dict[str, object]:
-        """Move the constant and rewrite all internal references.
-
-        Returns a summary dict with ``touched_files`` and ``constant_module``.
-        """
+    ) -> m.Infra.ClassvarConstantAutofixResult:
+        """Move the constant and rewrite all internal references."""
         with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
-                project,
-                class_full_name,
-                constant_name,
-                constants_module,
+                project, class_full_name, constant_name, constants_module
             )
             return FlextInfraRefactorClassvarConstantAutofix._apply_with_project(
-                project,
-                plan,
-                dry_run=dry_run,
+                project, plan, dry_run=dry_run
             )
 
     @staticmethod
     def _apply_with_project(
-        project: Project,
+        project: t.Infra.RopeProject,
         plan: ClassvarConstantAutofixPlan,
         *,
         dry_run: bool,
-    ) -> dict[str, object]:
+    ) -> m.Infra.ClassvarConstantAutofixResult:
         source_text = plan.source_resource.read()
         target_path = Path(plan.target_resource.real_path)
         target_text = plan.target_resource.read()
-        touched: set[str] = {
-            plan.source_resource.path,
-            plan.target_resource.path,
-        }
+        touched: set[str] = {plan.source_resource.path, plan.target_resource.path}
+        constants_alias = plan.constants_module.split(".")[-1]
 
         # 1. Remove the ClassVar declaration from the class body.
         new_source = _remove_declaration_line(
@@ -162,24 +140,30 @@ class FlextInfraRefactorClassvarConstantAutofix:
             plan.constant_name,
         )
 
-        # 2. Append the constant to the target _constants module.
-        new_target = _append_constant(
-            target_text,
-            plan.declaration_line,
-            plan.constants_module,
-        )
+        # 2. Append the constant to the target _constants module, unless the
+        # class declaration was only a typed alias to an existing owner.
+        if _module_declares_name(target_text, plan.constant_name):
+            if not _declaration_aliases_target_constant(
+                plan.declaration_line, constants_alias, plan.constant_name
+            ):
+                msg = (
+                    f"{plan.constants_module} already declares "
+                    f"{plan.constant_name}; class declaration is not an owner alias"
+                )
+                raise TypeError(msg)
+            new_target = target_text
+        else:
+            new_target = _append_constant(
+                target_text, plan.declaration_line, plan.constants_module
+            )
 
         # 3. Rewrite internal references from ClassName.NAME / cls.NAME /
         # self.__class__.NAME to the canonical constants module access.
-        class_module_obj = project.get_module(plan.class_module)
+        class_module_obj = project.get_module(plan.class_module, project.root)
         pyclass = class_module_obj.get_attribute(plan.class_name).get_object()
         pyname = pyclass.get_attribute(plan.constant_name)
-        finder = occurrences.create_finder(
-            project,
-            plan.constant_name,
-            pyname,
-            imports=True,
-            in_hierarchy=False,
+        finder = u.Infra.create_occurrence_finder(
+            project, plan.constant_name, pyname, imports=True, in_hierarchy=False
         )
         rewrites: dict[str, list[tuple[int, int, str]]] = {}
         # Iterate over concrete project resources to avoid rope crashing when
@@ -190,17 +174,18 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 source = resource.read()
                 prefix = _attribute_prefix(source, offset)
                 if _should_rewrite_prefix(prefix, plan.class_name):
-                    word_finder = worder.Worder(source, True)
                     try:
-                        start, end = word_finder.get_primary_range(offset)
-                    except Exception:
+                        start, end = u.Infra.word_primary_range(source, offset)
+                    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
                         start, end = occurrence.get_word_range()
                     replacement = (
                         f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
                     )
-                    rewrites.setdefault(resource.path, []).append(
-                        (start, end, replacement),
-                    )
+                    rewrites.setdefault(resource.path, []).append((
+                        start,
+                        end,
+                        replacement,
+                    ))
                     touched.add(resource.path)
 
         if dry_run:
@@ -210,34 +195,28 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 plan.constant_name,
                 plan.constants_module.split(".")[-1],
             )
-            return {
-                "touched_files": sorted(touched),
-                "source_text": source_preview,
-                "target_text": new_target,
-                "rewrites": dict(rewrites),
-            }
+            return m.Infra.ClassvarConstantAutofixResult(
+                touched_files=tuple(sorted(touched)),
+                source_text=source_preview,
+                target_text=new_target,
+                rewrites=dict(rewrites),
+            )
 
         # 4. Rewrite source-module references textually. Rope occurrence offsets
         # target the original source and become stale after the declaration is
         # removed, so the modified source uses the known class-access forms.
-        constants_alias = plan.constants_module.split(".")[-1]
         rewrites.pop(plan.source_resource.path, None)
         new_source = _rewrite_class_access_in_source(
-            new_source,
-            plan.class_name,
-            plan.constant_name,
-            constants_alias,
+            new_source, plan.class_name, plan.constant_name, constants_alias
         )
         # 5. Inject ``from . import _constants`` (or equivalent) into the source
         # module so the rewritten references resolve.
         new_source = _ensure_constants_import(
-            new_source,
-            constants_alias,
-            plan.class_module,
-            plan.constants_module,
+            new_source, constants_alias, plan.class_module, plan.constants_module
         )
         Path(plan.source_resource.real_path).write_text(new_source, encoding="utf-8")
-        target_path.write_text(new_target, encoding="utf-8")
+        if new_target != target_text:
+            target_path.write_text(new_target, encoding="utf-8")
 
         # 6. Apply remaining rewrites to other resources.
         for resource in project.get_python_files():
@@ -248,10 +227,9 @@ class FlextInfraRefactorClassvarConstantAutofix:
             text = _apply_edits(text, edits)
             Path(resource.real_path).write_text(text, encoding="utf-8")
 
-        return {
-            "touched_files": sorted(touched),
-            "constant_module": plan.constants_module,
-        }
+        return m.Infra.ClassvarConstantAutofixResult(
+            touched_files=tuple(sorted(touched)), constant_module=plan.constants_module
+        )
 
 
 def _class_start_lineno(source: str, class_name: str) -> int:
@@ -265,30 +243,53 @@ def _class_start_lineno(source: str, class_name: str) -> int:
 
 
 def _target_resource_for_module(
-    project: Project,
+    project: t.Infra.RopeProject,
     constants_module: str,
+    *,
+    class_module: str,
+    source_resource: t.Infra.RopeResource,
 ) -> t.Infra.RopeResource:
     """Return the existing canonical constants module resource."""
-    try:
-        target_mod = project.get_module(constants_module)
-    except RopeModuleNotFoundError:
-        msg = f"constants module {constants_module} does not exist"
-        raise TypeError(msg) from None
-    target_resource = target_mod.get_resource()
-    if not isinstance(target_resource, File):
-        msg = f"constants module {constants_module} did not resolve to a file resource"
+    source_path = Path(source_resource.real_path).resolve()
+    class_path = Path(*class_module.split("."))
+    source_suffix = next(
+        (
+            suffix
+            for suffix in (class_path.with_suffix(".py"), class_path / "__init__.py")
+            if source_path.parts[-len(suffix.parts) :] == suffix.parts
+        ),
+        None,
+    )
+    if source_suffix is None:
+        msg = f"{class_module} did not resolve inside its import root"
         raise TypeError(msg)
-    if not Path(target_resource.real_path).is_file():
+    import_root = source_path
+    for _part in source_suffix.parts:
+        import_root = import_root.parent
+    constants_path = Path(*constants_module.split("."))
+    candidates = tuple(
+        candidate
+        for candidate in (
+            import_root / constants_path.with_suffix(".py"),
+            import_root / constants_path / "__init__.py",
+        )
+        if candidate.is_file()
+    )
+    if not candidates:
         msg = f"constants module {constants_module} does not exist"
+        raise TypeError(msg)
+    if len(candidates) != 1:
+        msg = f"constants module {constants_module} has multiple canonical owners"
+        raise TypeError(msg)
+    target_resource = u.Infra.get_resource_from_path(project, candidates[0])
+    if target_resource is None:
+        msg = f"constants module {constants_module} is outside the Rope project"
         raise TypeError(msg)
     return target_resource
 
 
 def _extract_declaration_line(
-    source: str,
-    class_name: str,
-    constant_name: str,
-    class_lineno: int,
+    source: str, class_name: str, constant_name: str, class_lineno: int
 ) -> str:
     """Return the exact source line that declares the class-level constant."""
     try:
@@ -306,7 +307,7 @@ def _extract_declaration_line(
                 if segment is not None:
                     return _normalize_declaration_source(segment)
                 return _normalize_declaration_source(
-                    _statement_source_by_lines(source, statement),
+                    _statement_source_by_lines(source, statement)
                 )
             break
     lines = source.splitlines()
@@ -334,6 +335,46 @@ def _statement_declares_name(statement: ast.stmt, constant_name: str) -> bool:
             for target in statement.targets
         )
     return False
+
+
+def _module_declares_name(source: str, constant_name: str) -> bool:
+    """Return whether module source already declares ``constant_name``."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        msg = f"target constants module is not parseable: {exc.msg}"
+        raise TypeError(msg) from exc
+    return any(
+        _statement_declares_name(statement, constant_name) for statement in tree.body
+    )
+
+
+def _declaration_aliases_target_constant(
+    declaration_line: str, constants_alias: str, constant_name: str
+) -> bool:
+    """Return whether a class declaration points at the existing constants owner."""
+    try:
+        tree = ast.parse(textwrap.dedent(declaration_line).strip())
+    except SyntaxError:
+        return False
+    if len(tree.body) != 1:
+        return False
+    value = _assignment_value(tree.body[0])
+    return (
+        isinstance(value, ast.Attribute)
+        and value.attr == constant_name
+        and isinstance(value.value, ast.Name)
+        and value.value.id == constants_alias
+    )
+
+
+def _assignment_value(statement: ast.stmt) -> ast.expr | None:
+    """Return the right-hand side expression for supported assignments."""
+    if isinstance(statement, ast.AnnAssign):
+        return statement.value
+    if isinstance(statement, ast.Assign):
+        return statement.value
+    return None
 
 
 def _statement_source_by_lines(source: str, statement: ast.stmt) -> str:
@@ -371,12 +412,7 @@ def _remove_declaration_line(
 ) -> str:
     """Remove the constant declaration from the class body, preserving layout."""
     lines = source.splitlines(keepends=True)
-    ast_removed = _remove_declaration_by_ast(
-        source,
-        lines,
-        class_name,
-        constant_name,
-    )
+    ast_removed = _remove_declaration_by_ast(source, lines, class_name, constant_name)
     if ast_removed is not None:
         return ast_removed
     for idx in range(class_lineno - 1, len(lines)):
@@ -392,10 +428,7 @@ def _remove_declaration_line(
 
 
 def _remove_declaration_by_ast(
-    source: str,
-    lines: list[str],
-    class_name: str,
-    constant_name: str,
+    source: str, lines: list[str], class_name: str, constant_name: str
 ) -> str | None:
     """Remove a class-body declaration using AST line metadata."""
     try:
@@ -410,8 +443,7 @@ def _remove_declaration_by_ast(
                 continue
             start = max(statement.lineno - 1, 0)
             end = max(
-                getattr(statement, "end_lineno", statement.lineno),
-                statement.lineno,
+                getattr(statement, "end_lineno", statement.lineno), statement.lineno
             )
             delete_start = (
                 start - 1 if start > 0 and not lines[start - 1].strip() else start
@@ -422,9 +454,7 @@ def _remove_declaration_by_ast(
 
 
 def _declaration_block_matches(
-    lines: t.SequenceOf[str],
-    declaration_line: str,
-    start: int,
+    lines: t.SequenceOf[str], declaration_line: str, start: int
 ) -> bool:
     """Return whether source lines at ``start`` match the declaration block."""
     declaration_lines = declaration_line.splitlines()
@@ -437,10 +467,7 @@ def _declaration_block_matches(
     )
 
 
-def _apply_edits(
-    text: str,
-    edits: t.SequenceOf[tuple[int, int, str]],
-) -> str:
+def _apply_edits(text: str, edits: t.SequenceOf[tuple[int, int, str]]) -> str:
     """Apply (start, end, replacement) edits to ``text`` in reverse order."""
     for start, end, replacement in sorted(edits, reverse=True):
         text = text[:start] + replacement + text[end:]
@@ -448,16 +475,12 @@ def _apply_edits(
 
 
 def _append_constant(
-    target_text: str,
-    declaration_line: str,
-    constants_module: str,
+    target_text: str, declaration_line: str, constants_module: str
 ) -> str:
     """Append the constant declaration to the target module source."""
     module_declaration = _module_level_declaration_source(declaration_line)
     with_imports = _ensure_declaration_imports(
-        target_text,
-        module_declaration,
-        constants_module,
+        target_text, module_declaration, constants_module
     )
     trimmed = with_imports.rstrip()
     dedented = textwrap.dedent(module_declaration).strip()
@@ -470,9 +493,7 @@ def _module_level_declaration_source(declaration_line: str) -> str:
 
 
 def _ensure_declaration_imports(
-    target_text: str,
-    declaration_line: str,
-    constants_module: str,
+    target_text: str, declaration_line: str, constants_module: str
 ) -> str:
     """Add imports needed by the moved declaration."""
     stdlib_imports: list[str] = []
@@ -493,8 +514,7 @@ def _ensure_declaration_imports(
         names = ", ".join(sorted(set(typing_names)))
         stdlib_imports.append(f"from typing import {names}\n")
     return _insert_missing_import_lines(
-        target_text,
-        (*sorted(stdlib_imports), *sorted(project_imports)),
+        target_text, (*sorted(stdlib_imports), *sorted(project_imports))
     )
 
 
@@ -532,12 +552,10 @@ def _attribute_prefix(source: str, offset: int) -> str:
     For ``cls.BAR`` returns ``"cls"``.  For ``self.__class__.BAR`` returns
     ``"self.__class__"``.  For bare ``BAR`` returns the empty string.
     """
-    word_finder = worder.Worder(source, True)
     try:
-        primary = word_finder.get_primary_at(offset)
-    except Exception:
-        primary = ""
-    return str(primary)
+        return u.Infra.word_primary_at(source, offset)
+    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
+        return ""
 
 
 def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:
@@ -546,10 +564,7 @@ def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:
 
 
 def _ensure_constants_import(
-    source: str,
-    constants_alias: str,
-    class_module: str,
-    constants_module: str,
+    source: str, constants_alias: str, class_module: str, constants_module: str
 ) -> str:
     """Add an import for the canonical _constants module if absent.
 
@@ -624,7 +639,7 @@ def _module_import_block_end(lines: t.StrSequence) -> int:
             idx += 1
             continue
         if stripped.startswith(("import ", "from ")) and not stripped.startswith(
-            "from __future__ import",
+            "from __future__ import"
         ):
             paren_depth += lines[idx].count("(") - lines[idx].count(")")
             last_import = idx
@@ -669,10 +684,7 @@ def _module_import_insert_after(lines: t.StrSequence) -> int:
 
 
 def _rewrite_class_access_in_source(
-    source: str,
-    class_name: str,
-    constant_name: str,
-    constants_alias: str,
+    source: str, class_name: str, constant_name: str, constants_alias: str
 ) -> str:
     """Rewrite class-qualified constant access inside the source module itself.
 

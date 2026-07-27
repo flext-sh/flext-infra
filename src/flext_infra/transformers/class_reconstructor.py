@@ -5,12 +5,9 @@ from __future__ import annotations
 import operator
 from typing import override
 
+from flext_infra import c, m, t, u
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -26,14 +23,14 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
 
     def __init__(
         self,
-        order_config: t.SequenceOf[t.Infra.ContainerDict],
+        order_config: t.SequenceOf[t.JsonMapping],
         on_change: t.Infra.ChangeCallback = None,
     ) -> None:
         """Initialize with rule order settings and optional change callback."""
         super().__init__(on_change=on_change)
         try:
             typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                order_config,
+                order_config
             )
             self._order_config: t.SequenceOf[m.Infra.MethodOrderRule] = [
                 m.Infra.MethodOrderRule.model_validate(item) for item in typed_items
@@ -60,9 +57,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             if not FlextInfraUtilitiesRopeAnalysis.is_pyclass(class_obj):
                 continue
             block_edits = self._class_block_edits(
-                class_name=class_name,
-                class_obj=class_obj,
-                lines=lines,
+                class_name=class_name, class_obj=class_obj, lines=lines
             )
             edits.extend(block_edits)
         if not edits:
@@ -95,8 +90,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             sorted_chunks = sorted(
                 block,
                 key=lambda item: u.Infra.build_method_sort_key(
-                    item[0],
-                    self._order_config,
+                    item[0], self._order_config
                 ),
             )
             if [item[0].name for item in block] == [
@@ -112,21 +106,12 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
                 replacement_parts.append(item[3])
                 if index < len(separators):
                     replacement_parts.append(separators[index])
-            edits.append((
-                block[0][1],
-                block[-1][2],
-                "".join(replacement_parts),
-            ))
-            self._record_change(
-                f"Reordered {len(block)} methods in class {class_name}",
-            )
+            edits.append((block[0][1], block[-1][2], "".join(replacement_parts)))
+            self._record_change(f"Reordered {len(block)} methods in class {class_name}")
         return edits
 
     def _collect_method_chunks(
-        self,
-        *,
-        class_obj: t.Infra.RopePyObject,
-        lines: t.SequenceOf[str],
+        self, *, class_obj: t.Infra.RopePyObject, lines: t.SequenceOf[str]
     ) -> list[tuple[m.Infra.MethodInfo, int, int, str]]:
         """Collect ``(MethodInfo, start_offset, end_offset, source_chunk)`` ordered by line."""
         line_offsets = self._line_offsets(lines)
@@ -136,21 +121,22 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             method_obj = method_pyname.get_object()
             if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):
                 continue
+            # mro-j47u (codex): Rope returns a tuple; only its line is optional.
             location = method_pyname.get_definition_location()
-            if location is None or location[1] is None:
+            if location[1] is None:
                 continue
             raw_line = lines[location[1] - 1]
-            if not isinstance(raw_line, str):
-                continue
             definition_line = raw_line.lstrip()
             if not definition_line.startswith(("def ", "async def ", "@")):
                 continue
             decorators = FlextInfraUtilitiesRopeAnalysis.decorator_names(method_obj)
             start_line = FlextInfraUtilitiesRopeAnalysis.first_decorator_line(
-                method_obj,
-                default_line=location[1],
+                method_obj, default_line=location[1]
             )
-            end_line = method_obj.get_scope().get_end() or location[1]
+            method_scope = method_obj.get_scope()
+            end_line = (
+                method_scope.get_end() if method_scope is not None else location[1]
+            )
             method_info = m.Infra.MethodInfo(
                 name=method_name,
                 category=u.Infra.categorize_method(method_name, decorators),

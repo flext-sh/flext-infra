@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Annotated, override
+from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+from flext_infra import c, m
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.validate.gate_contract_checks import (
-    FlextInfraGateContractChecksMixin,
-)
+from flext_infra.validate.gate_contract_checks import FlextInfraGateContractChecksMixin
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
-from flext_infra.validate.gate_contract_report import (
-    FlextInfraGateContractReportMixin,
-)
+from flext_infra.validate.gate_contract_report import FlextInfraGateContractReportMixin
 from flext_infra.validate.gate_contract_scan import FlextInfraGateContractScanMixin
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraGateContractValidator(
@@ -28,13 +25,11 @@ class FlextInfraGateContractValidator(
     """Validate workspace gate scripts against the scripts-infra contract."""
 
     check_all: Annotated[
-        bool,
-        m.Field(description="Validate scripts that are not validators or fixers"),
+        bool, m.Field(description="Validate scripts that are not validators or fixers")
     ] = False
-    mode: Annotated[
-        c.Infra.OperationMode,
-        m.Field(description="Validation mode"),
-    ] = c.Infra.OperationMode.BASELINE
+    mode: Annotated[c.Infra.OperationMode, m.Field(description="Validation mode")] = (
+        c.Infra.OperationMode.BASELINE
+    )
 
     def run(self) -> FlextInfraGateContractModels.RunResult:
         """Run validation and return the CLI outcome."""
@@ -62,12 +57,9 @@ class FlextInfraGateContractValidator(
             if summary.errors > 0
             else int(c.Infra.ScriptExitCode.PASS)
         )
-        run_result: FlextInfraGateContractModels.RunResult = (
-            FlextInfraGateContractModels.RunResult.model_validate(
-                {"exit_code": exit_code, "violation_count": summary.errors},
-            )
+        return FlextInfraGateContractModels.RunResult(
+            exit_code=exit_code, violation_count=summary.errors
         )
-        return run_result
 
     @override
     def execute(self) -> p.Result[bool]:

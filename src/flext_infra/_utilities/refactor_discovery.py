@@ -10,17 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import fnmatch
-from collections.abc import (
-    Iterator,
-)
+from collections.abc import Iterator
 from pathlib import Path
 
-from flext_cli.utilities import u
+from flext_cli import u
+from flext_infra import c, m, t
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra.constants import c
 from flext_infra.iteration import FlextInfraUtilitiesIteration
-from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRefactorDiscovery:
@@ -62,6 +58,20 @@ class FlextInfraUtilitiesRefactorDiscovery:
             yield f
 
     @staticmethod
+    def _configured_scan_files(
+        project: Path, scan_dirs: t.StrSequence
+    ) -> t.SequenceOf[Path]:
+        """Return files from the exact refactor-owned project directories."""
+        files: set[Path] = set()
+        for directory_name in scan_dirs:
+            files.update(
+                FlextInfraUtilitiesIteration.iter_directory_python_files(
+                    project / directory_name
+                )
+            )
+        return tuple(sorted(files))
+
+    @staticmethod
     def collect_refactor_project_files(
         settings: t.MappingKV[str, t.Infra.InfraValue],
         project: Path,
@@ -73,25 +83,16 @@ class FlextInfraUtilitiesRefactorDiscovery:
         Returns None on error.
         """
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-            settings,
+            settings
         )
-        scan_dirs = frozenset(refactor_config.project_scan_dirs)
-        ir = FlextInfraUtilitiesIteration.iter_python_files(
-            workspace_root=project,
-            project_roots=[project],
-            include_tests=c.Infra.DIR_TESTS in scan_dirs,
-            include_examples=c.Infra.DIR_EXAMPLES in scan_dirs,
-            include_scripts=c.Infra.DIR_SCRIPTS in scan_dirs,
-            src_dirs=scan_dirs or None,
+        files = FlextInfraUtilitiesRefactorDiscovery._configured_scan_files(
+            project, refactor_config.project_scan_dirs
         )
-        if ir.failure:
-            u.Cli.error(ir.error or f"File iteration failed for {project}")
-            return None
         ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
         return list(
             FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                ir.value,
+                files,
                 base_path=project,
                 pattern=pattern,
                 ignore_patterns=set(ign),
@@ -109,12 +110,11 @@ class FlextInfraUtilitiesRefactorDiscovery:
         """Collect all candidate files under workspace projects."""
         root = workspace_root.resolve()
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-            settings,
+            settings
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=root,
-            scan_dirs=scan_dirs or None,
+            workspace_root=root, scan_dirs=scan_dirs or None
         )
         ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
@@ -122,20 +122,12 @@ class FlextInfraUtilitiesRefactorDiscovery:
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
-            ir = FlextInfraUtilitiesIteration.iter_python_files(
-                workspace_root=root,
-                project_roots=[proj],
-                include_tests=c.Infra.DIR_TESTS in scan_dirs,
-                include_examples=c.Infra.DIR_EXAMPLES in scan_dirs,
-                include_scripts=c.Infra.DIR_SCRIPTS in scan_dirs,
-                src_dirs=scan_dirs or None,
+            files = FlextInfraUtilitiesRefactorDiscovery._configured_scan_files(
+                proj, refactor_config.project_scan_dirs
             )
-            if ir.failure:
-                u.Cli.error(ir.error or f"File iteration failed for {proj}")
-                continue
             all_files.extend(
                 FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                    ir.value,
+                    files,
                     base_path=proj,
                     pattern=pattern,
                     ignore_patterns=ignore_patterns,
@@ -146,18 +138,16 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def discover_refactor_projects(
-        settings: t.MappingKV[str, t.Infra.InfraValue],
-        workspace_root: Path,
+        settings: t.MappingKV[str, t.Infra.InfraValue], workspace_root: Path
     ) -> t.SequenceOf[Path]:
         """Discover workspace projects using the typed refactor config."""
         root = workspace_root.resolve()
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
-            settings,
+            settings
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         return FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=root,
-            scan_dirs=scan_dirs or None,
+            workspace_root=root, scan_dirs=scan_dirs or None
         )
 
 

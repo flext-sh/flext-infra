@@ -12,18 +12,18 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import Annotated, override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
+from flext_infra import c, m, u
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
@@ -34,46 +34,30 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
     definitions are centralized in ``typings.py``.
     """
 
-    scan_tests: Annotated[
-        bool,
-        m.Field(description="Include test packages in namespace validation"),
-    ] = False
-
     @override
     def execute(self) -> p.Result[bool]:
         """Execute namespace validation for the configured workspace root."""
-        report_result = self.validate_project(
-            self.workspace_root,
-            scan_tests=self.scan_tests,
-        )
+        report_result = self.validate_project(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(report_result.error or "namespace validation failed")
         report = report_result.unwrap()
         return r[bool].ok(report.passed)
 
     def validate_project(
-        self,
-        project_root: Path,
-        *,
-        scan_tests: bool,
+        self, project_root: Path
     ) -> p.Result[m.Infra.ValidationReport]:
         """Validate namespace rules inside one project."""
         files_result = u.Infra.iter_python_files(
-            workspace_root=project_root,
-            project_roots=[project_root],
-            include_tests=scan_tests,
-            include_examples=False,
-            include_scripts=False,
-            include_dynamic_dirs=False,
+            m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
             return r[m.Infra.ValidationReport].fail(
-                files_result.error or "Namespace validation failed: discovery failed",
+                files_result.error or "Namespace validation failed: discovery failed"
             )
         files = [
             py_file
             for py_file in files_result.value
-            if not self._is_exempt_file(py_file, scan_tests=scan_tests)
+            if not self._is_exempt_file(py_file)
         ]
         layout = u.Infra.layout(project_root)
         prefix = layout.class_stem if layout is not None else ""
@@ -107,22 +91,16 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                     if is_facade and not is_test_file:
                         violations.extend(self.check_rule_1(tree, rel))
                         violations.extend(self.check_rule_2(tree, rel))
-                if not is_test_file:
-                    violations.extend(
-                        self.check_rule_3(
-                            tree,
-                            rel,
-                            class_stem=prefix,
-                            package_name=package_name,
-                        )
+                violations.extend(
+                    self.check_rule_3(
+                        tree, rel, class_stem=prefix, package_name=package_name
                     )
+                )
         return self._validation_report(files=files, violations=violations)
 
     @staticmethod
     def _validation_report(
-        *,
-        files: t.SequenceOf[Path],
-        violations: t.SequenceOf[str],
+        *, files: t.SequenceOf[Path], violations: t.SequenceOf[str]
     ) -> p.Result[m.Infra.ValidationReport]:
         """Build the namespace validation report."""
         passed = not violations
@@ -133,37 +111,19 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=tuple(violations),
-                summary=summary,
-            ),
+                passed=passed, violations=tuple(violations), summary=summary
+            )
         )
 
-    def _is_exempt_file(
-        self,
-        filepath: Path,
-        *,
-        scan_tests: bool = False,
-    ) -> bool:
-        """Check whether a file should be skipped from validation.
-
-        When ``scan_tests`` is active we still skip dunder/conftest files, but
-        we no longer drop ``test_*.py`` modules so they can be checked for the
-        ``Tests<Stem>`` prefix and the single-public-class rule.
-        """
+    def _is_exempt_file(self, filepath: Path) -> bool:
+        """Check whether a file should be skipped from validation."""
         name = filepath.name
         if name in c.Infra.EXEMPT_FILENAMES:
             return True
-        return any(
-            name.startswith(prefix)
-            for prefix in c.Infra.EXEMPT_PREFIXES
-            if not (scan_tests and prefix == "test_")
-        )
+        return any(name.startswith(prefix) for prefix in c.Infra.EXEMPT_PREFIXES)
 
     def _parse_file(
-        self,
-        rope_project: t.Infra.RopeProject,
-        path: Path,
+        self, rope_project: t.Infra.RopeProject, path: Path
     ) -> p.Result[ast.AST]:
         """Return the AST module for ``path`` via rope.
 
@@ -183,8 +143,6 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         except c.EXC_OS_SYNTAX as exc:
             return r[ast.AST].fail(f"get_pymodule raised: {exc!s}")
         ast_module = pymodule.get_ast()
-        if ast_module is None:
-            return r[ast.AST].fail(f"pymodule has no AST for {path}")
         return r[ast.AST].ok(ast_module)
 
     @staticmethod
@@ -197,14 +155,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         if FlextInfraNamespaceValidator._is_facade_module(rel_path):
             return True
         return any(
-            part
-            in {
-                "_constants",
-                "_models",
-                "_protocols",
-                "_typings",
-                "_utilities",
-            }
+            part in {"_constants", "_models", "_protocols", "_typings", "_utilities"}
             for part in rel_path.parts
         )
 

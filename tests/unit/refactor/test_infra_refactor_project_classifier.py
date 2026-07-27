@@ -1,8 +1,15 @@
+"""Tests for the refactor project classifier."""
+
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write_pyproject(project_root: Path, content: str) -> None:
@@ -13,9 +20,8 @@ def _write_pyproject(project_root: Path, content: str) -> None:
 class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
     """Behavior contract for test_infra_refactor_project_classifier."""
 
-    def test_read_project_metadata_preserves_pep621_dependency_order(
-        self,
-        tmp_path: Path,
+    def test_classify_reads_internal_dependencies_from_pep621(
+        self, tmp_path: Path
     ) -> None:
         _write_pyproject(
             tmp_path,
@@ -30,15 +36,12 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
             """,
         )
 
-        classifier = FlextInfraProjectClassifier(tmp_path)
-        project_name, dependencies = classifier._read_project_metadata()
+        classification = FlextInfraProjectClassifier(tmp_path).classify()
 
-        assert project_name == "flext-example"
-        assert dependencies == ["flext-core", "flext-cli", "requests"]
+        tm.that(classification.project_kind, eq="platform")
 
-    def test_read_project_metadata_preserves_poetry_dependency_order(
-        self,
-        tmp_path: Path,
+    def test_classify_reads_internal_dependencies_from_poetry(
+        self, tmp_path: Path
     ) -> None:
         _write_pyproject(
             tmp_path,
@@ -59,14 +62,6 @@ class TestsFlextInfraRefactorInfraRefactorProjectClassifier:
             """,
         )
 
-        classifier = FlextInfraProjectClassifier(tmp_path)
-        project_name, dependencies = classifier._read_project_metadata()
+        classification = FlextInfraProjectClassifier(tmp_path).classify()
 
-        assert project_name == "flext-example"
-        assert dependencies == [
-            "flext-core",
-            "flext-cli",
-            "requests",
-            "flext-ldap",
-            "pytest",
-        ]
+        tm.that(classification.project_kind, eq="app")

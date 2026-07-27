@@ -8,14 +8,18 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c
+from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
-class FlextInfraUtilitiesGitScope:
+class FlextInfraUtilitiesGitScope(FlextInfraUtilitiesGitWorktreeMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @staticmethod
@@ -52,10 +56,7 @@ class FlextInfraUtilitiesGitScope:
             if normalized:
                 scope_paths.add(normalized)
         try:
-            status_output = repo.git.status(
-                "--porcelain",
-                "--untracked-files=all",
-            )
+            status_output = repo.git.status("--porcelain", "--untracked-files=all")
         except GitCommandError:
             status_output = ""
         for raw_line in status_output.splitlines():
@@ -84,9 +85,7 @@ class FlextInfraUtilitiesGitScope:
         if repo_root_text is None:
             return None
         repo_relative_paths = (
-            FlextInfraUtilitiesGitScope._git_tracked_repo_relative_paths(
-                repo_root_text,
-            )
+            FlextInfraUtilitiesGitScope._git_tracked_repo_relative_paths(repo_root_text)
         )
         if repo_relative_paths is None:
             return None
@@ -122,10 +121,7 @@ class FlextInfraUtilitiesGitScope:
         ]
 
     @classmethod
-    def git_tracked_top_level_dir_names(
-        cls,
-        scope_root: Path,
-    ) -> frozenset[str] | None:
+    def git_tracked_top_level_dir_names(cls, scope_root: Path) -> frozenset[str] | None:
         """Return tracked top-level directory names under one scope when Git is active."""
         relative_paths = cls._git_tracked_scope_relative_paths(
             str(scope_root.resolve())
@@ -140,13 +136,11 @@ class FlextInfraUtilitiesGitScope:
 
     @classmethod
     def project_descriptor_is_tracked(
-        cls,
-        workspace_root: Path,
-        project_root: Path,
+        cls, workspace_root: Path, project_root: Path
     ) -> bool:
         """Return whether one candidate project has a tracked descriptor file."""
         relative_paths = cls._git_tracked_scope_relative_paths(
-            str(workspace_root.resolve()),
+            str(workspace_root.resolve())
         )
         if relative_paths is None:
             return True

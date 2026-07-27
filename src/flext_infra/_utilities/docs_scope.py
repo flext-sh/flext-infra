@@ -5,16 +5,18 @@ from __future__ import annotations
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_cli.utilities import FlextCliUtilities as u
+from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
+from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.protocols import FlextInfraProtocols as p
-from flext_infra.typings import FlextInfraTypes as t
+
+if TYPE_CHECKING:
+    from flext_infra import FlextInfraProtocols as p
 
 
 class FlextInfraUtilitiesDocsScope:
@@ -37,35 +39,36 @@ class FlextInfraUtilitiesDocsScope:
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
-                payload,
+                payload
             )
         )
         if not payload:
-            return mw.ProjectPyprojectState.model_construct(
-                project_root=root,
-                pyproject_path=pyproject_path,
-                payload=payload,
-                docs_meta=docs_meta,
-                project_name="",
-                package_name="",
-                dependency_names=dependency_names,
+            empty_state: mw.ProjectPyprojectState = (
+                mw.ProjectPyprojectState.model_construct(
+                    project_root=root,
+                    pyproject_path=pyproject_path,
+                    payload=payload,
+                    docs_meta=docs_meta,
+                    project_name="",
+                    package_name="",
+                    dependency_names=dependency_names,
+                )
             )
-        return mw.ProjectPyprojectState.model_construct(
+            return empty_state
+        state: mw.ProjectPyprojectState = mw.ProjectPyprojectState.model_construct(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,
             docs_meta=docs_meta,
             project_name=FlextInfraUtilitiesDocsScope.project_name_from_payload(
-                root,
-                payload,
+                root, payload
             ),
             package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
-                root,
-                payload,
-                docs_meta,
+                root, payload, docs_meta
             ),
             dependency_names=dependency_names,
         )
+        return state
 
     @staticmethod
     def project_state(project_root: Path) -> mw.ProjectPyprojectState:
@@ -74,10 +77,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def resolve_projects(
-        workspace_root: Path,
-        names: t.StrSequence,
-        *,
-        include_attached: bool = False,
+        workspace_root: Path, names: t.StrSequence, *, include_attached: bool = False
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Resolve project names into canonical project descriptors.
 
@@ -89,17 +89,16 @@ class FlextInfraUtilitiesDocsScope:
         name-agnostic.
         """
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
-            workspace_root,
-            include_attached=include_attached,
+            workspace_root, include_attached=include_attached
         )
         if discover_result.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                discover_result.error or "discovery failed",
+                discover_result.error or "discovery failed"
             )
         projects = discover_result.value
         if not names:
             return r[t.SequenceOf[mw.ProjectInfo]].ok(
-                sorted(projects, key=lambda proj: proj.name),
+                sorted(projects, key=lambda proj: proj.name)
             )
         by_name: dict[str, mw.ProjectInfo] = {}
         for project in projects:
@@ -109,17 +108,14 @@ class FlextInfraUtilitiesDocsScope:
         if missing:
             missing_text = ", ".join(sorted(missing))
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"unknown projects: {missing_text}",
+                f"unknown projects: {missing_text}"
             )
         return r[t.SequenceOf[mw.ProjectInfo]].ok(
-            sorted((by_name[name] for name in names), key=lambda proj: proj.name),
+            sorted((by_name[name] for name in names), key=lambda proj: proj.name)
         )
 
     @staticmethod
-    def project_name_from_payload(
-        entry: Path,
-        payload: t.Infra.ContainerDict,
-    ) -> str:
+    def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
         """Return the declared project name from ``[project].name``."""
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
@@ -130,9 +126,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def _project_info_for_entry(
-        entry: Path,
-        *,
-        workspace_members: t.Infra.StrSet,
+        entry: Path, *, workspace_members: t.Infra.StrSet
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
@@ -141,10 +135,13 @@ class FlextInfraUtilitiesDocsScope:
         # Pre-validate [project].name BEFORE triggering the strict cached state builder.
         payload_preview = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject)
         project_section = payload_preview.get("project")
+        project_name = (
+            project_section.get("name") if isinstance(project_section, dict) else None
+        )
         if (
             not isinstance(project_section, dict)
-            or not isinstance(project_section.get("name"), str)
-            or not project_section["name"].strip()
+            or not isinstance(project_name, str)
+            or not project_name.strip()
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
@@ -162,7 +159,7 @@ class FlextInfraUtilitiesDocsScope:
             if is_workspace_member
             else c.Infra.WorkspaceProjectRole.ATTACHED
         )
-        return mw.ProjectInfo.model_construct(
+        project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
             stack="python/flext",
@@ -170,13 +167,13 @@ class FlextInfraUtilitiesDocsScope:
             has_src=has_src,
             project_class=(
                 FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                    project_state.project_name,
-                    project_state.docs_meta,
+                    project_state.project_name, project_state.docs_meta
                 )
             ),
             package_name=project_state.package_name,
             workspace_role=workspace_role,
         )
+        return project_info
 
     @staticmethod
     def config_path(workspace_root: Path) -> Path:
@@ -186,23 +183,22 @@ class FlextInfraUtilitiesDocsScope:
         return workspace_root / dir_docs / docs_config
 
     @staticmethod
-    def project_payload(project_root: Path) -> t.Infra.ContainerDict:
+    def project_payload(project_root: Path) -> t.JsonMapping:
         """Return a project's ``pyproject.toml`` payload as a plain mapping."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).payload
 
     @staticmethod
-    def load_config(
-        workspace_root: Path,
-    ) -> t.Infra.ContainerDict:
+    def load_config(workspace_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
+        empty: t.JsonMapping = {}
         if not path.exists():
-            empty: t.Infra.ContainerDict = {}
             return empty
         result = u.Cli.json_read(path)
         if result.success:
-            return result.value
-        empty: t.Infra.ContainerDict = {}
+            value = result.value
+            if isinstance(value, dict):
+                return dict(value)
         return empty
 
     @staticmethod
@@ -218,15 +214,12 @@ class FlextInfraUtilitiesDocsScope:
         return {str(item).strip() for item in excluded if str(item).strip()}
 
     @staticmethod
-    def project_docs_meta(project_root: Path) -> t.Infra.ContainerDict:
+    def project_docs_meta(project_root: Path) -> t.JsonMapping:
         """Return optional ``tool.flext.docs`` metadata from a project pyproject."""
         return FlextInfraUtilitiesDocsScope.project_state(project_root).docs_meta
 
     @staticmethod
-    def docs_meta_list(
-        project_root: Path,
-        key: str,
-    ) -> t.StrSequence:
+    def docs_meta_list(project_root: Path, key: str) -> t.StrSequence:
         """Return one normalized string-list value from ``tool.flext.docs``."""
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         raw = docs_meta.get(key)
@@ -235,25 +228,18 @@ class FlextInfraUtilitiesDocsScope:
         return [str(item).strip() for item in raw if str(item).strip()]
 
     @staticmethod
-    def is_excluded_doc_path(
-        project_root: Path,
-        relative_path: Path,
-    ) -> bool:
+    def is_excluded_doc_path(project_root: Path, relative_path: Path) -> bool:
         """Return whether a relative docs path is excluded by ``tool.flext.docs``."""
         candidate = relative_path.as_posix()
         for pattern in FlextInfraUtilitiesDocsScope.docs_meta_list(
-            project_root,
-            "exclude_docs",
+            project_root, "exclude_docs"
         ):
             if fnmatch(candidate, pattern):
                 return True
         return False
 
     @staticmethod
-    def is_governed_project(
-        project_name: str,
-        workspace_root: Path,
-    ) -> bool:
+    def is_governed_project(project_name: str, workspace_root: Path) -> bool:
         """Return whether a project belongs to the governed FLEXT docs scope."""
         project_root = workspace_root / project_name
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
@@ -267,17 +253,12 @@ class FlextInfraUtilitiesDocsScope:
         )
 
     @staticmethod
-    def docs_meta_from_payload(
-        payload: t.Infra.ContainerDict,
-    ) -> t.Infra.ContainerDict:
+    def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         return FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload)
 
     @staticmethod
-    def classify_project_from_meta(
-        project_name: str,
-        docs_meta: t.Infra.ContainerDict,
-    ) -> str:
+    def classify_project_from_meta(project_name: str, docs_meta: t.JsonMapping) -> str:
         """Classify a project using pre-loaded docs metadata (avoids re-parsing).
 
         Project-prefix heuristics derive from ``c.Infra.INTEGRATION_CLASS_PREFIXES``
@@ -301,9 +282,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def package_name_from_payload(
-        project_root: Path,
-        payload: t.Infra.ContainerDict,
-        docs_meta: t.Infra.ContainerDict,
+        project_root: Path, payload: t.JsonMapping, docs_meta: t.JsonMapping
     ) -> str:
         """Return the primary package name using pre-loaded payload.
 
@@ -316,9 +295,7 @@ class FlextInfraUtilitiesDocsScope:
         Raises ``ValueError`` only for flext- projects unable to resolve.
         """
         return FlextInfraUtilitiesPyproject.package_name_from_payload(
-            project_root,
-            payload,
-            docs_meta,
+            project_root, payload, docs_meta
         )
 
     @staticmethod
@@ -328,9 +305,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def discover_projects(
-        workspace_root: Path,
-        *,
-        include_attached: bool = False,
+        workspace_root: Path, *, include_attached: bool = False
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover workspace projects that participate in the docs scope.
 
@@ -341,15 +316,14 @@ class FlextInfraUtilitiesDocsScope:
         """
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"discovery failed: invalid workspace root {workspace_root}",
+                f"discovery failed: invalid workspace root {workspace_root}"
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
         workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
-            workspace_root,
+            workspace_root
         )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-            workspace_root,
-            include_attached=include_attached,
+            workspace_root, include_attached=include_attached
         )
         root_project: mw.ProjectInfo | None = None
         projects: list[mw.ProjectInfo] = []
@@ -362,8 +336,7 @@ class FlextInfraUtilitiesDocsScope:
             ):
                 continue
             project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                project_root,
-                workspace_members=workspace_members,
+                project_root, workspace_members=workspace_members
             )
             if project_info is None:
                 continue

@@ -2,24 +2,21 @@
 
 from __future__ import annotations
 
-from rope.base import ast
-from rope.base.exceptions import ModuleSyntaxError
+import ast
+from typing import TYPE_CHECKING
 
-from flext_infra._utilities.silent_failure_ast import (
-    collect_silent_failure_findings,
-)
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraSilentFailureDetector:
     """Detect branches that hide failures behind generic sentinel returns."""
 
     @staticmethod
-    def detect_file(
-        ctx: m.Infra.DetectorContext,
-    ) -> t.SequenceOf[m.Infra.Issue]:
+    def detect_file(ctx: m.Infra.DetectorContext) -> t.SequenceOf[m.Infra.Issue]:
         """Detect silent-failure findings in one Python file."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
         if resource is None:
@@ -47,8 +44,7 @@ class FlextInfraSilentFailureDetector:
 
     @classmethod
     def detect_violations(
-        cls,
-        ctx: m.Infra.DetectorContext,
+        cls, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[m.Infra.SilentFailureViolation]:
         """Return silent-failure violations with kind + fix_action for census."""
         resource = u.Infra.fetch_python_resource(ctx.rope_project, ctx.file_path)
@@ -78,14 +74,13 @@ class FlextInfraSilentFailureDetector:
 
 
 def _rope_module_ast(
-    rope_project: t.Infra.RopeProject,
-    resource: t.Infra.RopeResource,
+    rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
 ) -> ast.Module | None:
     """Return the rope-backed module AST, or None on parse failure."""
     try:
         pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
-    except (ModuleSyntaxError, SyntaxError):
+    except (*u.Infra.rope_syntax_errors(),):
         return None
     return tree if isinstance(tree, ast.Module) else None
 

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
+from flext_infra import c
 from flext_infra.codegen._codegen_generation_imports import (
     FlextInfraCodegenGenerationImportsMixin,
 )
-from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraCodegenGenerationTypeCheckingMixin(
@@ -23,9 +26,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
     ) -> t.MappingKV[str, t.MutableSequenceOf[t.StrPair]]:
         """Collapse child module imports into configured child packages."""
         sorted_children: list[str] = sorted(
-            set(child_packages or []),
-            key=len,
-            reverse=True,
+            set(child_packages or []), key=len, reverse=True
         )
         collapsed: dict[str, list[t.StrPair]] = defaultdict(list)
         for mod, items in groups.items():
@@ -38,9 +39,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         return collapsed
 
     @staticmethod
-    def _has_flext_types(
-        collapsed: t.MappingKV[str, t.StrPairSequence],
-    ) -> bool:
+    def _has_flext_types(collapsed: t.MappingKV[str, t.StrPairSequence]) -> bool:
         """Return whether a collapsed import map already imports FlextTypes."""
         return any(
             export_name == "FlextTypes"
@@ -49,25 +48,31 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         )
 
     @staticmethod
-    def _type_checking_sort_key(
-        mod: str,
-        local_package_root: str | None,
-    ) -> t.StrPair:
-        """Return a stable TYPE_CHECKING import sort key."""
-        top = mod.split(".", maxsplit=1)[0]
-        if local_package_root == "tests":
-            test_order = {"flext_tests": "0", "flext_infra": "1", "tests": "2"}
-            return (test_order.get(top, "1"), mod.lower())
-        return ("0", mod.lower())
+    def _type_checking_sort_key(mod: str) -> t.StrPair:
+        """Order absolute imports before relative imports, then by module path."""
+        return ("1" if mod.startswith(".") else "0", mod.lower())
+
+    @staticmethod
+    def _type_checking_sort_owner(mod: str, items: t.StrPairSequence) -> str:
+        """Return the module that owns the emitted import for sorting."""
+        module_basename = mod.rsplit(".", maxsplit=1)[-1]
+        if (
+            "." in mod
+            and items
+            and all(
+                not attr_name and export_name == module_basename
+                for export_name, attr_name in items
+            )
+        ):
+            # mro-i6nq.10: Module aliases emit from their parent package.
+            return mod.rsplit(".", maxsplit=1)[0]
+        return mod
 
     @staticmethod
     def _should_skip_type_checking_module_export(
-        mod: str,
-        export_name: str,
-        attr_name: str,
-        root_name: str,
+        mod: str, export_name: str, attr_name: str, root_name: str
     ) -> bool:
-        """Return whether a module-style export is redundant in TYPE_CHECKING."""
+        """Return whether a symbol import is a redundant root self-import."""
         if export_name in c.Infra.ALIAS_NAMES or not export_name:
             return False
         if export_name in {"cli", "main", "infra"}:
@@ -75,7 +80,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         if export_name != export_name.lower():
             return False
         if not attr_name:
-            return export_name == mod.rsplit(".", maxsplit=1)[-1]
+            # mro-i6nq.10: Literal __all__ requires every module alias binding.
+            return False
+        # A lowercase ``from mod import name`` (package-name alias like ``grpc``
+        # or a module-level function like ``smell_fixer_for``) is a real symbol
+        # that must stay statically visible; only skip a redundant self-import
+        # from the root package itself.
         return mod == root_name and attr_name == export_name
 
     @staticmethod
@@ -84,9 +94,10 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         root_name: str,
         lines: t.MutableSequenceOf[str],
-    ) -> None:
-        """Emit one TYPE_CHECKING module import group."""
+    ) -> t.StrSequence:
+        """Emit one TYPE_CHECKING module import group and return bound names."""
         alias_exports: t.MutableSequenceOf[str] = []
+        bound_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
         for export_name, attr_name in sorted(
@@ -98,10 +109,22 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             ):
                 continue
             if not attr_name:
-                target = alias_exports if export_name == module_basename else parts
-                target.append(export_name)
+                if export_name == module_basename:
+                    alias_exports.append(export_name)
+                else:
+                    parts.append(
+                        FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
+                            export_name, export_name
+                        )
+                    )
+                bound_exports.append(export_name)
                 continue
-            parts.append(f"{attr_name} as {export_name}")
+            parts.append(
+                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
+                    attr_name, export_name
+                )
+            )
+            bound_exports.append(export_name)
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
@@ -115,6 +138,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     "    ", mod, deduped_parts
                 )
             )
+        return tuple(dict.fromkeys(bound_exports))
 
     @staticmethod
     def generate_type_checking(
@@ -132,13 +156,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         normalized_groups: dict[str, t.StrPairSequence] = {}
         for mod, items in groups.items():
             resolved = FlextInfraCodegenGenerationTypeCheckingMixin._normalize_type_checking_module_path(
-                mod,
-                local_package_root,
+                mod, local_package_root
             )
-            FlextInfraCodegenGenerationTypeCheckingMixin._reject_non_absolute_import(
+            FlextInfraCodegenGenerationTypeCheckingMixin._reject_noncanonical_type_checking_import(
                 resolved, local_package_root, items
             )
-            normalized_groups[resolved] = items
+            normalized_groups[resolved] = (*normalized_groups.get(resolved, ()), *items)
         collapsed = FlextInfraCodegenGenerationTypeCheckingMixin._collapse_to_children(
             normalized_groups, child_packages
         )
@@ -152,27 +175,31 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             collapsed,
             key=lambda mod: (
                 FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
-                    mod,
-                    local_package_root,
+                    FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+                        mod, collapsed[mod]
+                    )
                 )
             ),
         )
-        prev_top: str | None = None
+        bound_exports: t.MutableSequenceOf[str] = []
+        previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
-            top = mod.split(".")[0]
-            if (
-                local_package_root == "tests"
-                and prev_top == "flext_tests"
-                and top != prev_top
-            ):
+            is_relative = mod.startswith(".")
+            if previous_is_relative is False and is_relative:
                 lines.append("")
-            FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
-                mod,
-                collapsed[mod],
-                root_name,
-                lines,
+            bound_exports.extend(
+                FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
+                    mod, collapsed[mod], root_name, lines
+                )
             )
-            prev_top = top
+            previous_is_relative = is_relative
+        if bound_exports:
+            lines.append("    _ = (")
+            lines.extend(
+                f"        {export_name},"
+                for export_name in tuple(dict.fromkeys(bound_exports))
+            )
+            lines.append("    )")
         return () if len(lines) == 1 else lines
 
 

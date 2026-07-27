@@ -6,12 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from flext_tests import tm
 
 import flext_infra.validate as core_module
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestCoreModuleInit:
@@ -22,14 +26,18 @@ class TestCoreModuleInit:
         with pytest.raises(AttributeError):
             _ = getattr(core_module, "nonexistent_xyz_attribute")
 
-    def test_core_dir_returns_all_exports(self) -> None:
-        """Test that dir() returns all exported attributes."""
+    def test_validate_package_does_not_reexport_leaf_implementations(self) -> None:
+        """Keep validator implementations available only from leaf owners."""
         exports = dir(core_module)
-        tm.that(exports, has="FlextInfraBaseMkValidator")
-        tm.that(exports, has="FlextInfraInventoryService")
-        tm.that(exports, has="FlextInfraSkillValidator")
-        tm.that(exports, has="FlextInfraStubSupplyChain")
-        tm.that(exports, has="FlextInfraTextPatternScanner")
+        tm.that(core_module.__all__, eq=())
+        for implementation in (
+            "FlextInfraBaseMkValidator",
+            "FlextInfraInventoryService",
+            "FlextInfraSkillValidator",
+            "FlextInfraStubSupplyChain",
+            "FlextInfraTextPatternScanner",
+        ):
+            tm.that(exports, lacks=implementation)
 
     def test_core_lazy_imports_work(self) -> None:
         """Test that lazy imports resolve to real classes."""

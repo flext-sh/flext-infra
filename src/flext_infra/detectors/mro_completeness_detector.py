@@ -6,10 +6,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from typing import TYPE_CHECKING
+
+from flext_infra import c, config, m, u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraMROCompletenessDetector:
@@ -26,9 +28,9 @@ class FlextInfraMROCompletenessDetector:
         family = c.Infra.NAMESPACE_FILE_TO_FAMILY.get(file_path.name)
         if family is None:
             return []
-        res = u.Infra.fetch_python_resource(
-            rope_project, file_path, skip_protected=True
-        )
+        if not FlextInfraMROCompletenessDetector._is_src_root_facade(ctx):
+            return []
+        res = u.Infra.fetch_python_resource(rope_project, file_path)
         if res is None:
             if parse_failures is not None:
                 parse_failures.append(
@@ -46,16 +48,14 @@ class FlextInfraMROCompletenessDetector:
         suffix = c.Infra.FAMILY_SUFFIXES.get(family, "")
         if suffix:
             facade = next(
-                (name for name in module_classes if name.endswith(suffix)),
-                None,
+                (name for name in module_classes if name.endswith(suffix)), None
             )
         if facade is None:
-            metadata = u.read_project_constants("flext-infra")
             facade = next(
                 (
                     name
                     for name in module_classes
-                    if name.startswith(metadata.TIER_FACADE_PREFIX["src"])
+                    if name.startswith(u.derive_class_stem(config.Infra.name))
                 ),
                 None,
             )
@@ -65,6 +65,7 @@ class FlextInfraMROCompletenessDetector:
         # get_class_info returns ClassInfo(name, line, bases) — reuse for declared bases
         expected: dict[str, int] = {}
         declared: set[str] = set()
+        local_bases_by_class: dict[str, set[str]] = {}
         scan_paths = [file_path]
         dn = c.Infra.FAMILY_DIRECTORIES.get(family, "")
         if dn:
@@ -78,12 +79,19 @@ class FlextInfraMROCompletenessDetector:
             r = u.Infra.get_resource_from_path(rope_project, path)
             if r is None:
                 continue
+            source = r.read()
             for ci in u.Infra.get_class_info(rope_project, r):
+                class_bases = set(ci.bases)
+                class_bases.update(u.Infra.parse_class_bases(source, ci.name))
+                local_bases_by_class[ci.name] = class_bases
                 if ci.name == facade:
-                    declared = set(ci.bases)
+                    declared = class_bases
                 elif not ci.name.startswith("_") and ci.name.startswith(facade):
                     expected[ci.name] = ci.line
         declared.update(u.Infra.parse_class_bases(res.read(), facade))
+        declared = FlextInfraMROCompletenessDetector._expand_declared_bases(
+            declared, local_bases_by_class
+        )
         root = u.Infra.resolve_project_root(file_path)
         if root is not None:
             for base in u.Infra.build_expected_base_chains(project_root=root).get(
@@ -102,6 +110,35 @@ class FlextInfraMROCompletenessDetector:
             for name, line in sorted(expected.items())
             if name not in declared
         ]
+
+    @staticmethod
+    def _expand_declared_bases(
+        declared: set[str], local_bases_by_class: t.MappingKV[str, set[str]]
+    ) -> set[str]:
+        """Return direct and local-transitive bases declared by the facade."""
+        expanded = set(declared)
+        pending = list(declared)
+        while pending:
+            base_name = pending.pop()
+            for parent_base in local_bases_by_class.get(base_name, set()):
+                if parent_base in expanded:
+                    continue
+                expanded.add(parent_base)
+                pending.append(parent_base)
+        return expanded
+
+    @staticmethod
+    def _is_src_root_facade(ctx: m.Infra.DetectorContext) -> bool:
+        """Return whether the file is a root source facade module."""
+        project_root = ctx.project_root
+        if project_root is None:
+            return True
+        try:
+            rel_path = ctx.file_path.relative_to(project_root)
+        except ValueError:
+            return False
+        expected_depth: int = c.Infra.RUNTIME_ALIAS_SRC_DEPTH_EXACT
+        return len(rel_path.parts) == expected_depth and rel_path.parts[0] == "src"
 
 
 __all__: list[str] = ["FlextInfraMROCompletenessDetector"]

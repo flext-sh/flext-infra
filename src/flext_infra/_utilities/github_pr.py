@@ -6,18 +6,20 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra import c, m
 from flext_infra._utilities._github_pr_single import (
     FlextInfraUtilitiesGithubPrSingleMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
@@ -25,27 +27,23 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
 
     @classmethod
     def run_github_workspace_pull_requests(
-        cls,
-        request: m.Infra.GithubPullRequestWorkspaceRequest,
+        cls, request: m.Infra.GithubPullRequestWorkspaceRequest
     ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
         """Run pull-request commands across workspace repositories."""
         workspace_root = request.workspace_path
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
-            workspace_root,
-            list(request.project_names or []),
+            workspace_root, list(request.project_names or [])
         )
         if projects_result.failure:
             return r[m.Infra.GithubPullRequestWorkspaceReport].fail(
-                projects_result.error or "project resolution failed",
+                projects_result.error or "project resolution failed"
             )
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
         outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
-            workspace_root=workspace_root,
-            request=request,
-            outcomes=outcomes,
+            workspace_root=workspace_root, request=request, outcomes=outcomes
         )
         failures = 0
         for repo_root in repos:
@@ -62,14 +60,12 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
                 success=total - failures,
                 fail=failures,
                 outcomes=tuple(outcomes),
-            ),
+            )
         )
 
     @classmethod
     def _github_pr_process_repo(
-        cls,
-        repo_root: Path,
-        context: m.Infra.GithubPullRequestWorkspaceContext,
+        cls, repo_root: Path, context: m.Infra.GithubPullRequestWorkspaceContext
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Process one repository during workspace pull-request execution.
 
@@ -81,8 +77,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
         """
         if context.request.branch:
             _ = u.Cli.run_checked(
-                [c.Infra.GIT, "checkout", context.request.branch],
-                cwd=repo_root,
+                [c.Infra.GIT, "checkout", context.request.branch], cwd=repo_root
             )
         if context.request.checkpoint:
             _ = cls._github_pr_checkpoint(repo_root, context.request.branch)
@@ -103,8 +98,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
     def _github_pr_checkpoint(cls, repo_root: Path, branch: str) -> p.Result[bool]:
         """Github pr checkpoint."""
         changes_capture = u.Cli.capture(
-            [c.Infra.GIT, "status", "--porcelain"],
-            cwd=repo_root,
+            [c.Infra.GIT, "status", "--porcelain"], cwd=repo_root
         )
         result: p.Result[bool]
         if changes_capture.failure:
@@ -117,8 +111,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
                 result = r[bool].fail(add_result.error or "git add failed")
             else:
                 staged_result = u.Cli.capture(
-                    [c.Infra.GIT, "diff", "--cached", "--name-only"],
-                    cwd=repo_root,
+                    [c.Infra.GIT, "diff", "--cached", "--name-only"], cwd=repo_root
                 )
                 if staged_result.success and (not staged_result.value.strip()):
                     result = r[bool].ok(True)
@@ -140,10 +133,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
                         command = [c.Infra.GIT, "push"]
                         if branch:
                             command.extend(["-u", c.Infra.GIT_ORIGIN, branch])
-                        result = u.Cli.run_checked(
-                            command,
-                            cwd=repo_root,
-                        )
+                        result = u.Cli.run_checked(command, cwd=repo_root)
         return result
 
 

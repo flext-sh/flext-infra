@@ -10,12 +10,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from tests.models import m
-from tests.typings import t
+from tests import m
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 @pytest.fixture
@@ -27,27 +33,18 @@ def v() -> FlextInfraValidateFreshImport:
 class TestFreshImportValidatorCore:
     """Core validation: clean imports vs broken imports."""
 
-    def test_empty_package_list_passes(
-        self,
-        v: FlextInfraValidateFreshImport,
-    ) -> None:
+    def test_empty_package_list_passes(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=()))
-        assert isinstance(report, m.Infra.ValidationReport)
+        tm.that(report, is_=m.Infra.ValidationReport)
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
 
-    def test_stdlib_package_passes(
-        self,
-        v: FlextInfraValidateFreshImport,
-    ) -> None:
+    def test_stdlib_package_passes(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys",)))
         tm.that(report.passed, eq=True)
         tm.that(report.violations, length=0)
 
-    def test_nonexistent_package_fails(
-        self,
-        v: FlextInfraValidateFreshImport,
-    ) -> None:
+    def test_nonexistent_package_fails(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("nonexistent_pkg_xyz_abc_123",))
         )
@@ -56,8 +53,7 @@ class TestFreshImportValidatorCore:
         tm.that(report.violations[0], has="nonexistent_pkg_xyz_abc_123")
 
     def test_mixed_good_and_bad_reports_only_bad(
-        self,
-        v: FlextInfraValidateFreshImport,
+        self, v: FlextInfraValidateFreshImport
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("sys", "nonexistent_xyz_qqq", "os"))
@@ -67,40 +63,42 @@ class TestFreshImportValidatorCore:
         tm.that(report.violations[0], has="nonexistent_xyz_qqq")
 
     def test_summary_reports_failure_count(
-        self,
-        v: FlextInfraValidateFreshImport,
+        self, v: FlextInfraValidateFreshImport
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(
-            v.build_report(
-                packages=("nonexistent_a_qqq", "nonexistent_b_qqq"),
-            )
+            v.build_report(packages=("nonexistent_a_qqq", "nonexistent_b_qqq"))
         )
         tm.that(report.summary, has="2")
         tm.that(report.summary, has="failed")
 
     def test_passing_summary_is_human_readable(
-        self,
-        v: FlextInfraValidateFreshImport,
+        self, v: FlextInfraValidateFreshImport
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(packages=("sys", "os")))
         tm.that(report.summary, has="import")
+
+    def test_workspace_src_package_passes(self, tmp_path: Path) -> None:
+        package_root = tmp_path / "src" / "demo_external"
+        package_root.mkdir(parents=True)
+        package_root.joinpath("__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+        validator = FlextInfraValidateFreshImport(workspace_root=tmp_path)
+        report: m.Infra.ValidationReport = tm.ok(
+            validator.build_report(packages=("demo_external",))
+        )
+        assert report.passed, report.violations
 
 
 class TestFreshImportValidatorFlextPackages:
     """Smoke: core flext packages must import cleanly."""
 
-    def test_flext_core_imports_cleanly(
-        self,
-        v: FlextInfraValidateFreshImport,
-    ) -> None:
+    def test_flext_core_imports_cleanly(self, v: FlextInfraValidateFreshImport) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_core",))
         )
         assert report.passed, report.summary
 
     def test_flext_infra_imports_cleanly(
-        self,
-        v: FlextInfraValidateFreshImport,
+        self, v: FlextInfraValidateFreshImport
     ) -> None:
         report: m.Infra.ValidationReport = tm.ok(
             v.build_report(packages=("flext_infra",))

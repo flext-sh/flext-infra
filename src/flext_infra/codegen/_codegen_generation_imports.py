@@ -4,40 +4,33 @@ from __future__ import annotations
 
 import operator
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
-from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMixin):
     """Import grouping and rendering helper methods."""
 
     @staticmethod
-    def _format_import(
-        indent: str,
-        mod: str,
-        parts: t.StrSequence,
-    ) -> t.StrSequence:
-        """Format one import statement or parenthesized import block."""
-        joined = ", ".join(parts)
-        line = f"{indent}from {mod} import {joined}"
-        if len(line) <= c.Infra.MAX_LINE_LENGTH:
-            return [line]
-        return [
-            f"{indent}from {mod} import (",
-            *(f"{indent}    {part}," for part in parts),
-            f"{indent})",
-        ]
+    def _format_import_part(imported_name: str, export_name: str) -> str:
+        """Format one imported symbol, preserving aliases only when names differ."""
+        if imported_name == export_name:
+            return imported_name
+        return f"{imported_name} as {export_name}"
 
     @staticmethod
-    def _format_module_alias_import(
-        indent: str,
-        mod: str,
-        export_name: str,
-    ) -> str:
+    def _format_import(indent: str, mod: str, parts: t.StrSequence) -> t.StrSequence:
+        """Emit one valid import statement for canonical normalization."""
+        return (f"{indent}from {mod} import {', '.join(parts)}",)
+
+    @staticmethod
+    def _format_module_alias_import(indent: str, mod: str, export_name: str) -> str:
         """Format a module alias import."""
         if mod.startswith(".") and mod != ".":
             parent_mod, _, child_name = mod.rpartition(".")
@@ -48,16 +41,17 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
 
     @staticmethod
     def _format_type_checking_module_alias_import(
-        indent: str,
-        mod: str,
-        export_name: str,
+        indent: str, mod: str, export_name: str
     ) -> t.StrSequence:
         """Format one TYPE_CHECKING module alias import."""
+        parent_mod, separator, module_name = mod.rpartition(".")
+        if separator and module_name == export_name:
+            # mro-pulj (codex): typing declarations are not runtime reexports;
+            # preserve aliases only when the public and owned names differ.
+            return (f"{indent}from {parent_mod or '.'} import {module_name}",)
         return (
             FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
-                indent,
-                mod,
-                export_name,
+                indent, mod, export_name
             ),
         )
 
@@ -74,9 +68,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
 
     @staticmethod
     def _generate_import_lines(
-        groups: t.MappingKV[str, t.StrPairSequence],
-        *,
-        indent: str = "",
+        groups: t.MappingKV[str, t.StrPairSequence], *, indent: str = ""
     ) -> t.StrSequence:
         """Generate import lines grouped by module path."""
         if not groups:
@@ -86,12 +78,10 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         def _emit_module(mod: str) -> None:
             items = groups[mod]
             alias_items = sorted(
-                (item for item in items if not item[1]),
-                key=operator.itemgetter(0),
+                (item for item in items if not item[1]), key=operator.itemgetter(0)
             )
             sorted_items = sorted(
-                (item for item in items if item[1]),
-                key=lambda x: (x[1], x[0] != x[1]),
+                (item for item in items if item[1]), key=lambda x: (x[1], x[0] != x[1])
             )
             for export_name, _ in alias_items:
                 lines.append(
@@ -102,9 +92,9 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
             if not sorted_items:
                 return
             parts: t.StrSequence = [
-                export_name
-                if export_name == attr_name
-                else f"{attr_name} as {export_name}"
+                FlextInfraCodegenGenerationImportsMixin._format_import_part(
+                    attr_name, export_name
+                )
                 for export_name, attr_name in sorted_items
             ]
             lines.extend(
@@ -113,13 +103,8 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
                 )
             )
 
-        prev_top: str | None = None
         for mod in sorted(groups, key=str.lower):
-            top = mod.split(".")[0]
-            if prev_top is not None and top != prev_top:
-                lines.append("")
             _emit_module(mod)
-            prev_top = top
         return lines
 
 

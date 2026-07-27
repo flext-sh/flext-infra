@@ -2,29 +2,24 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterable,
-)
+import ast
+from collections.abc import Iterable
 from operator import itemgetter
 from pathlib import Path
 from typing import ClassVar
 
-from rope.base import ast
-
 from flext_cli import u
+from flext_infra import c, m, t
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRopeSource:
     """Text-oriented helpers shared by Rope-backed refactors."""
 
-    _DOCSTRING_QUOTES: ClassVar[t.StrPair] = ('"""', "'''")
     _SINGLE_LINE_DOCSTRING_QUOTE_COUNT: ClassVar[int] = 2
+    "Triple-quote occurrences on a line that opens and closes a docstring."
 
     @staticmethod
     def matches_module_toplevel(file_path: Path) -> bool:
@@ -55,21 +50,42 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def find_import_insert_position(
-        lines: t.StrSequence,
-        *,
-        past_existing: bool = True,
+        lines: t.StrSequence, *, past_existing: bool = True
     ) -> int:
-        """Find line index suitable for inserting new imports."""
+        """Find a line index for inserting imports, never inside a docstring.
+
+        Skips leading comments, the module docstring (single- **or** multi-line),
+        and ``from __future__`` imports. With ``past_existing`` the position also
+        skips over existing top-level imports so new imports append after them;
+        otherwise it lands immediately after ``__future__`` and before the first
+        regular import. A multi-line module docstring is tracked to its closing
+        quote so an import can never be injected into the docstring body.
+        """
         idx = 0
+        in_docstring = False
+        quote = ""
+        docstring_seen = False
         for index, line in enumerate(lines):
             stripped = line.strip()
+            if in_docstring:
+                idx = index + 1
+                if quote in stripped:
+                    in_docstring = False
+                continue
             if not stripped or stripped.startswith("#"):
                 idx = index + 1
                 continue
-            if stripped.startswith(('"""', "'''")):
+            if not docstring_seen and stripped.startswith(('"""', "'''")):
+                docstring_seen = True
+                quote = stripped[:3]
                 idx = index + 1
+                if (
+                    stripped.count(quote)
+                    < FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
+                ):
+                    in_docstring = True
                 continue
-            if stripped.startswith("from __future__"):
+            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
                 idx = index + 1
                 continue
             if past_existing and c.Infra.IMPORT_LINE_RE.match(line):
@@ -81,32 +97,9 @@ class FlextInfraUtilitiesRopeSource:
     @staticmethod
     def index_after_docstring_and_future_imports(lines: t.StrSequence) -> int:
         """Return insertion index after module docstring and future imports."""
-        insert_idx = 0
-        in_docstring = False
-        for index, line in enumerate(lines):
-            stripped = line.strip()
-            if in_docstring:
-                insert_idx = index + 1
-                if stripped.endswith(FlextInfraUtilitiesRopeSource._DOCSTRING_QUOTES):
-                    in_docstring = False
-                continue
-            if index == 0 and c.Infra.DOCSTRING_RE.match(stripped):
-                insert_idx = index + 1
-                if not (
-                    stripped.count('"""')
-                    >= FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-                    or stripped.count("'''")
-                    >= FlextInfraUtilitiesRopeSource._SINGLE_LINE_DOCSTRING_QUOTE_COUNT
-                ):
-                    in_docstring = True
-                continue
-            if c.Infra.FUTURE_IMPORT_RE.match(stripped):
-                insert_idx = index + 1
-                continue
-            if stripped and not stripped.startswith("#"):
-                break
-            insert_idx = index + 1
-        return insert_idx
+        return FlextInfraUtilitiesRopeSource.find_import_insert_position(
+            lines, past_existing=False
+        )
 
     @staticmethod
     def looks_like_facade_file(*, file_path: Path, source: str) -> bool:
@@ -160,9 +153,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_from_import_bound_names(
-        source: str,
-        *,
-        module_name: str,
+        source: str, *, module_name: str
     ) -> t.Infra.StrSet:
         """Collect bound names imported from a target module."""
         bound_names: t.Infra.StrSet = set()
@@ -194,7 +185,7 @@ class FlextInfraUtilitiesRopeSource:
         raw_items = u.Cli.json_as_mapping_list(value)
         if not raw_items:
             return []
-        normalized: t.SequenceOf[t.Infra.ContainerDict] = [
+        normalized: t.SequenceOf[t.JsonMapping] = [
             {
                 "module": item.get("module", ""),
                 "symbol_mapping": item.get("symbol_mapping", {}),
@@ -202,9 +193,7 @@ class FlextInfraUtilitiesRopeSource:
             for item in raw_items
         ]
         try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                normalized,
-            )
+            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
             return [
                 m.Infra.ImportModernizerRuleConfig.model_validate(item)
                 for item in typed_items
@@ -214,8 +203,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_blocked_aliases(
-        source: str,
-        runtime_aliases: t.Infra.StrSet,
+        source: str, runtime_aliases: t.Infra.StrSet
     ) -> t.Infra.StrSet:
         """Collect aliases blocked by definitions, imports, and assignments."""
         parse = FlextInfraUtilitiesRopeSource.parse_import_names
@@ -242,8 +230,7 @@ class FlextInfraUtilitiesRopeSource:
 
     @staticmethod
     def collect_shadowed_aliases(
-        source: str,
-        runtime_aliases: t.Infra.StrSet,
+        source: str, runtime_aliases: t.Infra.StrSet
     ) -> t.Infra.StrSet:
         """Collect runtime-alias names shadowed inside function bodies."""
         shadowed: t.Infra.StrSet = set()
@@ -257,9 +244,7 @@ class FlextInfraUtilitiesRopeSource:
         return shadowed
 
     @staticmethod
-    def find_final_candidates(
-        source: str,
-    ) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
+    def find_final_candidates(source: str) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
         """Find module-level ``Final``-annotated constants via regex."""
         candidates: t.MutableSequenceOf[m.Infra.MROSymbolCandidate] = []
         for line_number, line in enumerate(source.splitlines(), start=1):
@@ -269,10 +254,7 @@ class FlextInfraUtilitiesRopeSource:
             match = c.Infra.FINAL_ASSIGN_RE.match(stripped)
             if match and c.Infra.CONSTANT_NAME_RE.match(match.group(1)) is not None:
                 candidates.append(
-                    m.Infra.MROSymbolCandidate(
-                        symbol=match.group(1),
-                        line=line_number,
-                    ),
+                    m.Infra.MROSymbolCandidate(symbol=match.group(1), line=line_number)
                 )
         return candidates
 
@@ -336,11 +318,7 @@ class FlextInfraUtilitiesRopeSource:
             if (
                 target != value
                 or target in allow_set
-                or target
-                in {
-                    c.Infra.DUNDER_VERSION,
-                    c.Infra.DUNDER_ALL,
-                }
+                or target in {c.Infra.DUNDER_VERSION, c.Infra.DUNDER_ALL}
             ):
                 kept.append(line)
             else:
@@ -398,11 +376,7 @@ class FlextInfraUtilitiesRopeSource:
         """Apply offset-based edits (start, end, replacement) to source."""
         _ = rope_project
         source: str = resource.read()
-        for start, end, replacement in sorted(
-            changes,
-            key=itemgetter(0),
-            reverse=True,
-        ):
+        for start, end, replacement in sorted(changes, key=itemgetter(0), reverse=True):
             source = source[:start] + replacement + source[end:]
         if apply and source != resource.read():
             resource.write(source)
@@ -424,10 +398,7 @@ class FlextInfraUtilitiesRopeSource:
         """
         source = resource.read()
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project,
-                resource,
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             tree = pymodule.get_ast()
         except c.EXC_BROAD_RUNTIME as exc:
             msg = f"silent failure sentinel AST collection failed for {resource.path}"
@@ -441,34 +412,25 @@ class FlextInfraUtilitiesRopeSource:
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(
-            rope_project,
-            resource,
-            changes,
-            apply=apply,
+            rope_project, resource, changes, apply=apply
         )
         return updated, [f"Replaced {len(changes)} silent failure sentinel return(s)"]
 
     @classmethod
     def apply_transformer_to_source(
-        cls,
-        source: str,
-        file_path: Path,
-        transformer_fn: t.Infra.RopeTransformFn,
+        cls, source: str, file_path: Path, transformer_fn: t.Infra.RopeTransformFn
     ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""
-        workspace_root = FlextInfraUtilitiesDiscovery.project_root(
-            file_path,
-        )
+        workspace_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if workspace_root is None:
             return (source, [])
         original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root,
+                workspace_root
             ) as rope_project:
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-                    rope_project,
-                    file_path,
+                    rope_project, file_path
                 )
                 if resource is None:
                     return (source, [])
@@ -482,8 +444,7 @@ class FlextInfraUtilitiesRopeSource:
                 != original_disk_source
             ):
                 file_path.write_text(
-                    original_disk_source,
-                    encoding=c.Cli.ENCODING_DEFAULT,
+                    original_disk_source, encoding=c.Cli.ENCODING_DEFAULT
                 )
 
 

@@ -4,17 +4,11 @@ from __future__ import annotations
 
 import inspect
 
-from flext_infra import (
-    c,
-    m,
-    t,
-)
+from flext_infra import c, m, t
 
 
 class FlextInfraRefactorMROResolver:
     """Resolve MRO inheritance chains and detect loose classes needing absorption."""
-
-    CONSTANT_PATTERN: t.Infra.RegexPattern = c.Infra.CONSTANT_NAME_RE
 
     @classmethod
     def resolve(
@@ -22,8 +16,7 @@ class FlextInfraRefactorMROResolver:
         *,
         family_classes: t.MappingKV[c.Infra.FacadeFamily, type],
         expected_base_chains: t.MappingKV[
-            c.Infra.FacadeFamily,
-            t.SequenceOf[t.Infra.ExpectedBase],
+            c.Infra.FacadeFamily, t.SequenceOf[t.Infra.ExpectedBase]
         ],
     ) -> t.VariadicTuple[m.Infra.FamilyMROResolution]:
         """Resolve expected and effective MRO data for all facade families."""
@@ -42,7 +35,7 @@ class FlextInfraRefactorMROResolver:
                     family=family,
                     facade_class=facade_class,
                     expected_chain=expected_chain,
-                ),
+                )
             )
         return tuple(resolutions)
 
@@ -57,14 +50,11 @@ class FlextInfraRefactorMROResolver:
         """Resolve family."""
         expected_names = cls._normalize_expected_chain(expected_chain=expected_chain)
         cls._validate_base_policy(
-            family=family,
-            facade_class=facade_class,
-            expected_names=expected_names,
+            family=family, facade_class=facade_class, expected_names=expected_names
         )
         resolved_mro = tuple(entry.__name__ for entry in inspect.getmro(facade_class))
         accessible_namespaces = cls._collect_accessible_namespaces(
-            family=family,
-            facade_class=facade_class,
+            family=family, facade_class=facade_class
         )
         cls._validate_expected_accessibility(
             family=family,
@@ -80,9 +70,7 @@ class FlextInfraRefactorMROResolver:
 
     @classmethod
     def _normalize_expected_chain(
-        cls,
-        *,
-        expected_chain: t.SequenceOf[t.Infra.ExpectedBase],
+        cls, *, expected_chain: t.SequenceOf[t.Infra.ExpectedBase]
     ) -> t.VariadicTuple[str]:
         """Normalize expected chain."""
         expected_names: t.StrSequence = [
@@ -133,8 +121,7 @@ class FlextInfraRefactorMROResolver:
         missing_namespaces: t.MutableSequenceOf[str] = []
         for base_name in expected_names:
             namespace = cls._namespace_from_class_name(
-                class_name=base_name,
-                family=family,
+                class_name=base_name, family=family
             )
             if namespace is None:
                 continue
@@ -147,10 +134,7 @@ class FlextInfraRefactorMROResolver:
 
     @classmethod
     def _collect_accessible_namespaces(
-        cls,
-        *,
-        family: c.Infra.FacadeFamily,
-        facade_class: type,
+        cls, *, family: c.Infra.FacadeFamily, facade_class: type
     ) -> t.VariadicTuple[str]:
         """Collect accessible namespaces."""
         namespace_order: t.MutableSequenceOf[str] = []
@@ -158,8 +142,7 @@ class FlextInfraRefactorMROResolver:
             if current.__name__ == "NormalizedValue":
                 continue
             class_namespace = cls._namespace_from_class_name(
-                class_name=current.__name__,
-                family=family,
+                class_name=current.__name__, family=family
             )
             if class_namespace is not None:
                 cls._append_unique(namespace_order, class_namespace)
@@ -173,10 +156,7 @@ class FlextInfraRefactorMROResolver:
 
     @classmethod
     def _namespace_from_class_name(
-        cls,
-        *,
-        class_name: str,
-        family: c.Infra.FacadeFamily,
+        cls, *, class_name: str, family: c.Infra.FacadeFamily
     ) -> str | None:
         """Namespace from class name."""
         suffix = c.Infra.FAMILY_SUFFIXES[family]
@@ -195,6 +175,4 @@ class FlextInfraRefactorMROResolver:
             namespaces.append(candidate)
 
 
-__all__: list[str] = [
-    "FlextInfraRefactorMROResolver",
-]
+__all__: list[str] = ["FlextInfraRefactorMROResolver"]

@@ -1,31 +1,18 @@
 from __future__ import annotations
 
-from pathlib import Path
+from flext_tests import tm
 
-from tests.constants import c
-from tests.utilities import u
+from tests import u
 
 
 class TestsFlextInfraUtilitiesformatting:
-    def test_run_ruff_fix_runs_check_and_format(self, tmp_path: Path) -> None:
-        target = tmp_path / "sample.py"
-        target.write_text("x=1\n", encoding="utf-8")
+    def test_generate_module_skeleton_is_static_on_public_instance(self) -> None:
+        # mro-i6nq.10: Guard the public instance binding lost during consolidation.
+        source = u.Infra().generate_module_skeleton(
+            class_name="FlextDemoModels",
+            base_class="FlextModels",
+            docstring="Models for demo.",
+        )
 
-        u.Infra.run_ruff_fix(target)
-
-        assert target.read_text(encoding="utf-8") == "x = 1\n"
-
-    def test_run_ruff_fix_handles_init_file_quietly(self, tmp_path: Path) -> None:
-        target = tmp_path / c.Infra.INIT_PY
-        target.write_text("x=1\n", encoding="utf-8")
-
-        u.Infra.run_ruff_fix(target, quiet=True)
-
-        assert target.read_text(encoding="utf-8") == "x = 1\n"
-
-    def test_run_ruff_fix_skips_missing_file(self, tmp_path: Path) -> None:
-        target = tmp_path / "missing.py"
-
-        u.Infra.run_ruff_fix(target)
-
-        assert target.exists() is False
+        compile(source, "models.py", "exec")
+        tm.that(source, has="class FlextDemoModels(FlextModels):")

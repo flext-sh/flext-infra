@@ -12,11 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, m, p, r, t
 
 
 class FlextInfraUtilitiesRefactor:
@@ -73,8 +69,7 @@ class FlextInfraUtilitiesRefactor:
 
     @staticmethod
     def write_impact_map(
-        results: t.SequenceOf[m.Infra.Result],
-        output_path: Path,
+        results: t.SequenceOf[m.Infra.Result], output_path: Path
     ) -> p.Result[bool]:
         """Write refactor impact map JSON to disk."""
         payload = {
@@ -90,7 +85,7 @@ class FlextInfraUtilitiesRefactor:
             ]
         }
         normalized_payload: t.JsonValue = t.Cli.JSON_VALUE_ADAPTER.validate_python(
-            payload,
+            payload
         )
         write_result = u.Cli.json_write(output_path, normalized_payload)
         if write_result.failure:

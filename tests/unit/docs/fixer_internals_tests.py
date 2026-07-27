@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.docs.fixer import FlextInfraDocFixer
-from tests.utilities import u
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_docs_maybe_fix_link_adds_md_suffix_when_target_exists(tmp_path: Path) -> None:
@@ -17,21 +22,18 @@ def test_docs_maybe_fix_link_adds_md_suffix_when_target_exists(tmp_path: Path) -
 
     fixed = u.Infra.docs_maybe_fix_link(md_file, "guide")
 
-    assert fixed == "guide.md"
+    tm.that(fixed, eq="guide.md")
 
 
 def test_anchorize_and_build_toc_are_public_helpers() -> None:
-    assert u.Infra.anchorize("Hello World") == "hello-world"
-    assert "No sections found" in u.Infra.build_toc("# Main\n\nNo sections here.\n")
+    tm.that(u.Infra.anchorize("Hello World"), eq="hello-world")
+    tm.that(u.Infra.build_toc("# Main\n\nNo sections here.\n"), has="No sections found")
 
 
 def test_fix_updates_docs_readme_when_apply_is_enabled(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        include_fixable_link=True,
-    )
+    workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
 
     result = FlextInfraDocFixer().fix(workspace, apply=True)
 
-    assert result.success
-    assert "guides/setup.md" in (workspace / "docs/README.md").read_text()
+    tm.ok(result)
+    tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")

@@ -6,30 +6,20 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_core import r
+from flext_infra import c, m, p, t, u
 from flext_infra.base import s
 from flext_infra.codegen._consolidator_steps import (
     FlextInfraCodegenConsolidatorStepsMixin,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 
-class FlextInfraCodegenConsolidator(
-    s[str],
-    FlextInfraCodegenConsolidatorStepsMixin,
-):
+class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):
     """Consolidate inline constants into canonical ``c.*`` references."""
 
     project_name: Annotated[
         str | None,
-        m.Field(
-            alias="project",
-            description="Single project to consolidate",
-        ),
+        m.Field(alias="project", description="Single project to consolidate"),
     ] = None
 
     @override
@@ -58,16 +48,16 @@ class FlextInfraCodegenConsolidator(
                 )
                 if value_map_result.failure:
                     return r[str].fail(
-                        value_map_result.error or "constants file read failed",
+                        value_map_result.error or "constants file read failed"
                     )
                 value_map = value_map_result.value
                 if not value_map:
                     continue
 
-                project_files = self._project_python_files(project.path)
+                project_files = self._project_python_files(rope, project.path)
                 if project_files.failure:
                     return r[str].fail(
-                        project_files.error or "project python file discovery failed",
+                        project_files.error or "project python file discovery failed"
                     )
                 for python_file in project_files.value:
                     scanned = self._scan_file(rope.rope_project, python_file, value_map)
@@ -78,7 +68,10 @@ class FlextInfraCodegenConsolidator(
                     rel_path = python_file.relative_to(self.workspace_root)
                     if self.dry_run:
                         output_lines.extend(
-                            f"  {rel_path}:{symbol.line}  {symbol.name} = {value} -> {ref}"
+                            (
+                                f"  {rel_path}:{symbol.line}  {symbol.name} = "
+                                f"{value} -> {ref}"
+                            )
                             for symbol, ref, value in matches
                         )
                         continue
@@ -97,7 +90,7 @@ class FlextInfraCodegenConsolidator(
                             file=str(rel_path),
                             status="applied" if ok else "reverted",
                             changes=tuple(changes),
-                        ),
+                        )
                     )
                     if ok:
                         applied += len(changes)
@@ -120,40 +113,42 @@ class FlextInfraCodegenConsolidator(
             return r[str].ok(report.model_dump_json())
         return r[str].ok("\n".join(output_lines))
 
-    def _project_python_files(self, project_root: Path) -> p.Result[t.SequenceOf[Path]]:
-        """Return governed Python files for one project consolidation pass."""
-        files_result = u.Infra.iter_python_files(
-            workspace_root=self.workspace_root,
-            project_roots=(project_root,),
-            include_tests=True,
-            include_examples=True,
-            include_scripts=True,
-            include_dynamic_dirs=False,
-            src_dirs=frozenset(c.Infra.DEFAULT_CHECK_DIRS),
-        )
-        if files_result.failure:
-            return r[t.SequenceOf[Path]].fail(
-                files_result.error or "project python file discovery failed",
-            )
+    def _project_python_files(
+        self, rope_workspace: p.Infra.RopeWorkspaceDsl, project_root: Path
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Return indexed Python wrapper files for one consolidation pass."""
+        resolved_root = project_root.resolve()
         constants_directory = c.Infra.FAMILY_DIRECTORIES["c"]
-        return r[t.SequenceOf[Path]].ok(
-            tuple(
-                path
-                for path in files_result.value
-                if constants_directory not in path.parts
-            ),
-        )
+        indexed_files: t.MutableSequenceOf[Path] = []
+        for module in rope_workspace.modules():
+            if (
+                module.project_root is None
+                or module.project_root.resolve() != resolved_root
+            ):
+                continue
+            file_path = module.file_path.resolve()
+            if not file_path.is_relative_to(resolved_root):
+                continue
+            relative_path = file_path.relative_to(resolved_root)
+            if (
+                file_path.suffix != c.Infra.EXT_PYTHON
+                or not relative_path.parts
+                or relative_path.parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+                or constants_directory in relative_path.parts
+            ):
+                continue
+            indexed_files.append(file_path)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(indexed_files)))
 
     def _selected_projects(
-        self,
-        rope_workspace: p.Infra.RopeWorkspaceDsl,
+        self, rope_workspace: p.Infra.RopeWorkspaceDsl
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-        """Selected projects."""
+        """Return the selected projects."""
         _ = rope_workspace
         discovered = u.Infra.projects(self.workspace_root)
         if discovered.failure:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                discovered.error or "project discovery failed",
+                discovered.error or "project discovery failed"
             )
         selected = tuple(
             project

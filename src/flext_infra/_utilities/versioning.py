@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from packaging.version import InvalidVersion, Version
+
+from flext_cli import u
+from flext_infra import c, p, r, t
 
 
 class FlextInfraUtilitiesVersioning:
@@ -77,8 +77,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def bump_version(
-        version: str,
-        bump_type: str | c.Infra.VersionBump,
+        version: str, bump_type: str | c.Infra.VersionBump
     ) -> p.Result[str]:
         """Bump a semantic version string.
 
@@ -126,7 +125,7 @@ class FlextInfraUtilitiesVersioning:
         except OSError as exc:
             return r[str].fail_op("read", exc)
         version = FlextInfraUtilitiesVersioning._extract_project_version_from_text(
-            content,
+            content
         )
         if version is None or not version.strip():
             return r[str].fail("version not found in pyproject.toml")
@@ -134,7 +133,7 @@ class FlextInfraUtilitiesVersioning:
 
     @staticmethod
     def parse_semver(version: str) -> p.Result[t.Triple[int, int, int]]:
-        """Parse a semantic version string into (major, minor, patch).
+        """Parse one canonical FLEXT PEP 440 version into its release tuple.
 
         Args:
             version: The version string to parse.
@@ -143,14 +142,39 @@ class FlextInfraUtilitiesVersioning:
             r with version tuple.
 
         """
-        match = c.Infra.SEMVER_RE.match(version)
-        if not match:
+        try:
+            parsed = Version(version)
+        except InvalidVersion:
             return r[t.Triple[int, int, int]].fail(f"invalid semver: {version}")
-        return r[t.Triple[int, int, int]].ok((
-            int(match.group(1)),
-            int(match.group(2)),
-            int(match.group(3)),
-        ))
+        unsupported = (
+            str(parsed) != version
+            or len(parsed.release) != c.Infra.VERSION_RELEASE_SEGMENTS
+            or parsed.epoch != 0
+            or parsed.post is not None
+            or parsed.local is not None
+            or (parsed.pre is not None and parsed.pre[0] != "rc")
+            or (parsed.pre is not None and parsed.dev is not None)
+            or (parsed.dev is not None and parsed.dev != 0)
+        )
+        if unsupported:
+            return r[t.Triple[int, int, int]].fail(f"invalid semver: {version}")
+        major, minor, patch = parsed.release
+        return r[t.Triple[int, int, int]].ok((major, minor, patch))
+
+    @staticmethod
+    def render_project_version(content: str, version: str) -> p.Result[str]:
+        """Render one canonical project-version update without writing it."""
+        version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
+        if version_result.failure:
+            return r[str].fail(version_result.error or "invalid version")
+        if not FlextInfraUtilitiesVersioning._has_project_table(content):
+            return r[str].fail("missing [project] table")
+        updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(
+            content, version
+        )
+        if updated is None:
+            return r[str].fail("missing [project] version")
+        return r[str].ok(updated)
 
     @staticmethod
     def replace_project_version(project_path: Path, version: str) -> p.Result[bool]:
@@ -169,19 +193,12 @@ class FlextInfraUtilitiesVersioning:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
             return r[bool].fail_op("read", exc)
-        if not FlextInfraUtilitiesVersioning._has_project_table(content):
-            return r[bool].fail(f"missing [project] table in {pyproject}")
-        updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(
-            content,
-            version,
+        rendered = FlextInfraUtilitiesVersioning.render_project_version(
+            content, version
         )
-        if updated is None:
-            return r[bool].fail(f"missing [project] version in {pyproject}")
-        try:
-            _ = pyproject.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError as exc:
-            return r[bool].fail_op("write", exc)
-        return r[bool].ok(True)
+        if rendered.failure:
+            return r[bool].fail(f"{rendered.error} in {pyproject}")
+        return u.Cli.atomic_write_text_file(pyproject, rendered.value)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesVersioning"]

@@ -5,11 +5,12 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraSkillRuleRunnerMixin:
@@ -39,11 +40,7 @@ class FlextInfraSkillRuleRunnerMixin:
         match rule_type:
             case "ast-grep":
                 count = self._run_ast_grep_count(
-                    rule_obj,
-                    skill_dir,
-                    root,
-                    include_globs,
-                    exclude_globs,
+                    rule_obj, skill_dir, root, include_globs, exclude_globs
                 )
             case "custom":
                 count = self._run_custom_count(rule_obj, skill_dir, root, mode)
@@ -73,13 +70,7 @@ class FlextInfraSkillRuleRunnerMixin:
             rule_file = (skill_dir / rule_file_raw).resolve()
         if not rule_file.exists():
             return 0
-        cmd = [
-            c.Infra.SG,
-            c.Infra.SCAN,
-            "--rule",
-            str(rule_file),
-            "--json=stream",
-        ]
+        cmd = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_file), "--json=stream"]
         for pat in include_globs:
             cmd.extend(["--globs", pat])
         for pat in exclude_globs:
@@ -90,7 +81,7 @@ class FlextInfraSkillRuleRunnerMixin:
         )
         if result_wrapper.failure:
             return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
             return 0
         count = 0
@@ -148,7 +139,7 @@ class FlextInfraSkillRuleRunnerMixin:
         )
         if result_wrapper.failure:
             return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+        result: p.Cli.CommandOutput = result_wrapper.value
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)

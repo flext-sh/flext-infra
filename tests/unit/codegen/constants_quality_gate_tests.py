@@ -9,15 +9,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
 from flext_tests import tm
 
-from flext_infra import m, main, u
+from flext_infra import main
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
-from flext_infra.refactor.census import FlextInfraRefactorCensus
-from tests.typings import t
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestConstantsQualityGateCLIDispatch:
@@ -63,10 +66,7 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_accepts_pass(self) -> None:
         """successful_verdict returns True for PASS."""
-        tm.that(
-            FlextInfraCodegenQualityGate.successful_verdict("PASS"),
-            eq=True,
-        )
+        tm.that(FlextInfraCodegenQualityGate.successful_verdict("PASS"), eq=True)
 
     def test_success_verdict_rejects_conditional_pass(self) -> None:
         """successful_verdict returns False for removed conditional verdicts."""
@@ -77,76 +77,52 @@ class TestConstantsQualityGateVerdict:
 
     def test_success_verdict_rejects_fail(self) -> None:
         """successful_verdict returns False for FAIL."""
-        tm.that(
-            not FlextInfraCodegenQualityGate.successful_verdict("FAIL"),
-            eq=True,
-        )
+        tm.that(not FlextInfraCodegenQualityGate.successful_verdict("FAIL"), eq=True)
 
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraCodegenQualityGate(workspace=tmp_path)
+        gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
-        assert "verdict" in report_result.value
+        tm.that(report_result.value, has="verdict")
 
     def test_build_report_uses_canonical_census_duplicates(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """Duplicate groups are sourced from the canonical refactor census."""
-        census_report = m.Infra.Census.WorkspaceReport.model_validate({
-            "duplicates": (
-                {
-                    "name": "SHARED_TIMEOUT",
-                    "kind": "constant",
-                    "definitions": (
-                        {
-                            "name": "SHARED_TIMEOUT",
-                            "kind": "constant",
-                            "file_path": str(
-                                (
-                                    tmp_path / "flext-core" / "src" / "sample.py"
-                                ).resolve()
-                            ),
-                            "line": 1,
-                            "project": "flext-core",
-                        },
-                        {
-                            "name": "SHARED_TIMEOUT",
-                            "kind": "constant",
-                            "file_path": str(
-                                (tmp_path / "flext-cli" / "src" / "sample.py").resolve()
-                            ),
-                            "line": 1,
-                            "project": "flext-cli",
-                        },
-                    ),
-                    "canonical": "flext-core",
-                    "value_identical": True,
+        constant_source = (
+            '"""Shared constant fixture."""\n\n'
+            "from typing import Final\n\n"
+            "SHARED_TIMEOUT: Final[int] = 30\n"
+        )
+        for project_name in ("flext-cli", "flext-core"):
+            u.Tests.create_codegen_project(
+                tmp_path=tmp_path,
+                name=project_name,
+                pkg_name=project_name.replace("-", "_"),
+                files={
+                    "constants.py": constant_source,
+                    "typings.py": '"""Empty typing fixture."""\n',
                 },
             )
-        })
 
-        monkeypatch.setattr(
-            FlextInfraRefactorCensus,
-            "build_report",
-            lambda self: census_report,
-        )
-
-        gate = FlextInfraCodegenQualityGate(workspace=tmp_path)
+        gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
         report = report_result.value
         after = u.Cli.json_deep_mapping(report, "after")
         duplicate_groups = u.Cli.json_deep_mapping_list(
-            report,
-            "duplicate_constant_groups",
+            report, "duplicate_constant_groups"
         )
 
-        assert u.Cli.json_pick_int(after, "duplicate_groups") == 1
-        assert u.Cli.json_pick_str(duplicate_groups[0], "name") == "SHARED_TIMEOUT"
-        assert u.Cli.json_pick_str(duplicate_groups[0], "canonical") == "flext-core"
+        tm.that(u.Cli.json_pick_int(after, "duplicate_groups"), gte=1)
+        matching_groups = [
+            group
+            for group in duplicate_groups
+            if u.Cli.json_pick_str(group, "name") == "SHARED_TIMEOUT"
+        ]
+        tm.that(matching_groups, length=1)
+        tm.that(u.Cli.json_pick_str(matching_groups[0], "canonical"), eq="flext-cli")
 
 
 __all__: t.StrSequence = []

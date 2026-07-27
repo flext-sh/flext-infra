@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
+import sys
+from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra import c, m, t
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    import re
+    from pathlib import Path
 
 
 class FlextInfraUtilitiesDocsFix:
@@ -34,9 +36,7 @@ class FlextInfraUtilitiesDocsFix:
 
     @staticmethod
     def docs_fix_python_codeblocks(
-        scope: m.Infra.DocScope,
-        *,
-        apply: bool,
+        scope: m.Infra.DocScope, *, apply: bool
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Auto-fix ``python`` fenced code blocks using ``ruff check --fix``.
 
@@ -51,13 +51,16 @@ class FlextInfraUtilitiesDocsFix:
             )
 
             def _replace_fence(
-                match: re.Match[str],
-                source_file: Path = md_file,
+                match: re.Match[str], source_file: Path = md_file
             ) -> str:
                 body = match.group("body")
                 rel = source_file.relative_to(scope.path).as_posix()
+                # mro-o6h5 (agent: kimi) — ruff via running interpreter (venv SSOT);
+                # bare "ruff" breaks when .venv/bin is not on PATH (CI docs fix).
                 outcome = u.Cli.run_raw(
                     [
+                        sys.executable,
+                        "-m",
                         c.Infra.RUFF,
                         c.Infra.VERB_CHECK,
                         "--fix",
@@ -81,18 +84,14 @@ class FlextInfraUtilitiesDocsFix:
                 continue
             changed.append(
                 FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    md_file,
-                    sanitized,
-                    apply=apply,
-                ),
+                    md_file, sanitized, apply=apply
+                )
             )
         return changed
 
     @staticmethod
     def docs_process_markdown_file(
-        md_file: Path,
-        *,
-        apply: bool,
+        md_file: Path, *, apply: bool
     ) -> m.Infra.DocsPhaseItemModel:
         """Fix one markdown file and return the phase item summary."""
         original = md_file.read_text(
@@ -111,18 +110,12 @@ class FlextInfraUtilitiesDocsFix:
             link_count += 1
             return f"[{text}]({fixed})"
 
-        updated = c.Infra.MARKDOWN_LINK_RE.sub(
-            replace_link,
-            original,
-        )
+        updated = c.Infra.MARKDOWN_LINK_RE.sub(replace_link, original)
         updated, toc_changed = FlextInfraUtilitiesDocs.update_toc(updated)
         if apply and (link_count > 0 or toc_changed > 0) and updated != original:
             _ = md_file.write_text(updated, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.DocsPhaseItemModel(
-            phase="fix",
-            file=md_file.as_posix(),
-            links=link_count,
-            toc=toc_changed,
+            phase="fix", file=md_file.as_posix(), links=link_count, toc=toc_changed
         )
 
     @staticmethod
@@ -134,11 +127,7 @@ class FlextInfraUtilitiesDocsFix:
     ) -> None:
         """Persist the standard fix summary and markdown report."""
         changes_payload: t.JsonList = [
-            {
-                c.Infra.RK_FILE: item.file,
-                "links": item.links,
-                "toc": item.toc,
-            }
+            {c.Infra.RK_FILE: item.file, "links": item.links, "toc": item.toc}
             for item in items
         ]
         summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
@@ -149,10 +138,7 @@ class FlextInfraUtilitiesDocsFix:
             },
             "changes": changes_payload,
         })
-        _ = u.Cli.json_write(
-            scope.report_dir / "fix-summary.json",
-            summary_payload,
-        )
+        _ = u.Cli.json_write(scope.report_dir / "fix-summary.json", summary_payload)
         _ = FlextInfraUtilitiesDocs.write_markdown(
             scope.report_dir / "fix-report.md",
             [

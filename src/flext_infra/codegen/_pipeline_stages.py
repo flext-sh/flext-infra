@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenPipelineStagesMixin:
@@ -37,8 +39,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         ) -> p.Result[m.Cli.PipelineStageResult]: ...
 
     def _stage_discover(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Discover workspace projects once for reuse across all stages.
 
@@ -60,18 +61,84 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         return self._run_stage(c.Infra.PipelineStage.DISCOVER, _action, _emit)
 
+    def _stage_toolchain(
+        self, ctx: m.Cli.PipelineStageContext
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Conform workspace toolchains through the canonical codegen planner."""
+
+        def _action() -> m.Infra.CodegenResult:
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            result = FlextInfraCodegenConform.execute_request(
+                m.Infra.CodegenConformRequest(
+                    root=ctx.workspace_root,
+                    what=c.Infra.CodegenConformSurface.ALL,
+                    scope=c.Infra.CodegenConformScope.ALL,
+                    mode=(
+                        c.Infra.CodegenConformMode.CHECK
+                        if dry_run
+                        else c.Infra.CodegenConformMode.APPLY
+                    ),
+                )
+            )
+            if result.failure:
+                msg = result.error or "toolchain conform failed"
+                raise RuntimeError(msg)
+            conformed: m.Infra.CodegenResult = result.unwrap()
+            return conformed
+
+        return self._run_stage(
+            c.Infra.PipelineStage.TOOLCHAIN,
+            _action,
+            lambda result: {
+                "repositories_conformed": len(result.plan.repositories),
+                "files_written": len(result.written_files),
+            },
+        )
+
+    def _stage_deps(
+        self, ctx: m.Cli.PipelineStageContext
+    ) -> p.Result[m.Cli.PipelineStageResult]:
+        """Conform dependencies to reality via deptry + typing-stub detection.
+
+        Reuses ``FlextInfraRuntimeDevDependencyDetector`` (deptry DEP001-004 +
+        ``types-*`` stub hints). In apply mode it adds missing typing packages
+        and applies detected fixes; in dry-run it reports only. No duplicate
+        detection logic in the pipeline.
+        """
+
+        def _action() -> bool:
+            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
+            projects = self._state.discovered_projects or None
+            selected = (
+                tuple(project.path.name for project in projects)
+                if projects is not None
+                else None
+            )
+            detector = FlextInfraRuntimeDevDependencyDetector(
+                workspace_root=ctx.workspace_root,
+                apply_changes=not dry_run,
+                apply_typings=not dry_run,
+                selected_projects=selected,
+            )
+            result = detector.execute()
+            if result.failure:
+                msg = result.error or "dependency conform failed"
+                raise RuntimeError(msg)
+            return result.unwrap()
+
+        return self._run_stage(
+            c.Infra.PipelineStage.DEPS,
+            _action,
+            lambda applied: {"deps_conformed": applied},
+        )
+
     def _stage_py_typed(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
 
         def _action() -> int:
-            py_typed: FlextInfraCodegenPyTyped = (
-                FlextInfraCodegenPyTyped.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
-            )
+            py_typed = FlextInfraCodegenPyTyped(workspace_root=ctx.workspace_root)
             return py_typed.run()
 
         return self._run_stage(
@@ -81,17 +148,14 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_before(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
         def _action() -> tuple[
             FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
         ]:
-            census = FlextInfraCodegenCensus.model_validate({
-                "workspace_root": ctx.workspace_root,
-            })
+            census = FlextInfraCodegenCensus(workspace_root=ctx.workspace_root)
             projects = self._state.discovered_projects or None
             return census, census.run(projects=projects)
 
@@ -109,17 +173,16 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.CENSUS_BEFORE, _action, _emit)
 
     def _stage_scaffold(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
 
         def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            return FlextInfraCodegenScaffolder.model_validate({
-                "workspace_root": ctx.workspace_root,
-            }).run(dry_run=dry_run, projects=projects)
+            return FlextInfraCodegenScaffolder(workspace_root=ctx.workspace_root).run(
+                dry_run=dry_run, projects=projects
+            )
 
         def _emit(results: t.SequenceOf[m.Infra.ScaffoldResult]) -> t.JsonMapping:
             self._state.scaffold_results = results
@@ -131,18 +194,16 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.SCAFFOLD, _action, _emit)
 
     def _stage_auto_fix(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
 
         def _action() -> t.SequenceOf[m.Infra.AutoFixResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            return FlextInfraCodegenFixer.model_validate({
-                "workspace_root": ctx.workspace_root,
-                "dry_run": dry_run,
-            }).fix_workspace(projects=projects)
+            return FlextInfraCodegenFixer(
+                workspace_root=ctx.workspace_root, dry_run=dry_run
+            ).fix_workspace(projects=projects)
 
         def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
             self._state.fix_results = results
@@ -154,18 +215,13 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.AUTO_FIX, _action, _emit)
 
     def _stage_lazy_init(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run lazy-init __init__.py generation."""
 
         def _action() -> int:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            lazy_init: FlextInfraCodegenLazyInit = (
-                FlextInfraCodegenLazyInit.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
-            )
+            lazy_init = FlextInfraCodegenLazyInit(workspace_root=ctx.workspace_root)
             return lazy_init.generate_inits(check_only=dry_run)
 
         return self._run_stage(
@@ -175,17 +231,13 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_after(
-        self,
-        ctx: m.Cli.PipelineStageContext,
+        self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
 
         def _action() -> t.SequenceOf[m.Infra.CensusReport]:
-            census = (
-                self._state.census_service
-                or FlextInfraCodegenCensus.model_validate({
-                    "workspace_root": ctx.workspace_root,
-                })
+            census = self._state.census_service or FlextInfraCodegenCensus(
+                workspace_root=ctx.workspace_root
             )
             projects = self._state.discovered_projects or None
             return census.run(projects=projects)

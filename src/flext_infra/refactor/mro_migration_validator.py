@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraRefactorMROMigrationValidator:
@@ -21,9 +25,7 @@ class FlextInfraRefactorMROMigrationValidator:
     ) -> t.IntPair:
         """Return count of remaining symbols and unsupported entries."""
         file_results, _ = u.Infra.scan_workspace(
-            workspace_root=workspace_root,
-            target=target,
-            project_names=project_names,
+            workspace_root=workspace_root, target=target, project_names=project_names
         )
         remaining = sum(len(item.candidates) for item in file_results)
         return (remaining, 0)

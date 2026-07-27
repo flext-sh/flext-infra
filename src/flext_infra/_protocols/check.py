@@ -29,6 +29,4 @@ class FlextInfraProtocolsCheck(Protocol):
         total_elapsed: float
 
 
-__all__: list[str] = [
-    "FlextInfraProtocolsCheck",
-]
+__all__: list[str] = ["FlextInfraProtocolsCheck"]

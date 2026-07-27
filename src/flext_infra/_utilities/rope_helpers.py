@@ -4,23 +4,22 @@ from __future__ import annotations
 
 from importlib import import_module
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
+from flext_infra import c, m, t
 from flext_infra._utilities._rope_bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
 )
 from flext_infra._utilities._rope_method_order import (
     FlextInfraUtilitiesRopeMethodOrderMixin,
 )
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraUtilitiesRopeHelpers(
-    FlextInfraUtilitiesRopeBracketBalanceMixin,
-    FlextInfraUtilitiesRopeMethodOrderMixin,
+    FlextInfraUtilitiesRopeBracketBalanceMixin, FlextInfraUtilitiesRopeMethodOrderMixin
 ):
     """Generic text, import-placement, and method-order helpers."""
 
@@ -38,17 +37,12 @@ class FlextInfraUtilitiesRopeHelpers(
             return
         module = import_module(cls._default_post_hook_module)
         owner = getattr(module, cls._default_post_hook_owner)
-        cls.register_rope_post_hook(
-            cast("p.Infra.RopePostHook", getattr(owner, "run_as_hook")),
-        )
+        cls.register_rope_post_hook(cast("p.Infra.RopePostHook", owner.run_as_hook))
         cls._default_post_hooks_registered = True
 
     @classmethod
     def run_rope_post_hooks(
-        cls,
-        path: Path,
-        *,
-        dry_run: bool,
+        cls, path: Path, *, dry_run: bool
     ) -> t.SequenceOf[m.Infra.Result]:
         """Run workspace-scale semantic passes after local refactors."""
         cls._ensure_default_post_hooks_registered()
@@ -58,18 +52,13 @@ class FlextInfraUtilitiesRopeHelpers(
         return results
 
     @classmethod
-    def register_rope_post_hook(
-        cls,
-        hook: p.Infra.RopePostHook,
-    ) -> None:
+    def register_rope_post_hook(cls, hook: p.Infra.RopePostHook) -> None:
         """Register a post-processing hook for rope refactoring pipelines."""
         if hook not in cls._post_hooks:
             cls._post_hooks.append(hook)
 
     @staticmethod
-    def get_module_level_assignments(
-        source: str,
-    ) -> t.StrPairSequence:
+    def get_module_level_assignments(source: str) -> t.StrPairSequence:
         """Return (name, value_str) for module-level simple assignments."""
         assignment_pattern = c.Infra.MODULE_ASSIGNMENT_RE
         results: list[t.StrPair] = []
@@ -125,10 +114,7 @@ class FlextInfraUtilitiesRopeHelpers(
 
     @staticmethod
     def extract_definition(
-        source: str,
-        name: str,
-        *,
-        kind: str = "function",
+        source: str, name: str, *, kind: str = "function"
     ) -> str | None:
         r"""Extract full def/class block by name using regex.
 
@@ -148,18 +134,11 @@ class FlextInfraUtilitiesRopeHelpers(
             return None
         block = match.group(0)
         return FlextInfraUtilitiesRopeHelpers._extend_block_through_open_brackets(
-            source,
-            block,
-            match_end=match.end(),
+            source, block, match_end=match.end()
         ).rstrip("\n")
 
     @staticmethod
-    def remove_definition(
-        source: str,
-        name: str,
-        *,
-        kind: str = "function",
-    ) -> str:
+    def remove_definition(source: str, name: str, *, kind: str = "function") -> str:
         """Remove a top-level def/class from source."""
         if kind == "function":
             pattern = c.Infra.compile_function_def_remove(name)
@@ -171,11 +150,7 @@ class FlextInfraUtilitiesRopeHelpers(
         return updated_source
 
     @staticmethod
-    def append_to_class_body(
-        source: str,
-        class_name: str,
-        block: str,
-    ) -> str:
+    def append_to_class_body(source: str, class_name: str, block: str) -> str:
         """Append a block of code to an existing class body."""
         if not c.Infra.compile_class_header_search(class_name).search(source):
             return source.rstrip("\n") + f"\n\nclass {class_name}:\n{block}\n"

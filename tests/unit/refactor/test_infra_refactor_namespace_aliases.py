@@ -1,20 +1,25 @@
+"""Tests for refactor namespace-alias rewriting."""
+
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+from flext_tests import tm
 
 from flext_infra.detectors.import_alias_detector import FlextInfraImportAliasDetector
-from tests.models import m
-from tests.typings import t
-from tests.utilities import u
+from tests import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
     """Behavior contract for test_infra_refactor_namespace_aliases."""
 
     def test_import_alias_detector_skips_private_and_class_imports(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         sample_file = tmp_path / "sample.py"
         sample_file.write_text(
@@ -26,17 +31,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         )
 
         violations = FlextInfraImportAliasDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=sample_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=sample_file, rope_project=rope_project)
         )
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_import_alias_detector_skips_nested_private_and_as_renames(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         sample_file = tmp_path / "sample.py"
         sample_file.write_text(
@@ -47,17 +47,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         )
 
         violations = FlextInfraImportAliasDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=sample_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=sample_file, rope_project=rope_project)
         )
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_import_alias_detector_skips_facade_and_subclass_files(
-        self,
-        tmp_path: Path,
-        rope_project: t.Infra.RopeProject,
+        self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         sample_file = tmp_path / "models.py"
         sample_file.write_text(
@@ -70,12 +65,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         )
 
         violations = FlextInfraImportAliasDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=sample_file,
-                rope_project=rope_project,
-            ),
+            m.Infra.DetectorContext(file_path=sample_file, rope_project=rope_project)
         )
-        assert violations == []
+        tm.that(violations, eq=[])
 
     def test_namespace_rewriter_only_rewrites_runtime_alias_imports(
         self, tmp_path: Path
@@ -90,14 +82,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         sample_file.write_text(source, encoding="utf-8")
 
         u.Infra.rewrite_import_violations(
-            py_files=[sample_file],
-            project_package="flext_core",
+            py_files=[sample_file], project_package="flext_core"
         )
 
         rewritten = sample_file.read_text(encoding="utf-8")
         # Top-level package imports (from flext_core import X) are preserved by the
         # cleaner — only submodule imports (from flext_core.<sub> import X) are removed.
-        assert rewritten == source
+        tm.that(rewritten, eq=source)
 
     def test_namespace_rewriter_keeps_contextual_alias_subset(
         self, tmp_path: Path
@@ -107,13 +98,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         sample_file.write_text(source, encoding="utf-8")
 
         u.Infra.rewrite_import_violations(
-            py_files=[sample_file],
-            project_package="flext_core",
+            py_files=[sample_file], project_package="flext_core"
         )
 
         rewritten = sample_file.read_text(encoding="utf-8")
         # Top-level package imports are preserved by the cleaner.
-        assert rewritten == source
+        tm.that(rewritten, eq=source)
 
     def test_namespace_rewriter_skips_facade_and_subclass_files(
         self, tmp_path: Path
@@ -129,19 +119,17 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         sample_file.write_text(source, encoding="utf-8")
 
         u.Infra.rewrite_import_violations(
-            py_files=[sample_file],
-            project_package="flext_core",
+            py_files=[sample_file], project_package="flext_core"
         )
 
         rewritten = sample_file.read_text(encoding="utf-8")
         # Top-level package imports are preserved (not submodule), so file is unchanged.
-        assert "from flext_core import u" in rewritten
-        assert "FlextModels" in rewritten
-        assert rewritten == source
+        tm.that(rewritten, has="from flext_core import u")
+        tm.that(rewritten, has="FlextModels")
+        tm.that(rewritten, eq=source)
 
     def test_namespace_rewriter_skips_nested_private_as_rename_and_duplicates(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         sample_file = tmp_path / "sample.py"
         source = (
@@ -154,11 +142,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceAliases:
         sample_file.write_text(source, encoding="utf-8")
 
         u.Infra.rewrite_import_violations(
-            py_files=[sample_file],
-            project_package="flext_core",
+            py_files=[sample_file], project_package="flext_core"
         )
 
         rewritten = sample_file.read_text(encoding="utf-8")
         # Top-level package imports are not touched by the submodule cleaner.
         # flext_infra import also preserved (different package than project_package).
-        assert rewritten == source
+        tm.that(rewritten, eq=source)

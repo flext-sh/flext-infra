@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_infra import c, m
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusObjectsMixin:
@@ -46,7 +47,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _selected_families(family_names: t.StrSequence | None) -> frozenset[str]:
-        """Selected families."""
+        """Return the selected families."""
         if not family_names:
             return frozenset()
         resolved = {
@@ -85,33 +86,13 @@ class FlextInfraRefactorCensusObjectsMixin:
             and not item.name.startswith("_")
         )
 
-    @staticmethod
-    def _is_test_only(item: m.Infra.Census.Object) -> bool:
-        """Is test only."""
-        return (
-            not item.is_facade_member
-            and item.references_count > 0
-            and item.runtime_references_count == 0
-            and item.test_references_count == item.references_count
-            and not item.name.startswith("_")
-        )
-
     @classmethod
     def _removal_candidate(
-        cls,
-        item: m.Infra.Census.Object,
-        *,
-        include_unused: bool,
-        include_test_only: bool,
+        cls, item: m.Infra.Census.Object, *, include_unused: bool
     ) -> m.Infra.Census.RemovalCandidate | None:
-        """Removal candidate."""
+        """Build a removal candidate for an object."""
         if include_unused and cls._is_unused(item):
             reason, suggested_action = "unused", "delete_object_definition"
-        elif include_test_only and cls._is_test_only(item):
-            reason, suggested_action = (
-                "test_only",
-                "delete_object_and_test_references",
-            )
         else:
             return None
         return m.Infra.Census.RemovalCandidate(
@@ -124,8 +105,6 @@ class FlextInfraRefactorCensusObjectsMixin:
             reason=reason,
             suggested_action=suggested_action,
             runtime_reference_sites=item.runtime_reference_sites,
-            test_reference_sites=item.test_reference_sites,
-            example_reference_sites=item.example_reference_sites,
             script_reference_sites=item.script_reference_sites,
         )
 
@@ -142,8 +121,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @classmethod
     def _impact_map_results(
-        cls,
-        report: m.Infra.Census.WorkspaceReport,
+        cls, report: m.Infra.Census.WorkspaceReport
     ) -> tuple[m.Infra.Result, ...]:
         """Impact map results."""
         changes_by_file: dict[Path, list[str]] = defaultdict(list)
@@ -172,9 +150,7 @@ class FlextInfraRefactorCensusObjectsMixin:
 
     @staticmethod
     def _append_impact_change(
-        changes_by_file: dict[Path, list[str]],
-        file_path: Path,
-        change: str,
+        changes_by_file: dict[Path, list[str]], file_path: Path, change: str
     ) -> None:
         """Append impact change."""
         normalized_path = file_path.resolve()
@@ -185,13 +161,8 @@ class FlextInfraRefactorCensusObjectsMixin:
     def _reference_sites(
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
-        """Reference sites."""
-        return (
-            *candidate.test_reference_sites,
-            *candidate.runtime_reference_sites,
-            *candidate.example_reference_sites,
-            *candidate.script_reference_sites,
-        )
+        """Return all reference sites for a removal candidate."""
+        return (*candidate.runtime_reference_sites, *candidate.script_reference_sites)
 
     @staticmethod
     def _is_flext_owned(value: p.ModuleOwned) -> bool:

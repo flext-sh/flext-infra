@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c
 from flext_infra.validate.gate_contract_models import FlextInfraGateContractModels
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraGateContractContentMixin:
@@ -14,9 +17,7 @@ class FlextInfraGateContractContentMixin:
 
     @staticmethod
     def _check_interactive(
-        script: str,
-        content: str,
-        extension: str,
+        script: str, content: str, extension: str
     ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
         if c.Infra.SKILL_INTERACTIVE_GATE_RE.search(content):
             return ()
@@ -35,23 +36,20 @@ class FlextInfraGateContractContentMixin:
                 continue
             if pattern.search(line):
                 violations.append(
-                    FlextInfraGateContractModels.Violation.create(
-                        {
-                            "check": "interactive",
-                            "message": (
-                                f"line {i}: interactive prompt without --interactive gate"
-                            ),
-                            "script": script,
-                            "severity": c.Infra.GateSeverity.WARNING.value,
-                        },
-                    ),
+                    FlextInfraGateContractModels.Violation(
+                        check="interactive",
+                        message=(
+                            f"line {i}: interactive prompt without --interactive gate"
+                        ),
+                        script=script,
+                        severity=c.Infra.GateSeverity.WARNING.value,
+                    )
                 )
         return tuple(violations)
 
     @staticmethod
     def _check_artifact_naming(
-        script: str,
-        content: str,
+        script: str, content: str
     ) -> t.SequenceOf[FlextInfraGateContractModels.Violation]:
         violations: list[FlextInfraGateContractModels.Violation] = []
         for i, line in enumerate(content.splitlines(), 1):
@@ -64,17 +62,15 @@ class FlextInfraGateContractContentMixin:
                 if c.Infra.SKILL_REPORT_ARTIFACT_NAME_RE.fullmatch(filename):
                     continue
                 violations.append(
-                    FlextInfraGateContractModels.Violation.create(
-                        {
-                            "check": "artifact_naming",
-                            "message": (
-                                f"line {i}: artifact '{filename}' does not match "
-                                "<skill>--<kind>--<slug>.<ext>"
-                            ),
-                            "script": script,
-                            "severity": c.Infra.GateSeverity.WARNING.value,
-                        },
-                    ),
+                    FlextInfraGateContractModels.Violation(
+                        check="artifact_naming",
+                        message=(
+                            f"line {i}: artifact '{filename}' does not match "
+                            "<skill>--<kind>--<slug>.<ext>"
+                        ),
+                        script=script,
+                        severity=c.Infra.GateSeverity.WARNING.value,
+                    )
                 )
         return tuple(violations)
 

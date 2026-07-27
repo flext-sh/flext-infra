@@ -1,130 +1,170 @@
-"""Public tests for the publish phase."""
+"""Public release publish-phase behavior tests."""
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
-from tests.constants import c
-from tests.models import m
-from tests.utilities import TestsFlextInfraUtilities as u
+from flext_tests import tm
 
+from tests import TestsFlextInfraUtilities as u, c
 
-def publish_ctx(
-    workspace_root: Path,
-    *,
-    project_names: list[str] | None = None,
-    dry_run: bool = False,
-    push: bool = False,
-) -> m.Infra.ReleasePhaseDispatchConfig:
-    return m.Infra.ReleasePhaseDispatchConfig(
-        phase=c.Infra.VERB_PUBLISH,
-        workspace_root=workspace_root,
-        version=c.Tests.RELEASE_VERSION_TARGET,
-        tag=c.Tests.RELEASE_TAG_TARGET,
-        project_names=project_names or [],
-        dry_run=dry_run,
-        push=push,
-        dev_suffix=False,
-    )
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
-def test_phase_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+class TestsFlextInfraReleasePublish:
+    """Behavior contract for the public release publish phase."""
 
-    result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(workspace, dry_run=True),
-    )
+    class TestsDryRun:
+        """Dry-run publish behavior."""
 
-    assert result.success
-    assert (
-        workspace
-        / ".reports"
-        / "release"
-        / c.Tests.RELEASE_TAG_TARGET
-        / c.Tests.RELEASE_NOTES_FILENAME
-    ).is_file()
-    assert not (workspace / "docs" / "CHANGELOG.md").exists()
-    assert (
-        u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
-        ).unwrap()
-        == ""
-    )
+        @staticmethod
+        def test_publish_dry_run_writes_notes_only(tmp_path: Path) -> None:
+            """Write notes without changing docs or Git refs."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, initialize_root_git=True
+            )
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_PUBLISH,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--tag",
+                c.Tests.RELEASE_TAG_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--dry-run",
+            )
 
-def test_phase_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+            notes_path = (
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_TARGET)
+                / c.Tests.RELEASE_NOTES_FILENAME
+            )
+            tm.that(result, eq=0)
+            tm.that(notes_path.is_file(), eq=True)
+            tm.that((workspace / "docs" / "CHANGELOG.md").exists(), eq=False)
+            tm.that(
+                u.Cli.capture(
+                    [c.Infra.GIT, "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+                    cwd=workspace,
+                ).unwrap(),
+                eq="",
+            )
 
-    result = FlextInfraReleaseOrchestrator().phase_publish(publish_ctx(workspace))
+    class TestsApply:
+        """Applied publish behavior."""
 
-    assert result.success
-    assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert (workspace / "docs" / "releases" / "latest.md").is_file()
-    assert (
-        workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
-    ).is_file()
-    assert (
-        u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
-        ).unwrap()
-        == c.Tests.RELEASE_TAG_TARGET
-    )
+        @staticmethod
+        def test_publish_apply_updates_docs_and_creates_tag(tmp_path: Path) -> None:
+            """Persist release documents and the exact annotated tag."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, initialize_root_git=True
+            )
 
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_PUBLISH,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--tag",
+                c.Tests.RELEASE_TAG_TARGET,
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
-def test_phase_publish_push_without_origin_fails_after_local_tagging(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        initialize_root_git=True,
-    )
+            tm.that(result, eq=0)
+            tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            tm.that((workspace / "docs" / "releases" / "latest.md").is_file(), eq=True)
+            tm.that(
+                (
+                    workspace / "docs" / "releases" / f"{c.Tests.RELEASE_TAG_TARGET}.md"
+                ).is_file(),
+                eq=True,
+            )
+            tm.that(
+                u.Cli.capture(
+                    [c.Infra.GIT, "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+                    cwd=workspace,
+                ).unwrap(),
+                eq=c.Tests.RELEASE_TAG_TARGET,
+            )
 
-    result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(workspace, push=True),
-    )
+        @staticmethod
+        def test_publish_push_without_origin_fails_after_local_tagging(
+            tmp_path: Path,
+        ) -> None:
+            """Report push failure while retaining observable local publication."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, initialize_root_git=True
+            )
 
-    assert result.failure
-    assert (workspace / "docs" / "CHANGELOG.md").is_file()
-    assert (
-        u.Cli.capture(
-            ["git", "tag", "-l", c.Tests.RELEASE_TAG_TARGET], cwd=workspace
-        ).unwrap()
-        == c.Tests.RELEASE_TAG_TARGET
-    )
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_PUBLISH,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--tag",
+                c.Tests.RELEASE_TAG_TARGET,
+                "--push",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--apply",
+            )
 
+            tm.that(result, eq=1)
+            tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            tm.that(
+                u.Cli.capture(
+                    [c.Infra.GIT, "tag", "-l", c.Tests.RELEASE_TAG_TARGET],
+                    cwd=workspace,
+                ).unwrap(),
+                eq=c.Tests.RELEASE_TAG_TARGET,
+            )
 
-def test_phase_publish_notes_include_only_selected_projects(tmp_path: Path) -> None:
-    workspace = u.Tests.create_release_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        initialize_root_git=True,
-    )
+    class TestsSelection:
+        """Publish project-selection behavior."""
 
-    result = FlextInfraReleaseOrchestrator().phase_publish(
-        publish_ctx(
-            workspace,
-            project_names=["flext-a"],
-            dry_run=True,
-        ),
-    )
+        @staticmethod
+        def test_notes_include_only_selected_projects(tmp_path: Path) -> None:
+            """Render root and selected projects without an unselected peer."""
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=("flext-a", "flext-b"), initialize_root_git=True
+            )
 
-    notes_path = (
-        workspace
-        / ".reports"
-        / "release"
-        / c.Tests.RELEASE_TAG_TARGET
-        / c.Tests.RELEASE_NOTES_FILENAME
-    )
-    notes = notes_path.read_text(encoding="utf-8")
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_PUBLISH,
+                "--version",
+                c.Tests.RELEASE_VERSION_TARGET,
+                "--tag",
+                c.Tests.RELEASE_TAG_TARGET,
+                "--projects",
+                "flext-a",
+                "--interactive",
+                "0",
+                "--create-branches",
+                "0",
+                "--dry-run",
+            )
 
-    assert result.success
-    assert "- root" in notes
-    assert "- flext-a" in notes
-    assert "- flext-b" not in notes
+            notes_path = (
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_TARGET)
+                / c.Tests.RELEASE_NOTES_FILENAME
+            )
+            notes = notes_path.read_text(encoding="utf-8")
+            tm.that(result, eq=0)
+            tm.that(notes, has="- root")
+            tm.that(notes, has="- flext-a")
+            tm.that(notes, lacks="- flext-b")

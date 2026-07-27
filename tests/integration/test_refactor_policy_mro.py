@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from flext_tests import tm
+
 from flext_infra.refactor.mro_resolver import FlextInfraRefactorMROResolver
-from tests.constants import c
+from tests import c
 
 
 class TestsFlextInfraIntegrationRefactorPolicyMro:
@@ -64,31 +66,18 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
                 c.Infra.FacadeFamily.U: self.DemoMigrationUtilities,
             },
             expected_base_chains={
-                c.Infra.FacadeFamily.C: [
-                    "FlextLdapConstants",
-                    "FlextCliConstants",
-                ],
-                c.Infra.FacadeFamily.T: [
-                    "FlextLdapTypes",
-                    "FlextCliTypes",
-                ],
-                c.Infra.FacadeFamily.P: [
-                    "FlextLdapProtocols",
-                    "FlextCliProtocols",
-                ],
-                c.Infra.FacadeFamily.M: [
-                    "FlextLdapModels",
-                    "FlextCliModels",
-                ],
-                c.Infra.FacadeFamily.U: [
-                    "FlextLdapUtilities",
-                    "FlextCliUtilities",
-                ],
+                c.Infra.FacadeFamily.C: ["FlextLdapConstants", "FlextCliConstants"],
+                c.Infra.FacadeFamily.T: ["FlextLdapTypes", "FlextCliTypes"],
+                c.Infra.FacadeFamily.P: ["FlextLdapProtocols", "FlextCliProtocols"],
+                c.Infra.FacadeFamily.M: ["FlextLdapModels", "FlextCliModels"],
+                c.Infra.FacadeFamily.U: ["FlextLdapUtilities", "FlextCliUtilities"],
             },
         )
-        assert len(resolutions) == 5
+        tm.that(len(resolutions), eq=5)
         model_resolution = next(res for res in resolutions if res.family == "m")
-        assert model_resolution.expected_bases == ("FlextLdapModels", "FlextCliModels")
+        tm.that(
+            model_resolution.expected_bases, eq=("FlextLdapModels", "FlextCliModels")
+        )
 
     def test_mro_resolver_rejects_wrong_order(self) -> None:
         raised = False
@@ -102,26 +91,11 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
                     c.Infra.FacadeFamily.U: (self.DemoMigrationUtilities),
                 },
                 expected_base_chains={
-                    c.Infra.FacadeFamily.C: [
-                        "FlextLdapConstants",
-                        "FlextCliConstants",
-                    ],
-                    c.Infra.FacadeFamily.T: [
-                        "FlextLdapTypes",
-                        "FlextCliTypes",
-                    ],
-                    c.Infra.FacadeFamily.P: [
-                        "FlextLdapProtocols",
-                        "FlextCliProtocols",
-                    ],
-                    c.Infra.FacadeFamily.M: [
-                        "FlextCliModels",
-                        "FlextLdapModels",
-                    ],
-                    c.Infra.FacadeFamily.U: [
-                        "FlextLdapUtilities",
-                        "FlextCliUtilities",
-                    ],
+                    c.Infra.FacadeFamily.C: ["FlextLdapConstants", "FlextCliConstants"],
+                    c.Infra.FacadeFamily.T: ["FlextLdapTypes", "FlextCliTypes"],
+                    c.Infra.FacadeFamily.P: ["FlextLdapProtocols", "FlextCliProtocols"],
+                    c.Infra.FacadeFamily.M: ["FlextCliModels", "FlextLdapModels"],
+                    c.Infra.FacadeFamily.U: ["FlextLdapUtilities", "FlextCliUtilities"],
                 },
             )
         except ValueError:

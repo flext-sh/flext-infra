@@ -6,10 +6,14 @@ positive delta and passes everything else.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from flext_tests import tm
 
 from flext_infra.validate.loc_delta import FlextInfraLocDeltaValidator
-from tests.typings import t
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestLocDeltaValidator:
