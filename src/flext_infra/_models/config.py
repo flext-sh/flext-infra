@@ -618,6 +618,18 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        makefile_custom_include: Annotated[
+            str,
+            m.Field(description="Optional custom Make policy include directive"),
+        ]
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(description="Workspace-root gate verbs orchestrated across members"),
+        ] = ()
+        workspace_cli_group: Annotated[
+            str,
+            m.Field(description="CLI group used for workspace orchestration"),
+        ] = ""
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]

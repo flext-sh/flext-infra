@@ -313,6 +313,15 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         return r.ok(reference)
 
+    @staticmethod
+    def _git_requirement_url(url: str) -> p.Result[str]:
+        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
+        if not url.startswith("https://"):
+            return r[str].fail(
+                f"repository URL must use the configured HTTPS transport: {url}"
+            )
+        return r[str].ok(f"git+{url}")
+
     @classmethod
     def _sync_dependency_groups(
         cls,
