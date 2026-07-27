@@ -534,26 +534,9 @@ class FlextInfraConfigModels:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
-    class ProjectRenderContext(_ConfigContract):
-        """Complete typed input consumed by the universal project templates."""
+    class MakeRenderContext(_ConfigContract):
+        """Typed input consumed by the generated Make surface."""
 
-        scaffold: Annotated[
-            FlextInfraConfigModels.ScaffoldSpec,
-            m.Field(description="New-project scaffold policy"),
-        ]
-        gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Canonical .gitignore sections derived from the artifact SSOT"
-                ),
-            ),
-        ]
-        dependency_profile: Annotated[
-            FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
-            m.Field(description="Resolved upstream dependency profile"),
-        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -582,10 +565,6 @@ class FlextInfraConfigModels:
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
-        tooling: Annotated[
-            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
-            m.Field(description="Canonical validated tooling policy"),
-        ]
         tooling_runtime: Annotated[
             FlextInfraModelsDepsToolSettings.ToolingRuntimeContext,
             m.Field(description="Resolved project/workspace tooling values"),
@@ -593,17 +572,90 @@ class FlextInfraConfigModels:
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
 
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor tool value")
+        ]
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(description="Generated Make execution profile"),
+        ]
+        workspace_root_rel: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Relative path to the declared workspace root"),
+        ]
+        makefile_custom_include: Annotated[
+            str,
+            m.Field(
+                min_length=1,
+                description=("Make directive that includes the custom Make surface"),
+            ),
+        ]
+        workspace_members: Annotated[
+            tuple[str, ...], m.Field(description="Ordered workspace member paths")
+        ] = ()
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered workspace member records"),
+        ] = ()
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(description="Repository-specific additional public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(description="Opt-in script command-framework routing contract"),
+        ] = None
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Gate verbs a workspace-root Makefile fans out across members "
+                    "through the generic workspace orchestrate primitive"
+                )
+            ),
+        ] = ()
+        workspace_cli_group: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "CLI group name for the flext-infra workspace orchestrate route"
+                )
+            ),
+        ] = ""
+
+    class ProjectRenderContext(MakeRenderContext):
+        """Complete typed input consumed by project scaffold templates."""
+
         @m.computed_field()
         @property
         def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name.
-
-            Mirrors each project's own ``SettingsConfigDict(env_prefix=...)`` so
-            the generated ``.env.example`` documents the real runtime variable
-            (``flext-grpc`` -> ``FLEXT_GRPC_``) without a per-project overlay.
-            """
+            """Settings environment prefix derived from the distribution name."""
             return f"{self.dist.upper().replace('-', '_')}_"
 
+        scaffold: Annotated[
+            FlextInfraConfigModels.ScaffoldSpec,
+            m.Field(description="New-project scaffold policy"),
+        ]
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Canonical .gitignore sections derived from the artifact SSOT"
+                ),
+            ),
+        ]
+        dependency_profile: Annotated[
+            FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
+            m.Field(description="Resolved upstream dependency profile"),
+        ]
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy"),
+        ]
         const_name: Annotated[
             t.NonEmptyStr, m.Field(description="Configured constant project name")
         ]
@@ -633,9 +685,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python major.minor tool value")
-        ]
         python_toolchain_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python toolchain version selector")
         ]
@@ -657,9 +706,6 @@ class FlextInfraConfigModels:
         uv_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
         ]
-        uv_link_mode: Annotated[
-            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
-        ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
         ]
@@ -677,14 +723,6 @@ class FlextInfraConfigModels:
         flext_git_branch: Annotated[
             t.NonEmptyStr, m.Field(description="FLEXT Git provider branch")
         ]
-        make_profile: Annotated[
-            FlextInfraConstantsCodegenProject.MakeProfile,
-            m.Field(description="Generated Make execution profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
-        ]
         repository_provider: Annotated[
             t.NonEmptyStr, m.Field(description="Repository provider catalog key")
         ]
@@ -693,13 +731,6 @@ class FlextInfraConfigModels:
         ]
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
-        ]
-        makefile_custom_include: Annotated[
-            str,
-            m.Field(
-                min_length=1,
-                description=("Make directive that includes the custom Make surface"),
-            ),
         ]
         workspace_manifest_version: Annotated[
             int,
@@ -714,13 +745,6 @@ class FlextInfraConfigModels:
             m.Field(description="Repository rendered into the workspace manifest"),
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
-        workspace_members: Annotated[
-            tuple[str, ...], m.Field(description="Ordered workspace member paths")
-        ] = ()
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered workspace member records"),
-        ] = ()
         workspace_content_only: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered content-only repository records"),
@@ -729,31 +753,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
             m.Field(description="Ordered excluded workspace paths"),
         ] = ()
-        extra_verbs: Annotated[
-            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
-            m.Field(description="Repository-specific additional public Make verbs"),
-        ] = ()
-        script_dispatch: Annotated[
-            FlextInfraConfigModels.ScriptDispatchSpec | None,
-            m.Field(description="Opt-in script command-framework routing contract"),
-        ] = None
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description=(
-                    "Gate verbs a workspace-root Makefile fans out across members "
-                    "through the generic workspace orchestrate primitive"
-                )
-            ),
-        ] = ()
-        workspace_cli_group: Annotated[
-            str,
-            m.Field(
-                description=(
-                    "CLI group name for the flext-infra workspace orchestrate route"
-                )
-            ),
-        ] = ""
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""

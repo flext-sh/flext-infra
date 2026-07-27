@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, override
+from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import config
@@ -44,34 +44,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     class SurfaceContract(m.Value):
-        destinations: Annotated[
-            frozenset[str] | None,
-            m.Field(description="Output paths selected for conformance planning"),
-        ] = None
-        complete_governed: Annotated[
-            bool,
-            m.Field(description="Whether every governed output must be represented"),
-        ] = False
-        dependencies_only: Annotated[
-            bool,
-            m.Field(description="Whether planning is limited to dependency updates"),
-        ] = False
-        delegates: Annotated[
-            bool,
-            m.Field(description="Whether delegated template outputs are planned"),
-        ] = True
-        pyproject: Annotated[
-            bool,
-            m.Field(description="Whether the project metadata file is planned"),
-        ] = True
-        templates: Annotated[
-            bool,
-            m.Field(description="Whether managed template outputs are planned"),
-        ] = True
-        custom: Annotated[
-            bool,
-            m.Field(description="Whether custom Make policy validation is planned"),
-        ] = True
+        destinations: frozenset[str] | None = m.Field(
+            default=None, description="Output paths selected for conformance planning"
+        )
+        complete_governed: bool = m.Field(
+            default=False, description="Whether every governed output is represented"
+        )
+        dependencies_only: bool = m.Field(
+            default=False, description="Whether planning is dependency-only"
+        )
+        delegates: bool = m.Field(
+            default=True, description="Whether delegated templates are planned"
+        )
+        pyproject: bool = m.Field(
+            default=True, description="Whether project metadata is planned"
+        )
+        templates: bool = m.Field(
+            default=True, description="Whether managed templates are planned"
+        )
+        custom: bool = m.Field(
+            default=True, description="Whether custom Make policy is planned"
+        )
 
     @classmethod
     def _surface_contract(
@@ -83,7 +76,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             case c.Infra.CodegenConformSurface.DEPENDENCIES:
                 return cls.SurfaceContract(
                     destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
-                    dependencies_only=True, delegates=False, templates=False, custom=False
+                    dependencies_only=True,
+                    delegates=False,
+                    templates=False,
+                    custom=False,
                 )
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 return cls.SurfaceContract(
@@ -234,7 +230,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self._surface_contract(
+            c.Infra.CodegenConformSurface(request.what)
+        )
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -594,7 +592,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
-            if contract.destinations is not None and entry.destination not in contract.destinations:
+            if (
+                contract.destinations is not None
+                and entry.destination not in contract.destinations
+            ):
                 continue
             source = (templates_root / entry.source).resolve()
             if not source.is_relative_to(templates_root) or not source.is_file():
