@@ -97,12 +97,6 @@ class FlextInfraConfigModels:
             next_minor = int(minor) + 1
             return f">={self.python_version},<{major}.{next_minor}"
 
-        @m.computed_field()
-        @property
-        def uv_required_version(self) -> str:
-            """Exact PEP 440 uv requirement derived from the declared version."""
-            return f"=={self.uv_version}"
-
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
 
@@ -541,9 +535,6 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
-        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -794,12 +785,6 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
-        ]
-        uv_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -1240,9 +1225,6 @@ class FlextInfraConfigModels:
         lock_path: Annotated[Path, m.Field(description="Required versioned uv.lock")]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact required uv version")
         ]
         groups: Annotated[
             tuple[str, ...],

@@ -82,7 +82,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         return FlextInfraBaseMkTemplateRenderer().render_single(
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
             make=c.Infra,
-            uv_version=config.Infra.codegen.toolchain.uv_version,
         )
 
     @override
@@ -122,7 +121,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                    uv_version=config.Infra.codegen.toolchain.uv_version,
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

@@ -65,9 +65,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             repositories=repositories,
             workspace=workspace,
-            required_version=toolchain.uv_required_version,
             link_mode=toolchain.uv_link_mode,
-            constraint_dependencies=(f"uv{toolchain.uv_required_version}",),
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -478,14 +476,11 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
-        required_version: str | None = None,
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
-        if (required_version is None) != (link_mode is None):
-            return r[bool].fail("uv required version and link mode must be paired")
         workspace_root = cls._is_workspace_root(
             project_name=project_name, workspace=workspace
         )
@@ -496,7 +491,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if tool is None:
             if (
                 not workspace_root
-                and required_version is None
+                and link_mode is None
                 and not exclude_dependencies
             ):
                 return r[bool].ok(True)
@@ -505,13 +500,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if uv is None:
             if (
                 not workspace_root
-                and required_version is None
+                and link_mode is None
                 and not exclude_dependencies
             ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
-        if required_version is not None and link_mode is not None:
-            u.Cli.toml_sync_value(uv, "required-version", required_version)
+        if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(
             t.Cli.JSON_LIST_ADAPTER.validate_python([
