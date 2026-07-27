@@ -170,12 +170,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        child_result = self._project_is_flext_child(path.parent)
-        if child_result.failure:
-            return [child_result.error or "failed to resolve project Git topology"]
-        is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
-        )
+        is_child = self._project_is_flext_child(path.parent)
+        is_root = path.parent.resolve() == self.root.resolve() and not is_child
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
