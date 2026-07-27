@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from flext_infra import c
 from flext_infra._utilities._project_discovery_shape import (
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
@@ -30,7 +31,13 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
     def discover_external_workspace_roots(
         cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
-        """Return FLEXT-managed sibling workspace roots selected by policy."""
+        """Return sibling workspace roots that opted in as attached.
+
+        mro-4gbp: selection is declarative and name-agnostic. A sibling joins
+        discovery only by declaring ``[tool.flext.workspace] attached = true``
+        in its own pyproject - the same contract used for attached children.
+        The engine never pattern-matches a directory name it does not own.
+        """
         resolved_workspace_root = workspace_root.resolve()
         parent = resolved_workspace_root.parent
         if not parent.is_dir():
@@ -41,21 +48,29 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         )
         roots: list[Path] = []
         seen: set[Path] = set()
-        for pattern in c.Infra.EXTERNAL_WORKSPACE_SIBLING_PATTERNS:
-            for candidate in sorted(parent.glob(pattern), key=lambda item: item.name):
-                resolved_candidate = candidate.resolve()
-                if resolved_candidate == resolved_workspace_root:
-                    continue
-                if resolved_candidate in seen:
-                    continue
-                if not cls._looks_like_project(
-                    resolved_candidate,
-                    effective_scan_dirs=effective_scan_dirs,
-                    configured_member_set=configured_member_set,
-                ):
-                    continue
-                roots.append(resolved_candidate)
-                seen.add(resolved_candidate)
+        for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
+            if not candidate.is_dir():
+                continue
+            resolved_candidate = candidate.resolve()
+            if resolved_candidate == resolved_workspace_root:
+                continue
+            if resolved_candidate in seen:
+                continue
+            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                continue
+            metadata_result = u.read_project_metadata(resolved_candidate)
+            if metadata_result.failure:
+                continue
+            if not metadata_result.value.flext.workspace.attached:
+                continue
+            if not cls._looks_like_project(
+                resolved_candidate,
+                effective_scan_dirs=effective_scan_dirs,
+                configured_member_set=configured_member_set,
+            ):
+                continue
+            roots.append(resolved_candidate)
+            seen.add(resolved_candidate)
         return tuple(roots)
 
     @classmethod

@@ -5,12 +5,10 @@
 strict_env
 
 WORKSPACE_ROOT="${PWD}"
-AI_HUB="${AI_HUB:-${HOME}/.ai-hub}"
 VENV_DIR="${WORKSPACE_ROOT}/.venv"
 MISE_SHIMS="${WORKSPACE_MISE_SHIMS:-${MISE_SHIMS:-${HOME}/.local/share/mise/shims}}"
 PYPROJECT_FILE="${WORKSPACE_ROOT}/pyproject.toml"
 
-export AI_HUB
 export WORKSPACE_ROOT
 export WORKSPACE_MISE_SHIMS="${MISE_SHIMS}"
 export MISE_SHIMS
@@ -33,9 +31,11 @@ if [[ -d "${WORKSPACE_ROOT}/bin" ]]; then
   path_prepend_once "${WORKSPACE_ROOT}/bin"
 fi
 
-if [[ -d "${AI_HUB}/.venv/bin" ]]; then
-  path_prepend_once "${AI_HUB}/.venv/bin"
+{%- for extra_path in environment_path_prepends %}
+if [[ -d "{{ extra_path }}" ]]; then
+  path_prepend_once "{{ extra_path }}"
 fi
+{% endfor %}
 
 path_prepend_once "${MISE_SHIMS}"
 

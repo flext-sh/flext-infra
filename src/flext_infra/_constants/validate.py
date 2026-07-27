@@ -119,7 +119,6 @@ class FlextInfraConstantsSharedInfra:
         "flext-core/src/flext_core/_utilities/project_metadata.py",
         "flext-infra/src/flext_infra/_utilities/iteration.py",
         "flext-infra/src/flext_infra/workspace/project_makefile.py",
-        "flext-infra/src/flext_infra/workspace/workspace_makefile.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (
@@ -132,6 +131,10 @@ class FlextInfraConstantsSharedInfra:
     BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
     GITIGNORE: Final[str] = ".gitignore"
+    GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
+    "Heading of the trailing .gitignore section holding derived artifacts."
+    MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
+    "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"
     CONSTANTS_PY: Final[str] = "constants.py"

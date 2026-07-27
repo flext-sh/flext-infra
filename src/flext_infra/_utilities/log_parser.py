@@ -54,5 +54,21 @@ class FlextInfraUtilitiesLogParser:
         total = len(error_lines)
         return (total, error_lines[:max_lines])
 
+    @staticmethod
+    def extract_make_child_exit_code(log_path: Path) -> int | None:
+        """Return the recipe exit code GNU make reported, when present.
+
+        GNU make always exits 2 on a failed recipe, so the child's real exit
+        code survives only in make's own error line. Returns None when the log
+        is unreadable or carries no such line.
+        """
+        if not log_path.is_file():
+            return None
+        content = log_path.read_text(encoding="utf-8", errors="replace")
+        matches = tuple(c.Infra.LOG_MAKE_CHILD_EXIT_PATTERN.finditer(content))
+        if not matches:
+            return None
+        return int(matches[-1].group("code"))
+
 
 __all__: list[str] = ["FlextInfraUtilitiesLogParser"]
