@@ -1,7 +1,7 @@
 """Runtime Beartype census validator.
 
 Imports every ``flext_*`` module in selected projects and runs
-``FlextUtilitiesEnforcement.check()`` against every locally-defined class.
+``u.check()`` against every locally-defined class.
 Aggregates violations by rule/project into the standard validation report.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -15,7 +15,7 @@ import inspect
 import pkgutil
 from typing import Annotated, override
 
-from flext_core import FlextUtilitiesEnforcement, r
+from flext_core import r
 from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -114,7 +114,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
             if not self._is_local_class(obj, module.__name__):
                 continue
             try:
-                report = FlextUtilitiesEnforcement.check(obj)
+                report = u.check(obj)
             except Exception as exc:
                 violations.append(
                     f"{module_name}:{obj.__qualname__}: check raised: {exc}"

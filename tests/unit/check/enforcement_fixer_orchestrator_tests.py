@@ -10,7 +10,7 @@ from typing import ClassVar, override
 import pytest
 
 from flext_cli import cli
-from flext_core import FlextUtilitiesEnforcement, r
+from flext_core import r, u
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra import m, p, t, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
@@ -27,7 +27,7 @@ class TestsEnforcementFixerOrchestrator:
 
     @staticmethod
     def _rule(rule_id: str) -> me.EnforcementRuleSpec:
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
     @staticmethod
@@ -169,7 +169,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_explicit_unsafe_rule_fails_under_safe_only(self) -> None:
         """Explicit unsafe fix requests must fail instead of becoming no-op success."""
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        catalog = u.build_canonical_catalog()
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
             workspace=Path("/tmp"),
             selected_projects=("demo",),

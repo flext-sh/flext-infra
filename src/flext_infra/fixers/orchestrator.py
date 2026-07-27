@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Annotated, ClassVar, override
 
-from flext_core import FlextUtilitiesEnforcement, r
+from flext_core import r
 from flext_core._models.enforcement import FlextModelsEnforcement as me
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.constants import c
@@ -84,7 +84,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     @override
     def execute(self) -> p.Result[str]:
         """Run the enforcement fix pipeline and return a human-readable report."""
-        catalog = FlextUtilitiesEnforcement.build_canonical_catalog()
+        catalog = u.build_canonical_catalog()
         try:
             selected_rules = self._selected_rules(catalog)
         except ValueError as exc:
