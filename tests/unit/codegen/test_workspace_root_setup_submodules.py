@@ -1,3 +1,5 @@
+"""Workspace-root submodule setup contract tests."""
+
 from __future__ import annotations
 
 import os
@@ -56,7 +58,8 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
+    tm.ok(planned)
+    plan = m.Infra.CodegenPlan.model_validate(planned.value)
     makefile = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )

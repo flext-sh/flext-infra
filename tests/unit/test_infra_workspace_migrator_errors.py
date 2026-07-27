@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
+    @staticmethod
+    def _make_read_only(path: Path) -> None:
+        path.chmod(0o444)
+
     @pytest.mark.parametrize(
         ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
         [("old", "base.mk", "new content", "base.mk update failed")],

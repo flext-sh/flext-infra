@@ -345,7 +345,7 @@ class FlextInfraConfigModels:
         ]
 
     class ScaffoldDependencyProfileSpec(_ConfigContract):
-        """Dependencies selected by the declared upstream FLEXT facade."""
+        """Runtime dependencies selected by the declared upstream FLEXT facade."""
 
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Supported upstream facade package")
@@ -354,14 +354,6 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Runtime requirements"),
         ]
-        codegen: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Code-generation requirements"),
-        ] = ()
-        dev: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Development and validation requirements"),
-        ] = ()
 
     class ScaffoldProjectSpec(_ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
@@ -377,6 +369,14 @@ class FlextInfraConfigModels:
         ]
         keywords: Annotated[
             tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
+        ] = ()
+        codegen_requirements: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Shared code-generation requirements"),
+        ] = ()
+        development_requirements: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Shared development and validation requirements"),
         ] = ()
         dependency_profiles: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
@@ -524,7 +524,9 @@ class FlextInfraConfigModels:
         ]
         makefile_custom_include: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Generated directive including the custom Make surface"),
+            m.Field(
+                description="Generated directive including the custom Make surface"
+            ),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
@@ -553,11 +555,12 @@ class FlextInfraConfigModels:
         ] = None
         orchestrated_verbs: Annotated[
             tuple[str, ...],
-            m.Field(description="Workspace-root gate verbs routed through orchestration"),
+            m.Field(
+                description="Workspace-root gate verbs routed through orchestration"
+            ),
         ] = ()
         workspace_cli_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="CLI group for workspace orchestration"),
+            t.NonEmptyStr, m.Field(description="CLI group for workspace orchestration")
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")

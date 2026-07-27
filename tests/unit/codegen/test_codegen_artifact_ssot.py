@@ -289,10 +289,10 @@ class TestsCodegenArtifactSsot:
 
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
-        settings: t.MutableJsonMapping = {}
-        FlextInfraCodegen._apply_canonical_settings(
-            settings, Path("/nonexistent-workspace-root")
+        rendered = FlextInfraCodegen.render_vscode_settings(
+            Path("/nonexistent-workspace-root")
         )
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered.unwrap())
         files_exclude = settings["files.exclude"]
         search_exclude = settings["search.exclude"]
         watcher_exclude = settings["files.watcherExclude"]

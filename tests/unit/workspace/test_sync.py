@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config
-from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra import c as infra_c
 from flext_infra import config
-from tests import c, m, t, u
+from flext_infra.workspace.sync import FlextInfraSyncService
+from tests import m, t, u
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -213,12 +213,14 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
         settings = u.Cli.json_read(settings_path).unwrap()
-        search_paths = settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        search_paths = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            settings[infra_c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        )
         tm.that(
             search_paths,
             eq=list(
                 config.Infra.codegen.vscode.list_settings[
-                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                    infra_c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]
             ),
         )

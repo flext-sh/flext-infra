@@ -44,12 +44,12 @@ name = "{{ author_name }}"
 
 [dependency-groups]
 codegen = [
-{% for item in dependency_profile.codegen if item != dist %}
+{% for item in scaffold.project.codegen_requirements if item != dist %}
   {{ item | tojson }},
 {% endfor %}
 ]
 dev = [
-{% for item in dependency_profile.dev if item != dist %}
+{% for item in scaffold.project.development_requirements if item != dist %}
   {{ item | tojson }},
 {% endfor %}
 ]

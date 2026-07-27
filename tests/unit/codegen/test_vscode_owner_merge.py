@@ -7,12 +7,35 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, config
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
 
 class TestsVscodeOwnerMerge:
     """Prove the vscode owner merge renders canonical settings in conform."""
+
+    @staticmethod
+    def _plan(root: Path) -> m.Infra.CodegenPlan:
+        created = FlextInfraCodegenProjectNew(
+            name="flext-vscode-owner",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        request = m.Infra.CodegenConformRequest(root=root)
+        planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
+            request
+        )
+        tm.ok(planned)
+        return m.Infra.CodegenPlan.model_validate(planned.value)
 
     def test_merge_marks_drift_and_renders_canonical_content(
         self, tmp_path: Path
@@ -20,21 +43,21 @@ class TestsVscodeOwnerMerge:
         """Plan a changed merge artifact with canonical and custom keys."""
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
+        _ = self._plan(root)
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
         _ = settings_path.write_text(
             '{"python.languageServer": "None"}\n', encoding="utf-8"
         )
 
-        result = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        request = m.Infra.CodegenConformRequest(root=root)
+        replanned = tm.ok(
+            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
         )
-
-        tm.ok(result)
-        plan = next(f for f in result.value if f.path == settings_path)
-        tm.that(plan.changed, eq=True)
-        tm.that(plan.owner, eq="vscode")
-        tm.that(plan.policy, eq="merge")
-        doc = json.loads(plan.rendered)
+        settings_plan = next(f for f in replanned.files if f.path == settings_path)
+        tm.that(settings_plan.changed, eq=True)
+        tm.that(settings_plan.owner, eq="vscode")
+        tm.that(settings_plan.policy, eq="merge")
+        doc = json.loads(settings_plan.rendered)
         tm.that(doc["python.languageServer"], eq="None")
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
@@ -52,19 +75,17 @@ class TestsVscodeOwnerMerge:
         """Replan a written merge artifact with zero residual drift."""
         root = tmp_path / "project"
         settings_path = root / ".vscode" / "settings.json"
-        settings_path.parent.mkdir(parents=True)
+        _ = self._plan(root)
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
         _ = settings_path.write_text("{}\n", encoding="utf-8")
-        first = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        request = m.Infra.CodegenConformRequest(root=root)
+        changed = tm.ok(
+            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
         )
-        tm.ok(first)
-        plan = next(f for f in first.value if f.path == settings_path)
-        _ = settings_path.write_text(plan.rendered, encoding="utf-8")
-
-        second = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        settings_plan = next(f for f in changed.files if f.path == settings_path)
+        _ = settings_path.write_text(settings_plan.rendered, encoding="utf-8")
+        second = tm.ok(
+            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
         )
-
-        tm.ok(second)
-        plan_fixed = next(f for f in second.value if f.path == settings_path)
+        plan_fixed = next(f for f in second.files if f.path == settings_path)
         tm.that(plan_fixed.changed, eq=False)

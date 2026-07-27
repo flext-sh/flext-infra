@@ -116,6 +116,7 @@ class TestsCodegenMakeEnvironment:
         hostile_python.chmod(0o755)
         probe = (
             "probe:; @printf '%s\\n' "
+            "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
             "'VIRTUAL_ENV=$(VIRTUAL_ENV)' "
             "'PATH=$(PATH)'; command -v python"
@@ -133,16 +134,18 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 env={
                     **os.environ,
+                    "FLEXT_INFRA_PYTHON": str(hostile_python),
                     "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
                     "VIRTUAL_ENV": str(hostile_venv),
                     "PATH": f"{hostile_bin}:{os.environ['PATH']}",
                 },
             )
         ).splitlines()
-        tm.that(output[0], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
-        tm.that(output[1], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[2].split(":", maxsplit=1)[0], eq=f"PATH={runtime_bin}")
-        tm.that(output[3], eq=str(runtime_python))
+        tm.that(output[0], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
+        tm.that(output[1], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
+        tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
+        tm.that(output[3].split(":", maxsplit=1)[0], eq=f"PATH={runtime_bin}")
+        tm.that(output[4], eq=str(runtime_python))
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -174,7 +177,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "git submodule update --init --recursive",
-            'refs/heads/$$branch',
+            "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
