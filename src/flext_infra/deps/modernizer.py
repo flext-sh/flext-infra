@@ -86,7 +86,7 @@ class FlextInfraPyprojectModernizer(
         )
         # mro-j47u (codex): atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through the empty default.
-        self._process_document_state(
+        changes = self._process_document_state(
             state,
             canonical_dev=canonical_dev,
             dry_run=True,
@@ -94,7 +94,9 @@ class FlextInfraPyprojectModernizer(
             declared_python_dirs=declared_python_dirs,
         )
         if not state.rendered:
-            return r[str].fail(f"pyproject tooling render failed: {path}")
+            return r[str].fail(
+                changes[0] if changes else f"pyproject tooling render failed: {path}"
+            )
         return r[str].ok(state.rendered)
 
     def resolve_tooling_context(
@@ -205,9 +207,12 @@ class FlextInfraPyprojectModernizer(
             else ()
         )
         project_kind = "core"
-        if path.parent.resolve() != self.root.resolve() or self._project_is_flext_child(
-            path.parent
-        ):
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return r[m.Infra.ToolingRuntimeContext].fail(
+                child_result.error or f"project Git topology resolution failed: {path}"
+            )
+        if path.parent.resolve() != self.root.resolve() or child_result.value:
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(

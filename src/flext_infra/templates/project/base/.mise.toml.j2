@@ -6,9 +6,10 @@
 # so mise never pins linter tools.
 
 [tools]
-python = "{{ python_toolchain_version }}"
+python = "{{ python_version }}"
 uv = "{{ uv_version }}"
 # Deploy toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "{{ kubectl_version }}"
 helm = "{{ helm_version }}"
 kind = "{{ kind_version }}"
+taplo = "{{ taplo_version }}"

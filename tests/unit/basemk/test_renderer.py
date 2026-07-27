@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import m, main as infra_main
+from flext_infra import config, m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
@@ -47,8 +47,14 @@ class TestsFlextInfraBasemkRenderer:
         """Build distributions without unrelated codegen or Poetry commands."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
+        tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
         tm.that(
-            rendered, has='mise exec -- uv build --project "$(CURDIR)" --no-sources &&'
+            rendered,
+            has=[
+                "MISE := $(shell command -v mise 2>/dev/null)",
+                f"UV_VERSION := {config.Infra.codegen.toolchain.uv_version}",
+                "UV = $(if $(MISE),$(MISE),$(error mise executable not found on caller PATH)) exec uv@$(UV_VERSION) -- uv",
+            ],
         )
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")

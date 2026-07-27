@@ -7,6 +7,9 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.4"
@@ -603,14 +606,14 @@ wheels = [
 
 [[package]]
 name = "faker"
-version = "40.35.0"
+version = "40.36.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/a1/79278f517de8437a51af4cbce9cb86b0085fc22554e7ebffc6cb43bcb957/faker-40.35.0.tar.gz", hash = "sha256:13495348ec6f80d22c8c1654906ffeae336d485fea476544642ea24b120d9e13", size = 2025535, upload-time = "2026-07-22T17:18:42.589Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/d2/026af1e002bbc6df534d1f8262b18ec79a974f928e9290bfbfdfe7c7b2af/faker-40.36.0.tar.gz", hash = "sha256:754048c76c03afa7de83eee8f4bcee3cf668cbb7d995f54a4e9678db7f110308", size = 2025903, upload-time = "2026-07-24T21:11:33.088Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/c4/d217ea24d07fbdb00c81c83325fc814ee72ed93c70978ea5d4150604c305/faker-40.35.0-py3-none-any.whl", hash = "sha256:804224bc4ea6644256dd2ef5c951563bea318cb19be3505461c9c424c90181ec", size = 2062734, upload-time = "2026-07-22T17:18:40.919Z" },
+    { url = "https://files.pythonhosted.org/packages/50/9a/b947ed175ce9a0dcb070ccf3607f0ce8720cfb5ed1a36166a150b2acd5af/faker-40.36.0-py3-none-any.whl", hash = "sha256:82b9497d9cfe017048075bcf969298a74b1b6e39f5e4dad1211085d1133f7b62", size = 2062829, upload-time = "2026-07-24T21:11:31.37Z" },
 ]
 
 [[package]]
@@ -625,7 +628,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#1a715c5b4f6278a1147ba0b6e7a1f261bffeee3c" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#553f19decba8942c0e59e8affe35fb63c60e7a34" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -652,7 +655,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#b3cb42e8ba892a6990f74096c83c978074d8f731" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#9cd9870c22dc3b4fb134c314b6a3fa1d4a971a48" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -695,7 +698,7 @@ dependencies = [
     { name = "rope" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "autoflake" },
     { name = "bandit" },
@@ -706,6 +709,7 @@ dev = [
     { name = "django-stubs" },
     { name = "factory-boy" },
     { name = "faker" },
+    { name = "flext-tests" },
     { name = "hypothesis" },
     { name = "isort" },
     { name = "matplotlib-stubs" },
@@ -774,93 +778,123 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "autoflake", marker = "extra == 'dev'", specifier = ">=2.3.1" },
-    { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.8" },
-    { name = "black", marker = "extra == 'dev'", specifier = ">=25.1" },
-    { name = "blacken-docs", marker = "extra == 'dev'", specifier = ">=1.19" },
-    { name = "codespell", marker = "extra == 'dev'", specifier = ">=2.3" },
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "deptry", marker = "extra == 'dev'", specifier = ">=0.23" },
-    { name = "django-stubs", marker = "extra == 'dev'", specifier = ">=5.2.2" },
-    { name = "factory-boy", marker = "extra == 'dev'", specifier = ">=3.3.1" },
-    { name = "faker", marker = "extra == 'dev'", specifier = ">=37.4" },
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
     { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
     { name = "gitpython", specifier = ">=3.1.49" },
-    { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.125" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "libcst", specifier = ">=1.8.6" },
-    { name = "matplotlib-stubs", marker = "extra == 'dev'", specifier = ">=0.3" },
     { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "mkdocs", marker = "extra == 'dev'", specifier = ">=1.6" },
-    { name = "mkdocs-awesome-pages-plugin", marker = "extra == 'dev'", specifier = ">=2.9" },
-    { name = "mkdocs-encryptcontent-plugin", marker = "extra == 'dev'", specifier = ">=2" },
     { name = "mkdocs-exclude", specifier = ">=1.0.2" },
-    { name = "mkdocs-exclude", marker = "extra == 'dev'", specifier = ">=1.0.2" },
-    { name = "mkdocs-get-deps", marker = "extra == 'dev'", specifier = ">=0.2" },
-    { name = "mkdocs-git-revision-date-localized-plugin", marker = "extra == 'dev'", specifier = ">=1.2" },
-    { name = "mkdocs-literate-nav", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "mkdocs-macros-plugin", marker = "extra == 'dev'", specifier = ">=1" },
     { name = "mkdocs-material", specifier = ">=9.7.6" },
-    { name = "mkdocs-material", marker = "extra == 'dev'", specifier = ">=9.5" },
-    { name = "mkdocs-material-extensions", marker = "extra == 'dev'", specifier = ">=1.3.1" },
-    { name = "mkdocs-mermaid2-plugin", marker = "extra == 'dev'", specifier = ">=1.1" },
-    { name = "mkdocs-minify-plugin", marker = "extra == 'dev'", specifier = ">=0.7" },
-    { name = "mkdocs-print-site-plugin", marker = "extra == 'dev'", specifier = ">=0.8" },
-    { name = "mkdocs-redirects", marker = "extra == 'dev'", specifier = ">=1.2" },
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
-    { name = "mkdocs-section-index", marker = "extra == 'dev'", specifier = ">=0.3.12" },
-    { name = "mkdocs-versioning", marker = "extra == 'dev'", specifier = ">=0.2" },
     { name = "mkdocstrings", specifier = ">=1.0.4" },
-    { name = "mkdocstrings", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "mkdocstrings-python", specifier = ">=2.0.3" },
-    { name = "mkdocstrings-python", marker = "extra == 'dev'", specifier = ">=1.7" },
-    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7.3" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.6.0" },
-    { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.3" },
-    { name = "pyrefly", marker = "extra == 'dev'", specifier = ">=1.1.1,<1.2.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4" },
-    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=5.1" },
-    { name = "pytest-clarity", marker = "extra == 'dev'", specifier = ">=1.0.1" },
-    { name = "pytest-codeblocks", marker = "extra == 'dev'", specifier = ">=0.17.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.2" },
-    { name = "pytest-deadfixtures", marker = "extra == 'dev'", specifier = ">=2.2.1" },
-    { name = "pytest-env", marker = "extra == 'dev'", specifier = ">=1.1.5" },
-    { name = "pytest-markdown-docs", marker = "extra == 'dev'", specifier = ">=0.9.2" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.14" },
-    { name = "pytest-randomly", marker = "extra == 'dev'", specifier = ">=3.16" },
-    { name = "pytest-sugar", marker = "extra == 'dev'", specifier = ">=1" },
-    { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.4" },
-    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.8" },
-    { name = "pyupgrade", marker = "extra == 'dev'", specifier = ">=3.19" },
-    { name = "radon", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "rope", specifier = ">=1.14.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12.3" },
-    { name = "types-cachetools", marker = "extra == 'dev'", specifier = ">=6.2" },
-    { name = "types-cffi", marker = "extra == 'dev'", specifier = ">=2.0" },
-    { name = "types-click", marker = "extra == 'dev'", specifier = ">=7.1" },
-    { name = "types-defusedxml", marker = "extra == 'dev'", specifier = ">=0.7" },
-    { name = "types-docker", marker = "extra == 'dev'", specifier = ">=7.1" },
-    { name = "types-flask", marker = "extra == 'dev'", specifier = ">=1.1.6" },
-    { name = "types-jsonschema", marker = "extra == 'dev'", specifier = ">=4.26" },
-    { name = "types-ldap3", marker = "extra == 'dev'", specifier = ">=2.9.13.20250622" },
-    { name = "types-paramiko", marker = "extra == 'dev'", specifier = ">=4.0" },
-    { name = "types-protobuf", marker = "extra == 'dev'", specifier = ">=6.30.2.20250703" },
-    { name = "types-psutil", marker = "extra == 'dev'", specifier = ">=7" },
-    { name = "types-psycopg2", marker = "extra == 'dev'", specifier = ">=2.9.21.20250718" },
-    { name = "types-pyasn1", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "types-pyopenssl", marker = "extra == 'dev'", specifier = ">=24.1" },
-    { name = "types-python-dateutil", marker = "extra == 'dev'", specifier = ">=2.9" },
-    { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.12.20260518" },
-    { name = "types-redis", marker = "extra == 'dev'", specifier = ">=4.6" },
-    { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.32.4" },
-    { name = "types-setuptools", marker = "extra == 'dev'", specifier = ">=80.9" },
-    { name = "types-tabulate", marker = "extra == 'dev'", specifier = ">=0.10" },
-    { name = "types-toml", marker = "extra == 'dev'", specifier = ">=0.10.8.20240310" },
-    { name = "vulture", marker = "extra == 'dev'", specifier = ">=2.13" },
-    { name = "yamlfix", marker = "extra == 'dev'", specifier = ">=1.19.1,<2" },
 ]
-provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "autoflake", specifier = ">=2.3.1" },
+    { name = "bandit", specifier = ">=1.8" },
+    { name = "black", specifier = ">=25.1" },
+    { name = "blacken-docs", specifier = ">=1.19" },
+    { name = "codespell", specifier = ">=2.3" },
+    { name = "deptry", specifier = ">=0.23" },
+    { name = "django-stubs", specifier = ">=5.2.2" },
+    { name = "factory-boy", specifier = ">=3.3.1" },
+    { name = "faker", specifier = ">=37.4" },
+    { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
+    { name = "hypothesis", specifier = ">=6.125" },
+    { name = "isort", specifier = ">=6.0.1" },
+    { name = "matplotlib-stubs", specifier = ">=0.3" },
+    { name = "mkdocs", specifier = ">=1.6" },
+    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9" },
+    { name = "mkdocs-encryptcontent-plugin", specifier = ">=2" },
+    { name = "mkdocs-exclude", specifier = ">=1.0.2" },
+    { name = "mkdocs-get-deps", specifier = ">=0.2" },
+    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.2" },
+    { name = "mkdocs-literate-nav", specifier = ">=0.6" },
+    { name = "mkdocs-macros-plugin", specifier = ">=1" },
+    { name = "mkdocs-material", specifier = ">=9.5" },
+    { name = "mkdocs-material-extensions", specifier = ">=1.3.1" },
+    { name = "mkdocs-mermaid2-plugin", specifier = ">=1.1" },
+    { name = "mkdocs-minify-plugin", specifier = ">=0.7" },
+    { name = "mkdocs-print-site-plugin", specifier = ">=0.8" },
+    { name = "mkdocs-redirects", specifier = ">=1.2" },
+    { name = "mkdocs-section-index", specifier = ">=0.3.12" },
+    { name = "mkdocs-versioning", specifier = ">=0.2" },
+    { name = "mkdocstrings", specifier = ">=0.24" },
+    { name = "mkdocstrings-python", specifier = ">=1.7" },
+    { name = "pip-audit", specifier = ">=2.7.3" },
+    { name = "pre-commit", specifier = ">=4.6.0" },
+    { name = "pylint", specifier = ">=3.3" },
+    { name = "pyrefly", specifier = ">=1.1.1,<1.2.0" },
+    { name = "pytest", specifier = ">=8.4" },
+    { name = "pytest-benchmark", specifier = ">=5.1" },
+    { name = "pytest-clarity", specifier = ">=1.0.1" },
+    { name = "pytest-codeblocks", specifier = ">=0.17.0" },
+    { name = "pytest-cov", specifier = ">=6.2" },
+    { name = "pytest-deadfixtures", specifier = ">=2.2.1" },
+    { name = "pytest-env", specifier = ">=1.1.5" },
+    { name = "pytest-markdown-docs", specifier = ">=0.9.2" },
+    { name = "pytest-mock", specifier = ">=3.14" },
+    { name = "pytest-randomly", specifier = ">=3.16" },
+    { name = "pytest-sugar", specifier = ">=1" },
+    { name = "pytest-timeout", specifier = ">=2.4" },
+    { name = "pytest-xdist", specifier = ">=3.8" },
+    { name = "pyupgrade", specifier = ">=3.19" },
+    { name = "radon", specifier = ">=6.0.1" },
+    { name = "ruff", specifier = ">=0.12.3" },
+    { name = "types-cachetools", specifier = ">=6.2" },
+    { name = "types-cffi", specifier = ">=2.0" },
+    { name = "types-click", specifier = ">=7.1" },
+    { name = "types-defusedxml", specifier = ">=0.7" },
+    { name = "types-docker", specifier = ">=7.1" },
+    { name = "types-flask", specifier = ">=1.1.6" },
+    { name = "types-jsonschema", specifier = ">=4.26" },
+    { name = "types-ldap3", specifier = ">=2.9.13.20250622" },
+    { name = "types-paramiko", specifier = ">=4.0" },
+    { name = "types-protobuf", specifier = ">=6.30.2.20250703" },
+    { name = "types-psutil", specifier = ">=7" },
+    { name = "types-psycopg2", specifier = ">=2.9.21.20250718" },
+    { name = "types-pyasn1", specifier = ">=0.6" },
+    { name = "types-pyopenssl", specifier = ">=24.1" },
+    { name = "types-python-dateutil", specifier = ">=2.9" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
+    { name = "types-redis", specifier = ">=4.6" },
+    { name = "types-requests", specifier = ">=2.32.4" },
+    { name = "types-setuptools", specifier = ">=80.9" },
+    { name = "types-tabulate", specifier = ">=0.10" },
+    { name = "types-toml", specifier = ">=0.10.8.20240310" },
+    { name = "vulture", specifier = ">=2.13" },
+    { name = "yamlfix", specifier = ">=1.19.1,<2" },
+]
+
+[[package]]
+name = "flext-tests"
+version = "0.12.0rc0"
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#392fbb435a84063fc4e4d18d56cea7e2a0573c73" }
+dependencies = [
+    { name = "docker" },
+    { name = "factory-boy" },
+    { name = "faker" },
+    { name = "flext-cli" },
+    { name = "flext-core" },
+    { name = "hypothesis" },
+    { name = "pytest" },
+    { name = "pytest-benchmark" },
+    { name = "pytest-clarity" },
+    { name = "pytest-cov" },
+    { name = "pytest-deadfixtures" },
+    { name = "pytest-env" },
+    { name = "pytest-mock" },
+    { name = "pytest-randomly" },
+    { name = "pytest-reportlog" },
+    { name = "pytest-sugar" },
+    { name = "pytest-timeout" },
+    { name = "pytest-xdist" },
+    { name = "python-on-whales" },
+]
 
 [[package]]
 name = "fonttools"
@@ -905,14 +939,14 @@ wheels = [
 
 [[package]]
 name = "gitpython"
-version = "3.1.55"
+version = "3.1.56"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gitdb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/ab/ba0d29f2fa2277ed6256b2ac09003494045355f3a10bf32f351761287870/gitpython-3.1.55.tar.gz", hash = "sha256:781e3b1624dad81b24e9524bf0297b69786a0706db2cbceec1e2b05c38e5152f", size = 225071, upload-time = "2026-07-23T02:52:43.246Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/45/d45f94fa38b199862959cd7b5461a31f03746d75ef59363339fc0c394345/gitpython-3.1.56.tar.gz", hash = "sha256:127adf5c73f1a822e368301c4d5ffa5d305ce611eccab76f3336f9380a78ad0b", size = 229619, upload-time = "2026-07-25T07:41:43.179Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/6a/d3b8208d2f8aac66abe8ccc1c23fa2c89464ec42cc71a601e95d05902428/gitpython-3.1.55-py3-none-any.whl", hash = "sha256:7c9ec1e69c158c081632ab35c41471e302c96db2ae42165036a5d2403378812e", size = 216590, upload-time = "2026-07-23T02:52:41.932Z" },
+    { url = "https://files.pythonhosted.org/packages/06/27/8b9b039c7f026d4af8954dbbdcc9f101f8d6901daa3a65b065d8f450c0bd/gitpython-3.1.56-py3-none-any.whl", hash = "sha256:bedffdc4bdd2e3cf21b328711a552b0529751f08bff6591339d18492291ad035", size = 216644, upload-time = "2026-07-25T07:41:41.737Z" },
 ]
 
 [[package]]
@@ -943,31 +977,33 @@ wheels = [
 
 [[package]]
 name = "hypothesis"
-version = "6.161.2"
+version = "6.161.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "sortedcontainers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f7/5b/98162d7cf48866e18b59d12e975229af411575a20d9a75c303345cc3380b/hypothesis-6.161.2.tar.gz", hash = "sha256:e25f1e6f8a2ea4cadfeaeba18cb8676e5510f52fefd5c9bc165e3eb81e1ef497", size = 486148, upload-time = "2026-07-24T06:43:23.774Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/c3/2be959d3e09ebca3e3e39eb983d2f60746e11ab2b587e197073f296956fd/hypothesis-6.161.4.tar.gz", hash = "sha256:c61d7abcf9e45e060c15153e6dc838a9ba9d1c0bd673893e17201424776f22de", size = 486519, upload-time = "2026-07-25T10:51:59.52Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/8f/a565e6ab67de327eee310ef306d715d8f5143e729835450715dde121e912/hypothesis-6.161.2-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:c61b868484dbcd9d2d6d25662f60fa2cee464d18061315efd997efe721250f14", size = 766523, upload-time = "2026-07-24T06:42:57.381Z" },
-    { url = "https://files.pythonhosted.org/packages/92/d7/5deb1e38c8c253c879bec75a95fe0ff01d60366d7bd33c59012a8d23a8a1/hypothesis-6.161.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:b22012a92b8d2f70f7e7a6a4761166b920edf92900de458d6c9d272057dd48d8", size = 762160, upload-time = "2026-07-24T06:42:21.945Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/21/1f03b88df69b9b22429ad608c7a4778e01e9bb10656142e0426dbf0865eb/hypothesis-6.161.2-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d59687ed88b290e450505d71a5950422d39791dbaf48a4159b876634976e7898", size = 1091358, upload-time = "2026-07-24T06:42:03.947Z" },
-    { url = "https://files.pythonhosted.org/packages/70/9f/5c761fdb60ed5c547b6803620822bca14486fda32d785a31416f1bbab970/hypothesis-6.161.2-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7af888ad7fe38c33112fde21756621b0d8f69167bbb01a5d66569aa90d6c692c", size = 1140836, upload-time = "2026-07-24T06:43:22.104Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/d5/1eb85756989ea885c325442ef2ebe5bd7347cbd4f99a907c384d10b343e5/hypothesis-6.161.2-cp310-abi3-manylinux_2_31_riscv64.whl", hash = "sha256:9bd07a407addd5a9318305bc3cf78215662c6970b699a2df610955bf41750abc", size = 1096169, upload-time = "2026-07-24T06:42:09.992Z" },
-    { url = "https://files.pythonhosted.org/packages/08/0e/c65f8c76f4d9d54203cbe5df6cf33e9b918629150b526d5df0ca5350b9fe/hypothesis-6.161.2-cp310-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:140e154d7317e8fcb538a8ff1c7b8ee52b67c9ab53647078e11cb950d2264c11", size = 1132927, upload-time = "2026-07-24T06:42:49.536Z" },
-    { url = "https://files.pythonhosted.org/packages/37/da/be099e47ec288a8ce7a9030c47882166694b62c0fcd5d468f46559333848/hypothesis-6.161.2-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:febed60ec1ce744040f8f1e94a994a567a61b3f4bd82be4c3883b93ac76ec58a", size = 1265174, upload-time = "2026-07-24T06:42:34.36Z" },
-    { url = "https://files.pythonhosted.org/packages/fa/7c/e591135729eee9dd84cf68a539612ee9571b449f7a32ed9070802ccae4c4/hypothesis-6.161.2-cp310-abi3-musllinux_1_2_riscv64.whl", hash = "sha256:d01840d49772e3a29117b936dd5b71c13a9a82b39a739ac49f228af9601c40e8", size = 1265785, upload-time = "2026-07-24T06:42:18.135Z" },
-    { url = "https://files.pythonhosted.org/packages/d1/e3/67a5f389fa1be4f4a68b3c65c15f3273d4fb5910cbc4c99754260ae52112/hypothesis-6.161.2-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4179f4db70daec64dc43d3fa9b23851d78791ca5d84605b3794df2dfc3150c61", size = 1307846, upload-time = "2026-07-24T06:43:05.511Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/d8/45ffe9a9f069853fabb7b91fe72d46f9b2f08508550f87f3567fd1d46775/hypothesis-6.161.2-cp310-abi3-win32.whl", hash = "sha256:fabc7595dd1e0c66936e9777843dbef3c2e3f31983a669bda6b635909878176e", size = 652400, upload-time = "2026-07-24T06:42:54.175Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/14/81af65ce429671ee4e4b9fb6924a02564dd9e430c543da9ac9449dd07042/hypothesis-6.161.2-cp310-abi3-win_amd64.whl", hash = "sha256:425a35e9240761a2e71743424b193fd799dfa3117bad21982bbe8110637256b2", size = 658534, upload-time = "2026-07-24T06:43:10.538Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/98/3d4849d78b7eeafac335d55a8cbc647602eca41cce9fe5b99f28025d6f3b/hypothesis-6.161.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:c77580949be61ce4b946f8dfba38ed652ce28deb6302167550f85720f08c1864", size = 767990, upload-time = "2026-07-24T06:42:43.432Z" },
-    { url = "https://files.pythonhosted.org/packages/50/eb/096d58e24d727a69e3ad3fb3887f4b3750d0e41287bb3a6ebfb9f20b6b8d/hypothesis-6.161.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ed59ea708743da8e91f975d3848d2ed0a46548d833c8703b53fa854bbb8f3ebd", size = 759677, upload-time = "2026-07-24T06:42:07.612Z" },
-    { url = "https://files.pythonhosted.org/packages/e3/11/511ff00654fdc9a52316e1a772cecc6ef0a0c24f1138a20aeab2f632ae5b/hypothesis-6.161.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:73fa1136acb5f554c6b958f8a9d33b2d7f6816909ccf07b22e17351df9bec146", size = 1090072, upload-time = "2026-07-24T06:43:03.917Z" },
-    { url = "https://files.pythonhosted.org/packages/99/b8/2c833554fb3ba22d2841888b3409b634d6059420d1f5269f7cf3294358ed/hypothesis-6.161.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:584b1d91b5f3fa200b35bc0533e30e9fea81c852bb150eedbf0a7fc46d7639be", size = 1140009, upload-time = "2026-07-24T06:42:58.975Z" },
-    { url = "https://files.pythonhosted.org/packages/35/36/c351c14155225b6290ce94fbd5610a690231312d5aa2121ad436888e3dfe/hypothesis-6.161.2-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:e1f3d2f1b8324259cc1a149286b8856ed07447f9f28f1338452eec73708cd7e5", size = 1263030, upload-time = "2026-07-24T06:42:23.475Z" },
-    { url = "https://files.pythonhosted.org/packages/13/f7/1dcbafa23a2fc07aede597e0c9ea2093378a1c05a858dfbbb3627a1a7e11/hypothesis-6.161.2-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:c1c6c7d30c9aaa11b3e79c40a9a7ac1f559fce44853292d5383c0b1d11623658", size = 1306906, upload-time = "2026-07-24T06:42:06.2Z" },
-    { url = "https://files.pythonhosted.org/packages/26/93/371966030a92748fcdef978f4ecfd69aa7b0d92e4bcdc398f5938941ef2c/hypothesis-6.161.2-cp313-cp313-win_amd64.whl", hash = "sha256:176d4f1a58f808891eec2a448889a24522002cb952df99c6fe4ab150f81a0eae", size = 655650, upload-time = "2026-07-24T06:42:51.08Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/af/df4551115826195c963a2b0655190f98325ea586f15377c3c0a49e4f1ebe/hypothesis-6.161.4-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:92ef7e42ff1031b4850d718c8f978e0301ae129b48884b005bd1b7a09ac42fd4", size = 766813, upload-time = "2026-07-25T10:51:37.648Z" },
+    { url = "https://files.pythonhosted.org/packages/99/2d/f101e42efd62df6d88897862752e62f38c05eeb33df84b6879e66dc491ee/hypothesis-6.161.4-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:0dde395f8bb24bf80d2aa807d8ab6e0255bd21f5a50b934488651da91b509d65", size = 762392, upload-time = "2026-07-25T10:50:45.647Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/42/e61363b68cdee96bc4f8170bf1a6cbc0710705f7e09ee52dfb2710c425c0/hypothesis-6.161.4-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2e0243141e5effb63f992494e30117fd3ff1e4285ca49704343bdccb91646ec5", size = 1091649, upload-time = "2026-07-25T10:50:49.2Z" },
+    { url = "https://files.pythonhosted.org/packages/48/3a/e5294c616ce580cda63e59c7a0d01afcf77f6679521531c16935c905a6fa/hypothesis-6.161.4-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:07bba9d6ba4fd393a5641797a52e179138a6b8d039d1de892f95e5e9770d2da4", size = 1120246, upload-time = "2026-07-25T10:51:27.894Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/fd/d71d228e120f51628c5efa9444e427b6096117436f0ac41f7a8e4cb27f22/hypothesis-6.161.4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dc861c9f2f5f154ccc377aadda5a9559677f8b43047536ac9a78e5515847ffc5", size = 1141175, upload-time = "2026-07-25T10:51:04.641Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/65/fabda079d4a7258112ea30a92056d80a24a55bb6211942ffa82a4a3f27e2/hypothesis-6.161.4-cp310-abi3-manylinux_2_31_riscv64.whl", hash = "sha256:19be420edd8bd6685c8f2b860a98c49c389fbfcd39014ae6faedb7ea403ba49a", size = 1096487, upload-time = "2026-07-25T10:51:47.737Z" },
+    { url = "https://files.pythonhosted.org/packages/87/83/d9c582cafbe8d474d687434f9715240a4cc59b81a067ad37a4cc59786043/hypothesis-6.161.4-cp310-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:458a9e77b5335d659012ea332c1a1f2436a097981780d3edf40a3310ee3492ee", size = 1133260, upload-time = "2026-07-25T10:50:51.866Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/d2/60318d79abf3b822e9b10abf2431d9a7a0aa342197ea04927eba426ef37b/hypothesis-6.161.4-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:3e1c61076bfd75b4a8a79c04878963183e8afc6cf1366933afd7c8c2db69e16d", size = 1265471, upload-time = "2026-07-25T10:51:51.092Z" },
+    { url = "https://files.pythonhosted.org/packages/76/ef/26b8b77984d49170f7ec6aa25c9ffde0a7a2599dd1de04ec2506cedd5124/hypothesis-6.161.4-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:d3965dbfcfa3bb844960163d0adfbe914b6a5e14c78a3151de75fad016a40d95", size = 1393307, upload-time = "2026-07-25T10:51:52.739Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/2a/ce02c55c3d39a170d604b2cb596b4488aaf59fb1715ca68faf80e441532e/hypothesis-6.161.4-cp310-abi3-musllinux_1_2_riscv64.whl", hash = "sha256:63a0a39c5af91b424fdb4aac6e2e43010867928a73dd8dd6b102d35e1964b13d", size = 1266080, upload-time = "2026-07-25T10:51:31.158Z" },
+    { url = "https://files.pythonhosted.org/packages/b0/49/4e571f1eac01cb98862315bb476a57561a35d9ff2592b33cd73c69e4ec4d/hypothesis-6.161.4-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:0fd18a8e972c614e5c905b1267281b7c9bdfd44d0a0ba16e57e8b76ea1ba38d5", size = 1308142, upload-time = "2026-07-25T10:50:29.575Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/3b/cc97db8200e652c9e1c8ffc8dcf24b086c43ae36dd8e9ae1f9495265a4f2/hypothesis-6.161.4-cp310-abi3-win32.whl", hash = "sha256:18f784bebd17ac36404df671ff2b72400e4dec8bdd812f49f94427d8248df0a3", size = 652698, upload-time = "2026-07-25T10:51:44.445Z" },
+    { url = "https://files.pythonhosted.org/packages/de/7e/96eb0fc07a5f5f142f0dd9f293529206af6ab7362da206825e0fb59d47b4/hypothesis-6.161.4-cp310-abi3-win_amd64.whl", hash = "sha256:7429ea1185b0c542f28d102089cd496d6c424b458a7cac9e0902155354e11d58", size = 658828, upload-time = "2026-07-25T10:51:13.367Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/d6/dacab87c149345a256ba2ffcde4e34c749cc5e4d6437c0a264e7c03ca64b/hypothesis-6.161.4-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:f2c42cfcfb3a8d0dabcaaa05aa103800741457b5956c72160c0db7f5f3dc70ac", size = 768329, upload-time = "2026-07-25T10:50:50.538Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/ab/2e3955c5a60597ed00a0d3f79fd70e4f5ef802726b9ebf96fe7c72859e4c/hypothesis-6.161.4-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:9e6faf8c0866e614463c4acde389b264df0b3a2ad88c02f46db273516671ccef", size = 759972, upload-time = "2026-07-25T10:51:25.066Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/0d/5cd137ad99dbf8f991f2081ca4fd88690a5db59b08ee0f1436ea052cc80f/hypothesis-6.161.4-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:db8c5beb41023db08ffcf3bbfbf8d079fe370af4b60aa71973221c29c8413f34", size = 1090363, upload-time = "2026-07-25T10:51:23.649Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/89/56acf86e01150f0b15b1592024c793f7708e3cb9f7e454be6709c74e7104/hypothesis-6.161.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eb9468b93432477524b870a0bb7c1bf8e0aada192a8792279eb07e39cb95394e", size = 1140306, upload-time = "2026-07-25T10:51:17.701Z" },
+    { url = "https://files.pythonhosted.org/packages/80/1c/75223b15306483e6cb92eaa74112643576a909e4cdc0696e847b738d38ff/hypothesis-6.161.4-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:667e0a7ea08ab6a514ad5f2103357949a7cd83e5ae61d6c0a60cebc706f86b58", size = 1263317, upload-time = "2026-07-25T10:51:46.136Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/d0/3bf237e44057ab1e9abec045efcc4d66b3429255904c6f2c75ede4d83557/hypothesis-6.161.4-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:3cbd7d95205de646723344dffec0395a2eba92dee0e004394f4e8210a709384a", size = 1307200, upload-time = "2026-07-25T10:51:29.471Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/1e/841b1c6902a726ccc688781a6956ddd455a63e548f8e0405d52e2c860280/hypothesis-6.161.4-cp313-cp313-win_amd64.whl", hash = "sha256:c9fc657f54663b56a4b2f2fb639c87c00e4c60816c04fe34e3dcc89b6547b1e7", size = 655942, upload-time = "2026-07-25T10:51:22.057Z" },
 ]
 
 [[package]]
@@ -2282,6 +2318,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/27/b3/36192dacc0f470ac2cc516f73e01739c9a48a8224f76beada4f85e1c8a89/pytest_randomly-4.1.0.tar.gz", hash = "sha256:47f1d9746c3bc3efabd53ae1ebfb8bb385cf3d4df4b505b6d58d9c97a3dfe70f", size = 14302, upload-time = "2026-04-20T13:01:51.831Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9a/db/2df9a1fca597a273f957a559c20c2d95d629928384507b2afa43ba6909d1/pytest_randomly-4.1.0-py3-none-any.whl", hash = "sha256:f55e89e53367b090c0c053697d7f9d77595543d0e0516c93978b50c0f6b252f9", size = 8353, upload-time = "2026-04-20T13:01:50.382Z" },
+]
+
+[[package]]
+name = "pytest-reportlog"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/d5/2f4a73822efaad1d6aea6660468d6290963e5f61d2f9d9ca707f7f0b1c13/pytest_reportlog-1.0.0.tar.gz", hash = "sha256:75aec3a92bb53456c3e028605a636579d26f31c6f1e035ad9f706c203cfcb74e", size = 5646, upload-time = "2025-11-11T16:05:15.98Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/70/807cbdac584629623c1c2f76b7a39a343e3989510cd52385f1f40581e963/pytest_reportlog-1.0.0-py3-none-any.whl", hash = "sha256:3fc837ef3be6e50f33b52aaf99f88bfbb2ec525febbc3990389d24bbfba28753", size = 6015, upload-time = "2025-11-11T16:05:14.585Z" },
 ]
 
 [[package]]
