@@ -76,13 +76,6 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 "base.mk configuration validation", exc
             )
 
-    @staticmethod
-    def render_bootstrap_include() -> p.Result[str]:
-        """Render the canonical Makefile bootstrap include block."""
-        return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
-        )
-
     @override
     def execute(self) -> p.Result[str]:
         """Execute."""

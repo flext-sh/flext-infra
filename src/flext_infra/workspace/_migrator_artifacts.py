@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, u
-from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 
 if TYPE_CHECKING:
@@ -93,35 +92,6 @@ class FlextInfraProjectMigratorArtifactsMixin:
             )
         )
 
-    def _migrate_makefile(self, project_root: Path, *, dry_run: bool) -> p.Result[str]:
-        """Migrate makefile."""
-        makefile_path = project_root / c.Infra.MAKEFILE_FILENAME
-        if not makefile_path.exists():
-            return self._no_change_result("Makefile not found", dry_run=dry_run)
-        read = u.Cli.files_read_text(makefile_path)
-        if read.failure:
-            return r[str].fail(f"Makefile read failed: {read.error}")
-        original = read.value
-        updated = original
-        for before, after in c.Infra.MAKEFILE_REPLACEMENTS:
-            updated = updated.replace(before, after)
-        include_result = self._apply_bootstrap_include(updated)
-        if include_result.failure:
-            return r[str].fail(
-                include_result.error or "Makefile bootstrap include render failed"
-            )
-        updated = include_result.value
-        if updated == original:
-            return self._no_change_result("Makefile already migrated", dry_run=dry_run)
-        if not dry_run:
-            try:
-                u.write_file(makefile_path, updated, encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError as exc:
-                return r[str].fail_op("Makefile update", exc)
-        return r[str].ok(
-            self._action_text("Makefile migrated to bootstrap include", dry_run=dry_run)
-        )
-
     def _migrate_environment_files(
         self, project_root: Path, *, dry_run: bool
     ) -> p.Result[str]:
@@ -139,19 +109,6 @@ class FlextInfraProjectMigratorArtifactsMixin:
             )
         return self._no_change_result(
             "workspace environment files already normalized", dry_run=dry_run
-        )
-
-    def _apply_bootstrap_include(self, content: str) -> p.Result[str]:
-        """Apply bootstrap include."""
-        if c.Infra.MAKEFILE_INCLUDE_OLD not in content:
-            return r[str].ok(content)
-        bootstrap_result = FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
-        if bootstrap_result.failure:
-            return r[str].fail(
-                bootstrap_result.error or "Makefile bootstrap include render failed"
-            )
-        return r[str].ok(
-            content.replace(c.Infra.MAKEFILE_INCLUDE_OLD, bootstrap_result.value)
         )
 
 

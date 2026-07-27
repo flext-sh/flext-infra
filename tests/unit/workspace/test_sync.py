@@ -281,10 +281,20 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
+        tm.that(makefile_text, has="UV_RUN := uv run")
+        tm.that(makefile_text, has="_builtin_setup_environment:")
+        tm.that(makefile_text, lacks="poetry")
+        tm.that(makefile_text, lacks="pip install")
+        tm.that(makefile_text, lacks="_bootstrap-venv")
+        tm.that(makefile_text, lacks="BOOTSTRAP_VENV")
         tm.that(
             makefile_text,
             lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
+        dry_run = u.Cli.capture(
+            ["make", "--dry-run", "help"], cwd=project_root, timeout=30
+        )
+        tm.ok(dry_run)
 
     def test_sync_standalone_bootstrap_uses_uv_and_public_console(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"

@@ -8,12 +8,11 @@ from flext_core import r
 from flext_infra import c, m, p, u
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
-from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
-    """Per-artifact sync steps (base.mk, Makefile) under the lock.
+    """Per-artifact sync steps under the lock.
 
     Composed into FlextInfraSyncService via MRO; each step is idempotent
     (SHA256 / exact-line compare) and surfaces generator/IO failures as r.fail.
