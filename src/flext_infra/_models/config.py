@@ -97,8 +97,18 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def uv_required_version(self) -> str:
-            """Exact PEP 440 uv requirement derived from the declared version."""
-            return f"=={self.uv_version}"
+            """PEP 440 requirement: exact patch floor, next-minor ceiling.
+
+            Mirrors ``python_required_version``. An exact ``==`` pin made every
+            uv invocation abort while a bump was still propagating, which blocks
+            the very ``make`` run that would bring the project back into
+            conformance. Patch drift is tolerated; a minor bump stays a
+            coordinated migration.
+            """
+            major, _, rest = self.uv_version.partition(".")
+            minor, _, _patch = rest.partition(".")
+            next_minor = int(minor) + 1
+            return f">={self.uv_version},<{major}.{next_minor}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
