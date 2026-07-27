@@ -89,7 +89,7 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE := $(UV_RUN) python -m flext_infra workspace orchestrate
+WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
 UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
