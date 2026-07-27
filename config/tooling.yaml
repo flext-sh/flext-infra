@@ -128,6 +128,12 @@ Infra:
           per-file-ignores:
             "**/.vulture_whitelist.py": [ALL]
             "**/*_pb2*.py": [ALL]
+            # Command surfaces are dispatched by FILE NAME, not imported as
+            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
+            # spelling rather than an invalid module name. Scoped to the
+            # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
+            # justified per rule, never a blanket mask).
+            "scripts/cmd/**/*.py": [invalid-module-name]
             # Test suites: pytest idioms that are correct-by-design in test code
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask):
@@ -205,8 +211,8 @@ Infra:
           # registration; Mypy arg-type rejects precise handler signatures
           # (Callable[[InputModel], r[OutputModel]]) at registration although
           # the dispatcher validates input models at runtime. Documented
-          # checker disagreement at the facade-CLI boundary (cosmos-docgen
-          # AGENTS.md). Scoped to CLI registration modules only.
+          # checker disagreement at the facade-CLI boundary (documented in
+          # the consumer's own governance). Scoped to CLI registration modules only.
           - modules: ["*.cli"]
             disable-error-codes: [arg-type]
             justification: >-
@@ -225,7 +231,7 @@ Infra:
               Mypy over-narrows exhaustive ChartPrimitive dispatch and
               rejects the live fail-loud guard (ADR-001) as unreachable;
               the guard is the required runtime contract for future enum
-              members (cosmos-docgen HEAD pyproject documented rationale).
+              members (documented rationale in the consumer pyproject).
       pydantic-mypy:
         init_forbid_extra: true
         init_typed: true

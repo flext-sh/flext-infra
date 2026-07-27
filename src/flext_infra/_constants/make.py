@@ -48,6 +48,8 @@ class FlextInfraConstantsMake:
     PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
     TIMEOUT_COMMAND: Final[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
+    CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
+    "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
     )
@@ -94,7 +96,7 @@ class FlextInfraConstantsMake:
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
         ("DIAG", "0"),
-        ("CHECK_GATES", ""),
+        (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
         ("SCOPE", "project"),
         ("NAMESPACE", ""),
@@ -133,7 +135,7 @@ class FlextInfraConstantsMake:
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
         ("JOBS", ""),
-        ("CHECK_GATES", ""),
+        (CHECK_GATES_VARIABLE, ""),
         ("MYPY_MEMORY_LIMIT_MB", str(MYPY_MEMORY_LIMIT_MB_DEFAULT)),
         ("MYPY_TIMEOUT_SECONDS", str(MYPY_TIMEOUT_SECONDS_DEFAULT)),
         ("VALIDATE_GATES", ""),
