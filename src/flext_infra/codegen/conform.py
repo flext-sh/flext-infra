@@ -1022,11 +1022,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_runtime: m.Infra.ToolingRuntimeContext,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by scaffold templates."""
-        project = workspace.project
-        if project is None:
+        if workspace.project is None:
             return r[m.Infra.ProjectRenderContext].fail(
                 f"scaffold workspace has no project metadata: {workspace.name}"
             )
+        project = workspace.project
         dependency_profile = next(
             (
                 item
