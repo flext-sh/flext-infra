@@ -233,7 +233,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self._surface_contract(
+            c.Infra.CodegenConformSurface(request.what)
+        )
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -866,7 +868,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository=repository,
                 workspace=workspace,
                 codegen=codegen,
-                dist=dist,
+                tooling_runtime=tooling_context.value,
                 contract=contract,
             )
         prepared_result = u.Infra.pyproject_conform(
@@ -919,7 +921,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository=repository,
             workspace=workspace,
             codegen=codegen,
-            dist=dist,
+            tooling_runtime=tooling_context.value,
             contract=contract,
         )
         if managed_result.failure:
@@ -945,7 +947,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-        dist: str,
+        tooling_runtime: m.Infra.ToolingRuntimeContext,
         contract: SurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Plan existing-tree templates from artifact-specific typed owners."""
@@ -954,6 +956,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"active repository has no Make profile: {repository.name}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
+        context_result = self._make_render_context(
+            repository, workspace, codegen, tooling_runtime=tooling_runtime
+        )
+        if context_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                context_result.error or "project render context is invalid"
+            )
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
@@ -1259,6 +1268,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 license=project.license,
                 python_toolchain_version=codegen.toolchain.python_version,
                 python_required_version=codegen.toolchain.python_required_version,
+                uv_version=codegen.toolchain.uv_version,
+                uv_required_version=codegen.toolchain.uv_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,

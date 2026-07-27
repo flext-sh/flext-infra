@@ -302,6 +302,10 @@ base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts
+base.mk
+!.pre-commit-config.yaml
+
+# Derived build and tool artifacts
 __pyrefly_virtual__/
 .benchmarks/
 .cache/

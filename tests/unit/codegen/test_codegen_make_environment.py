@@ -174,10 +174,14 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "git submodule update --init --recursive",
-            'test -z "$$(git status --porcelain)"',
-            'test "$$(git rev-parse HEAD)" = "$$sha1"',
-            'refs/heads/$(SETUP_BRANCH)',
+            'refs/heads/$$branch',
         ):
             tm.that(makefile, has=required)
-        for forbidden in ("mise exec -- uv", "uv@", "WHAT=environment"):
+        for forbidden in (
+            "mise exec -- uv",
+            "uv@",
+            "WHAT=environment",
+            "define _setup_submodules",
+            "SETUP_BRANCH :=",
+        ):
             tm.that(makefile, lacks=forbidden)

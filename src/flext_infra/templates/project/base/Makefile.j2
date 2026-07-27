@@ -17,9 +17,6 @@ PROJECTS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-export UV_PROJECT := $(PROJECT_ROOT)
-export UV_PROJECT_ENVIRONMENT := $(PROJECT_ROOT)/.venv
-export VIRTUAL_ENV := $(UV_PROJECT_ENVIRONMENT)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 # A workspace root orchestrates its members, so its lint and type scope is the
 # union of every member's source and tests. Members are expanded from the
@@ -60,7 +57,6 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
-SETUP_BRANCH := $(shell git -C "$(PROJECT_ROOT)" rev-parse --abbrev-ref HEAD 2>/dev/null)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -184,28 +180,6 @@ define _run_for_selected_projects
 		esac; \
 		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
-endef
-
-define _setup_submodules
-	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
-		printf 'ERROR: setup requires a named git branch\n' >&2; exit 1; }
-	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		test -z "$$(git status --porcelain)" || { \
-			echo "ERROR: $$sm_path has uncommitted work"; exit 1; }; \
-		test "$$(git rev-parse HEAD)" = "$$sha1" || { \
-			echo "ERROR: $$sm_path is not at the recorded gitlink"; exit 1; }'
-	@git -C "$(PROJECT_ROOT)" submodule update --init --recursive
-	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		current=$$(git rev-parse --abbrev-ref HEAD); \
-		if test "$$current" = "$(SETUP_BRANCH)"; then \
-			:; \
-		elif git show-ref --verify --quiet "refs/heads/$(SETUP_BRANCH)"; then \
-			test "$$(git rev-parse "refs/heads/$(SETUP_BRANCH)")" = "$$sha1" || { \
-				echo "ERROR: $$sm_path branch $(SETUP_BRANCH) diverges from the recorded gitlink"; exit 1; }; \
-			git checkout --quiet "$(SETUP_BRANCH)"; \
-		else \
-			git checkout --quiet -b "$(SETUP_BRANCH)"; \
-		fi'
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)

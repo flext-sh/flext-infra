@@ -62,7 +62,6 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         sources_result = cls._sync_uv_sources(
             source,
-            repositories=repositories,
             project_name=project_name,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
@@ -130,7 +129,6 @@ class FlextInfraUtilitiesPyprojectConform:
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
                 source,
-                repositories=repositories,
                 project_name=project_name,
                 workspace=workspace,
             )
@@ -468,7 +466,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         link_mode: str | None = None,
