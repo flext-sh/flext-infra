@@ -584,6 +584,90 @@ class FlextInfraConfigModels:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
 
+    class MakefileRenderSpec(_ConfigContract):
+        """Field-only render input for an existing repository Makefile."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(description="Selected repository Make profile"),
+        ]
+        workspace_root_rel: Annotated[
+            t.NonEmptyStr, m.Field(description="Relative workspace root path")
+        ]
+        workspace_members: Annotated[
+            tuple[str, ...], m.Field(description="Declared workspace member paths")
+        ] = ()
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Repositories editable from the selected workspace"),
+        ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared content-only workspace repositories"),
+        ] = ()
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
+        ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
+        ]
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(description="Repository-specific public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(description="Optional script command dispatch contract"),
+        ] = None
+        mypy_memory_limit_mb: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
+        ]
+        mypy_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
+        ]
+        mypy_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
+        mypy_signal_exit_offset: Annotated[
+            int, m.Field(gt=0, description="Shell signal exit-code offset")
+        ]
+        prlimit_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter executable")
+        ]
+        prlimit_address_space_option: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter option")
+        ]
+        timeout_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Wall-time limiter executable")
+        ]
+        timeout_kill_after_seconds: Annotated[
+            int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class ToolchainRenderSpec(_ConfigContract):
+        """Field-only render projection of the canonical toolchain owner."""
+
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Python toolchain version")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
+        ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
