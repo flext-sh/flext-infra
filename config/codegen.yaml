@@ -12,7 +12,7 @@ Infra:
       # A version bump touches ONLY python_version / uv_version. Linter pins
       # live in the pyproject dependency groups (dependency_profiles).
       python_version: "3.13.11"
-      uv_version: "0.11.29"
+      uv_version: "0.11.32"
       uv_link_mode: copy
       # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
       # .mise.toml and the ci-matrix workflow kind leg.
