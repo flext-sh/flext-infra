@@ -256,8 +256,8 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
-_builtin_setup_environment:
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"

@@ -19,7 +19,7 @@ from flext_infra.models import m
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_infra.services.codegen import FlextInfraCodegen
 
 # A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
 # Matched at column 0 only, so an indented recipe line is never mistaken for
@@ -361,7 +361,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             ):
                 # Owner-merge dispatch: owners with a canonical document merge
                 # (vscode settings today) produce their rendered content here.
-                merged = FlextInfraWorkspaceVscode.render_merged_settings(root)
+                merged = FlextInfraCodegen.render_vscode_settings(root)
                 if merged.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         merged.error or f"vscode settings merge failed: {path}"

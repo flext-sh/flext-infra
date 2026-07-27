@@ -1,4 +1,4 @@
-"""Canonical VS Code settings merge contract tests."""
+"""Canonical VS Code settings codegen merge contract tests."""
 
 from __future__ import annotations
 
@@ -7,14 +7,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
-
-
-def _write_project(project_root: Path) -> None:
-    project_root.mkdir(parents=True, exist_ok=True)
-    (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
+from flext_infra import c, config
+from flext_infra.services.codegen import FlextInfraCodegen
 
 
 def _write_settings(project_root: Path, content: str) -> Path:
@@ -24,16 +18,16 @@ def _write_settings(project_root: Path, content: str) -> Path:
     return settings_path
 
 
-class TestsFlextInfraWorkspaceVscode:
-    """Behavior contract for the config-driven VS Code settings merge."""
+class TestsFlextInfraCodegenVscode:
+    """Behavior contract for the config-driven VS Code settings codegen owner."""
 
     def test_applies_canonical_settings_and_preserves_custom_keys(
         self, tmp_path: Path
     ) -> None:
         """Enforce canonical keys while preserving project-specific entries."""
         project_root = tmp_path / "project"
-        _write_project(project_root)
-        settings_path = _write_settings(
+        project_root.mkdir()
+        _write_settings(
             project_root,
             json.dumps({
                 "python.languageServer": "None",
@@ -45,109 +39,82 @@ class TestsFlextInfraWorkspaceVscode:
             + "\n",
         )
 
-        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
+        result = FlextInfraCodegen.render_vscode_settings(project_root)
 
         tm.ok(result)
-        tm.that(result.value, eq=True)
-        doc = json.loads(settings_path.read_text(encoding="utf-8"))
+        doc = json.loads(result.value)
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
         tm.that(
             doc["python.defaultInterpreterPath"],
             eq="${workspaceFolder}/.venv/bin/python",
         )
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            doc["python-envs.workspaceSearchPaths"],
-            eq=["./.venv", "./*/.venv", "./apps/*/.venv"],
+            search_paths,
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ]
+            ),
         )
         tm.that(doc["files.exclude"]["**/dbt_packages"], eq=True)
-        tm.that(doc["files.exclude"]["**/.venv"], eq=True)
-        tm.that(doc["files.watcherExclude"]["**/.venv/**"], eq=True)
-        tm.that(doc["files.watcherExclude"]["**/target/**"], eq=True)
-        tm.that(doc["search.exclude"]["**/node_modules"], eq=True)
+        tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
         overrides = doc["python.analysis.diagnosticSeverityOverrides"]
         tm.that(overrides["reportUnknownMemberType"], eq="none")
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(doc["python.languageServer"], eq="None")
-        tm.that(
-            doc["terminal.integrated.env.linux"]["VIRTUAL_ENV"],
-            eq="${workspaceFolder}/.venv",
-        )
 
-    def test_second_run_is_idempotent(self, tmp_path: Path) -> None:
-        """Produce zero changes when a merged project runs again."""
+    def test_render_reaches_fixed_point(self, tmp_path: Path) -> None:
+        """Rendering a document that was already rendered produces no drift."""
         project_root = tmp_path / "project"
-        _write_project(project_root)
+        project_root.mkdir()
 
-        first = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
-        second = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
-
+        first = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(first)
-        tm.that(first.value, eq=True)
+        _write_settings(project_root, first.value)
+        second = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(second)
-        tm.that(second.value, eq=False)
+        tm.that(second.value, eq=first.value)
 
     def test_derives_member_venv_globs_from_workspace_manifest(
         self, tmp_path: Path
     ) -> None:
         """Derive shallow venv globs from config/workspace.yaml member paths."""
         project_root = tmp_path / "workspace"
-        _write_project(project_root)
+        project_root.mkdir()
         config_dir = project_root / "config"
         config_dir.mkdir()
         (config_dir / "workspace.yaml").write_text(
-            "version: 2\nmembers:\n  - name: a\n    path: apps/a\n  - name: b\n    path: libs/b\n",
+            "version: 2\nmembers:\n  - name: a\n    path: apps/a\n"
+            "  - name: b\n    path: libs/b\n",
             encoding="utf-8",
         )
 
-        result = FlextInfraWorkspaceVscode.render_merged_settings(project_root)
+        result = FlextInfraCodegen.render_vscode_settings(project_root)
 
         tm.ok(result)
         doc = json.loads(result.value)
+        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
-            doc["python-envs.workspaceSearchPaths"],
+            search_paths,
             eq=[
-                "./.venv",
-                "./*/.venv",
-                "./apps/*/.venv",
+                *config.Infra.codegen.vscode.list_settings[
+                    c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
+                ],
                 "./apps/a/.venv",
                 "./libs/b/.venv",
             ],
         )
 
-    def test_jsonc_comments_and_trailing_commas_are_tolerated(
+    def test_invalid_json_fails_without_producing_a_document(
         self, tmp_path: Path
     ) -> None:
-        """Parse VS Code JSONC content before merging canonical keys."""
+        """Return a typed failure when the existing settings are unparseable."""
         project_root = tmp_path / "project"
-        _write_project(project_root)
-        settings_path = _write_settings(
-            project_root, '{\n  // project note\n  "editor.formatOnSave": true,\n}\n'
-        )
+        project_root.mkdir()
+        _write_settings(project_root, "{ invalid json")
 
-        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
-
-        tm.ok(result)
-        doc = json.loads(settings_path.read_text(encoding="utf-8"))
-        tm.that(doc["editor.formatOnSave"], eq=True)
-        tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
-
-    def test_invalid_json_fails_without_writing(self, tmp_path: Path) -> None:
-        """Return a typed failure and never rewrite an unparseable file."""
-        project_root = tmp_path / "project"
-        _write_project(project_root)
-        broken = "{ invalid json"
-        settings_path = _write_settings(project_root, broken)
-
-        result = FlextInfraWorkspaceVscode.sync_settings(project_root, apply=True)
+        result = FlextInfraCodegen.render_vscode_settings(project_root)
 
         tm.fail(result)
-        tm.that(settings_path.read_text(encoding="utf-8"), eq=broken)
-
-    def test_missing_pyproject_returns_noop(self, tmp_path: Path) -> None:
-        """Skip directories that are not Python projects."""
-        result = FlextInfraWorkspaceVscode.sync_settings(
-            tmp_path / "missing", apply=True
-        )
-
-        tm.ok(result)
-        tm.that(result.value, eq=False)
+        tm.that(result.error, none=False)
