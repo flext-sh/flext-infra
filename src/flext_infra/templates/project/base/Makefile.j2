@@ -56,6 +56,7 @@ RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
+SETUP_BRANCH := $(shell git -C "$(PROJECT_ROOT)" rev-parse --abbrev-ref HEAD 2>/dev/null)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -76,7 +77,8 @@ endif
 WORKSPACE_ORCHESTRATE := $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync
+UV := mise exec -- uv
+UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS :={% if make_profile == "workspace-root" %} --all-packages{% endif %} --all-extras --all-groups
@@ -174,8 +176,30 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		uv lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
+endef
+
+define _setup_submodules
+	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
+		printf 'ERROR: setup requires a named git branch\n' >&2; exit 1; }
+	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		test -z "$$(git status --porcelain)" || { \
+			echo "ERROR: $$sm_path has uncommitted work"; exit 1; }; \
+		test "$$(git rev-parse HEAD)" = "$$sha1" || { \
+			echo "ERROR: $$sm_path is not at the recorded gitlink"; exit 1; }'
+	@git -C "$(PROJECT_ROOT)" submodule update --init --recursive
+	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		current=$$(git rev-parse --abbrev-ref HEAD); \
+		if test "$$current" = "$(SETUP_BRANCH)"; then \
+			:; \
+		elif git show-ref --verify --quiet "refs/heads/$(SETUP_BRANCH)"; then \
+			test "$$(git rev-parse "refs/heads/$(SETUP_BRANCH)")" = "$$sha1" || { \
+				echo "ERROR: $$sm_path branch $(SETUP_BRANCH) diverges from the recorded gitlink"; exit 1; }; \
+			git checkout --quiet "$(SETUP_BRANCH)"; \
+		else \
+			git checkout --quiet -b "$(SETUP_BRANCH)"; \
+		fi'
 endef
 
 .PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
@@ -204,23 +228,31 @@ _builtin_help_usage:
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	$(call _setup_submodules)
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(PROJECT_ROOT)/.venv/bin/python" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
+	@$(UV) pip check --python "$(PROJECT_ROOT)/.venv/bin/python"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment:
 	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	$(call _setup_submodules)
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_VENV)/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment:
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	$(call _setup_submodules)
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_VENV)/bin/python" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check:
@@ -245,7 +277,7 @@ _builtin_test_all:
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
-	@uv build --project "$(PROJECT_ROOT)"
+	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all:
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
@@ -275,10 +307,10 @@ _builtin_run_default:
 _builtin_status_diagnostics:
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@uv --version
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) --version
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		uv pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
+		$(UV) pip check --python "$(RUNTIME_ROOT)/.venv/bin/python"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
@@ -303,7 +335,7 @@ _builtin_clean_generated:
 {% endif %}
 
 _builtin_release_status:
-	@uv lock --project "$(PROJECT_ROOT)" --check
+	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 

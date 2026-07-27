@@ -33,6 +33,18 @@ class TestsCodegenMakeEnvironment:
         makefile = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile, has="$(UV_RUN) python -m pytest")
         tm.that(makefile, has="$(UV_RUN) python -m flext_infra codegen conform")
+        for required in (
+            "UV := mise exec -- uv",
+            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            "$(UV) sync",
+            "git submodule update --init --recursive",
+            'test -z "$$(git status --porcelain)"',
+            'test "$$(git rev-parse HEAD)" = "$$sha1"',
+            'refs/heads/$(SETUP_BRANCH)',
+            "--no-install-project",
+        ):
+            tm.that(makefile, has=required)
+        tm.that(makefile, lacks="@uv sync")
         (root / "custom.mk").write_text(
             "_custom_check_probe:\n"
             "\t@printf '%s\\n%s\\n%s\\n' "

@@ -26,6 +26,31 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
 
+    def test_bootstrap_setup_is_self_contained_and_branch_aware(self) -> None:
+        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer.render_bootstrap_include())
+
+        for required in (
+            "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
+            "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
+            "UV_PROJECT_ENVIRONMENT=$(SETUP_VENV)",
+            "uv venv --clear",
+            "uv sync --all-extras --all-groups",
+            "git submodule update --init --recursive",
+            'test -z "$$(git status --porcelain)"',
+            'test "$$(git rev-parse HEAD)" = "$$sha1"',
+            'refs/heads/$(SETUP_BRANCH)',
+            'git checkout --quiet -b "$(SETUP_BRANCH)"',
+            "--no-install-project",
+        ):
+            tm.that(rendered, has=required)
+        for forbidden in (
+            "BOOTSTRAP_PIP",
+            "pip install",
+            "poetry",
+            "$(PYTHON_CMD) -c 'import flext_infra'",
+        ):
+            tm.that(rendered, lacks=forbidden)
+
     def test_render_all_has_no_scripts_path_references(self) -> None:
         """Exclude legacy script paths from the rendered contract."""
         result = FlextInfraBaseMkTemplateRenderer().render_all()

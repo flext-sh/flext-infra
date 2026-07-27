@@ -17,80 +17,49 @@ else
 # then restarts with base.mk loaded. All standard verbs become available.
 # =============================================================================
 
-PYTHON_VERSION ?= 3.13
-PYTHON_CMD := $(firstword $(shell command -v python$(PYTHON_VERSION) python3 python 2>/dev/null))
-BOOTSTRAP_VENV := .venv
-BOOTSTRAP_PIP := $(BOOTSTRAP_VENV)/bin/pip
-BOOTSTRAP_PYTHON := $(BOOTSTRAP_VENV)/bin/python
+SETUP_ROOT := $(shell git rev-parse --show-toplevel)
+SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+SETUP_VENV := $(SETUP_ROOT)/.venv
+SETUP_PYTHON := $(SETUP_VENV)/bin/python
+SETUP_UV := env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT \
+	UV_PROJECT_ENVIRONMENT=$(SETUP_VENV) mise exec -- uv
 FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
-FLEXT_INFRA_DEPS_GROUP := {{ make.CLI_GROUP_DEPS }}
 
 -include base.mk
 
-base.mk: Makefile
-	@echo "==> Resolving base.mk for $(PROJECT_NAME)..."
-	@if [ -d "$(BOOTSTRAP_VENV)" ] && $(BOOTSTRAP_PYTHON) -c 'import flext_infra' 2>/dev/null; then \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	elif $(PYTHON_CMD) -c 'import flext_infra' 2>/dev/null; then \
-		$(PYTHON_CMD) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	else \
-		echo "==> flext-infra not found. Bootstrapping standalone environment..."; \
-		if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-			echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-			if [ -z "$(PYTHON_CMD)" ]; then \
-				echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-				exit 1; \
-			fi; \
-			$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-			$(BOOTSTRAP_PIP) install -q -U pip; \
-		fi; \
-		$(BOOTSTRAP_PIP) install -q flext-infra; \
-		$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-			--project-name $(PROJECT_NAME) --output $@; \
-	fi
-	@test -s $@ || { echo "ERROR: base.mk generation failed"; rm -f $@; exit 1; }
-	@echo "==> base.mk generated. Restarting make..."
 
-# Bootstrap-only recipes: defined ONLY while base.mk is absent. Once base.mk
-# exists it is -included above and the project's own custom.mk provides the
-# real setup/venv targets; keeping these here too would make GNU make warn
-# "overriding recipe for target 'setup'/'venv'/'_bootstrap-venv'".
-ifeq ("$(wildcard base.mk)", "")
-.PHONY: _bootstrap-venv venv setup
+.PHONY: setup venv
 
-_bootstrap-venv:
-	@if [ ! -d "$(BOOTSTRAP_VENV)" ]; then \
-		echo "==> Creating virtual environment with $(PYTHON_CMD)..."; \
-		if [ -z "$(PYTHON_CMD)" ]; then \
-			echo "ERROR: Python $(PYTHON_VERSION) not found. Install it first."; \
-			exit 1; \
-		fi; \
-		$(PYTHON_CMD) -m venv $(BOOTSTRAP_VENV); \
-		$(BOOTSTRAP_PIP) install -q -U pip; \
-	fi
+venv: ## Create the checkout-local virtual environment from the lock
+	@$(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
-venv: _bootstrap-venv ## Create standalone virtual environment
-	@$(BOOTSTRAP_PIP) install -q -U pip poetry
-	@echo "Virtual environment ready at $(BOOTSTRAP_VENV)"
-
-setup: venv ## Full standalone setup (venv + dependencies + base.mk)
-	@echo "==> Installing project dependencies..."
-	@$(BOOTSTRAP_PIP) install -q flext-infra
-	# mro-j47u: generated bootstrap consumes the sole public extra-paths route.
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_DEPS_GROUP) extra-paths \
-		--apply \
-		--workspace "$(CURDIR)"
-	@$(BOOTSTRAP_VENV)/bin/poetry lock
-	@$(BOOTSTRAP_VENV)/bin/poetry install --all-extras --all-groups
-	@if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(BOOTSTRAP_VENV)/bin/poetry run pre-commit install; \
-	fi
-	@$(BOOTSTRAP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
+setup: ## Create a clean local environment and branch-aware submodules
+	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
+		echo "ERROR: setup requires a named git branch"; exit 1; }
+	@git submodule foreach --recursive --quiet ' \
+		test -z "$$(git status --porcelain)" || { \
+			echo "ERROR: $$sm_path has uncommitted work"; exit 1; }; \
+		test "$$(git rev-parse HEAD)" = "$$sha1" || { \
+			echo "ERROR: $$sm_path is not at the recorded gitlink"; exit 1; }'
+	@git submodule update --init --recursive
+	@git submodule foreach --recursive --quiet ' \
+		current=$$(git rev-parse --abbrev-ref HEAD); \
+		if test "$$current" = "$(SETUP_BRANCH)"; then \
+			:; \
+		elif git show-ref --verify --quiet "refs/heads/$(SETUP_BRANCH)"; then \
+			test "$$(git rev-parse "refs/heads/$(SETUP_BRANCH)")" = "$$sha1" || { \
+				echo "ERROR: $$sm_path branch $(SETUP_BRANCH) diverges from the recorded gitlink"; exit 1; }; \
+			git checkout --quiet "$(SETUP_BRANCH)"; \
+		else \
+			git checkout --quiet -b "$(SETUP_BRANCH)"; \
+		fi'
+	@$(SETUP_UV) venv --clear "$(SETUP_VENV)"
+	@$(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups --no-install-project
+	@$(SETUP_UV) pip install --python "$(SETUP_PYTHON)" --no-deps --editable "$(SETUP_ROOT)"
+	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
-	@echo "==> Setup complete. All 'make' verbs now available."
-endif
+	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }
+	@echo "==> Setup complete: local .venv and submodules on $(SETUP_BRANCH)."
 
 ifeq ("$(wildcard base.mk)", "")
 .PHONY: help

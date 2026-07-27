@@ -60,6 +60,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         sources_result = cls._sync_uv_sources(
             source,
+            repositories=repositories,
             project_name=project_name,
             workspace=workspace,
             required_version=toolchain.uv_required_version,
@@ -109,7 +110,10 @@ class FlextInfraUtilitiesPyprojectConform:
             cls._validate_root_uv_sources(source, workspace=workspace)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                repositories=repositories,
+                project_name=project_name,
+                workspace=workspace,
             )
         )
         if sources_result.failure:
@@ -136,21 +140,12 @@ class FlextInfraUtilitiesPyprojectConform:
             *workspace.members,
             *workspace.content_only,
         )
-        # An attached workspace member resolves through [tool.uv.sources]
-        # workspace=true, so a git specifier would be a second, contradictory
-        # source that uv silently overrides (mro-sw2l.1).
-        attached = (
-            frozenset(member.distribution for member in workspace.members)
-            if cls._is_workspace_root(project_name=project_name, workspace=workspace)
-            else frozenset()
-        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
             canonicalize_all=canonicalize_all,
-            attached=attached,
         )
         if normalized.failure:
             return normalized
@@ -167,7 +162,6 @@ class FlextInfraUtilitiesPyprojectConform:
                     group_name,
                     repositories=available,
                     canonicalize_all=canonicalize_all,
-                    attached=attached,
                 )
                 if group_result.failure:
                     return group_result
@@ -181,7 +175,6 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         canonicalize_all: bool,
-        attached: frozenset[str],
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
         raw_value = u.Cli.toml_value(container, key)
@@ -195,7 +188,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, attached=attached
+                item, repositories=repositories
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -216,42 +209,19 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
-        # Attached members resolve through [tool.uv.sources] workspace=true, so
-        # the head (name plus extras) is emitted without a git source.
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
         marker_text = marker.strip()
-        if dependency_name in attached:
-            return r[str].ok(
-                f"{head}; {marker_text}" if separator and marker_text else head
-            )
-        reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories
-        )
-        if reference_result.failure:
-            return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
-            )
-        reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
-            return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
-            )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
-        marker_text = marker.strip()
         return r[str].ok(
-            f"{canonical}; {marker_text}" if separator and marker_text else canonical
+            f"{head}; {marker_text}" if separator and marker_text else head
         )
 
     @staticmethod
@@ -277,16 +247,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Convert a validated repository URL into a PEP 508 Git transport URL."""
-        if url.startswith("https://"):
-            return r[str].ok(f"git+{url}")
-        ssh_prefix = "git@github.com:"
-        if url.startswith(ssh_prefix):
-            return r[str].ok(f"git+ssh://git@github.com/{url.removeprefix(ssh_prefix)}")
-        return r[str].fail(f"unsupported repository URL for direct Git metadata: {url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -432,6 +392,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         required_version: str | None = None,
@@ -444,14 +405,19 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_root = cls._is_workspace_root(
             project_name=project_name, workspace=workspace
         )
+        member_names = {member.distribution for member in workspace.members}
+        workspace_member = project_name in member_names
+        declared = cls._internal_dependency_names(document)
+        if workspace_root:
+            declared = frozenset((*declared, *member_names))
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if not workspace_root and required_version is None:
+            if not declared and not workspace_root and required_version is None:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not workspace_root and required_version is None:
+            if not declared and not workspace_root and required_version is None:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         if required_version is not None and link_mode is not None:
@@ -475,28 +441,80 @@ class FlextInfraUtilitiesPyprojectConform:
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")
-        if sources is None:
-            if not workspace_root and not tuple(uv):
-                u.Cli.toml_remove_key_if_present(tool, "uv")
-            return r[bool].ok(True)
-        workspace_names = {member.distribution for member in workspace.members}
-        for source_name in tuple(sources):
-            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
-            # TOML tables in place so conformance cannot accumulate blank trivia.
-            if source_name.startswith("flext-") and (
-                not workspace_root or source_name not in workspace_names
-            ):
-                u.Cli.toml_remove_key_if_present(sources, source_name)
-        if workspace_root:
-            for member in workspace.members:
-                u.Cli.toml_sync_mapping_table(
-                    sources, member.distribution, {"workspace": True}
+        if sources is not None:
+            for source_name in tuple(sources):
+                # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
+                # TOML tables in place so conformance cannot accumulate blank trivia.
+                if source_name.startswith("flext-"):
+                    u.Cli.toml_remove_key_if_present(sources, source_name)
+            if workspace_root:
+                for distribution in sorted(member_names):
+                    u.Cli.toml_sync_mapping_table(
+                        sources, distribution, {"workspace": True}
+                    )
+            if not tuple(sources):
+                u.Cli.toml_remove_key_if_present(uv, "sources")
+
+        existing_overrides = u.Cli.toml_as_string_list(
+            u.Cli.toml_value(uv, "override-dependencies")
+        )
+        overrides = [
+            requirement
+            for requirement in existing_overrides
+            if not (
+                (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+                and name.startswith("flext-")
+            )
+        ]
+        if not workspace_root and not workspace_member:
+            for distribution in sorted(declared):
+                reference_result = cls._repository_reference(
+                    distribution, repositories=repositories
                 )
-        elif not tuple(sources):
-            u.Cli.toml_remove_key_if_present(uv, "sources")
+                if reference_result.failure:
+                    return r[bool].fail(
+                        reference_result.error
+                        or f"repository resolution failed: {distribution}"
+                    )
+                reference = reference_result.value
+                overrides.append(
+                    f"{distribution} @ git+{reference.url}@{reference.branch}"
+                )
+        if overrides:
+            u.Cli.toml_sync_string_list(
+                uv,
+                "override-dependencies",
+                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(overrides)),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "override-dependencies")
         if not workspace_root and not tuple(uv):
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)
+
+    @staticmethod
+    def _internal_dependency_names(document: t.Cli.TomlDocument) -> frozenset[str]:
+        """Return every internal distribution declared by this project."""
+        project = u.Cli.toml_table_child(document, c.Infra.PROJECT)
+        containers: list[t.Cli.TomlDocument | t.Cli.TomlTable] = []
+        if project is not None:
+            containers.append(project)
+            optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+            if optional is not None:
+                containers.append(optional)
+        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if groups is not None:
+            containers.append(groups)
+        names: set[str] = set()
+        for container in containers:
+            for key in tuple(container):
+                for item in u.Cli.toml_as_string_list(
+                    u.Cli.toml_value(container, key)
+                ):
+                    name = FlextInfraUtilitiesDependencies.dep_name(item)
+                    if name is not None and name.startswith("flext-"):
+                        names.add(name)
+        return frozenset(names)
 
     @staticmethod
     def _validate_root_uv_sources(
