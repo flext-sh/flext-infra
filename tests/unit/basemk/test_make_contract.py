@@ -446,6 +446,8 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
+            has="BASE_INFRA_VALIDATE := $(PROJECT_INFRA_ROOT) validate",
+            lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
             has="BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT",
         )
 
