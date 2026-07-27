@@ -81,15 +81,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             case c.Infra.CodegenConformSurface.PYPROJECT:
                 return cls.SurfaceContract(
                     destinations=frozenset({c.Infra.PYPROJECT_FILENAME}),
-                    delegates=False, templates=False, custom=False
+                    delegates=False,
+                    templates=False,
+                    custom=False,
                 )
             case c.Infra.CodegenConformSurface.MAKEFILE:
                 return cls.SurfaceContract(
                     destinations=frozenset({c.Infra.MAKEFILE_FILENAME}),
-                    pyproject=False, custom=False
+                    pyproject=False,
+                    custom=False,
                 )
             case _:
-                raise ValueError(f"Unsupported codegen conform surface: {surface}")
+                msg = f"Unsupported codegen conform surface: {surface}"
+                raise ValueError(msg)
 
     # NOTE (multi-agent, mro-wkii.17 / agent: codex): this is the only
     # orchestrator for Make/toolchain/source conformance. Rendering stays in
@@ -229,9 +233,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(
-            c.Infra.CodegenConformSurface(request.what)
-        )
+        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -1510,7 +1512,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             environment_root=environment_root,
             lock_path=environment_root / c.Infra.UV_LOCK_FILENAME,
             python_version=config.toolchain.python_version,
-            uv_version=config.toolchain.uv_version,
             groups=groups,
             editable_repositories=editable_repositories,
         )

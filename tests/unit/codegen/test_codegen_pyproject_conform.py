@@ -106,4 +106,6 @@ workspace = true
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="attached workspace dependency declares Git source")
+        tm.that(
+            result.error or "", has="attached workspace dependency declares Git source"
+        )

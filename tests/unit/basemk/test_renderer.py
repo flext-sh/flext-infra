@@ -49,11 +49,7 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
         tm.that(
-            rendered,
-            has=[
-                "MISE := $(shell command -v mise 2>/dev/null)",
-                "UV ?= uv",
-            ],
+            rendered, has=["MISE := $(shell command -v mise 2>/dev/null)", "UV ?= uv"]
         )
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")

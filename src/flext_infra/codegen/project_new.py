@@ -98,11 +98,19 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             else c.Infra.RepositoryRole.STANDALONE
         )
         provider = next(
-            (item for item in config.Infra.codegen.providers if item.name == self.provider),
+            (
+                item
+                for item in config.Infra.codegen.providers
+                if item.name == self.provider
+            ),
             None,
         )
         known = next(
-            (item for item in config.Infra.codegen.repositories if item.name == self.name),
+            (
+                item
+                for item in config.Infra.codegen.repositories
+                if item.name == self.name
+            ),
             None,
         )
         package_name = self.package_name or self.name.replace("-", "_")

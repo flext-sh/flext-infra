@@ -85,8 +85,8 @@ def _write_fake_uv(bin_root: Path, log_path: Path) -> None:
     bin_root.mkdir()
     (bin_root / "uv").write_text(
         "#!/bin/sh\n"
-        f"printf '%s|%s|%s|%s\\n' \"$UV_PROJECT\" \"$UV_PROJECT_ENVIRONMENT\" "
-        f"\"$VIRTUAL_ENV\" \"$*\" >> {log_path}\n",
+        f'printf \'%s|%s|%s|%s\\n\' "$UV_PROJECT" "$UV_PROJECT_ENVIRONMENT" '
+        f'"$VIRTUAL_ENV" "$*" >> {log_path}\n',
         encoding="utf-8",
     )
     (bin_root / "uv").chmod(0o755)
@@ -137,21 +137,17 @@ class TestsWorkspaceRootMakeContract:
             "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
         )
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
-        monkeypatch.setenv(
-            "UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv")
-        )
+        monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw(
-                [
-                    "make",
-                    "-C",
-                    str(workspace_root),
-                    "setup",
-                    "WHAT=environment",
-                ]
-            )
+            cli.run_raw([
+                "make",
+                "-C",
+                str(workspace_root),
+                "setup",
+                "WHAT=environment",
+            ])
         )
 
         tm.that(process.exit_code, eq=0)

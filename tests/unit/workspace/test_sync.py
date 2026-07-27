@@ -296,7 +296,9 @@ class TestsFlextInfraWorkspaceSync:
         )
         tm.ok(dry_run)
 
-    def test_sync_standalone_bootstrap_uses_uv_and_public_console(self, tmp_path: Path) -> None:
+    def test_sync_standalone_bootstrap_uses_uv_and_public_console(
+        self, tmp_path: Path
+    ) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 

@@ -716,4 +716,5 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
         return r[bool].ok(True)
 
+
 __all__: list[str] = ["FlextInfraUtilitiesPyprojectConform"]

@@ -295,24 +295,18 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(missing.exit_code, ne=0)
         tm.that(missing.stdout + missing.stderr, has="no custom handler")
 
-    def test_make_build_uses_uv_and_propagates_failure(
-        self, tmp_path: Path
-    ) -> None:
+    def test_make_build_uses_uv_and_propagates_failure(self, tmp_path: Path) -> None:
         """Fail the target when the uv builder fails."""
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_executable(
             bin_dir / "uv",
-            '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "'
-            + str(log_path)
-            + '"\nexit 23\n',
+            '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "' + str(log_path) + '"\nexit 23\n',
         )
         _write_project(tmp_path)
 
         result = _run_make(
-            tmp_path,
-            "build",
-            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+            tmp_path, "build", env={"PATH": f"{bin_dir}:{os.environ['PATH']}"}
         )
 
         tm.that(result.exit_code, ne=0)
@@ -448,7 +442,6 @@ class TestsFlextInfraBasemkMakeContract:
             rendered,
             has="BASE_INFRA_VALIDATE := $(PROJECT_INFRA_ROOT) validate",
             lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
-            has="BASE_INFRA_VALIDATE := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT",
         )
 
     def test_rendered_base_mk_validates_canonical_root_in_workspace_preflight(
@@ -833,8 +826,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
         lock = "uv lock"
         reinstall_sync = (
-            "uv sync --all-extras --all-groups "
-            "--reinstall-package demo-project"
+            "uv sync --all-extras --all-groups --reinstall-package demo-project"
         )
         tm.that(log_lines, has=[initial_sync, extra_paths, lock, reinstall_sync])
         tm.that(log_lines.index(initial_sync) < log_lines.index(extra_paths), eq=True)

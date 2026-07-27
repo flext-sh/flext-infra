@@ -83,7 +83,9 @@ class TestsCodegenMakeEnvironment:
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
         project_root.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
+        )
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
@@ -149,8 +151,13 @@ class TestsCodegenMakeEnvironment:
         )
         makefile = (project_root / "Makefile").read_text()
 
-        tm.that("override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True)
+        tm.that(
+            "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
+        )
         tm.that("UV ?= uv" in makefile, eq=True)
-        tm.that('UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile, eq=True)
+        tm.that(
+            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            eq=True,
+        )
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)

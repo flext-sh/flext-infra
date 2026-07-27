@@ -113,12 +113,16 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
     remote_root.mkdir()
     workspace_origin = test_u.Tests.configure_local_origin(source, remote_root)
     checkout = tmp_path / "workspace-checkout"
-    tm.ok(u.Cli.run_checked(["git", "clone", "-q", str(workspace_origin), str(checkout)]))
+    tm.ok(
+        u.Cli.run_checked(["git", "clone", "-q", str(workspace_origin), str(checkout)])
+    )
     return checkout
 
 
 class TestsWorkspaceRootSetupSubmodules:
-    def test_generated_setup_orders_submodules_before_first_uv(self, tmp_path: Path) -> None:
+    def test_generated_setup_orders_submodules_before_first_uv(
+        self, tmp_path: Path
+    ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
         sync_at = rendered.index("git submodule sync --recursive")
