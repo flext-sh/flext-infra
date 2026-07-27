@@ -6,6 +6,7 @@
 # WHITELIST: Workspace Directories
 !docker/
 !docs/
+!config/
 !examples/
 !.github/
 !src/
@@ -80,6 +81,7 @@ scripts/*.md
 # WHITELIST: Contents Inside Allowed Directories
 !docker/**
 !docs/**
+!config/**
 !examples/**
 !.github/**
 !src/**

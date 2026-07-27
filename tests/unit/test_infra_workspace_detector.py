@@ -349,3 +349,19 @@ class TestsFlextInfraInfraWorkspaceDetector:
             FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path),
             has="absent from the codegen catalog",
         )
+
+    def test_manifested_repo_absent_from_catalog_loads_spec(
+        self, tmp_path: Path
+    ) -> None:
+        """Load a valid manifest even when the project is absent from the catalog."""
+        repository = self._repository(
+            name="consumer-project",
+            path=".",
+            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+        )
+        self._write_manifest(tmp_path, repository)
+
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        tm.that(spec.name, eq="consumer-project")
+        tm.that(spec.repository.name, eq="consumer-project")

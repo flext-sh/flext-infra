@@ -25,10 +25,6 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
-      - name: datacosmos-br
-        organization: datacosmos-br
-        base_url: https://github.com/datacosmos-br
-        branch: main
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -98,17 +94,6 @@ Infra:
         allow_toolchain_declarations: false
         allow_setup_declarations: false
         allow_help_declarations: false
-
-      # Per-profile overrides of custom_handler_policy. A workspace MEMBER only
-      # extends the generated verbs, so its custom.mk stays private-handler
-      # only (the base policy above). A workspace ROOT orchestrates the members,
-      # so it legitimately owns public orchestration targets and the variables
-      # they read; applying the member rule to the root made conform reject the
-      # root's own surface on every run and blocked the whole transaction.
-      custom_handler_profile_overrides:
-        workspace-root:
-          allow_public_targets: true
-          allow_toolchain_declarations: true
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
@@ -401,7 +386,6 @@ Infra:
             - "/*/"
             - "!/LICENSE"
         - name: "Allow all FLEXT ecosystem project directories"
-          profiles: [workspace-root]
           patterns:
             - "!flext-*/"
         - name: "WHITELIST: Workspace Directories"
@@ -419,16 +403,13 @@ Infra:
             - "!.claude/"
             - "!.claude-plugin/"
             - "!/config/"
+            - "!/config/workspace.yaml"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-        - name: "Workspace manifest (superproject root only)"
-          profiles: [workspace-root]
-          patterns:
-            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           patterns:
             - "!scripts/"
@@ -437,14 +418,10 @@ Infra:
             - "scripts/*.py"
             - "scripts/*.sh"
             - "scripts/*.md"
+            - "scripts/maintenance/"
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
-        - name: "Workspace maintenance tooling (superproject root only)"
-          profiles: [workspace-root]
-          patterns:
-            - "scripts/maintenance/"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
-          profiles: [workspace-root]
           patterns:
             - "!.beads/"
             - ".beads/*"
@@ -455,11 +432,6 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
-            # The lockfile pins the exact resolved graph. A uv workspace MEMBER
-            # has none (resolution happens once at the root), but the root and
-            # any standalone distribution must commit theirs or every checkout
-            # re-resolves and the build stops being reproducible.
-            - "!uv.lock"
             - "!ruff-shared.toml"
         - name: "mise toolchain pinning"
           patterns:
@@ -486,11 +458,8 @@ Infra:
         - name: "Git configuration"
           patterns:
             - "!.gitignore"
-            - "!.gitattributes"
-        - name: "Submodule catalog (superproject root only)"
-          profiles: [workspace-root]
-          patterns:
             - "!.gitmodules"
+            - "!.gitattributes"
         - name: "direnv environment (no secrets \u2014 venv activation only)"
           patterns:
             - "!.envrc"
@@ -500,12 +469,9 @@ Infra:
             - "!.env.test"
             - "!.env.example"
             - "!.env.template"
-        - name: "Member contents allowlist (superproject root only)"
-          profiles: [workspace-root]
-          patterns:
-            - "!flext-*/**"
         - name: "WHITELIST: Contents Inside Allowed Directories"
           patterns:
+            - "!flext-*/**"
             - "!docker/**"
             - "!docs/**"
             - "!examples/**"
@@ -710,8 +676,7 @@ Infra:
         - name: "--- workspace-migrate: required ignores (auto-managed) ---"
           patterns:
             - "!base.mk"
-        - name: "Beads/Dolt coordination state (superproject root only)"
-          profiles: [workspace-root]
+        - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
             - ".beads/*"
@@ -719,10 +684,8 @@ Infra:
             - "!.beads/config.yaml"
             - ".beads/proxieddb/"
             - ".dolt/"
-            - ".beads-credential-key"
-        - name: "FINAL BEADS TRACKING POLICY"
-          patterns:
             - "*.db"
+            - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
@@ -810,12 +773,10 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # mro-4x83.3: base/Makefile.j2 is the SINGLE owner of the generated
-          # Makefile for every profile, including workspace-root. The template
-          # renders the workspace-root orchestration (member gate fan-out via the
-          # generic `flext-infra workspace orchestrate` primitive) behind its own
-          # profile gate, so there is exactly one generator and no divergent copy.
-          profiles: [workspace-root, workspace-member, standalone]
+          # mro-9v0d: the workspace root Makefile has ONE generation owner:
+          # FlextInfraWorkspaceMakefileGenerator (workspace_makefile.mk.j2).
+          # Listing workspace-root here would create a second, competing owner.
+          profiles: [workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/custom.mk.j2
@@ -1452,6 +1413,27 @@ Infra:
         package: false
         editable: false
         read_only: false
+        extra_verbs:
+          - { name: auth, default_what: all }
+          - { name: bead, default_what: all }
+          - { name: bootstrap, default_what: all }
+          - { name: charts, default_what: all }
+          - { name: converge, default_what: all }
+          - { name: done-check, default_what: all }
+          - { name: gitops, default_what: all }
+          - { name: incidente, default_what: all }
+          - { name: nodepool, default_what: all }
+          - { name: packages, default_what: all }
+          - { name: repair, default_what: all }
+          - { name: scaffold, default_what: all }
+          - { name: secret, default_what: all }
+          - { name: sync, default_what: all }
+        script_dispatch:
+          dispatcher: scripts/dispatch.py
+          roots:
+            - scripts
+            - apps/cosmos-charts/scripts
+            - apps/cosmos-gitops/scripts
       - name: cosmos-charts
         distribution: cosmos-charts
         provider: datacosmos-br

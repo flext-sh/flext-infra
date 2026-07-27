@@ -63,6 +63,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     provider: Annotated[
         str, m.Field(min_length=1, description="Configured Git provider key.")
     ]
+    repository_url: Annotated[
+        str, m.Field(description="Canonical Git clone URL for the new repository.")
+    ] = ""
+    repository_branch: Annotated[
+        str, m.Field(description="Required Git branch for the new repository.")
+    ] = ""
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -92,43 +98,39 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             else c.Infra.RepositoryRole.STANDALONE
         )
         provider = next(
-            (
-                item
-                for item in config.Infra.codegen.providers
-                if item.name == self.provider
-            ),
+            (item for item in config.Infra.codegen.providers if item.name == self.provider),
             None,
         )
-        if provider is None:
-            return r[m.Infra.CodegenResult].fail(
-                f"unknown codegen repository provider: {self.provider}"
-            )
         known = next(
-            (
-                item
-                for item in config.Infra.codegen.repositories
-                if item.name == self.name
-            ),
+            (item for item in config.Infra.codegen.repositories if item.name == self.name),
             None,
         )
-        if known is not None and known.provider != provider.name:
-            return r[m.Infra.CodegenResult].fail(
-                f"repository provider differs from catalog: {self.name}"
-            )
         package_name = self.package_name or self.name.replace("-", "_")
         class_stem = u.derive_class_stem(self.name)
         derived_namespace = class_stem.removeprefix("Flext")
         project_namespace = self.project_namespace or derived_namespace or class_stem
         alias = u.Infra.package_alias(package_name=package_name)
-        repository_url = (
-            known.url if known is not None else f"{provider.base_url}/{self.name}.git"
+        provider_url = (
+            f"{provider.base_url}/{self.name}.git" if provider is not None else ""
         )
-        repository_branch = known.branch if known is not None else provider.branch
+        provider_branch = provider.branch if provider is not None else ""
+        repository_url = known.url if known else self.repository_url or provider_url
+        repository_branch = (
+            known.branch if known else self.repository_branch or provider_branch
+        )
+        if not repository_url:
+            return r[m.Infra.CodegenResult].fail(
+                f"repository URL is required for provider: {self.provider}"
+            )
+        if not repository_branch:
+            return r[m.Infra.CodegenResult].fail(
+                f"repository branch is required for provider: {self.provider}"
+            )
         repository_page = repository_url.removesuffix(".git")
         repository = m.Infra.RepositoryRef(
             name=self.name,
             distribution=known.distribution if known is not None else self.name,
-            provider=provider.name,
+            provider=self.provider,
             url=repository_url,
             branch=repository_branch,
             path=Path(),

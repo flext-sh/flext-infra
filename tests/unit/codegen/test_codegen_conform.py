@@ -202,6 +202,29 @@ class TestCodegenConform:
             eq=("flext-core",),
         )
 
+    def test_make_context_accepts_manifest_without_project_or_known_provider(
+        self,
+    ) -> None:
+        """Build Make context from repository-owned data alone."""
+        repository = config.Infra.codegen.repositories[0].model_copy(
+            update={"provider": "consumer-owned"}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="consumer",
+            repository=repository,
+        )
+        context = FlextInfraCodegenConform._make_render_context(
+            repository,
+            workspace,
+            config.Infra.codegen,
+            tooling_runtime=config.Infra.tooling.runtime,
+        )
+        rendered = tm.ok(context)
+        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
+        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
+        tm.that(rendered.workspace_root_rel, eq=".")
+
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
     ) -> None:
