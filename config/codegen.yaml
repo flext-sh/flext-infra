@@ -25,6 +25,10 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
+      - name: datacosmos-br
+        organization: datacosmos-br
+        base_url: https://github.com/datacosmos-br
+        branch: main
     profiles:
       - name: workspace-root
         environment_scope: root
