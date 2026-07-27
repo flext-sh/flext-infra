@@ -29,7 +29,6 @@ Infra:
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
         branch: main
-
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -99,6 +98,17 @@ Infra:
         allow_toolchain_declarations: false
         allow_setup_declarations: false
         allow_help_declarations: false
+
+      # Per-profile overrides of custom_handler_policy. A workspace MEMBER only
+      # extends the generated verbs, so its custom.mk stays private-handler
+      # only (the base policy above). A workspace ROOT orchestrates the members,
+      # so it legitimately owns public orchestration targets and the variables
+      # they read; applying the member rule to the root made conform reject the
+      # root's own surface on every run and blocked the whole transaction.
+      custom_handler_profile_overrides:
+        workspace-root:
+          allow_public_targets: true
+          allow_toolchain_declarations: true
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
@@ -320,9 +330,6 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
-      - path: workspace_custom.mk
-        owner: custom
-        policy: manual
 
     scaffold:
       build:
@@ -341,8 +348,8 @@ Infra:
           - "Typing :: Typed"
         keywords: [clean-architecture, flext, integration, typed]
         dependency_profiles:
-          # NOTE (multi-agent, cosmos-main-iz7g.1): the workspace manifest
-          # declares flext_core as its upstream; conformance must model it.
+          # NOTE: a workspace manifest may declare an upstream distribution;
+          # conformance must model that upstream relationship generically.
           - upstream: flext_core
             runtime:
               - flext-core
@@ -388,31 +395,347 @@ Infra:
       # express (file globs, secrets, editor/OS noise). Per-project exception
       # fields are added by mro-jnm1.3.
       gitignore_sections:
-        - name: Python and build artifacts
+        - name: "BLOCK EVERYTHING BY DEFAULT"
           patterns:
-            - "*.py[cod]"
-            - "*$py.class"
-            - .eggs/
-            - .coverage
-            - htmlcov/
-        - name: FLEXT
-          patterns: ["*.tpl.rej"]
-        - name: Environment and secrets
+            - "/*"
+            - "/*/"
+            - "!/LICENSE"
+        - name: "Allow all FLEXT ecosystem project directories"
+          profiles: [workspace-root]
           patterns:
-            - .env
-            - .env.*
+            - "!flext-*/"
+        - name: "WHITELIST: Workspace Directories"
+          patterns:
+            - "!docker/"
+            - "!docs/"
+            - "!examples/"
+            - "!.github/"
+            - "!src/"
+            - "!tests/"
+            - "!typings/"
+            - "!libs/"
+            - "!.vscode/"
+            - "!.code-review-graph/"
+            - "!.claude/"
+            - "!.claude-plugin/"
+            - "!/config/"
+            - "!.claude/CLAUDE.md"
+            - "!.claude/settings.json"
+            - "!.claude/settings.local.json"
+            - "!.agents/"
+            - "!.agents/**"
+            - ".agents/skills/*/report.json"
+        - name: "Workspace manifest (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!/config/workspace.yaml"
+        - name: "Dispatcher-based command surface (Make SSOT)"
+          patterns:
+            - "!scripts/"
+            - "!scripts/cmd/"
+            - "!scripts/cmd/**"
+            - "scripts/*.py"
+            - "scripts/*.sh"
+            - "scripts/*.md"
+            - "!scripts/dispatch.py"
+            - "!scripts/__init__.py"
+        - name: "Workspace maintenance tooling (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "scripts/maintenance/"
+        - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
+          profiles: [workspace-root]
+          patterns:
+            - "!.beads/"
+            - ".beads/*"
+            - "!.beads/config.yaml"
+        - name: "Python configuration"
+          patterns:
+            - "!pyproject.toml"
+            - "!.taplo.toml"
+            - "!pyrefly.toml"
+            - "!poetry.lock"
+            # The lockfile pins the exact resolved graph. A uv workspace MEMBER
+            # has none (resolution happens once at the root), but the root and
+            # any standalone distribution must commit theirs or every checkout
+            # re-resolves and the build stops being reproducible.
+            - "!uv.lock"
+            - "!ruff-shared.toml"
+        - name: "mise toolchain pinning"
+          patterns:
+            - "!.mise.toml"
+            - "!.default-python-packages"
+            - "!.python-version"
+        - name: "Docker configuration"
+          patterns:
+            - "!.dockerignore"
+        - name: "Build and automation"
+          patterns:
+            - "!Makefile"
+            - "!Makefile.flext-docker"
+            - "!*.mk"
+        - name: "Documentation"
+          patterns:
+            - "!README.md"
+            - "!AGENTS.md"
+            - "!AGENTS.md"
+            - "!codex.md"
+            - "!.markdownlint.json"
+            - "!.markdownlintignore"
+            - "!.shellcheckrc"
+        - name: "Git configuration"
+          patterns:
+            - "!.gitignore"
+            - "!.gitattributes"
+        - name: "Submodule catalog (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!.gitmodules"
+        - name: "direnv environment (no secrets \u2014 venv activation only)"
+          patterns:
+            - "!.envrc"
+            - "!.envrc.local"
+        - name: "Environment templates (NOT .env - keep secrets out!)"
+          patterns:
+            - "!.env.test"
             - "!.env.example"
+            - "!.env.template"
+        - name: "Member contents allowlist (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!flext-*/**"
+        - name: "WHITELIST: Contents Inside Allowed Directories"
+          patterns:
+            - "!docker/**"
+            - "!docs/**"
+            - "!examples/**"
+            - "!.github/**"
+            - "!src/**"
+            - "!tests/**"
+            - "!typings/**"
+            - "!libs/**"
+            - "!.vscode/**"
+            - "!.claude/**"
+            - "!.claude-plugin/**"
+        - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
+          patterns:
+            - ".claude/*"
+            - "!.agents/skills/"
+            - "!.agents/skills/**"
+        - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
+          patterns:
+            - ".agents/skills/*/report.json"
+        - name: "Aider AI data"
+          patterns:
+            - ".aider/"
+            - ".aider.conf.yml"
+            - ".aider.chat.history.md"
+            - "**/.aider/"
+        - name: "Other AI assistants"
+          patterns:
+            - ".cursor/"
+            - ".copilot/"
+            - ".codeium/"
+        - name: "Oracle dump files"
+          patterns:
+            - "**/*.dmp"
+            - "**/*.DMP"
+        - name: "Oracle logs"
+          patterns:
+            - "**/*.trc"
+            - "**/*.aud"
+        - name: "Oracle wallet files"
+          patterns:
+            - "**/cwallet.sso"
+            - "**/ewallet.p12"
+            - "**/tnsnames.ora"
+            - "**/sqlnet.ora"
+        - name: "Oracle test/reference data directories"
+          patterns:
+            - "**/oracle_data/"
+            - "**/oracle_dump/"
+            - "**/oracle_export/"
+            - "**/oracle_import/"
+            - "**/expdp_*/"
+            - "**/impdp_*/"
+        - name: "Python artifacts inside allowed directories"
+          patterns:
+            - "**/__pycache__/"
+            - "**/*.pyc"
+            - "**/*.pyo"
+            - "**/*.pyd"
+            - "**/*.so"
+            - "**/*.egg"
+            - "**/*.egg-info/"
+            - "**/dist/"
+            - "**/build/"
+            - "!scripts/cmd/build/"
+            - "**/.eggs/"
+        - name: "Skill validation temporary reports"
+          patterns:
+            - "baseline.json"
+            - "report.json"
+            - "fix-report.json"
+            - "*.rej"
+        - name: "Python caches inside allowed directories"
+          patterns:
+            - "**/.mypy_cache/"
+            - "**/.ruff_cache/"
+            - "**/.pytest_cache/"
+            - "**/.hypothesis/"
+            - "**/.tox/"
+            - "**/.nox/"
+            - "**/.benchmarks/"
+        - name: "Coverage reports inside allowed directories"
+          patterns:
+            - "**/htmlcov/"
+            - "**/.coverage"
+            - "**/coverage.json"
+            - "**/.coverage.*"
+            - "**/coverage.xml"
+            - "**/*.cover"
+        - name: "Virtual environments inside allowed directories (should never be committed)"
+          patterns:
+            - "**/.venv/"
+            - "**/venv/"
+            - "**/env/"
+            - "**/ENV/"
+            - "**/.virtualenv/"
+        - name: "Native build artifacts inside allowed directories"
+          patterns:
+            - "**/*.exe"
+            - "**/*.exe~"
+            - "**/*.dll"
+            - "**/*.dylib"
+            - "**/*.test"
+            - "**/*.out"
+            - "vendor/"
+        - name: "Node.js inside allowed directories"
+          patterns:
+            - "**/node_modules/"
+            - "**/npm-debug.log"
+            - "**/yarn-error.log"
+            - "**/.npm/"
+            - "**/.yarn/"
+        - name: "IDE and editor files inside allowed directories"
+          patterns:
+            - "**/.idea/"
+            - "**/*.iml"
+            - "**/.vscode/*.code-workspace"
+            - "**/.vscode/internal.invalid.json"
+            - "**/*.swp"
+            - "**/*.swo"
+            - "**/*~"
+            - "**/.*.sw?"
+        - name: "OS files inside allowed directories"
+          patterns:
+            - "**/.DS_Store"
+            - "**/Thumbs.db"
+            - "**/Desktop.ini"
+        - name: "Temporary and log files inside allowed directories"
+          patterns:
+            - "**/*.log"
+            - "**/*.tmp"
+            - "**/*.temp"
+            - "**/tmp/"
+            - "**/temp/"
+            - "**/.tmp/"
+        - name: "Build and quality tool artifacts inside allowed directories"
+          patterns:
+            - "**/.qlty/"
+            - "**/.meltano/"
+            - "**/.serena/"
+        - name: "Backup files inside allowed directories"
+          patterns:
+            - "**/*.bak"
+            - "**/*.bkp"
+            - "**/*.bkp?"
+            - "**/*.backup"
+            - "**/*.orig"
+            - "**/*_backup"
+            - "**/*_backup_*"
+            - "**/*.md.backup"
+            - "**/archived/"
+        - name: "Autofix rejection artifacts (run_skill_autofix.sh rollback output)"
+          patterns:
+            - "**/*.rej-*.bak"
+            - "**/*.rej-*.rej"
+        - name: "Database files inside allowed directories"
+          patterns:
+            - "**/*.db"
+            - "**/*.sqlite"
+            - "**/*.sqlite3"
+        - name: "Compiled files inside allowed directories"
+          patterns:
+            - "**/*.class"
+            - "**/*.o"
+            - "**/*.obj"
+            - "**/*.a"
+        - name: "Archive files inside allowed directories (usually shouldn't be in git)"
+          patterns:
+            - "**/*.zip"
+            - "**/*.tar"
+            - "**/*.tar.gz"
+            - "**/*.tgz"
+            - "**/*.rar"
+            - "**/*.7z"
+        - name: "Environment files with actual secrets"
+          patterns:
+            - ".env"
+            - ".internal.invalid"
+            - ".env.production"
+            - ".env.development"
+            - "**/.env"
+        - name: "Credentials and keys"
+          patterns:
             - "*.key"
             - "*.pem"
             - "*.p12"
             - "*.pfx"
-            - credentials.json
-            - secrets.yaml
-            - secrets.yml
-        - name: Editors and OS
+            - "credentials.json"
+            - "**/credentials.json"
+            - "secrets.yaml"
+            - "secrets.yml"
+            - "**/.credentials*"
+        - name: "ALLOW: Preserve Empty Directories"
           patterns:
-            [.idea/, "*.swp", "*.swo", "*~", .DS_Store, Thumbs.db, Desktop.ini]
-
+            - "!**/.gitkeep"
+        - name: "Ensure these are NEVER committed, even if explicitly added"
+          patterns:
+            - ".milvus/"
+            - ".claude-data/"
+            - ".devcontainer/.host-gitsettings"
+            - ".devcontainer/.env"
+            - ".github/*.rej"
+        - name: "--- workspace-migrate: required ignores (auto-managed) ---"
+          patterns:
+            - "!base.mk"
+        - name: "Beads/Dolt coordination state (superproject root only)"
+          profiles: [workspace-root]
+          patterns:
+            - "!.beads/"
+            - ".beads/*"
+            - ".beads/.*"
+            - "!.beads/config.yaml"
+            - ".beads/proxieddb/"
+            - ".dolt/"
+            - ".beads-credential-key"
+        - name: "FINAL BEADS TRACKING POLICY"
+          patterns:
+            - "*.db"
+            - ".worktrees/"
+            - "legado/"
+        - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
+          patterns:
+            - "*.tpl.rej"
+        - name: "--- workspace-sync: required ignores (auto-managed) ---"
+          patterns:
+            - ".direnv/"
+            - ".reports/"
+            - ".venv/"
+            - "__pycache__/"
+            - "base.mk"
+            - "!.pre-commit-config.yaml"
     templates:
       root: project
       entries:
@@ -487,6 +810,11 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
+          # mro-4x83.3: base/Makefile.j2 is the SINGLE owner of the generated
+          # Makefile for every profile, including workspace-root. The template
+          # renders the workspace-root orchestration (member gate fan-out via the
+          # generic `flext-infra workspace orchestrate` primitive) behind its own
+          # profile gate, so there is exactly one generator and no divergent copy.
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
@@ -1124,27 +1452,6 @@ Infra:
         package: false
         editable: false
         read_only: false
-        extra_verbs:
-          - { name: auth, default_what: all }
-          - { name: bead, default_what: all }
-          - { name: bootstrap, default_what: all }
-          - { name: charts, default_what: all }
-          - { name: converge, default_what: all }
-          - { name: done-check, default_what: all }
-          - { name: gitops, default_what: all }
-          - { name: incidente, default_what: all }
-          - { name: nodepool, default_what: all }
-          - { name: packages, default_what: all }
-          - { name: repair, default_what: all }
-          - { name: scaffold, default_what: all }
-          - { name: secret, default_what: all }
-          - { name: sync, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
-            - apps/cosmos-charts/scripts
-            - apps/cosmos-gitops/scripts
       - name: cosmos-charts
         distribution: cosmos-charts
         provider: datacosmos-br
@@ -1159,14 +1466,6 @@ Infra:
         package: true
         editable: true
         read_only: false
-        extra_verbs:
-          - { name: charts, default_what: all }
-          - { name: chart-release, default_what: all }
-          - { name: bead, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
       - name: cosmos-gitops
         distribution: cosmos-gitops
         provider: datacosmos-br
@@ -1181,26 +1480,6 @@ Infra:
         package: true
         editable: true
         read_only: false
-        extra_verbs:
-          - { name: gitops, default_what: all }
-          - { name: bead, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
-      - name: cosmos-old
-        distribution: cosmos-old
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-old.git
-        branch: main
-        path: apps/cosmos-old
-        role: content-only
-        state: content-only
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
       - name: cosmos-inventory
         distribution: cosmos-inventory
         provider: datacosmos-br
@@ -1209,6 +1488,7 @@ Infra:
         path: cosmos/inventory
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1222,6 +1502,7 @@ Infra:
         path: cosmos/automation
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1235,6 +1516,7 @@ Infra:
         path: cosmos/frontend
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1248,6 +1530,7 @@ Infra:
         path: cosmos/observability
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1261,6 +1544,7 @@ Infra:
         path: cosmos/templates
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1274,6 +1558,7 @@ Infra:
         path: cosmos/zabbix
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1287,6 +1572,7 @@ Infra:
         path: cosmos/monitoring
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1300,6 +1586,7 @@ Infra:
         path: cosmos/hook
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1313,6 +1600,7 @@ Infra:
         path: cosmos/sec-backend
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
@@ -1326,72 +1614,13 @@ Infra:
         path: cosmos/sec-frontend
         role: content-only
         state: content-only
+        profile: null
         checkout: submodule
         codegen: none
         package: false
         editable: false
         read_only: true
-      - name: ai-hub
-        distribution: ai-hub
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/ai-hub.git
-        branch: main
-        path: .
-        role: standalone
-        state: active
-        profile: standalone
-        checkout: independent
-        codegen: conform
-        package: true
-        editable: false
-        read_only: false
-      - name: algar-oud-mig
-        distribution: algar-oud-mig
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/algar-oud-mig.git
-        branch: 0.12.0-dev
-        path: .
-        role: standalone
-        state: active
-        profile: standalone
-        checkout: independent
-        codegen: conform
-        package: true
-        editable: false
-        read_only: false
-      - name: gruponos-meltano-native
-        distribution: gruponos-meltano-native
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/gruponos-meltano-native.git
-        branch: 0.12.0-dev
-        path: .
-        role: standalone
-        state: active
-        profile: standalone
-        checkout: independent
-        codegen: conform
-        package: true
-        editable: false
-        read_only: false
-      - name: cosmos-docgen
-        distribution: cosmos-docgen
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-docgen.git
-        branch: main
-        path: .
-        role: standalone
-        state: active
-        profile: standalone
-        checkout: independent
-        codegen: conform
-        package: true
-        editable: false
-        read_only: false
-
     workspaces:
       - name: flext
         repository: flext
-        manifest: config/workspace.yaml
-      - name: cosmos-main
-        repository: cosmos-main
         manifest: config/workspace.yaml

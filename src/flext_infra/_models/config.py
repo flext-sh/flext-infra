@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
@@ -63,6 +64,18 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        environment_path_prepends: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Extra directories the generated shell activation prepends "
+                    "to PATH when they exist. Installation data expressed as "
+                    "shell-expandable paths; empty by default so the engine "
+                    "never names a specific tool installation."
+                ),
+            ),
+        ] = ()
 
         @m.computed_field()
         @property
@@ -173,6 +186,30 @@ class FlextInfraConfigModels:
         )
         allow_help_declarations: bool = m.Field(description="Permit help declarations")
 
+    class CustomHandlerPolicyOverride(_ConfigContract):
+        """Per-profile relaxation of the strict custom-handler contract.
+
+        Every field is optional: a profile declares ONLY what it relaxes, so a
+        new permission added to the base policy propagates automatically
+        instead of having to be repeated in each profile.
+        """
+
+        allow_public_targets: bool | None = m.Field(
+            default=None, description="Permit public targets"
+        )
+        allow_generated_target_redefinition: bool | None = m.Field(
+            default=None, description="Permit generated target redefinition"
+        )
+        allow_toolchain_declarations: bool | None = m.Field(
+            default=None, description="Permit toolchain declarations"
+        )
+        allow_setup_declarations: bool | None = m.Field(
+            default=None, description="Permit setup declarations"
+        )
+        allow_help_declarations: bool | None = m.Field(
+            default=None, description="Permit help declarations"
+        )
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -193,6 +230,44 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
         ]
+        custom_handler_profile_overrides: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
+            m.Field(
+                default_factory=dict,
+                description="Per-profile overrides of the custom handler policy",
+            ),
+        ]
+
+        @m.computed_field()
+        @property
+        def custom_handler_policies(
+            self,
+        ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
+            """Effective custom-handler policy for every Make profile.
+
+            The base policy states the strictest contract (private handlers
+            only). A profile whose custom surface legitimately owns more --
+            a workspace root orchestrating its members -- declares only the
+            fields it relaxes, so the engine never has to know which project
+            it is conforming.
+            """
+            base = self.custom_handler_policy
+            overrides = self.custom_handler_profile_overrides
+            # Keys are normalised to the profile's string value: MakeProfile is a
+            # StrEnum, so a raw YAML key and its enum member must land on the SAME
+            # entry. Mixing both would make a lookup silently miss and fall back to
+            # the strict base policy.
+            return {
+                str(profile): (
+                    base.model_copy(update=override.model_dump(exclude_none=True))
+                    if (override := overrides.get(str(profile)))
+                    else base
+                )
+                for profile in (
+                    *overrides,
+                    *FlextInfraConstantsCodegenProject.MakeProfile,
+                )
+            }
 
     class ManagedFileSpec(_ConfigContract):
         """One versioned file owned by codegen."""
@@ -308,6 +383,19 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Ignored path patterns"),
         ]
+        profiles: Annotated[
+            tuple[FlextInfraConstantsCodegenProject.MakeProfile, ...],
+            m.Field(
+                description=(
+                    "Make profiles this section applies to; empty means every "
+                    "profile (universal). Sections that only make sense at the "
+                    "superproject root (member-directory allowlists, workspace "
+                    "manifest, submodule/Beads coordination) declare "
+                    "[workspace-root] so members and standalone projects never "
+                    "receive the phantom entries."
+                )
+            ),
+        ] = ()
 
     class ScaffoldSpec(_ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
@@ -504,6 +592,18 @@ class FlextInfraConfigModels:
         ]
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+
+        @m.computed_field()
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name.
+
+            Mirrors each project's own ``SettingsConfigDict(env_prefix=...)`` so
+            the generated ``.env.example`` documents the real runtime variable
+            (``flext-grpc`` -> ``FLEXT_GRPC_``) without a per-project overlay.
+            """
+            return f"{self.dist.upper().replace('-', '_')}_"
+
         const_name: Annotated[
             t.NonEmptyStr, m.Field(description="Configured constant project name")
         ]
@@ -594,6 +694,13 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
+        makefile_custom_include: Annotated[
+            str,
+            m.Field(
+                min_length=1,
+                description=("Make directive that includes the custom Make surface"),
+            ),
+        ]
         workspace_manifest_version: Annotated[
             int,
             m.Field(
@@ -630,6 +737,23 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "Gate verbs a workspace-root Makefile fans out across members "
+                    "through the generic workspace orchestrate primitive"
+                )
+            ),
+        ] = ()
+        workspace_cli_group: Annotated[
+            str,
+            m.Field(
+                description=(
+                    "CLI group name for the flext-infra workspace orchestrate route"
+                )
+            ),
+        ] = ""
 
     class WorkspaceExclusionSpec(_ConfigContract):
         """One explicitly rejected workspace path and its reason."""
@@ -802,33 +926,48 @@ class FlextInfraConfigModels:
         def gitignore_sections(
             self,
         ) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
-            """Derived canonical ``.gitignore`` sections (SSOT first, deduplicated)."""
+            """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
+
+            Ignore files are order-sensitive: a pattern placed before a
+            catch-all such as ``/*`` is dead, and a directory ignored before
+            its own ``!`` negation is never re-allowed. The declared sections
+            are therefore emitted in their declared order, and derived artifact
+            patterns are appended -- never prepended -- so a whitelist policy
+            expressed in the SSOT survives the projection intact.
+            """
             scaffold_sections = self.scaffold.gitignore_sections
-            first = scaffold_sections[0]
-            merged: t.MutableSequenceOf[str] = list(self.gitignore_artifact_patterns)
-            seen = set(merged)
-            for pattern in first.patterns:
-                if pattern not in seen:
-                    seen.add(pattern)
-                    merged.append(pattern)
+            # A declared section may already govern a derived artifact, in
+            # either direction: a whitelist re-allows `.agents/` with `!`, so
+            # appending a bare `.agents/` ignore would contradict the declared
+            # policy. Only artifacts the SSOT never mentions are appended.
+            governed = {
+                pattern.lstrip("!")
+                for section in scaffold_sections
+                for pattern in section.patterns
+            }
+            derived: t.MutableSequenceOf[str] = []
+            for pattern in self.gitignore_artifact_patterns:
+                if pattern not in governed and pattern not in derived:
+                    derived.append(pattern)
             sections: t.MutableSequenceOf[
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
-            ] = [
-                FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
-                    name=first.name, patterns=tuple(merged)
-                )
-            ]
-            for section in scaffold_sections[1:]:
-                patterns = tuple(
-                    pattern for pattern in section.patterns if pattern not in seen
-                )
-                seen.update(patterns)
-                if patterns:
-                    sections.append(
-                        FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
-                            name=section.name, patterns=patterns
-                        )
+            ] = []
+            # Declared sections are emitted verbatim. Cross-section dedup is
+            # unsound for ignore files: repeating `.beads/*` after an
+            # intervening `!.beads/` is what keeps the directory scanned, so
+            # dropping the repeat silently un-ignores its contents.
+            sections.extend(scaffold_sections)
+            # Derived artifacts are appended as their own trailing section: an
+            # ignore file is evaluated in order, so injecting them into the
+            # first section would place them before any `!` negation the policy
+            # declares later and silently un-ignore governed paths.
+            if derived:
+                sections.append(
+                    FlextInfraConfigModels.ScaffoldGitignoreSectionSpec(
+                        name=FlextInfraConstantsSharedInfra.GITIGNORE_DERIVED_SECTION_NAME,
+                        patterns=tuple(derived),
                     )
+                )
             return tuple(sections)
 
         @m.computed_field()

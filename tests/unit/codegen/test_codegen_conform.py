@@ -565,15 +565,22 @@ class TestScriptDispatchMakefile:
         extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
+        # mro-4gbp: the engine is consumer-agnostic, so this fixture models a
+        # neutral downstream root and takes its provider from the engine's own
+        # configured provider catalog instead of naming a real consumer.
+        provider = config.Infra.codegen.providers[0]
         root_repository = m.Infra.RepositoryRef(
-            name="cosmos-demo",
-            distribution="cosmos-demo",
-            url="https://github.com/datacosmos-br/cosmos-demo.git",
-            branch="main",
+            name="demo-root",
+            distribution="demo-root",
+            url=f"{provider.base_url}/demo-root.git",
+            branch=provider.branch,
             path=Path(),
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            provider="datacosmos-br",
-            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            # mro-9v0d: the workspace root Makefile has a dedicated generator,
+            # so the generic template entry serves standalone/member profiles.
+            # Script dispatch is a generic capability: exercise it on standalone.
+            role=c.Infra.RepositoryRole.STANDALONE,
+            provider=provider.name,
+            profile=c.Infra.MakeProfile.STANDALONE,
             checkout=c.Infra.CheckoutKind.ROOT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=False,
@@ -584,30 +591,30 @@ class TestScriptDispatchMakefile:
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="cosmos-demo",
+            name="demo-root",
             repository=root_repository,
             project=m.Infra.ProjectSpec(
-                package_name="cosmos_demo",
-                class_stem="CosmosDemo",
-                namespace="CosmosDemo",
-                constant_name="cosmos-demo",
-                namespace_attribute="cosmos_demo",
-                alias="cosmos_demo",
-                environment_prefix="COSMOS_",
-                description="Cosmos workspace",
+                package_name="demo_root",
+                class_stem="DemoRoot",
+                namespace="DemoRoot",
+                constant_name="demo-root",
+                namespace_attribute="demo_root",
+                alias="demo_root",
+                environment_prefix="DEMO_",
+                description="Demo workspace",
                 version="0.2.0",
                 license="MIT",
-                author_name="Datacosmos",
-                author_email="devops@datacosmos.com.br",
+                author_name="Demo",
+                author_email="devops@example.com",
                 upstream="flext_cli",
-                homepage="https://github.com/datacosmos-br/cosmos-demo",
-                documentation="https://github.com/datacosmos-br/cosmos-demo",
+                homepage=f"{provider.base_url}/demo-root",
+                documentation=f"{provider.base_url}/demo-root",
                 workspace_root_rel=".",
                 year=2026,
             ),
             members=(),
         )
-        root = tmp_path / "cosmos-demo"
+        root = tmp_path / "demo-root"
         request = m.Infra.CodegenConformRequest(
             root=root,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -635,7 +642,7 @@ class TestScriptDispatchMakefile:
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
                 dispatcher="scripts/dispatch.py",
-                roots=("scripts", "apps/cosmos-charts/scripts"),
+                roots=("scripts", "apps/demo-app/scripts"),
             ),
         )
         # Extra verbs are public targets the dispatcher can reach.
@@ -646,7 +653,7 @@ class TestScriptDispatchMakefile:
         # It forwards to the declared dispatcher through uv, not a raw builtin.
         tm.that("scripts/dispatch.py" in rendered, eq=True)
         # Existence check spans every declared script root.
-        tm.that("apps/cosmos-charts/scripts" in rendered, eq=True)
+        tm.that("apps/demo-app/scripts" in rendered, eq=True)
         # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
         # command must continue with a trailing backslash. A blank/unterminated
         # line splits the recipe, drops $$what/$$builtin, and recurses into the
@@ -669,34 +676,10 @@ class TestScriptDispatchMakefile:
         # The canonical builtin dispatch is preserved verbatim.
         tm.that('*) $(MAKE) --no-print-directory "$$custom"' in rendered, eq=True)
 
-    def test_public_config_loads_cosmos_charts_and_gitops_script_dispatch(self) -> None:
-        """Public typed config declares cosmos-charts and cosmos-gitops verbs."""
-        repositories = {repo.name: repo for repo in config.Infra.codegen.repositories}
-        charts = repositories["cosmos-charts"]
-        gitops = repositories["cosmos-gitops"]
-
-        tm.that(
-            tuple(verb.name for verb in charts.extra_verbs),
-            eq=("charts", "chart-release", "bead"),
-        )
-        tm.that(tuple(verb.name for verb in gitops.extra_verbs), eq=("gitops", "bead"))
-        tm.that(
-            {verb.name: verb.default_what for verb in charts.extra_verbs},
-            eq={"charts": "all", "chart-release": "all", "bead": "all"},
-        )
-        tm.that(
-            {verb.name: verb.default_what for verb in gitops.extra_verbs},
-            eq={"gitops": "all", "bead": "all"},
-        )
-        tm.that(charts.script_dispatch is not None, eq=True)
-        tm.that(gitops.script_dispatch is not None, eq=True)
-        assert charts.script_dispatch is not None
-        assert gitops.script_dispatch is not None
-        tm.that(charts.script_dispatch.dispatcher, eq="scripts/dispatch.py")
-        tm.that(gitops.script_dispatch.dispatcher, eq="scripts/dispatch.py")
-        tm.that(charts.script_dispatch.roots, eq=("scripts",))
-        tm.that(gitops.script_dispatch.roots, eq=("scripts",))
-
+    # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
+    # engine's catalog was removed. The engine is consumer-agnostic: a consumer
+    # declares extra_verbs/script_dispatch in its OWN config/workspace.yaml. The
+    # generic capability stays covered by the fixture-driven cases below.
     def test_script_dispatch_adds_scripts_to_lint_and_type_paths(
         self, tmp_path: Path
     ) -> None:

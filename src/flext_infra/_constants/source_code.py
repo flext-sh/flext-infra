@@ -541,6 +541,11 @@ class FlextInfraConstantsSourceCode:
         re.compile(r"^FAILED\s"),
     )
     "Regex patterns for identifying error lines in logs."
+    LOG_MAKE_CHILD_EXIT_PATTERN: Final[t.RegexPattern] = re.compile(
+        r"^make(?:\[\d+\])?: \*\*\* .*? Error (?P<code>\d+)", re.MULTILINE
+    )
+    "GNU make always exits 2 on a failed recipe but reports the recipe's real"
+    " exit code in its error line; this pattern recovers the child's code."
     LOG_NOISE_PATTERNS: Final[tuple[t.RegexPattern, ...]] = (
         re.compile(r"^make\["),
         re.compile(r"warning:\s+(overriding|ignoring)"),

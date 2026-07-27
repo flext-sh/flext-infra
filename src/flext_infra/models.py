@@ -46,7 +46,7 @@ class FlextInfraModels(m):
         FlextInfraModelsCodegen,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
-        # NOTE (multi-agent, cosmos-main-15bi): enforcement/transformers model
+        # NOTE (multi-agent): enforcement/transformers model
         # facades added for the deep-FLEXT dataclass -> m.Infra migration.
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,

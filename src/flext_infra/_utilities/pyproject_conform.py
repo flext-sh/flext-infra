@@ -48,6 +48,7 @@ class FlextInfraUtilitiesPyprojectConform:
             repositories=repositories,
             workspace=workspace,
             canonicalize_all=True,
+            project_name=project_name,
         )
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
@@ -97,6 +98,7 @@ class FlextInfraUtilitiesPyprojectConform:
             repositories=repositories,
             workspace=workspace,
             canonicalize_all=False,
+            project_name=project_name,
         )
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
@@ -125,6 +127,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
         canonicalize_all: bool,
+        project_name: str,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
         available = (
@@ -133,12 +136,21 @@ class FlextInfraUtilitiesPyprojectConform:
             *workspace.members,
             *workspace.content_only,
         )
+        # An attached workspace member resolves through [tool.uv.sources]
+        # workspace=true, so a git specifier would be a second, contradictory
+        # source that uv silently overrides (mro-sw2l.1).
+        attached = (
+            frozenset(member.distribution for member in workspace.members)
+            if cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            else frozenset()
+        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
             canonicalize_all=canonicalize_all,
+            attached=attached,
         )
         if normalized.failure:
             return normalized
@@ -155,6 +167,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     group_name,
                     repositories=available,
                     canonicalize_all=canonicalize_all,
+                    attached=attached,
                 )
                 if group_result.failure:
                     return group_result
@@ -168,6 +181,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         canonicalize_all: bool,
+        attached: frozenset[str],
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
         raw_value = u.Cli.toml_value(container, key)
@@ -180,7 +194,9 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].fail_op(f"validate dependency group {key}", exc)
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
-            normalized = cls._canonical_requirement(item, repositories=repositories)
+            normalized = cls._canonical_requirement(
+                item, repositories=repositories, attached=attached
+            )
             if normalized.failure:
                 return r[bool].fail(
                     normalized.error or f"normalize dependency group {key} failed"
@@ -196,17 +212,28 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _canonical_requirement(
-        cls, requirement: str, *, repositories: t.SequenceOf[p.Infra.RepositoryRef]
+        cls,
+        requirement: str,
+        *,
+        repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
+        # Attached members resolve through [tool.uv.sources] workspace=true, so
+        # the head (name plus extras) is emitted without a git source.
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
+        marker_text = marker.strip()
+        if dependency_name in attached:
+            return r[str].ok(
+                f"{head}; {marker_text}" if separator and marker_text else head
+            )
         reference_result = cls._repository_reference(
             dependency_name, repositories=repositories
         )

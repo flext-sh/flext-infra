@@ -46,10 +46,9 @@ class FlextInfraConstantsCodegen(
         ("utilities.py", "Utilities", "FlextTestsUtilities", "Test utilities"),
     )
     "Base module definitions for tests/: (filename, class_suffix, base_class, docstring)."
-    # mro-wkii.14 (agent: codegen) — par raiz config/settings (padrao cosmos-main:
-    # modulo privado `_config.py`/`_settings.py` exportando o singleton). Consumido
-    # pelo gerador de scaffold (mro-wkii.10); base flext-core em estabilizacao por
-    # outro agente — nao tocar runtime config/settings aqui.
+    # mro-wkii.14 (agent: codegen) — canonical root config/settings pair: a
+    # private `_config.py`/`_settings.py` module exporting the singleton.
+    # Consumed by the scaffold generator (mro-wkii.10).
     RUNTIME_MODULES: Final[t.VariadicTuple[t.Quad[str, str, str, str]]] = (
         ("_config.py", "Config", "FlextConfig", "Runtime config"),
         ("_settings.py", "Settings", "FlextSettings", "Runtime settings"),

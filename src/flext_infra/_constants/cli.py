@@ -86,6 +86,7 @@ class FlextInfraConstantsCli:
         "deps:extra-paths",
         "deps:modernize",
         "refactor:accessor-migrate",
+        "refactor:apply-renames",
         "refactor:migrate-mro",
         "refactor:modernize-cli",
         "refactor:modernize-logging",

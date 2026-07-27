@@ -15,6 +15,7 @@ from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
 from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
 )
+from flext_infra._models.refactor_renames import FlextInfraModelsRefactorRenames
 from flext_infra._models.refactor_violations import FlextInfraModelsRefactorViolations
 
 
@@ -22,6 +23,7 @@ class FlextInfraModelsRefactor(
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorCensus,
+    FlextInfraModelsRefactorRenames,
     FlextInfraModelsRefactorViolations,
 ):
     """Models for refactor workflows and related tools.
@@ -200,7 +202,7 @@ class FlextInfraModelsRefactor(
             m.Field(description="Family letter to MRO chain mapping"),
         ]
 
-    # NOTE (multi-agent, cosmos-main-15bi): the two models below replace the
+    # NOTE (multi-agent): the two models below replace the
     # dataclass payloads that lived in refactor/_wrapper_rewrite.py and
     # refactor/classvar_constant_autofix.py (deep-FLEXT: models only in m).
     class WrapperRewriteAccumulator(m.ArbitraryTypesModel):
