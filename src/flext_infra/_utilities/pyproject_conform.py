@@ -62,8 +62,8 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         sources_result = cls._sync_uv_sources(
             source,
-            project_name=project_name,
             repositories=repositories,
+            project_name=project_name,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
             exclude_dependencies=uv_exclude_dependencies,
@@ -130,8 +130,8 @@ class FlextInfraUtilitiesPyprojectConform:
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
                 source,
-                project_name=project_name,
                 repositories=repositories,
+                project_name=project_name,
                 workspace=workspace,
             )
         )
@@ -260,8 +260,6 @@ class FlextInfraUtilitiesPyprojectConform:
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
-        # Attached members resolve through [tool.uv.sources] workspace=true, so
-        # the head (name plus extras) is emitted without a git source.
         requirement_part, separator, marker = requirement.partition(";")
         head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part.strip())
         if head_match is None:
@@ -280,15 +278,17 @@ class FlextInfraUtilitiesPyprojectConform:
                 reference_result.error
                 or f"repository resolution failed: {dependency_name}"
             )
-        url_result = cls._git_requirement_url(reference_result.value.url)
+        reference = reference_result.value
+        url_result = cls._git_requirement_url(reference.url)
         if url_result.failure:
             return r[str].fail(
                 url_result.error or f"Git URL normalization failed: {dependency_name}"
             )
-        canonical = f"{head} @ {url_result.value}@{reference_result.value.branch}"
-        marker_text = marker.strip()
+        canonical = f"{head} @ {url_result.value}@{reference.branch}"
         return r[str].ok(
-            f"{canonical}; {marker_text}" if separator and marker_text else canonical
+            f"{canonical}; {marker_text}"
+            if separator and marker_text
+            else canonical
         )
 
     @staticmethod
@@ -468,8 +468,8 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
-        project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
@@ -484,22 +484,15 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
+        u.Cli.toml_remove_key_if_present(uv, "required-version")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(
@@ -535,21 +528,11 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_remove_key_if_present(tool, "uv")
             return r[bool].ok(True)
         workspace_names = {member.distribution for member in workspace.members}
-        repository_sources = {
-            repository.distribution: {
-                "git": repository.url,
-                "branch": repository.branch,
-            }
-            for repository in repositories
-            if repository.distribution != project_name
-            and repository.distribution not in workspace_names
-        }
         for source_name in tuple(sources):
             # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
             if source_name.startswith("flext-") and (
-                not workspace_root
-                or source_name not in workspace_names | repository_sources.keys()
+                not workspace_root or source_name not in workspace_names
             ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
@@ -557,8 +540,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_mapping_table(
                     sources, member.distribution, {"workspace": True}
                 )
-            for distribution, source in repository_sources.items():
-                u.Cli.toml_sync_mapping_table(sources, distribution, source)
         elif not tuple(sources):
             u.Cli.toml_remove_key_if_present(uv, "sources")
         if not workspace_root and not tuple(uv):
@@ -572,8 +553,7 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
-        """Resolve the exact root source map from typed workspace metadata."""
-        member_names = {member.distribution for member in workspace.members}
+        """Resolve the workspace source overlay from typed metadata."""
         candidates = (
             *repositories,
             workspace.repository,
@@ -586,30 +566,9 @@ class FlextInfraUtilitiesPyprojectConform:
             )
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
-        resolved: dict[str, dict[str, t.JsonValue]] = {
+        return r.ok({
             member.distribution: {"workspace": True} for member in workspace.members
-        }
-        seen: set[str] = set()
-        for repository in repositories:
-            distribution = repository.distribution
-            if distribution in seen:
-                continue
-            seen.add(distribution)
-            reference_result = cls._repository_reference(
-                distribution, repositories=candidates
-            )
-            if reference_result.failure:
-                return r.fail(reference_result.error or "repository resolution failed")
-            reference = reference_result.value
-            if (
-                not reference.package
-                or not distribution.startswith("flext-")
-                or distribution == workspace.repository.distribution
-                or distribution in member_names
-            ):
-                continue
-            resolved[distribution] = {"git": reference.url, "branch": reference.branch}
-        return r.ok(resolved)
+        })
 
     @staticmethod
     def _validate_root_uv_sources(

@@ -107,3 +107,50 @@ workspace = true
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=[member.distribution])
+
+    def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
+        workspace = _workspace()
+        toolchain = m.Infra.ToolchainSpec(
+            python_version="3.13.11",
+            uv_version="0.11.28",
+            uv_link_mode="copy",
+            kubectl_version="1.32.0",
+            helm_version="3.19.4",
+            kind_version="0.31.0",
+        )
+        source = """[project]
+name = "external-consumer"
+dependencies = ["flext-core @ ../flext-core", "requests>=2"]
+
+[tool.uv]
+required-version = "==0.11.28"
+"""
+        first = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=toolchain,
+            )
+        )
+        second = tm.ok(
+            u.Infra.pyproject_conform(
+                first,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                toolchain=toolchain,
+            )
+        )
+        document = tomllib.loads(first)
+        tm.that(second, eq=first)
+        tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
+        tm.that("required-version" not in document["tool"]["uv"], eq=True)
+        tm.that(
+            document["project"]["dependencies"][0],
+            eq=(
+                f"{workspace.members[0].distribution} @ "
+                f"git+{workspace.members[0].url}@{workspace.members[0].branch}"
+            ),
+        )

@@ -161,3 +161,23 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+
+        for required in (
+            "UV ?= uv",
+            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            "--no-install-project",
+            '--editable "$(PROJECT_ROOT)"',
+            "git submodule update --init --recursive",
+            'test -z "$$(git status --porcelain)"',
+            'test "$$(git rev-parse HEAD)" = "$$sha1"',
+            'refs/heads/$(SETUP_BRANCH)',
+        ):
+            tm.that(makefile, has=required)
+        for forbidden in ("mise exec -- uv", "uv@", "WHAT=environment"):
+            tm.that(makefile, lacks=forbidden)

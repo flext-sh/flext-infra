@@ -60,7 +60,7 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
-MISE := $(shell command -v mise 2>/dev/null)
+SETUP_BRANCH := $(shell git -C "$(PROJECT_ROOT)" rev-parse --abbrev-ref HEAD 2>/dev/null)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -74,13 +74,6 @@ else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
-
-# Workspace-root gate verbs fan out across declared members through the generic
-# `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
-# from the constants SSOT, never hardcoded here). Members and standalone projects
-# run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
-ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
 # Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
@@ -193,6 +186,28 @@ define _run_for_selected_projects
 	done
 endef
 
+define _setup_submodules
+	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
+		printf 'ERROR: setup requires a named git branch\n' >&2; exit 1; }
+	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		test -z "$$(git status --porcelain)" || { \
+			echo "ERROR: $$sm_path has uncommitted work"; exit 1; }; \
+		test "$$(git rev-parse HEAD)" = "$$sha1" || { \
+			echo "ERROR: $$sm_path is not at the recorded gitlink"; exit 1; }'
+	@git -C "$(PROJECT_ROOT)" submodule update --init --recursive
+	@git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		current=$$(git rev-parse --abbrev-ref HEAD); \
+		if test "$$current" = "$(SETUP_BRANCH)"; then \
+			:; \
+		elif git show-ref --verify --quiet "refs/heads/$(SETUP_BRANCH)"; then \
+			test "$$(git rev-parse "refs/heads/$(SETUP_BRANCH)")" = "$$sha1" || { \
+				echo "ERROR: $$sm_path branch $(SETUP_BRANCH) diverges from the recorded gitlink"; exit 1; }; \
+			git checkout --quiet "$(SETUP_BRANCH)"; \
+		else \
+			git checkout --quiet -b "$(SETUP_BRANCH)"; \
+		fi'
+endef
+
 .PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
 
 $(filter-out setup,$(PUBLIC_VERBS)):
@@ -200,22 +215,7 @@ $(filter-out setup,$(PUBLIC_VERBS)):
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-{% if make_profile == "workspace-root" %}
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
-	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
-	done
-	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
-{% elif make_profile == "workspace-member" %}
-ifeq ($(ATTACHED_MEMBER),Y)
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup
-else
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-endif
-{% else %}
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-{% endif %}
+	@$(MAKE) --no-print-directory _builtin_setup_environment
 
 _builtin_help_usage:
 	@printf '%s\n' '{{ dist }} [{{ make_profile }}]' ''
@@ -273,23 +273,28 @@ _builtin_require_environment:
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
-	@uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		uv pip install --python "$(UV_PROJECT_ENVIRONMENT)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@uv pip check --python "$(UV_PROJECT_ENVIRONMENT)"
+	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
+_builtin_setup_environment:
+	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup
 else
 _builtin_setup_environment: _builtin_setup_submodules
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
-	@uv sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS)
+	@$(UV) venv --clear "$(RUNTIME_VENV)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
+	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
