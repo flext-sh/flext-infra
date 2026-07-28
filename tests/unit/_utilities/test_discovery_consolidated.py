@@ -61,7 +61,10 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="root-workspace"\nversion="0.1.0"\n', encoding="utf-8"
+            '[project]\nname="root-workspace"\nversion="0.1.0"\n'
+            "\n[tool.flext.workspace]\n"
+            f'members = ["../{sibling_name}"]\n',
+            encoding="utf-8",
         )
         external = tmp_path / sibling_name
         (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(parents=True)
@@ -72,7 +75,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             encoding="utf-8",
         )
 
-        roots = u.Infra.discover_project_roots(workspace)
+        roots = u.Infra.discover_project_roots(workspace, include_attached=True)
 
         tm.that(roots, has=external.resolve())
 
@@ -83,7 +86,10 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="root-workspace"\nversion="0.1.0"\n', encoding="utf-8"
+            '[project]\nname="root-workspace"\nversion="0.1.0"\n'
+            "\n[tool.flext.workspace]\n"
+            'members = ["../accessible-neighbour", "../inaccessible-neighbour"]\n',
+            encoding="utf-8",
         )
         accessible = tmp_path / "accessible-neighbour"
         (accessible / c.Infra.DEFAULT_SRC_DIR / "accessible_neighbour").mkdir(
@@ -107,19 +113,8 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         monkeypatch.setattr(Path, "is_file", _is_file)
 
-        with u.structlog().testing.capture_logs() as log_entries:
-            roots = u.Infra.discover_project_roots(workspace)
-
-        tm.that(roots, has=accessible.resolve())
-        tm.that(roots, lacks=inaccessible.resolve())
-        candidate_records = [
-            record
-            for record in log_entries
-            if record.get("event") == "project_discovery_candidate_inaccessible"
-        ]
-        tm.that(len(candidate_records), eq=1)
-        tm.that(candidate_records[0].get("candidate"), eq=str(inaccessible))
-        tm.that(candidate_records[0].get("log_level"), eq="info")
+        with pytest.raises(PermissionError, match="inaccessible-neighbour"):
+            u.Infra.discover_project_roots(workspace, include_attached=True)
 
     def test_discover_project_roots_prefers_tool_flext_workspace_members(
         self, tmp_path: Path
@@ -324,7 +319,10 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='root-workspace'\n", encoding="utf-8"
+            "[project]\nname='root-workspace'\n"
+            "\n[tool.flext.workspace]\n"
+            f"members = ['../{sibling_name}']\n",
+            encoding="utf-8",
         )
         external = tmp_path / sibling_name
         (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_data").mkdir(parents=True)

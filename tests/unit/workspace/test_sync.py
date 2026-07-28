@@ -219,13 +219,12 @@ class TestsFlextInfraWorkspaceSync:
         )
         tm.that(
             search_paths,
-            eq=list(
+            eq=tuple(
                 config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]
             ),
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""

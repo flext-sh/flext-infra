@@ -13,10 +13,9 @@ from flext_tests import tm
 class TestWorkspaceCheckerResolveGates:
     """Test FlextInfraWorkspaceChecker.resolve_gates."""
 
-    def test_resolve_gates_type_maps_to_pyrefly(self) -> None:
+    def test_resolve_gates_type_is_rejected(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["type"])
-        tm.ok(result)
-        tm.that(result.value, has="pyrefly")
+        tm.fail(result, has="unknown gate")
 
     def test_resolve_gates_skips_empty_strings(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "format"])
@@ -41,7 +40,7 @@ class TestWorkspaceCheckerResolveGates:
         gates = [
             "lint",
             "format",
-            "type",
+            "pyrefly",
             "mypy",
             "pyright",
             "silent-failure",

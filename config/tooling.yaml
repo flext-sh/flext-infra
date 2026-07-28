@@ -343,10 +343,11 @@ Infra:
           project-venv-path: ..
           venv-name: .venv
       coverage:
+        source: [src]
         fail-under:
           core: 45
           domain: 30
-          platform: 25
+          platform: 45
           integration: 20
           app: 15
         show-missing: true
@@ -557,6 +558,7 @@ Infra:
         - docker.py
         - domains.py
         - exceptions.py
+        - environment.py
         - files.py
         - handlers.py
         - helpers.py
@@ -579,6 +581,7 @@ Infra:
         - typings.py
         - utilities.py
         - validator.py
+        - worktree.py
       public-file-aliases:
         base.py: s
         constants.py: c

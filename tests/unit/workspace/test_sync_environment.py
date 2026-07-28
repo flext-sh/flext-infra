@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, c, config
 from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
@@ -30,7 +29,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
                 f'name = "{name}"\n'
                 'version = "0.1.0"\n'
                 'description = "Demo project"\n'
-                'requires-python = ">=3.13"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             ),
             encoding="utf-8",
         )

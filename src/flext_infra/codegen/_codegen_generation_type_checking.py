@@ -142,12 +142,25 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 )
             )
         deduped_parts = tuple(dict.fromkeys(parts))
-        if deduped_parts:
+        combined_parts = tuple(
+            part
+            for part in deduped_parts
+            if " as " not in part or len(set(part.split(" as ", maxsplit=1))) > 1
+        )
+        if combined_parts:
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
-                    "    ", mod, deduped_parts
+                    "    ", mod, combined_parts
                 )
             )
+        for part in deduped_parts:
+            source_name, separator, target_name = part.partition(" as ")
+            if separator and source_name == target_name:
+                lines.extend(
+                    FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
+                        "    ", mod, (part,)
+                    )
+                )
         lines.extend(type_aliases)
 
     @staticmethod

@@ -1190,6 +1190,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                project_selection_conflict_error=(
+                    c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                ),
                 workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                     repository, workspace
                 ),
@@ -1294,6 +1297,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                project_selection_conflict_error=(
+                    c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                ),
                 workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
                     repository, workspace
                 ),

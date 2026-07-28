@@ -75,7 +75,8 @@ class FlextInfraCodegenGenerationStandardMixin(
                 for export_name, imported_name in sorted(eager_groups[module])
                 if imported_name
             )
-            eager_lines.extend(cls._format_import("", rendered_module, parts))
+            for part in parts:
+                eager_lines.extend(cls._format_import("", rendered_module, (part,)))
             previous_top = top
         if lines and eager_lines:
             lines.append("")

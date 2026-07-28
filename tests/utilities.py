@@ -568,7 +568,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 _write(
                     project / f"src/{pkg_name}/__init__.py",
-                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n__all__ = ["hello"]\n',
+                    '"""Documentation fixture package."""\n\n'
+                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n'
+                    '__all__ = ["hello"]\n',
                 )
                 _write(project / "README.md", f"# {name}\n")
                 _write(project / "docs/README.md", "# Project Docs\n")
@@ -978,6 +980,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
             path.chmod(0o755)
+
+        @staticmethod
+        def run_isolated_make(
+            args: t.StrSequence, *, cwd: Path
+        ) -> p.Result[p.Cli.CommandOutput]:
+            """Run Make without selectors or recursion state inherited from pytest."""
+            return cli_facade.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
 
         @staticmethod
         def create_migrator_dir_layout(

@@ -82,10 +82,14 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type"])
+        result = FlextInfraWorkspaceChecker.resolve_gates([
+            "lint",
+            "pyrefly",
+            "mypy",
+            "pyright",
+        ])
         tm.ok(result)
-        tm.that(result.value, has="lint")
-        tm.that(result.value, has="pyrefly")
+        tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
     def test_resolve_gates_deduplicates(self) -> None:
         """Test that resolve_gates removes duplicate gate names."""

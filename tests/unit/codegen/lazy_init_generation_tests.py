@@ -122,12 +122,12 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             content,
             contains=(
-                "from ._settings import FlextCliSettings as FlextCliSettings, "
-                "settings as settings"
+                "from ._settings import FlextCliSettings as FlextCliSettings\n"
+                "    from ._settings import settings as settings"
             ),
         )
         tm.that(content, lacks="from flext_cli._settings import")
-        tm.that(content, lacks="_ = (FlextCliSettings, settings)")
+        tm.that(content, lacks="    _ = (")
 
     def test_non_root_package_uses_empty_initializer(self) -> None:
         """Subpackages never publish implementation classes or import siblings."""

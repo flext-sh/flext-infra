@@ -29,7 +29,7 @@ from flext_tests import tm
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _make_surfaces() -> tuple[Path, ...]:

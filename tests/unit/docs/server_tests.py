@@ -78,9 +78,9 @@ class TestsFlextInfraDocServer:
             tm.that(str(server.output_dir), eq=c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
 
     class TestServeUtility:
-        """u.Infra.docs_serve_mkdocs degrades to a SKIP report without mkdocs.yml."""
+        """u.Infra.docs_serve_mkdocs fails loud without mkdocs.yml."""
 
-        def test_serve_scope_without_mkdocs_yml_returns_skip(
+        def test_serve_scope_without_mkdocs_yml_returns_failure(
             self, tmp_path: Path
         ) -> None:
             scope = m.Infra.DocScope(
@@ -92,5 +92,5 @@ class TestsFlextInfraDocServer:
             )
 
             tm.that(report.phase, eq="serve")
-            tm.that(report.result, eq="SKIP")
-            tm.that(report.passed, eq=True)
+            tm.that(report.result, eq=c.Infra.ResultStatus.FAIL)
+            tm.that(report.passed, eq=False)

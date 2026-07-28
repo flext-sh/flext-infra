@@ -102,6 +102,10 @@ class TestsDocsCli:
         )
 
         build_workspace = u.Tests.create_docs_workspace(tmp_path / "build-root")
+        (build_workspace / "mkdocs.yml").write_text(
+            "site_name: FLEXT docs\ndocs_dir: docs\nexclude_docs: |\n  README.md\n",
+            encoding="utf-8",
+        )
         tm.that(
             infra_main(["docs", "build", "--workspace", str(build_workspace)]), eq=0
         )

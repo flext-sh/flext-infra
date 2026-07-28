@@ -78,8 +78,9 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_external_workspace() -> No
 
 def test_toolchain_rejects_exact_patch_selectors() -> None:
     """Keep runtime selectors on compatible major.minor release lines."""
-    payload = config.Infra.codegen.toolchain.model_dump()
-    payload["python_version"] = "3.13.11"
+    toolchain = config.Infra.codegen.toolchain
+    payload = toolchain.model_dump()
+    payload["python_version"] = f"{toolchain.python_version}.0"
 
     with pytest.raises(ValueError, match="python_version"):
         m.Infra.ToolchainSpec.model_validate(payload)

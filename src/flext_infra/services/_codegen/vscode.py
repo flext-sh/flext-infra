@@ -1,12 +1,12 @@
 """VS Code settings codegen owner — the single canonical merge instrumentation.
 
 This is the only place that knows how ``.vscode/settings.json`` is produced.
-It reads any existing document through the thin canonical JSON wrapper
-(``u.Cli.json_read`` — strict JSON, no bespoke parser), merges the config-driven
-canonical keys from ``config.Infra.codegen.vscode`` plus the artifact-derived
-exclude maps, derives shallow member ``.venv`` globs from the workspace manifest,
-and serializes the result with ``u.Cli.json_dumps``. Rendering, planning, atomic
-writes, and fixed-point verification stay owned by ``FlextInfraCodegenConform``.
+It parses that explicitly JSONC document through the canonical string-aware
+normalizer, validates the resulting mapping, merges the config-driven canonical
+keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
+derives shallow member ``.venv`` globs from the workspace manifest, and serializes
+the result with ``u.Cli.json_dumps``. Rendering, planning, atomic writes, and
+fixed-point verification stay owned by ``FlextInfraCodegenConform``.
 """
 
 from __future__ import annotations
@@ -45,13 +45,119 @@ class FlextInfraCodegenVscodeMixin:
             return r[str].fail(serialized.error or "VS Code settings serialize failed")
         return r[str].ok(serialized.value + "\n")
 
-    @staticmethod
-    def _read_existing_settings(settings_path: Path) -> p.Result[t.JsonMapping]:
-        """Read an existing settings document via the thin canonical JSON reader."""
+    @classmethod
+    def _read_existing_settings(cls, settings_path: Path) -> p.Result[t.JsonMapping]:
+        """Read one VS Code JSONC document into a validated JSON mapping."""
         if not settings_path.exists():
             empty_settings: t.JsonMapping = {}
             return r[t.JsonMapping].ok(empty_settings)
-        return u.Cli.json_read(settings_path)
+        read_result = u.Cli.files_read_text(settings_path)
+        if read_result.failure:
+            return r[t.JsonMapping].fail(
+                read_result.error or "VS Code settings read failed"
+            )
+        parsed = u.Cli.json_parse(cls._normalize_jsonc(read_result.value))
+        if parsed.failure:
+            return r[t.JsonMapping].fail(
+                parsed.error or "VS Code settings JSONC parse failed"
+            )
+        if not isinstance(parsed.value, Mapping):
+            return r[t.JsonMapping].fail("VS Code settings root must be an object")
+        return r[t.JsonMapping].ok(
+            t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed.value)
+        )
+
+    @classmethod
+    def _normalize_jsonc(cls, content: str) -> str:
+        """Return strict JSON text from VS Code JSONC content."""
+        return cls._remove_trailing_commas(cls._remove_jsonc_comments(content))
+
+    @staticmethod
+    def _remove_jsonc_comments(content: str) -> str:
+        """Remove JSONC comments while preserving comment markers in strings."""
+        output: list[str] = []
+        in_string = False
+        escaped = False
+        in_line_comment = False
+        in_block_comment = False
+        index = 0
+        while index < len(content):
+            char = content[index]
+            next_char = content[index + 1] if index + 1 < len(content) else ""
+            if in_line_comment:
+                if char in "\r\n":
+                    in_line_comment = False
+                    output.append(char)
+                index += 1
+                continue
+            if in_block_comment:
+                if char == "*" and next_char == "/":
+                    in_block_comment = False
+                    index += 2
+                    continue
+                index += 1
+                continue
+            if in_string:
+                output.append(char)
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                index += 1
+                continue
+            if char == '"':
+                in_string = True
+                output.append(char)
+                index += 1
+                continue
+            if char == "/" and next_char == "/":
+                in_line_comment = True
+                index += 2
+                continue
+            if char == "/" and next_char == "*":
+                in_block_comment = True
+                index += 2
+                continue
+            output.append(char)
+            index += 1
+        return "".join(output)
+
+    @staticmethod
+    def _remove_trailing_commas(content: str) -> str:
+        """Remove commas before object or array closers outside strings."""
+        output: list[str] = []
+        in_string = False
+        escaped = False
+        index = 0
+        while index < len(content):
+            char = content[index]
+            if in_string:
+                output.append(char)
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                index += 1
+                continue
+            if char == '"':
+                in_string = True
+                output.append(char)
+                index += 1
+                continue
+            if char == ",":
+                next_index = index + 1
+                while next_index < len(content) and content[next_index].isspace():
+                    next_index += 1
+                if next_index < len(content) and content[next_index] in "}]":
+                    index += 1
+                    continue
+            output.append(char)
+            index += 1
+        return "".join(output)
 
     @classmethod
     def _apply_canonical_settings(

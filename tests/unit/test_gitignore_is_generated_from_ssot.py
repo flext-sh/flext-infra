@@ -1,15 +1,9 @@
-"""Tests that the workspace ``.gitignore`` is reproducible from the config SSOT.
+"""Tests that this repository's ``.gitignore`` is reproducible from config.
 
-``.gitignore`` is declared a managed artifact, but the workspace root uses a
-whitelist strategy (``/*`` blocks everything, then explicit ``!`` negations
-re-allow the governed paths) that was never declared in
-``codegen.gitignore_sections``. The generator therefore rendered a conventional
-blacklist instead, and ``codegen conform`` proposed replacing 371 lines with
-~76 — which would un-ignore hundreds of paths.
-
-That single unexpressed policy blocks the whole conform transaction, so no
-other generator fix can reach the tree. The strategy must live in the SSOT so
-the rendered output equals the governed file.
+The generator filters the shared policy by the repository profile. Workspace
+roots receive the ordered whitelist while members receive only universal
+ignore sections. This test follows that same typed topology instead of freezing
+the workspace-root projection into every repository.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

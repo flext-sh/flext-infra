@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
@@ -228,16 +230,9 @@ class FlextInfraConfigModels:
             m.Field(description="Required private target regular expression"),
         ]
         allow_public_targets: bool = m.Field(description="Permit public targets")
-        allow_generated_target_redefinition: bool = m.Field(
-            description="Permit generated target redefinition"
-        )
         allow_toolchain_declarations: bool = m.Field(
             description="Permit toolchain declarations"
         )
-        allow_setup_declarations: bool = m.Field(
-            description="Permit setup declarations"
-        )
-        allow_help_declarations: bool = m.Field(description="Permit help declarations")
 
     class CustomHandlerPolicyOverride(_ConfigContract):
         """Per-profile relaxation of the strict custom-handler contract.
@@ -250,17 +245,8 @@ class FlextInfraConfigModels:
         allow_public_targets: bool | None = m.Field(
             default=None, description="Permit public targets"
         )
-        allow_generated_target_redefinition: bool | None = m.Field(
-            default=None, description="Permit generated target redefinition"
-        )
         allow_toolchain_declarations: bool | None = m.Field(
             default=None, description="Permit toolchain declarations"
-        )
-        allow_setup_declarations: bool | None = m.Field(
-            default=None, description="Permit setup declarations"
-        )
-        allow_help_declarations: bool | None = m.Field(
-            default=None, description="Permit help declarations"
         )
 
     class MakeSerializationSpec(_ConfigContract):
@@ -268,6 +254,16 @@ class FlextInfraConfigModels:
 
         lock_path: Annotated[
             Path, m.Field(description="Repository-relative native process-lock path")
+        ]
+        mutation_fixed_points: Annotated[
+            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Authorized mutating WHATs and the validation WHAT each must "
+                    "run afterward under the same lock"
+                ),
+            ),
         ]
         snapshot_excludes: Annotated[
             tuple[Path, ...],
@@ -322,6 +318,24 @@ class FlextInfraConfigModels:
             if self.lock_path not in self.snapshot_excludes:
                 msg = "make serialization lock_path must be snapshot-excluded"
                 raise ValueError(msg)
+            invalid = set(self.mutation_fixed_points) - set(self.verbs)
+            if invalid:
+                msg = (
+                    "make serialization mutation verbs are not serialized: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
+            empty = [
+                verb
+                for verb, fixed_points in self.mutation_fixed_points.items()
+                if not fixed_points
+            ]
+            if empty:
+                msg = (
+                    "make serialization mutation verbs require fixed points: "
+                    f"{', '.join(sorted(empty))}"
+                )
+                raise ValueError(msg)
             return self
 
     class MakeSpec(_ConfigContract):
@@ -344,6 +358,13 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
         ]
+        docs_phases: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Ordered canonical documentation lifecycle phases",
+            ),
+        ]
         custom_handler_policy: Annotated[
             FlextInfraConfigModels.CustomHandlerPolicy,
             m.Field(description="Private custom target policy"),
@@ -351,7 +372,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -372,6 +393,18 @@ class FlextInfraConfigModels:
                 msg = "make setup cannot require the managed validation environment"
                 raise ValueError(msg)
             return self
+
+        @m.computed_field()
+        @property
+        def check_gates_allowed(self) -> tuple[str, ...]:
+            """Canonical generated Make check-gate vocabulary."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+
+        @m.computed_field()
+        @property
+        def check_gates_default(self) -> tuple[str, ...]:
+            """Canonical generated Make default check gates."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
 
         @m.computed_field()
         @property
@@ -876,6 +909,10 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
+        project_selection_conflict_error: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mutually exclusive project selector error"),
+        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""

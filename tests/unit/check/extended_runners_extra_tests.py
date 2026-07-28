@@ -144,7 +144,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path)
         _ = (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         runner = u.Tests.command_runner(
-            stdout="README.md:1:1 error MD001 Heading level", returncode=1
+            stdout="README.md:1:1: [MD001] Heading level", returncode=1
         )
 
         result = u.Tests.run_gate_check(
@@ -153,3 +153,21 @@ class TestExtendedRunnerExtras:
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
+
+    def test_markdown_reports_tool_failure_without_diagnostics(
+        self, tmp_path: Path
+    ) -> None:
+        _, project_dir = u.Tests.create_checker_project(tmp_path)
+        _ = (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        runner = u.Tests.command_runner(
+            stderr="execution error: missing rumdl", returncode=1
+        )
+
+        result = u.Tests.run_gate_check(
+            FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="TOOL_ERROR")
+        tm.that(result.issues[0].message, contains="missing rumdl")

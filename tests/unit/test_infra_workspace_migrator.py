@@ -5,8 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_infra import config
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, config
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import tm
 from tests import u

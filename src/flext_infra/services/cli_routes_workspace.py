@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m
+from flext_infra import FlextInfraWorktreeService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -16,7 +16,6 @@ from flext_infra.workspace.make_serialization import FlextInfraMakeSerialization
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_infra.workspace.worktree import FlextInfraWorktreeService
 
 
 class WorkspaceRoutes(RefactorRoutes):

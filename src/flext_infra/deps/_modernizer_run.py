@@ -37,6 +37,8 @@ class FlextInfraPyprojectModernizerRunMixin:
             self, path: Path
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
+        def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]: ...
+
         def _process_document_state(
             self,
             state: m.Infra.PyprojectDocumentState,
@@ -181,18 +183,37 @@ class FlextInfraPyprojectModernizerRunMixin:
             if root_project_name is None:
                 u.Cli.error("root project name required for constraint rewriting")
                 return 2
-            lock_path = self.root / "uv.lock"
+            lock_path = self.root / c.Infra.UV_LOCK_FILENAME
             locked_versions = u.Infra.locked_dependency_versions(lock_path)
             if not locked_versions:
-                u.Cli.error(f"missing or invalid uv.lock at {lock_path}")
-                return 2
-            member_lock_paths = tuple(
-                sorted(
-                    member_path / c.Infra.UV_LOCK_FILENAME
-                    for member_path in configured_member_paths.values()
-                    if (member_path / c.Infra.UV_LOCK_FILENAME).is_file()
+                u.Cli.error(
+                    f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
                 )
-            )
+                return 2
+            competing_member_locks: t.MutableSequenceOf[Path] = []
+            for member_path in configured_member_paths.values():
+                member_lock_path = member_path / c.Infra.UV_LOCK_FILENAME
+                if not member_lock_path.is_file():
+                    continue
+                submodule_result = self._project_is_flext_child(member_path)
+                if submodule_result.failure:
+                    u.Cli.error(
+                        "failed to resolve Git topology for workspace member "
+                        f"{member_path}: {submodule_result.error}"
+                    )
+                    return 2
+                if submodule_result.value:
+                    topology_root_result = u.Infra.git_workspace_root(member_path)
+                    if topology_root_result.failure:
+                        u.Cli.error(
+                            "failed to resolve Git topology for workspace member "
+                            f"{member_path}: {topology_root_result.error}"
+                        )
+                        return 2
+                    if topology_root_result.value.resolve() == resolved_root:
+                        continue
+                competing_member_locks.append(member_lock_path)
+            member_lock_paths = tuple(sorted(competing_member_locks))
             if member_lock_paths:
                 relative_paths = ", ".join(
                     str(path.relative_to(self.root)) for path in member_lock_paths

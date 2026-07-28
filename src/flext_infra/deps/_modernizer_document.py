@@ -100,17 +100,25 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
 
-    def _project_is_flext_child(self, project_dir: Path) -> bool:
-        """Resolve physical attachment from canonical Git topology."""
-        project_root = project_dir.resolve()
-        workspace_root = u.Infra.git_workspace_root(project_root)
-        if workspace_root.failure:
-            msg = (
-                workspace_root.error
-                or f"unable to resolve Git topology: {project_root}"
+    def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
+        """Return whether Git declares the project as an attached submodule.
+
+        A non-Git scaffold is explicitly local. Environment directories and
+        generated Make projections never participate in topology detection.
+        """
+        inside = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--is-inside-work-tree")
+        )
+        if inside.failure or inside.value.strip() != "true":
+            return r[bool].ok(False)
+        superproject = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        )
+        if superproject.failure:
+            return r[bool].fail(
+                superproject.error or "failed to resolve Git superproject"
             )
-            raise RuntimeError(msg)
-        return workspace_root.value != project_root
+        return r[bool].ok(bool(superproject.value.strip()))
 
     def _process_document_state(
         self,
@@ -119,6 +127,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        project_kind: str | None = None,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -128,13 +137,18 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_child = self._project_is_flext_child(path.parent)
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return [
+                f"failed to resolve Git topology: {child_result.error or path.parent}"
+            ]
+        is_child = child_result.value
         is_root = path.parent.resolve() == self.root.resolve() and not is_child
-        project_kind = "core"
-        if not is_root:
+        resolved_project_kind = project_kind or "core"
+        if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
-                project_kind = kind_result.value
+                resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
@@ -165,7 +179,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
-                project_kind=project_kind,
+                project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
             )
@@ -213,7 +227,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
-                payload, project_kind=project_kind
+                payload, project_kind=resolved_project_kind
             )
         )
         changes.extend(

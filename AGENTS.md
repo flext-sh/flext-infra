@@ -11,9 +11,10 @@ operator instruction prevails and lower authority must be reconciled.
 
 ### P0 — Tests validate config/settings changes by construction
 
-Tests, golden files, and executable documentation (including markdown examples and
-docstring snippets) must remain valid when config or settings change. They are
-never allowed to hardcode, freeze, or implicitly assume the values that exist today.
+Tests, golden files, and executable documentation (including markdown examples
+and docstring snippets) must remain valid when config or settings change. They
+are never allowed to hardcode, freeze, or implicitly assume the values that
+exist today.
 
 - The canonical owner of every configurable fact is `config/*.yaml`, `settings`,
   or the generator that derives from them. Tests only validate that owner.
@@ -52,8 +53,9 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
    per rule (e.g. `S101` assert usage, `PT` pytest conventions). Every
    violation in those trees is fixed at its root, never masked.
 8. **Beads is execution truth.** Beads owns work, plans, memory, dependencies,
-   status, evidence, and closure. GitHub is its continuous external coordination,
-   PR, review, and CI mirror after the orchestrator organizes Beads completely.
+   status, evidence, and closure. GitHub is its continuous external
+   coordination, PR, review, and CI mirror after the orchestrator organizes
+   Beads completely.
 9. **Separated roles.** The orchestrator coordinates, owns semantic Beads state,
    validates, approves or rejects merges, rolls out, and closes; it does not
    implement. Workers directly implement one Bead in one branch and worktree but
@@ -61,48 +63,49 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
    validates, and removes stale canonical skills, ADRs, docs, Python docstrings,
    examples, and executable snippets under the same validated PR flow; the
    governance/CI helper also remains active.
-10. **No stall by reporting.** Five-minute status reports include the agent table
-    and epic evolution and never pause execution. Compaction, continuation, and
-    status transfer context only.
+10. **No stall by reporting.** Five-minute status reports include the agent
+    table and epic evolution and never pause execution. Compaction,
+    continuation, and status transfer context only.
 11. **Historical material is evidence only.** Archives, generated or tool homes,
     backups, sessions, caches, and legacy trees are never live authority.
-12. **Stop only for a real blocker.** Ask one precise question only when authority
-   conflicts or an action would be destructive; otherwise continue to the
-   observable stop condition.
+12. **Stop only for a real blocker.** Ask one precise question only when
+    authority conflicts or an action would be destructive; otherwise continue
+    to the observable stop condition.
 13. **Short validated slices.** Deliver in small, independently validated
-   units that merge to the integration branch quickly — one Bead, one
-   reviewable PR, hours not days. Mega-lanes and long-lived WIP are defects;
-   the orchestrator splits any unit that cannot merge green within a session.
+    units that merge to the integration branch quickly — one Bead, one
+    reviewable PR, hours not days. Mega-lanes and long-lived WIP are defects;
+    the orchestrator splits any unit that cannot merge green within a session.
 14. **Living documentation.** Project knowledge is durable, never rebuilt
-   per session. On entering a project, read its docs first and validate key
-   claims quickly against live reality. Every change that produces new
-   understanding or behavior updates the affected docs in the SAME change;
-   stale docs are defects filed as beads, never worked around.
-15. **Runtime reality precedes implementation and tests.** Establish the correct
-    behavior from the official external contract and the real consumer first. For
-    generated or deployed artifacts, validate the staged artifact with that real
-    consumer before deployment, restart, tests, or static gates. Then align the
-    canonical implementation and models; only afterward may tests encode the
-    observed behavior. Tests and static analysis are subordinate confirmation,
-    never discovery authority, design input, a substitute for consumer validation,
-    or permission to publish a runtime-broken artifact. A test that contradicts
-    observed canonical behavior is corrected, never accommodated by production.
-    Performance optimization is
-    evidence-first: profile with cProfile to find the hot path before changing
-    anything, then optimize with the project's typed OO/MRO/lazy-import patterns;
-    accelerate test selection with impact analysis (e.g. pytest-testmon) and
-    parallelism (pytest-xdist) rather than deleting or weakening coverage.
-    See P0 above: tests of `config`/`settings` validate contracts and behavior
-    for arbitrary valid values and read expected config-owned values from the
-    same typed SSOT the consumer receives; they never freeze today's configured
-    scalar, identifier, path, endpoint, model, ranking, or default. Goldens may lock
-    structure, never mutable config/settings values.
+    per session. On entering a project, read its docs first and validate key
+    claims quickly against live reality. Every change that produces new
+    understanding or behavior updates the affected docs in the SAME change;
+    stale docs are defects filed as beads, never worked around.
+15. **Runtime reality precedes implementation and tests.** Establish the
+    correct behavior from the official external contract and the real consumer
+    first. For generated or deployed artifacts, validate the staged artifact
+    with that real consumer before deployment, restart, tests, or static gates.
+    Then align the canonical implementation and models; only afterward may
+    tests encode the observed behavior. Tests and static analysis are
+    subordinate confirmation, never discovery authority, design input, a
+    substitute for consumer validation, or permission to publish a
+    runtime-broken artifact. A test that contradicts observed canonical
+    behavior is corrected, never accommodated by production. Performance
+    optimization is evidence-first: profile with cProfile to find the hot path
+    before changing anything, then optimize with the project's typed
+    OO/MRO/lazy-import patterns; accelerate test selection with impact analysis
+    (e.g. pytest-testmon) and parallelism (pytest-xdist) rather than deleting or
+    weakening coverage. See P0 above: tests of `config`/`settings` validate
+    contracts and behavior for arbitrary valid values and read expected
+    config-owned values from the same typed SSOT the consumer receives; they
+    never freeze today's configured scalar, identifier, path, endpoint, model,
+    ranking, or default. Goldens may lock structure, never mutable
+    config/settings values.
 16. **Parametrized config, generators, and managed binaries.** config, settings,
     and templates are the sole source of configuration and business rules; the
     correct generator produces every derived surface (never hand-edit a
-    projection). ai-hub owns the installation of binaries and the provisioning of
-    no product-, agent-, or daemon-specific hardcoded code anywhere — every such
-    value is parametrized through config/settings/templates.
+    projection). ai-hub owns the installation of binaries and the provisioning
+    of no product-, agent-, or daemon-specific hardcoded code anywhere — every
+    such value is parametrized through config/settings/templates.
 17. **Canonical command surface only.** Every build, check, test, generation,
     release, deploy, and validation action runs through the project's canonical
     Make verbs (`make <verb> WHAT=<x>` via the repo's dispatch surface) or the
@@ -111,16 +114,17 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
     evidence. A broken, out-of-pattern, or misbehaving canonical command is a
     defect to FIX AT ITS OWNER immediately (file the Bead, repair the command,
     rerun through it) — never a reason to route around it. Shared mutable tool
-    state (e.g. Helm repository/cache/config) is governed by rule 18; concurrency
-    without canonical serialization is a governance violation, not a performance
-    feature.
-18. **Helm is never parallelized.** Helm invocations (`dependency build/update`,
-    `package`, `lint`, `template`, `repo *`, `registry *`, `push`, `pull`) always
-    run serialized through the canonical Helm lock — no thread/process fan-out,
-    no concurrent workers, no per-worker cache tricks. Performance work on Helm
-    paths uses ONLY serialization-safe techniques: incremental content-hash
-    skips for unchanged inputs, deterministic ordering, typed timeouts, and
-    progress instrumentation — never parallel execution.
+    state (e.g. Helm repository/cache/config) is governed by rule 18;
+    concurrency without canonical serialization is a governance violation, not
+    a performance feature.
+18. **Helm is never parallelized.** Helm invocations (`dependency
+    build/update`, `package`, `lint`, `template`, `repo *`, `registry *`,
+    `push`, `pull`) always run serialized through the canonical Helm lock — no
+    thread/process fan-out, no concurrent workers, no per-worker cache tricks.
+    Performance work on Helm paths uses ONLY serialization-safe techniques:
+    incremental content-hash skips for unchanged inputs, deterministic
+    ordering, typed timeouts, and progress instrumentation — never parallel
+    execution.
 19. **No hidden code.** `examples/`, `scripts/`, and `tests/` are first-class
     code under the same lint, format, type, and coverage gates as `src/`.
     Excluding any of them from gates to hide defects is forbidden; every gate
@@ -168,71 +172,109 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
     works from the fact that you wrote it: a config edit that requires a reload/
     restart is NOT active until proven live, and effect is confirmed only by an
     independent run/session showing the new behavior (rule 1).
+25. **Short green checkpoints land immediately.** Complete one bounded stage at
+    a time, run every canonical gate for that stage with zero lint errors, then
+    commit explicit owned paths and fast-forward push immediately. Never
+    accumulate prolonged hypothesis loops, validated local WIP, red/partial
+    commits, or red/partial pushes. Workers push their branch but never merge,
+    release, deploy, or promote `main`; the orchestrator reviews and promotes.
+26. **Beads stays continuously current.** After every state-changing stage,
+    update the active Bead with current status, orientation, ownership metadata,
+    exact command evidence, commit SHA, push state, blocker, and next action.
+    Beads updates are part of the stage, not deferred handoff bookkeeping.
+27. **Heartbeat without interruption.** At least every five minutes, the
+    orchestrator publishes progress including agent table, epic evolution, live
+    Bead/lane, current gate, cleanliness, sync, blockers, and next action while
+    execution continues.
+28. **Critical decisions require confirmation.** Before destructive or
+    irreversible action, competing public-contract or architecture outcomes,
+    security/privacy choices, production/release/`main` promotion, authority
+    conflict, or material scope/acceptance change: stop, record the pending
+    decision, options, and consequences in the Bead, then ask the operator one
+    precise question. Never infer critical intent.
+29. **Ordinary uncertainty is evidence-resolved.** Do not interrupt execution
+    for routine implementation uncertainty. Inspect the canonical authority and
+    real consumer, choose the evidence-supported path, record it in the Bead,
+    and continue to the next green checkpoint.
 
 <!-- /UNIVERSAL-GOVERNANCE -->
 <!-- END AI-HUB MANAGED UNIVERSAL CORE -->
 
-> **General FLEXT law & workspace conventions live in the root [`../AGENTS.md`](../AGENTS.md) — read it first.** It is the SSOT for facade layering, config/settings access, the `make`-only workflow, the testing law, and multi-agent git discipline. This file adds ONLY `flext-infra`-specific knowledge and never repeats the root.
->
-> **Standalone / independent mode:** if this package is checked out on its own (imported as a dependency, vendored, or cloned solo) there is no parent workspace, so `../AGENTS.md` does not resolve. Then read the root law from the raw file on the SAME branch/release the project is on: <https://raw.githubusercontent.com/flext-sh/flext/0.12.0-dev/AGENTS.md> (pin the branch/tag to your working line, never `main`).
+> **General FLEXT law and workspace conventions live in the
+> [root AGENTS.md](https://github.com/flext-sh/flext/blob/main/AGENTS.md)—read
+> it first.** It is the SSOT for facade layering, config/settings access, the
+> `make`-only workflow, testing law, and multi-agent Git discipline. This file
+> adds only `flext-infra` knowledge and resolves identically in workspace,
+> worktree, and standalone checkouts.
 
-**Package:** `flext_infra` · ~82k src LOC (largest in the workspace) · deps: `flext-cli`, `flext-core`
+**Package:** `flext_infra` · ~82k source LOC · dependencies: `flext-cli`,
+`flext-core`
 
 ## Overview
 
-Infrastructure tooling: code generation, workspace conform, dependency modernization, and declarative enforcement. It *drives* `make gen` / `make build` / `make check` and generates other packages' facets and `[MANAGED]` pyproject sections.
+Infrastructure tooling for code generation, workspace conformance, dependency
+modernization, and declarative enforcement. It drives canonical Make commands
+and generates package facets and `[MANAGED]` pyproject sections.
 
 ## Structure
 
-```
+```text
 src/flext_infra/
-├── api.py cli.py __main__.py   # FlextInfra facade + FlextInfraCli (main / docs_main)
-├── iteration.py                # MRO facade over _iteration_{matching,directory,workspace,project}.py
-├── codegen/        # scaffolding, conform, census, lazy-init/facet generation, pipeline, consolidator, py.typed
-├── detectors/      # policy detectors: dep/runtime, MRO shape, class placement, loose-test, silent-failure
+├── api.py cli.py __main__.py   # facade and CLI entry points
+├── iteration.py                # MRO iteration facade
+├── codegen/        # scaffolding, conformance, facets, and pipelines
+├── detectors/      # dependency, MRO, placement, and failure policies
 ├── fixers/         # base/rope/transformer/manual/gate fixers + orchestration
-├── transformers/   # source modernizers: signature, class-nesting, compat, Result/DI
-├── rules/          # YAML policy catalogs (class nesting, typing census, import modernization, constants, legacy)
+├── transformers/   # signature, nesting, compatibility, Result, and DI
+├── rules/          # declarative policy catalogs
 ├── schemas/        # JSON schemas for codegen + workspace manifests
-├── templates/      # Jinja: package roots, lazy-init roots, Makefile/build artifacts
-├── config/         # declarative codegen/enforcement policy (codegen.yaml, …) validated by pydantic
-├── deps/           # dependency detection, extra-paths, pyrefly repair, modernizer.py ([MANAGED] pyproject)
-├── gates/ check/ validate/     # gate resolution, workspace check orchestration, validators (cycles, tiers, …)
+├── templates/      # Jinja package, Makefile, and build artifacts
+├── config/         # validated codegen and enforcement policy
+├── deps/           # detection, repair, and pyproject modernization
+├── gates/ check/ validate/     # gate orchestration and validators
 ├── docs/ github/ maintenance/ release/ workspace/ services/ _enforcement/ basemk/
-├── constants.py typings.py protocols.py models.py utilities.py   # AUTO-GENERATED facets
+├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```
 
 ## Code Map
 
-| Symbol | Kind | Location | Role |
-|--------|------|----------|------|
-| `FlextInfra` | class | `api.py` | public facade (Rope workspace access, health) |
-| `FlextInfraCli` / `main` / `docs_main` | class+fns | `cli.py` | entry points `flext-infra`, `flext-docs` |
-| `FlextInfraEnforcementEngine` | class | `_enforcement/engine.py` | catalog-backed enforcement collector |
-| `FlextInfraCodegenPipeline` | class | `codegen/pipeline.py` | codegen pipeline (used by `services/cli_routes_codegen.py`) |
-| `FlextInfraCodegenConsolidator` | class | `codegen/consolidator.py` | facet consolidation |
-| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py` | `[MANAGED]` pyproject enforcement |
-| `FlextInfraUtilitiesIteration` | class | `iteration.py` | MRO iteration helpers |
+- `FlextInfra` (`api.py`): public Rope workspace and health facade.
+- `FlextInfraCli`, `main`, `docs_main` (`cli.py`): CLI entry points.
+- `FlextInfraEnforcementEngine` (`_enforcement/engine.py`): catalog-backed
+  enforcement collector.
+- `FlextInfraCodegenPipeline` (`codegen/pipeline.py`): codegen pipeline.
+- `FlextInfraCodegenConsolidator` (`codegen/consolidator.py`): facade
+  consolidation.
+- `FlextInfraPyprojectModernizer` (`deps/modernizer.py`): managed pyproject
+  enforcement.
+- `FlextInfraUtilitiesIteration` (`iteration.py`): MRO iteration helpers.
 
 ## Conventions (specific to this package)
 
-- **Rules-as-data:** policy lives in `rules/*.yaml` + `config/*.yaml`, validated with pydantic `model_validate` — not hardcoded in Python. Add a rule = new YAML row, not a new detector class.
-- **Codegen owns generated output:** package `__init__`/facet roots, `py.typed`, and `[MANAGED]` pyproject sections are generated. Change the codegen source/template + `make build WHAT=gen` (or `WHAT=mod`); never hand-edit the output.
+- **Rules-as-data:** policy lives in `rules/*.yaml` and `config/*.yaml`, validated
+  with Pydantic. Add a YAML row instead of a detector class.
+- **Codegen owns generated output:** package facets, `py.typed`, and `[MANAGED]`
+  pyproject sections are generated. Change their source or template and run the
+  canonical generator; never hand-edit output.
 - Enforcement/detection target a **rope-semantic** path (ADR-005 direction).
 
 ## Anti-Patterns / Gotchas
 
-- **Build/tooling package — NOT a runtime dependency.** Reached only via its CLI (`flext-infra`, `flext-docs`) + its pytest11 enforcement plugin. Only `flext-tests` legitimately depends on it; no other package may `import flext_infra` at runtime.
-- **Rope-only is the target, not yet absolute:** some detectors/fixers/`_utilities` still use AST (`import ast` / `NodeVisitor`). When migrating the detect path, move it to the rope semantic model — but do not claim "AST is banned everywhere"; verify per file.
+- **Build/tooling package—not a runtime dependency.** Reach it through its CLI
+  or pytest enforcement plugin. Only `flext-tests` legitimately depends on it.
+- **Rope-only is the target, not yet absolute:** some detectors and fixers still
+  use AST. Move detection paths to Rope, but verify each file before claiming
+  that AST is prohibited.
 - Do not hand-edit generated packages elsewhere in the workspace — fix them here.
 
 ## Commands
 
 ```bash
 make check PROJECT=flext-infra       # ruff/pyrefly/mypy/pyright
+make fmt WHAT=apply APPLY=Y          # apply canonical source formatting
 make test  PROJECT=flext-infra       # tests/{unit,integration,refactor}
-make build WHAT=gen                  # regenerate facets workspace-wide (this package is the engine)
+make build WHAT=gen                  # regenerate facets workspace-wide
 ```
 
 <!-- AIHUB-WORKSPACE-PROVIDERS-BEGIN -->

@@ -33,8 +33,14 @@ class TestsFlextInfraDepsModernizerWorkspace:
         toml_file = tmp_path / "test.toml"
         if exists:
             toml_file.write_text(content, encoding="utf-8")
-        result = u.Cli.toml_read(toml_file)
+        with u.structlog().testing.capture_logs() as log_entries:
+            result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=expected)
+        if exists and not expected:
+            tm.that(log_entries, len=1)
+            tm.that(log_entries[0].get("log_level"), eq="warning")
+        else:
+            tm.that(log_entries, empty=True)
 
     def test_workspace_root_returns_explicit_path(self, tmp_path: Path) -> None:
         """Verify workspace root returns explicit path."""

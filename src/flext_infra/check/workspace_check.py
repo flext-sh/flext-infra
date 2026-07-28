@@ -61,11 +61,10 @@ class FlextInfraWorkspaceChecker(
             name = gate.strip()
             if not name:
                 continue
-            mapped = c.Infra.PYREFLY if name == c.Infra.TYPE_ALIAS else name
-            if mapped not in c.Infra.ALLOWED_GATES:
+            if name not in c.Infra.ALLOWED_GATES:
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
-            if mapped not in resolved:
-                resolved.append(mapped)
+            if name not in resolved:
+                resolved.append(name)
         return r[list[str]].ok(list(resolved))
 
     @override

@@ -38,7 +38,7 @@ class TestsCodegenWorkspaceRootFanout:
 
 
 def _render_root_makefile(tmp_path: Path) -> str:
-    """Render base/Makefile.j2 for the real workspace-root profile via conform."""
+    """Render base/Makefile.j2 from a typed workspace-root fixture."""
     repository = next(
         item
         for item in config.Infra.codegen.repositories

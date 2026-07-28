@@ -498,18 +498,22 @@ class FlextInfraConstantsSourceCode:
         r"^-- Docs: https://docs.pytest.org/"
     )
     "Regex: pytest warnings-section docs footer."
-    PYTEST_KNOWN_WARNINGS_RE: Final[t.RegexPattern] = re.compile(
-        r"CoverageWarning|PytestCollectionWarning|DeprecationWarning|UserWarning|RuntimeWarning"
-    )
-    "Regex: known pytest warning class names."
     PYTEST_FAILED_LINE_RE: Final[t.RegexPattern] = re.compile(
         r"(^FAILED |::.* FAILED( |$))"
     )
     "Regex: pytest FAILED status line."
+    PYTEST_ERROR_LINE_RE: Final[t.RegexPattern] = re.compile(
+        r"(^ERROR |::.* ERROR( |$))"
+    )
+    "Regex: pytest ERROR status line."
     PYTEST_SKIPPED_LINE_RE: Final[t.RegexPattern] = re.compile(
         r"(^SKIPPED |::.* SKIPPED( |$))"
     )
     "Regex: pytest SKIPPED status line."
+    PYTEST_WARNING_LINE_RE: Final[t.RegexPattern] = re.compile(
+        r"\b[A-Za-z_][A-Za-z0-9_]*Warning\b"
+    )
+    "Regex: concrete Python warning class in pytest output."
     PYTEST_FAILURES_OR_ERRORS_RE: Final[t.RegexPattern] = re.compile(
         r"^=+ (FAILURES|ERRORS) =+"
     )

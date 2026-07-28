@@ -9,6 +9,9 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
+from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_tests import tm
@@ -16,6 +19,8 @@ from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 class TestGateErrorReportingPublicBehavior:
@@ -92,3 +97,59 @@ class TestGateErrorReportingPublicBehavior:
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
+
+    def test_workspace_checker_emits_gate_process_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        project_dir = u.Tests.mk_project(tmp_path, "p1")
+        (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
+
+        def create_gate(
+            _registry: FlextInfraGateRegistry, _gate_id: str, workspace_root: Path
+        ) -> FlextInfraMarkdownGate:
+            return FlextInfraMarkdownGate(workspace_root, runner=runner)
+
+        monkeypatch.setattr(FlextInfraGateRegistry, "create", create_gate)
+
+        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+            ["p1"], ["markdown"], reports_dir=tmp_path / "reports"
+        )
+
+        tm.ok(result)
+        tm.that(result.value[0].passed, eq=False)
+        captured = capsys.readouterr()
+        tm.that(f"{captured.out}\n{captured.err}", has="rumdl execution failed")
+
+    def test_workspace_checker_emits_parsed_gate_issue(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        project_dir = u.Tests.mk_project(tmp_path, "p1")
+        (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        diagnostic = "README.md:3:2: [MD057] Relative link 'missing.md' does not exist"
+        runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
+
+        def create_gate(
+            _registry: FlextInfraGateRegistry, _gate_id: str, workspace_root: Path
+        ) -> FlextInfraMarkdownGate:
+            return FlextInfraMarkdownGate(workspace_root, runner=runner)
+
+        monkeypatch.setattr(FlextInfraGateRegistry, "create", create_gate)
+
+        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+            ["p1"], ["markdown"], reports_dir=tmp_path / "reports"
+        )
+
+        tm.ok(result)
+        tm.that(result.value[0].passed, eq=False)
+        captured = capsys.readouterr()
+        tm.that(
+            f"{captured.out}\n{captured.err}",
+            has="README.md:3:2 [MD057] Relative link 'missing.md' does not exist",
+        )

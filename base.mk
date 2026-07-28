@@ -47,10 +47,8 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
-CANONICAL_PROJECT_ROOT := $(shell common=$$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0; configured=$$(git config --path --get core.worktree 2>/dev/null); if [ -n "$$configured" ]; then cd "$$common/$$configured" 2>/dev/null && pwd -P; elif [ "$${common##*/}" = ".git" ]; then cd "$$common/.." 2>/dev/null && pwd -P; fi)
-ifeq ($(CANONICAL_PROJECT_ROOT),)
-CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
-endif
+CALLER_PATH := $(PATH)
+CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
@@ -78,14 +76,23 @@ endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
 else
-WORKSPACE_ROOT := $(CANONICAL_PROJECT_ROOT)
+WORKSPACE_ROOT := $(PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 
 override UV_PROJECT := $(WORKSPACE_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
 override VIRTUAL_ENV := $(ACTIVE_VENV)
-override PATH := $(ACTIVE_VENV)/bin:$(PATH)
+MISE := $(shell command -v mise 2>/dev/null)
+SANITIZED_CALLER_PATH := $(CALLER_PATH)
+ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
+SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
+SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
+ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
+SANITIZED_CALLER_PATH :=
+endif
+endif
+override PATH := $(ACTIVE_VENV)/bin:$(SANITIZED_CALLER_PATH)
 export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
@@ -158,7 +165,9 @@ endef
 # mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
 define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	if ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"; then \
+	if [ "$(filter boot,$(MAKECMDGOALS))" = "boot" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
+		echo "INFO: [preflight] Deferring canonical base.mk validation until boot creates the workspace environment."; \
+	elif ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"; then \
 		echo "ERROR: [preflight] Canonical base.mk is stale. Run 'make -C $(WORKSPACE_ROOT) build WHAT=sync PROJECT=$(PROJECT_NAME)'."; \
 		exit 1; \
 	fi; \
@@ -472,7 +481,7 @@ _scan_impl:
 		--projects "$$project_key"; \
 	exit $$?
 
-fmt: ## Run code formatting (ruff + markdownlint on tracked files)
+fmt: ## Run code formatting (ruff + rumdl on tracked files)
 	$(call _run_verb_hooks,pre,fmt,$(WHAT))
 	$(call _run_verb_body,fmt,_fmt_impl)
 	$(call _run_verb_hooks,post,fmt,$(WHAT))
@@ -515,7 +524,7 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
@@ -561,7 +570,6 @@ docs-serve: ## Serve documentation via the flext-infra docs engine
 
 _docs_serve_impl:
 	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
-	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
 
 test: ## Run pytest only
 	$(call _run_verb_hooks,pre,test,$(WHAT))
@@ -569,14 +577,21 @@ test: ## Run pytest only
 	$(call _run_verb_hooks,post,test,$(WHAT))
 
 _test_impl:
-	$(Q)_files=""; \
-	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
+
+	$(Q)_files="$(strip $(FILES))"; \
 	if [ -n "$(FILE)" ]; then \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; \
-		else _files="$(FILE)"; fi; \
+		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
+			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+		esac; \
+		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
 	fi; \
-	_pytest_run="$(TESTS_DIR)"; \
+	_pytest_run="$(PYTEST_TARGETS)"; \
 	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
+	for target in $$_pytest_run; do \
+		if [ ! -e "$$target" ]; then \
+			printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; \
+		fi; \
+	done; \
 	_all_pytest_args="$(PYTEST_ARGS)"; \
 	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
 	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
@@ -594,11 +609,18 @@ _test_impl:
 	slowest_file="$$report_dir/slowest-tests.txt"; \
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
-	interrupted=0; \
-	_coverage_args="--cov-report=xml:$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi; \
-	echo "$(VENV_PYTHON) -m pytest $$_pytest_run $(PYTEST_REPORT_ARGS) $(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) -p no:metadata --junitxml=$$junit_file $$_coverage_args $(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args" > "$$command_file"; \
-	trap 'interrupted=1; trap "" INT TERM' INT TERM; \
+	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
+	_coverage_required=1; \
+	_coverage_value="$$coverage_file"; \
+	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+		[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+	fi; \
+	printf '%s\n' '$(VENV_PYTHON) -m pytest' \
+		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
+		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
 	$(VENV_PYTHON) -m pytest $$_pytest_run \
 		$(PYTEST_REPORT_ARGS) \
 		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
@@ -608,27 +630,27 @@ _test_impl:
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
-	if [ "$$interrupted" = "1" ]; then rc=130; fi; \
+	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
+		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
+			"$$coverage_file" >&2; \
+		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
+	fi; \
 	if [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		errors=$$(grep -Eo 'errors="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		skipped=$$(grep -Eo 'skipped="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		duration=$$(grep -Eo 'time="[0-9.]+"' "$$junit_file" | head -n 1 | sed -E 's/time="([0-9.]+)"/\1/'); \
-		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; skipped=$${skipped:-0}; duration=$${duration:-0}; \
+		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; \
+		skipped=$${skipped:-0}; duration=$${duration:-0}; \
 		passed=$$((tests - failures - errors - skipped)); \
-		if [ $$passed -lt 0 ]; then passed=0; fi; \
+		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
 		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$coverage_file" "$$tests" "$$passed" "$$failures" "$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
+			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
+			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
-		echo "junit=not-generated" > "$$summary_file"; \
-		echo "coverage=$$coverage_file" >> "$$summary_file"; \
-		echo "total=0" >> "$$summary_file"; \
-		echo "passed=0" >> "$$summary_file"; \
-		echo "failed=0" >> "$$summary_file"; \
-		echo "errors=0" >> "$$summary_file"; \
-		echo "skipped=0" >> "$$summary_file"; \
-		echo "duration_seconds=0" >> "$$summary_file"; \
+		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
+			"$$_coverage_value" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
 	if $(PROJECT_INFRA_VALIDATE) pytest-diag \
@@ -639,7 +661,8 @@ _test_impl:
 		:; \
 	else \
 		counts_status=$$?; \
-		echo "ERROR: pytest diagnostic extraction failed (exit=$$counts_status)" >&2; \
+		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
+			"$$counts_status" >&2; \
 		cat "$$counts_file" >&2; \
 		exit "$$counts_status"; \
 	fi; \
@@ -649,32 +672,26 @@ _test_impl:
 		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
 		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
 	' "$$counts_file"; then \
-		echo "ERROR: invalid pytest diagnostic counts contract; expected exactly four unique nonnegative decimal assignments" >&2; \
+		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
 		cat "$$counts_file" >&2; \
 		exit 2; \
 	fi; \
 	. "$$counts_file"; \
-	diag_strict=0; \
-	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || [ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
-		diag_strict=1; \
+	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
+		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
 		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
 	fi; \
-	if [ "$$rc" -eq 130 ] || [ "$$interrupted" = "1" ]; then run_state="INTERRUPTED"; else run_state="COMPLETED"; fi; \
-	echo "================================================" >&2; \
-	echo "DIAG $$run_state | failed=$$failed_count errors=$$error_count warnings=$$warning_count skipped=$$skipped_count" >&2; \
-	if [ "$$diag_strict" = "1" ]; then echo "DIAG STRICT FAIL | failed/error/warning/skipped counters must be zero" >&2; fi; \
-	echo "================================================" >&2; \
-	echo "Top test durations (from $$slowest_file):" >&2; \
-	if [ -s "$$slowest_file" ]; then awk 'NR<=10 {print}' "$$slowest_file" >&2; \
-	else echo "(none)" >&2; fi; \
-	echo "Error trace excerpt (from $$errors_file):" >&2; \
-	if [ -s "$$errors_file" ]; then awk 'NR<=40 {print}' "$$errors_file" >&2; \
-	else echo "(none)" >&2; fi; \
-	rm -f "$(PYTEST_REPORTS_DIR)/latest"; \
-	ln -s "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
-	echo "Reports: $$report_dir (latest: $(PYTEST_REPORTS_DIR)/latest)" >&2; \
-	echo "Details: $$summary_file | $$failed_file | $$errors_file | $$warnings_file | $$slowest_file | $$skips_file | $$log_file" >&2; \
-	exit $$rc
+	if [ "$(DIAG)" = "1" ]; then \
+		run_state=COMPLETED; \
+		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
+		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
+			"$$run_state" "$$failed_count" "$$error_count" \
+			"$$warning_count" "$$skipped_count" >&2; \
+	fi; \
+	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
+	printf 'Reports: %s (latest: %s/latest)\n' \
+		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
+	exit "$$rc"
 
 val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1)
 	$(call _run_verb_hooks,pre,val,$(WHAT))

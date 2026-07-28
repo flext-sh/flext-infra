@@ -87,6 +87,7 @@ class TestPytestDiagExtractorBehavior:
             _extractor(fail_xml, log).extract(fail_xml, log)
         )
         tm.that(fail_report.failed_count, eq=1)
+        tm.that(fail_report.error_count, eq=0)
         tm.that(fail_report.error_traces, length_gt=0)
 
         err_xml = tmp_path / "err.xml"
@@ -174,7 +175,9 @@ class TestPytestDiagExtractorBehavior:
         )
 
         tm.that(report.error_traces, length_gt=0)
+        tm.that(report.error_count, eq=0)
         tm.that(report.warning_lines, length_gt=0)
+        tm.that(report.warning_count, eq=1)
 
     def test_extract_inline_warning_without_summary(self, tmp_path: Path) -> None:
         junit = tmp_path / "missing.xml"

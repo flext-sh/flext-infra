@@ -38,6 +38,15 @@ def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
     tm.that(content, has="<!-- TOC START -->")
 
 
+def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
+    """The command boundary rejects fixable docs left unapplied."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
+
+    result = FlextInfraDocFixer(workspace_root=workspace).execute()
+
+    tm.fail(result)
+
+
 def test_generator_execute_writes_reports_for_root_and_selected_project(
     tmp_path: Path,
 ) -> None:
@@ -77,12 +86,12 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
 
 
-def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
+def test_builder_execute_fails_when_mkdocs_is_missing(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
-    tm.ok(result)
+    tm.fail(result)
     tm.that((workspace / ".reports/docs/build-report.md").exists(), eq=True)
 
 

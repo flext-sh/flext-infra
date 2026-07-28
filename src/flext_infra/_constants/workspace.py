@@ -20,6 +20,7 @@ class FlextInfraConstantsWorkspace:
 
         LIST = "list"
         ADD = "add"
+        UPDATE = "update"
         REMOVE = "remove"
 
     @unique
