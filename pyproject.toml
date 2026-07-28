@@ -19,7 +19,7 @@ dev = [
   "django-stubs>=5.2.2",
   "factory-boy>=3.3.1",
   "faker>=37.4",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+  "flext-tests",
   "hypothesis>=6.125",
   "isort>=6.0.1",
   "matplotlib-stubs>=0.3",
@@ -102,8 +102,8 @@ classifiers = [
 ]
 dependencies = [
   "defusedxml>=0.7.1",
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-cli",
+  "flext-core",
   "gitpython>=3.1.49",
   "libcst>=1.8.6",
   "mkdocs>=1.6.1",
@@ -268,10 +268,7 @@ project-excludes = [
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-interpreter-path = "../.venv/bin/python"
 python-version = "3.13"
-search-path = [
-    ".",
-    "src",
-]
+search-path = [".", "src"]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -684,7 +681,7 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
-required-version = "==0.11.29"
+required-version = ">=0.11.29,<0.12"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

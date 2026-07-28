@@ -44,6 +44,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     class SurfaceContract(m.Value):
+        """Declares what one conform surface plans and short-circuits."""
+
         destinations: frozenset[str] | None = m.Field(
             default=None, description="Output paths selected for conformance planning"
         )
@@ -310,7 +312,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract,
+        contract: SurfaceContract = SurfaceContract(complete_governed=True),
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 
@@ -785,7 +787,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if root == workspace_root or repository in workspace.members
             else c.Infra.WorkspaceMode.STANDALONE
         )
-        if surface is c.Infra.CodegenConformSurface.DEPENDENCIES:
+        if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
                 repositories=codegen.repositories,
@@ -934,6 +936,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 c.Infra.PYPROJECT_FILENAME
             ):
                 continue
+            if managed.policy in {"create-only", "merge"}:
+                continue
             entries = tuple(
                 entry
                 for entry in codegen.templates.entries
@@ -1008,6 +1012,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 python_version=codegen.toolchain.python_minor_version,
+                python_toolchain_version=codegen.toolchain.python_version,
+                uv_version=codegen.toolchain.uv_version,
+                kubectl_version=codegen.toolchain.kubectl_version,
+                helm_version=codegen.toolchain.helm_version,
+                kind_version=codegen.toolchain.kind_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,

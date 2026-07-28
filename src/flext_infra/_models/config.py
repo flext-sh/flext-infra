@@ -97,8 +97,10 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def uv_required_version(self) -> str:
-            """Exact PEP 440 uv requirement derived from the declared version."""
-            return f"=={self.uv_version}"
+            """PEP 440 requirement with a patch floor and next-minor ceiling."""
+            major, _, rest = self.uv_version.partition(".")
+            minor, _, _patch = rest.partition(".")
+            return f">={self.uv_version},<{major}.{int(minor) + 1}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -575,6 +577,21 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
+        ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -685,23 +702,8 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
         ]
         uv_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
@@ -1143,7 +1145,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact required uv version")
+            t.NonEmptyStr, m.Field(description="Declared uv baseline version")
         ]
         groups: Annotated[
             tuple[str, ...],

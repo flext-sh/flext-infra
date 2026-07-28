@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
@@ -103,24 +104,6 @@ class TestsCodegenMakeEnvironment:
         tm.that(tuple(path.name for path in applied.written_files), eq=("Makefile",))
         tm.that(custom.read_text(encoding="utf-8"), eq=custom_content)
 
-
-__all__: tuple[str, ...] = ()
-"""Generated Make environment isolation contract."""
-
-from __future__ import annotations
-
-import os
-from pathlib import Path
-
-import pytest
-from flext_tests import tm
-
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-
-
-class TestsCodegenMakeEnvironment:
-    """Prove generated operations ignore the caller shell environment."""
 
     @staticmethod
     def _render_makefile(
@@ -266,3 +249,6 @@ class TestsCodegenMakeEnvironment:
         tm.that('uv sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('uv build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('uv pip install --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+
+
+__all__: tuple[str, ...] = ()
