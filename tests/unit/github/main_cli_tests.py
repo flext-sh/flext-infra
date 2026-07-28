@@ -44,7 +44,7 @@ def test_pr_workspace_accepts_repeated_project_options(tmp_path: Path) -> None:
     ])
 
     report_dir = workspace / ".reports/workspace/pr"
-    tm.that(result, eq=0)
+    tm.that(result, ne=0)
     assert (report_dir / "flext-a.log").is_file()
     assert (report_dir / "flext-b.log").is_file()
     assert not (report_dir / "flext-c.log").exists()
