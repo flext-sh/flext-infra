@@ -174,7 +174,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "git submodule update --init --recursive",
-            'refs/heads/$$branch',
+            "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (

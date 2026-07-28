@@ -524,7 +524,9 @@ class FlextInfraConfigModels:
         ]
         makefile_custom_include: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Generated directive including the custom Make surface"),
+            m.Field(
+                description="Generated directive including the custom Make surface"
+            ),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
@@ -553,11 +555,12 @@ class FlextInfraConfigModels:
         ] = None
         orchestrated_verbs: Annotated[
             tuple[str, ...],
-            m.Field(description="Workspace-root gate verbs routed through orchestration"),
+            m.Field(
+                description="Workspace-root gate verbs routed through orchestration"
+            ),
         ] = ()
         workspace_cli_group: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="CLI group for workspace orchestration"),
+            t.NonEmptyStr, m.Field(description="CLI group for workspace orchestration")
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
