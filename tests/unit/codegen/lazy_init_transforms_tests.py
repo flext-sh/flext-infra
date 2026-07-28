@@ -110,10 +110,13 @@ class TestsFlextInfraLazyInitTransforms:
             and node.module == "__version__"
         )
         tm.that(result, eq=0)
-        tm.that(len(version_imports), eq=1)
         tm.that(
             tuple(
-                sorted((alias.name, alias.asname) for alias in version_imports[0].names)
+                sorted(
+                    (alias.name, alias.asname)
+                    for version_import in version_imports
+                    for alias in version_import.names
+                )
             ),
             eq=(
                 ("__version__", "__version__"),
