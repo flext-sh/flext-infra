@@ -38,6 +38,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
                     apply=self.apply_changes,
                 )
             ),
+            failure_predicate=lambda report: not report.passed,
         )
 
     def _generate_scope(

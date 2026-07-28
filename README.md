@@ -50,7 +50,7 @@ slot registry verification).
 
 ## Quality Gates
 
-Canonical `make` verbs (`check`, `test`, `format WHAT=apply APPLY=Y`, `val`,
+Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
 `docs`) — see `AGENTS.md` §5 (Make Contract) and the
 [`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md)
 skill for selectors and thresholds.

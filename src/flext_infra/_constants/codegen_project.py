@@ -111,22 +111,6 @@ class FlextInfraConstantsCodegenProject:
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
-    PUBLIC_MAKE_VERBS: Final[tuple[str, ...]] = (
-        "help",
-        "setup",
-        "deps",
-        "build",
-        "check",
-        "test",
-        "format",
-        "run",
-        "status",
-        "docs",
-        "clean",
-        "release",
-        "codegen",
-    )
-
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 

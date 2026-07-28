@@ -156,8 +156,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
-	_builtin_format_check \
-	_builtin_format_apply \
+	_builtin_fmt_check \
+	_builtin_fmt_apply \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
@@ -387,11 +387,11 @@ _builtin_test_all: _builtin_require_environment
 ) }}
 {% endif %}
 
-_builtin_format_check: _builtin_require_environment
+_builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_format_apply: _builtin_require_environment
+_builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)

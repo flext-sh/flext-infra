@@ -270,16 +270,65 @@ def test_generated_prose_wraps_without_reformatting_directive_blocks(
     )
 
 
-def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:
-    """Mark dry-run generation reports as warnings."""
+def test_generate_dry_run_reports_real_drift(tmp_path: Path) -> None:
+    """Fail a dry-run only when generated content differs from disk."""
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
-    result = FlextInfraDocGenerator().generate(
+    generator = FlextInfraDocGenerator()
+    dry_run = generator.generate(
         m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=False)
     )
 
-    tm.ok(result)
-    tm.that(result.value[0].result, eq="WARN")
+    tm.ok(dry_run)
+    tm.that(dry_run.value[0].result, eq="FAIL")
+    tm.that(dry_run.value[0].changed_files, gt=0)
+    tm.that(dry_run.value[0].generated, eq=0)
+
+    applied = generator.generate(
+        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=True)
+    )
+    tm.ok(applied)
+    tm.that(applied.value[0].result, eq="OK")
+    tm.that(applied.value[0].generated, gt=0)
+
+    fixed_point = generator.generate(
+        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=False)
+    )
+    tm.ok(fixed_point)
+    tm.that(fixed_point.value[0].result, eq="OK")
+    tm.that(fixed_point.value[0].changed_files, eq=0)
+    tm.that(fixed_point.value[0].generated, eq=0)
+
+
+def test_stale_generated_file_drift_converges_after_apply(tmp_path: Path) -> None:
+    """Count stale removal in check, apply it, then prove the fixed point."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    generator = FlextInfraDocGenerator()
+    apply_request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["flext-a"], apply=True
+    )
+    check_request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["flext-a"], apply=False
+    )
+    tm.ok(generator.generate(apply_request))
+    stale = workspace / "flext-a/docs/api-reference/generated/stale.md"
+    stale.write_text("stale\n", encoding="utf-8")
+
+    check = generator.generate(check_request)
+    tm.ok(check)
+    tm.that(stale.exists(), eq=True)
+    tm.that(sum(report.changed_files for report in check.value), gt=0)
+    tm.that(sum(report.generated for report in check.value), eq=0)
+
+    applied = generator.generate(apply_request)
+    tm.ok(applied)
+    tm.that(stale.exists(), eq=False)
+    tm.that(sum(report.generated for report in applied.value), gt=0)
+
+    fixed_point = generator.generate(check_request)
+    tm.ok(fixed_point)
+    tm.that(sum(report.changed_files for report in fixed_point.value), eq=0)
+    tm.that(sum(report.generated for report in fixed_point.value), eq=0)
 
 
 def test_generated_file_model_is_frozen() -> None:

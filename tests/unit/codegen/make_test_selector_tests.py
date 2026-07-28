@@ -30,6 +30,44 @@ class TestsMakeTestSelector:
         )
         tm.that(matches, len=1)
 
+    def test_fmt_is_the_only_public_formatting_verb(self, tmp_path: Path) -> None:
+        """The generated Makefile runs canonical fmt and rejects its retired name."""
+        public_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
+        tm.that("fmt" in public_verbs, eq=True)
+        tm.that("format" in public_verbs, eq=False)
+
+        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        test_u.Tests.write_executable(
+            tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
+        )
+        invocation_log = tmp_path / "uv-args.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
+        )
+
+        canonical = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+            )
+        )
+        tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
+        invocations = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocations, has=["ruff check --no-fix", "ruff format --check"])
+        calls_before_retired = invocations.splitlines()
+
+        retired = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "format", f"UV={uv}"], cwd=tmp_path
+            )
+        )
+        tm.that(retired.exit_code, ne=0)
+        tm.that(
+            invocation_log.read_text(encoding="utf-8").splitlines(),
+            eq=calls_before_retired,
+        )
+
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))

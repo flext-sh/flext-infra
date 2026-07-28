@@ -63,16 +63,19 @@ class FlextInfraUtilitiesDocsContract:
     ) -> m.Infra.GeneratedFile:
         """Write generated content only when needed and allowed."""
         if path.exists() and not overwrite:
-            return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
+            return m.Infra.GeneratedFile(
+                path=path.as_posix(), changed=False, written=False
+            )
         current = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
         )
-        if current == content:
-            return m.Infra.GeneratedFile(path=path.as_posix(), written=False)
-        if apply:
+        changed = current != content
+        if changed and apply:
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(content, encoding=c.Cli.ENCODING_DEFAULT)
-        return m.Infra.GeneratedFile(path=path.as_posix(), written=apply)
+        return m.Infra.GeneratedFile(
+            path=path.as_posix(), changed=changed, written=changed and apply
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsContract"]

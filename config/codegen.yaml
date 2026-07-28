@@ -111,7 +111,7 @@ Infra:
         - name: test
           default_what: all
           apply_guarded: false
-        - name: format
+        - name: fmt
           default_what: check
           apply_guarded: true
         - name: run
@@ -137,7 +137,7 @@ Infra:
           apply_guarded: false
       custom_handler_policy:
         filename: custom.mk
-        target_pattern: "^(_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
+        target_pattern: "^(_custom_(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|fmt|run|status|docs|clean|release|codegen|worktree|basemk)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

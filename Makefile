@@ -37,7 +37,7 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree basemk
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_PHASES := generate fix audit build validate
@@ -65,7 +65,7 @@ _DEFAULT_deps := check
 _DEFAULT_build := artifacts
 _DEFAULT_check := all
 _DEFAULT_test := all
-_DEFAULT_format := check
+_DEFAULT_fmt := check
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := check
@@ -167,8 +167,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_build_artifacts \
 	_builtin_check_all \
 	_builtin_test_all \
-	_builtin_format_check \
-	_builtin_format_apply \
+	_builtin_fmt_check \
+	_builtin_fmt_apply \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
@@ -288,7 +288,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'format' 'check'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check'
 
 
 
@@ -528,11 +528,11 @@ _builtin_test_all: _builtin_require_environment
 	exit "$$rc"
 
 
-_builtin_format_check: _builtin_require_environment
+_builtin_fmt_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_format_apply: _builtin_require_environment
+_builtin_fmt_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)

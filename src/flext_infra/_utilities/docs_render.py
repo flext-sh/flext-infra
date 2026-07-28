@@ -226,7 +226,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `format WHAT=apply APPLY=Y`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
+            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
         ]
 
     @staticmethod

@@ -1,6 +1,6 @@
 """Tests that a custom Make surface never redefines a public verb.
 
-The generated ``Makefile`` owns every verb in ``c.Infra.PUBLIC_MAKE_VERBS`` and
+The generated ``Makefile`` owns every verb in the typed Make configuration and
 dispatches it through ``$(PUBLIC_VERBS)``. ``custom.mk`` is ``-include``d after
 that block, so a recipe there for the same target silently *replaces* the
 generated one — GNU Make reports ``overriding recipe for target`` and keeps the
@@ -43,7 +43,7 @@ def _custom_surfaces() -> tuple[Path, ...]:
 
 def _shadowed_verbs(surface: Path) -> tuple[str, ...]:
     """Return public verbs this custom surface declares as targets."""
-    public = frozenset(c.Infra.PUBLIC_MAKE_VERBS)
+    public = frozenset(verb.name for verb in config.Infra.codegen.make.verbs)
     found: list[str] = []
     for line in surface.read_text(encoding="utf-8").splitlines():
         match = _TARGET_LINE.match(line)
