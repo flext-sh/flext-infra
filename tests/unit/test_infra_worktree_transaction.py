@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from importlib import metadata
 from pathlib import Path
 from threading import Event
-from typing import TYPE_CHECKING
 
 import pytest
 from packaging.requirements import Requirement
