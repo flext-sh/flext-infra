@@ -11,10 +11,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Final
 
 import pytest
-from flext_tests import tf, tm
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
+from flext_tests import tf, tm
 from tests import m, u
 
 if TYPE_CHECKING:

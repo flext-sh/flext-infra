@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)

@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_tests import tm
-
 from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_tests import tm
 
 
 # mro-pulj (Codex): tests assert the lazy-root/empty-child contract.

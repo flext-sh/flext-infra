@@ -542,6 +542,12 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Generated directive including the custom Make surface"
+            ),
+        ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -572,14 +578,10 @@ class FlextInfraConfigModels:
             m.Field(description="Optional script command dispatch contract"),
         ] = None
 
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Generated custom Make policy include directive"),
-        ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs orchestrated across members"
+                description="Workspace-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[

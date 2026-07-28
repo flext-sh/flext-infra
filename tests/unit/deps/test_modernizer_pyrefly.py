@@ -6,12 +6,12 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:

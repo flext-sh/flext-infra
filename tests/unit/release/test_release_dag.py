@@ -6,7 +6,6 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import c, m, u
 
 if TYPE_CHECKING:

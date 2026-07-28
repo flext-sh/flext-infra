@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -24,6 +22,7 @@ from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

@@ -5,13 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 from flext_infra.detectors.manual_protocol_detector import (
     FlextInfraManualProtocolDetector,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:

@@ -15,9 +15,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
+from flext_tests import tm
 
 _ROLE = c.Infra.RepositoryRole
 # mro-o26p: provider identity, branch and base URL come from the config SSOT,

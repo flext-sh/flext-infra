@@ -13,9 +13,9 @@ from contextlib import redirect_stdout
 from io import StringIO
 
 import pytest
-from flext_tests import tm
 
 from flext_core import FlextContainer
+from flext_tests import tm
 from tests import c, u
 
 

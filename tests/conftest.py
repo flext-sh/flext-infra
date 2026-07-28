@@ -9,9 +9,9 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-from flext_tests import tm
 
 import flext_infra as infra_pkg
+from flext_tests import tm
 from tests import c, t, u
 
 # NOTE(mro-p68a.9.4, agent codex): the installed flext-tests pytest11 plugin is

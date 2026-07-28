@@ -5,11 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_cli import u
-from flext_tests import tm
 from packaging.requirements import Requirement
 
-from flext_infra import c, config, m, t
+from flext_infra import c, config, m, t, u
+from flext_tests import tm
 
 
 def test_codegen_catalog_is_tracked_typed_and_models_external_workspace() -> None:
