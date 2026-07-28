@@ -21,7 +21,7 @@ PYTEST_ARGS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
+PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
@@ -48,6 +48,7 @@ _DEFAULT_docs := check
 _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
+_DEFAULT_worktree := list
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
@@ -120,7 +121,8 @@ _BUILTIN_HANDLERS := \
 	_builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_codegen_check \
-	_builtin_codegen_apply
+	_builtin_codegen_apply \
+	_builtin_worktree_list
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
@@ -226,6 +228,10 @@ _builtin_help_usage:
 
 
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check'
+
+
+
+	@printf '  %-10s WHAT=%s\n' 'worktree' 'list'
 
 
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
@@ -377,3 +383,6 @@ _builtin_codegen_check: _builtin_require_environment
 _builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+
+_builtin_worktree_list:
+	@git -C "$(PROJECT_ROOT)" worktree list --porcelain

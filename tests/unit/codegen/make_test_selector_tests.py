@@ -52,7 +52,11 @@ class TestsMakeTestSelector:
             block.split("\n\n", 1)[0]
             for block in template.split("_builtin_test_all:")[1:]
         ]
-        tm.that(recipes, len=1, msg="template must own one _builtin_test_all recipe")
+        tm.that(
+            recipes,
+            len=2,
+            msg="template must define workspace-root and local test handlers",
+        )
         direct = [r for r in recipes if "pytest" in r]
         tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
         tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)

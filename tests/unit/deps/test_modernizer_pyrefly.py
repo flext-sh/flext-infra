@@ -214,7 +214,10 @@ class TestsFlextInfraModernizerPyrefly:
         for directory in ("src", "tests", "examples", "scripts"):
             (project_dir / directory).mkdir()
         (project_dir / "tests" / "test_placeholder.py").write_text(
-            "def test_placeholder() -> None:\n    assert True\n", encoding="utf-8"
+            "from flext_tests import tm\n\n"
+            "def test_placeholder() -> None:\n"
+            "    tm.that(True, eq=True)\n",
+            encoding="utf-8",
         )
 
         doc = tomlkit.document()
