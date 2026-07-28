@@ -123,3 +123,33 @@ class TestGateErrorReportingPublicBehavior:
         tm.that(result.value[0].passed, eq=False)
         captured = capsys.readouterr()
         tm.that(f"{captured.out}\n{captured.err}", has="rumdl execution failed")
+
+    def test_workspace_checker_emits_parsed_gate_issue(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        project_dir = u.Tests.mk_project(tmp_path, "p1")
+        (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        diagnostic = "README.md:3:2: [MD057] Relative link 'missing.md' does not exist"
+        runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
+
+        def create_gate(
+            _registry: FlextInfraGateRegistry, _gate_id: str, workspace_root: Path
+        ) -> FlextInfraMarkdownGate:
+            return FlextInfraMarkdownGate(workspace_root, runner=runner)
+
+        monkeypatch.setattr(FlextInfraGateRegistry, "create", create_gate)
+
+        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+            ["p1"], ["markdown"], reports_dir=tmp_path / "reports"
+        )
+
+        tm.ok(result)
+        tm.that(result.value[0].passed, eq=False)
+        captured = capsys.readouterr()
+        tm.that(
+            f"{captured.out}\n{captured.err}",
+            has="README.md:3:2 [MD057] Relative link 'missing.md' does not exist",
+        )

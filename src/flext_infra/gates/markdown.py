@@ -60,6 +60,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         return self._python_console_script_command(
             c.Infra.RUMDL,
             "check",
+            "--no-cache",
             "--color",
             "never",
             "--output-format",

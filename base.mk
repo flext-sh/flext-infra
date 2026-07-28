@@ -528,7 +528,7 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --deny-config-warnings --color never $$md_config; \
+		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
@@ -590,7 +590,7 @@ _test_impl:
 		esac; \
 		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
 	fi; \
-	_pytest_run="$(TESTS_DIR)"; \
+	_pytest_run="$(PYTEST_TARGETS)"; \
 	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
 	for target in $$_pytest_run; do \
 		if [ ! -e "$$target" ]; then \

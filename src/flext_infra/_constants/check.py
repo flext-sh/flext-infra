@@ -71,6 +71,8 @@ class FlextInfraConstantsCheck:
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
+    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
+    "Maximum parsed gate diagnostics emitted inline before the canonical report."
 
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
