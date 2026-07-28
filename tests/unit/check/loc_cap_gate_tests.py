@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
+from flext_infra import r
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -24,6 +24,12 @@ _OVER_CAP = (
     + "\n"
 )
 _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
+_TOKEI_OVER_CAP = (
+    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":250}}]}}'
+)
+_TOKEI_UNDER_CAP = (
+    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":1}}]}}'
+)
 
 
 def _gate_project(tmp_path: Path, *, name: str, module_src: str) -> Path:
@@ -43,18 +49,39 @@ class TestLocCapGate:
 
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.stub_run(stdout=_TOKEI_OVER_CAP))
+        ])
 
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
 
         tm.that(not result.result.passed, eq=True)
         tm.that(any(issue.code == "LOC_CAP" for issue in result.issues), eq=True)
 
     def test_under_cap_module_passes(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.stub_run(stdout=_TOKEI_UNDER_CAP))
+        ])
 
-        result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
 
         tm.that(result.result.passed, eq=True)
+
+    def test_tool_execution_failure_is_not_silenced(self, tmp_path: Path) -> None:
+        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        runner = u.Tests.SequenceRunner([r.fail("tokei is unavailable")])
+
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(tuple(issue.code for issue in result.issues), has="LOC_CAP_EXEC")
 
 
 __all__: t.StrSequence = []

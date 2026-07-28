@@ -14,9 +14,8 @@ import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_tests import FlextTestsConstants
-
 from flext_infra import c
+from flext_tests import FlextTestsConstants
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -32,6 +31,32 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
 
     class Tests(FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
+
+        MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+            "BASH_ENV",
+            "CHANGED_ONLY",
+            "CHECK_GATES",
+            "CHECK_ONLY",
+            "FAIL_FAST",
+            "FILE",
+            "FILES",
+            "FIX",
+            "FLEXT_INFRA_PYTHON",
+            "FLEXT_ROOT",
+            "FLEXT_STANDALONE",
+            "FLEXT_WORKSPACE_ROOT",
+            "MATCH",
+            "PROJECT",
+            "PROJECTS",
+            "PYRIGHT_ARGS",
+            "PYTEST_ARGS",
+            "RUFF_ARGS",
+            "UV",
+            "VALIDATE_GATES",
+            "WORKSPACE_ROOT",
+            *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+        )
+        """Environment inherited from an outer Make invocation to discard in tests."""
 
         RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
         RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION

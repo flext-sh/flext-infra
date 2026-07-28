@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.transformers.class_reconstructor import (
     FlextInfraRefactorClassReconstructor,
 )
@@ -13,6 +11,7 @@ from flext_infra.transformers.signature_propagator import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
+from flext_tests import tm
 from tests import m
 
 
@@ -27,8 +26,8 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
                 {"category": "public", "visibility": "public"},
             ]
         ).apply_to_source(source)
-        assert updated.index("def __init__") < updated.index("def a")
-        assert updated.index("def a") < updated.index("def b")
+        tm.that(updated.index("def __init__") < updated.index("def a"), eq=True)
+        tm.that(updated.index("def a") < updated.index("def b"), eq=True)
 
     def test_class_reconstructor_skips_interleaved_non_method_members(self) -> None:
         source = "class C:\n    def b(self) -> None:\n        return None\n\n    alias = b\n\n    def a(self) -> None:\n        return None\n"
@@ -45,8 +44,8 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
         updated, _ = FlextInfraRefactorClassReconstructor(
             order_config=[{"category": "public", "visibility": "public"}]
         ).apply_to_source(source)
-        assert updated.index("def a") < updated.index("def b")
-        assert updated.index("def c") < updated.index("def d")
+        tm.that(updated.index("def a") < updated.index("def b"), eq=True)
+        tm.that(updated.index("def c") < updated.index("def d"), eq=True)
         tm.that(updated, has="alias = a")
 
     def test_symbol_propagation_renames_import_and_local_references(self) -> None:
@@ -74,9 +73,12 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
                 "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule"
             },
         ).apply_to_source(source)
-        assert (
-            "from flext_infra import FlextInfraRefactorLegacyRemovalRule as Legacy"
-            in updated
+        tm.that(
+            (
+                "from flext_infra import FlextInfraRefactorLegacyRemovalRule as Legacy"
+                in updated
+            ),
+            eq=True,
         )
         tm.that(updated, has="rule_cls = Legacy")
 

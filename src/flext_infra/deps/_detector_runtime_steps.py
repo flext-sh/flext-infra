@@ -42,7 +42,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             return r[tuple[t.SequenceOf[Path], Path]].fail(
                 f"Deptry executable not found at {deptry_path}"
             )
-        limits_default = Path(__file__).resolve().parent / "dependency_limits.toml"
+        limits_default = (
+            Path(__file__).resolve().parent / c.Infra.DEPENDENCY_LIMITS_FILENAME
+        )
         limits_path = params.limits_path or limits_default
         return r[tuple[t.SequenceOf[Path], Path]].ok((projects, limits_path))
 

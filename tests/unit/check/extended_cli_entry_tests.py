@@ -5,9 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import main
+from flext_tests import tm
 from tests import u
 
 

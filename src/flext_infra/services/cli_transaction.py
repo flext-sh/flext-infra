@@ -74,8 +74,6 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if skip_next:
                 skip_next = False
                 continue
-            if argument == "--allow-lint-regression":
-                continue
             if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
                 if argument == "--mode":
                     skip_next = True
@@ -186,7 +184,6 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             workspace_root=workspace_result.value,
             command=(group, *self.transaction_inner_args(route_key, args)),
             apply_patch=apply_requested,
-            allow_lint_regression="--allow-lint-regression" in args,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),
         )
@@ -208,10 +205,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if report.breakage_detected or check_failed
             else c.Cli.MessageTypes.INFO
         )
-        if len(rendered) > c.Cli.OUTPUT_PLAIN_MESSAGE_THRESHOLD:
-            self.display_message_plain(rendered, message_type)
-        else:
-            self.display_message(rendered, message_type)
+        self.display_message_plain(rendered, message_type)
         if (
             report.breakage_detected
             or check_failed

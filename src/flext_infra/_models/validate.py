@@ -82,7 +82,7 @@ class FlextInfraModelsCore:
             t.NonNegativeInt, m.Field(description="Failed test case count")
         ]
         error_count: Annotated[
-            t.NonNegativeInt, m.Field(description="Error trace count")
+            t.NonNegativeInt, m.Field(description="Errored test case count")
         ]
         warning_count: Annotated[
             t.NonNegativeInt, m.Field(description="Warning line count")

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, t
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenLazyInitPlannerParentsMixin:
@@ -114,7 +114,9 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         )
         if canonical_target is not None:
             # mro-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
-            canonical_package = canonical_target[0]
+            canonical_package: str = t.Infra.STR_ADAPTER.validate_python(
+                canonical_target[0]
+            )
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:

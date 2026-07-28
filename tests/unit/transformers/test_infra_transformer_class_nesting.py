@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,13 +40,19 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     ) -> None:
         source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
         code = _transform_source(tmp_path, source)
-        assert (
-            "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
-        assert (
-            "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
         tm.that(code, has='    """timeout docs"""')
         tm.that(code, has="class FlextDispatcher:")

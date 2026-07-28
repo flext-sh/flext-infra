@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra._utilities._github_pr_single import (
     FlextInfraUtilitiesGithubPrSingleMixin,
 )
@@ -19,7 +20,8 @@ from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
@@ -46,18 +48,19 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             workspace_root=workspace_root, request=request, outcomes=outcomes
         )
         failures = 0
+        processed = 0
         for repo_root in repos:
             outcome_result = cls._github_pr_process_repo(repo_root, context)
+            processed += 1
             failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0
             if failed:
                 failures += 1
                 if request.fail_fast:
                     break
-        total = len(repos)
         return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
             m.Infra.GithubPullRequestWorkspaceReport(
-                total=total,
-                success=total - failures,
+                total=processed,
+                success=processed - failures,
                 fail=failures,
                 outcomes=tuple(outcomes),
             )

@@ -5,10 +5,9 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,11 +35,9 @@ class TestsFlextInfraBasemkGenerator:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
             python_version="3.13",
-            package_manager="poetry",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["mypy"],
-            test_command="pytest",
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)
@@ -63,7 +60,7 @@ class TestsFlextInfraBasemkGenerator:
         result = FlextInfraBaseMkGenerator().write(content, output=output_path)
 
         tm.ok(result)
-        assert output_path.exists()
+        tm.that(output_path.exists(), eq=True)
         tm.that(output_path.read_text(encoding="utf-8"), eq=content)
 
     def test_generator_write_creates_parent_directories(self, tmp_path: Path) -> None:
@@ -74,7 +71,7 @@ class TestsFlextInfraBasemkGenerator:
         )
 
         tm.ok(result)
-        assert output_path.exists()
+        tm.that(output_path.exists(), eq=True)
 
     def test_generator_write_to_stream(self) -> None:
         stream = io.StringIO()

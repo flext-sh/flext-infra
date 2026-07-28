@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
+from flext_infra import c
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_tests import tm
 
 
 class TestsFlextInfraDepsModernizerComments:
@@ -80,9 +80,7 @@ class TestsFlextInfraDepsModernizerComments:
         """Replace superseded automatic banner and marker variants."""
         rendered = "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Sections with [AUTO] are derived from workspace layout and dependencies.\n# [AUTO] merged from dev/docs/security/test/typings\n[project.optional-dependencies]\ndev = ['pytest']"
         result, _changes = FlextInfraInjectCommentsPhase().apply(rendered)
-        tm.that(
-            result, has="# Run `make mod` to regenerate all managed pyproject sections."
-        )
+        tm.that(result, starts=c.Infra.BANNER)
         tm.that("[AUTO]" in result, eq=False)
 
     def test_inject_comments_phase_marks_pytest_and_coverage_subtables(self) -> None:

@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -33,8 +33,14 @@ class TestsFlextInfraDepsModernizerWorkspace:
         toml_file = tmp_path / "test.toml"
         if exists:
             toml_file.write_text(content, encoding="utf-8")
-        result = u.Cli.toml_read(toml_file)
+        with u.structlog().testing.capture_logs() as log_entries:
+            result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=expected)
+        if exists and not expected:
+            tm.that(log_entries, len=1)
+            tm.that(log_entries[0].get("log_level"), eq="warning")
+        else:
+            tm.that(log_entries, empty=True)
 
     def test_workspace_root_returns_explicit_path(self, tmp_path: Path) -> None:
         """Verify workspace root returns explicit path."""
@@ -51,6 +57,57 @@ class TestsFlextInfraDepsModernizerWorkspace:
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
+
+    def test_modernizer_uses_git_topology_for_child_detection(
+        self, tmp_path: Path
+    ) -> None:
+        source_repository = tmp_path / "source-repository"
+        source_repository.mkdir()
+        pyproject = source_repository / c.Infra.PYPROJECT_FILENAME
+        source = '[project]\nname = "flext-demo"\nversion = "0.1.0"\n'
+        pyproject.write_text(source, encoding="utf-8")
+        package_init = source_repository / "src" / "flext_demo" / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        (source_repository / "Makefile").write_text(
+            "MAKE_PROFILE := workspace-member\nWORKSPACE_ROOT_REL := ..\n",
+            encoding="utf-8",
+        )
+        u.Tests.initialize_git_repo(source_repository)
+        standalone = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=source_repository, skip_check=True, skip_comments=True
+            ).conform_source(source, path=pyproject)
+        )
+
+        superproject = tmp_path / "superproject"
+        superproject.mkdir()
+        (superproject / "README.md").write_text("workspace\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(superproject)
+        tm.ok(
+            u.Infra.git_capture(
+                superproject,
+                (
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(source_repository),
+                    "member",
+                ),
+            )
+        )
+        member = superproject / "member"
+        attached = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=member, skip_check=True, skip_comments=True
+            ).conform_source(
+                (member / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                path=member / c.Infra.PYPROJECT_FILENAME,
+            )
+        )
+
+        tm.that(attached, ne=standalone)
 
     def test_main_applies_only_selected_projects(
         self, modernizer_workspace_with_projects: Path

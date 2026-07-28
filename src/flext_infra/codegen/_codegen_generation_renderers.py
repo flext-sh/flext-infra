@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
@@ -30,17 +30,30 @@ class FlextInfraCodegenGenerationRenderersMixin(
         rendered = u.Cli.template_render(
             template_root / template_name, context
         ).unwrap()
-        # mro-wkii.17 / mro-0ftd.3.5: formatting is explicit; lint never
-        # mutates output, so renderer defects fail at their canonical owner.
-        # mro-96j2.4 (agent: claude): Ruff *check* runs once as a batched stage
-        # over the changed artifact set (FlextInfraCodegenLazyInit.
-        # batch_lint_generated), not per rendered template. Only the byte-
-        # canonical format pass stays here so drift comparison is exact.
         compile(rendered, target_filename, "exec")
+        organize_result = u.Cli.run_raw(
+            [
+                c.Infra.RUFF,
+                c.Infra.CHECK,
+                "--fix-only",
+                "--stdin-filename",
+                target_filename,
+                "-",
+            ],
+            cwd=template_root,
+            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+        )
+        if organize_result.failure:
+            raise ValueError(organize_result.error or "ruff import organization failed")
+        organized = organize_result.unwrap()
+        if organized.exit_code != 0:
+            detail = (organized.stderr or organized.stdout).strip()
+            msg = f"ruff import organization failed ({organized.exit_code}): {detail}"
+            raise ValueError(msg)
         format_result = u.Cli.run_raw(
             [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", target_filename, "-"],
             cwd=template_root,
-            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+            input_data=organized.stdout.encode(c.Cli.ENCODING_DEFAULT),
         )
         if format_result.failure:
             raise ValueError(format_result.error or "ruff format failed")
@@ -49,7 +62,10 @@ class FlextInfraCodegenGenerationRenderersMixin(
             detail = (output.stderr or output.stdout).strip()
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
-        return output.stdout.rstrip() + "\n"
+        rendered_output: str = (
+            t.Infra.STR_ADAPTER.validate_python(output.stdout).rstrip() + "\n"
+        )
+        return rendered_output
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

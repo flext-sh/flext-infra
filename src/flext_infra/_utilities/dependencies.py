@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c
+from flext_infra.constants import c
 from flext_infra._utilities.pyproject import (
     FlextInfraUtilitiesPyproject,
     _validate_infra_payload,
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from tomlkit import TOMLDocument
 
-    from flext_infra import t
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -47,25 +47,10 @@ class FlextInfraUtilitiesDependencies:
         return normalized or None
 
     @staticmethod
-    def constraint_specifier(
-        version: str,
-        *,
-        policy: c.Infra.DependencyConstraintPolicy,
-        current_specifier: str = "",
-    ) -> str:
-        """Return the locked-version floor while retaining explicit safety caps."""
+    def constraint_specifier(version: str) -> str:
+        """Return the resolved lock version as an open-ended dependency floor."""
         normalized_version = version.strip()
-        if not normalized_version:
-            return ""
-        if policy == c.Infra.DependencyConstraintPolicy.COMPATIBLE:
-            return f"~={normalized_version}"
-        # mro-45r9: uv owns the floor; declared caps/exclusions remain compatibility SSOT.
-        preserved = tuple(
-            specifier.strip()
-            for specifier in current_specifier.split(",")
-            if specifier.strip().startswith(("<", "!="))
-        )
-        return ",".join((f">={normalized_version}", *preserved))
+        return f">={normalized_version}" if normalized_version else ""
 
     @classmethod
     def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
@@ -113,9 +98,8 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> str | None:
-        """Rewrite one PEP 621 requirement string using the locked version policy."""
+        """Rewrite one PEP 621 requirement to the resolved uv.lock floor."""
         result: str | None = None
         raw_text = requirement.strip()
         if raw_text:
@@ -134,10 +118,9 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            current_specifier = requirement_part.strip()[
-                                head_match.end() :
-                            ].strip()
-                            rewritten = f"{head}{cls.constraint_specifier(locked_version, policy=policy, current_specifier=current_specifier)}"
+                            rewritten = (
+                                f"{head}{cls.constraint_specifier(locked_version)}"
+                            )
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"
@@ -152,9 +135,8 @@ class FlextInfraUtilitiesDependencies:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence = (),
-        policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
     ) -> t.Infra.InfraValue | None:
-        """Rewrite one Poetry dependency value using the locked version policy."""
+        """Rewrite one Poetry dependency to the resolved uv.lock floor."""
         result: t.Infra.InfraValue | None = None
         normalized_name = cls.dep_name(dependency_name)
         internal_set = set(internal_names)
@@ -165,19 +147,7 @@ class FlextInfraUtilitiesDependencies:
         ):
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
-                rewritten_specifier = cls.constraint_specifier(
-                    locked_version,
-                    policy=policy,
-                    current_specifier=(
-                        raw_value
-                        if isinstance(raw_value, str)
-                        else (
-                            str(raw_value.get(c.Infra.VERSION, ""))
-                            if isinstance(raw_value, Mapping)
-                            else ""
-                        )
-                    ),
-                )
+                rewritten_specifier = cls.constraint_specifier(locked_version)
                 if isinstance(raw_value, str):
                     result = (
                         rewritten_specifier

@@ -6,18 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_tests import tm
 
 
 class TestWorkspaceCheckerResolveGates:
     """Test FlextInfraWorkspaceChecker.resolve_gates."""
 
-    def test_resolve_gates_type_maps_to_pyrefly(self) -> None:
+    def test_resolve_gates_type_is_rejected(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["type"])
-        tm.ok(result)
-        tm.that(result.value, has="pyrefly")
+        tm.fail(result, has="unknown gate")
 
     def test_resolve_gates_skips_empty_strings(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "", "format"])
@@ -42,7 +40,7 @@ class TestWorkspaceCheckerResolveGates:
         gates = [
             "lint",
             "format",
-            "type",
+            "pyrefly",
             "mypy",
             "pyright",
             "silent-failure",
@@ -51,7 +49,7 @@ class TestWorkspaceCheckerResolveGates:
         ]
         result = FlextInfraWorkspaceChecker.resolve_gates(gates)
         tm.ok(result)
-        assert len(result.value) > 0
+        tm.that(len(result.value) > 0, eq=True)
 
     def test_resolve_gates_accepts_silent_failure(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])

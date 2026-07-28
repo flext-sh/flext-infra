@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -30,9 +29,9 @@ def test_workflows_subcommand_applies_templates(tmp_path: Path) -> None:
     ])
 
     tm.that(result, eq=0)
-    assert report_path.is_file()
-    assert (workspace / "flext-a/.github/workflows/ci.yml").is_file()
-    assert (workspace / "flext-b/.github/workflows/ci.yml").is_file()
+    tm.that(report_path.is_file(), eq=True)
+    tm.that((workspace / "flext-a/.github/workflows/ci.yml").is_file(), eq=True)
+    tm.that((workspace / "flext-b/.github/workflows/ci.yml").is_file(), eq=True)
 
 
 def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
@@ -48,7 +47,7 @@ def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
         str(report_path),
     ])
 
-    assert report_path.is_file()
+    tm.that(report_path.is_file(), eq=True)
     tm.that(result, eq=0)
 
 
@@ -62,6 +61,24 @@ def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
         str(workspace / "flext-a"),
         "--action",
         "status",
+    ])
+
+    tm.that(result, ne=0)
+    log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
+    tm.that(log_path.is_file(), eq=True)
+    tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
+
+
+def test_pr_subcommand_rejects_removed_lifecycle_action(tmp_path: Path) -> None:
+    workspace = u.Tests.create_github_workspace(tmp_path, project_names=("flext-a",))
+
+    result = main([
+        "github",
+        "pr",
+        "--repo-root",
+        str(workspace / "flext-a"),
+        "--action",
+        "merge",
     ])
 
     tm.that(result, ne=0)

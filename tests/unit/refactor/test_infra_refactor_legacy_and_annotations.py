@@ -6,10 +6,9 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.refactor.service import FlextInfraRefactorService
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
@@ -67,8 +66,12 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
             {"id": "ensure-future-annotations"},
         )
         updated, _ = rule.apply(source)
-        assert (
-            '"""doc"""\n\nfrom __future__ import annotations\n\nimport os\n' in updated
+        tm.that(
+            (
+                '"""doc"""\n\nfrom __future__ import annotations\n\nimport os\n'
+                in updated
+            ),
+            eq=True,
         )
 
     def test_ensure_future_annotations_moves_existing_import_to_top(self) -> None:
@@ -78,7 +81,7 @@ class TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations:
             {"id": "ensure-future-annotations"},
         )
         updated, _ = rule.apply(source)
-        assert updated.startswith("from __future__ import annotations\n")
+        tm.that(updated.startswith("from __future__ import annotations\n"), eq=True)
         tm.that(updated, has="\nimport os\n")
 
     def test_legacy_wrapper_function_is_inlined_as_alias(self) -> None:

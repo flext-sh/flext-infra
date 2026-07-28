@@ -6,12 +6,15 @@ import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m, settings, t
+from flext_infra._settings import settings
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesRopeAnalysis:
@@ -337,18 +340,24 @@ class FlextInfraUtilitiesRopeAnalysis:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.StrMapping:
         """Return {local_name: fully_qualified_name} for all imports in a module."""
-        return FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
-            rope_project, resource
-        ).semantic_imports
+        imports: t.StrMapping = (
+            FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
+                rope_project, resource
+            ).semantic_imports
+        )
+        return imports
 
     @staticmethod
     def get_declared_module_imports(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.StrMapping:
         """Return {local_name: declared import path} without resolving re-exports."""
-        return FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
-            rope_project, resource
-        ).declared_imports
+        imports: t.StrMapping = (
+            FlextInfraUtilitiesRopeAnalysis.get_module_semantic_state(
+                rope_project, resource
+            ).declared_imports
+        )
+        return imports
 
     @staticmethod
     def get_module_classes(
@@ -418,7 +427,8 @@ class FlextInfraUtilitiesRopeAnalysis:
     @staticmethod
     def _scope_name(scope: t.Infra.RopeScope) -> str:
         """Return the def/class name backing one rope scope."""
-        return scope.pyobject.get_name()
+        name: str = scope.pyobject.get_name()
+        return name
 
     @staticmethod
     def get_module_export_names(
@@ -1150,7 +1160,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         for arg in args:
             text = arg.strip()
             if text.startswith(prefix):
-                return text[len(prefix) :].strip()
+                value: str = t.Infra.STR_ADAPTER.validate_python(
+                    text[len(prefix) :].strip()
+                )
+                return value
         return ""
 
     @staticmethod

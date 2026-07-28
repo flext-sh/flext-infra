@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c, m, p, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesCodegen:
@@ -48,7 +51,8 @@ class FlextInfraUtilitiesCodegen:
             docstring=docstring,
         )
         rendered: p.Result[str] = u.Cli.template_render(template_path, context)
-        return rendered.unwrap()
+        content: str = rendered.unwrap()
+        return content
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:

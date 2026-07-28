@@ -5,7 +5,10 @@ from __future__ import annotations
 from operator import itemgetter
 from pathlib import Path
 
-from flext_infra import c, m, p, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
@@ -291,14 +294,18 @@ class FlextInfraUtilitiesRopeInventory:
             return None
         scope = next((scope for scope in scopes if scope.get_start() == line), None)
         if scope is not None:
-            return scope
+            validated_existing_scope: p.Infra.RopeScopeDsl = scope
+            return validated_existing_scope
         if FlextInfraUtilitiesRopeRuntime.is_assigned_name(
             pyname
         ) or FlextInfraUtilitiesRopeRuntime.is_parameter_name(pyname):
             return None
         getter = getattr(pyname.get_object(), "get_scope", None)
         candidate = getter() if callable(getter) else None
-        return candidate if isinstance(candidate, p.Infra.RopeScopeDsl) else None
+        if not isinstance(candidate, p.Infra.RopeScopeDsl):
+            return None
+        validated_scope: p.Infra.RopeScopeDsl = candidate
+        return validated_scope
 
     @staticmethod
     def _kind_for(

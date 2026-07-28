@@ -7,7 +7,8 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra._config import config
+from flext_infra.typings import t
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )
@@ -31,8 +32,10 @@ class FlextInfraUtilitiesRopeCore(
         """Create a rope Project over workspace_root with no disk artifacts."""
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
-        discovered_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            resolved_root
+        discovered_roots = (
+            FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
+                resolved_root, include_attached=False
+            )
         )
         project_roots = tuple(
             project_root

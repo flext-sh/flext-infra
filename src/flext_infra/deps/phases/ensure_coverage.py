@@ -42,6 +42,7 @@ class FlextInfraEnsureCoverageConfigPhase:
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("coverage-run")
             .table("coverage", "run")
+            .list("source", list(cov_config.source))
             .list("omit", sorted(set(cov_config.omit)))
             .build()
         )

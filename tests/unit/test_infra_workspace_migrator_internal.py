@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import c
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, c
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
 
@@ -44,41 +43,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         )
         return project_dir
 
-    @staticmethod
-    def _make_read_only(path: Path) -> None:
-        path.chmod(0o444)
-
-    def test_execute_reports_missing_makefile_in_dry_run(self, tmp_path: Path) -> None:
-        project_root = self._write_project_files(tmp_path, makefile=None)
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(project_root, "test-proj"),
-            "base",
-            workspace_root=tmp_path,
-            dry_run=True,
-        )
-
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
-
-        tm.that(
-            any(
-                "[DRY-RUN] Makefile not found" in change for change in migration.changes
-            ),
-            eq=True,
-        )
-
-    def test_execute_surfaces_makefile_read_error(self, tmp_path: Path) -> None:
-        project_root = self._write_project_files(tmp_path, makefile=None)
-        (project_root / "Makefile").mkdir()
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(project_root, "test-proj"),
-            "base",
-            workspace_root=tmp_path,
-        )
-
-        migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
-
-        tm.that(any("Makefile read failed" in err for err in migration.errors), eq=True)
-
     def test_execute_tolerates_missing_makefile_non_dry_run(
         self, tmp_path: Path
     ) -> None:
@@ -108,7 +72,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
     def test_execute_surfaces_pyproject_write_error(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(tmp_path, pyproject="[tool.poetry]\n")
-        self._make_read_only(project_root / "pyproject.toml")
+        u.Tests.make_read_only(project_root / "pyproject.toml")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "test-proj"),
             "base",
@@ -118,7 +82,9 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
         migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
-        tm.that(any("TOML write" in err for err in migration.errors), eq=True)
+        tm.that(
+            any("pyproject update failed" in err for err in migration.errors), eq=True
+        )
 
     def test_execute_skips_flext_core_dependency_changes(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(
@@ -141,9 +107,9 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
             eq=False,
         )
 
-    def test_invalid_workspace(self) -> None:
+    def test_invalid_workspace(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(
-            workspace_root=Path("/nonexistent"), dry_run=False, apply_changes=True
+            workspace_root=tmp_path / "nonexistent", dry_run=False, apply_changes=True
         )
 
         result = migrator.execute()

@@ -24,7 +24,8 @@ if TYPE_CHECKING:
 class _DiagResult:
     """Internal container for extracted diagnostics."""
 
-    __slots__: ClassVar[t.Quint[str, str, str, str, str]] = (
+    __slots__: ClassVar[tuple[str, ...]] = (
+        "error_cases",
         "error_traces",
         "failed_cases",
         "skip_cases",
@@ -34,6 +35,7 @@ class _DiagResult:
 
     def __init__(self) -> None:
         self.failed_cases: t.MutableSequenceOf[str] = []
+        self.error_cases: t.MutableSequenceOf[str] = []
         self.error_traces: t.MutableSequenceOf[str] = []
         self.skip_cases: t.MutableSequenceOf[str] = []
         self.warning_lines: t.MutableSequenceOf[str] = []
@@ -84,6 +86,7 @@ class FlextInfraPytestDiagXmlMixin:
                 )
             )
         if (error := case.find(c.Infra.ERROR)) is not None:
+            diag.error_cases.append(label)
             diag.error_traces.append(
                 FlextInfraPytestDiagXmlMixin._build_trace_chunk("ERROR", label, error)
             )

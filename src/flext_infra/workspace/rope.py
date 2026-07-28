@@ -173,11 +173,23 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path."""
-        return self.workspace_index.modules_by_path.get(str(file_path.resolve()))
+        raw = self.workspace_index.modules_by_path.get(str(file_path.resolve()))
+        if raw is None:
+            return None
+        validated: m.Infra.RopeModuleIndexEntry = (
+            m.Infra.RopeModuleIndexEntry.model_validate(raw)
+        )
+        return validated
 
     def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory."""
-        return self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
+        raw = self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
+        if raw is None:
+            return None
+        validated: m.Infra.RopePackageIndexEntry = (
+            m.Infra.RopePackageIndexEntry.model_validate(raw)
+        )
+        return validated
 
     def modules(
         self, *, project_names: t.StrSequence | None = None
@@ -365,7 +377,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cached = self._module_policy_cache.get(cache_key)
         if cached is not None:
             return cached
-        policy = u.Infra.policy(
+        policy: m.Infra.NamespaceModulePolicy = u.Infra.policy(
             resolved_file, rel_path=resolved_rel_path, current_pkg=current_pkg
         )
         self._module_policy_cache[cache_key] = policy
@@ -422,9 +434,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
         """Return one cached semantic snapshot for a module path."""
-        return u.Infra.get_module_semantic_state(
+        state: m.Infra.ModuleSemanticState = u.Infra.get_module_semantic_state(
             self.rope_project, self._resource_for(file_path)
         )
+        return state
 
     def exports(
         self, file_path: Path, *, export_options: m.Infra.ExportOptions | None = None

@@ -5,13 +5,12 @@ from __future__ import annotations
 import sys
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -43,6 +42,11 @@ class FlextInfraGate(ABC):
         """
         return (sys.executable, "-m", module, *args)
 
+    @staticmethod
+    def _python_console_script_command(tool: str, *args: str) -> t.StrSequence:
+        """Invoke a uv-managed console script from the active interpreter directory."""
+        return (str(Path(sys.executable).with_name(tool)), *args)
+
     # ------------------------------------------------------------------
     # Template method: check
     # ------------------------------------------------------------------
@@ -72,7 +76,7 @@ class FlextInfraGate(ABC):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output=result.stderr,
+            raw_output=self._raw_output(result),
         )
 
     def check_files(
@@ -106,7 +110,7 @@ class FlextInfraGate(ABC):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output=result.stderr,
+            raw_output=self._raw_output(result),
         )
 
     # ------------------------------------------------------------------
@@ -222,6 +226,11 @@ class FlextInfraGate(ABC):
         """Assemble raw output from fix result. Default: stderr only."""
         stderr: str = result.stderr
         return stderr
+
+    @staticmethod
+    def _raw_output(result: p.Cli.CommandOutput) -> str:
+        """Preserve diagnostics regardless of the stream selected by a tool."""
+        return "\n".join(output for output in (result.stdout, result.stderr) if output)
 
     def _run(
         self,

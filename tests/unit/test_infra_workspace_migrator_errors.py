@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
     @pytest.mark.parametrize(
         ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
-        [("old", "base.mk", "new content", "base.mk update failed")],
+        [("old", "base.mk", "new content", "base.mk read failed")],
     )
     def test_write_failure(
         self,
@@ -32,7 +32,9 @@ class TestsFlextInfraInfraWorkspaceMigratorErrors:
         root = u.Tests.create_migrator_dir_layout(tmp_path, base_mk=base_mk)
         (root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (root / "src" / "flext_infra" / "__init__.py").touch()
-        self._make_read_only(root / read_only_name)
+        blocked_path = root / read_only_name
+        _ = blocked_path.replace(root / f"{read_only_name}.original")
+        blocked_path.mkdir()
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(root),
             new_base_mk,

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 
 class TestsCodegenCatalogExtensions:
@@ -27,7 +26,7 @@ class TestsCodegenCatalogExtensions:
             repository=local,
         )
 
-        result = FlextInfraCodegenConform._validate_workspace_catalog(  # ruff:ignore[private-member-access]
+        result = FlextInfraCodegenConform.validate_workspace_catalog(
             config.Infra.codegen, workspace
         )
 
@@ -42,7 +41,7 @@ class TestsCodegenCatalogExtensions:
             repository=local,
         )
 
-        result = FlextInfraCodegenConform._validate_workspace_catalog(  # ruff:ignore[private-member-access]
+        result = FlextInfraCodegenConform.validate_workspace_catalog(
             config.Infra.codegen, workspace
         )
 

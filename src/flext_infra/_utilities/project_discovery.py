@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import t
+from flext_infra.typings import t
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
@@ -22,24 +22,26 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @classmethod
     def discover_project_roots(
-        cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+        cls,
+        workspace_root: Path,
+        *,
+        scan_dirs: frozenset[str] | None = None,
+        include_attached: bool = False,
     ) -> t.SequenceOf[Path]:
         """Discover all project directories under workspace root.
 
         Algorithm:
           1. Check if workspace_root itself looks like a project
           2. Enumerate ``.gitmodules``-tracked submodules of the workspace
-          3. Surface external sub-repos that opt-in via
-             ``[tool.flext.workspace] attached = true`` in their pyproject
-             (covers any external git repo that imports flext-core but lives
-             outside the workspace's submodule registry — name-agnostic,
-             discovered purely by directory layout and pyproject content)
+          3. When explicitly requested, surface external members declared by
+             path or glob in the workspace's pyproject.
           4. Return sorted list including the workspace root itself
 
         Args:
             workspace_root: Root directory to start search from.
             scan_dirs: Directory names indicating a project exists (e.g., "src", "tests").
                 Must be frozenset for use as constant. Defaults to standard project dirs.
+            include_attached: Include explicitly declared external workspace members.
 
         Returns:
             List of project root paths sorted by ``.gitmodules`` order, with
@@ -51,7 +53,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             workspace_root
         )
         candidates = cls.discover_project_candidates(
-            workspace_root, scan_dirs=scan_dirs, include_attached=True
+            workspace_root, scan_dirs=scan_dirs, include_attached=include_attached
         )
         resolved_workspace_root = workspace_root.resolve()
         if not configured_members:

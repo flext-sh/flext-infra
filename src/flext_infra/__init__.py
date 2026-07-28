@@ -18,9 +18,9 @@ from flext_infra.__version__ import (
 )
 
 if TYPE_CHECKING:
-    from . import basemk
     from flext_cli import d, e, h, r, x
 
+    from . import basemk
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra
@@ -28,10 +28,12 @@ if TYPE_CHECKING:
     from .base_selection import FlextInfraProjectSelectionServiceBase
     from .cli import FlextInfraCli, docs_main, main
     from .constants import FlextInfraConstants, FlextInfraConstants as c
+    from .environment import FlextInfraWorkspaceEnvironment
     from .models import FlextInfraModels, FlextInfraModels as m
     from .protocols import FlextInfraProtocols, FlextInfraProtocols as p
     from .typings import FlextInfraTypes, FlextInfraTypes as t
     from .utilities import FlextInfraUtilities, FlextInfraUtilities as u
+    from .worktree import FlextInfraWorktreeService
 
     _ = (
         basemk,
@@ -52,6 +54,7 @@ if TYPE_CHECKING:
         main,
         FlextInfraConstants,
         c,
+        FlextInfraWorkspaceEnvironment,
         FlextInfraModels,
         m,
         FlextInfraProtocols,
@@ -60,6 +63,7 @@ if TYPE_CHECKING:
         t,
         FlextInfraUtilities,
         u,
+        FlextInfraWorktreeService,
     )
 
 
@@ -72,10 +76,12 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ".basemk": ("basemk",),
     ".cli": ("FlextInfraCli", "docs_main", "main"),
     ".constants": ("FlextInfraConstants", "c"),
+    ".environment": ("FlextInfraWorkspaceEnvironment",),
     ".models": ("FlextInfraModels", "m"),
     ".protocols": ("FlextInfraProtocols", "p"),
     ".typings": ("FlextInfraTypes", "t"),
     ".utilities": ("FlextInfraUtilities", "u"),
+    ".worktree": ("FlextInfraWorktreeService",),
     "flext_cli": ("d", "e", "h", "r", "x"),
 }
 
@@ -91,12 +97,14 @@ _DIRECT_IMPORTS: tuple[str, ...] = (
     "FlextInfra",
     "FlextInfraCli",
     "FlextInfraConstants",
+    "FlextInfraWorkspaceEnvironment",
     "FlextInfraModels",
     "FlextInfraProjectSelectionServiceBase",
     "FlextInfraProtocols",
     "FlextInfraServiceBase",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "FlextInfraWorktreeService",
     "__author__",
     "__author_email__",
     "__description__",
@@ -136,6 +144,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraServiceBase",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "FlextInfraWorkspaceEnvironment",
+    "FlextInfraWorktreeService",
     "__author__",
     "__author_email__",
     "__description__",

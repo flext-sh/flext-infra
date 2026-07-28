@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
+from flext_tests import tm
 from tests import t, u
 
 

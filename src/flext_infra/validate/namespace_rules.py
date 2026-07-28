@@ -14,14 +14,12 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraNamespaceRules:
@@ -90,10 +88,11 @@ class FlextInfraNamespaceRules:
             return ""
         kind = self._kind(func)
         if kind == "Name":
-            value: str = getattr(func, "id", "")
-            return value
+            identifier = getattr(func, "id", "")
+            return identifier if isinstance(identifier, str) else ""
         if kind == "Attribute":
-            return getattr(func, "attr", "")
+            attribute = getattr(func, "attr", "")
+            return attribute if isinstance(attribute, str) else ""
         if kind == "Call":
             return self.call_name(getattr(func, "func", None))
         return ""
@@ -458,7 +457,7 @@ class FlextInfraNamespaceRules:
 
     def _facade_owner(self, filepath: Path) -> str | None:
         """Return the owning facade alias for roots and private families."""
-        filename_owners = {
+        filename_owners: dict[str, str] = {
             c.Infra.CONSTANTS_PY: "c",
             c.Infra.TYPINGS_PY: "t",
             c.Infra.PROTOCOLS_PY: "p",
@@ -466,10 +465,14 @@ class FlextInfraNamespaceRules:
             c.Infra.UTILITIES_PY: "u",
         }
         if filepath.name in filename_owners:
-            return filename_owners[filepath.name]
-        for owner, directory in c.Infra.FAMILY_DIRECTORIES.items():
-            if directory in filepath.parts and owner in self._FACADE_DAG:
-                return owner
+            owner: str = t.Infra.STR_ADAPTER.validate_python(
+                filename_owners[filepath.name]
+            )
+            return owner
+        for raw_owner, directory in c.Infra.FAMILY_DIRECTORIES.items():
+            family_owner: str = t.Infra.STR_ADAPTER.validate_python(raw_owner)
+            if directory in filepath.parts and family_owner in self._FACADE_DAG:
+                return family_owner
         return None
 
     @staticmethod

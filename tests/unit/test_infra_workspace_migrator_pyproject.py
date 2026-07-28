@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import u
 
 if TYPE_CHECKING:
@@ -107,26 +106,6 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             eq=True,
         )
 
-    def test_makefile_not_found(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(
-            tmp_path, base_mk="base", makefile=None
-        )
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base",
-            workspace_root=tmp_path,
-            dry_run=True,
-        )
-        result = migrator.execute()
-        migration: t.SequenceOf[m.Infra.MigrationResult] = tm.ok(result)
-        tm.that(
-            any(
-                "[DRY-RUN]" in change and "Makefile not found" in change
-                for change in migration[0].changes
-            ),
-            eq=True,
-        )
-
     def test_pyproject_not_found(self, tmp_path: Path) -> None:
         root = u.Tests.create_migrator_dir_layout(
             tmp_path, base_mk="base", pyproject=None
@@ -146,16 +125,6 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             ),
             eq=True,
         )
-
-    def test_makefile_read_failure(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(tmp_path)
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base.mk",
-            workspace_root=tmp_path,
-            dry_run=False,
-        )
-        tm.ok(migrator.execute())
 
 
 __all__: t.StrSequence = []

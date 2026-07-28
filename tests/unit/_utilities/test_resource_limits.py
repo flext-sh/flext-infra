@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, m, u
+from flext_tests import tm
 
 
 class TestsFlextInfraUtilitiesResourceLimits:

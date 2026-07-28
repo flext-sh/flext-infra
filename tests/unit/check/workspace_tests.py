@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import r, tm
-
 from flext_cli import u as cli_u
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import r
+from flext_tests import tm
 from tests import u as test_u
 
 if TYPE_CHECKING:
@@ -82,10 +82,14 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type"])
+        result = FlextInfraWorkspaceChecker.resolve_gates([
+            "lint",
+            "pyrefly",
+            "mypy",
+            "pyright",
+        ])
         tm.ok(result)
-        tm.that(result.value, has="lint")
-        tm.that(result.value, has="pyrefly")
+        tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
     def test_resolve_gates_deduplicates(self) -> None:
         """Test that resolve_gates removes duplicate gate names."""
@@ -105,7 +109,7 @@ class TestFlextInfraWorkspaceChecker:
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
         tm.ok(result)
-        assert not result.value
+        tm.that(result.value, eq=[])
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
@@ -113,7 +117,7 @@ class TestFlextInfraWorkspaceChecker:
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
-        assert reports_dir.exists()
+        tm.that(reports_dir.exists(), eq=True)
 
     def test_lint_returns_gate_result(self, tmp_path: Path) -> None:
         """Test that lint() returns a GateResult."""

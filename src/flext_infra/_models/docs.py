@@ -189,6 +189,9 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         """Record of a generated file operation."""
 
         path: Annotated[str, m.Field(description="File path")]
+        changed: Annotated[
+            bool, m.Field(description="Whether generated content differs on disk")
+        ]
         written: Annotated[bool, m.Field(description="Whether file was written")] = (
             False
         )
