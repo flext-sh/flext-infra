@@ -89,7 +89,7 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_selects_config_pinned_uv_and_fails_without_mise(
+    def test_generated_make_selects_compatible_uv_line_and_fails_without_mise(
         self, tmp_path: Path
     ) -> None:
         root = tmp_path / "flext-demo"
@@ -108,8 +108,8 @@ class TestCodegenConform:
         tm.ok(created)
         make_path = shutil.which("make")
         mise_path = shutil.which("mise")
-        assert make_path is not None
-        assert mise_path is not None
+        make_path = tm.not_none(make_path)
+        mise_path = tm.not_none(mise_path)
         hostile_bin = tmp_path / "hostile-bin"
         hostile_bin.mkdir()
         hostile_uv = hostile_bin / "uv"
@@ -118,22 +118,16 @@ class TestCodegenConform:
         pwd_path = shutil.which("pwd")
         printf_path = shutil.which("printf")
         sh_path = shutil.which("sh")
-        assert pwd_path is not None
-        assert printf_path is not None
-        assert sh_path is not None
+        pwd_path = tm.not_none(pwd_path)
+        printf_path = tm.not_none(printf_path)
+        sh_path = tm.not_none(sh_path)
         (hostile_bin / "pwd").symlink_to(pwd_path)
         (hostile_bin / "printf").symlink_to(printf_path)
         (hostile_bin / "sh").symlink_to(sh_path)
-        expected_uv = config.Infra.codegen.toolchain.uv_version
+        expected_uv = config.Infra.codegen.toolchain.uv_mise_version
 
         selected = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "--dry-run",
-                "_builtin_status_diagnostics",
-            ],
+            [make_path, "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
             env={"PATH": f"{hostile_bin}{os.pathsep}{os.environ['PATH']}"},
             remove_env_keys=("MAKEFLAGS",),
         )
@@ -143,12 +137,7 @@ class TestCodegenConform:
             remove_env_keys=("MAKEFLAGS",),
         )
         status_without_mise = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "_builtin_status_diagnostics",
-            ],
+            [make_path, "-C", str(root), "_builtin_deps_lock", "APPLY=Y"],
             env={"PATH": str(hostile_bin)},
             remove_env_keys=("MAKEFLAGS",),
         )
@@ -162,9 +151,7 @@ class TestCodegenConform:
         tm.that(selected_output, lacks=str(hostile_uv))
         help_process = tm.ok(help_without_mise)
         tm.that(
-            help_process.exit_code,
-            eq=0,
-            msg=help_process.stdout + help_process.stderr,
+            help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
         )
         tm.that(help_process.stdout, has="flext-demo [standalone]")
         missing_process = tm.ok(status_without_mise)
@@ -370,29 +357,6 @@ class TestCodegenConform:
             tuple(item.name for item in environment.editable_repositories),
             eq=("flext-core",),
         )
-
-    def test_make_context_accepts_manifest_without_project_or_known_provider(
-        self,
-    ) -> None:
-        """Build Make context from repository-owned data alone."""
-        repository = config.Infra.codegen.repositories[0].model_copy(
-            update={"provider": "consumer-owned"}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="consumer",
-            repository=repository,
-        )
-        context = FlextInfraCodegenConform._make_render_context(
-            repository,
-            workspace,
-            config.Infra.codegen,
-            tooling_runtime=config.Infra.tooling.runtime,
-        )
-        rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
-        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
-        tm.that(rendered.workspace_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path

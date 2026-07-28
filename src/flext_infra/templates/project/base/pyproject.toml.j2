@@ -150,7 +150,7 @@ plugins = [
   {{ item | tojson }},
 {% endfor %}
 ]
-python_version = {{ python_version | tojson }}
+python_version = {{ python_minor_version | tojson }}
 {% for key, value in tooling.tools.mypy.boolean_settings | dictsort %}
 {{ key }} = {{ value | lower }}
 {% endfor %}
@@ -192,7 +192,7 @@ project-includes = [
 {% endfor %}
 ]
 python-interpreter-path = {{ tooling_runtime.pyrefly_interpreter_path | tojson }}
-python-version = {{ python_version | tojson }}
+python-version = {{ python_minor_version | tojson }}
 search-path = [{% for item in tooling_runtime.pyrefly_search_path %}{{ item | tojson }}{% if not loop.last %}, {% endif %}{% endfor %}]
 use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 
@@ -394,3 +394,4 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
+required-version = "{{ uv_required_version }}"

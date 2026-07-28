@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 
 pytestmark = pytest.mark.timeout(60)
@@ -98,8 +98,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
-        tm.that(mise_text, has='python = "3.13"')
-        tm.that(mise_text, has='uv = "0.11.29"')
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(mise_text, has=f'python = "{toolchain.python_mise_version}"')
+        tm.that(mise_text, has=f'uv = "{toolchain.uv_mise_version}"')
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")
         tm.that(mise_text, lacks="pyrefly =")
@@ -126,9 +127,10 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = mise_path.read_text(encoding="utf-8")
+        toolchain = config.Infra.codegen.toolchain
         tm.that(mise_text, has='node = "22"')
-        tm.that(mise_text, has='python = "3.13"')
-        tm.that(mise_text, has='uv = "0.11.29"')
+        tm.that(mise_text, has=f'python = "{toolchain.python_mise_version}"')
+        tm.that(mise_text, has=f'uv = "{toolchain.uv_mise_version}"')
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")
         tm.that(mise_text, lacks="pyrefly =")

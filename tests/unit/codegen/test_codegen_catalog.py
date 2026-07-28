@@ -1,10 +1,12 @@
+"""Behavioral validation of the typed codegen repository catalog."""
+
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
+from flext_tests import tm
 from flext_cli import u
-from flext_infra import m
+from flext_infra import c, m
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
@@ -15,15 +17,13 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ["git", "ls-files", "--error-unmatch", "config/codegen.yaml"],
         cwd=repository_root,
     )
-    assert tracked.success
-    assert tracked.value.exit_code == 0
-    assert tracked.value.stdout.strip() == "config/codegen.yaml"
+    tracked_value = tm.ok(tracked)
+    tm.that(tracked_value.exit_code, eq=0)
+    tm.that(tracked_value.stdout.strip(), eq="config/codegen.yaml")
 
     payload = u.Cli.yaml_load_mapping(catalog_path)
-    infra = payload["Infra"]
-    assert isinstance(infra, Mapping)
-    catalog = infra["codegen"]
-    assert isinstance(catalog, Mapping)
+    infra = u.Cli.json_as_mapping(payload["Infra"])
+    catalog = u.Cli.json_as_mapping(infra["codegen"])
     repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
         catalog["repositories"]
     )
@@ -46,7 +46,7 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
     cosmos = tuple(by_name[name] for name in cosmos_names)
 
     workspace = m.Infra.WorkspaceSpec.model_validate({
-        "version": 2,
+        "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
         "name": "cosmos-main",
         "repository": cosmos[0],
         "members": cosmos[1:3],
@@ -59,6 +59,9 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         *workspace.content_only,
     )
 
-    assert tuple(
-        repository.model_dump(mode="json") for repository in workspace_repositories
-    ) == tuple(repository.model_dump(mode="json") for repository in cosmos)
+    tm.that(
+        tuple(
+            repository.model_dump(mode="json") for repository in workspace_repositories
+        ),
+        eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
+    )

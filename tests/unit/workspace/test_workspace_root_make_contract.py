@@ -11,10 +11,8 @@ from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra import c, config, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.workspace_makefile import (
-    FlextInfraWorkspaceMakefileGenerator,
-)
 
 if TYPE_CHECKING:
     from flext_cli import p as cli_p
@@ -63,7 +61,15 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         (project_root / "pyproject.toml").write_text(
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
-    tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+    tm.ok(
+        FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=workspace_root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        )
+    )
     return workspace_root, project_names
 
 

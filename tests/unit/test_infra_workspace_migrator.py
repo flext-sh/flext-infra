@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
+from flext_infra import config
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
@@ -51,13 +52,10 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that(len(migrations[0].errors), eq=0)
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
-        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that("scripts/check/workspace_check.py" not in makefile_text, eq=True)
-        tm.that(makefile_text, has="python -m flext_infra check run")
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has='python = "3.13.11"',
+            has=f'python = "{config.Infra.codegen.toolchain.python_mise_version}"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(

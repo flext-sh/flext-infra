@@ -51,7 +51,7 @@ class FlextInfraConstantsMake:
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+        "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
@@ -95,6 +95,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
+        ("PYTEST_TARGETS", "tests"),
         ("DIAG", "0"),
         (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
@@ -131,6 +132,7 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
+        ("PYTEST_TARGETS", "tests"),
         ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
@@ -213,6 +215,7 @@ class FlextInfraConstantsMake:
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
         'PYTEST_ARGS="-k expr"       Extra pytest args',
+        'PYTEST_TARGETS="tests/unit" Pytest collection targets',
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",

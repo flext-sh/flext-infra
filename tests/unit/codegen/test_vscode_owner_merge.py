@@ -25,8 +25,11 @@ class TestsVscodeOwnerMerge:
             '{"python.languageServer": "None"}\n', encoding="utf-8"
         )
 
-        result = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        result = FlextInfraCodegenConform.complete_governed_plans(
+            root,
+            (),
+            config.Infra.codegen,
+            FlextInfraCodegenConform.SurfaceContract(complete_governed=True),
         )
 
         tm.ok(result)
@@ -54,15 +57,21 @@ class TestsVscodeOwnerMerge:
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         _ = settings_path.write_text("{}\n", encoding="utf-8")
-        first = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        first = FlextInfraCodegenConform.complete_governed_plans(
+            root,
+            (),
+            config.Infra.codegen,
+            FlextInfraCodegenConform.SurfaceContract(complete_governed=True),
         )
         tm.ok(first)
         plan = next(f for f in first.value if f.path == settings_path)
         _ = settings_path.write_text(plan.rendered, encoding="utf-8")
 
-        second = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
+        second = FlextInfraCodegenConform.complete_governed_plans(
+            root,
+            (),
+            config.Infra.codegen,
+            FlextInfraCodegenConform.SurfaceContract(complete_governed=True),
         )
 
         tm.ok(second)

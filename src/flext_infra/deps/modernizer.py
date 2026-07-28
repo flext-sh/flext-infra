@@ -207,12 +207,9 @@ class FlextInfraPyprojectModernizer(
             else ()
         )
         project_kind = "core"
-        child_result = self._project_is_flext_child(path.parent)
-        if child_result.failure:
-            return r[m.Infra.ToolingRuntimeContext].fail(
-                child_result.error or f"project Git topology resolution failed: {path}"
-            )
-        if path.parent.resolve() != self.root.resolve() or child_result.value:
+        if path.parent.resolve() != self.root.resolve() or (
+            self._project_is_flext_child(path.parent)
+        ):
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(

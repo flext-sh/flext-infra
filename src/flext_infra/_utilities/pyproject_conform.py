@@ -65,14 +65,13 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
+            required_version=toolchain.uv_required_version,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -128,17 +127,13 @@ class FlextInfraUtilitiesPyprojectConform:
             r[bool].ok(True)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source,
-                project_name=project_name,
-                workspace=workspace,
+                source, project_name=project_name, workspace=workspace
             )
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -277,16 +272,14 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
+        if not reference.url.startswith("https://"):
             return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
+                "repository URL must use the configured HTTPS transport: "
+                f"{reference.url}"
             )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
+        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
         return r[str].ok(
-            f"{canonical}; {marker_text}"
-            if separator and marker_text
-            else canonical
+            f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod
@@ -469,6 +462,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         link_mode: str | None = None,
+        required_version: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -489,7 +483,8 @@ class FlextInfraUtilitiesPyprojectConform:
             if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
-        u.Cli.toml_remove_key_if_present(uv, "required-version")
+        if required_version is not None:
+            u.Cli.toml_sync_value(uv, "required-version", required_version)
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(
@@ -659,7 +654,10 @@ class FlextInfraUtilitiesPyprojectConform:
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if workspace_mode is c.Infra.WorkspaceMode.STANDALONE and not has_direct_source:
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
                 return r[bool].fail(
                     "standalone dependency lacks configured Git source: "
                     f"{dependency_name}"

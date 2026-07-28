@@ -7,10 +7,10 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_tests import FlextTestsUtilities, r, tm
+from flext_tests import FlextTestsUtilities, tm
 
 from flext_cli import cli as cli_facade
-from flext_infra import config, main, u
+from flext_infra import config, main, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -32,6 +32,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
+
+        @staticmethod
+        def make_read_only(path: Path) -> None:
+            """Make one fixture path read-only."""
+            path.chmod(0o444)
 
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
