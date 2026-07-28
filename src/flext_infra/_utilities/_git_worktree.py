@@ -101,27 +101,46 @@ class FlextInfraUtilitiesGitWorktreeMixin:
 
     @classmethod
     def git_primary_worktree_root(cls, repository_path: Path) -> p.Result[Path]:
-        """Resolve the first registry worktree to its canonical top-level path."""
-        listed = cls.git_capture(repository_path, ("worktree", "list", "--porcelain"))
-        if listed.failure:
-            return r[Path].fail(listed.error or "failed to list Git worktrees")
-        registered = next(
-            (
-                line.removeprefix("worktree ").strip()
-                for line in listed.value.splitlines()
-                if line.startswith("worktree ")
-            ),
-            "",
+        """Resolve the repository's primary worktree across Git storage topologies."""
+        common_result = cls.git_capture(
+            repository_path, ("rev-parse", "--path-format=absolute", "--git-common-dir")
         )
-        if not registered:
-            return r[Path].fail("Git worktree registry contains no primary worktree")
-        primary = Path(registered).resolve()
-        top_level = cls.git_capture(primary, ("rev-parse", "--show-toplevel"))
+        if common_result.failure:
+            return r[Path].fail(
+                common_result.error or "failed to resolve Git common directory"
+            )
+        common_dir = Path(common_result.value.strip()).resolve()
+        configured_result = cls.git_run(
+            repository_path, ("config", "--path", "--get", "core.worktree")
+        )
+        if configured_result.failure:
+            return r[Path].fail(
+                configured_result.error or "failed to inspect Git worktree config"
+            )
+        configured_output = configured_result.value
+        if configured_output.exit_code == 0:
+            configured = Path(configured_output.stdout.strip())
+            primary_root = (
+                configured if configured.is_absolute() else common_dir / configured
+            ).resolve()
+        elif configured_output.exit_code == 1 and common_dir.name == c.Infra.GIT_DIR:
+            primary_root = common_dir.parent
+        else:
+            detail = (configured_output.stderr or configured_output.stdout).strip()
+            return r[Path].fail(
+                detail or f"cannot derive primary worktree from {common_dir}"
+            )
+        top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
         if top_level.failure:
             return r[Path].fail(
-                top_level.error or f"invalid primary worktree registry entry: {primary}"
+                top_level.error or f"invalid primary worktree: {primary_root}"
             )
-        return r[Path].ok(Path(top_level.value.strip()).resolve())
+        resolved_top_level = Path(top_level.value.strip()).resolve()
+        if resolved_top_level != primary_root:
+            return r[Path].fail(
+                f"Git primary worktree mismatch: {primary_root} != {resolved_top_level}"
+            )
+        return r[Path].ok(primary_root)
 
     @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
