@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:

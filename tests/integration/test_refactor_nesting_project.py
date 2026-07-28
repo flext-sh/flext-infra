@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

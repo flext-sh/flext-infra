@@ -12,13 +12,12 @@ import http.client
 import socket
 import threading
 import time
-
-import pytest
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
+import pytest
 
 from flext_infra.docs.server import FlextInfraDocServer
+from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
 

@@ -5,9 +5,8 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

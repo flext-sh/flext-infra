@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

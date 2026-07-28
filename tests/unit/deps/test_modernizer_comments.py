@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_tests import tm
 
 
 class TestsFlextInfraDepsModernizerComments:

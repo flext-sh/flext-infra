@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
+from flext_tests import tm
 from tests import c, t, u
 
 if TYPE_CHECKING:
