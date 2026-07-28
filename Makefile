@@ -6,7 +6,8 @@
 # Managed by flext-infra codegen conform for new and existing repositories.
 
 ifeq ($(OS),Windows_NT)
-SHELL := bash
+WINDOWS_GIT_EXEC_PATH := $(shell git --exec-path)
+SHELL := $(abspath $(WINDOWS_GIT_EXEC_PATH)/../../../bin/bash.exe)
 else
 SHELL := /bin/sh
 endif
