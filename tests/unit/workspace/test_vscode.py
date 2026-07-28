@@ -10,13 +10,6 @@ from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
 
 
-def _write_project(project_root: Path) -> None:
-    project_root.mkdir(parents=True, exist_ok=True)
-    (project_root / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
-
-
 def _write_settings(project_root: Path, content: str) -> Path:
     settings_path = project_root / ".vscode" / "settings.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
