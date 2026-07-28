@@ -11,6 +11,12 @@ resolution-markers = [
 excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
 
 [[package]]
+name = "actionlint-py"
+version = "1.7.12.24"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/0b/3f29683dfbe94208fb5c3806806a6ef419972892e25c3c4f95198f68c978/actionlint_py-1.7.12.24.tar.gz", hash = "sha256:7571b0724fde79b2572b98b2b53792c470249d4db29951b57fc49b9cd3eaf11e", size = 12071, upload-time = "2026-03-31T06:21:35.015Z" }
+
+[[package]]
 name = "annotated-doc"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -653,7 +659,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#1562483bc94711d3cb8d78f24d3e66cde64656b6" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#cbe851dcf23408489e1e1c0301245bf3dba68b4f" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -680,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#ce02d54d578c54b1076f82b2e4b01da8b55a5334" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#2b24528c76492f47eb430066786b708645cbf838" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -725,6 +731,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "actionlint-py" },
     { name = "autoflake" },
     { name = "bandit" },
     { name = "black" },
@@ -821,6 +828,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "actionlint-py", specifier = ">=1.7.12.24" },
     { name = "autoflake", specifier = ">=2.3.3" },
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "black", specifier = ">=26.5.1" },
@@ -3020,16 +3028,15 @@ wheels = [
 
 [[package]]
 name = "types-docker"
-version = "7.2.0.20260724"
+version = "7.2.0.20260728"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "types-paramiko" },
     { name = "types-requests" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/60/d87ba2c61c566aca8186d38986e65688918b1efa3ed509155ff9015694b6/types_docker-7.2.0.20260724.tar.gz", hash = "sha256:adc0fef7f9eed6dd83394b76828e514dbd427afece0d6a5498e9a3a398436705", size = 36358, upload-time = "2026-07-24T05:00:27.984Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/f9/7792217bb55b523f409e8699b41d849345fe673e7aae254e5402c8b6c391/types_docker-7.2.0.20260728.tar.gz", hash = "sha256:eeb780deddb000d3be7584cca16b02fc7f68b135b0039977be13c121861db197", size = 36538, upload-time = "2026-07-28T04:52:14.199Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/16/d8ec05a2e8924e57cb1a400e21115cbb62822ad622fd41dc4f8683199e40/types_docker-7.2.0.20260724-py3-none-any.whl", hash = "sha256:9ab8a6c08861e02bafc9225b9ac385e3b9c094289373b0be37f5ab530fb07fd3", size = 51100, upload-time = "2026-07-24T05:00:26.917Z" },
+    { url = "https://files.pythonhosted.org/packages/96/0b/733f7fb323bbf4394f69b7c6485b6b7d373c301261c26af08ad72bcfa456/types_docker-7.2.0.20260728-py3-none-any.whl", hash = "sha256:f8d7a80dbc12cb7d794bf22d42f7bb1545db6226ee204dc685812a4695ac9a23", size = 51168, upload-time = "2026-07-28T04:52:13.201Z" },
 ]
 
 [[package]]

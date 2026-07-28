@@ -43,10 +43,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         )
         return project_dir
 
-    @staticmethod
-    def _make_read_only(path: Path) -> None:
-        path.chmod(0o444)
-
     def test_execute_tolerates_missing_makefile_non_dry_run(
         self, tmp_path: Path
     ) -> None:
@@ -76,7 +72,7 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
     def test_execute_surfaces_pyproject_write_error(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(tmp_path, pyproject="[tool.poetry]\n")
-        self._make_read_only(project_root / "pyproject.toml")
+        u.Tests.make_read_only(project_root / "pyproject.toml")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root, "test-proj"),
             "base",

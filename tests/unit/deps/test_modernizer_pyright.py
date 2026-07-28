@@ -6,9 +6,9 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_pyright import FlextInfraEnsurePyrightConfigPhase
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

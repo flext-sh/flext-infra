@@ -19,9 +19,8 @@ import re
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import c
+from flext_tests import tm
 
 # `NAME := $(shell ...)` -- immediate assignment, expanded at parse time.
 _IMMEDIATE_SHELL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:=.*\$\(shell\b")

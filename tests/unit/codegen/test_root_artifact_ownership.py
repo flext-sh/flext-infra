@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 
 
 class TestsRootArtifactOwnership:
@@ -20,6 +19,12 @@ class TestsRootArtifactOwnership:
         paths = tuple(item.path.as_posix() for item in configured)
 
         tm.that(len(paths), eq=len(set(paths)))
+        for workflow in (".github/workflows/ci.yml", ".github/workflows/ci-matrix.yml"):
+            owned = next(
+                item for item in configured if item.path.as_posix() == workflow
+            )
+            tm.that(owned.owner, eq="codegen")
+            tm.that(owned.policy, eq="full")
 
     def test_legacy_sync_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"

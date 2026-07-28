@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)
@@ -157,8 +157,8 @@ class TestsFlextInfraWorkspaceSync:
                 "{\n"
                 '  "editor.formatOnSave": true,\n'
                 '  "python.analysis.diagnosticSeverityOverrides": {\n'
-                '    "reportUnknownMemberType": "none",\n'
-                "  },\n"
+                '    "reportUnknownMemberType": "none"\n'
+                "  }\n"
                 "}\n"
             ),
             encoding="utf-8",
@@ -211,13 +211,15 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
-        settings = u.Cli.json_read(settings_path).unwrap()
-        search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
-            settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.json_read(settings_path).unwrap()
+        )
+        search_paths = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY], strict=True
         )
         tm.that(
             search_paths,
-            eq=list(
+            eq=tuple(
                 config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]

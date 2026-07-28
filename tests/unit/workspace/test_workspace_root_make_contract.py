@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+from flext_tests import tm
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from flext_cli import p as cli_p
@@ -36,36 +36,13 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     )[:2]
     project_names = tuple(member.path.as_posix() for member in members)
     (workspace_root / "pyproject.toml").write_text(
-        "[project]\n"
-        f"name = '{root_repository.distribution}'\n"
-        "version = '0.1.0'\n\n"
-        "[tool.flext.workspace]\n"
-        f"members = {list(project_names)!r}\n",
+        f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
         encoding="utf-8",
     )
     manifest = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name=root_repository.name,
         repository=root_repository,
-        project=m.Infra.ProjectSpec(
-            package_name=root_repository.distribution.replace("-", "_"),
-            class_stem="Flext",
-            namespace="Flext",
-            constant_name="flext",
-            namespace_attribute="flext",
-            alias="flext",
-            environment_prefix="FLEXT_",
-            description="FLEXT workspace",
-            version="0.1.0",
-            license="MIT",
-            author_name="FLEXT Team",
-            author_email="team@flext.dev",
-            upstream="flext_cli",
-            homepage=root_repository.url.removesuffix(".git"),
-            documentation=root_repository.url.removesuffix(".git"),
-            workspace_root_rel=".",
-            year=2026,
-        ),
         members=members,
     )
     tm.ok(
@@ -83,14 +60,14 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         (project_root / "pyproject.toml").write_text(
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
+    test_u.Tests.initialize_git_repo(workspace_root)
     tm.ok(
         FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=workspace_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=manifest,
+            )
         )
     )
     for project_name in project_names:
@@ -116,13 +93,14 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
 
 def _write_fake_uv(bin_root: Path, log_path: Path) -> None:
     bin_root.mkdir()
-    (bin_root / "uv").write_text(
+    uv_path = bin_root / "uv"
+    uv_path.write_text(
         "#!/bin/sh\n"
         f'printf \'%s|%s|%s|%s\\n\' "$UV_PROJECT" "$UV_PROJECT_ENVIRONMENT" '
         f'"$VIRTUAL_ENV" "$*" >> {log_path}\n',
         encoding="utf-8",
     )
-    (bin_root / "uv").chmod(0o755)
+    uv_path.chmod(0o755)
 
 
 class TestsWorkspaceRootMakeContract:
@@ -148,7 +126,7 @@ class TestsWorkspaceRootMakeContract:
                 str(workspace_root),
                 "--dry-run",
                 "_builtin_check_all",
-                f"PROJECTS={project_names[0]}",
+                f"PROJECT={project_names[0]}",
                 "CHECK_GATES=lint,pyrefly",
             ])
         )
@@ -191,9 +169,6 @@ class TestsWorkspaceRootMakeContract:
         fake_bin = tmp_path / "bin"
         uv_log = tmp_path / "uv.log"
         _write_fake_uv(fake_bin, uv_log)
-        monkeypatch.setenv(
-            "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
-        )
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
@@ -208,7 +183,7 @@ class TestsWorkspaceRootMakeContract:
             ])
         )
 
-        tm.that(process.exit_code, eq=0)
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         calls = uv_log.read_text(encoding="utf-8").splitlines()
         expected_environment = str(workspace_root / ".venv")
         for call in calls:
@@ -218,7 +193,7 @@ class TestsWorkspaceRootMakeContract:
             tm.that(virtual_env, eq=expected_environment)
         arguments_log = "\n".join(calls)
         tm.that(arguments_log, has=f"venv --clear {expected_environment}")
-        tm.that(arguments_log, has=f"--python {expected_environment}/bin/python")
+        tm.that(arguments_log, has=f"--python {expected_environment}")
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

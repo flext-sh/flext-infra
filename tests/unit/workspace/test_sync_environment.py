@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceEnvironment, c, config
+from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -97,9 +97,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
-        tm.that(
-            mise_text, has=f'python = "{config.Infra.codegen.toolchain.python_version}"'
-        )
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
         tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")
@@ -127,10 +126,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = mise_path.read_text(encoding="utf-8")
+        toolchain = config.Infra.codegen.toolchain
         tm.that(mise_text, has='node = "22"')
-        tm.that(
-            mise_text, has=f'python = "{config.Infra.codegen.toolchain.python_version}"'
-        )
+        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
         tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")

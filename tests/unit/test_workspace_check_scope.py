@@ -12,10 +12,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 import flext_infra
 from flext_infra import c, config
+from flext_tests import tm
 
 
 class TestsFlextInfraWorkspaceCheckScope:
@@ -43,8 +42,9 @@ class TestsFlextInfraWorkspaceCheckScope:
             template,
             has=[
                 "WORKSPACE_ORCHESTRATE =",
-                "WORKSPACE_PROJECT_ARGS := $(foreach project,$(PROJECTS),--projects $(project))",
-                "$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)",
-                '--make-arg "CHECK_GATES=$(CHECK_GATES)"',
+                "SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))",
+                "WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))",
+                "$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_CHECK_ARGS)",
+                'WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")',
             ],
         )

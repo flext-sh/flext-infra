@@ -2,30 +2,43 @@
 
 from __future__ import annotations
 
+from flext_infra import config, m
 from flext_tests import tm
-
-from flext_infra import config
 
 
 class TestsCodegenWorktreeVerb:
-    """The worktree lifecycle is part of the canonical public Make surface."""
+    """The `worktree` verb is part of the canonical public Make surface."""
+
+    def _verb(self, name: str) -> m.Infra.MakeVerbSpec:
+        matches = tuple(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == name
+        )
+        tm.that(matches, len=1)
+        return matches[0]
 
     def test_worktree_is_a_canonical_public_verb(self) -> None:
-        """Every generated project receives the governed worktree route."""
-        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
+        """Every generated project receives the governed worktree route.
 
-        tm.that("worktree" in verbs, eq=True)
+        Declaring it in `extra_verbs` would make it repository-local, which
+        would defeat the purpose: every project must expose the same lane
+        surface.
+        """
+        tm.that(self._verb("worktree").name, eq="worktree")
 
     def test_worktree_defaults_to_a_read_only_selector(self) -> None:
-        """The default operation reports state without mutating the repository."""
-        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
-        worktree = verbs["worktree"]
+        """The default operation reports state without mutating the repository.
 
-        tm.that(worktree.default_what, eq="list")
+        `list` is the only selector that reports state without touching the
+        worktree registry, so it is the safe default.
+        """
+        verb = self._verb("worktree")
+        tm.that(verb.default_what, eq="list")
 
     def test_mutating_operations_own_the_apply_guard(self) -> None:
-        """Read-only list remains usable without granting mutation authority."""
-        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
-        worktree = verbs["worktree"]
+        """Read-only list remains usable without granting mutation authority.
 
-        tm.that(worktree.apply_guarded, eq=False)
+        Guarding at verb level would force `APPLY=Y` onto `list`. The mutating
+        selectors enforce the guard individually in their own recipes instead.
+        """
+        verb = self._verb("worktree")
+        tm.that(verb.apply_guarded, eq=False)

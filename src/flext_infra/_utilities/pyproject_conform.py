@@ -286,7 +286,10 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
+        git_url = cls._git_requirement_url(reference.url)
+        if git_url.failure:
+            return r[str].fail(git_url.error or "repository URL validation failed")
+        canonical = f"{head} @ {git_url.value}@{reference.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
@@ -332,7 +335,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
     ) -> None:
-        """Migrate optional dev dependencies and set canonical generated groups."""
+        """Migrate optional dev dependencies and normalize declared groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
         optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
@@ -345,22 +348,24 @@ class FlextInfraUtilitiesPyprojectConform:
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
         ]
-        if project_name != "flext-tests":
-            dev.append("flext-tests")
-        u.Cli.toml_sync_string_list(
-            groups,
-            str(c.Infra.DEV),
-            tuple(dict.fromkeys(item.strip() for item in dev if item.strip())),
-        )
+        if dev:
+            u.Cli.toml_sync_string_list(
+                groups,
+                str(c.Infra.DEV),
+                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(groups, str(c.Infra.DEV))
 
-        codegen = list(u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")))
-        if project_name != "flext-infra":
-            codegen.append("flext-infra")
-        u.Cli.toml_sync_string_list(
-            groups,
-            "codegen",
-            tuple(dict.fromkeys(item.strip() for item in codegen if item.strip())),
-        )
+        codegen = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen"))
+        if codegen:
+            u.Cli.toml_sync_string_list(
+                groups,
+                "codegen",
+                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(groups, "codegen")
         cls._sync_workspace_dependency_group(
             document, project_name=project_name, workspace=workspace
         )
@@ -443,6 +448,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyrefly = u.Cli.toml_table_child(tool, c.Infra.PYREFLY)
         if pyrefly is not None:
             u.Cli.toml_sync_string_list(pyrefly, c.Infra.SEARCH_PATH, (".", "src"))
+            u.Cli.toml_remove_key_if_present(pyrefly, "python-interpreter-path")
         mypy = u.Cli.toml_table_child(tool, c.Infra.MYPY)
         if mypy is not None:
             u.Cli.toml_sync_string_list(mypy, "mypy_path", (".", "src"))

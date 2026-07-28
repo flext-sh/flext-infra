@@ -6,10 +6,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_tests import tm
-
 from flext_infra import r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
+from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, m, p, t
 
 

@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from types import MappingProxyType
 
-from flext_tests import tm
-
 from flext_infra import c, m, t
 from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
+from flext_tests import tm
 
 
 # mro-pulj (Codex): tests assert the lazy-root/empty-child contract.
@@ -64,10 +63,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="_LAZY_MODULES")
         tm.that(content, contains="_LAZY_ALIAS_GROUPS")
         tm.that(content, contains='".api": ("Demo",)')
-        direct_imports = content.split(
-            "_DIRECT_IMPORTS: tuple[str, ...] =", maxsplit=1
-        )[1].split("__all__:", maxsplit=1)[0]
-        tm.that(direct_imports, contains='"__version__"')
+        tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
             content,
             contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo", "__version__", "r")',
@@ -107,10 +103,10 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from ._utilities.conversion import DemoConversion")
         tm.that(content, lacks="DemoConversion")
-        tm.that(content, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(content, contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo",)')
 
     def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
-        """Emit local declarations relatively without identity aliases."""
+        """Emit relative declarations as explicit public re-exports."""
         plan = self._plan(
             "flext_cli",
             ("FlextCliSettings", "settings"),

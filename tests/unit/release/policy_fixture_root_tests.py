@@ -16,6 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
+from flext_tests import tm
+from tests import u
 
 
 class TestsReleasePolicyFixtureRoot:
@@ -28,15 +30,13 @@ class TestsReleasePolicyFixtureRoot:
         clone and must equally hold in a linked worktree, where the repository
         sits deeper in the filesystem.
         """
-        from tests import u
-
         workspace_root = u.Tests.release_policy_root()
 
         for policy_path in (
             c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
             c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
         ):
-            assert (workspace_root / policy_path).is_file()
+            tm.that((workspace_root / policy_path).is_file(), eq=True)
 
     def test_policy_root_is_not_derived_by_counting_parents(self) -> None:
         """A fixed parent index cannot be correct for every checkout layout.
@@ -45,7 +45,5 @@ class TestsReleasePolicyFixtureRoot:
         when the repository is exactly two levels below it. Inside
         `<repo>/.worktrees/<lane>/` the same index lands mid-path.
         """
-        from tests import u
-
         positional = Path(u.Tests.__module__.replace(".", "/"))
-        assert u.Tests.release_policy_root() != positional
+        tm.that(u.Tests.release_policy_root(), ne=positional)

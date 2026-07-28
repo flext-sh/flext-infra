@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_cli import u as cli_u
 from flext_infra import main as infra_main
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
 from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
+from flext_tests import tm
 from tests import m, t, u
 
 if TYPE_CHECKING:

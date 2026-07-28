@@ -14,6 +14,7 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
+  "actionlint-py>=1.7.12.24",
   "autoflake>=2.3.3",
   "bandit>=1.9.4",
   "black>=26.5.1",

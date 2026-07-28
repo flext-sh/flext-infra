@@ -11,9 +11,10 @@ operator instruction prevails and lower authority must be reconciled.
 
 ### P0 — Tests validate config/settings changes by construction
 
-Tests, golden files, and executable documentation (including markdown examples and
-docstring snippets) must remain valid when config or settings change. They are
-never allowed to hardcode, freeze, or implicitly assume the values that exist today.
+Tests, golden files, and executable documentation (including markdown examples
+and docstring snippets) must remain valid when config or settings change. They
+are never allowed to hardcode, freeze, or implicitly assume the values that
+exist today.
 
 - The canonical owner of every configurable fact is `config/*.yaml`, `settings`,
   or the generator that derives from them. Tests only validate that owner.
@@ -52,8 +53,9 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
    per rule (e.g. `S101` assert usage, `PT` pytest conventions). Every
    violation in those trees is fixed at its root, never masked.
 8. **Beads is execution truth.** Beads owns work, plans, memory, dependencies,
-   status, evidence, and closure. GitHub is its continuous external coordination,
-   PR, review, and CI mirror after the orchestrator organizes Beads completely.
+   status, evidence, and closure. GitHub is its continuous external
+   coordination, PR, review, and CI mirror after the orchestrator organizes
+   Beads completely.
 9. **Separated roles.** The orchestrator coordinates, owns semantic Beads state,
    validates, approves or rejects merges, rolls out, and closes; it does not
    implement. Workers directly implement one Bead in one branch and worktree but
@@ -61,14 +63,14 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
    validates, and removes stale canonical skills, ADRs, docs, Python docstrings,
    examples, and executable snippets under the same validated PR flow; the
    governance/CI helper also remains active.
-10. **No stall by reporting.** Five-minute status reports include the agent table
-    and epic evolution and never pause execution. Compaction, continuation, and
-    status transfer context only.
+10. **No stall by reporting.** Five-minute status reports include the agent
+    table and epic evolution and never pause execution. Compaction,
+    continuation, and status transfer context only.
 11. **Historical material is evidence only.** Archives, generated or tool homes,
     backups, sessions, caches, and legacy trees are never live authority.
-12. **Stop only for a real blocker.** Ask one precise question only when authority
-   conflicts or an action would be destructive; otherwise continue to the
-   observable stop condition.
+12. **Stop only for a real blocker.** Ask one precise question only when
+    authority conflicts or an action would be destructive; otherwise continue
+    to the observable stop condition.
 13. **Short validated slices.** Deliver in small, independently validated
    units that merge to the integration branch quickly — one Bead, one
    reviewable PR, hours not days. Mega-lanes and long-lived WIP are defects;
@@ -78,31 +80,32 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
    claims quickly against live reality. Every change that produces new
    understanding or behavior updates the affected docs in the SAME change;
    stale docs are defects filed as beads, never worked around.
-15. **Runtime reality precedes implementation and tests.** Establish the correct
-    behavior from the official external contract and the real consumer first. For
-    generated or deployed artifacts, validate the staged artifact with that real
-    consumer before deployment, restart, tests, or static gates. Then align the
-    canonical implementation and models; only afterward may tests encode the
-    observed behavior. Tests and static analysis are subordinate confirmation,
-    never discovery authority, design input, a substitute for consumer validation,
-    or permission to publish a runtime-broken artifact. A test that contradicts
-    observed canonical behavior is corrected, never accommodated by production.
-    Performance optimization is
-    evidence-first: profile with cProfile to find the hot path before changing
-    anything, then optimize with the project's typed OO/MRO/lazy-import patterns;
-    accelerate test selection with impact analysis (e.g. pytest-testmon) and
-    parallelism (pytest-xdist) rather than deleting or weakening coverage.
-    See P0 above: tests of `config`/`settings` validate contracts and behavior
-    for arbitrary valid values and read expected config-owned values from the
-    same typed SSOT the consumer receives; they never freeze today's configured
-    scalar, identifier, path, endpoint, model, ranking, or default. Goldens may lock
-    structure, never mutable config/settings values.
+15. **Runtime reality precedes implementation and tests.** Establish the
+    correct behavior from the official external contract and the real consumer
+    first. For generated or deployed artifacts, validate the staged artifact
+    with that real consumer before deployment, restart, tests, or static gates.
+    Then align the canonical implementation and models; only afterward may
+    tests encode the observed behavior. Tests and static analysis are
+    subordinate confirmation, never discovery authority, design input, a
+    substitute for consumer validation, or permission to publish a
+    runtime-broken artifact. A test that contradicts observed canonical
+    behavior is corrected, never accommodated by production. Performance
+    optimization is evidence-first: profile with cProfile to find the hot path
+    before changing anything, then optimize with the project's typed
+    OO/MRO/lazy-import patterns; accelerate test selection with impact analysis
+    (e.g. pytest-testmon) and parallelism (pytest-xdist) rather than deleting or
+    weakening coverage. See P0 above: tests of `config`/`settings` validate
+    contracts and behavior for arbitrary valid values and read expected
+    config-owned values from the same typed SSOT the consumer receives; they
+    never freeze today's configured scalar, identifier, path, endpoint, model,
+    ranking, or default. Goldens may lock structure, never mutable
+    config/settings values.
 16. **Parametrized config, generators, and managed binaries.** config, settings,
     and templates are the sole source of configuration and business rules; the
     correct generator produces every derived surface (never hand-edit a
-    projection). ai-hub owns the installation of binaries and the provisioning of
-    no product-, agent-, or daemon-specific hardcoded code anywhere — every such
-    value is parametrized through config/settings/templates.
+    projection). ai-hub owns the installation of binaries and the provisioning
+    of no product-, agent-, or daemon-specific hardcoded code anywhere — every
+    such value is parametrized through config/settings/templates.
 17. **Canonical command surface only.** Every build, check, test, generation,
     release, deploy, and validation action runs through the project's canonical
     Make verbs (`make <verb> WHAT=<x>` via the repo's dispatch surface) or the
@@ -111,16 +114,17 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
     evidence. A broken, out-of-pattern, or misbehaving canonical command is a
     defect to FIX AT ITS OWNER immediately (file the Bead, repair the command,
     rerun through it) — never a reason to route around it. Shared mutable tool
-    state (e.g. Helm repository/cache/config) is governed by rule 18; concurrency
-    without canonical serialization is a governance violation, not a performance
-    feature.
-18. **Helm is never parallelized.** Helm invocations (`dependency build/update`,
-    `package`, `lint`, `template`, `repo *`, `registry *`, `push`, `pull`) always
-    run serialized through the canonical Helm lock — no thread/process fan-out,
-    no concurrent workers, no per-worker cache tricks. Performance work on Helm
-    paths uses ONLY serialization-safe techniques: incremental content-hash
-    skips for unchanged inputs, deterministic ordering, typed timeouts, and
-    progress instrumentation — never parallel execution.
+    state (e.g. Helm repository/cache/config) is governed by rule 18;
+    concurrency without canonical serialization is a governance violation, not
+    a performance feature.
+18. **Helm is never parallelized.** Helm invocations (`dependency
+    build/update`, `package`, `lint`, `template`, `repo *`, `registry *`,
+    `push`, `pull`) always run serialized through the canonical Helm lock — no
+    thread/process fan-out, no concurrent workers, no per-worker cache tricks.
+    Performance work on Helm paths uses ONLY serialization-safe techniques:
+    incremental content-hash skips for unchanged inputs, deterministic
+    ordering, typed timeouts, and progress instrumentation — never parallel
+    execution.
 19. **No hidden code.** `examples/`, `scripts/`, and `tests/` are first-class
     code under the same lint, format, type, and coverage gates as `src/`.
     Excluding any of them from gates to hide defects is forbidden; every gate
@@ -168,6 +172,30 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
     works from the fact that you wrote it: a config edit that requires a reload/
     restart is NOT active until proven live, and effect is confirmed only by an
     independent run/session showing the new behavior (rule 1).
+25. **Short green checkpoints land immediately.** Complete one bounded stage at
+    a time, run every canonical gate for that stage with zero lint errors, then
+    commit explicit owned paths and fast-forward push immediately. Never
+    accumulate prolonged hypothesis loops, validated local WIP, red/partial
+    commits, or red/partial pushes. Workers push their branch but never merge,
+    release, deploy, or promote `main`; the orchestrator reviews and promotes.
+26. **Beads stays continuously current.** After every state-changing stage,
+    update the active Bead with current status, orientation, ownership metadata,
+    exact command evidence, commit SHA, push state, blocker, and next action.
+    Beads updates are part of the stage, not deferred handoff bookkeeping.
+27. **Heartbeat without interruption.** At least every five minutes, the
+    orchestrator publishes progress including agent table, epic evolution, live
+    Bead/lane, current gate, cleanliness, sync, blockers, and next action while
+    execution continues.
+28. **Critical decisions require confirmation.** Before destructive or
+    irreversible action, competing public-contract or architecture outcomes,
+    security/privacy choices, production/release/`main` promotion, authority
+    conflict, or material scope/acceptance change: stop, record the pending
+    decision, options, and consequences in the Bead, then ask the operator one
+    precise question. Never infer critical intent.
+29. **Ordinary uncertainty is evidence-resolved.** Do not interrupt execution
+    for routine implementation uncertainty. Inspect the canonical authority and
+    real consumer, choose the evidence-supported path, record it in the Bead,
+    and continue to the next green checkpoint.
 
 <!-- /UNIVERSAL-GOVERNANCE -->
 <!-- END AI-HUB MANAGED UNIVERSAL CORE -->

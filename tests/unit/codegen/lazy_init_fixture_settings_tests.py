@@ -13,7 +13,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -62,7 +61,6 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         tm.that(result, eq=0)
         tm.that(init_content, contains='"._config": (')
         tm.that(init_content, contains='"._settings": (')
-        # mro-wkii.17 (Codex): the inline root excludes private pytest edges.
         tm.that(init_content, lacks='"._fixtures.settings": (')
         tm.that(init_content, lacks='"reset_settings"')
         # Explicit identity aliases declare static reexports without eagerly

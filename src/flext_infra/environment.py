@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -51,7 +50,7 @@ class FlextInfraWorkspaceEnvironment:
     def sync_mise_toml(
         cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[bool]:
-        """Render or merge canonical Python tool pins into ``.mise.toml``."""
+        """Render or merge canonical Python tool selectors into ``.mise.toml``."""
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
         rendered = cls.render_mise_toml(workspace_root)
         if rendered.failure:
@@ -71,6 +70,7 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
+        del workspace_root
         rendered = cls._render_environment_template(
             c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
         )
@@ -79,10 +79,6 @@ class FlextInfraWorkspaceEnvironment:
         doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
-        python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            tools = u.Cli.toml_ensure_table(doc, "tools")
-            tools["python"] = python_version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
     @staticmethod
@@ -102,16 +98,16 @@ class FlextInfraWorkspaceEnvironment:
         *,
         apply: bool = True,
     ) -> p.Result[bool]:
-        """Merge canonical tool pins into a custom ``.mise.toml``."""
+        """Merge canonical tool selectors into a custom ``.mise.toml``."""
         doc = u.Cli.toml_read(target_path)
         if doc is None:
             return r[bool].fail(f"{target_path}: invalid TOML")
-        tool_pins_result = cls.mise_tool_pins(workspace_root)
-        if tool_pins_result.failure:
-            return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
+        selectors_result = cls.mise_tool_selectors(workspace_root)
+        if selectors_result.failure:
+            return r[bool].fail(selectors_result.error or ".mise.toml selectors failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
         changed = False
-        for name, value in tool_pins_result.value.items():
+        for name, value in selectors_result.value.items():
             if u.Cli.toml_value(tools, name) == value:
                 continue
             tools[name] = value
@@ -134,8 +130,8 @@ class FlextInfraWorkspaceEnvironment:
         return r[bool].ok(True)
 
     @classmethod
-    def mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
-        """Return canonical mise tool pins for one workspace."""
+    def mise_tool_selectors(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
+        """Return canonical mise tool selectors for one workspace."""
         rendered = cls.render_mise_toml(workspace_root)
         if rendered.failure:
             return r[dict[str, str]].fail(
@@ -147,42 +143,20 @@ class FlextInfraWorkspaceEnvironment:
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
             return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        pins: dict[str, str] = {}
+        selectors: dict[str, str] = {}
         for name, value in tools.items():
             if not isinstance(value, str):
                 return r[dict[str, str]].fail(
                     f"canonical .mise.toml [tools].{name} must be a string"
                 )
-            pins[name] = value
-        python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            pins["python"] = python_version
-        return r[dict[str, str]].ok(pins)
+            selectors[name] = value
+        return r[dict[str, str]].ok(selectors)
 
     @staticmethod
     def has_pyproject(workspace_root: Path) -> bool:
         """Return whether the workspace declares Python project metadata."""
         pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
         return (workspace_root / pyproject_filename).is_file()
-
-    @staticmethod
-    def workspace_python_version(workspace_root: Path) -> str | None:
-        """Return the Python minor version declared by ``pyproject.toml``."""
-        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
-        pyproject = workspace_root / pyproject_filename
-        if not pyproject.is_file():
-            return None
-        mapping_result = u.Cli.toml_read_json(pyproject)
-        if mapping_result.failure:
-            return None
-        project = u.Cli.toml_mapping_child(mapping_result.value, c.Infra.PROJECT)
-        if project is None:
-            return None
-        requires_python = project.get("requires-python")
-        if not isinstance(requires_python, str):
-            return None
-        match = re.search(r">=\s*(3\.\d+)", requires_python)
-        return match.group(1) if match else None
 
     @classmethod
     def remove_generated_environment_files(

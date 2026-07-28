@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_tests import tm
-
 from tests import c, u
 
 
@@ -61,7 +60,6 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        # mro-i6nq.10: Assert runtime installation through observable exports.
         tm.that(
             init_content,
             has="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
@@ -187,7 +185,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        tm.that(generated, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(generated, lacks="_DIRECT_IMPORTS")
         tm.that(generated, lacks="FlextDemoConversion")
 
         extra_path = utilities_dir / "extra.py"
@@ -399,7 +397,6 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        # mro-wkii.17 (Codex): aliases live in the inline root contract.
         tm.that(init_content, has="_LAZY_MODULES: dict[str, tuple[str, ...]]")
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")

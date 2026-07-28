@@ -6,12 +6,12 @@ from collections.abc import MutableMapping
 from typing import TYPE_CHECKING
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
+from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -86,19 +86,16 @@ class TestsFlextInfraModernizerPyrefly:
             )
             tm.that(changes, lacks="failed to resolve")
 
-        attached_payload = u.Cli.toml_mapping_from_text(
-            (attached / "pyproject.toml").read_text(encoding="utf-8")
-        )
-        linked_payload = u.Cli.toml_mapping_from_text(
-            (linked / "pyproject.toml").read_text(encoding="utf-8")
-        )
-        if attached_payload is None or linked_payload is None:
-            tm.that(
-                attached_payload is not None and linked_payload is not None,
-                eq=True,
-                msg="modernized pyproject must remain valid TOML",
+        attached_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_from_text(
+                (attached / "pyproject.toml").read_text(encoding="utf-8")
             )
-            return
+        )
+        linked_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_from_text(
+                (linked / "pyproject.toml").read_text(encoding="utf-8")
+            )
+        )
         attached_tool = u.Cli.json_as_mapping(attached_payload["tool"])
         linked_tool = u.Cli.json_as_mapping(linked_payload["tool"])
         attached_pyrefly = u.Cli.json_as_mapping(attached_tool["pyrefly"])
@@ -148,7 +145,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc, is_root=True
         )
 
-        tm.that("python-interpreter-path" in pyrefly, eq=False)
+        tm.that(pyrefly, lacks="python-interpreter-path")
         tm.that("fallback-python-interpreter-name" in pyrefly, eq=False)
         tm.that(
             any(
@@ -217,7 +214,10 @@ class TestsFlextInfraModernizerPyrefly:
         for directory in ("src", "tests", "examples", "scripts"):
             (project_dir / directory).mkdir()
         (project_dir / "tests" / "test_placeholder.py").write_text(
-            "def test_placeholder() -> None:\n    assert True\n", encoding="utf-8"
+            "from flext_tests import tm\n\n"
+            "def test_placeholder() -> None:\n"
+            "    tm.that(True, eq=True)\n",
+            encoding="utf-8",
         )
 
         doc = tomlkit.document()

@@ -19,9 +19,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config
+from flext_tests import tm
 
 _TARGET_LINE = re.compile(r"^(?P<names>[a-z][a-z0-9 _-]*):(?!=)")
 
