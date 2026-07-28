@@ -796,6 +796,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     cwd=repo_root,
                 )
             )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
+                    cwd=bare_remote,
+                )
+            )
             return bare_remote
 
         @staticmethod

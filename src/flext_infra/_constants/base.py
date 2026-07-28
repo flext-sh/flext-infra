@@ -242,8 +242,8 @@ class FlextInfraConstantsBase(
         "UV_NO_VERIFY_HASHES",
     )
     "Ambient uv variables removed before a policy-bound release build."
-    SG: Final[str] = "sg"
-    "ast-grep (sg) binary."
+    SG: Final[str] = "ast-grep"
+    "Canonical ast-grep binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
     MARKDOWNLINT: Final[str] = "markdownlint"
