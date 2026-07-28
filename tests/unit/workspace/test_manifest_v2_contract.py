@@ -15,10 +15,10 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 import flext_infra
 from flext_infra import c, m
+from flext_tests import tm
 
 
 class TestsWorkspaceManifestV2Contract:

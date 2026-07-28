@@ -14,10 +14,10 @@ import re
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
+from flext_tests import tm
 
 CodegenSpec = type(config.Infra.codegen)
 

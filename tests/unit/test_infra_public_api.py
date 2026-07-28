@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import FlextTestsSettings, tm
 
 import flext_infra as infra_pkg
+from flext_tests import FlextTestsSettings, tm
 from tests import c
 from tests.base import s
 

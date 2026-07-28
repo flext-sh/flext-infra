@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

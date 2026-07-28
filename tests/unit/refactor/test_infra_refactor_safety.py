@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, overload, override
 
-from flext_tests import r, tm
-
+from flext_infra import r
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

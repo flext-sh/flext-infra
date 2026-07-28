@@ -10,9 +10,9 @@ import os
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

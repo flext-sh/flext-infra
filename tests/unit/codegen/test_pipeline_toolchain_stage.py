@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import pytest
-from flext_tests import tm
 
 from flext_cli import cli
 from flext_core import r
@@ -15,6 +14,7 @@ from flext_infra.codegen._pipeline_stages import (  # ruff:ignore[import-private
     FlextInfraCodegenPipelineStagesMixin,
 )
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from collections.abc import Callable

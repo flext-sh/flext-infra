@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 import tomlkit
 import tomlkit.items
-from flext_tests import tm
 
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

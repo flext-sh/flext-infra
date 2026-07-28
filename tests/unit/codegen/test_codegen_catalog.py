@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_tests import tm
-
 from flext_infra import m, t
+from flext_tests import tm
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:

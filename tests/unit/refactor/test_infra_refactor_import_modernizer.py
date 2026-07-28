@@ -5,12 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c, m
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t

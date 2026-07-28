@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
+from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
