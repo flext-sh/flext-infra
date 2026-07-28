@@ -186,24 +186,24 @@ class FlextInfraModelsMixins:
     class GithubPullRequestFieldsMixin:
         """Shared pull-request fields used by single and workspace requests."""
 
-        action: Annotated[str, m.Field(description="PR action")] = "status"
-        base: Annotated[str, m.Field(description="Base branch")] = "main"
-        head: Annotated[str | None, m.Field(description="Head branch")] = None
-        number: Annotated[int | None, m.Field(description="PR number")] = None
-        title: Annotated[str | None, m.Field(description="PR title")] = None
+        action: Annotated[
+            c.Infra.PullRequestAction,
+            m.Field(description="Pull-request publication action"),
+        ] = c.Infra.PullRequestAction.STATUS
+        base: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Base branch; repository default when omitted"),
+        ] = None
+        head: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Head branch; current branch when omitted"),
+        ] = None
+        title: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Required pull-request title for create"),
+        ] = None
         body: Annotated[str | None, m.Field(description="PR body")] = None
         draft: Annotated[bool, m.Field(description="Draft PR")] = False
-        merge_method: Annotated[str, m.Field(description="Merge method")] = "squash"
-        auto: Annotated[bool, m.Field(description="Auto-merge")] = False
-        delete_branch: Annotated[
-            bool, m.Field(description="Delete branch on merge")
-        ] = True
-        checks_strict: Annotated[
-            bool, m.Field(description="Strict checks required")
-        ] = True
-        release_on_merge: Annotated[bool, m.Field(description="Release on merge")] = (
-            True
-        )
 
     # ═══════════════════ FIELD CONTRACT MIXINS ═══════════════════
 

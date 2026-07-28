@@ -20,6 +20,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import flext_infra
 from flext_tests import tm
 
 from flext_infra import config
@@ -27,7 +28,7 @@ from flext_infra import config
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(flext_infra.__file__).resolve().parents[2]
 
 
 def _live_per_file_ignores() -> frozenset[str]:

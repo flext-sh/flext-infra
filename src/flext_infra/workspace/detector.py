@@ -27,16 +27,22 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @staticmethod
     def _manifest_path(repository_root: Path) -> Path:
         """Return the repository-local topology manifest path."""
-        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        config_dir: Path = t.Infra.PATH_ADAPTER.validate_python(c.CONFIG_DIR_NAME)
+        manifest_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        return repository_root / config_dir / manifest_name
 
     @staticmethod
     def _schema_path() -> Path:
         """Return the packaged schema consumed by the public config facade."""
-        return (
-            Path(__file__).resolve().parents[1]
-            / c.CONFIG_SCHEMAS_DIR_NAME
-            / c.Infra.WORKSPACE_SCHEMA_FILENAME
+        schemas_dir: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.CONFIG_SCHEMAS_DIR_NAME
         )
+        schema_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_SCHEMA_FILENAME
+        )
+        return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @classmethod
     def load_workspace_spec(

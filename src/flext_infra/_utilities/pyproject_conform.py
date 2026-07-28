@@ -271,12 +271,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
+        if not reference.url.startswith("https://"):
             return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
+                "repository URL must use the configured HTTPS transport: "
+                f"{reference.url}"
             )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
+        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )

@@ -31,9 +31,7 @@ def _render_python_version() -> str:
         autoescape=select_autoescape(default=False, default_for_string=False),
     )
     template = environment.get_template("project/base/python-version.j2")
-    return template.render(
-        python_toolchain_version=config.Infra.codegen.toolchain.python_version
-    )
+    return template.render(python_version=config.Infra.codegen.toolchain.python_version)
 
 
 class TestsFlextInfraPythonVersionRenderUsesMinorLine:

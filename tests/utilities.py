@@ -7,10 +7,10 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_tests import FlextTestsUtilities, r, tm
+from flext_tests import FlextTestsUtilities, tm
 
 from flext_cli import cli as cli_facade
-from flext_infra import config, main, u
+from flext_infra import config, main, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -32,6 +32,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
+
+        @staticmethod
+        def make_read_only(path: Path) -> None:
+            """Make one fixture path read-only."""
+            path.chmod(0o444)
 
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
@@ -779,9 +784,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            return cli_facade.capture(
-                [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-            ).success
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
+                cli_facade.capture(
+                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+                ).success
+            )
+            return exists
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
@@ -984,11 +992,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def make_read_only(path: Path) -> None:
-            """Make one fixture path read-only for write-failure scenarios."""
-            path.chmod(0o444)
-
-        @staticmethod
         def write_executable(path: Path, body: str) -> None:
             """Write one executable fixture with deterministic permissions."""
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1156,14 +1159,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
-            """Provide the typed test helper `extract_lazy_init_exports`."""
-            for name, value_str in u.Infra.get_module_level_assignments(source):
-                if name == c.Infra.DUNDER_ALL:
-                    return (
-                        True,
-                        tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(value_str)),
-                    )
-            return (False, ())
+            """Read the published lazy export contract from generated source."""
+            assignments = dict(u.Infra.get_module_level_assignments(source))
+            all_value = assignments.get(c.Infra.DUNDER_ALL)
+            if all_value is None:
+                return (False, ())
+            literal_exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
+            if literal_exports:
+                return (True, literal_exports)
+            public_value = assignments.get("_PUBLIC_EXPORTS", "")
+            return (
+                "_PUBLIC_EXPORTS" in all_value,
+                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_value)),
+            )
 
         @staticmethod
         def consolidate_codegen(
@@ -1300,10 +1308,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
-            return m.Infra.DetectCommand.model_validate({
+            validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
             })
+            return validated
 
         @staticmethod
         def create_detector_deps_stub(

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 
@@ -27,17 +27,46 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(makefile_entries, len=1)
         tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
-    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(self) -> None:
+    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(
+        self, tmp_path: Path
+    ) -> None:
         """Generated workspace-root check/test route through workspace orchestrate."""
-        rendered = _render_root_makefile()
+        rendered = _render_root_makefile(tmp_path)
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
 
 
-def _render_root_makefile() -> str:
+def _render_root_makefile(tmp_path: Path) -> str:
     """Render base/Makefile.j2 for the real workspace-root profile via conform."""
-    workspace_root = Path(__file__).resolve().parents[3].parent
+    workspace_root = tmp_path / "flext"
+    workspace_root.mkdir()
+    root_repository = next(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.name == "flext"
+    )
+    member = next(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.name == "flext-core"
+    )
+    (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
+        "[project]\nname = 'flext'\nversion = '0.12.0.dev0'\n",
+        encoding=c.Cli.ENCODING_DEFAULT,
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=root_repository.name,
+        repository=root_repository,
+        members=(member,),
+    )
+    tm.ok(
+        u.Cli.yaml_dump(
+            workspace_root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+            workspace.model_dump(mode="json", exclude_none=True),
+        )
+    )
     plan = (
         FlextInfraCodegenConform()
         .plan(

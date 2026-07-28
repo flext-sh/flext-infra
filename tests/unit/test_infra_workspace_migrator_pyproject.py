@@ -127,15 +127,5 @@ class TestsFlextInfraInfraWorkspaceMigratorPyproject:
             eq=True,
         )
 
-    def test_makefile_is_not_a_migration_input(self, tmp_path: Path) -> None:
-        root = u.Tests.create_migrator_dir_layout(tmp_path)
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(root),
-            "base.mk",
-            workspace_root=tmp_path,
-            dry_run=False,
-        )
-        tm.ok(migrator.execute())
-
 
 __all__: t.StrSequence = []

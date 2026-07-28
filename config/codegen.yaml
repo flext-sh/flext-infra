@@ -6,9 +6,7 @@ Infra:
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
-      # Derived as computed fields on ToolchainSpec:
-      #   python_minor_version    -> python_version (3.13)
-      #   python_required_version -> >=3.13,<3.14
+      # python_required_version is derived as >=3.13,<3.14.
       # uv is supplied by the caller environment and is deliberately not pinned.
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
@@ -398,6 +396,7 @@ Infra:
             - "/*/"
             - "!/LICENSE"
         - name: "Allow all FLEXT ecosystem project directories"
+          profiles: [workspace-root]
           patterns:
             - "!flext-*/"
         - name: "WHITELIST: Workspace Directories"
@@ -415,13 +414,16 @@ Infra:
             - "!.claude/"
             - "!.claude-plugin/"
             - "!/config/"
-            - "!/config/workspace.yaml"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
+        - name: "Workspace topology manifest"
+          profiles: [workspace-root]
+          patterns:
+            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           patterns:
             - "!scripts/"
@@ -483,7 +485,6 @@ Infra:
             - "!.env.template"
         - name: "WHITELIST: Contents Inside Allowed Directories"
           patterns:
-            - "!flext-*/**"
             - "!docker/**"
             - "!docs/**"
             - "!examples/**"
@@ -495,6 +496,10 @@ Infra:
             - "!.vscode/**"
             - "!.claude/**"
             - "!.claude-plugin/**"
+        - name: "Workspace member contents"
+          profiles: [workspace-root]
+          patterns:
+            - "!flext-*/**"
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
@@ -785,10 +790,9 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # mro-9v0d: the workspace root Makefile has ONE generation owner:
-          # FlextInfraWorkspaceMakefileGenerator (workspace_makefile.mk.j2).
-          # Listing workspace-root here would create a second, competing owner.
-          profiles: [workspace-member, standalone]
+          # The generic conform engine is the single Makefile owner for every
+          # profile; workspace-root fan-out is selected inside this template.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/custom.mk.j2

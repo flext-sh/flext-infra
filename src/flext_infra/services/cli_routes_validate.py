@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m, u
+from flext_core import r
+from flext_infra import c, m, p, t, u
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -18,6 +19,24 @@ from flext_infra.services.cli_routes_validate_commands import ValidationCommandR
 
 class ValidationRoutes(ValidationCommandRoutes):
     """Own documentation, GitHub, maintenance, and validation routes."""
+
+    @staticmethod
+    def _run_github_workspace_route(
+        params: m.Infra.GithubPullRequestWorkspaceRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Map aggregate repository failures to the CLI process boundary."""
+        result = u.Infra.run_github_workspace_pull_requests(params)
+        if result.failure:
+            return r[t.Cli.ResultValue].fail(
+                result.error or "workspace pull-request operation failed"
+            )
+        report = result.value
+        if report.fail:
+            return r[t.Cli.ResultValue].fail(
+                f"workspace pull-request operation failed for "
+                f"{report.fail}/{report.total} repositories"
+            )
+        return r[t.Cli.ResultValue].ok(report)
 
     validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_DOCS: tuple(
@@ -96,9 +115,7 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
-                    params
-                ).map(CliRouteBase.as_route_value),
+                handler=_run_github_workspace_route,
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

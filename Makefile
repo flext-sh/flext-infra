@@ -13,6 +13,8 @@ UV_LINK_MODE := copy
 
 APPLY ?= N
 ARGS ?=
+CHECK_GATES ?=
+PROJECT ?=
 PROJECTS ?=
 # Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
@@ -20,6 +22,7 @@ PROJECTS ?=
 PYTEST_ARGS ?=
 BRANCH ?=
 BASE ?= HEAD
+PYTEST_TARGETS ?= $(if $(strip $(PYTEST_ARGS)),,$(PROJECT_ROOT)/tests)
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -93,17 +96,23 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
+WORKSPACE_ORCHESTRATE = $(PROJECT_FLEXT_INFRA) workspace orchestrate
 ORCHESTRATED_VERBS := build check clean docs scan test val
+ORCHESTRATE_PROJECT_ARGS = $(if $(strip $(PROJECT)),--projects $(strip $(PROJECT)),$(if $(strip $(PROJECTS)),--projects $(strip $(PROJECTS))))
+ORCHESTRATE_CHECK_ARGS = $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
+ORCHESTRATE_TEST_ARGS = $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
 
-UV ?= uv
 UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
-FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
-PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_FLEXT_INFRA := $(UV_RUN) flext-infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
+
+ifneq ($(strip $(PROJECT)),)
+ifneq ($(strip $(PROJECTS)),)
+$(error ERROR: Cannot use PROJECT and PROJECTS together)
+endif
+endif
 
 
 -include custom.mk
@@ -160,14 +169,13 @@ endef
 
 define _run_for_selected_projects
 	@set -eu; \
-	selected="$(strip $(PROJECTS))"; \
+	selected="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	for project in $$selected; do \
 		case " $(ALLOWED_PROJECTS) " in \
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
 	done
 endef
@@ -287,26 +295,26 @@ ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
+	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
@@ -342,7 +350,7 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest $(if $(strip $(PYTEST_ARGS)),$(PYTEST_ARGS),"$(PROJECT_ROOT)/tests")
+	@$(UV_RUN) python -m pytest $(PYTEST_TARGETS) $(PYTEST_ARGS)
 
 
 _builtin_format_check: _builtin_require_environment
@@ -363,7 +371,7 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
-		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
+		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 

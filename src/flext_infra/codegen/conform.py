@@ -280,7 +280,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"repository planning failed: {repository_root}"
                 )
             governed = self._complete_governed_plans(
-                repository_root, repository_plan.value, config_spec, contract
+                repository_root,
+                repository_plan.value,
+                config_spec,
+                contract,
+                profile=c.Infra.MakeProfile(repository.profile),
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -314,6 +318,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
         contract: SurfaceContract,
+        *,
+        profile: c.Infra.MakeProfile,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 
@@ -385,7 +391,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # CodegenConfigSpec.gitignore_sections used by `codegen new` —
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
-                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(codegen)
+                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
+                    codegen, profile=profile
+                )
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         rendered_gitignore.error or f"gitignore render failed: {path}"
@@ -424,7 +432,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return Path(__file__).resolve().parent.parent
 
     @staticmethod
-    def _render_gitignore(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+    def _render_gitignore(
+        codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile
+    ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
         NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
@@ -449,7 +459,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             / "templates"
             / codegen.templates.root
         ).resolve()
-        return u.Cli.template_render(templates_root / entry.source, codegen)
+        context = m.Infra.GitignoreRenderSpec(
+            gitignore_sections=tuple(
+                section
+                for section in codegen.gitignore_sections
+                if not section.profiles or profile in section.profiles
+            )
+        )
+        return u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
     def validate_workspace_catalog(
@@ -1027,10 +1044,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
-            return r[p.Model].ok(codegen)
+            profile = c.Infra.MakeProfile(repository.profile)
+            return r[p.Model].ok(
+                m.Infra.GitignoreRenderSpec(
+                    gitignore_sections=tuple(
+                        section
+                        for section in codegen.gitignore_sections
+                        if not section.profiles or profile in section.profiles
+                    )
+                )
+            )
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
-        if destination == c.Infra.MAKEFILE_FILENAME:
+        if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = c.Infra.MakeProfile(repository.profile)
             members = (
                 tuple(workspace.members)
@@ -1038,10 +1064,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 else ()
             )
             workspace_root_rel = (
-                Path(*(".." for _ in repository.path.parts)).as_posix()
-                if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                and repository.path.parts
-                else "."
+                workspace.project.workspace_root_rel
+                if workspace.project is not None
+                else (
+                    Path(*(".." for _ in repository.path.parts)).as_posix()
+                    if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+                    and repository.path.parts
+                    else "."
+                )
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
@@ -1053,12 +1083,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         item.path.as_posix() for item in workspace.members
                     ),
                     workspace_repositories=members,
+                    workspace_content_only=tuple(workspace.content_only),
                     uv_link_mode=codegen.toolchain.uv_link_mode,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
                     orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                    project_selection_conflict_error=(
+                        c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                    ),
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
@@ -1114,7 +1148,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                python_version=codegen.toolchain.python_minor_version,
+                python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
@@ -1169,17 +1203,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if provider is None:
             return r[m.Infra.ProjectRenderContext].fail(
-                f"unknown repository provider: {repository.provider}"
+                f"unsupported repository provider: {repository.provider}"
             )
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
-        )
-        workspace_root_rel = (
-            Path(*(".." for _ in repository.path.parts)).as_posix()
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
-            else "."
         )
         packaged_data_dirs = (
             tuple(
@@ -1220,12 +1249,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                python_version=codegen.toolchain.python_minor_version,
+                python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=workspace_root_rel,
+                workspace_root_rel=project.workspace_root_rel,
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members

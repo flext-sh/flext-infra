@@ -282,7 +282,7 @@ class TestsCodegenArtifactSsot:
     def test_workspace_root_makefile_has_one_generation_owner(
         self, codegen: CodegenSpec
     ) -> None:
-        """Reserve the workspace-root Makefile for the workspace generator."""
+        """Keep workspace-root generation in the single conform template."""
         makefile_entries = [
             entry
             for entry in codegen.templates.entries
@@ -290,7 +290,7 @@ class TestsCodegenArtifactSsot:
         ]
 
         tm.that(len(makefile_entries), eq=1)
-        tm.that("workspace-root" in makefile_entries[0].profiles, eq=False)
+        tm.that("workspace-root" in makefile_entries[0].profiles, eq=True)
 
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""

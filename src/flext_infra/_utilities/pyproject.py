@@ -59,7 +59,11 @@ class FlextInfraUtilitiesPyproject:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
-            cwd=toolchain_root.parent,
+            cwd=next(
+                candidate
+                for candidate in (toolchain_root, *toolchain_root.parents)
+                if candidate.is_dir()
+            ),
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
         )
         if result.failure:

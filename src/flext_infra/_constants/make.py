@@ -51,7 +51,7 @@ class FlextInfraConstantsMake:
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+        "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
     )
     PROJECT_CHECK_GATES_DEFAULT: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
@@ -83,6 +83,9 @@ class FlextInfraConstantsMake:
         "MFLAGS",
         "MYPYPATH",
         "PYTHONPATH",
+        "UV_PROJECT",
+        "UV_PROJECT_ENVIRONMENT",
+        "VIRTUAL_ENV",
         "WORKSPACE_MISE_SHIMS",
     )
     "Environment keys removed before project-level make orchestration."
@@ -95,6 +98,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
+        ("PYTEST_TARGETS", "tests"),
         ("DIAG", "0"),
         (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
@@ -105,17 +109,11 @@ class FlextInfraConstantsMake:
         ("DOCS_PHASE", "all"),
         ("FIX", ""),
         ("PR_ACTION", "status"),
-        ("PR_BASE", "main"),
+        ("PR_BASE", ""),
         ("PR_HEAD", ""),
-        ("PR_NUMBER", ""),
         ("PR_TITLE", ""),
         ("PR_BODY", ""),
         ("PR_DRAFT", "0"),
-        ("PR_MERGE_METHOD", "squash"),
-        ("PR_AUTO", "0"),
-        ("PR_DELETE_BRANCH", "0"),
-        ("PR_CHECKS_STRICT", "0"),
-        ("PR_RELEASE_ON_MERGE", "1"),
         ("FILE", ""),
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
@@ -131,6 +129,7 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
+        ("PYTEST_TARGETS", "tests"),
         ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
@@ -164,17 +163,11 @@ class FlextInfraConstantsMake:
         ("RELEASE_NEXT_BUMP", "minor"),
         ("CREATE_BRANCHES", "1"),
         ("PR_ACTION", "status"),
-        ("PR_BASE", "main"),
+        ("PR_BASE", ""),
         ("PR_HEAD", ""),
-        ("PR_NUMBER", ""),
         ("PR_TITLE", ""),
         ("PR_BODY", ""),
         ("PR_DRAFT", "0"),
-        ("PR_MERGE_METHOD", "squash"),
-        ("PR_AUTO", "0"),
-        ("PR_DELETE_BRANCH", "0"),
-        ("PR_CHECKS_STRICT", "0"),
-        ("PR_RELEASE_ON_MERGE", "1"),
         ("PR_INCLUDE_ROOT", "1"),
         ("PR_CHECKPOINT", "1"),
         ("DEPS_REPORT", "1"),
@@ -213,6 +206,7 @@ class FlextInfraConstantsMake:
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
         'PYTEST_ARGS="-k expr"       Extra pytest args',
+        'PYTEST_TARGETS="tests/unit" Pytest collection targets',
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",
@@ -224,12 +218,9 @@ class FlextInfraConstantsMake:
         "VERBOSE=1                   Show executed commands",
     )
     PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create|view|checks|merge|close",
-        "PR_BASE=main  PR_HEAD=<branch>  PR_NUMBER=<id>",
+        "PR_ACTION=status|create",
+        "PR_BASE=<branch>  PR_HEAD=<branch>",
         "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-        "PR_MERGE_METHOD=squash|merge|rebase  PR_AUTO=0|1",
-        "PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1",
-        "PR_RELEASE_ON_MERGE=0|1",
     )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.

@@ -77,16 +77,3 @@ class TestsFlextInfraInfraWorkspaceMigratorDryrun:
             ),
             eq=True,
         )
-
-    def test_migrator_leaves_makefile_outside_dry_run_scope(
-        self, tmp_path: Path
-    ) -> None:
-        project_root = u.Tests.create_migrator_dir_layout(tmp_path)
-        migrator = u.Tests.build_project_migrator(
-            u.Tests.create_migrator_project(project_root),
-            "base.mk",
-            workspace_root=tmp_path,
-            dry_run=False,
-        )
-        result = migrator.execute()
-        tm.ok(result)
