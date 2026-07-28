@@ -730,14 +730,6 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        if (
-            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
-            and not attached_workspace_root
-            and project_name not in member_names
-        ):
-            return r[bool].fail(
-                f"workspace document is not a declared member: {project_name}"
-            )
         for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
             value = project.get(key)
             if isinstance(value, Mapping):
