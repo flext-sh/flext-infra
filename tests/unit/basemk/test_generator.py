@@ -23,29 +23,21 @@ class TestsFlextInfraBasemkGenerator:
         result = FlextInfraBaseMkGenerator(project_name="demo-project").execute()
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME ?= demo-project")
+        tm.that(result.value, has="PROJECT_NAME := demo-project")
 
     def test_generator_generate_with_none_config_uses_default(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME ?=")
+        tm.that(result.value, has="PROJECT_NAME := unnamed")
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
-        settings = m.Infra.BaseMkConfig(
-            project_name="test-proj",
-            python_version="3.13",
-            package_manager="poetry",
-            source_dir="src",
-            tests_dir="tests",
-            lint_gates=["mypy"],
-            test_command="pytest",
-        )
+        settings = m.Infra.BaseMkConfig(project_name="test-proj")
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME ?= test-proj")
+        tm.that(result.value, has="PROJECT_NAME := test-proj")
 
     def test_generator_generate_with_invalid_mapping_fails(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(
@@ -62,7 +54,7 @@ class TestsFlextInfraBasemkGenerator:
         result = FlextInfraBaseMkGenerator().write(content, output=output_path)
 
         tm.ok(result)
-        assert output_path.exists()
+        tm.that(output_path.exists(), eq=True)
         tm.that(output_path.read_text(encoding="utf-8"), eq=content)
 
     def test_generator_write_creates_parent_directories(self, tmp_path: Path) -> None:
@@ -73,7 +65,7 @@ class TestsFlextInfraBasemkGenerator:
         )
 
         tm.ok(result)
-        assert output_path.exists()
+        tm.that(output_path.exists(), eq=True)
 
     def test_generator_write_to_stream(self) -> None:
         stream = io.StringIO()

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -130,9 +131,9 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
         resource_failure = (
-            output.exit_code == c.Infra.MYPY_TIMEOUT_EXIT_CODE
+            output.exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE
             or output.exit_code < 0
-            or output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
+            or output.exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
             or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
         )
         if not resource_failure:
@@ -140,14 +141,28 @@ class FlextInfraUtilitiesResourceLimits:
         signal = (
             -output.exit_code
             if output.exit_code < 0
-            else output.exit_code - c.Infra.MYPY_SIGNAL_EXIT_OFFSET
-            if output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
+            else output.exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
+            if output.exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
             else "none"
         )
-        detail = (output.stderr or output.stdout).strip() or "resource limit reached"
+        detail = (
+            FlextInfraUtilitiesBase.process_diagnostics(output.stdout, output.stderr)
+            or "resource limit reached"
+        )
         return cls._bounded_mypy_diagnostic(
             validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
         )
+
+    @staticmethod
+    def process_exit_classification(exit_code: int) -> str:
+        """Classify conventional timeout and signal process exit statuses."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return "timeout"
+        if exit_code < 0:
+            return f"signal={-exit_code}"
+        if exit_code > c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return ""
 
 
 __all__: list[str] = ["FlextInfraUtilitiesResourceLimits"]

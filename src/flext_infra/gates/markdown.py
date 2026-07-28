@@ -70,7 +70,9 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for line in (result.stdout + "\n" + result.stderr).splitlines():
+        for line in u.Infra.process_diagnostics(
+            result.stdout, result.stderr
+        ).splitlines():
             match = c.Infra.MARKDOWN_RE.match(line.strip())
             if not match:
                 continue
@@ -101,7 +103,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
     @override
     def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
         """Fix raw output."""
-        return "\n".join(part for part in (result.stdout, result.stderr) if part)
+        return u.Infra.process_diagnostics(result.stdout, result.stderr)
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

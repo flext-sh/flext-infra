@@ -9,6 +9,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsRootArtifactOwnership:
@@ -41,13 +42,7 @@ class TestsRootArtifactOwnership:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=root))
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed conform project"], cwd=root
-            )
-        )
+        test_u.Tests.initialize_git_repo(root)
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
             "custom.mk": b"# manual project extension\n",

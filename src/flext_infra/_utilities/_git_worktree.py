@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -44,7 +45,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[str].fail(result.error or "git command execution failed")
         output = result.value
         if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
+            detail = FlextInfraUtilitiesBase.process_diagnostics(
+                output.stdout, output.stderr
+            )
             return r[str].fail(detail or f"git command exited {output.exit_code}")
         return r[str].ok(output.stdout)
 
@@ -59,8 +62,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bytes].fail(result.error or "git command execution failed")
         output: p.Cli.CommandBytesOutput = result.value
         if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).decode(
-                c.Cli.ENCODING_DEFAULT, errors="replace"
+            detail = FlextInfraUtilitiesBase.process_diagnostics(
+                output.stdout.decode(c.Cli.ENCODING_DEFAULT, errors="replace"),
+                output.stderr.decode(c.Cli.ENCODING_DEFAULT, errors="replace"),
             )
             return r[bytes].fail(
                 detail.strip() or f"git command exited {output.exit_code}"
@@ -96,6 +100,51 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if top_level.failure:
             return r[Path].fail(top_level.error or "failed to resolve Git top level")
         return r[Path].ok(Path(top_level.value.strip()).resolve())
+
+    @classmethod
+    def git_primary_worktree_root(cls, repository_path: Path) -> p.Result[Path]:
+        """Resolve the repository's primary worktree across Git storage topologies."""
+        common_result = cls.git_capture(
+            repository_path, ("rev-parse", "--path-format=absolute", "--git-common-dir")
+        )
+        if common_result.failure:
+            return r[Path].fail(
+                common_result.error or "failed to resolve Git common directory"
+            )
+        common_dir = Path(common_result.value.strip()).resolve()
+        configured_result = cls.git_run(
+            repository_path, ("config", "--path", "--get", "core.worktree")
+        )
+        if configured_result.failure:
+            return r[Path].fail(
+                configured_result.error or "failed to inspect Git worktree config"
+            )
+        configured_output = configured_result.value
+        if configured_output.exit_code == 0:
+            configured = Path(configured_output.stdout.strip())
+            primary_root = (
+                configured if configured.is_absolute() else common_dir / configured
+            ).resolve()
+        elif configured_output.exit_code == 1 and common_dir.name == c.Infra.GIT_DIR:
+            primary_root = common_dir.parent
+        else:
+            detail = FlextInfraUtilitiesBase.process_diagnostics(
+                configured_output.stdout, configured_output.stderr
+            )
+            return r[Path].fail(
+                detail or f"cannot derive primary worktree from {common_dir}"
+            )
+        top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
+        if top_level.failure:
+            return r[Path].fail(
+                top_level.error or f"invalid primary worktree: {primary_root}"
+            )
+        resolved_top_level = Path(top_level.value.strip()).resolve()
+        if resolved_top_level != primary_root:
+            return r[Path].fail(
+                f"Git primary worktree mismatch: {primary_root} != {resolved_top_level}"
+            )
+        return r[Path].ok(primary_root)
 
     @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
@@ -226,7 +275,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             output = apply_result.value
             if output.exit_code != 0:
                 return r[bool].fail(
-                    (output.stderr or output.stdout).strip()
+                    FlextInfraUtilitiesBase.process_diagnostics(
+                        output.stdout, output.stderr
+                    )
                     or "dirty patch did not apply"
                 )
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
@@ -365,7 +416,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         output = result.value
         if output.exit_code != 0:
             return r[bool].fail(
-                (output.stderr or output.stdout).strip() or "git apply --check failed"
+                FlextInfraUtilitiesBase.process_diagnostics(
+                    output.stdout, output.stderr
+                )
+                or "git apply --check failed"
             )
         return r[bool].ok(True)
 
@@ -430,7 +484,8 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             return r[bool].fail(result.error or "git apply failed")
         output = result.value
         return r[bool].fail(
-            (output.stderr or output.stdout).strip() or "git apply failed"
+            FlextInfraUtilitiesBase.process_diagnostics(output.stdout, output.stderr)
+            or "git apply failed"
         )
 
     @classmethod
@@ -458,7 +513,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             if converged_result.success:
                 return r[bool].ok(True)
             return r[bool].fail(
-                (output.stderr or output.stdout).strip() or "git apply failed"
+                FlextInfraUtilitiesBase.process_diagnostics(
+                    output.stdout, output.stderr
+                )
+                or "git apply failed"
             )
         return r[bool].ok(True)
 

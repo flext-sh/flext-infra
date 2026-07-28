@@ -106,7 +106,7 @@ workspace = true
         )
         tm.that(result.failure, eq=True)
 
-    def test_attached_member_removes_direct_source(self) -> None:
+    def test_attached_member_rejects_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
@@ -118,8 +118,11 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        document = tomllib.loads(tm.ok(result))
-        tm.that(document["project"]["dependencies"], eq=[member.distribution])
+        tm.fail(result)
+        tm.that(
+            result.error or "",
+            has="attached workspace dependency declares direct source",
+        )
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()

@@ -64,6 +64,14 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact Gitleaks binary version, e.g. '8.30.1'"),
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact tokei binary version, e.g. '14.0.0'"),
+        ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -76,9 +84,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
-        taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
-        ]
 
         @m.computed_field()
         @property
@@ -87,19 +92,6 @@ class FlextInfraConfigModels:
             major, _, minor = self.python_version.partition(".")
             next_minor = int(minor) + 1
             return f">={self.python_version},<{major}.{next_minor}"
-
-        @m.computed_field()
-        @property
-        def uv_required_version(self) -> str:
-            """PEP 440 requirement: patch floor with next-minor ceiling.
-
-            Mirrors ``python_required_version``. Exact patch pins prevent a
-            project from running the canonical Make surface while a compatible
-            toolchain patch is propagating through generated consumers.
-            """
-            major, _, rest = self.uv_version.partition(".")
-            minor, _, _patch = rest.partition(".")
-            return f">={self.uv_version},<{major}.{int(minor) + 1}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -548,7 +540,7 @@ class FlextInfraConfigModels:
         ] = None
 
     class MakefileRenderSpec(_ConfigContract):
-        """Field-only render input for an existing repository Makefile."""
+        """Typed render input for the generated project Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
@@ -590,9 +582,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
-        makefile_custom_include: Annotated[
-            str, m.Field(description="Optional custom Make policy include directive")
-        ]
+
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
@@ -600,10 +590,12 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         workspace_cli_group: Annotated[
-            str, m.Field(description="CLI group used for workspace orchestration")
-        ] = ""
+            t.NonEmptyStr,
+            m.Field(description="CLI group used for workspace orchestration"),
+        ]
         project_selection_conflict_error: Annotated[
-            t.NonEmptyStr, m.Field(description="Mutually exclusive project selector error")
+            t.NonEmptyStr,
+            m.Field(description="Mutually exclusive project selector error"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
@@ -628,6 +620,17 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class GitignoreRenderSpec(_ConfigContract):
+        """Typed, profile-filtered input for the generated Git ignore file."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical ignore sections applicable to one profile",
+            ),
         ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
@@ -840,6 +843,12 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks binary version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact tokei binary version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -1284,9 +1293,6 @@ class FlextInfraConfigModels:
         lock_path: Annotated[Path, m.Field(description="Required versioned uv.lock")]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Declared uv baseline version")
         ]
         groups: Annotated[
             tuple[str, ...],

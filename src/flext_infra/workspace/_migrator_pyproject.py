@@ -22,6 +22,7 @@ class FlextInfraProjectMigratorPyprojectMixin:
     """
 
     if TYPE_CHECKING:
+        workspace_root: Path
 
         @staticmethod
         def _no_change_result(message: str, *, dry_run: bool) -> p.Result[str]: ...
@@ -67,9 +68,19 @@ class FlextInfraProjectMigratorPyprojectMixin:
             dependencies.append(dependency_spec)
         project_table[c.Infra.DEPENDENCIES] = dependencies
         if not dry_run:
-            write_result = u.Cli.toml_write_document(pyproject_path, document)
-            if write_result.failure:
-                return r[str].fail(write_result.error or "pyproject update failed")
+            formatted = u.Infra.format_toml_source(
+                document.as_string(),
+                path=pyproject_path,
+                toolchain_root=self.workspace_root,
+            )
+            if formatted.failure:
+                return r[str].fail(formatted.error or "pyproject format failed")
+            try:
+                u.write_file(
+                    pyproject_path, formatted.value, encoding=c.Cli.ENCODING_DEFAULT
+                )
+            except OSError as exc:
+                return r[str].fail_op("pyproject update", exc)
         return r[str].ok(
             self._action_text(
                 "pyproject.toml adds flext-core dependency", dry_run=dry_run

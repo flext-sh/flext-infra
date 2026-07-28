@@ -226,7 +226,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         result = check.value
         if result.exit_code == 0:
             return 0
-        detail = (result.stdout or result.stderr).strip()
+        detail = u.Infra.process_diagnostics(result.stdout, result.stderr)
         u.Cli.error(
             f"generated initializers failed Ruff ({result.exit_code}): {detail}"
         )

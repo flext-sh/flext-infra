@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, main as infra_main
+from flext_infra import c, config, m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_tests import tm
@@ -25,29 +25,18 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
 
-    def test_bootstrap_setup_is_self_contained_and_branch_aware(self) -> None:
-        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer.render_bootstrap_include())
+    def test_setup_is_self_contained_and_uses_external_uv(self) -> None:
+        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
         for required in (
-            "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
-            "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
-            "UV_PROJECT_ENVIRONMENT=$(SETUP_VENV)",
-            "uv venv --clear",
-            "uv sync --all-extras --all-groups",
-            "git submodule update --init --recursive",
-            'test -z "$$(git status --porcelain)"',
-            'test "$$(git rev-parse HEAD)" = "$$sha1"',
-            "refs/heads/$(SETUP_BRANCH)",
-            'git checkout --quiet -b "$(SETUP_BRANCH)"',
+            "UV ?= uv",
+            "$(UV) venv --clear",
+            "$(UV) sync --project",
+            "submodule update --init --recursive",
             "--no-install-project",
         ):
             tm.that(rendered, has=required)
-        for forbidden in (
-            "BOOTSTRAP_PIP",
-            "pip install",
-            "poetry",
-            "$(PYTHON_CMD) -c 'import flext_infra'",
-        ):
+        for forbidden in ("poetry", "UV_VERSION", "3.13."):
             tm.that(rendered, lacks=forbidden)
 
     def test_render_all_has_no_scripts_path_references(self) -> None:
@@ -57,52 +46,43 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         tm.that(result.value, lacks="scripts/")
 
-    def test_render_all_preflight_is_read_only_and_fail_closed(self) -> None:
-        """Reject stale state without deleting environments or syncing source."""
+    def test_render_all_environment_gate_fails_closed(self) -> None:
+        """Reject a missing managed environment instead of selecting a fallback."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
-        tm.that(rendered, has="define VALIDATE_CANONICAL_BASE_MK")
-        tm.that(rendered, has="basemk-validate")
-        tm.that(rendered, has="Project-local .venv violates")
-        tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
-        tm.that(rendered, lacks="rm -rf .venv")
+        tm.that(rendered, has="_builtin_require_environment:")
+        tm.that(rendered, has="ERROR: missing environment interpreter")
+        tm.that(rendered, lacks="python3 ||")
+        tm.that(rendered, lacks="python ||")
 
     def test_render_all_builds_with_canonical_uv_command(self) -> None:
         """Build distributions without unrelated codegen or Poetry commands."""
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
-        tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
-        tm.that(
-            rendered, has=["MISE := $(shell command -v mise 2>/dev/null)", "UV ?= uv"]
-        )
+        tm.that(rendered, has='$(UV) build --project "$(PROJECT_ROOT)"')
+        tm.that(rendered, has="UV ?= uv")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
 
     def test_render_all_with_config_override(self) -> None:
         """Render validated project-specific settings."""
-        settings = m.Infra.BaseMkConfig(
-            project_name="sample-project",
-            python_version="3.13",
-            package_manager="poetry",
-            source_dir="src",
-            tests_dir="tests",
-            lint_gates=["lint", "mypy"],
-            test_command="pytest",
-        )
+        settings = m.Infra.BaseMkConfig(project_name="sample-project")
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings)
 
         tm.ok(result)
-        tm.that(result.value, has="PROJECT_NAME ?= sample-project")
+        tm.that(result.value, has="PROJECT_NAME := sample-project")
 
-    def test_render_single_missing_template_fails(self) -> None:
-        """Reject a template name outside the canonical inventory."""
-        result = FlextInfraBaseMkTemplateRenderer().render_single(
-            "missing-template.mk.j2"
+    def test_renderer_resolves_the_single_manifest_owner(self) -> None:
+        """Render the exact template selected by the codegen manifest."""
+        entries = tuple(
+            entry
+            for entry in config.Infra.codegen.templates.entries
+            if entry.destination == c.Infra.MAKEFILE_FILENAME
         )
 
-        tm.fail(result)
-        tm.that((result.error or ""), has="template render failed")
+        tm.that(entries, len=1)
+        tm.that(entries[0].source, eq="base/Makefile.j2")
 
     def test_basemk_cli_generate_to_stdout(self, capsys: CaptureFixture[str]) -> None:
         """Generate the public base Makefile through the CLI."""
@@ -110,7 +90,7 @@ class TestsFlextInfraBasemkRenderer:
         captured = capsys.readouterr()
 
         tm.that(exit_code, eq=0)
-        tm.that(captured.out, has="PROJECT_NAME ?= cli-project")
+        tm.that(captured.out, has="PROJECT_NAME := cli-project")
 
     def test_renderer_execute_returns_string(self) -> None:
         """Return rendered text from the service execution contract."""
@@ -127,17 +107,18 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         text = result.value
         for part in (
-            ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
-            "boot: ## Complete setup",
-            "scan: ## Run all security checks",
-            "fmt: ## Run code formatting",
-            "val: ## Run validate gates",
+            "PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree",
+            ".PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)",
+            "_builtin_setup_environment:",
+            "_builtin_build_artifacts:",
+            "_builtin_check_all:",
+            "_builtin_test_all:",
+            "_builtin_format_apply:",
         ):
             tm.that(text, has=part)
-        tm.that(text, lacks="setup build check security format docs")
-        tm.that(text, lacks="docs-base")
-        tm.that(text, lacks="docs-sync-scripts")
+        tm.that(text, lacks="boot:")
+        tm.that(text, lacks="fmt:")
+        tm.that(text, lacks="scan:")
 
     def test_render_all_declares_and_documents_runtime_options(self) -> None:
         """Document the runtime options accepted by generated targets."""
@@ -146,12 +127,14 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         text = result.value
         for part in (
-            "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"',
-            'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
-            'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
-            'echo "  DIAG=1                      Emit extended pytest diagnostics"',
-            'echo "  FIX=1                       Auto-fix supported gates"',
+            "CHECK_GATES ?=",
+            "PYTEST_ARGS ?=",
+            "PROJECT ?=",
+            "PROJECTS ?=",
+            "BRANCH ?=",
+            "BASE ?= HEAD",
+            "'format' 'check'",
+            "'codegen' 'check'",
         ):
             tm.that(text, has=part)
-        tm.that(text, lacks="check-fast")
+        tm.that(text, lacks="FIX ?=")

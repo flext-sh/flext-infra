@@ -33,6 +33,9 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install non-Python toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+
       - name: Setup (blocking)
         run: make setup
 

@@ -102,7 +102,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
             )
             return False, issues
         if (not issues) and result.exit_code != 0:
-            message = (result.stderr or result.stdout).strip()
+            message = u.Infra.process_diagnostics(result.stdout, result.stderr)
             if not message:
                 message = (
                     f"pyright exited with code {result.exit_code} "

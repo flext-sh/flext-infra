@@ -10,6 +10,7 @@ from typing import ClassVar
 
 from flext_cli import u
 from flext_infra import c, m, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
@@ -246,9 +247,8 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 if tool_name == c.Infra.MYPY
                 else None
             )
-            output = (
-                resource_diagnostic
-                or (run_result.value.stdout + run_result.value.stderr).strip()
+            output = resource_diagnostic or FlextInfraUtilitiesBase.process_diagnostics(
+                run_result.value.stdout, run_result.value.stderr
             )
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
         else:

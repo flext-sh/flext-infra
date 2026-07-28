@@ -39,6 +39,8 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         The engine never pattern-matches a directory name it does not own.
         """
         resolved_workspace_root = workspace_root.resolve()
+        if not (resolved_workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            return ()
         parent = resolved_workspace_root.parent
         if not parent.is_dir():
             return ()
@@ -49,14 +51,20 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         roots: list[Path] = []
         seen: set[Path] = set()
         for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
-            if not candidate.is_dir():
+            try:
+                if not candidate.is_dir():
+                    continue
+                resolved_candidate = candidate.resolve()
+                has_descriptor = (
+                    resolved_candidate / c.Infra.PYPROJECT_FILENAME
+                ).is_file()
+            except OSError:
                 continue
-            resolved_candidate = candidate.resolve()
             if resolved_candidate == resolved_workspace_root:
                 continue
             if resolved_candidate in seen:
                 continue
-            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+            if not has_descriptor:
                 continue
             metadata_result = u.read_project_metadata(resolved_candidate)
             if metadata_result.failure:

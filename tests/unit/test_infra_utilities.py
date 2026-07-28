@@ -13,6 +13,16 @@ from tests import u
 class TestsFlextInfraInfraUtilities:
     """Test u class import and structure."""
 
+    def test_process_diagnostics_preserves_both_unique_streams(self) -> None:
+        """Keep complete process diagnostics without repeated stream payloads."""
+        tm.that(
+            u.Infra.process_diagnostics("stdout detail\n", "stderr detail\n"),
+            eq="stdout detail\nstderr detail",
+        )
+        tm.that(
+            u.Infra.process_diagnostics("", " repeated ", "repeated"), eq="repeated"
+        )
+
     def test_extract_definition_keeps_multiline_class_header_intact(self) -> None:
         """Multi-line class headers must keep their closing line during extraction."""
         source = (

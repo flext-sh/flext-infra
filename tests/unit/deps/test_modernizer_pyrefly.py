@@ -27,6 +27,8 @@ class TestsFlextInfraModernizerPyrefly:
         self, tmp_path: Path
     ) -> None:
         """Distinguish an attached submodule from an independent linked worktree."""
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        (tmp_path / rules.venv_name).mkdir()
         child_origin = tmp_path / "child-origin"
         child_origin.mkdir()
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))

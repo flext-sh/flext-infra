@@ -173,7 +173,7 @@ class FlextInfraMypyGate(FlextInfraGate):
             except c.ValidationError:
                 continue
         if (not issues) and result.exit_code != 0:
-            message = (result.stderr or result.stdout).strip()
+            message = u.Infra.process_diagnostics(result.stdout, result.stderr)
             if not message:
                 message = (
                     f"mypy exited with code {result.exit_code} without JSON diagnostics"

@@ -418,19 +418,10 @@ class TestsEnforcementFixerOrchestrator:
             tm.that(output.exit_code, eq=0)
 
         run_git(("init",))
+        run_git(("config", "user.name", "FLEXT Test"))
+        run_git(("config", "user.email", "test@example.invalid"))
         run_git(("add", "--", "pyproject.toml", "src"))
-        run_git((
-            "-c",
-            "user.name=FLEXT Test",
-            "-c",
-            "user.email=test@example.invalid",
-            "commit",
-            "-m",
-            "baseline",
-            "--",
-            "pyproject.toml",
-            "src",
-        ))
+        run_git(("commit", "-m", "baseline", "--", "pyproject.toml", "src"))
         runner_root = Path(__file__).parents[4]
 
         def git_status() -> str:
@@ -461,7 +452,11 @@ class TestsEnforcementFixerOrchestrator:
             cwd=runner_root,
         ).value
         post_status = git_status()
-        tm.that(result.exit_code, eq=0)
+        tm.that(
+            result.exit_code,
+            eq=0,
+            msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
         tm.that(result.stdout, has="fixed: 1")
         tm.that(result.stdout, has="breakage=no")
         tm.that(result.stdout, has="applied=no")

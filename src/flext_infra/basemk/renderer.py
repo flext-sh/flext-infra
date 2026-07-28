@@ -1,17 +1,11 @@
-"""Jinja2-based template renderer for rendering base.mk configuration."""
+"""Compatibility facade for the canonical generated Makefile template."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import override
 
-from jinja2.environment import Environment
-from jinja2.exceptions import TemplateError
-from jinja2.loaders import FileSystemLoader
-from jinja2.runtime import StrictUndefined
-from jinja2.utils import select_autoescape
-
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -19,43 +13,13 @@ def _templates_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "templates"
 
 
-def _build_default_environment() -> t.Infra.JinjaEnvironment:
-    """Create the shared Jinja environment for base.mk rendering."""
-    return Environment(
-        loader=FileSystemLoader(str(_templates_dir())),
-        trim_blocks=False,
-        lstrip_blocks=False,
-        keep_trailing_newline=True,
-        undefined=StrictUndefined,
-        autoescape=select_autoescape(),
-    )
-
-
 class FlextInfraBaseMkTemplateRenderer(s[str]):
-    """Render base.mk templates with configuration context."""
-
-    _environment: t.Infra.JinjaEnvironment = u.PrivateAttr(
-        default_factory=_build_default_environment
-    )
+    """Render the sole Makefile owner through its typed codegen context."""
 
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:
         """Return default base.mk generation configuration."""
-        return m.Infra.BaseMkConfig(
-            project_name=c.Infra.DEFAULT_UNNAMED,
-            python_version="3.13",
-            package_manager=c.Infra.POETRY,
-            source_dir=c.Infra.DEFAULT_SRC_DIR,
-            tests_dir=c.Infra.DIR_TESTS,
-            lint_gates=[
-                c.Infra.LINT,
-                c.Infra.FORMAT,
-                c.Infra.PYREFLY,
-                c.Infra.MYPY,
-                c.Infra.PYRIGHT,
-            ],
-            test_command=c.Infra.PYTEST,
-        )
+        return m.Infra.BaseMkConfig(project_name=c.Infra.DEFAULT_UNNAMED)
 
     @staticmethod
     def normalize_config(
@@ -76,71 +40,53 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 "base.mk configuration validation", exc
             )
 
-    @staticmethod
-    def render_bootstrap_include() -> p.Result[str]:
-        """Render the canonical Makefile bootstrap include block."""
-        return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
-        )
-
     @override
     def execute(self) -> p.Result[str]:
         """Execute."""
         return self.render_all()
 
-    @staticmethod
-    def _render_template(
-        template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
-    ) -> str:
-        """Render template."""
-        rendered: str = template.render(**kwargs)
-        return rendered
-
     def render_all(self, settings: m.Infra.BaseMkConfig | None = None) -> p.Result[str]:
-        """Render all base.mk templates into a single output string."""
+        """Render the canonical standalone Makefile through the codegen SSOT."""
         active_config = settings or self.default_config()
-        lint_gates_csv = ",".join(active_config.lint_gates)
-        sections: t.MutableSequenceOf[str] = []
-        try:
-            for template_name in c.Infra.TEMPLATE_ORDER:
-                template: p.Infra.RenderableTemplate = self._environment.get_template(
-                    template_name
-                )
-                rendered = self._render_template(
-                    template,
-                    settings=active_config,
-                    lint_gates_csv=lint_gates_csv,
-                    make=c.Infra,
-                    mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
-                    mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
-                    mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
-                    mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
-                    prlimit_command=c.Infra.PRLIMIT_COMMAND,
-                    prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
-                    timeout_command=c.Infra.TIMEOUT_COMMAND,
-                    timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
-                )
-                sections.append(rendered.rstrip("\n"))
-            content = "\n\n".join(sections).rstrip("\n") + "\n"
-            return r[str].ok(content)
-        except (TemplateError, ValueError, TypeError) as exc:
-            return r[str].fail_op("base.mk template render", exc)
-
-    def render_single(
-        self,
-        template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
-    ) -> p.Result[str]:
-        """Render a single named template with the given context."""
-        try:
-            template: p.Infra.RenderableTemplate = self._environment.get_template(
-                template_name
+        codegen = config.Infra.codegen
+        entry = next(
+            (
+                candidate
+                for candidate in codegen.templates.entries
+                if candidate.destination == c.Infra.MAKEFILE_FILENAME
+            ),
+            None,
+        )
+        if entry is None:
+            return r[str].fail(
+                "Makefile template is missing from codegen configuration"
             )
-            content = self._render_template(template, **kwargs)
-            return r[str].ok(content.rstrip("\n"))
-        except (TemplateError, OSError, ValueError, TypeError) as exc:
-            return r[str].fail_op("template render", exc)
+        context = m.Infra.MakefileRenderSpec(
+            dist=active_config.project_name,
+            make_profile=c.Infra.MakeProfile.STANDALONE,
+            workspace_root_rel=".",
+            workspace_members=(),
+            workspace_repositories=(),
+            workspace_content_only=(),
+            uv_link_mode=codegen.toolchain.uv_link_mode,
+            make=codegen.make,
+            extra_verbs=(),
+            script_dispatch=None,
+            makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
+            orchestrated_verbs=tuple(c.Infra.ORCHESTRATED_PROJECT_VERBS),
+            workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+            project_selection_conflict_error=c.Infra.PROJECT_SELECTION_CONFLICT_ERROR,
+            mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+            mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+            mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+            mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
+            prlimit_command=c.Infra.PRLIMIT_COMMAND,
+            prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
+            timeout_command=c.Infra.TIMEOUT_COMMAND,
+            timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+        )
+        templates_root = (_templates_dir() / codegen.templates.root).resolve()
+        return u.Cli.template_render(templates_root / entry.source, context)
 
 
 __all__: list[str] = ["FlextInfraBaseMkTemplateRenderer"]

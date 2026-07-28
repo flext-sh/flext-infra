@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -422,7 +419,10 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
-        return u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
+        return rendered
 
     @staticmethod
     def docs_overview_page(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
@@ -526,7 +526,10 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
-        return u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
+        return rendered
 
     @staticmethod
     def docs_root_overview_page(

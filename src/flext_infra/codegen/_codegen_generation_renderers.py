@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
@@ -47,7 +47,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(organize_result.error or "ruff import organization failed")
         organized = organize_result.unwrap()
         if organized.exit_code != 0:
-            detail = (organized.stderr or organized.stdout).strip()
+            detail = u.Infra.process_diagnostics(organized.stdout, organized.stderr)
             msg = f"ruff import organization failed ({organized.exit_code}): {detail}"
             raise ValueError(msg)
         format_result = u.Cli.run_raw(
@@ -59,10 +59,13 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(format_result.error or "ruff format failed")
         output = format_result.unwrap()
         if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
+            detail = u.Infra.process_diagnostics(output.stdout, output.stderr)
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
-        return output.stdout.rstrip() + "\n"
+        rendered_output: str = (
+            t.Infra.STR_ADAPTER.validate_python(output.stdout).rstrip() + "\n"
+        )
+        return rendered_output
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

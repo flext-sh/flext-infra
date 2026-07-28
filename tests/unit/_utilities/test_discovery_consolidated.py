@@ -19,20 +19,25 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             tm.ok(result)
             tm.that(result.value.exit_code, eq=0)
 
-    def test_discover_project_roots_with_real_workspace_root(self) -> None:
-        # Walk up from the test file to find the workspace root (contains flext-core)
-        candidate = Path(__file__).resolve()
-        workspace_root = candidate
-        while candidate != candidate.parent:
-            if (candidate / "flext-core").is_dir():
-                workspace_root = candidate
-                break
-            candidate = candidate.parent
+    def test_discover_project_roots_with_declared_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = tmp_path / "workspace"
+        project = workspace_root / "flext-core"
+        (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='workspace'\n\n"
+            "[tool.uv.workspace]\nmembers=['flext-core']\n",
+            encoding="utf-8",
+        )
+        (project / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname='flext-core'\n", encoding="utf-8"
+        )
 
         roots = u.Infra.discover_project_roots(workspace_root)
 
-        assert any(root.name == "flext-core" for root in roots)
-        assert all(root.is_dir() for root in roots)
+        tm.that(roots, has=project.resolve())
+        tm.that(all(root.is_dir() for root in roots), eq=True)
 
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
@@ -89,6 +94,24 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         roots = u.Infra.discover_project_roots(workspace)
 
         tm.that(roots, has=external.resolve())
+
+    def test_external_siblings_require_a_declared_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not extrapolate attached discovery from an arbitrary directory."""
+        workspace = tmp_path / "arbitrary-root"
+        workspace.mkdir()
+        external = tmp_path / "attached-sibling"
+        (external / c.Infra.DEFAULT_SRC_DIR / "attached_sibling").mkdir(parents=True)
+        (external / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname="attached-sibling"\nversion="0.1.0"\n'
+            "\n[tool.flext.workspace]\nattached = true\n",
+            encoding="utf-8",
+        )
+
+        roots = u.Infra.discover_project_roots(workspace)
+
+        tm.that(roots, empty=True)
 
     def test_discover_project_roots_prefers_tool_flext_workspace_members(
         self, tmp_path: Path
@@ -357,9 +380,9 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
-        assert (
-            result.value[0].workspace_role
-            == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        tm.that(
+            result.value[0].workspace_role,
+            eq=c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER,
         )
 
     def test_discover_projects_accepts_project_root_as_workspace(

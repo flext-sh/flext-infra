@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_infra import c, m
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
@@ -112,9 +113,9 @@ class FlextInfraUtilitiesDocsBuild:
                             passed=True,
                         )
                     else:
-                        reason_lines = (
-                            (output.stderr or output.stdout).strip().splitlines()
-                        )
+                        reason_lines = FlextInfraUtilitiesBase.process_diagnostics(
+                            output.stdout, output.stderr
+                        ).splitlines()
                         result = m.Infra.DocsPhaseReport(
                             phase="build",
                             scope=scope.name,

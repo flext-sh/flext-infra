@@ -11,12 +11,13 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
-      # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
-      # .mise.toml and the ci-matrix workflow kind leg.
+      # Non-Python binary toolchain pins consumed by the generated .mise.toml.
+      # Python quality tools remain open-floor uv dependencies.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
       kind_version: "0.31.0"
-      taplo_version: "0.10.0"
+      gitleaks_version: "8.30.1"
+      tokei_version: "14.0.0"
 
     github_actions:
       checkout:
@@ -381,12 +382,14 @@ Infra:
             codegen: [flext-infra]
             dev:
               - actionlint-py>=1.7.12.24
+              - ast-grep-cli>=0.45.0
               - flext-tests
               - mypy>=2.3.0
               - pyrefly>=1.1.1
               - pyright>=1.1.411
               - pytest>=9.0.3
               - ruff>=0.15.12
+              - taplo>=0.9.3
               - vulture>=2.16
               - yamlfix>=1.19.1
           - upstream: flext_cli
@@ -398,6 +401,7 @@ Infra:
             codegen: [flext-infra]
             dev:
               - actionlint-py>=1.7.12.24
+              - ast-grep-cli>=0.45.0
               - flext-tests
               # mro-45r9/mro-wkii.17.30: floor lets uv select latest mypy (2.3.0 verified 0 new errors on flext-core+flext-infra); no upper cap so DBT workspaces stay resolvable.
               - mypy>=2.3.0
@@ -405,6 +409,7 @@ Infra:
               - pyright>=1.1.411
               - pytest>=9.0.3
               - ruff>=0.15.12
+              - taplo>=0.9.3
               - vulture>=2.16
               - yamlfix>=1.19.1
       ping_example:
@@ -426,6 +431,7 @@ Infra:
             - "/*/"
             - "!/LICENSE"
         - name: "Allow all FLEXT ecosystem project directories"
+          profiles: [workspace-root]
           patterns:
             - "!flext-*/"
         - name: "WHITELIST: Workspace Directories"
@@ -443,13 +449,16 @@ Infra:
             - "!.claude/"
             - "!.claude-plugin/"
             - "!/config/"
-            - "!/config/workspace.yaml"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
+        - name: "Workspace topology manifest"
+          profiles: [workspace-root]
+          patterns:
+            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           patterns:
             - "!scripts/"
@@ -469,6 +478,7 @@ Infra:
         - name: "Python configuration"
           patterns:
             - "!pyproject.toml"
+            - "!uv.lock"
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
@@ -511,7 +521,6 @@ Infra:
             - "!.env.template"
         - name: "WHITELIST: Contents Inside Allowed Directories"
           patterns:
-            - "!flext-*/**"
             - "!docker/**"
             - "!docs/**"
             - "!examples/**"
@@ -523,6 +532,10 @@ Infra:
             - "!.vscode/**"
             - "!.claude/**"
             - "!.claude-plugin/**"
+        - name: "Workspace member contents"
+          profiles: [workspace-root]
+          patterns:
+            - "!flext-*/**"
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
@@ -1443,237 +1456,6 @@ Infra:
         package: true
         editable: true
         read_only: false
-      - name: cosmos-main
-        distribution: cosmos-main
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-main.git
-        branch: main
-        path: .
-        role: workspace-root
-        state: active
-        profile: workspace-root
-        checkout: root
-        codegen: conform
-        package: false
-        editable: false
-        read_only: false
-        extra_verbs:
-          - { name: auth, default_what: all }
-          - { name: bead, default_what: all }
-          - { name: bootstrap, default_what: all }
-          - { name: charts, default_what: all }
-          - { name: converge, default_what: all }
-          - { name: done-check, default_what: all }
-          - { name: gitops, default_what: all }
-          - { name: incidente, default_what: all }
-          - { name: nodepool, default_what: all }
-          - { name: packages, default_what: all }
-          - { name: repair, default_what: all }
-          - { name: scaffold, default_what: all }
-          - { name: secret, default_what: all }
-          - { name: sync, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
-            - apps/cosmos-charts/scripts
-            - apps/cosmos-gitops/scripts
-      - name: cosmos-charts
-        distribution: cosmos-charts
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-charts.git
-        branch: main
-        path: apps/cosmos-charts
-        role: workspace-member
-        state: active
-        profile: workspace-member
-        checkout: submodule
-        codegen: conform
-        package: true
-        editable: true
-        read_only: false
-        extra_verbs:
-          - { name: charts, default_what: all }
-          - { name: chart-release, default_what: all }
-          - { name: bead, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
-      - name: cosmos-gitops
-        distribution: cosmos-gitops
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-gitops.git
-        branch: main
-        path: apps/cosmos-gitops
-        role: workspace-member
-        state: active
-        profile: workspace-member
-        checkout: submodule
-        codegen: conform
-        package: true
-        editable: true
-        read_only: false
-        extra_verbs:
-          - { name: gitops, default_what: all }
-          - { name: bead, default_what: all }
-        script_dispatch:
-          dispatcher: scripts/dispatch.py
-          roots:
-            - scripts
-      - name: cosmos-old
-        distribution: cosmos-old
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-old.git
-        branch: main
-        path: apps/cosmos-old
-        role: content-only
-        state: content-only
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-inventory
-        distribution: cosmos-inventory
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos.git
-        branch: develop
-        path: cosmos/inventory
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-automation
-        distribution: cosmos-automation
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-automation-artifacts.git
-        branch: main
-        path: cosmos/automation
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-frontend
-        distribution: cosmos-frontend
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-frontend.git
-        branch: main
-        path: cosmos/frontend
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-observability
-        distribution: cosmos-observability
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-observability.git
-        branch: main
-        path: cosmos/observability
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-templates
-        distribution: cosmos-templates
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-templates.git
-        branch: main
-        path: cosmos/templates
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-zabbix
-        distribution: cosmos-zabbix
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-zabbix.git
-        branch: dev
-        path: cosmos/zabbix
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-monitoring
-        distribution: cosmos-monitoring
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-monitoring.git
-        branch: main
-        path: cosmos/monitoring
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmos-hook
-        distribution: cosmos-hook
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmos-hook.git
-        branch: dev
-        path: cosmos/hook
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmosec-backend
-        distribution: cosmosec-backend
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmosec-backend.git
-        branch: dev
-        path: cosmos/sec-backend
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
-      - name: cosmosec-frontend
-        distribution: cosmosec-frontend
-        provider: datacosmos-br
-        url: https://github.com/datacosmos-br/cosmosec-frontend.git
-        branch: main
-        path: cosmos/sec-frontend
-        role: content-only
-        state: content-only
-        profile: null
-        checkout: submodule
-        codegen: none
-        package: false
-        editable: false
-        read_only: true
     workspaces:
       - name: flext
         repository: flext

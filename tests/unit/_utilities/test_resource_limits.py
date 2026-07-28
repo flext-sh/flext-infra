@@ -98,3 +98,19 @@ class TestsFlextInfraUtilitiesResourceLimits:
             diagnostic,
             has=["memory_limit=6144 MiB", "timeout=60s", "exit=124", "signal=none"],
         )
+
+    @pytest.mark.parametrize(
+        ("exit_code", "classification"),
+        [
+            (0, ""),
+            (23, ""),
+            (c.Infra.PROCESS_TIMEOUT_EXIT_CODE, "timeout"),
+            (-9, "signal=9"),
+            (c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9, "signal=9"),
+        ],
+    )
+    def test_process_exit_classification(
+        self, exit_code: int, classification: str
+    ) -> None:
+        """Classify conventional process termination without changing status."""
+        tm.that(u.Infra.process_exit_classification(exit_code), eq=classification)

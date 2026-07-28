@@ -311,7 +311,9 @@ class TestsCodegenArtifactSsot:
         files_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             settings["files.exclude"]
         )
-        search_exclude = settings["search.exclude"]
+        search_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["search.exclude"]
+        )
         watcher_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
             settings["files.watcherExclude"]
         )

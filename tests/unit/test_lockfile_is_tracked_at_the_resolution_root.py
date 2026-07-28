@@ -19,7 +19,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_infra import c, config, u
+from flext_infra import c, config, t, u
 from flext_tests import tm
 
 
@@ -47,7 +47,8 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         probe = u.Cli.run_checked(
             ["git", "check-ignore", "-q", relative_path], cwd=root
         )
-    return probe.failure
+    allowed: bool = t.Infra.BOOL_ADAPTER.validate_python(probe.failure)
+    return allowed
 
 
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:

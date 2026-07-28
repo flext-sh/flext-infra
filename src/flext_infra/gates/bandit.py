@@ -75,7 +75,10 @@ class FlextInfraBanditGate(FlextInfraGate):
             return False, issues
         issues.extend(self._bandit_issues(parsed_payload.unwrap()))
         if not issues and result.exit_code != 0:
-            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+            detail = (
+                u.Infra.process_diagnostics(result.stdout, result.stderr)
+                or "no diagnostics"
+            )
             issues.append(
                 m.Infra.Issue(
                     file="<bandit>",

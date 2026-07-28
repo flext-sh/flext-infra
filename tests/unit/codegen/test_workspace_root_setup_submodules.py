@@ -6,7 +6,7 @@ import os
 import stat
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
@@ -63,7 +63,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefiles, len=1)
-    rendered: str = makefiles[0].rendered
+    rendered: str = t.Infra.STR_ADAPTER.validate_python(makefiles[0].rendered)
     tm.that(rendered, has="MAKE_PROFILE := workspace-root")
     return rendered
 
@@ -162,6 +162,10 @@ class TestsWorkspaceRootSetupSubmodules:
         )
         process = outcome.value
 
-        tm.that(process.exit_code, eq=0)
+        tm.that(
+            process.exit_code,
+            eq=0,
+            msg=u.Infra.process_diagnostics(process.stdout, process.stderr),
+        )
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")

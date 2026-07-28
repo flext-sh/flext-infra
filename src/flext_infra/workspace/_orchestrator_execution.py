@@ -190,9 +190,15 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
+            classification = u.Infra.process_exit_classification(exit_code)
+            classified_exit = (
+                f"exit={exit_code} {classification}"
+                if classification
+                else f"exit={exit_code}"
+            )
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} {classified_exit})"
             )
         return r.ok(results)
 
@@ -259,7 +265,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     def _gates_of(make_args: t.StrSequence) -> str:
         """Return the gate selection carried by make arguments, if declared."""
         prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
-        for make_arg in make_args:
+        for raw_make_arg in make_args:
+            make_arg: str = t.Infra.STR_ADAPTER.validate_python(raw_make_arg)
             if make_arg.startswith(prefix):
                 return make_arg[len(prefix) :]
         return ""

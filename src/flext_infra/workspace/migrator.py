@@ -23,7 +23,7 @@ class FlextInfraProjectMigrator(
     FlextInfraProjectMigratorArtifactsMixin,
     FlextInfraProjectMigratorPyprojectMixin,
 ):
-    """Migrate projects to standardized base.mk, Makefile, and pyproject structure."""
+    """Migrate projects to standardized base.mk, environment, and pyproject state."""
 
     discovery: Annotated[
         p.Infra.Discovery | None,

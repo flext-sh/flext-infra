@@ -15,6 +15,7 @@ from flext_infra.workspace.environment_provenance import (
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_infra.workspace.worktree import FlextInfraWorktreeService
 
 
 class WorkspaceRoutes(RefactorRoutes):
@@ -68,6 +69,11 @@ class WorkspaceRoutes(RefactorRoutes):
                         "migrate",
                         "Migrate workspace projects to flext_infra tooling",
                         FlextInfraProjectMigrator,
+                    ),
+                    (
+                        "worktree",
+                        "Manage repository-local development worktrees",
+                        FlextInfraWorktreeService,
                     ),
                 )
             ),

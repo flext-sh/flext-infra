@@ -165,7 +165,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         tm.that(result.failure, eq=True)
         tm.that(
-            result.error or "", has="attached workspace dependency declares Git source"
+            result.error or "",
+            has="attached workspace dependency declares direct source",
         )
 
         local_result = u.Infra.pyproject_dependencies_conform(
@@ -181,10 +182,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(local_result.failure, eq=True)
         tm.that(
             local_result.error or "",
-            has="attached workspace dependency declares Git source",
+            has="attached workspace dependency declares direct source",
         )
 
-    def test_standalone_rejects_workspace_source_without_git_requirement(self) -> None:
+    def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(

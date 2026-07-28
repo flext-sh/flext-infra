@@ -19,9 +19,9 @@ def _run(command: list[str], cwd: Path) -> None:
 
 
 class TestsFlextInfraBasemkWorktreeUvContract:
-    """Resolve uv sources against the canonical checkout from any worktree."""
+    """Resolve uv project and environment against the active worktree lane."""
 
-    def test_external_worktree_uses_canonical_project_and_lane_environment(
+    def test_external_worktree_uses_lane_project_and_environment(
         self, tmp_path: Path
     ) -> None:
         canonical_root = tmp_path / "canonical" / "consumer"
@@ -73,7 +73,7 @@ class TestsFlextInfraBasemkWorktreeUvContract:
             for line in tm.ok(result).stdout.splitlines()
             if line.startswith(str(tmp_path))
         ]
-        tm.that(output, eq=[str(canonical_root), str(lane_root / ".venv")])
+        tm.that(output, eq=[str(lane_root), str(lane_root / ".venv")])
 
 
 __all__: tuple[str, ...] = ()
