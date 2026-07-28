@@ -174,18 +174,19 @@ class TestsCodegenMakeEnvironment:
         )
         provisioned_uv.chmod(0o755)
 
+        clean_env = {
+            **{
+                key: value
+                for key, value in os.environ.items()
+                if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
+            },
+            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "VIRTUAL_ENV": str(hostile_venv),
+        }
         result = u.Cli.run_raw(
             ["make", "--no-print-directory", "setup"],
             cwd=project_root,
-            env={
-                **{
-                    key: value
-                    for key, value in os.environ.items()
-                    if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
-                },
-                "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
-                "VIRTUAL_ENV": str(hostile_venv),
-            },
+            env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
         )
 
@@ -194,6 +195,20 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8")
         tm.that(commands, has="venv --clear")
         tm.that(commands, has="sync --project")
+
+        workflows_result = u.Cli.run_raw(
+            ["make", "--no-print-directory", "check", "CHECK_GATES=workflows"],
+            cwd=project_root,
+            env=clean_env,
+            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+        )
+        workflows_process = tm.ok(workflows_result)
+        tm.that(
+            workflows_process.exit_code,
+            eq=0,
+            msg=workflows_process.stdout + workflows_process.stderr,
+        )
+        tm.that(uv_log.read_text(encoding="utf-8"), has="actionlint")
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -210,6 +225,9 @@ class TestsCodegenMakeEnvironment:
             'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
             eq=True,
         )
+        tm.that("CHECK_GATE_NAMES :=" in makefile, eq=True)
+        tm.that("workflows" in makefile, eq=True)
+        tm.that("$(UV_RUN) actionlint" in makefile, eq=True)
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
