@@ -984,6 +984,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def make_read_only(path: Path) -> None:
+            """Make one fixture path read-only for write-failure scenarios."""
+            path.chmod(0o444)
+
+        @staticmethod
         def create_migrator_dir_layout(
             tmp_path: Path,
             *,

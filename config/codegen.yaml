@@ -271,7 +271,6 @@ Infra:
         python-envs.workspaceSearchPaths:
           - ./.venv
           - ./*/.venv
-          - ./apps/*/.venv
       map_union_settings:
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
