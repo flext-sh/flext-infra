@@ -133,6 +133,19 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         )
         configured_member_set = frozenset(configured_members)
         resolved_workspace_root = workspace_root.resolve()
+        configured_entries: set[Path] = set()
+        for member in configured_members:
+            matched_entries = (
+                tuple(resolved_workspace_root.glob(member))
+                if any(marker in member for marker in ("*", "?", "["))
+                else (resolved_workspace_root / member,)
+            )
+            configured_entries.update(
+                entry.resolve()
+                for entry in matched_entries
+                if entry.is_dir()
+                and entry.resolve().is_relative_to(resolved_workspace_root)
+            )
         tracked_child_dirs = (
             FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
                 resolved_workspace_root
@@ -161,15 +174,21 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             roots.append(resolved_workspace_root)
         if tracked_child_dirs is None and not attached_child_dirs:
             candidate_entries: t.SequenceOf[Path] = sorted(
-                workspace_root.iterdir(), key=lambda item: item.name
+                {*workspace_root.iterdir(), *configured_entries},
+                key=lambda item: item.as_posix(),
             )
         else:
-            candidate_entries = [
-                resolved_workspace_root / dir_name
-                for dir_name in sorted(
-                    frozenset(tracked_child_dirs or ()) | attached_child_dirs
-                )
-            ]
+            candidate_entries = sorted(
+                {
+                    *configured_entries,
+                    *(
+                        resolved_workspace_root / dir_name
+                        for dir_name in frozenset(tracked_child_dirs or ())
+                        | attached_child_dirs
+                    ),
+                },
+                key=lambda item: item.as_posix(),
+            )
         roots.extend([
             entry.resolve()
             for entry in candidate_entries
