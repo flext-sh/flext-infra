@@ -579,7 +579,7 @@ class FlextInfraConfigModels:
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs orchestrated across members"
+                description="Workspace-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[
