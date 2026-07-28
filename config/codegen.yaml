@@ -319,6 +319,21 @@ Infra:
           VIRTUAL_ENV: ${workspaceFolder}/.venv
 
     managed_files:
+      - path: ci/docker/alpine.Dockerfile
+        owner: codegen
+        policy: full
+      - path: ci/docker/arch.Dockerfile
+        owner: codegen
+        policy: full
+      - path: ci/docker/debian.Dockerfile
+        owner: codegen
+        policy: full
+      - path: ci/docker/fedora.Dockerfile
+        owner: codegen
+        policy: full
+      - path: ci/docker/ubuntu.Dockerfile
+        owner: codegen
+        policy: full
       - path: .github/workflows/ci-matrix.yml
         owner: codegen
         policy: full
