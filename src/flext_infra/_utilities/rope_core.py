@@ -31,8 +31,10 @@ class FlextInfraUtilitiesRopeCore(
         """Create a rope Project over workspace_root with no disk artifacts."""
         FlextInfraUtilitiesRopePep695Patch.apply()
         resolved_root = workspace_root.resolve()
-        discovered_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            resolved_root
+        discovered_roots = (
+            FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
+                resolved_root, include_attached=False
+            )
         )
         project_roots = tuple(
             project_root

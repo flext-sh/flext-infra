@@ -49,14 +49,22 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         roots: list[Path] = []
         seen: set[Path] = set()
         for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
-            if not candidate.is_dir():
+            try:
+                if not candidate.is_dir():
+                    continue
+                resolved_candidate = candidate.resolve()
+                declares_project = (
+                    resolved_candidate / c.Infra.PYPROJECT_FILENAME
+                ).is_file()
+            except OSError:
+                # Unreadable parent siblings are outside the requested workspace
+                # until they expose the explicit attached-project contract.
                 continue
-            resolved_candidate = candidate.resolve()
             if resolved_candidate == resolved_workspace_root:
                 continue
             if resolved_candidate in seen:
                 continue
-            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+            if not declares_project:
                 continue
             metadata_result = u.read_project_metadata(resolved_candidate)
             if metadata_result.failure:

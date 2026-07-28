@@ -31,8 +31,8 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         roots = u.Infra.discover_project_roots(workspace_root)
 
-        assert any(root.name == "flext-core" for root in roots)
-        assert all(root.is_dir() for root in roots)
+        tm.that(tuple(root.name for root in roots), has="flext-core")
+        tm.that(all(root.is_dir() for root in roots), eq=True)
 
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
