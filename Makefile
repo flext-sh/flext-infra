@@ -100,14 +100,27 @@ RUNTIME_ROOT := $(PROJECT_ROOT)
 endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
-RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
 FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
+ifeq ($(OS),Windows_NT)
+RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
+RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe
+FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/Scripts/python.exe
+NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)" 2>/dev/null)
+NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)" 2>/dev/null)
+CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/Scripts
+else
+RUNTIME_BIN := $(RUNTIME_VENV)/bin
+RUNTIME_PYTHON := $(RUNTIME_BIN)/python
 FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/bin/python
-SANITIZED_CALLER_PATH := $(CALLER_PATH)
-ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
-SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
-SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
-ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
+NORMALIZED_CALLER_PATH := $(CALLER_PATH)
+NORMALIZED_CALLER_VIRTUAL_ENV := $(CALLER_VIRTUAL_ENV)
+CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/bin
+endif
+SANITIZED_CALLER_PATH := $(NORMALIZED_CALLER_PATH)
+ifneq ($(strip $(NORMALIZED_CALLER_VIRTUAL_ENV)),)
+SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV_BIN):,,$(SANITIZED_CALLER_PATH))
+SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV_BIN),,$(SANITIZED_CALLER_PATH))
+ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
@@ -120,7 +133,7 @@ override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
-override PATH := $(RUNTIME_VENV)/bin:$(SANITIZED_CALLER_PATH)
+override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -269,72 +282,72 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' ''
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' 'usage'
-
-
-
-	@printf '  %-10s\n' 'setup'
+	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check'
+	@printf '  %-10s\n' 'setup';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts'
+	@printf '  %-10s WHAT=%s\n' 'deps' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' 'all'
+	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' 'all'
+	@printf '  %-10s WHAT=%s\n' 'check' 'all';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check'
+	@printf '  %-10s WHAT=%s\n' 'test' 'all';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'run' 'default'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics'
+	@printf '  %-10s WHAT=%s\n' 'run' 'default';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'check'
+	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'clean' 'generated'
+	@printf '  %-10s WHAT=%s\n' 'docs' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' 'status'
+	@printf '  %-10s WHAT=%s\n' 'clean' 'generated';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check'
+	@printf '  %-10s WHAT=%s\n' 'release' 'status';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check';
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate'
 
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)'
-	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update'
-	@printf '\n%s\n' 'Custom hooks (custom.mk):'
-	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
-	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.'
+	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
+
+
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
+
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
+	@printf '\n%s\n' 'Custom hooks (custom.mk):';
+	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
+	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
+	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
 	@if [ -f custom.mk ]; then \
 		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
@@ -369,8 +382,8 @@ _builtin_setup_submodules:
 		fi'
 
 _builtin_require_environment:
-	@if [ ! -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_ROOT)/.venv/bin/python" >&2; \
+	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
+		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
 		exit 2; \
 	fi
 

@@ -3,9 +3,11 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - {{ repository_branch }}
   push:
     branches:
-      - main
+      - {{ repository_branch }}
   workflow_dispatch:
 
 permissions:
