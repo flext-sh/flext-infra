@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
@@ -34,59 +34,51 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
-        tm.that(rendered, lacks="python -m flext_infra")
+        tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
 
 
 def _render_root_makefile(tmp_path: Path) -> str:
-    """Render the workspace-root profile from an isolated manifest consumer."""
-    provider = config.Infra.codegen.providers[0]
-    root_repository = next(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        and repository.provider == provider.name
-    )
-    members = tuple(
-        repository
-        for repository in config.Infra.codegen.repositories
-        if repository.role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        and repository.provider == root_repository.provider
-    )
-    workspace_root = tmp_path / root_repository.name
-    workspace_root.mkdir()
-    tm.ok(
-        u.Cli.atomic_write_text_file(
-            workspace_root / c.Infra.PYPROJECT_FILENAME,
-            (
-                "[project]\n"
-                f'name = "{root_repository.distribution}"\n'
-                'version = "0.1.0"\n'
-            ),
-        )
+    """Render base/Makefile.j2 for the real workspace-root profile via conform."""
+    repository = next(
+        item
+        for item in config.Infra.codegen.repositories
+        if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name=root_repository.name,
-        repository=root_repository,
-        members=members,
+        name=repository.name,
+        repository=repository,
+        project=m.Infra.ProjectSpec(
+            package_name=repository.distribution.replace("-", "_"),
+            class_stem="FixtureWorkspace",
+            namespace="FixtureWorkspace",
+            constant_name=repository.name,
+            namespace_attribute="fixture_workspace",
+            alias="fixture_workspace",
+            environment_prefix="FIXTURE_WORKSPACE_",
+            description="Fixture workspace",
+            version="0.12.0.dev0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage=repository.url.removesuffix(".git"),
+            documentation=repository.url.removesuffix(".git"),
+            workspace_root_rel=".",
+            year=2026,
+        ),
     )
-    tm.ok(
-        u.Cli.yaml_dump(
-            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-            workspace.model_dump(mode="json", exclude_none=True),
-        )
+    workspace_root = tmp_path / "workspace"
+    request = m.Infra.CodegenConformRequest(
+        root=workspace_root,
+        what=c.Infra.CodegenConformSurface.MAKEFILE,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
     )
-    plan = (
-        FlextInfraCodegenConform()
-        .plan(
-            m.Infra.CodegenConformRequest(
-                root=workspace_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-        )
-        .unwrap()
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            workspace_root=workspace_root, request=request, initial_workspace=workspace
+        ).plan(request)
     )
     makefile_plans = tuple(
         fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME

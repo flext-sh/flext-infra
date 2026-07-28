@@ -52,15 +52,15 @@ class TestsMakeTestSelector:
             for block in template.split("_builtin_test_all:")[1:]
         ]
         tm.that(
-            bool(recipes), eq=True, msg="template declares no _builtin_test_all recipe"
+            recipes,
+            len=2,
+            msg="template must define workspace-root and local test handlers",
         )
         direct = [r for r in recipes if "pytest" in r]
-        tm.that(
-            bool(direct),
-            eq=True,
-            msg="no _builtin_test_all recipe invokes pytest directly",
-        )
+        tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
         tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)
+        tm.that(template, has="PYTEST_TARGETS ?=\n")
+        tm.that(direct[0], has="$(if $(strip $(PYTEST_TARGETS))")
 
     def test_generated_build_gen_routes_both_generated_owners(self) -> None:
         """The documented build/gen selector regenerates both Make surfaces."""

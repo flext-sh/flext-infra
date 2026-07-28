@@ -48,18 +48,19 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             workspace_root=workspace_root, request=request, outcomes=outcomes
         )
         failures = 0
+        processed = 0
         for repo_root in repos:
             outcome_result = cls._github_pr_process_repo(repo_root, context)
+            processed += 1
             failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0
             if failed:
                 failures += 1
                 if request.fail_fast:
                     break
-        total = len(repos)
         return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
             m.Infra.GithubPullRequestWorkspaceReport(
-                total=total,
-                success=total - failures,
+                total=processed,
+                success=processed - failures,
                 fail=failures,
                 outcomes=tuple(outcomes),
             )

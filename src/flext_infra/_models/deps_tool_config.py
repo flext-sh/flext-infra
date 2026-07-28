@@ -394,9 +394,6 @@ class FlextInfraModelsDepsToolSettings(
         mypy_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Mypy search paths")
         ]
-        pyrefly_interpreter_path: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
-        ]
         pyrefly_search_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Pyrefly search paths")
         ]

@@ -19,16 +19,12 @@ from flext_tests import tm
 class TestsCodegenWorktreeVerb:
     """The `worktree` verb is part of the canonical public Make surface."""
 
-    def _verb(self, name: str) -> m.Infra.MakeVerbSpec | None:
-        return next(
-            (verb for verb in config.Infra.codegen.make.verbs if verb.name == name),
-            None,
+    def _verb(self, name: str) -> m.Infra.MakeVerbSpec:
+        matches = tuple(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == name
         )
-
-    def _required_verb(self, name: str) -> m.Infra.MakeVerbSpec:
-        verb = self._verb(name)
-        tm.that(verb is not None, eq=True)
-        return m.Infra.MakeVerbSpec.model_validate(verb)
+        tm.that(matches, len=1)
+        return matches[0]
 
     def test_worktree_is_a_canonical_public_verb(self) -> None:
         """Lanes are created through `make`, so the verb must be canonical.
@@ -37,7 +33,7 @@ class TestsCodegenWorktreeVerb:
         would defeat the purpose: every project must expose the same lane
         surface.
         """
-        self._required_verb("worktree")
+        tm.that(self._verb("worktree").name, eq="worktree")
 
     def test_worktree_defaults_to_a_read_only_selector(self) -> None:
         """`make worktree` with no WHAT must never mutate a repository.
@@ -45,7 +41,7 @@ class TestsCodegenWorktreeVerb:
         `list` is the only selector that reports state without touching the
         worktree registry, so it is the safe default.
         """
-        verb = self._required_verb("worktree")
+        verb = self._verb("worktree")
         tm.that(verb.default_what, eq="list")
 
     def test_worktree_is_not_verb_level_apply_guarded(self) -> None:
@@ -54,5 +50,5 @@ class TestsCodegenWorktreeVerb:
         Guarding at verb level would force `APPLY=Y` onto `list`. The mutating
         selectors enforce the guard individually in their own recipes instead.
         """
-        verb = self._required_verb("worktree")
+        verb = self._verb("worktree")
         tm.that(verb.apply_guarded, eq=False)

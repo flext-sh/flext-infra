@@ -17,6 +17,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
@@ -86,6 +87,33 @@ class TestCodegenConform:
         )
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
+
+    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+        """Generated Make delegates uv selection to the caller environment."""
+        root = tmp_path / "flext-demo"
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        makefile = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(
+            makefile,
+            has=(
+                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
+            ),
+        )
+        tm.that(makefile, lacks=["mise exec -- uv", "uv@"])
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -283,6 +311,36 @@ class TestCodegenConform:
             tuple(item.name for item in environment.editable_repositories),
             eq=("flext-core",),
         )
+
+    def test_make_context_accepts_manifest_without_project_or_known_provider(
+        self, tmp_path: Path
+    ) -> None:
+        """Build Make context from repository-owned data alone."""
+        repository = config.Infra.codegen.repositories[0].model_copy(
+            update={"provider": "consumer-owned"}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="consumer",
+            repository=repository,
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=repository.distribution,
+                package_name=repository.distribution.replace("-", "_"),
+                path=tmp_path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+        context = FlextInfraCodegenConform.make_render_context(
+            repository, workspace, config.Infra.codegen, tooling_runtime=tooling_runtime
+        )
+        rendered = tm.ok(context)
+        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
+        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
+        tm.that(rendered.workspace_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
@@ -665,8 +723,6 @@ class TestScriptDispatchMakefile:
             url=f"{provider.base_url}/demo-root.git",
             branch=provider.branch,
             path=Path(),
-            # mro-9v0d: the workspace root Makefile has a dedicated generator,
-            # so the generic template entry serves standalone/member profiles.
             # Script dispatch is a generic capability: exercise it on standalone.
             role=c.Infra.RepositoryRole.STANDALONE,
             provider=provider.name,

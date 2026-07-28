@@ -83,7 +83,7 @@ class TestsCodegenArtifactSsot:
         tm.that(mapping["**/.mypy_cache"], eq=True)
         # conftest.py is source-scan-only: vscode_exclude=false in real config.
         tm.that(by_name["conftest.py"].vscode_exclude, eq=False)
-        tm.that("**/conftest.py" in mapping, eq=False)
+        tm.that(mapping, lacks="**/conftest.py")
 
     # P2 — vscode_watcher_exclude_map ------------------------------------
 
@@ -122,9 +122,9 @@ class TestsCodegenArtifactSsot:
         site = by_name["site"]
         tm.that(site.vscode_exclude, eq=True)
         tm.that(site.watch_exclude, eq=False)
-        tm.that("**/site" in codegen.vscode_files_exclude_map, eq=True)
-        tm.that("**/site/**" in codegen.vscode_watcher_exclude_map, eq=False)
-        tm.that("**/.mypy_cache/**" in codegen.vscode_watcher_exclude_map, eq=True)
+        tm.that(codegen.vscode_files_exclude_map, has="**/site")
+        tm.that(codegen.vscode_watcher_exclude_map, lacks="**/site/**")
+        tm.that(codegen.vscode_watcher_exclude_map, has="**/.mypy_cache/**")
 
     # P3 — vscode_search_exclude_map -------------------------------------
 
@@ -162,8 +162,8 @@ class TestsCodegenArtifactSsot:
         self, codegen: CodegenSpec
     ) -> None:
         """conftest.py is scanned-out but NOT vscode-excluded (independence)."""
-        tm.that("conftest.py" in codegen.source_scan_ignored, eq=True)
-        tm.that("**/conftest.py" in codegen.vscode_files_exclude_map, eq=False)
+        tm.that(codegen.source_scan_ignored, has="conftest.py")
+        tm.that(codegen.vscode_files_exclude_map, lacks="**/conftest.py")
 
     # P5 — gitignore_artifact_patterns -----------------------------------
 
@@ -176,7 +176,7 @@ class TestsCodegenArtifactSsot:
             if not artifact.gitignore:
                 continue
             emitted = artifact.name + "/" if artifact.is_dir else artifact.name
-            tm.that(emitted in patterns, eq=True, msg=artifact.name)
+            tm.that(patterns, has=emitted, msg=artifact.name)
             tm.that(emitted.endswith("/"), eq=artifact.is_dir)
 
     def test_gitignore_artifact_patterns_filter_bidirectional(
@@ -210,13 +210,13 @@ class TestsCodegenArtifactSsot:
         # .mypy_cache: real config has is_dir=true, gitignore=true.
         tm.that(by_name[".mypy_cache"].is_dir, eq=True)
         tm.that(by_name[".mypy_cache"].gitignore, eq=True)
-        tm.that(".mypy_cache/" in patterns, eq=True)
+        tm.that(patterns, has=".mypy_cache/")
         # .mcp.json: real config has is_dir=false, gitignore=true.
         mcp = by_name[".mcp.json"]
         tm.that(mcp.is_dir, eq=False)
         tm.that(mcp.gitignore, eq=True)
-        tm.that(".mcp.json" in patterns, eq=True)
-        tm.that(".mcp.json/" in patterns, eq=False)
+        tm.that(patterns, has=".mcp.json")
+        tm.that(patterns, lacks=".mcp.json/")
 
     # P6 — gitignore_sections ---------------------------------------------
 
@@ -253,10 +253,10 @@ class TestsCodegenArtifactSsot:
         """Environment patterns reach .gitignore from the static section only."""
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
-        tm.that(".env" in flat, eq=True)
-        tm.that("!.env.example" in flat, eq=True)
-        tm.that(".env" in codegen.gitignore_artifact_patterns, eq=False)
-        tm.that("!.env.example" in codegen.gitignore_artifact_patterns, eq=False)
+        tm.that(flat, has=".env")
+        tm.that(flat, has="!.env.example")
+        tm.that(codegen.gitignore_artifact_patterns, lacks=".env")
+        tm.that(codegen.gitignore_artifact_patterns, lacks="!.env.example")
 
     def test_gitignore_sections_header_order(self, codegen: CodegenSpec) -> None:
         """The projection preserves the declared section order (P0: no frozen names).
@@ -282,31 +282,29 @@ class TestsCodegenArtifactSsot:
     def test_workspace_root_makefile_has_one_generation_owner(
         self, codegen: CodegenSpec
     ) -> None:
-        """Keep workspace-root generation in the single conform template."""
+        """Keep one Makefile template owner for every supported profile."""
         makefile_entries = [
             entry
             for entry in codegen.templates.entries
             if entry.destination == "Makefile"
         ]
 
-        tm.that(len(makefile_entries), eq=1)
-        tm.that("workspace-root" in makefile_entries[0].profiles, eq=True)
+        tm.that(makefile_entries, len=1)
+        tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
-        tm.that(".mypy_cache/" in flat, eq=True)
-        tm.that(".env" in flat, eq=True)
+        tm.that(flat, has=".mypy_cache/")
+        tm.that(flat, has=".env")
 
     # Rendered-surface anchor (cheap, in-process) -------------------------
 
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
         rendered = tm.ok(
-            FlextInfraCodegen.render_vscode_settings(
-                Path("/nonexistent-workspace-root")
-            )
+            FlextInfraCodegen.render_vscode_settings(Path("nonexistent-workspace-root"))
         )
         parsed = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)

@@ -642,6 +642,12 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Generated directive including the custom Make surface"
+            ),
+        ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -671,13 +677,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
-        makefile_custom_include: Annotated[
-            str, m.Field(description="Optional custom Make policy include directive")
-        ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs orchestrated across members"
+                description="Workspace-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[
@@ -710,22 +713,6 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
-        ]
-
-    class ToolchainRenderSpec(_ConfigContract):
-        """Field-only render projection of the canonical toolchain owner."""
-
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Python toolchain version")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
@@ -927,9 +914,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]

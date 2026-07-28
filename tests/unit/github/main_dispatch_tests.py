@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 
 def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        pr_exit_codes={"flext-a": "0", "flext-b": "1"},
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     result = u.Infra.run_github_workspace_pull_requests(
@@ -37,9 +35,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
     tmp_path: Path,
 ) -> None:
     workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b", "flext-c"),
-        pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
+        tmp_path, project_names=("flext-a", "flext-b", "flext-c")
     )
 
     result = u.Infra.run_github_workspace_pull_requests(
@@ -60,9 +56,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
 
 def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
-        pr_exit_codes={"flext-a": "1", "flext-b": "0"},
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     result = u.Infra.run_github_workspace_pull_requests(
@@ -72,7 +66,10 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> 
     )
 
     tm.ok(result)
+    report = result.unwrap()
     report_dir = workspace / ".reports/workspace/pr"
-    tm.that(result.unwrap().fail, eq=1)
+    tm.that(report.total, eq=1)
+    tm.that(report.success, eq=0)
+    tm.that(report.fail, eq=1)
     tm.that((report_dir / "flext-a.log").is_file(), eq=True)
     tm.that((report_dir / "flext-b.log").exists(), eq=False)

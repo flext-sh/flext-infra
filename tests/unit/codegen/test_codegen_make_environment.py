@@ -10,6 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsCodegenMakeEnvironment:
@@ -17,7 +18,7 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path, profile: c.Infra.MakeProfile
+        tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool = False
     ) -> tuple[Path, Path]:
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
@@ -82,7 +83,35 @@ class TestsCodegenMakeEnvironment:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        project_root.mkdir(parents=True)
+        if attached:
+            member_source = tmp_path / "member-source"
+            member_source.mkdir()
+            (member_source / "README.md").write_text(
+                "fixture member\n", encoding="utf-8"
+            )
+            test_u.Tests.initialize_git_repo(member_source)
+            workspace_root.mkdir(parents=True)
+            (workspace_root / "README.md").write_text(
+                "fixture workspace\n", encoding="utf-8"
+            )
+            test_u.Tests.initialize_git_repo(workspace_root)
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "-c",
+                        "protocol.file.allow=always",
+                        "submodule",
+                        "add",
+                        "-q",
+                        str(member_source),
+                        project_root.name,
+                    ],
+                    cwd=workspace_root,
+                )
+            )
+        else:
+            project_root.mkdir(parents=True)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
@@ -101,7 +130,9 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, workspace_root = self._render_makefile(
+            tmp_path, profile, attached=attached
+        )
         runtime_root = workspace_root if attached else project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
@@ -114,35 +145,42 @@ class TestsCodegenMakeEnvironment:
         hostile_python = hostile_bin / "python"
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
-        probe = (
-            "probe:; @printf '%s\\n' "
+        (project_root / "custom.mk").write_text(
+            ".PHONY: _custom_status_probe\n"
+            "_custom_status_probe:\n"
+            "\t@printf '%s\\n' "
+            "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
             "'VIRTUAL_ENV=$(VIRTUAL_ENV)' "
-            "'PATH=$(PATH)'; command -v python"
+            "'PATH=$(PATH)'\n"
+            "\t@command -v python\n",
+            encoding="utf-8",
         )
-        output = tm.ok(
-            u.Cli.capture(
-                [
-                    "make",
-                    "--no-print-directory",
-                    "--eval",
-                    probe,
-                    "probe",
-                    f"SUPERPROJECT_ROOT={workspace_root if attached else ''}",
-                ],
+        active_env = {
+            "FLEXT_INFRA_PYTHON": str(hostile_python),
+            "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
+            "VIRTUAL_ENV": str(hostile_venv),
+            "PATH": f"{hostile_bin}:{os.environ['PATH']}",
+        }
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["make", "--no-print-directory", "status", "WHAT=probe"],
                 cwd=project_root,
-                env={
-                    **os.environ,
-                    "UV_PROJECT_ENVIRONMENT": str(hostile_venv),
-                    "VIRTUAL_ENV": str(hostile_venv),
-                    "PATH": f"{hostile_bin}:{os.environ['PATH']}",
-                },
+                env=active_env,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
-        ).splitlines()
-        tm.that(output[0], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
-        tm.that(output[1], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[2], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
-        tm.that(output[3], eq=str(runtime_python))
+        )
+        tm.that(
+            process.exit_code,
+            eq=0,
+            msg=process.stderr or process.stdout or "make probe failed without output",
+        )
+        output = process.stdout.strip().splitlines()
+        tm.that(output[0], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
+        tm.that(output[1], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
+        tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
+        tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
+        tm.that(output[4], eq=str(runtime_python))
 
     def test_setup_preserves_external_uv_and_removes_hostile_venv(
         self, tmp_path: Path
@@ -169,12 +207,6 @@ class TestsCodegenMakeEnvironment:
             "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
             '  chmod +x "$3/bin/python"\n'
             "fi\n"
-            'case " $* " in\n'
-            '  *" flext-infra workspace serialize-make "*)\n'
-            '    for argument in "$@"; do verb="$argument"; done\n'
-            '    exec make --no-print-directory "_serialized_$verb"\n'
-            "    ;;\n"
-            "esac\n"
             "exit 0\n",
             encoding="utf-8",
         )
@@ -202,20 +234,6 @@ class TestsCodegenMakeEnvironment:
         tm.that(commands, has="venv --clear")
         tm.that(commands, has="sync --project")
 
-        workflows_result = u.Cli.run_raw(
-            ["make", "--no-print-directory", "check", "CHECK_GATES=workflows"],
-            cwd=project_root,
-            env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
-        )
-        workflows_process = tm.ok(workflows_result)
-        tm.that(
-            workflows_process.exit_code,
-            eq=0,
-            msg=workflows_process.stdout + workflows_process.stderr,
-        )
-        tm.that(uv_log.read_text(encoding="utf-8"), has="actionlint")
-
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
         project_root, _workspace_root = self._render_makefile(
@@ -228,7 +246,11 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
-            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            (
+                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
+            )
+            in makefile,
             eq=True,
         )
         tm.that("CHECK_GATE_NAMES :=" in makefile, eq=True)
@@ -270,17 +292,17 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            "submodule update --init --recursive",
+            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
             "mise exec -- uv",
             "uv@",
-            "WHAT=environment",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
             "--no-install-project",
+            '--editable "$(PROJECT_ROOT)"',
             "pip install",
         ):
             tm.that(makefile, lacks=forbidden)

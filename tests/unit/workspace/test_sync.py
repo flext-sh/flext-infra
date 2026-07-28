@@ -296,8 +296,10 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
-        tm.that(makefile_text, has="UV_RUN := $(UV) run")
+        tm.that(makefile_text, has="UV ?= uv")
+        tm.that(makefile_text, has="UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run")
         tm.that(makefile_text, has="_builtin_setup_environment:")
+        tm.that(makefile_text, has='$(UV) sync --project "$(PROJECT_ROOT)"')
         tm.that(makefile_text, lacks="poetry")
         tm.that(makefile_text, lacks="_bootstrap-venv")
         tm.that(makefile_text, lacks="BOOTSTRAP_VENV")
@@ -310,9 +312,10 @@ class TestsFlextInfraWorkspaceSync:
         )
         tm.ok(dry_run)
 
-    def test_sync_standalone_bootstrap_uses_uv_and_public_console(
+    def test_sync_standalone_bootstrap_uses_uv_and_managed_module(
         self, tmp_path: Path
     ) -> None:
+        """Use only uv and the validated environment interpreter for setup/codegen."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
@@ -325,12 +328,9 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="$(UV) sync")
-        tm.that(
-            makefile_text, has=f"PROJECT_FLEXT_INFRA := $(UV_RUN) {config.Infra.name}"
-        )
+        tm.that(makefile_text, has="PROJECT_FLEXT_INFRA :=")
+        tm.that(makefile_text, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
         tm.that(makefile_text, lacks="pip install flext-infra")
-        tm.that(makefile_text, lacks="python -m flext_infra")
-        tm.that(makefile_text, lacks="PYTHONPATH=")
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""

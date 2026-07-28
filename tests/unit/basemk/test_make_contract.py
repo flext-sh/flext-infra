@@ -444,7 +444,7 @@ class TestsFlextInfraBasemkMakeContract:
                     "env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV "
                     "-u UV_PROJECT -u UV_PROJECT_ENVIRONMENT"
                 ),
-                'PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin"',
+                'PATH="$(PATH)"',
                 (
                     'PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" '
                     "$(FLEXT_INFRA_PYTHON) -m flext_infra validate"

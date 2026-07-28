@@ -17,6 +17,7 @@ from pathlib import Path
 
 from flext_infra import c
 from flext_tests import tm
+from tests import u
 
 
 class TestsReleasePolicyFixtureRoot:
@@ -29,8 +30,6 @@ class TestsReleasePolicyFixtureRoot:
         clone and must equally hold in a linked worktree, where the repository
         sits deeper in the filesystem.
         """
-        from tests import u
-
         workspace_root = u.Tests.release_policy_root()
 
         for policy_path in (
@@ -46,7 +45,5 @@ class TestsReleasePolicyFixtureRoot:
         when the repository is exactly two levels below it. Inside
         `<repo>/.worktrees/<lane>/` the same index lands mid-path.
         """
-        from tests import u
-
         positional = Path(u.Tests.__module__.replace(".", "/"))
-        tm.that(u.Tests.release_policy_root() != positional, eq=True)
+        tm.that(u.Tests.release_policy_root(), ne=positional)
