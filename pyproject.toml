@@ -120,7 +120,9 @@ dependencies = [
   "mkdocs-section-index>=0.3.12",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
+  "pyrefly>=1.1.1",
   "rope>=1.14.0",
+  "ruff>=0.16.0",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
