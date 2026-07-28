@@ -700,6 +700,7 @@ dependencies = [
 
 [package.dev-dependencies]
 [package.dev-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "autoflake" },
     { name = "bandit" },
