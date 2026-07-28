@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import config, u
+from flext_infra import config, t, u
 
 
 @pytest.fixture(scope="module")
@@ -29,18 +29,18 @@ def owned_provider() -> str:
     engine_root = Path(__file__).resolve().parents[2]
     metadata = tm.ok(u.read_project_metadata(engine_root))
     distribution = metadata.project.name
-    entry = next(
-        (
-            repository
-            for repository in config.Infra.codegen.repositories
-            if repository.distribution == distribution
-        ),
-        None,
+    entries = tuple(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.distribution == distribution
     )
-    if entry is None:
-        msg = f"engine absent from its own catalog: {distribution}"
-        raise AssertionError(msg)
-    return entry.provider
+    tm.that(
+        entries,
+        len=1,
+        msg=f"engine catalog must own exactly one entry for {distribution}",
+    )
+    provider: str = t.Infra.STR_ADAPTER.validate_python(entries[0].provider)
+    return provider
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:

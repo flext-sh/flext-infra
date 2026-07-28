@@ -778,9 +778,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            return cli_facade.capture(
-                [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-            ).success
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
+                cli_facade.capture(
+                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+                ).success
+            )
+            return exists
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
@@ -981,6 +984,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 }
             )
             return result
+
+        @staticmethod
+        def write_executable(path: Path, body: str) -> None:
+            """Write one executable fixture with deterministic permissions."""
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+            path.chmod(0o755)
 
         @staticmethod
         def create_migrator_dir_layout(
@@ -1292,10 +1302,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
-            return m.Infra.DetectCommand.model_validate({
+            validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
             })
+            return validated
 
         @staticmethod
         def create_detector_deps_stub(

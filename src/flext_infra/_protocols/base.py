@@ -157,6 +157,40 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class GithubPullRequestFields(Protocol):
+        """Shared PR execution fields accepted at the transport boundary."""
+
+        @property
+        def action(self) -> c.Infra.PullRequestAction:
+            """Requested PR operation."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Target branch when explicitly selected."""
+            ...
+
+        @property
+        def head(self) -> str | None:
+            """Source branch when explicitly selected."""
+            ...
+
+        @property
+        def title(self) -> str | None:
+            """PR title used for creation."""
+            ...
+
+        @property
+        def body(self) -> str | None:
+            """PR body used for creation."""
+            ...
+
+        @property
+        def draft(self) -> bool:
+            """Whether creation requests a draft PR."""
+            ...
+
+    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
@@ -585,14 +619,3 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...
-
-    @runtime_checkable
-    class GithubPullRequestFields(Protocol):
-        """Shared pull-request fields consumed by native GitHub execution."""
-
-        action: c.Infra.PullRequestAction
-        base: str | None
-        head: str | None
-        title: str | None
-        body: str | None
-        draft: bool

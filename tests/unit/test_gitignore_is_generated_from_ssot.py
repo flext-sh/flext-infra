@@ -22,19 +22,30 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, config, u
+from flext_infra import c, config, t, u
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return tm.ok(u.Infra.git_workspace_root(Path(__file__).resolve().parent))
 
 
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return every ignore pattern declared by the config SSOT."""
+    """Return ignore patterns applicable to this repository profile."""
+    metadata = tm.ok(u.read_project_metadata(_workspace_root()))
+    repositories = tuple(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.distribution == metadata.project.name
+    )
+    tm.that(repositories, len=1)
+    profile = c.Infra.MakeProfile(
+        t.Infra.STR_ADAPTER.validate_python(repositories[0].profile)
+    )
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
+        if not section.profiles or profile in section.profiles
         for pattern in section.patterns
     )
 
@@ -69,7 +80,8 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         probe = u.Cli.run_checked(
             ["git", "check-ignore", "-q", relative_path], cwd=root
         )
-    return probe.failure
+    allowed: bool = t.Infra.BOOL_ADAPTER.validate_python(probe.failure)
+    return allowed
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:

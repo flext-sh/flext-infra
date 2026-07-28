@@ -259,7 +259,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     def _gates_of(make_args: t.StrSequence) -> str:
         """Return the gate selection carried by make arguments, if declared."""
         prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
-        for make_arg in make_args:
+        for raw_make_arg in make_args:
+            make_arg: str = t.Infra.STR_ADAPTER.validate_python(raw_make_arg)
             if make_arg.startswith(prefix):
                 return make_arg[len(prefix) :]
         return ""

@@ -18,8 +18,8 @@ def _git_status(repository_root: Path) -> bytes:
     result = u.Infra.git_capture_bytes(
         repository_root, ("status", "--porcelain=v1", "-z")
     )
-    tm.ok(result)
-    return result.value
+    status: bytes = tm.ok(result)
+    return status
 
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
@@ -50,7 +50,15 @@ def _workspace(tmp_path: Path) -> Path:
     package_root.mkdir(parents=True)
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (workspace_root / "pyproject.toml").write_text(
-        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
+        (
+            "[project]\n"
+            "name = 'transaction-fixture'\n"
+            "version = '0.1.0'\n"
+            "\n"
+            "[tool.pyrefly]\n"
+            "project-includes = ['src/**/*.py*']\n"
+            "python-version = '3.13'\n"
+        ),
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
@@ -245,7 +253,7 @@ class TestsFlextInfraWorktreeTransaction:
         output = u.Infra.render_worktree_transaction_report(report)
         lint_output = "\n".join(item.output for item in report.lint_after)
 
-        tm.that(report.breakage_detected, eq=False, msg=lint_output)
+        tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)

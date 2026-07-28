@@ -108,6 +108,17 @@ class TestCodegenConform:
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
         tm.that(makefile, lacks="mise exec")
+        selected = u.Cli.run_raw(
+            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            remove_env_keys=("MAKEFLAGS",),
+        )
+
+        selected_process = tm.ok(selected)
+        selected_output = selected_process.stdout + selected_process.stderr
+        tm.that(selected_process.exit_code, eq=0)
+        tm.that(selected_output, has="uv --version")
+        tm.that(selected_output, lacks="uv@")
+        tm.that(selected_output, lacks="UV_VERSION")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -680,7 +691,7 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(
             result.error,
-            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
+            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
         )
 
 

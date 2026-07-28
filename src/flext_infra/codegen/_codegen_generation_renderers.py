@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.codegen._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
@@ -62,7 +62,10 @@ class FlextInfraCodegenGenerationRenderersMixin(
             detail = (output.stderr or output.stdout).strip()
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
-        return output.stdout.rstrip() + "\n"
+        rendered_output: str = (
+            t.Infra.STR_ADAPTER.validate_python(output.stdout).rstrip() + "\n"
+        )
+        return rendered_output
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

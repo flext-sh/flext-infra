@@ -535,7 +535,7 @@ class FlextInfraConfigModels:
         ] = None
 
     class MakefileRenderSpec(_ConfigContract):
-        """Field-only render input for an existing repository Makefile."""
+        """Typed render input for the generated project Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
@@ -571,8 +571,10 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+
         makefile_custom_include: Annotated[
-            str, m.Field(description="Optional custom Make policy include directive")
+            t.NonEmptyStr,
+            m.Field(description="Generated custom Make policy include directive"),
         ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
@@ -581,8 +583,9 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         workspace_cli_group: Annotated[
-            str, m.Field(description="CLI group used for workspace orchestration")
-        ] = ""
+            t.NonEmptyStr,
+            m.Field(description="CLI group used for workspace orchestration"),
+        ]
         project_selection_conflict_error: Annotated[
             t.NonEmptyStr,
             m.Field(description="Mutually exclusive project selector error"),
@@ -610,6 +613,17 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class GitignoreRenderSpec(_ConfigContract):
+        """Typed, profile-filtered input for the generated Git ignore file."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical ignore sections applicable to one profile",
+            ),
         ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.

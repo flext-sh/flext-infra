@@ -1,7 +1,7 @@
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
-CANONICAL_PROJECT_ROOT := $(shell git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print substr($$0, 10); exit }')
+CANONICAL_PROJECT_ROOT := $(shell common=$$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0; configured=$$(git config --path --get core.worktree 2>/dev/null); if [ -n "$$configured" ]; then cd "$$common/$$configured" 2>/dev/null && pwd -P; elif [ "$${common##*/}" = ".git" ]; then cd "$$common/.." 2>/dev/null && pwd -P; fi)
 ifeq ($(CANONICAL_PROJECT_ROOT),)
 CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
 endif
@@ -32,7 +32,7 @@ endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
 else
-WORKSPACE_ROOT := $(PROJECT_ROOT)
+WORKSPACE_ROOT := $(CANONICAL_PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 
