@@ -325,6 +325,17 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(invalid))}"
                 )
                 raise ValueError(msg)
+            empty = [
+                verb
+                for verb, fixed_points in self.mutation_fixed_points.items()
+                if not fixed_points
+            ]
+            if empty:
+                msg = (
+                    "make serialization mutation verbs require fixed points: "
+                    f"{', '.join(sorted(empty))}"
+                )
+                raise ValueError(msg)
             return self
 
     class MakeSpec(_ConfigContract):

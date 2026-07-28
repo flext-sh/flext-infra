@@ -164,7 +164,12 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "status", "WHAT=probe"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "status",
+                    f"{config.Infra.codegen.make.selector}=probe",
+                ],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -246,8 +251,9 @@ class TestsCodegenMakeEnvironment:
         hostile_bin.mkdir(parents=True)
         provisioned_bin = tmp_path / "provisioned" / "bin"
         provisioned_bin.mkdir(parents=True)
+        fixture_tool = "managed-tool"
         for bin_root in (hostile_bin, provisioned_bin):
-            for tool in ("taplo", "uv"):
+            for tool in (fixture_tool, "uv"):
                 test_u.Tests.write_executable(
                     bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
                 )
@@ -258,7 +264,7 @@ class TestsCodegenMakeEnvironment:
             (
                 "#!/bin/sh\n"
                 f"command -v uv > '{tool_log}'\n"
-                f"command -v taplo >> '{tool_log}'\n"
+                f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
         )
         active_env = {
@@ -277,7 +283,9 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tools = tool_log.read_text(encoding="utf-8").splitlines()
-        tm.that(tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / "taplo")])
+        tm.that(
+            tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
+        )
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""

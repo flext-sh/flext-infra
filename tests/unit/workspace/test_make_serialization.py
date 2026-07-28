@@ -7,9 +7,17 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from flext_infra import c, config, u
+import pytest
+from filelock import FileLock, Timeout
+from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import u as test_u
+
+_MUTATION_CASES = tuple(
+    (verb, mutation_what, fixed_point_what)
+    for verb, fixed_points in config.Infra.codegen.make.serialization.mutation_fixed_points.items()
+    for mutation_what, fixed_point_what in fixed_points.items()
+)
 
 
 class TestsFlextInfraMakeSerialization:
@@ -26,7 +34,6 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
         tm.that(set(serialization.verbs).issubset(declared_verbs), eq=True)
-        tm.that(serialization.mutation_fixed_points, empty=False)
         for verb, fixed_points in serialization.mutation_fixed_points.items():
             tm.that(verb in serialization.verbs, eq=True)
             tm.that(fixed_points, empty=False)
@@ -36,6 +43,18 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.lock_path in serialization.snapshot_excludes, eq=True)
         for excluded_path in serialization.snapshot_excludes:
             tm.that(excluded_path.is_absolute(), eq=False)
+
+    def test_mutation_mapping_requires_a_fixed_point(self) -> None:
+        """Every declared mutating selector has a validation selector."""
+        serialization = config.Infra.codegen.make.serialization
+        payload = serialization.model_dump(mode="python")
+        empty_fixed_points: dict[str, str] = {}
+        payload["mutation_fixed_points"] = {serialization.verbs[0]: empty_fixed_points}
+
+        with pytest.raises(
+            ValueError, match="make serialization mutation verbs require fixed points"
+        ):
+            m.Infra.MakeSerializationSpec.model_validate(payload)
 
     def test_process_exit_classifies_timeout_and_signal(self) -> None:
         """Process outcomes retain standard timeout and signal semantics."""
@@ -82,11 +101,7 @@ class TestsFlextInfraMakeSerialization:
         self, tmp_path: Path
     ) -> None:
         """Two public CLI processes serialize their nested Make executions."""
-        serialization = config.Infra.codegen.make.serialization
-        mutation_verbs = set(serialization.mutation_fixed_points)
-        validation_verb = next(
-            verb for verb in serialization.verbs if verb not in mutation_verbs
-        )
+        validation_verb = config.Infra.codegen.make.serialization.verbs[0]
         worker = tmp_path / "worker.py"
         worker.write_text(
             (
@@ -103,9 +118,12 @@ class TestsFlextInfraMakeSerialization:
                 "if not started.exists():\n"
                 "    active.write_text('incumbent', encoding='utf-8')\n"
                 "    started.write_text('', encoding='utf-8')\n"
-                "    deadline = time.monotonic() + 0.5\n"
-                "    while time.monotonic() < deadline and not contender.exists():\n"
+                "    release = state / 'incumbent-release'\n"
+                "    deadline = time.monotonic() + 30\n"
+                "    while time.monotonic() < deadline and not release.exists():\n"
                 "        time.sleep(0.01)\n"
+                "    if not release.exists():\n"
+                "        raise SystemExit(9)\n"
                 "    active.unlink()\n"
                 "else:\n"
                 "    contender.write_text('', encoding='utf-8')\n"
@@ -162,6 +180,9 @@ class TestsFlextInfraMakeSerialization:
             contender_future = executor.submit(
                 u.Cli.run_raw, [*command, validation_verb], tmp_path
             )
+            (
+                tmp_path / ".reports" / "serialization-test" / "incumbent-release"
+            ).write_text("", encoding="utf-8")
             incumbent_process = tm.ok(
                 incumbent_future.result(timeout=self._process_start_timeout_seconds)
             )
@@ -182,11 +203,7 @@ class TestsFlextInfraMakeSerialization:
 
     def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
         """A private nonzero status is never coerced into public success."""
-        serialization = config.Infra.codegen.make.serialization
-        mutation_verbs = set(serialization.mutation_fixed_points)
-        validation_verb = next(
-            verb for verb in serialization.verbs if verb not in mutation_verbs
-        )
+        validation_verb = config.Infra.codegen.make.serialization.verbs[0]
         private_exit_code = 7
         make_failure_exit_code = 2
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
@@ -238,11 +255,7 @@ class TestsFlextInfraMakeSerialization:
         self, tmp_path: Path
     ) -> None:
         """A concurrent content writer makes a green private target invalid."""
-        serialization = config.Infra.codegen.make.serialization
-        mutation_verbs = set(serialization.mutation_fixed_points)
-        validation_verb = next(
-            verb for verb in serialization.verbs if verb not in mutation_verbs
-        )
+        validation_verb = config.Infra.codegen.make.serialization.verbs[0]
         writer = tmp_path / "writer.py"
         writer.write_text(
             (
@@ -292,15 +305,18 @@ class TestsFlextInfraMakeSerialization:
             ],
         )
 
+    @pytest.mark.parametrize(
+        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
+    )
     def test_declared_mutation_runs_fixed_point_without_rejecting_own_output(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
+        mutation_verb: str,
+        mutation_what: str,
+        fixed_point_what: str,
     ) -> None:
         """An authorized generator apply owns its projection and proves stability."""
         make_config = config.Infra.codegen.make
-        mutation_verb, fixed_points = next(
-            iter(make_config.serialization.mutation_fixed_points.items())
-        )
-        mutation_what, fixed_point_what = next(iter(fixed_points.items()))
         projection = tmp_path / "generated.txt"
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
@@ -342,18 +358,18 @@ class TestsFlextInfraMakeSerialization:
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tm.that(projection.read_text(encoding="utf-8"), eq="generated\n")
 
-    def test_contender_enters_only_after_mutation_fixed_point(
-        self, tmp_path: Path
+    @pytest.mark.parametrize(
+        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
+    )
+    def test_mutation_lock_covers_fixed_point(
+        self,
+        tmp_path: Path,
+        mutation_verb: str,
+        mutation_what: str,
+        fixed_point_what: str,
     ) -> None:
         """The checkout lock covers apply, fixed-point validation, and final snapshot."""
         make_config = config.Infra.codegen.make
-        mutation_verb, fixed_points = next(
-            iter(make_config.serialization.mutation_fixed_points.items())
-        )
-        mutation_what, fixed_point_what = next(iter(fixed_points.items()))
-        contender_verb = next(
-            verb for verb in make_config.serialization.verbs if verb != mutation_verb
-        )
         worker = tmp_path / "worker.py"
         worker.write_text(
             (
@@ -366,16 +382,13 @@ class TestsFlextInfraMakeSerialization:
                 "events = state / 'events'\n"
                 "with events.open('a', encoding='utf-8') as stream:\n"
                 "    stream.write(f'{phase}-start\\n')\n"
-                "if phase == 'mutation':\n"
-                "    (state / 'mutation-started').write_text('', encoding='utf-8')\n"
-                "elif phase == 'fixed-point':\n"
-                "    deadline = time.monotonic() + 0.5\n"
-                "    while time.monotonic() < deadline:\n"
-                "        if (state / 'contender-entered').exists():\n"
-                "            raise SystemExit(9)\n"
-                "        time.sleep(0.01)\n"
-                "elif phase == 'contender':\n"
-                "    (state / 'contender-entered').write_text('', encoding='utf-8')\n"
+                "(state / f'{phase}-started').write_text('', encoding='utf-8')\n"
+                "release = state / f'{phase}-release'\n"
+                "deadline = time.monotonic() + 30\n"
+                "while not release.exists() and time.monotonic() < deadline:\n"
+                "    time.sleep(0.01)\n"
+                "if not release.exists():\n"
+                "    raise SystemExit(9)\n"
                 "with events.open('a', encoding='utf-8') as stream:\n"
                 "    stream.write(f'{phase}-end\\n')\n"
             ),
@@ -385,7 +398,7 @@ class TestsFlextInfraMakeSerialization:
         makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
         makefile.write_text(
             (
-                f".PHONY: _serialized_{mutation_verb} _serialized_{contender_verb}\n"
+                f".PHONY: _serialized_{mutation_verb}\n"
                 f"_serialized_{mutation_verb}:\n"
                 f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
                 f"{sys.executable} {worker} {state} mutation; "
@@ -393,8 +406,6 @@ class TestsFlextInfraMakeSerialization:
                 f"{sys.executable} {worker} {state} fixed-point; "
                 "else exit 8; "
                 "fi\n"
-                f"_serialized_{contender_verb}:\n"
-                f"\t@{sys.executable} {worker} {state} contender\n"
             ),
             encoding="utf-8",
         )
@@ -410,7 +421,8 @@ class TestsFlextInfraMakeSerialization:
             "--verb",
         ]
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        lock_path = tmp_path / make_config.serialization.lock_path
+        with ThreadPoolExecutor(max_workers=1) as executor:
             mutation_future = executor.submit(
                 u.Cli.run_raw,
                 [*command, mutation_verb],
@@ -428,18 +440,38 @@ class TestsFlextInfraMakeSerialization:
             ):
                 time.sleep(0.01)
             tm.that((state / "mutation-started").exists(), eq=True)
-            contender_future = executor.submit(
-                u.Cli.run_raw, [*command, contender_verb], tmp_path
-            )
+            mutation_lock_held = False
+            try:
+                with FileLock(lock_path, timeout=0):
+                    pass
+            except Timeout:
+                mutation_lock_held = True
+            tm.that(mutation_lock_held, eq=True)
+            (state / "mutation-release").write_text("", encoding="utf-8")
+
+            deadline = time.monotonic() + self._process_start_timeout_seconds
+            while (
+                not (state / "fixed-point-started").exists()
+                and not mutation_future.done()
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.01)
+            tm.that((state / "fixed-point-started").exists(), eq=True)
+            fixed_point_lock_held = False
+            try:
+                with FileLock(lock_path, timeout=0):
+                    pass
+            except Timeout:
+                fixed_point_lock_held = True
+            tm.that(fixed_point_lock_held, eq=True)
+            (state / "fixed-point-release").write_text("", encoding="utf-8")
             mutation = tm.ok(
                 mutation_future.result(timeout=self._process_start_timeout_seconds)
             )
-            contender = tm.ok(
-                contender_future.result(timeout=self._process_start_timeout_seconds)
-            )
 
         tm.that(mutation.exit_code, eq=0, msg=mutation.stdout + mutation.stderr)
-        tm.that(contender.exit_code, eq=0, msg=contender.stdout + contender.stderr)
+        with FileLock(lock_path, timeout=0):
+            pass
         tm.that(
             (state / "events").read_text(encoding="utf-8").splitlines(),
             eq=[
@@ -447,7 +479,5 @@ class TestsFlextInfraMakeSerialization:
                 "mutation-end",
                 "fixed-point-start",
                 "fixed-point-end",
-                "contender-start",
-                "contender-end",
             ],
         )
