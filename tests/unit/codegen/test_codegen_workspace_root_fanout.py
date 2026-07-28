@@ -27,28 +27,58 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(makefile_entries, len=1)
         tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
-    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(self) -> None:
+    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(
+        self, tmp_path: Path
+    ) -> None:
         """Generated workspace-root check/test route through workspace orchestrate."""
-        rendered = _render_root_makefile()
+        rendered = _render_root_makefile(tmp_path)
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
 
 
-def _render_root_makefile() -> str:
+def _render_root_makefile(tmp_path: Path) -> str:
     """Render base/Makefile.j2 for the real workspace-root profile via conform."""
-    workspace_root = Path(__file__).resolve().parents[3].parent
-    plan = (
-        FlextInfraCodegenConform()
-        .plan(
-            m.Infra.CodegenConformRequest(
-                root=workspace_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
-        )
-        .unwrap()
+    repository = next(
+        item
+        for item in config.Infra.codegen.repositories
+        if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=repository.name,
+        repository=repository,
+        project=m.Infra.ProjectSpec(
+            package_name=repository.distribution.replace("-", "_"),
+            class_stem="FixtureWorkspace",
+            namespace="FixtureWorkspace",
+            constant_name=repository.name,
+            namespace_attribute="fixture_workspace",
+            alias="fixture_workspace",
+            environment_prefix="FIXTURE_WORKSPACE_",
+            description="Fixture workspace",
+            version="0.12.0.dev0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage=repository.url.removesuffix(".git"),
+            documentation=repository.url.removesuffix(".git"),
+            workspace_root_rel=".",
+            year=2026,
+        ),
+    )
+    workspace_root = tmp_path / "workspace"
+    request = m.Infra.CodegenConformRequest(
+        root=workspace_root,
+        what=c.Infra.CodegenConformSurface.MAKEFILE,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
+    plan = tm.ok(
+        FlextInfraCodegenConform(
+            workspace_root=workspace_root, request=request, initial_workspace=workspace
+        ).plan(request)
     )
     makefile_plans = tuple(
         fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME

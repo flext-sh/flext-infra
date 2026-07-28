@@ -318,7 +318,7 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests"
+	@$(UV_RUN) python -m pytest $(if $(strip $(ARGS)),$(ARGS),"$(PROJECT_ROOT)/tests")
 
 
 _builtin_format_check: _builtin_require_environment
@@ -355,7 +355,6 @@ _builtin_clean_generated:
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
 _builtin_release_status:
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet

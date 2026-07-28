@@ -767,10 +767,8 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # mro-9v0d: the workspace root Makefile has ONE generation owner:
-          # FlextInfraWorkspaceMakefileGenerator (workspace_makefile.mk.j2).
-          # Listing workspace-root here would create a second, competing owner.
-          profiles: [workspace-member, standalone]
+          # One typed template owns the complete Make surface for every profile.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/custom.mk.j2

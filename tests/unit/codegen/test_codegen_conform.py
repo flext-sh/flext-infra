@@ -688,8 +688,6 @@ class TestScriptDispatchMakefile:
             url=f"{provider.base_url}/demo-root.git",
             branch=provider.branch,
             path=Path(),
-            # mro-9v0d: the workspace root Makefile has a dedicated generator,
-            # so the generic template entry serves standalone/member profiles.
             # Script dispatch is a generic capability: exercise it on standalone.
             role=c.Infra.RepositoryRole.STANDALONE,
             provider=provider.name,

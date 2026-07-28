@@ -1061,6 +1061,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
     @staticmethod
+    def _workspace_root_rel(
+        repository: m.Infra.RepositoryRef, workspace: m.Infra.WorkspaceSpec
+    ) -> str:
+        """Resolve the workspace root from its typed topology owner."""
+        if workspace.project is not None:
+            project_root_rel: str = workspace.project.workspace_root_rel
+            return project_root_rel
+        profile = c.Infra.MakeProfile(repository.profile)
+        if profile is not c.Infra.MakeProfile.WORKSPACE_MEMBER:
+            return "."
+        return Path(*(".." for _ in repository.path.parts)).as_posix()
+
+    @staticmethod
     def _artifact_render_context(
         *,
         dist: str,
@@ -1082,18 +1095,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
-            workspace_root_rel = (
-                Path(*(".." for _ in repository.path.parts)).as_posix()
-                if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                and repository.path.parts
-                else "."
-            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=workspace_root_rel,
+                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                        repository, workspace
+                    ),
                     workspace_members=tuple(
                         item.path.as_posix() for item in workspace.members
                     ),
@@ -1136,11 +1145,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
-        workspace_root_rel = (
-            Path(*(".." for _ in repository.path.parts)).as_posix()
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
-            else "."
-        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 make=codegen.make,
@@ -1159,7 +1163,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=workspace_root_rel,
+                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
@@ -1219,11 +1225,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
-        workspace_root_rel = (
-            Path(*(".." for _ in repository.path.parts)).as_posix()
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
-            else "."
-        )
         packaged_data_dirs = (
             tuple(
                 data_dir
@@ -1268,7 +1269,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=workspace_root_rel,
+                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
