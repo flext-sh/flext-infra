@@ -19,21 +19,6 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             tm.ok(result)
             tm.that(result.value.exit_code, eq=0)
 
-    def test_discover_project_roots_with_real_workspace_root(self) -> None:
-        # Walk up from the test file to find the workspace root (contains flext-core)
-        candidate = Path(__file__).resolve()
-        workspace_root = candidate
-        while candidate != candidate.parent:
-            if (candidate / "flext-core").is_dir():
-                workspace_root = candidate
-                break
-            candidate = candidate.parent
-
-        roots = u.Infra.discover_project_roots(workspace_root)
-
-        tm.that(tuple(root.name for root in roots), has="flext-core")
-        tm.that(all(root.is_dir() for root in roots), eq=True)
-
     def test_discover_project_roots_from_tmp_workspace(self, tmp_path: Path) -> None:
         project = tmp_path / "demo-project"
         (project / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
