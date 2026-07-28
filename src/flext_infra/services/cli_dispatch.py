@@ -6,7 +6,11 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.protocols import p
+from flext_infra.typings import t
+from flext_infra.utilities import u
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.services.cli_transaction import CliTransactionService
 
@@ -130,6 +134,10 @@ class CliDispatchService(CliTransactionService):
         )
         if result.success:
             return 0
+        if result.error_code == c.Infra.PROCESS_EXIT_ERROR_CODE:
+            process_exit = m.Infra.ProcessExit.model_validate(result.error_data)
+            exit_code: int = process_exit.exit_code
+            return exit_code
         error_message = result.error
         if error_message:
             self.display_message(error_message, c.Cli.MessageTypes.ERROR)

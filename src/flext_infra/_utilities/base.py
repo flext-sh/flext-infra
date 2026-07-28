@@ -75,6 +75,16 @@ class FlextInfraUtilitiesBase:
         return "failure"
 
     @staticmethod
+    def normalize_process_exit_code(raw_exit_code: int) -> int:
+        """Map a subprocess signal return code into the portable shell domain."""
+        if raw_exit_code < 0:
+            normalized_exit_code: int = (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - raw_exit_code
+            )
+            return normalized_exit_code
+        return raw_exit_code
+
+    @staticmethod
     def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
         """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
 

@@ -18,6 +18,20 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsBase:
     """Base models for flext-infra project."""
 
+    class ProcessExit(m.ContractModel):
+        """Structured process outcome propagated through a Result failure."""
+
+        exit_code: Annotated[
+            int, m.Field(ge=0, le=255, description="Process-compatible exit code")
+        ]
+        raw_exit_code: Annotated[
+            int, m.Field(description="Raw subprocess return code before signal mapping")
+        ]
+        classification: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Failure, timeout, or terminating signal"),
+        ]
+
     class SummaryStats(m.ContractModel):
         """Bundled stats for summary output."""
 

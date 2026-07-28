@@ -24,6 +24,18 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, eq=("check", "test", "codegen"))
 
+    def test_process_exit_classifies_timeout_and_signal(self) -> None:
+        """Process outcomes retain standard timeout and signal semantics."""
+        timeout_exit = u.Infra.normalize_process_exit_code(
+            c.Infra.PROCESS_TIMEOUT_EXIT_CODE
+        )
+        signal_exit = u.Infra.normalize_process_exit_code(-9)
+
+        tm.that(timeout_exit, eq=c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
+        tm.that(u.Infra.classify_process_exit(timeout_exit), eq="timeout")
+        tm.that(signal_exit, eq=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9)
+        tm.that(u.Infra.classify_process_exit(-9), eq="signal=9")
+
     def test_check_and_test_cannot_overlap_in_one_checkout(
         self, tmp_path: Path
     ) -> None:
@@ -106,3 +118,49 @@ class TestsFlextInfraMakeSerialization:
             (tmp_path / config.Infra.codegen.make.serialization.lock_path).is_file(),
             eq=True,
         )
+
+    def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
+        """A private nonzero status is never coerced into public success."""
+        private_exit_code = 7
+        make_failure_exit_code = 2
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        cli_command = (
+            f"{sys.executable} -m {c.Infra.PACKAGE_IMPORT_NAME} "
+            f"{c.Infra.CLI_GROUP_WORKSPACE} serialize-make "
+            f"--workspace {tmp_path} --verb test"
+        )
+        makefile.write_text(
+            (
+                ".PHONY: test _serialized_test\n"
+                "test:\n"
+                f"\t@{cli_command}\n"
+                "_serialized_test:\n"
+                f"\t@exit {private_exit_code}\n"
+            ),
+            encoding="utf-8",
+        )
+
+        direct = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    c.Infra.PACKAGE_IMPORT_NAME,
+                    c.Infra.CLI_GROUP_WORKSPACE,
+                    "serialize-make",
+                    "--workspace",
+                    str(tmp_path),
+                    "--verb",
+                    "test",
+                ],
+                cwd=tmp_path,
+            )
+        )
+        outer_make = tm.ok(
+            u.Cli.run_raw([c.Infra.MAKE, "--no-print-directory", "test"], cwd=tmp_path)
+        )
+
+        tm.that(direct.exit_code, eq=make_failure_exit_code)
+        tm.that(direct.stdout + direct.stderr, has=f"Error {private_exit_code}")
+        tm.that(outer_make.exit_code, eq=make_failure_exit_code)
+        tm.that(outer_make.exit_code, ne=0)
