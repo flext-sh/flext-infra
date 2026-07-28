@@ -101,15 +101,15 @@ class FlextInfraUtilitiesGitWorktreeMixin:
 
     @classmethod
     def git_primary_worktree_root(cls, repository_path: Path) -> p.Result[Path]:
-        """Resolve the repository's primary worktree across Git storage topologies."""
-        common_result = cls.git_capture(
+        """Resolve the primary worktree from Git's canonical storage topology."""
+        common_dir_result = cls.git_capture(
             repository_path, ("rev-parse", "--path-format=absolute", "--git-common-dir")
         )
-        if common_result.failure:
+        if common_dir_result.failure:
             return r[Path].fail(
-                common_result.error or "failed to resolve Git common directory"
+                common_dir_result.error or "failed to resolve Git common directory"
             )
-        common_dir = Path(common_result.value.strip()).resolve()
+        common_dir = Path(common_dir_result.value.strip()).resolve()
         configured_result = cls.git_run(
             repository_path, ("config", "--path", "--get", "core.worktree")
         )
@@ -123,13 +123,36 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             primary_root = (
                 configured if configured.is_absolute() else common_dir / configured
             ).resolve()
-        elif configured_output.exit_code == 1 and common_dir.name == c.Infra.GIT_DIR:
-            primary_root = common_dir.parent
-        else:
+        elif configured_output.exit_code != 1:
             detail = (configured_output.stderr or configured_output.stdout).strip()
             return r[Path].fail(
-                detail or f"cannot derive primary worktree from {common_dir}"
+                detail or f"cannot inspect primary worktree from {common_dir}"
             )
+        elif common_dir.name == c.Infra.GIT_DIR:
+            primary_root = common_dir.parent
+        else:
+            git_dir_result = cls.git_capture(
+                repository_path, ("rev-parse", "--path-format=absolute", "--git-dir")
+            )
+            if git_dir_result.failure:
+                return r[Path].fail(
+                    git_dir_result.error or "failed to resolve Git directory"
+                )
+            git_dir = Path(git_dir_result.value.strip()).resolve()
+            if git_dir != common_dir:
+                return r[Path].fail(
+                    "cannot derive primary worktree for a linked checkout without "
+                    f"core.worktree: {repository_path}"
+                )
+            caller_top_level = cls.git_capture(
+                repository_path, ("rev-parse", "--show-toplevel")
+            )
+            if caller_top_level.failure:
+                return r[Path].fail(
+                    caller_top_level.error
+                    or f"cannot derive primary worktree from {common_dir}"
+                )
+            primary_root = Path(caller_top_level.value.strip()).resolve()
         top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
         if top_level.failure:
             return r[Path].fail(
