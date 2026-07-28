@@ -51,6 +51,10 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
+      - name: datacosmos-br
+        organization: datacosmos-br
+        base_url: https://github.com/datacosmos-br
+        branch: main
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -1451,6 +1455,188 @@ Infra:
         package: true
         editable: true
         read_only: false
+      - name: cosmos-main
+        distribution: cosmos-main
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-main.git
+        branch: main
+        path: .
+        role: workspace-root
+        state: active
+        profile: workspace-root
+        checkout: root
+        codegen: conform
+        package: false
+        editable: false
+        read_only: false
+      - name: cosmos-charts
+        distribution: cosmos-charts
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-charts.git
+        branch: main
+        path: apps/cosmos-charts
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: cosmos-gitops
+        distribution: cosmos-gitops
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-gitops.git
+        branch: main
+        path: apps/cosmos-gitops
+        role: workspace-member
+        state: active
+        profile: workspace-member
+        checkout: submodule
+        codegen: conform
+        package: true
+        editable: true
+        read_only: false
+      - name: cosmos-inventory
+        distribution: cosmos-inventory
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos.git
+        branch: develop
+        path: cosmos/inventory
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-automation
+        distribution: cosmos-automation
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-automation-artifacts.git
+        branch: main
+        path: cosmos/automation
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-frontend
+        distribution: cosmos-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-frontend.git
+        branch: main
+        path: cosmos/frontend
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-observability
+        distribution: cosmos-observability
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-observability.git
+        branch: main
+        path: cosmos/observability
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-templates
+        distribution: cosmos-templates
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-templates.git
+        branch: main
+        path: cosmos/templates
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-zabbix
+        distribution: cosmos-zabbix
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-zabbix.git
+        branch: dev
+        path: cosmos/zabbix
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-monitoring
+        distribution: cosmos-monitoring
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-monitoring.git
+        branch: main
+        path: cosmos/monitoring
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmos-hook
+        distribution: cosmos-hook
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmos-hook.git
+        branch: dev
+        path: cosmos/hook
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-backend
+        distribution: cosmosec-backend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-backend.git
+        branch: dev
+        path: cosmos/sec-backend
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
+      - name: cosmosec-frontend
+        distribution: cosmosec-frontend
+        provider: datacosmos-br
+        url: https://github.com/datacosmos-br/cosmosec-frontend.git
+        branch: main
+        path: cosmos/sec-frontend
+        role: content-only
+        state: content-only
+        profile: null
+        checkout: submodule
+        codegen: none
+        package: false
+        editable: false
+        read_only: true
     workspaces:
       - name: flext
         repository: flext
