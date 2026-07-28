@@ -164,7 +164,7 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             u.Cli.run_raw(
-                ["make", "--no-print-directory", "status", "WHAT=probe"],
+                [c.Infra.MAKE, "--no-print-directory", "status", "WHAT=probe"],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -222,7 +222,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            ["make", "--no-print-directory", "setup"],
+            [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
@@ -233,6 +233,51 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8")
         tm.that(commands, has="venv --clear")
         tm.that(commands, has="sync --project")
+
+    def test_serialized_runner_preserves_provisioned_external_tools(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep managed tools reachable while removing the hostile active venv."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        hostile_venv = tmp_path / "hostile" / ".venv"
+        hostile_bin = hostile_venv / "bin"
+        hostile_bin.mkdir(parents=True)
+        provisioned_bin = tmp_path / "provisioned" / "bin"
+        provisioned_bin.mkdir(parents=True)
+        for bin_root in (hostile_bin, provisioned_bin):
+            for tool in ("taplo", "uv"):
+                test_u.Tests.write_executable(
+                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
+                )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        tool_log = tmp_path / "tools.log"
+        test_u.Tests.write_executable(
+            runtime_python,
+            (
+                "#!/bin/sh\n"
+                f"command -v uv > '{tool_log}'\n"
+                f"command -v taplo >> '{tool_log}'\n"
+            ),
+        )
+        active_env = {
+            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "VIRTUAL_ENV": str(hostile_venv),
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test"],
+                cwd=project_root,
+                env=active_env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tools = tool_log.read_text(encoding="utf-8").splitlines()
+        tm.that(tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / "taplo")])
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -269,7 +314,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                ["make", "--no-print-directory", "test"],
+                [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )

@@ -82,6 +82,9 @@ Infra:
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
+        mutation_fixed_points:
+          codegen:
+            apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
           - .reports

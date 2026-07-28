@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
@@ -254,6 +255,16 @@ class FlextInfraConfigModels:
         lock_path: Annotated[
             Path, m.Field(description="Repository-relative native process-lock path")
         ]
+        mutation_fixed_points: Annotated[
+            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Authorized mutating WHATs and the validation WHAT each must "
+                    "run afterward under the same lock"
+                ),
+            ),
+        ]
         snapshot_excludes: Annotated[
             tuple[Path, ...],
             m.Field(
@@ -307,6 +318,13 @@ class FlextInfraConfigModels:
             if self.lock_path not in self.snapshot_excludes:
                 msg = "make serialization lock_path must be snapshot-excluded"
                 raise ValueError(msg)
+            invalid = set(self.mutation_fixed_points) - set(self.verbs)
+            if invalid:
+                msg = (
+                    "make serialization mutation verbs are not serialized: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
             return self
 
     class MakeSpec(_ConfigContract):
@@ -343,7 +361,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=dict,
+                default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
