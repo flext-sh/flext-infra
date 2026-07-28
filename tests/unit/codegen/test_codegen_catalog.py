@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from flext_cli import u
+from flext_tests import tm
 from packaging.requirements import Requirement
 
 from flext_infra import config, m
@@ -20,15 +21,17 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ["git", "ls-files", "--error-unmatch", "config/codegen.yaml"],
         cwd=repository_root,
     )
-    assert tracked.success
-    assert tracked.value.exit_code == 0
-    assert tracked.value.stdout.strip() == "config/codegen.yaml"
+    process = tm.ok(tracked)
+    tm.that(process.exit_code, eq=0)
+    tm.that(process.stdout.strip(), eq="config/codegen.yaml")
 
     payload = u.Cli.yaml_load_mapping(catalog_path)
-    infra = payload["Infra"]
-    assert isinstance(infra, Mapping)
-    catalog = infra["codegen"]
-    assert isinstance(catalog, Mapping)
+    infra: Mapping[str, object] = m.TypeAdapter(Mapping[str, object]).validate_python(
+        payload["Infra"]
+    )
+    catalog: Mapping[str, object] = m.TypeAdapter(Mapping[str, object]).validate_python(
+        infra["codegen"]
+    )
     repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
         catalog["repositories"]
     )
@@ -64,14 +67,16 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         *workspace.content_only,
     )
 
-    assert tuple(
-        repository.model_dump(mode="json") for repository in workspace_repositories
-    ) == tuple(repository.model_dump(mode="json") for repository in cosmos)
+    tm.that(
+        tuple(
+            repository.model_dump(mode="json") for repository in workspace_repositories
+        ),
+        eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
+    )
 
 
 @pytest.mark.parametrize(
-    ("field", "exact_patch"),
-    [("python_version_selector", "3.13.11"), ("uv_version_selector", "0.11.29")],
+    ("field", "exact_patch"), [("python_version_selector", "3.13.11")]
 )
 def test_toolchain_rejects_exact_patch_selectors(field: str, exact_patch: str) -> None:
     """Keep runtime selectors on compatible major.minor release lines."""
@@ -98,6 +103,8 @@ def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
 
     for raw_requirement in requirements:
         parsed = Requirement(raw_requirement)
-        assert forbidden.isdisjoint(
-            specifier.operator for specifier in parsed.specifier
-        ), raw_requirement
+        tm.that(
+            forbidden.isdisjoint(specifier.operator for specifier in parsed.specifier),
+            eq=True,
+            msg=raw_requirement,
+        )

@@ -4,12 +4,11 @@ Infra:
     version: 1
 
     toolchain:
-      # Single-source language-runtime selectors. Python keeps an exact runtime
-      # patch; uv deliberately selects a compatible minor line. Derived fields:
+      # Single-source Python release-line selector. uv is supplied by the caller
+      # environment and is never pinned or selected by generated project files.
       #   python_required_version -> >=3.13,<3.14
       # Linter pins live in the shared scaffold.project dependency requirements.
       python_version_selector: "3.13"
-      uv_version_selector: "0.11"
       uv_link_mode: copy
       # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
       # .mise.toml and the ci-matrix workflow kind leg.

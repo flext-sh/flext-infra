@@ -125,7 +125,7 @@ workspace = true
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
         toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={"uv_version_selector": "0.11", "uv_link_mode": "copy"}
+            update={"uv_link_mode": "copy"}
         )
         source = """[project]
 name = "external-consumer"

@@ -37,9 +37,10 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime versions shared by generated projects.
 
-        Python and uv use major.minor compatibility selectors so mise resolves
-        the current patch without exact-version maintenance bottlenecks. Linters
-        and type checkers live in the shared pyproject dependency requirements.
+        Python uses a major.minor compatibility selector so mise resolves the
+        current patch. uv comes from the caller environment and is intentionally
+        absent from generated version contracts. Linters and type checkers live
+        in the shared pyproject dependency requirements.
         """
 
         VERSION_SELECTOR_PARTS: ClassVar[int] = 2
@@ -47,10 +48,6 @@ class FlextInfraConfigModels:
         python_version_selector: Annotated[
             t.NonEmptyStr,
             m.Field(description="Compatible Python major.minor selector, e.g. '3.13'"),
-        ]
-        uv_version_selector: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Compatible uv major.minor selector, e.g. '0.11'"),
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
@@ -80,10 +77,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
 
-        @m.field_validator("python_version_selector", "uv_version_selector")
+        @m.field_validator("python_version_selector")
         @classmethod
-        def validate_version_selector(cls, value: str) -> str:
-            """Reject exact patches and non-mise compatibility selectors."""
+        def validate_python_version_selector(cls, value: str) -> str:
+            """Reject exact Python patches and invalid mise selectors."""
             parts = value.split(".")
             if len(parts) != cls.VERSION_SELECTOR_PARTS or any(
                 not part.isdigit() for part in parts
@@ -548,10 +545,6 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
-        uv_version_selector: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Compatible uv major.minor toolchain selector"),
-        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -689,10 +682,6 @@ class FlextInfraConfigModels:
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
-        ]
-        uv_version_selector: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Compatible uv major.minor toolchain selector"),
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,

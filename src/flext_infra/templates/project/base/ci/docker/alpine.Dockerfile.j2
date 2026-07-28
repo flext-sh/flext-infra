@@ -7,7 +7,7 @@ RUN apk add --no-cache \
       bash ca-certificates curl git make build-base
 
 # mise installs the current python {{ python_version_selector }} patch
-# and uv {{ uv_version_selector }} via the config SSOT.
+# while uv is supplied by the build environment.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 
