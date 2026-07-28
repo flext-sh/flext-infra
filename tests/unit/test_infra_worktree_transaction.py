@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Event
 
 import pytest
 
+from flext_core import r
+from flext_infra import c, config, p, t
+from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _git_status(repository_root: Path) -> bytes:
@@ -24,6 +26,10 @@ def _git_status(repository_root: Path) -> bytes:
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
     source_root = tmp_path / "source"
     source_root.mkdir(parents=True)
+    transaction_lock = config.Infra.codegen.make.serialization.lock_path
+    (source_root / ".gitignore").write_text(
+        f"{transaction_lock.parts[0]}/\n", encoding="utf-8"
+    )
     artifact = source_root / "artifact.txt"
     artifact.write_bytes(b"before\n")
     u.Tests.initialize_git_repo(source_root)
@@ -164,10 +170,8 @@ class TestsFlextInfraWorktreeTransaction:
         self, tmp_path: Path
     ) -> None:
         """Reject one advanced source before applying any repository delta."""
-        first_source, _first_worktree, first_delta = _operation_delta(
-            tmp_path / "first"
-        )
-        second_source, _second_worktree, second_delta = _operation_delta(
+        first_source, first_worktree, first_delta = _operation_delta(tmp_path / "first")
+        second_source, second_worktree, second_delta = _operation_delta(
             tmp_path / "second"
         )
         first_artifact = first_source / "artifact.txt"
@@ -192,6 +196,136 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(second_artifact.read_bytes(), eq=second_bytes)
         tm.that(_git_status(first_source), eq=first_status)
         tm.that(_git_status(second_source), eq=second_status)
+        serialization = config.Infra.codegen.make.serialization
+
+        def available() -> p.Result[bool]:
+            return r[bool].ok(True)
+
+        def timeout_failure(lock_path: Path, timeout_seconds: int) -> p.Result[bool]:
+            return r[bool].fail(f"{lock_path} remained locked for {timeout_seconds}s")
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            return r[bool].fail(error)
+
+        for repository_root in (
+            first_source,
+            first_worktree,
+            second_source,
+            second_worktree,
+        ):
+            tm.ok(
+                FlextInfraSerializationLockOwner.execute(
+                    (repository_root / serialization.lock_path,),
+                    0,
+                    available,
+                    timeout_failure=timeout_failure,
+                    acquisition_failure=acquisition_failure,
+                )
+            )
+
+    def test_transaction_lock_blocks_head_movement_after_preflight(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Apply every delta before a contending writer can advance source HEAD."""
+        first_source, _first_worktree, first_delta = _operation_delta(
+            tmp_path / "first"
+        )
+        second_source, _second_worktree, second_delta = _operation_delta(
+            tmp_path / "second"
+        )
+        first_artifact = first_source / "artifact.txt"
+        second_artifact = second_source / "artifact.txt"
+        lock_path = (
+            second_source / config.Infra.codegen.make.serialization.lock_path
+        ).resolve()
+        preflight_complete = Event()
+        contention_observed = Event()
+        original_run_raw = u.Cli.run_raw
+
+        def observed_run_raw(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            result = original_run_raw(
+                cmd,
+                cwd=cwd,
+                timeout=timeout,
+                env=env,
+                remove_env_keys=remove_env_keys,
+                input_data=input_data,
+                capture=capture,
+            )
+            if (
+                tuple(cmd) == (c.Infra.GIT, "rev-parse", "HEAD")
+                and cwd is not None
+                and Path(cwd).resolve() == second_source.resolve()
+            ):
+                preflight_complete.set()
+                tm.that(contention_observed.wait(timeout=10), where=bool)
+            return result
+
+        monkeypatch.setattr(u.Cli, "run_raw", observed_run_raw)
+
+        def advance_source_head() -> p.Result[bool]:
+            concurrent = second_source / "concurrent.txt"
+            concurrent.write_text("new head\n", encoding="utf-8")
+            add_result = u.Infra.git_capture(second_source, ("add", concurrent.name))
+            if add_result.failure:
+                return r[bool].fail(add_result.error or "failed to stage writer change")
+            commit_result = u.Infra.git_capture(
+                second_source,
+                ("commit", "-m", "advance source after transaction apply"),
+            )
+            if commit_result.failure:
+                return r[bool].fail(
+                    commit_result.error or "failed to commit writer change"
+                )
+            return r[bool].ok(True)
+
+        def timeout_failure(_lock_path: Path, _timeout_seconds: int) -> p.Result[bool]:
+            return r[bool].fail("canonical transaction lock contended")
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            return r[bool].fail(error)
+
+        def attempt_head_advance() -> bool:
+            tm.that(preflight_complete.wait(timeout=10), where=bool)
+            immediate = FlextInfraSerializationLockOwner.execute(
+                (lock_path,),
+                0,
+                advance_source_head,
+                timeout_failure=timeout_failure,
+                acquisition_failure=acquisition_failure,
+            )
+            lock_contended = immediate.failure
+            contention_observed.set()
+            if lock_contended:
+                tm.ok(
+                    FlextInfraSerializationLockOwner.execute(
+                        (lock_path,),
+                        10,
+                        advance_source_head,
+                        timeout_failure=timeout_failure,
+                        acquisition_failure=acquisition_failure,
+                    )
+                )
+            return lock_contended
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            advance_future = executor.submit(attempt_head_advance)
+            tm.ok(u.Infra.git_apply_transaction_patches((first_delta, second_delta)))
+            lock_contended = advance_future.result(timeout=15)
+
+        tm.that(lock_contended, where=bool)
+        tm.that(first_artifact.read_bytes(), eq=b"after\n")
+        tm.that(second_artifact.read_bytes(), eq=b"after\n")
+        tm.that((second_source / "concurrent.txt").read_bytes(), eq=b"new head\n")
 
     def test_apply_replaces_existing_ignored_canonical_addition(
         self, tmp_path: Path
