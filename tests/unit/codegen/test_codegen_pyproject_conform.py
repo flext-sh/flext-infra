@@ -99,7 +99,7 @@ name = "external-consumer"
 dependencies = ["requests>=2"]
 
 [tool.uv]
-constraint-dependencies = ["uv==0.11.32", "requests<3"]
+constraint-dependencies = ["uv>=0", "requests<3"]
 """
         first = tm.ok(
             u.Infra.pyproject_dependencies_conform(
@@ -130,7 +130,7 @@ dependencies = ["requests>=2"]
 
 [tool.uv]
 link-mode = "copy"
-constraint-dependencies = ["uv>=0.11"]
+constraint-dependencies = ["uv>=0"]
 """
         conformed = tm.ok(
             u.Infra.pyproject_dependencies_conform(
@@ -192,7 +192,7 @@ dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 dev = ["custom-tool>=1"]
 
 [tool.uv]
-required-version = "==0.11.28"
+required-version = ">=0"
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"

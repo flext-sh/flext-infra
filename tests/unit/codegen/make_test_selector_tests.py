@@ -39,13 +39,20 @@ class TestsMakeTestSelector:
             (
                 "#!/bin/sh\n"
                 "verb=''\n"
+                "mode=''\n"
                 "previous=''\n"
                 'for argument in "$@"; do\n'
                 '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  if [ "$argument" = "validate" ]; then mode="validate"; fi\n'
                 '  previous="$argument"\n'
                 "done\n"
                 'if [ -n "$verb" ]; then\n'
                 '  exec make --no-print-directory "_serialized_${verb}"\n'
+                "fi\n"
+                'if [ "$mode" = "validate" ]; then\n'
+                "  printf '%s\\n' failed_count=0 error_count=0 "
+                "warning_count=0 skipped_count=0\n"
+                "  exit 0\n"
                 "fi\n"
                 "exit 2\n"
             ),
@@ -56,11 +63,18 @@ class TestsMakeTestSelector:
             uv, f'#!/bin/sh\nprintf "%s\\n" "$@" > "{invocation_log}"\n'
         )
         selected = "tests/unit/selected_test.py"
+        selected_path = tmp_path / selected
+        selected_path.parent.mkdir(parents=True)
+        selected_path.write_text(
+            "from flext_tests import tm\n\n"
+            "def test_selected() -> None:\n"
+            "    tm.that(True, eq=True)\n",
+            encoding="utf-8",
+        )
 
         executed = tm.ok(
-            u.Cli.run_raw(
+            test_u.Tests.run_isolated_make(
                 [
-                    "make",
                     "--no-print-directory",
                     "test",
                     f"PYTEST_TARGETS={selected}",
@@ -70,7 +84,11 @@ class TestsMakeTestSelector:
             )
         )
 
-        tm.that(executed.exit_code, eq=0)
+        tm.that(
+            executed.exit_code,
+            eq=0,
+            msg=f"stdout:\n{executed.stdout}\nstderr:\n{executed.stderr}",
+        )
         arguments = invocation_log.read_text(encoding="utf-8")
         tm.that(arguments, has=selected)
         tm.that(str(tmp_path / "tests") in arguments, eq=False)
@@ -82,37 +100,29 @@ class TestsMakeTestSelector:
         way to filter is to call pytest directly -- exactly the loose command the
         canonical-command law forbids.
         """
-        template = _makefile_template().read_text(encoding="utf-8")
-        recipes = [
-            block.split("\n\n", 1)[0]
-            for block in template.split("_builtin_test_all:")[1:]
-        ]
-        tm.that(
-            recipes,
-            len=2,
-            msg="template must define workspace-root and local test handlers",
+        template_path = _makefile_template()
+        template = template_path.read_text(encoding="utf-8")
+        reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
+            encoding="utf-8"
         )
-        direct = [r for r in recipes if "pytest" in r]
-        tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
-        tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)
-        tm.that(template, has="PYTEST_TARGETS ?=\n")
-        tm.that(direct[0], has="$(if $(strip $(PYTEST_TARGETS))")
 
-    def test_generated_build_gen_routes_both_generated_owners(self) -> None:
-        """The documented build/gen selector regenerates both Make surfaces."""
+        tm.that(template, has="test_report_recipe(")
+        tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
+        tm.that(reporter, has='if [ -n "$(MATCH)" ]')
+        tm.that(reporter, has='if [ -n "$(FILE)" ]')
+        tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
+        tm.that(template, has='"$(PYTEST_TARGETS)"')
+
+    def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
+        """Codegen and base.mk generation remain explicit canonical operations."""
         template = _makefile_template().read_text(encoding="utf-8")
-
-        tm.that(template, has="_builtin_build_gen")
-        tm.that(
-            template,
-            has=[
-                (
-                    'codegen conform --root "$(PROJECT_ROOT)" '
-                    '--scope "$(CODEGEN_SCOPE)" --mode apply'
-                ),
-                (
-                    'basemk generate --project-name "$(PROJECT_NAME)" '
-                    '--output "$(PROJECT_ROOT)/base.mk"'
-                ),
-            ],
+        repository = next(
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.name == "flext-infra"
         )
+        extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
+
+        tm.that(template, has="_builtin_codegen_apply")
+        tm.that(extra_verbs, eq={"basemk": "generate"})
+        tm.that(template, lacks="_builtin_build_gen")

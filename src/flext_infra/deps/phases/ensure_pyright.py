@@ -431,7 +431,8 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        phase_builder = phase_builder.deprecated(c.Infra.VENV_PATH).deprecated("venv")
+        for key, value in self._venv_settings(is_root=is_root).items():
+            phase_builder = phase_builder.value(key, value)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [

@@ -980,6 +980,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             path.chmod(0o755)
 
         @staticmethod
+        def run_isolated_make(
+            args: t.StrSequence, *, cwd: Path
+        ) -> p.Result[p.Cli.CommandOutput]:
+            """Run Make without selectors or recursion state inherited from pytest."""
+            return cli_facade.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+
+        @staticmethod
         def create_migrator_dir_layout(
             tmp_path: Path,
             *,

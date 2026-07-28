@@ -45,4 +45,4 @@ class TestsFlextInfraWorkspaceCheckScope:
         )
         tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
         tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
-        tm.that(template, has="$(ORCHESTRATE_CHECK_ARGS)")
+        tm.that(template, has="$(WORKSPACE_CHECK_ARGS)")

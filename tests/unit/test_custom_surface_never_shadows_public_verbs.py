@@ -85,3 +85,11 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
 
         tm.that(verbs.get("basemk"), eq="generate")
         tm.that(custom, has="_custom_basemk_generate:")
+        tm.that(
+            custom,
+            has=(
+                "basemk generate \\\n"
+                '\t\t--project-name "$(PROJECT_NAME)" --output "$$output"'
+            ),
+            lacks="basemk generate --output",
+        )

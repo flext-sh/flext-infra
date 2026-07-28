@@ -120,15 +120,17 @@ class TestsWorkspaceRootMakeContract:
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw([
-                "make",
-                "-C",
-                str(workspace_root),
-                "--dry-run",
-                "_builtin_check_all",
-                f"PROJECT={project_names[0]}",
-                "CHECK_GATES=lint,pyrefly",
-            ])
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_check_all",
+                    f"PROJECT={project_names[0]}",
+                    "CHECK_GATES=lint,pyrefly",
+                ],
+                cwd=workspace_root,
+            )
         )
         output = process.stdout + process.stderr
 
@@ -137,19 +139,49 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
 
+    def test_generated_make_routes_file_and_match_only_to_owning_project(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, project_names = _write_workspace(tmp_path)
+        owner = project_names[0]
+        selected = f"{owner}/tests/unit/test_selected.py"
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    f"FILE={selected}",
+                    "MATCH=selected_case",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has=f"--projects {owner}")
+        tm.that(output, has='--make-arg "FILE=tests/unit/test_selected.py"')
+        tm.that(output, has='--make-arg "MATCH=selected_case"')
+        tm.that(output, lacks=f"--projects {project_names[1]}")
+
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw([
-                "make",
-                "-C",
-                str(workspace_root),
-                "--dry-run",
-                "_builtin_docs_all",
-                "APPLY=Y",
-                f"PROJECTS={project_names[0]}",
-            ])
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_docs_all",
+                    "APPLY=Y",
+                    f"PROJECTS={project_names[0]}",
+                ],
+                cwd=workspace_root,
+            )
         )
         output = process.stdout + process.stderr
 

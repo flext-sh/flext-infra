@@ -10,4 +10,5 @@ _custom_basemk_generate:
 	@set -eu; \
 	output="$(strip $(OUTPUT))"; \
 	if [ -z "$$output" ]; then output="base.mk"; fi; \
-	$(PROJECT_FLEXT_INFRA) basemk generate --output "$$output"
+	$(PROJECT_FLEXT_INFRA) basemk generate \
+		--project-name "$(PROJECT_NAME)" --output "$$output"

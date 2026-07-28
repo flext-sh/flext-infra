@@ -78,8 +78,8 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
+        tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.root_venv_path)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))),
@@ -148,8 +148,8 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, is_=MutableMapping)
         if not isinstance(pyright, MutableMapping):
             return
-        tm.that(pyright, lacks="venv")
-        tm.that(pyright, lacks="venvPath")
+        tm.that(u.Cli.toml_unwrap_item(pyright["venv"]), eq=rules.venv_name)
+        tm.that(u.Cli.toml_unwrap_item(pyright["venvPath"]), eq=rules.project_venv_path)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
