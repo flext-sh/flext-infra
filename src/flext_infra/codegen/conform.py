@@ -1036,10 +1036,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 else ()
             )
             workspace_root_rel = (
-                Path(*(".." for _ in repository.path.parts)).as_posix()
-                if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                and repository.path.parts
-                else "."
+                workspace.project.workspace_root_rel
+                if workspace.project is not None
+                else (
+                    Path(*(".." for _ in repository.path.parts)).as_posix()
+                    if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+                    and repository.path.parts
+                    else "."
+                )
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
