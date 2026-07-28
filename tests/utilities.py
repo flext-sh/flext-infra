@@ -568,7 +568,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 _write(
                     project / f"src/{pkg_name}/__init__.py",
-                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n__all__ = ["hello"]\n',
+                    '"""Documentation fixture package."""\n\n'
+                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n'
+                    '__all__ = ["hello"]\n',
                 )
                 _write(project / "README.md", f"# {name}\n")
                 _write(project / "docs/README.md", "# Project Docs\n")
