@@ -129,7 +129,7 @@ endif
 _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
 {% endif %}
 
--include custom.mk
+{{ makefile_custom_include }}
 
 _BUILTIN_HANDLERS := \
 	_builtin_help_usage \
