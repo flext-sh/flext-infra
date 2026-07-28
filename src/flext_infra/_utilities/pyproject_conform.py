@@ -726,5 +726,51 @@ class FlextInfraUtilitiesPyprojectConform:
                 )
         return r[bool].ok(True)
 
+    @staticmethod
+    def _validate_dependency_provenance(
+        document: t.Cli.TomlDocument,
+        *,
+        workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.WorkspaceMode,
+    ) -> p.Result[bool]:
+        """Require one internal dependency provenance for the active topology."""
+        payload = u.Cli.toml_as_mapping(document)
+        if payload is None:
+            return r[bool].fail("pyproject document is not a TOML mapping")
+        member_names = frozenset(member.distribution for member in workspace.members)
+        raw_values: list[str] = []
+        project = payload.get(c.Infra.PROJECT)
+        if isinstance(project, Mapping):
+            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+                value = project.get(key)
+                if isinstance(value, Mapping):
+                    for group in value.values():
+                        raw_values.extend(u.Cli.toml_as_string_list(group))
+                else:
+                    raw_values.extend(u.Cli.toml_as_string_list(value))
+        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
+        if isinstance(groups, Mapping):
+            for group in groups.values():
+                raw_values.extend(u.Cli.toml_as_string_list(group))
+        for requirement in raw_values:
+            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if dependency_name not in member_names:
+                continue
+            has_direct_source = "@" in requirement.partition(";")[0]
+            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE and has_direct_source:
+                return r[bool].fail(
+                    "attached workspace dependency declares direct source: "
+                    f"{dependency_name}"
+                )
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
+                return r[bool].fail(
+                    "standalone dependency lacks configured Git source: "
+                    f"{dependency_name}"
+                )
+        return r[bool].ok(True)
+
 
 __all__: list[str] = ["FlextInfraUtilitiesPyprojectConform"]

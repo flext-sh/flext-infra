@@ -1,4 +1,4 @@
-"""Validate the typed repository catalog through its public configuration file."""
+"""Behavior contracts for the tracked typed codegen catalog."""
 
 from __future__ import annotations
 

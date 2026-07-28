@@ -158,9 +158,14 @@ class TestsInfraGithub:
         with "No rule to make target". Comparing against the SSOT (instead of
         hardcoding verb names) keeps this test correct when the SSOT changes.
         """
-        declared = {verb.name for verb in config.Infra.codegen.make.verbs}
-        repository_root = Path(__file__).resolve().parents[3]
-        workflows = sorted((repository_root / ".github/workflows").glob("*.yml"))
+        declared = {
+            verb.name
+            for verb in config.Infra.codegen.make.verbs  # type: ignore[attr-defined]
+        }
+        workspace_root = Path(__file__).resolve().parents[3].parent
+        workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(
+            (workspace_root / ".github/workflows").glob("*.yml")
+        )
         invoked: dict[str, set[str]] = {}
         for workflow in workflows:
             if not workflow.is_file():

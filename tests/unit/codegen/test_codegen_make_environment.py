@@ -6,14 +6,18 @@ import os
 from pathlib import Path
 
 import pytest
+import pytest
 from flext_tests import tm
 
+from flext_infra import c, config, m, u
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
 
 class TestsCodegenMakeEnvironment:
+    """Prove generated operations ignore the caller shell environment."""
+
     def test_generated_make_overrides_inherited_uv_environment(
         self, tmp_path: Path
     ) -> None:
@@ -103,7 +107,6 @@ class TestsCodegenMakeEnvironment:
         applied = tm.ok(result)
         tm.that(tuple(path.name for path in applied.written_files), eq=("Makefile",))
         tm.that(custom.read_text(encoding="utf-8"), eq=custom_content)
-
 
     @staticmethod
     def _render_makefile(

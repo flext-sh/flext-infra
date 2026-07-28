@@ -68,7 +68,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
-    ) -> SurfaceContract:
+    ) -> FlextInfraCodegenConform.SurfaceContract:
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 return cls.SurfaceContract(complete_governed=True)
@@ -562,7 +562,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract,
+        contract: FlextInfraCodegenConform.SurfaceContract,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         if repository.profile is None:
@@ -829,7 +829,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         workspace_mode = (
             c.Infra.WorkspaceMode.WORKSPACE
-            if root == workspace_root or repository in workspace.members
+            if root != workspace_root or bool(workspace.members)
             else c.Infra.WorkspaceMode.STANDALONE
         )
         uv_exclude_dependencies = tuple(
@@ -873,13 +873,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 tooling_context.error or f"tooling render failed: {pyproject}"
             )
+        tooling_runtime = tooling_context.value
+        if root == workspace_root:
+            tooling_runtime = tooling_runtime.model_copy(
+                update={
+                    "pyrefly_interpreter_path": ".venv/bin/python",
+                    "pyright_venv_path": ".",
+                }
+            )
         if not contract.pyproject:
             return self._plan_existing_templates(
                 root=root,
                 repository=repository,
                 workspace=workspace,
                 codegen=codegen,
-                tooling_runtime=tooling_context.value,
+                tooling_runtime=tooling_runtime,
                 contract=contract,
             )
         prepared_result = u.Infra.pyproject_conform(
@@ -921,7 +929,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository=repository,
             workspace=workspace,
             codegen=codegen,
-            tooling_runtime=tooling_context.value,
+            tooling_runtime=tooling_runtime,
             contract=contract,
         )
         if managed_result.failure:
@@ -956,6 +964,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"active repository has no Make profile: {repository.name}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
+        context_result: p.Result[
+            m.Infra.MakeRenderContext | m.Infra.ProjectRenderContext
+        ]
+        if workspace.project is None:
+            context_result = self.make_render_context(
+                repository, workspace, codegen, tooling_runtime=tooling_runtime
+            )
+        else:
+            context_result = self._scaffold_render_context(
+                repository, workspace, codegen, tooling_runtime=tooling_runtime
+            )
+        if context_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                context_result.error or "project render context is invalid"
+            )
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
@@ -1170,11 +1193,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 dist=repository.distribution,
                 python_version=codegen.toolchain.python_minor_version,
                 python_toolchain_version=codegen.toolchain.python_version,
+                python_required_version=codegen.toolchain.python_required_version,
                 uv_version=codegen.toolchain.uv_version,
+                uv_required_version=codegen.toolchain.uv_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
-                python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
@@ -1183,6 +1207,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository, workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
+                gitignore_sections=tuple(
+                    section
+                    for section in codegen.gitignore_sections
+                    if not section.profiles or profile in section.profiles
+                ),
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
