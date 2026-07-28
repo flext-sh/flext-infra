@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
+from flext_infra import config
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
@@ -57,7 +58,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has='python = "3.13"',
+            has=f'python = "{config.Infra.codegen.toolchain.python_version}"',
         )
 
     def test_migrator_handles_missing_pyproject_gracefully(

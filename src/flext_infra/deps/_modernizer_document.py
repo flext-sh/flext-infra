@@ -123,7 +123,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
         return r[str].ok(output.stdout)
 
-    def _project_is_flext_child(self, project_dir: Path) -> bool:
+    def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
         """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
 
         A workspace *root* owns the canonical virtualenv locally
@@ -138,20 +138,26 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rules = config.Infra.tooling.tools.pyright.path_rules
         venv_name = rules.venv_name
         if (project_dir / venv_name).is_dir():
-            return False
+            return r[bool].ok(False)
         if (project_dir.parent / venv_name).is_dir():
-            return True
+            return r[bool].ok(True)
         makefile = project_dir / "Makefile"
+        if not makefile.exists():
+            return r[bool].ok(False)
+        if not makefile.is_file():
+            return r[bool].fail(f"project Makefile is not a regular file: {makefile}")
         read = u.Cli.files_read_text(makefile)
-        if read.success:
-            for raw_line in read.value.splitlines():
-                stripped = raw_line.strip()
-                key, separator, value = stripped.partition(":=")
-                if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
-                    continue
-                if value.strip().startswith(".."):
-                    return True
-        return False
+        if read.failure:
+            return r[bool].fail(
+                read.error or f"project Makefile read failed: {makefile}"
+            )
+        for raw_line in read.value.splitlines():
+            stripped = raw_line.strip()
+            key, separator, value = stripped.partition(":=")
+            if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
+                continue
+            return r[bool].ok(value.strip().startswith(".."))
+        return r[bool].ok(False)
 
     def _process_document_state(
         self,

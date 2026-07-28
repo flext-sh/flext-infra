@@ -115,14 +115,7 @@ workspace = true
             *workspace.members,
             *config.Infra.codegen.repositories,
         )
-        toolchain = m.Infra.ToolchainSpec(
-            python_version="3.13",
-            uv_link_mode="copy",
-            kubectl_version="1.32.0",
-            helm_version="3.19.4",
-            kind_version="0.31.0",
-            taplo_version="0.10.0",
-        )
+        toolchain = config.Infra.codegen.toolchain
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]

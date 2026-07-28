@@ -96,10 +96,7 @@ Infra:
         filename: custom.mk
         target_pattern: "^(_custom_(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)_[a-z0-9][a-z0-9-]*|(pre|post)-(help|setup|deps|build|check|test|format|run|status|docs|clean|release|codegen)(-[a-z0-9][a-z0-9-]*)?)$"
         allow_public_targets: false
-        allow_generated_target_redefinition: false
         allow_toolchain_declarations: false
-        allow_setup_declarations: false
-        allow_help_declarations: false
       custom_handler_profile_overrides:
         workspace-root:
           allow_public_targets: true

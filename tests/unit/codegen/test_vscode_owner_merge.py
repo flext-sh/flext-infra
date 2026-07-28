@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import c, config
-from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra import c, config, t, u
+from flext_infra.services.codegen import FlextInfraCodegen
 
 
 class TestsVscodeOwnerMerge:
@@ -25,19 +24,17 @@ class TestsVscodeOwnerMerge:
             '{"python.languageServer": "None"}\n', encoding="utf-8"
         )
 
-        result = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
-        )
+        result = FlextInfraCodegen.render_vscode_settings(root)
 
         tm.ok(result)
-        plan = next(f for f in result.value if f.path == settings_path)
-        tm.that(plan.changed, eq=True)
-        tm.that(plan.owner, eq="vscode")
-        tm.that(plan.policy, eq="merge")
-        doc = json.loads(plan.rendered)
+        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(result.value))
+        )
         tm.that(doc["python.languageServer"], eq="None")
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
-        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
+            doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        )
         tm.that(
             search_paths,
             eq=list(
@@ -54,17 +51,11 @@ class TestsVscodeOwnerMerge:
         settings_path = root / ".vscode" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         _ = settings_path.write_text("{}\n", encoding="utf-8")
-        first = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
-        )
+        first = FlextInfraCodegen.render_vscode_settings(root)
         tm.ok(first)
-        plan = next(f for f in first.value if f.path == settings_path)
-        _ = settings_path.write_text(plan.rendered, encoding="utf-8")
+        _ = settings_path.write_text(first.value, encoding="utf-8")
 
-        second = FlextInfraCodegenConform._complete_governed_plans(  # ruff:ignore[private-member-access]
-            root, (), config.Infra.codegen
-        )
+        second = FlextInfraCodegen.render_vscode_settings(root)
 
         tm.ok(second)
-        plan_fixed = next(f for f in second.value if f.path == settings_path)
-        tm.that(plan_fixed.changed, eq=False)
+        tm.that(second.value, eq=first.value)

@@ -18,7 +18,7 @@ import flext_infra
 from flext_tests import tm
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from flext_infra import config
+from flext_infra import c, config, u
 
 
 def _render_python_version() -> str:
@@ -31,9 +31,7 @@ def _render_python_version() -> str:
         autoescape=select_autoescape(default=False, default_for_string=False),
     )
     template = environment.get_template("project/base/python-version.j2")
-    return template.render(
-        python_toolchain_version=config.Infra.codegen.toolchain.python_version
-    )
+    return template.render(python_version=config.Infra.codegen.toolchain.python_version)
 
 
 class TestsFlextInfraPythonVersionRenderUsesMinorLine:
@@ -42,3 +40,10 @@ class TestsFlextInfraPythonVersionRenderUsesMinorLine:
         expected = f"{config.Infra.codegen.toolchain.python_version}\n"
 
         tm.that(_render_python_version(), eq=expected)
+
+    def test_generated_artifact_matches_the_typed_selector(self) -> None:
+        """Validate the real consumer file against the same typed SSOT."""
+        expected = f"{config.Infra.codegen.toolchain.python_version}\n"
+        rendered = tm.ok(u.Cli.files_read_text(Path(c.Infra.PYTHON_VERSION_FILENAME)))
+
+        tm.that(rendered, eq=expected)

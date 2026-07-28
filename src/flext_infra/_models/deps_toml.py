@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from itertools import chain
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, override
 
 from flext_cli import m
 from flext_infra import c, t
@@ -109,6 +109,14 @@ class FlextInfraModelsDepsToml:
                                 name=name
                             )
                         )
+
+                    @override
+                    def build(self) -> FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig:
+                        """Return the typed immutable phase owned by this builder."""
+                        phase: FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig = (
+                            self.state
+                        )
+                        return phase
 
                     @classmethod
                     def _nested_operations(

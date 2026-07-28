@@ -291,14 +291,17 @@ class FlextInfraUtilitiesRopeInventory:
             return None
         scope = next((scope for scope in scopes if scope.get_start() == line), None)
         if scope is not None:
-            return scope
+            resolved_scope: p.Infra.RopeScopeDsl = scope
+            return resolved_scope
         if FlextInfraUtilitiesRopeRuntime.is_assigned_name(
             pyname
         ) or FlextInfraUtilitiesRopeRuntime.is_parameter_name(pyname):
             return None
         getter = getattr(pyname.get_object(), "get_scope", None)
         candidate = getter() if callable(getter) else None
-        return candidate if isinstance(candidate, p.Infra.RopeScopeDsl) else None
+        if isinstance(candidate, p.Infra.RopeScopeDsl):
+            return candidate
+        return None
 
     @staticmethod
     def _kind_for(

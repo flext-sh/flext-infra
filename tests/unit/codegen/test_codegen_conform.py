@@ -87,7 +87,9 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+    def test_generated_make_uses_managed_uv_without_a_project_pin(
+        self, tmp_path: Path
+    ) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -102,11 +104,72 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        makefile = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
         tm.that(makefile, has="UV ?= uv")
-        tm.that(makefile, lacks="UV_VERSION")
-        tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
+        for forbidden in ("UV_VERSION", "uv@", "mise exec uv"):
+            tm.that(makefile, lacks=forbidden)
+
+    def test_generated_make_runs_only_the_selected_check_gate(
+        self, tmp_path: Path
+    ) -> None:
+        """Exercise CHECK_GATES through the real generated Make recipe."""
+        root = tmp_path / "flext-demo"
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="flext-demo",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        runtime_bin = root / ".venv" / "bin"
+        runtime_bin.mkdir(parents=True)
+        runtime_python = runtime_bin / "python"
+        runtime_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        runtime_python.chmod(0o755)
+        uv_log = tmp_path / "uv.log"
+        runtime_uv = runtime_bin / "uv"
+        runtime_uv.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$UV_LOG"\n', encoding="utf-8"
+        )
+        runtime_uv.chmod(0o755)
+        lint_gate = next(
+            gate
+            for gate in config.Infra.codegen.make.check_gates_allowed
+            if gate == "lint"
+        )
+
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                [
+                    "make",
+                    "-C",
+                    str(root),
+                    "check",
+                    f"CHECK_GATES={lint_gate}",
+                    f"UV_LOG={uv_log}",
+                    "UV=uv",
+                ],
+                env=os.environ,
+            )
+        )
+
+        tm.that(
+            outcome.exit_code,
+            eq=0,
+            msg=f"stdout={outcome.stdout}\nstderr={outcome.stderr}",
+        )
+        invocations = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(invocations, len=1)
+        tm.that(invocations[0], has="ruff check --no-fix")
+        for unselected in ("ruff format", "pyrefly", "mypy", "pyright", "vulture"):
+            tm.that(invocations[0], lacks=unselected)
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path

@@ -693,7 +693,6 @@ dependencies = ["flext-infra"]
 
 [tool.uv.exclude-dependencies.package]
 name = "flext-tests"
-
 [tool.vulture]
 exclude = ["*/_protocols/*"]
 min_confidence = 100

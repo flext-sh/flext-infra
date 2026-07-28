@@ -49,7 +49,8 @@ class FlextInfraCodegenGenerationRenderersMixin(
             detail = (output.stderr or output.stdout).strip()
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
-        return output.stdout.rstrip() + "\n"
+        formatted: str = output.stdout
+        return formatted.rstrip() + "\n"
 
 
 __all__: list[str] = ["FlextInfraCodegenGenerationRenderersMixin"]

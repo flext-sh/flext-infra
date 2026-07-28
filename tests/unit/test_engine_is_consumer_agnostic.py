@@ -40,7 +40,8 @@ def owned_provider() -> str:
     if entry is None:
         msg = f"engine absent from its own catalog: {distribution}"
         raise AssertionError(msg)
-    return entry.provider
+    provider: str = entry.provider
+    return provider
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:

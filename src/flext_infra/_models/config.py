@@ -13,6 +13,7 @@ from typing import Annotated, ClassVar, Literal
 from flext_cli import m
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
@@ -35,7 +36,7 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Language-runtime versions shared by generated projects.
+        """Compatible runtime selectors shared by generated projects.
 
         Only the Python minor line ``python_version`` (e.g. ``3.13``) is
         declared for the language runtime. The environment resolves its newest
@@ -194,16 +195,9 @@ class FlextInfraConfigModels:
             m.Field(description="Required private target regular expression"),
         ]
         allow_public_targets: bool = m.Field(description="Permit public targets")
-        allow_generated_target_redefinition: bool = m.Field(
-            description="Permit generated target redefinition"
-        )
         allow_toolchain_declarations: bool = m.Field(
             description="Permit toolchain declarations"
         )
-        allow_setup_declarations: bool = m.Field(
-            description="Permit setup declarations"
-        )
-        allow_help_declarations: bool = m.Field(description="Permit help declarations")
 
     class CustomHandlerPolicyOverride(_ConfigContract):
         """Per-profile relaxation of the strict custom-handler contract.
@@ -216,17 +210,8 @@ class FlextInfraConfigModels:
         allow_public_targets: bool | None = m.Field(
             default=None, description="Permit public targets"
         )
-        allow_generated_target_redefinition: bool | None = m.Field(
-            default=None, description="Permit generated target redefinition"
-        )
         allow_toolchain_declarations: bool | None = m.Field(
             default=None, description="Permit toolchain declarations"
-        )
-        allow_setup_declarations: bool | None = m.Field(
-            default=None, description="Permit setup declarations"
-        )
-        allow_help_declarations: bool | None = m.Field(
-            default=None, description="Permit help declarations"
         )
 
     class MakeSpec(_ConfigContract):
@@ -256,6 +241,18 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+
+        @m.computed_field()
+        @property
+        def check_gates_allowed(self) -> tuple[str, ...]:
+            """Canonical generated Make check-gate vocabulary."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+
+        @m.computed_field()
+        @property
+        def check_gates_default(self) -> tuple[str, ...]:
+            """Canonical generated Make default check gates."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
 
         @m.computed_field()
         @property
@@ -800,9 +797,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]

@@ -13,6 +13,10 @@ UV_LINK_MODE := {{ uv_link_mode }}
 
 APPLY ?= N
 ARGS ?=
+CHECK_GATES ?=
+FAIL_FAST ?= 0
+FILE ?=
+MATCH ?=
 PROJECTS ?=
 # Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
@@ -22,6 +26,8 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
+CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 UV ?= uv
@@ -78,7 +84,6 @@ endif
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
-UV ?= uv
 UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
@@ -294,7 +299,7 @@ _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_check_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb check $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb check $(if $(filter 1,$(FAIL_FAST)),--fail-fast) $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(CHECK_GATES)")
 
 _builtin_test_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb test $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
@@ -303,16 +308,34 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
-	@$(UV_RUN) pyright
-	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) vulture
+	@set -eu; \
+	gates="$(strip $(CHECK_GATES))"; \
+	if [ -z "$$gates" ]; then gates="$$(printf '%s' '$(CHECK_GATES_DEFAULT)' | tr ' ' ',')"; fi; \
+	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
+		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
+			*) printf 'ERROR: unknown CHECK_GATES value: %s (allowed: %s)\n' "$$gate" "$(CHECK_GATES_ALLOWED)" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	case ",$$gates," in *,lint,*) $(UV_RUN) ruff check --no-fix $(RUFF_PATHS) ;; esac; \
+	case ",$$gates," in *,format,*) $(UV_RUN) ruff format --check $(RUFF_PATHS) ;; esac; \
+	case ",$$gates," in *,pyrefly,*) $(UV_RUN) pyrefly check ;; esac; \
+	case ",$$gates," in *,type,*) $(UV_RUN) pyrefly check ;; esac; \
+	case ",$$gates," in *,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; } ;; esac; \
+	case ",$$gates," in *,pyright,*) $(UV_RUN) pyright ;; esac; \
+	case ",$$gates," in *,security,*) $(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates security --projects . ;; esac; \
+	case ",$$gates," in *,markdown,*) $(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates markdown --projects . ;; esac; \
+	case ",$$gates," in *,smells,*) $(UV_RUN) vulture ;; esac
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests" $(PYTEST_ARGS)
+	@set -eu; \
+	target="$(PROJECT_ROOT)/tests"; \
+	case "$(strip $(FILE))" in \
+		"") ;; \
+		/*|..|../*|*/../*|*/..) printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+		*) target="$(PROJECT_ROOT)/$(strip $(FILE))" ;; \
+	esac; \
+	if [ ! -e "$$target" ]; then printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; fi; \
+	$(UV_RUN) python -m pytest "$$target" $(if $(strip $(MATCH)),-k "$(MATCH)") $(if $(filter 1,$(FAIL_FAST)),-x) $(PYTEST_ARGS)
 {% endif %}
 
 _builtin_format_check: _builtin_require_environment

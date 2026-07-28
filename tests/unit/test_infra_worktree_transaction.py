@@ -18,8 +18,8 @@ def _git_status(repository_root: Path) -> bytes:
     result = u.Infra.git_capture_bytes(
         repository_root, ("status", "--porcelain=v1", "-z")
     )
-    tm.ok(result)
-    return result.value
+    status: bytes = tm.ok(result)
+    return status
 
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
@@ -40,8 +40,8 @@ def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelt
             checkpoint_sha=add_result.value,
         )
     )
-    tm.ok(delta_result)
-    return source_root, worktree_root, delta_result.value
+    delta: m.Infra.RepositoryDelta = tm.ok(delta_result)
+    return source_root, worktree_root, delta
 
 
 def _workspace(tmp_path: Path) -> Path:

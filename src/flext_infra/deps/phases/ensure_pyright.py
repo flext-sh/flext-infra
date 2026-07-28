@@ -272,7 +272,8 @@ class FlextInfraEnsurePyrightConfigPhase:
             "integration": overrides.integration,
             "app": overrides.app,
         }
-        return kind_map.get(project_kind)
+        selected: m.Infra.ProjectTypeOverrideConfig | None = kind_map.get(project_kind)
+        return selected
 
     def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
         """Venv settings."""

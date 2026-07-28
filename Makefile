@@ -13,6 +13,9 @@ UV_LINK_MODE := copy
 
 APPLY ?= N
 ARGS ?=
+FAIL_FAST ?= 0
+FILE ?=
+MATCH ?=
 PROJECTS ?=
 # Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
@@ -93,7 +96,6 @@ endif
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
-UV ?= uv
 UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
@@ -332,7 +334,15 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests" $(PYTEST_ARGS)
+	@set -eu; \
+	target="$(PROJECT_ROOT)/tests"; \
+	case "$(strip $(FILE))" in \
+		"") ;; \
+		/*|..|../*|*/../*|*/..) printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+		*) target="$(PROJECT_ROOT)/$(strip $(FILE))" ;; \
+	esac; \
+	if [ ! -e "$$target" ]; then printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; fi; \
+	$(UV_RUN) python -m pytest "$$target" $(if $(strip $(MATCH)),-k "$(MATCH)") $(if $(filter 1,$(FAIL_FAST)),-x) $(PYTEST_ARGS)
 
 
 _builtin_format_check: _builtin_require_environment

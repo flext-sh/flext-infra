@@ -124,7 +124,8 @@ class FlextInfraCodegenPipelineStagesMixin:
             if result.failure:
                 msg = result.error or "dependency conform failed"
                 raise RuntimeError(msg)
-            return result.unwrap()
+            applied: bool = result.unwrap()
+            return applied
 
         return self._run_stage(
             c.Infra.PipelineStage.DEPS,

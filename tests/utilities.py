@@ -779,9 +779,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            return cli_facade.capture(
+            result = cli_facade.capture(
                 [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-            ).success
+            )
+            exists: bool = result.success
+            return exists
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
@@ -1288,10 +1290,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
-            return m.Infra.DetectCommand.model_validate({
+            command: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
             })
+            return command
 
         @staticmethod
         def create_detector_deps_stub(

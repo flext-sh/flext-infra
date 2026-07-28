@@ -69,7 +69,8 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         probe = u.Cli.run_checked(
             ["git", "check-ignore", "-q", relative_path], cwd=root
         )
-    return probe.failure
+    ignored: bool = probe.failure
+    return ignored
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:

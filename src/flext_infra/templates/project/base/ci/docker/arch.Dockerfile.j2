@@ -8,8 +8,8 @@ RUN pacman -Syu --noconfirm --needed \
       bash ca-certificates curl git make base-devel \
     && pacman -Scc --noconfirm
 
-# mise installs the Python and deployment toolchain declared in .mise.toml.
-# uv is supplied by the caller environment and remains intentionally unpinned.
+# mise installs the supported Python {{ python_version }} family.
+# uv is supplied by the managed environment without a project patch pin.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

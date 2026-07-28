@@ -212,7 +212,9 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
         settings = u.Cli.json_read(settings_path).unwrap()
-        search_paths = settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
+            settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        )
         tm.that(
             search_paths,
             eq=list(

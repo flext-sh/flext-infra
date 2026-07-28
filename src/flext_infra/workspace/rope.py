@@ -173,11 +173,17 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path."""
-        return self.workspace_index.modules_by_path.get(str(file_path.resolve()))
+        entry: m.Infra.RopeModuleIndexEntry | None = (
+            self.workspace_index.modules_by_path.get(str(file_path.resolve()))
+        )
+        return entry
 
     def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory."""
-        return self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
+        entry: m.Infra.RopePackageIndexEntry | None = (
+            self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
+        )
+        return entry
 
     def modules(
         self, *, project_names: t.StrSequence | None = None

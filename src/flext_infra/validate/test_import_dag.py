@@ -95,7 +95,8 @@ class FlextInfraValidateTestImportDag(s[bool]):
         for part in parts[1:]:
             for facet, filename in rules.facet_files.items():
                 if part == filename.removesuffix(".py"):
-                    return facet
+                    resolved_facet: str = facet
+                    return resolved_facet
         return None
 
     @classmethod

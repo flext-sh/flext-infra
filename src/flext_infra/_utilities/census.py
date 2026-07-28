@@ -572,6 +572,7 @@ class FlextInfraUtilitiesRefactorCensus:
             body = match.group("body")
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
+            result: str
             if len(remaining) == len(entries):
                 original_text = match.group(0)
                 result = original_text
@@ -583,6 +584,7 @@ class FlextInfraUtilitiesRefactorCensus:
         def _rewrite_multi(match: t.Infra.RegexMatch) -> str:
             """Rewrite multi."""
             body = match.group("body")
+            result: str
             if "\n" not in body:
                 original_text = match.group(0)
                 result = original_text

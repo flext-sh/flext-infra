@@ -57,8 +57,7 @@ def _sarif_fixture(project: str, codes: t.StrSequence = _SMELL_CODES) -> str:
             }
         ],
     })
-    payload = u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap()
-    tm.that(payload, is_=str)
+    payload: str = tm.ok(u.Cli.json_dumps({"runs": [{"results": results}]}))
     return payload
 
 

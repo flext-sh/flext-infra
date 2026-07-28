@@ -1150,7 +1150,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         for arg in args:
             text = arg.strip()
             if text.startswith(prefix):
-                return text[len(prefix) :].strip()
+                value: str = text[len(prefix) :].strip()
+                return value
         return ""
 
     @staticmethod

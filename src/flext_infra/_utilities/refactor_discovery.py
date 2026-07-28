@@ -27,13 +27,14 @@ class FlextInfraUtilitiesRefactorDiscovery:
         settings: t.MappingKV[str, t.Infra.InfraValue],
     ) -> m.Infra.RefactorConfig:
         """Resolve the typed refactor config through the shared CLI DSL."""
-        return m.Infra.RefactorConfig.model_validate(
+        resolved: m.Infra.RefactorConfig = m.Infra.RefactorConfig.model_validate(
             u.Cli.rules_resolve_scope(
                 dict(settings),
                 scope_key=c.Infra.RK_REFACTOR,
                 allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
             )
         )
+        return resolved
 
     @staticmethod
     def filter_refactor_files(

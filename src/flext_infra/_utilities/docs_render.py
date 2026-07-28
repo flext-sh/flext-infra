@@ -422,7 +422,8 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
-        return u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = u.Cli.template_render(template_path, context).unwrap()
+        return rendered
 
     @staticmethod
     def docs_overview_page(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
@@ -526,7 +527,8 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
-        return u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = u.Cli.template_render(template_path, context).unwrap()
+        return rendered
 
     @staticmethod
     def docs_root_overview_page(

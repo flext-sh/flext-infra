@@ -95,7 +95,10 @@ class FlextInfraUtilitiesRefactorPolicy:
         if raw is None:
             return None
         try:
-            return m.Infra.ClassNestingPolicy.model_validate(raw)
+            policy: m.Infra.ClassNestingPolicy = (
+                m.Infra.ClassNestingPolicy.model_validate(raw)
+            )
+            return policy
         except c.ValidationError:
             return None
 

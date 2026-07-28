@@ -48,7 +48,8 @@ class FlextInfraUtilitiesCodegen:
             docstring=docstring,
         )
         rendered: p.Result[str] = u.Cli.template_render(template_path, context)
-        return rendered.unwrap()
+        source: str = rendered.unwrap()
+        return source
 
     @staticmethod
     def dir_has_py_files(pkg_dir: Path) -> bool:

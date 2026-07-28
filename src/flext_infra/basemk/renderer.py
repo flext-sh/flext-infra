@@ -47,13 +47,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             package_manager=c.Infra.POETRY,
             source_dir=c.Infra.DEFAULT_SRC_DIR,
             tests_dir=c.Infra.DIR_TESTS,
-            lint_gates=[
-                c.Infra.LINT,
-                c.Infra.FORMAT,
-                c.Infra.PYREFLY,
-                c.Infra.MYPY,
-                c.Infra.PYRIGHT,
-            ],
+            lint_gates=list(c.Infra.PROJECT_FAST_PATH_CHECK_GATE_VALUES),
             test_command=c.Infra.PYTEST,
         )
 

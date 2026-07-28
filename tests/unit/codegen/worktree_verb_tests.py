@@ -1,54 +1,31 @@
-"""Contract tests for the make-managed development-lane verb.
-
-A development lane is where feature, bugfix and hotfix work is executed. The
-lane must be reachable through the canonical Make surface, so that consumers
-never call `git worktree` directly, and it must live inside the repository it
-belongs to.
-
-These tests pin the declarative contract only. The lane lifecycle itself is
-exercised by the service tests; here we prove that the generated Make surface
-exposes it at all, and that it cannot be invoked destructively by accident.
-"""
+"""Contract tests for the make-managed development-lane verb."""
 
 from __future__ import annotations
+
+from flext_tests import tm
 
 from flext_infra import config
 
 
 class TestsCodegenWorktreeVerb:
-    """The `worktree` verb is part of the canonical public Make surface."""
-
-    def _verb(self, name: str) -> object | None:
-        return next(
-            (verb for verb in config.Infra.codegen.make.verbs if verb.name == name),
-            None,
-        )
+    """The worktree lifecycle is part of the canonical public Make surface."""
 
     def test_worktree_is_a_canonical_public_verb(self) -> None:
-        """Lanes are created through `make`, so the verb must be canonical.
+        """Every generated project receives the governed worktree route."""
+        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
 
-        Declaring it in `extra_verbs` would make it repository-local, which
-        would defeat the purpose: every project must expose the same lane
-        surface.
-        """
-        assert self._verb("worktree") is not None
+        tm.that("worktree" in verbs, eq=True)
 
     def test_worktree_defaults_to_a_read_only_selector(self) -> None:
-        """`make worktree` with no WHAT must never mutate a repository.
+        """The default operation reports state without mutating the repository."""
+        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
+        worktree = verbs["worktree"]
 
-        `list` is the only selector that reports state without touching the
-        worktree registry, so it is the safe default.
-        """
-        verb = self._verb("worktree")
-        assert verb is not None
-        assert verb.default_what == "list"
+        tm.that(worktree.default_what, eq="list")
 
-    def test_worktree_is_not_verb_level_apply_guarded(self) -> None:
-        """The read-only default must not demand APPLY=Y.
+    def test_mutating_operations_own_the_apply_guard(self) -> None:
+        """Read-only list remains usable without granting mutation authority."""
+        verbs = {verb.name: verb for verb in config.Infra.codegen.make.verbs}
+        worktree = verbs["worktree"]
 
-        Guarding at verb level would force `APPLY=Y` onto `list`. The mutating
-        selectors enforce the guard individually in their own recipes instead.
-        """
-        verb = self._verb("worktree")
-        assert verb is not None
-        assert verb.apply_guarded is False
+        tm.that(worktree.apply_guarded, eq=False)

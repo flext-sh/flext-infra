@@ -114,7 +114,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         )
         if canonical_target is not None:
             # mro-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
-            canonical_package = canonical_target[0]
+            canonical_package: str = canonical_target[0]
             if canonical_package != current_pkg:
                 return canonical_package
         for package_name in candidate_packages:

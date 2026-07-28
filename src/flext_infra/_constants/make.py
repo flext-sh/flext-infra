@@ -50,13 +50,43 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
-    PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
+        "type",
     )
-    PROJECT_CHECK_GATES_DEFAULT: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
     )
-    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = "lint,format,pyrefly,mypy,pyright"
+    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+    )
+    PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_ALLOWED_VALUES
+    )
+    PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_DEFAULT_VALUES
+    )
+    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
+        PROJECT_FAST_PATH_CHECK_GATE_VALUES
+    )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     DOCS_PHASES_ALLOWED: Final[str] = "all|generate|fix|audit|build|validate"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
