@@ -41,6 +41,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     class SurfaceContract(m.Value):
+        """Typed ownership contract for one requested conformance surface."""
+
         destinations: frozenset[str] | None = m.Field(
             default=None, description="Output paths selected for conformance planning"
         )
@@ -202,7 +204,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_result.error or "workspace manifest load failed"
                 )
             workspace = workspace_result.value
-        catalog_result = self._validate_workspace_catalog(config_spec, workspace)
+        catalog_result = self.validate_workspace_catalog(config_spec, workspace)
         if catalog_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 catalog_result.error or "workspace catalog validation failed"
@@ -233,9 +235,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(
-            c.Infra.CodegenConformSurface(request.what)
-        )
+        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -452,7 +452,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return u.Cli.template_render(templates_root / entry.source, codegen)
 
     @staticmethod
-    def _validate_workspace_catalog(
+    def validate_workspace_catalog(
         config: m.Infra.CodegenConfigSpec, workspace: m.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
         """Generate catalog-absent repositories from their validated manifests.
@@ -466,8 +466,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if known is None:
                 continue
-            local_payload = local.model_dump(mode="json")
-            known_payload = known.model_dump(mode="json")
+            local_payload = local.model_dump(
+                mode="json", exclude=c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS
+            )
+            known_payload = known.model_dump(
+                mode="json", exclude=c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS
+            )
             if local_payload != known_payload:
                 return r[bool].fail(
                     f"workspace repository differs from catalog: {local.name}"
@@ -757,23 +761,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 final_tooling.error or f"final tooling conform failed: {pyproject}"
             )
-        pyproject_result = u.Infra.pyproject_conform(
-            final_tooling.value,
-            repositories=codegen.repositories,
-            workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-            toolchain=codegen.toolchain,
-            uv_exclude_dependencies=uv_exclude_dependencies,
-        )
-        if pyproject_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_result.error or f"pyproject conform failed: {pyproject}"
-            )
         pyproject_plan = self._file_plan(
-            root,
-            c.Infra.PYPROJECT_FILENAME,
-            pyproject_result.value,
-            block_existing=True,
+            root, c.Infra.PYPROJECT_FILENAME, final_tooling.value, block_existing=True
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -876,13 +865,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
+            uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 prepared_result.error or f"pyproject preparation failed: {pyproject}"
             )
-        # NOTE (multi-agent, mro-45r9): dependency-derived tooling consumes the
-        # canonical groups first; the final pass restores the Git-source contract.
+        # Dependency topology is conformed before tooling so the modernizer is
+        # the final owner of TOML ordering, comments, and type-checker settings.
+        # It preserves the already canonical dependency source declarations.
         tooling_result = modernizer.conform_source(
             prepared_result.value, path=pyproject
         )
@@ -890,20 +881,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 tooling_result.error or f"tooling conform failed: {pyproject}"
             )
-        pyproject_result = u.Infra.pyproject_conform(
-            tooling_result.value,
-            repositories=codegen.repositories,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-            toolchain=codegen.toolchain,
-            uv_exclude_dependencies=uv_exclude_dependencies,
-        )
-        if pyproject_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_result.error or f"pyproject conform failed: {pyproject}"
-            )
         pyproject_plan = self._file_plan(
-            root, c.Infra.PYPROJECT_FILENAME, pyproject_result.value
+            root, c.Infra.PYPROJECT_FILENAME, tooling_result.value
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1003,6 +982,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"create-only destination is not a regular file: {path}"
                 )
+            if managed.policy == "create-only":
+                continue
             artifact_context = self._artifact_render_context(
                 dist=repository.distribution,
                 repository=repository,
@@ -1178,13 +1159,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             (item for item in codegen.providers if item.name == repository.provider),
             None,
         )
-        repository_url = repository.url.removesuffix(".git")
-        git_base_url = (
-            provider.base_url
-            if provider is not None
-            else repository_url.rsplit("/", 1)[0]
-        )
-        git_branch = provider.branch if provider is not None else repository.branch
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -1330,18 +1304,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         validation = self.validate_custom_make(read.value, policy)
         if validation.failure:
-            diagnostic = validation.error or f"invalid custom Make handlers: {path}"
-            rejection_path = Path(f"{path}.rej")
-            u.Cli.warning(f"{diagnostic}; review proposed rejection: {rejection_path}")
-            rejection = u.Cli.atomic_write_text_file(
-                rejection_path,
-                f"--- {path}\n+++ {rejection_path}\n@@ rejected custom Make surface @@\n{diagnostic}\n",
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                validation.error or f"invalid custom Make handlers: {path}"
             )
-            if rejection.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rejection.error
-                    or f"custom Make rejection write failed: {rejection_path}"
-                )
         digest = u.Cli.sha256_content(read.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((
             m.Infra.CodegenFilePlan(

@@ -33,9 +33,7 @@ class TestsMakeTestSelector:
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
-        assert any(
-            verb.name == "test" for verb in config.Infra.codegen.make.verbs
-        )
+        assert any(verb.name == "test" for verb in config.Infra.codegen.make.verbs)
 
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
         """The recipe must forward the knob `base.mk` documents.

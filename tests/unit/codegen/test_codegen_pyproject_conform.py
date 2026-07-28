@@ -110,12 +110,18 @@ workspace = true
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
+        repositories = (
+            workspace.repository,
+            *workspace.members,
+            *config.Infra.codegen.repositories,
+        )
         toolchain = m.Infra.ToolchainSpec(
             python_version="3.13",
             uv_link_mode="copy",
             kubectl_version="1.32.0",
             helm_version="3.19.4",
             kind_version="0.31.0",
+            taplo_version="0.10.0",
         )
         source = """[project]
 name = "external-consumer"
@@ -127,7 +133,7 @@ required-version = "==0.11.28"
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                repositories=(workspace.repository, *workspace.members),
+                repositories=repositories,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -136,7 +142,7 @@ required-version = "==0.11.28"
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                repositories=(workspace.repository, *workspace.members),
+                repositories=repositories,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,

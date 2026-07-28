@@ -27,7 +27,7 @@ class TestsCodegenCatalogExtensions:
             repository=local,
         )
 
-        result = FlextInfraCodegenConform._validate_workspace_catalog(  # ruff:ignore[private-member-access]
+        result = FlextInfraCodegenConform.validate_workspace_catalog(
             config.Infra.codegen, workspace
         )
 
@@ -42,7 +42,7 @@ class TestsCodegenCatalogExtensions:
             repository=local,
         )
 
-        result = FlextInfraCodegenConform._validate_workspace_catalog(  # ruff:ignore[private-member-access]
+        result = FlextInfraCodegenConform.validate_workspace_catalog(
             config.Infra.codegen, workspace
         )
 

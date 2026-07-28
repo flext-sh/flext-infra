@@ -63,9 +63,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return r[bool].ok(False)
         settings_path = (
-            workspace_root
-            / c.Infra.VSCODE_DIRNAME
-            / c.Infra.VSCODE_SETTINGS_FILENAME
+            workspace_root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         )
         rendered = FlextInfraCodegen.render_vscode_settings(workspace_root)
         if rendered.failure:

@@ -1,3 +1,5 @@
+"""Validate workspace-root submodule setup through generated Make behavior."""
+
 from __future__ import annotations
 
 import os

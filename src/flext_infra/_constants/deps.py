@@ -38,7 +38,7 @@ class FlextInfraConstantsDeps:
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
     BANNER: Final[str] = (
-        "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
+        "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make deps WHAT=upgrade APPLY=Y` to regenerate managed dependency sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
         "# [MANAGED] consolidated development dependencies"

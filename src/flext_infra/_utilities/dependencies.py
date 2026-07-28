@@ -47,9 +47,7 @@ class FlextInfraUtilitiesDependencies:
         return normalized or None
 
     @staticmethod
-    def constraint_specifier(
-        version: str,
-    ) -> str:
+    def constraint_specifier(version: str) -> str:
         """Return the resolved lock version as an open-ended dependency floor."""
         normalized_version = version.strip()
         return f">={normalized_version}" if normalized_version else ""

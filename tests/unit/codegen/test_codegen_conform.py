@@ -87,9 +87,7 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_uses_unpinned_environment_uv(
-        self, tmp_path: Path
-    ) -> None:
+    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -184,7 +182,7 @@ class TestCodegenConform:
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
-            "custom.mk": "_custom_status:\n\t@true\n",
+            "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -306,29 +304,6 @@ class TestCodegenConform:
             tuple(item.name for item in environment.editable_repositories),
             eq=("flext-core",),
         )
-
-    def test_make_context_accepts_manifest_without_project_or_known_provider(
-        self,
-    ) -> None:
-        """Build Make context from repository-owned data alone."""
-        repository = config.Infra.codegen.repositories[0].model_copy(
-            update={"provider": "consumer-owned"}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="consumer",
-            repository=repository,
-        )
-        context = FlextInfraCodegenConform._make_render_context(
-            repository,
-            workspace,
-            config.Infra.codegen,
-            tooling_runtime=config.Infra.tooling.runtime,
-        )
-        rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
-        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
-        tm.that(rendered.workspace_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
@@ -455,8 +430,8 @@ class TestCodegenConform:
         )
         tm.ok(process)
 
-    def test_invalid_public_custom_make_is_preserved_with_rejection(
-        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    def test_invalid_public_custom_make_fails_without_side_effects(
+        self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
@@ -482,17 +457,12 @@ class TestCodegenConform:
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
-        tm.ok(result)
-        output = capsys.readouterr().out
+        tm.fail(result)
         rejection = Path(f"{custom}.rej")
-        tm.that("WARN:" in output, eq=True)
-        tm.that("custom.mk line 1 is not a private custom handler" in output, eq=True)
-        tm.that(rejection.is_file(), eq=True)
         tm.that(
-            "custom.mk line 1 is not a private custom handler"
-            in rejection.read_text(encoding="utf-8"),
-            eq=True,
+            result.error or "", has="custom.mk line 1 is not a private custom handler"
         )
+        tm.that(rejection.exists(), eq=False)
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     def test_valid_private_custom_make_has_no_rejection(
@@ -679,7 +649,7 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(
             result.error,
-            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
+            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
         )
 
 

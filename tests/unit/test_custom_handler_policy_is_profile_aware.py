@@ -9,8 +9,8 @@ the profiles have genuinely different contracts:
   owns public orchestration targets and the variables they read.
 
 Applying the member rule to the root made ``codegen conform`` reject the root's
-own surface on every run, emitting a ``custom.mk.rej`` artifact and blocking the
-whole transaction -- which is why no other generated artifact could be landed.
+own surface on every run and block the whole transaction -- which is why no
+other generated artifact could be landed.
 
 The policy is therefore keyed by profile, and the engine selects the entry for
 the profile it is conforming instead of assuming one shape fits every project.

@@ -50,6 +50,7 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+
     def conform_source(
         self, source: str, *, path: Path, declared_python_dirs: t.StrSequence = ()
     ) -> p.Result[str]:

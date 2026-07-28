@@ -9,7 +9,7 @@ import tomlkit
 import tomlkit.items
 from flext_tests import tm
 
-from tests import c, u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
