@@ -32,6 +32,27 @@ class FlextInfraModelsBase:
             m.Field(description="Failure, timeout, or terminating signal"),
         ]
 
+    class WorkspaceFingerprintEntry(m.ContractModel):
+        """Content and index fingerprint for one repository-relative path."""
+
+        path: Annotated[t.NonEmptyStr, m.Field(description="Repository-relative path")]
+        digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="SHA-256 of path, index state, mode, and content"),
+        ]
+
+    class WorkspaceFingerprint(m.ContractModel):
+        """Immutable repository snapshot used to validate one gate run."""
+
+        digest: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Aggregate SHA-256 for HEAD, index, and worktree"),
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsBase.WorkspaceFingerprintEntry, ...],
+            m.Field(description="Ordered per-path fingerprints"),
+        ]
+
     class SummaryStats(m.ContractModel):
         """Bundled stats for summary output."""
 

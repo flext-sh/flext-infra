@@ -58,10 +58,22 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 fallback_to_soft=False,
                 preserve_lock_file=True,
             ):
+                before_result = u.Infra.workspace_fingerprint(
+                    checkout, excluded_paths=serialization.snapshot_excludes
+                )
+                if before_result.failure:
+                    return self._process_failure(
+                        int(c.Infra.ScriptExitCode.INFRA),
+                        before_result.error
+                        or "failed to fingerprint workspace before serialized Make",
+                    )
                 execution_result = u.Cli.run_raw(
                     [c.Infra.MAKE, "--no-print-directory", f"_serialized_{self.verb}"],
                     cwd=checkout,
                     capture=False,
+                )
+                after_result = u.Infra.workspace_fingerprint(
+                    checkout, excluded_paths=serialization.snapshot_excludes
                 )
         except Timeout:
             return self._process_failure(
@@ -77,6 +89,24 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"Make validation lock acquisition failed: {exc}",
             )
 
+        if after_result.failure:
+            return self._process_failure(
+                int(c.Infra.ScriptExitCode.INFRA),
+                after_result.error
+                or "failed to fingerprint workspace after serialized Make",
+            )
+        before = before_result.value
+        after = after_result.value
+        if before.digest != after.digest:
+            changed_paths = u.Infra.workspace_fingerprint_changes(before, after)
+            rendered_paths = ", ".join(changed_paths) or "HEAD/index"
+            return self._process_failure(
+                int(c.Infra.ScriptExitCode.INFRA),
+                (
+                    f"workspace changed during serialized Make {self.verb}: "
+                    f"{rendered_paths}"
+                ),
+            )
         if execution_result.failure:
             return self._process_failure(
                 int(c.Infra.ScriptExitCode.INFRA),

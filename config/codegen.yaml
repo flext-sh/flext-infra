@@ -74,6 +74,11 @@ Infra:
       apply_value: Y
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
+        snapshot_excludes:
+          - .state/flext-infra/make-validation.lock
+          - .reports
+          - .pytest_cache
+          - .coverage
         timeout_seconds: 1800
         verbs: [check, test, codegen]
       verbs:

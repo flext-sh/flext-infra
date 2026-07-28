@@ -258,6 +258,15 @@ class FlextInfraConfigModels:
         lock_path: Annotated[
             Path, m.Field(description="Repository-relative native process-lock path")
         ]
+        snapshot_excludes: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Repository-relative lock and report artifacts omitted "
+                    "from gate-integrity fingerprints"
+                )
+            ),
+        ]
         timeout_seconds: Annotated[
             int,
             m.Field(
@@ -280,6 +289,29 @@ class FlextInfraConfigModels:
                 msg = "make serialization lock_path must be repository-relative"
                 raise ValueError(msg)
             return value
+
+        @m.field_validator("snapshot_excludes")
+        @classmethod
+        def _validate_snapshot_excludes(
+            cls, values: tuple[Path, ...]
+        ) -> tuple[Path, ...]:
+            """Keep explicit snapshot exclusions within their owning checkout."""
+            for value in values:
+                if value.is_absolute() or not value.parts or ".." in value.parts:
+                    msg = (
+                        "make serialization snapshot_excludes must be "
+                        "repository-relative"
+                    )
+                    raise ValueError(msg)
+            return values
+
+        @u.model_validator(mode="after")
+        def _validate_lock_excluded_from_snapshot(self) -> Self:
+            """Require the native lock artifact to remain outside fingerprints."""
+            if self.lock_path not in self.snapshot_excludes:
+                msg = "make serialization lock_path must be snapshot-excluded"
+                raise ValueError(msg)
+            return self
 
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
