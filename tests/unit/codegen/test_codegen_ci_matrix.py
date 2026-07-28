@@ -104,6 +104,8 @@ class TestCodegenCiMatrix:
             tm.that(content, lacks="set +e")
             tm.that(content, lacks="soft-pass")
             tm.that(content, lacks="EXTERNAL BLOCKER")
+            if distro == "alpine":
+                tm.that(content, has="util-linux-misc")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, tmp_path: Path
@@ -188,6 +190,16 @@ class TestCodegenCiMatrix:
         tm.that(matrix, has=f"branches: [{branch}]")
         tm.that(blocking, lacks="      - main")
         tm.that(matrix, lacks="branches: [main]")
+
+    def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
+        """Generated POSIX Make resolves Windows uv and virtualenv executables."""
+        root = self._render_project(tmp_path / "external")
+        content = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(content, has="ifeq ($(OS),Windows_NT)")
+        tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
+        tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
+        tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
+        tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
 
 
 __all__: list[str] = []
