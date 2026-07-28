@@ -29,6 +29,7 @@ _MAKE_TEST_ENV_KEYS = (
     "CHECK_GATES",
     "VALIDATE_GATES",
     "PYTEST_ARGS",
+    "PYTEST_TARGETS",
     "MATCH",
     "FAIL_FAST",
     "RUFF_ARGS",
@@ -136,7 +137,7 @@ def _write_pytest_diag_python_stub(
 
 
 def _write_project(project_root: Path, *, include_parent: bool = False) -> None:
-    (project_root / "tests").mkdir(exist_ok=True)
+    (project_root / "tests").mkdir(parents=True, exist_ok=True)
     if include_parent:
         (project_root.parent / "base.mk").write_text(
             _render_base_mk(), encoding="utf-8"
@@ -462,15 +463,62 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has='if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi;',
+            has=[
+                'if [ -n "$$_files" ] || [ -n "$(MATCH)" ] ||',
+                '[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then',
+                '_coverage_args="--no-cov";',
+                '_coverage_value="not-generated";',
+            ],
         )
 
-    def test_rendered_base_mk_preserves_project_coverage_source(self) -> None:
-        """Keep coverage source owned by each project's pytest configuration."""
+    def test_rendered_base_mk_activates_config_owned_coverage_source(self) -> None:
+        """Activate coverage while leaving its source in project configuration."""
         rendered = _render_base_mk()
-        tm.that(rendered, has='_coverage_args="--cov-report=xml:$$coverage_file";')
+        tm.that(
+            rendered, has='_coverage_args="--cov --cov-report=xml:$$coverage_file";'
+        )
         tm.that(rendered, lacks='_coverage_args="--cov=$(SRC_DIR)')
-        tm.that(rendered, lacks='_coverage_args="--cov --cov-report')
+
+    def test_full_test_fails_when_coverage_artifact_is_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail a full run that reports success without a coverage artifact."""
+        _write_project(tmp_path)
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+        )
+
+        result = _run_make(tmp_path, "test")
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has="coverage report was not generated or is empty",
+        )
+
+    def test_focused_runs_report_coverage_not_generated(self, tmp_path: Path) -> None:
+        """Record truthful coverage state for every supported focused selector."""
+        for selector in ("FILE=tests", "MATCH=contract", "PYTEST_TARGETS=tests/unit"):
+            project_root = tmp_path / selector.split("=", maxsplit=1)[0].lower()
+            _write_project(project_root)
+            (project_root / "tests" / "unit").mkdir(exist_ok=True)
+            _write_pytest_diag_python_stub(
+                project_root,
+                payload=(
+                    "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
+                ),
+                exit_code=0,
+            )
+
+            result = _run_make(project_root, "test", selector)
+            summary = (
+                project_root / ".reports" / "tests" / "latest" / "summary.txt"
+            ).read_text(encoding="utf-8")
+
+            tm.that(result.exit_code, eq=0)
+            tm.that(summary, has="coverage=not-generated")
 
     def test_make_pytest_diag_accepts_exact_numeric_counts(
         self, tmp_path: Path

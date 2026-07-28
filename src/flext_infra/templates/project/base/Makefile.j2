@@ -394,6 +394,7 @@ _builtin_test_all: _builtin_require_environment
     "$(UV_RUN) python -m pytest",
     "$(PROJECT_FLEXT_INFRA) validate",
     "$(PYTEST_TARGETS)",
+    "$(PROJECT_ROOT)/tests",
 ) }}
 {% endif %}
 

@@ -465,8 +465,15 @@ _builtin_test_all: _builtin_require_environment
 	slowest_file="$$report_dir/slowest-tests.txt"; \
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
-	_coverage_args="--cov-report=xml:$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi; \
+	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
+	_coverage_required=1; \
+	_coverage_value="$$coverage_file"; \
+	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+		[ "$$_pytest_run" != "$(PROJECT_ROOT)/tests" ]; then \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+	fi; \
 	printf '%s\n' '$(UV_RUN) python -m pytest' \
 		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
 		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
@@ -479,6 +486,11 @@ _builtin_test_all: _builtin_require_environment
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
+	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
+		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
+			"$$coverage_file" >&2; \
+		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
+	fi; \
 	if [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
@@ -490,11 +502,11 @@ _builtin_test_all: _builtin_require_environment
 		passed=$$((tests - failures - errors - skipped)); \
 		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
 		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$coverage_file" "$$tests" "$$passed" "$$failures" \
+			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
 			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
 		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
-			"$$coverage_file" > "$$summary_file"; \
+			"$$_coverage_value" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
 	if $(PROJECT_FLEXT_INFRA) validate pytest-diag \

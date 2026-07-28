@@ -343,6 +343,7 @@ Infra:
           project-venv-path: ..
           venv-name: .venv
       coverage:
+        source: [src]
         fail-under:
           core: 45
           domain: 30

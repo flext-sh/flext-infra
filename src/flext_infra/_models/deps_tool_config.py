@@ -160,6 +160,10 @@ class FlextInfraModelsDepsToolSettings(
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
+        source: Annotated[
+            t.StrSequence,
+            m.Field(description="Production roots measured by full coverage runs."),
+        ]
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under", description="Coverage fail-under thresholds by layer."
         )

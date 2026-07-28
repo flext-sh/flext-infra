@@ -33,6 +33,26 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 class TestsFlextInfraDepsModernizerCoverage:
     """Tests coverage settings phase behavior."""
 
+    def test_apply_round_trips_config_owned_source(self) -> None:
+        """Project an arbitrary configured coverage source without hardcoding it."""
+        tool_config = config.Infra.tooling
+        arbitrary_source = ("arbitrary-production-root",)
+        coverage_config = tool_config.tools.coverage.model_copy(
+            update={"source": arbitrary_source}
+        )
+        tools_config = tool_config.tools.model_copy(
+            update={"coverage": coverage_config}
+        )
+        configured = tool_config.model_copy(update={"tools": tools_config})
+        doc = tomlkit.document()
+
+        _ = FlextInfraEnsureCoverageConfigPhase(configured).apply(doc)
+
+        tool = _mapping(_doc_mapping(doc)["tool"])
+        coverage = _mapping(tool["coverage"])
+        run = _mapping(coverage["run"])
+        tm.that(list(_strings(run["source"])), eq=list(arbitrary_source))
+
     def test_apply_sets_report_and_run_state(self) -> None:
         """Verify apply sets report and run state."""
         tool_config = config.Infra.tooling
