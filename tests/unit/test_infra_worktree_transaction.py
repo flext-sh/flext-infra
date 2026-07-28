@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from importlib import metadata
 from pathlib import Path
 from threading import Event
+from typing import TYPE_CHECKING
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, p, t
@@ -435,6 +439,20 @@ class TestsFlextInfraWorktreeTransaction:
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
+
+    def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
+        """Installed artifacts carry every executable required by transactions."""
+        runtime_requirements = metadata.requires("flext-infra") or ()
+        runtime_names = {
+            canonicalize_name(Requirement(requirement).name)
+            for requirement in runtime_requirements
+        }
+        required_names = {
+            canonicalize_name(command[0])
+            for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }
+
+        tm.that(required_names <= runtime_names, eq=True)
 
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""
