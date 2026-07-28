@@ -51,7 +51,7 @@ class FlextInfraWorkspaceEnvironment:
     def sync_mise_toml(
         cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[bool]:
-        """Render or merge canonical Python tool pins into ``.mise.toml``."""
+        """Render or merge canonical Python tool selectors into ``.mise.toml``."""
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
         rendered = cls.render_mise_toml(workspace_root)
         if rendered.failure:
@@ -104,16 +104,16 @@ class FlextInfraWorkspaceEnvironment:
         *,
         apply: bool = True,
     ) -> p.Result[bool]:
-        """Merge canonical tool pins into a custom ``.mise.toml``."""
+        """Merge canonical tool selectors into a custom ``.mise.toml``."""
         doc = u.Cli.toml_read(target_path)
         if doc is None:
             return r[bool].fail(f"{target_path}: invalid TOML")
-        tool_pins_result = cls.mise_tool_pins(workspace_root)
-        if tool_pins_result.failure:
-            return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
+        selectors_result = cls.mise_tool_selectors(workspace_root)
+        if selectors_result.failure:
+            return r[bool].fail(selectors_result.error or ".mise.toml selectors failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
         changed = False
-        for name, value in tool_pins_result.value.items():
+        for name, value in selectors_result.value.items():
             if u.Cli.toml_value(tools, name) == value:
                 continue
             tools[name] = value
@@ -136,8 +136,8 @@ class FlextInfraWorkspaceEnvironment:
         return r[bool].ok(True)
 
     @classmethod
-    def mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
-        """Return canonical mise tool pins for one workspace."""
+    def mise_tool_selectors(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
+        """Return canonical mise tool selectors for one workspace."""
         rendered = cls.render_mise_toml(workspace_root)
         if rendered.failure:
             return r[dict[str, str]].fail(
@@ -149,17 +149,17 @@ class FlextInfraWorkspaceEnvironment:
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
             return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        pins: dict[str, str] = {}
+        selectors: dict[str, str] = {}
         for name, value in tools.items():
             if not isinstance(value, str):
                 return r[dict[str, str]].fail(
                     f"canonical .mise.toml [tools].{name} must be a string"
                 )
-            pins[name] = value
+            selectors[name] = value
         python_version = cls.workspace_python_version(workspace_root)
         if python_version is not None:
-            pins["python"] = python_version
-        return r[dict[str, str]].ok(pins)
+            selectors["python"] = python_version
+        return r[dict[str, str]].ok(selectors)
 
     @staticmethod
     def has_pyproject(workspace_root: Path) -> bool:
