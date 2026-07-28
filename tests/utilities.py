@@ -785,7 +785,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return exists
 
         @staticmethod
-        def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
+        def configure_local_origin(
+            repo_root: Path, remote_root: Path, *, branch: str = c.Infra.GIT_MAIN
+        ) -> Path:
             """Attach and seed a local bare origin for push behavior tests."""
             bare_remote = remote_root / "origin.git"
             tm.ok(
@@ -793,6 +795,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     c.Infra.GIT,
                     "init",
                     "--bare",
+                    "--initial-branch",
+                    branch,
                     str(bare_remote),
                 ])
             )
@@ -810,7 +814,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             tm.ok(
                 cli_facade.run_checked(
-                    [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
+                    [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, branch],
                     cwd=repo_root,
                 )
             )

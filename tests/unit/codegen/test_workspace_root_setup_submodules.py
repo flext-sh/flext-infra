@@ -162,6 +162,10 @@ class TestsWorkspaceRootSetupSubmodules:
         )
         process = outcome.value
 
-        tm.that(process.exit_code, eq=0)
+        tm.that(
+            process.exit_code,
+            eq=0,
+            msg=u.Infra.process_diagnostics(process.stdout, process.stderr),
+        )
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")
