@@ -141,8 +141,59 @@ class TestsCodegenMakeEnvironment:
         ).splitlines()
         tm.that(output[0], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
         tm.that(output[1], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[2].split(":", maxsplit=1)[0], eq=f"PATH={runtime_bin}")
+        tm.that(output[2], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
         tm.that(output[3], eq=str(runtime_python))
+
+    def test_setup_preserves_external_uv_and_removes_hostile_venv(
+        self, tmp_path: Path
+    ) -> None:
+        """Clean CI can provision uv on PATH without leaking an active venv."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        hostile_venv = tmp_path / "hostile" / ".venv"
+        hostile_bin = hostile_venv / "bin"
+        hostile_bin.mkdir(parents=True)
+        hostile_uv = hostile_bin / "uv"
+        hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+        hostile_uv.chmod(0o755)
+        provisioned_bin = tmp_path / "provisioned" / "bin"
+        provisioned_bin.mkdir(parents=True)
+        uv_log = tmp_path / "uv.log"
+        provisioned_uv = provisioned_bin / "uv"
+        provisioned_uv.write_text(
+            "#!/bin/sh\n"
+            f"printf '%s\\n' \"$*\" >> '{uv_log}'\n"
+            'if [ "$1" = "venv" ]; then\n'
+            '  mkdir -p "$3/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
+            '  chmod +x "$3/bin/python"\n'
+            "fi\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        provisioned_uv.chmod(0o755)
+
+        result = u.Cli.run_raw(
+            ["make", "--no-print-directory", "setup"],
+            cwd=project_root,
+            env={
+                **{
+                    key: value
+                    for key, value in os.environ.items()
+                    if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
+                },
+                "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+                "VIRTUAL_ENV": str(hostile_venv),
+            },
+            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+        )
+
+        process = tm.ok(result)
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        commands = uv_log.read_text(encoding="utf-8")
+        tm.that(commands, has="venv --clear")
+        tm.that(commands, has="sync --project")
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
