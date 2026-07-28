@@ -33,8 +33,8 @@ class TestsMakeTestSelector:
     def test_fmt_is_the_only_public_formatting_verb(self, tmp_path: Path) -> None:
         """The generated Makefile runs canonical fmt and rejects its retired name."""
         public_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
-        tm.that("fmt" in public_verbs, eq=True)
-        tm.that("format" in public_verbs, eq=False)
+        tm.that("fmt" in public_verbs, where=bool)
+        tm.that("format" not in public_verbs, where=bool)
 
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
@@ -225,7 +225,7 @@ class TestsMakeTestSelector:
         )
         arguments = invocation_log.read_text(encoding="utf-8")
         tm.that(arguments, has=selected)
-        tm.that(str(tmp_path / "tests") in arguments, eq=False)
+        tm.that(str(tmp_path / "tests") not in arguments, where=bool)
 
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
         """Forward both supported pytest selectors through the local recipe.

@@ -30,19 +30,19 @@ class TestsFlextInfraMakeSerialization:
         serialization = config.Infra.codegen.make.serialization
         declared_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
 
-        tm.that(serialization.lock_path.is_absolute(), eq=False)
+        tm.that(not serialization.lock_path.is_absolute(), where=bool)
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
-        tm.that(set(serialization.verbs).issubset(declared_verbs), eq=True)
+        tm.that(set(serialization.verbs).issubset(declared_verbs), where=bool)
         for verb, fixed_points in serialization.mutation_fixed_points.items():
-            tm.that(verb in serialization.verbs, eq=True)
+            tm.that(verb in serialization.verbs, where=bool)
             tm.that(fixed_points, empty=False)
             for mutation_what, fixed_point_what in fixed_points.items():
                 tm.that(mutation_what, empty=False)
                 tm.that(fixed_point_what, empty=False)
-        tm.that(serialization.lock_path in serialization.snapshot_excludes, eq=True)
+        tm.that(serialization.lock_path in serialization.snapshot_excludes, where=bool)
         for excluded_path in serialization.snapshot_excludes:
-            tm.that(excluded_path.is_absolute(), eq=False)
+            tm.that(not excluded_path.is_absolute(), where=bool)
 
     def test_mutation_mapping_requires_a_fixed_point(self) -> None:
         """Every declared mutating selector has a validation selector."""
@@ -199,7 +199,7 @@ class TestsFlextInfraMakeSerialization:
                 (
                     tmp_path / ".reports" / "serialization-test" / "incumbent-started"
                 ).exists(),
-                eq=True,
+                where=bool,
             )
             contender_future = executor.submit(
                 u.Cli.run_raw, [*command, validation_verb], tmp_path
@@ -217,12 +217,12 @@ class TestsFlextInfraMakeSerialization:
         tm.that(incumbent_process.exit_code, eq=0)
         tm.that(contender_process.exit_code, eq=0)
         tm.that(
-            (tmp_path / ".reports" / "serialization-test" / "overlap").exists(),
-            eq=False,
+            not (tmp_path / ".reports" / "serialization-test" / "overlap").exists(),
+            where=bool,
         )
         tm.that(
             (tmp_path / config.Infra.codegen.make.serialization.lock_path).is_file(),
-            eq=True,
+            where=bool,
         )
 
     def test_external_callers_share_the_selected_make_engine_lock(
@@ -306,7 +306,7 @@ class TestsFlextInfraMakeSerialization:
                 and time.monotonic() < deadline
             ):
                 time.sleep(0.01)
-            tm.that((state / "started").exists(), eq=True)
+            tm.that((state / "started").exists(), where=bool)
             contender_future = executor.submit(command, callers[1])
             (state / "release").write_text("", encoding="utf-8")
             incumbent = tm.ok(
@@ -318,10 +318,10 @@ class TestsFlextInfraMakeSerialization:
 
         tm.that(incumbent.exit_code, eq=0)
         tm.that(contender.exit_code, eq=0)
-        tm.that((state / "overlap").exists(), eq=False)
+        tm.that(not (state / "overlap").exists(), where=bool)
         tm.that(
             (engine_root / config.Infra.codegen.make.serialization.lock_path).is_file(),
-            eq=True,
+            where=bool,
         )
 
     def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
@@ -594,14 +594,14 @@ class TestsFlextInfraMakeSerialization:
                 and time.monotonic() < deadline
             ):
                 time.sleep(0.01)
-            tm.that((state / "mutation-started").exists(), eq=True)
+            tm.that((state / "mutation-started").exists(), where=bool)
             mutation_lock_held = False
             try:
                 with FileLock(lock_path, timeout=0):
                     pass
             except Timeout:
                 mutation_lock_held = True
-            tm.that(mutation_lock_held, eq=True)
+            tm.that(mutation_lock_held, where=bool)
             (state / "mutation-release").write_text("", encoding="utf-8")
 
             deadline = time.monotonic() + self._process_start_timeout_seconds
@@ -611,14 +611,14 @@ class TestsFlextInfraMakeSerialization:
                 and time.monotonic() < deadline
             ):
                 time.sleep(0.01)
-            tm.that((state / "fixed-point-started").exists(), eq=True)
+            tm.that((state / "fixed-point-started").exists(), where=bool)
             fixed_point_lock_held = False
             try:
                 with FileLock(lock_path, timeout=0):
                     pass
             except Timeout:
                 fixed_point_lock_held = True
-            tm.that(fixed_point_lock_held, eq=True)
+            tm.that(fixed_point_lock_held, where=bool)
             (state / "fixed-point-release").write_text("", encoding="utf-8")
             mutation = tm.ok(
                 mutation_future.result(timeout=self._process_start_timeout_seconds)

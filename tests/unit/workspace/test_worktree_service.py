@@ -58,8 +58,8 @@ class TestsFlextInfraWorktreeService:
         )
 
         tm.that(added, eq=str(lane))
-        tm.that(lane.is_dir(), eq=True)
-        tm.that(lane.is_relative_to(repository), eq=True)
+        tm.that(lane.is_dir(), where=bool)
+        tm.that(lane.is_relative_to(repository), where=bool)
         tm.that(
             tm.ok(u.Infra.git_capture(repository, ("worktree", "list", "--porcelain"))),
             has=f"worktree {lane}",
@@ -75,7 +75,7 @@ class TestsFlextInfraWorktreeService:
         )
 
         tm.that(removed, eq=str(lane))
-        tm.that(lane.exists(), eq=False)
+        tm.that(not lane.exists(), where=bool)
 
     def test_update_fast_forwards_a_lane_to_the_requested_base(
         self, tmp_path: Path
@@ -173,6 +173,9 @@ class TestsFlextInfraWorktreeService:
             )
         )
         attached = superproject / "attached"
+        tm.that(
+            tm.ok(u.Infra.git_primary_worktree_root(attached)), eq=attached.resolve()
+        )
         branch = "feature/attached"
         primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
         expected_lane = primary / c.Infra.WORKTREES_DIRNAME / branch
@@ -189,8 +192,8 @@ class TestsFlextInfraWorktreeService:
         tm.that(lane, eq=str(expected_lane))
         tm.that(
             f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"
-            in expected_lane.as_posix(),
-            eq=False,
+            not in expected_lane.as_posix(),
+            where=bool,
         )
 
         removed = tm.ok(
