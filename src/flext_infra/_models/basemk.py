@@ -18,9 +18,6 @@ class FlextInfraModelsBasemk:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Target Python version")
         ]
-        package_manager: Annotated[str, m.Field(description="Dependency manager")] = (
-            c.Infra.POETRY
-        )
         source_dir: Annotated[str, m.Field(description="Source directory path")] = (
             c.Infra.DEFAULT_SRC_DIR
         )
@@ -30,9 +27,6 @@ class FlextInfraModelsBasemk:
         lint_gates: Annotated[
             t.StrSequence, m.Field(description="Enabled quality gates")
         ] = m.Field(default_factory=tuple)
-        test_command: Annotated[str, m.Field(description="Default test command")] = (
-            c.Infra.PYTEST
-        )
 
 
 __all__: list[str] = ["FlextInfraModelsBasemk"]

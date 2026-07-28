@@ -3,23 +3,26 @@
 from __future__ import annotations
 
 from flext_infra import config
+from flext_tests import tm
 
 
 class TestsToolchainRequirement:
-    """Toolchain requirements tolerate compatible patch drift."""
+    """Toolchain requirements tolerate compatible Python patch drift."""
 
-    def test_uv_requirement_uses_declared_patch_as_floor(self) -> None:
-        """The declared baseline remains the lower compatibility bound."""
+    def test_python_requirement_uses_declared_minor_as_floor(self) -> None:
+        """The declared Python minor remains the lower compatibility bound."""
         toolchain = config.Infra.codegen.toolchain
 
-        assert toolchain.uv_required_version.startswith(
-            f">={toolchain.uv_version},<"
+        tm.that(
+            toolchain.python_required_version, has=f">={toolchain.python_version},<"
         )
 
-    def test_uv_requirement_rejects_the_next_minor(self) -> None:
-        """Minor upgrades remain an explicit SSOT migration."""
+    def test_python_requirement_rejects_the_next_minor(self) -> None:
+        """Python minor upgrades remain an explicit SSOT migration."""
         toolchain = config.Infra.codegen.toolchain
-        major, _, rest = toolchain.uv_version.partition(".")
-        minor, _, _patch = rest.partition(".")
+        major, _, minor = toolchain.python_version.partition(".")
 
-        assert toolchain.uv_required_version.endswith(f",<{major}.{int(minor) + 1}")
+        tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
+
+
+__all__: tuple[str, ...] = ()

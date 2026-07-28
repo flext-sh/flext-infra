@@ -106,7 +106,7 @@ workspace = true
         )
         tm.that(result.failure, eq=True)
 
-    def test_attached_member_removes_direct_source(self) -> None:
+    def test_attached_member_rejects_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
@@ -118,8 +118,7 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        document = tomllib.loads(tm.ok(result))
-        tm.that(document["project"]["dependencies"], eq=[member.distribution])
+        tm.fail(result, has="attached workspace dependency declares direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
@@ -131,6 +130,7 @@ workspace = true
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
+        required_dev = config.Infra.codegen.scaffold.project.dev
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
@@ -151,6 +151,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         second = tm.ok(
@@ -160,6 +161,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         document = tomllib.loads(first)

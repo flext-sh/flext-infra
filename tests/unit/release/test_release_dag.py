@@ -213,9 +213,9 @@ class TestsFlextInfraReleaseDag:
                 tmp_path, project_names=(project_name,), initialize_project_git=True
             )
             project = workspace / project_name
-            synthetic_token = "AKIA" + "Q7Z9X2W4V6B8N3M5"
+            synthetic_token = hashlib.sha256(project_name.encode()).hexdigest()
             (project / "credential.txt").write_text(
-                f"AWS_ACCESS_KEY_ID={synthetic_token}\n", encoding="utf-8"
+                f'api_key = "{synthetic_token}"\n', encoding="utf-8"
             )
             u.Tests.commit_git_changes(project, "add synthetic secret fixture")
             ambient_policy = tmp_path / "ambient-gitleaks.toml"

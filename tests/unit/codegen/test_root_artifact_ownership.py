@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
+from tests import u
 
 
 class TestsRootArtifactOwnership:
@@ -41,24 +42,13 @@ class TestsRootArtifactOwnership:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=root))
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed conform project"], cwd=root
-            )
-        )
+        u.Tests.initialize_git_repo(root)
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
             "custom.mk": b"# manual project extension\n",
         }
         (root / "custom.mk").write_bytes(manual["custom.mk"])
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manual extensions"], cwd=root
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed manual extensions")
         request = m.Infra.CodegenConformRequest(root=root)
         planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
             request

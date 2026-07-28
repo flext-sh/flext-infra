@@ -93,35 +93,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = [
-            "mise",
-            "exec",
-            f"taplo@{config.Infra.codegen.toolchain.taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> bool:
         """Resolve physical attachment from canonical Git topology."""

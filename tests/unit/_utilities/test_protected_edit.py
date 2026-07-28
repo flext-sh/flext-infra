@@ -85,11 +85,17 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
 
         tm.that(result, eq=(True, []))
-        assert (
-            left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 2"
+        tm.that(
+            (
+                left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                == "VALUE = 2"
+            ),
+            eq=True,
         )
-        assert (
-            right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 20"
+        tm.that(
+            (
+                right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                == "VALUE = 20"
+            ),
+            eq=True,
         )

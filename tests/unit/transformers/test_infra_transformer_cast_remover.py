@@ -51,10 +51,10 @@ class TestsFlextInfraTransformersCastRemover:
         source = "x: int = 42\n"
         code, changes = _transform(source)
         tm.that(code, eq=source)
-        assert not changes
+        tm.that(not changes, eq=True)
 
     def test_invalid_syntax_unchanged(self) -> None:
         source = "def foo(\n"
         code, changes = _transform(source)
         tm.that(code, eq=source)
-        assert not changes
+        tm.that(not changes, eq=True)

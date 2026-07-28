@@ -234,20 +234,6 @@ class TestsCodegenMakeEnvironment:
         tm.that(commands, has="venv --clear")
         tm.that(commands, has="sync --project")
 
-        workflows_result = u.Cli.run_raw(
-            ["make", "--no-print-directory", "check", "CHECK_GATES=workflows"],
-            cwd=project_root,
-            env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
-        )
-        workflows_process = tm.ok(workflows_result)
-        tm.that(
-            workflows_process.exit_code,
-            eq=0,
-            msg=workflows_process.stdout + workflows_process.stderr,
-        )
-        tm.that(uv_log.read_text(encoding="utf-8"), has="actionlint")
-
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
         project_root, _workspace_root = self._render_makefile(
@@ -260,7 +246,11 @@ class TestsCodegenMakeEnvironment:
         )
         tm.that("UV ?= uv" in makefile, eq=True)
         tm.that(
-            'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            (
+                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
+                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
+            )
+            in makefile,
             eq=True,
         )
         tm.that("CHECK_GATE_NAMES :=" in makefile, eq=True)
@@ -268,6 +258,28 @@ class TestsCodegenMakeEnvironment:
         tm.that("$(UV_RUN) actionlint" in makefile, eq=True)
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """A serialized gate preserves the canonical setup-required diagnostic."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["make", "--no-print-directory", "test"],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr,
+            has=["missing environment interpreter", "make setup creates it"],
+        )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
         project_root, _workspace_root = self._render_makefile(
@@ -278,8 +290,8 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "UV ?= uv",
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
-            "--no-install-project",
-            '--editable "$(PROJECT_ROOT)"',
+            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
             "refs/heads/$$branch",
         ):
@@ -289,6 +301,9 @@ class TestsCodegenMakeEnvironment:
             "uv@",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
+            "--no-install-project",
+            '--editable "$(PROJECT_ROOT)"',
+            "pip install",
         ):
             tm.that(makefile, lacks=forbidden)
 

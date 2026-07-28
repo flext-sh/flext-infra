@@ -15,8 +15,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/models/base.py",
             "target_namespace": "FlextUtilities",
         })
-        assert not ok
-        assert violation is not None
+        tm.that(not ok, eq=True)
+        violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_utilities_family_allows_utilities_target(self) -> None:
@@ -25,7 +25,7 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/_utilities/result_helpers.py",
             "target_namespace": "FlextUtilities",
         })
-        assert ok
+        tm.that(ok, eq=True)
         tm.that(violation, none=True)
 
     def test_dispatcher_family_blocks_models_target(self) -> None:
@@ -34,8 +34,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/_dispatcher/timeout.py",
             "target_namespace": "FlextModels",
         })
-        assert not ok
-        assert violation is not None
+        tm.that(not ok, eq=True)
+        violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_runtime_family_blocks_non_runtime_target(self) -> None:
@@ -44,8 +44,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/_runtime.py",
             "target_namespace": "FlextDispatcher",
         })
-        assert not ok
-        assert violation is not None
+        tm.that(not ok, eq=True)
+        violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_decorators_family_blocks_dispatcher_target(self) -> None:
@@ -54,8 +54,8 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/_decorators/discovery.py",
             "target_namespace": "FlextDispatcher",
         })
-        assert not ok
-        assert violation is not None
+        tm.that(not ok, eq=True)
+        violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")
 
     def test_helper_consolidation_is_prechecked(self) -> None:
@@ -64,6 +64,6 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
             "current_file": "flext-core/src/flext_core/_utilities/result_helpers.py",
             "target_namespace": "FlextModels",
         })
-        assert not ok
-        assert violation is not None
+        tm.that(not ok, eq=True)
+        violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")

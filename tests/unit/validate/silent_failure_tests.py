@@ -78,7 +78,7 @@ class TestSilentFailureDetector:
         rope_project = u.Infra.init_rope_project(project)
         try:
             resource = u.Infra.get_resource_from_path(rope_project, file_path)
-            assert resource is not None
+            resource = tm.not_none(resource)
             updated, changes = u.Infra.fix_silent_failure_sentinels(
                 rope_project, resource, apply=False
             )

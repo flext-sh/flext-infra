@@ -42,8 +42,6 @@ class FlextInfraConstantsMake:
     MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
     MYPY_TIMEOUT_SECONDS_DEFAULT: Final[int] = 600
     MYPY_TIMEOUT_GRACE_SECONDS: Final[int] = 10
-    MYPY_TIMEOUT_EXIT_CODE: Final[int] = 124
-    MYPY_SIGNAL_EXIT_OFFSET: Final[int] = 128
     PRLIMIT_COMMAND: Final[str] = "prlimit"
     PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
     TIMEOUT_COMMAND: Final[str] = "timeout"

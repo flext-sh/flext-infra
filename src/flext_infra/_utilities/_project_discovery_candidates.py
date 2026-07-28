@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c
+from flext_infra.constants import c
 from flext_infra._utilities._project_discovery_shape import (
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 )
@@ -19,7 +19,9 @@ from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra.typings import t
+
+_log = u.fetch_logger(__name__)
 
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
@@ -49,14 +51,25 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         roots: list[Path] = []
         seen: set[Path] = set()
         for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
-            if not candidate.is_dir():
+            try:
+                if not candidate.is_dir():
+                    continue
+                resolved_candidate = candidate.resolve()
+                declares_project = (
+                    resolved_candidate / c.Infra.PYPROJECT_FILENAME
+                ).is_file()
+            except OSError as exc:
+                _log.info(
+                    "project_discovery_candidate_inaccessible",
+                    candidate=str(candidate),
+                    error=str(exc),
+                )
                 continue
-            resolved_candidate = candidate.resolve()
             if resolved_candidate == resolved_workspace_root:
                 continue
             if resolved_candidate in seen:
                 continue
-            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+            if not declares_project:
                 continue
             metadata_result = u.read_project_metadata(resolved_candidate)
             if metadata_result.failure:

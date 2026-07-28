@@ -51,8 +51,10 @@ class TestConfigFixerPublicBehavior:
         )
 
         tm.ok(result)
-        assert result.value
-        assert any("project1/pyproject.toml" in line for line in result.value)
+        tm.that(result.value, empty=False)
+        tm.that(
+            any("project1/pyproject.toml" in line for line in result.value), eq=True
+        )
 
     def test_run_dry_run_preserves_file_while_reporting_fixes(
         self, tmp_path: Path
@@ -68,5 +70,5 @@ class TestConfigFixerPublicBehavior:
         )
 
         tm.ok(result)
-        assert result.value
+        tm.that(result.value, empty=False)
         tm.that(pyproject.read_text(encoding="utf-8"), eq=original)

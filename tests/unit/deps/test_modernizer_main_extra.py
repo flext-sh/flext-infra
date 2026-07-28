@@ -262,7 +262,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         result = modernizer.conform_source(source, path=tmp_path / "pyproject.toml")
 
         error = tm.fail(result)
-        tm.that(error, has=["invalid configuration", "error parsing glob"])
+        tm.that(error, has=["taplo format failed (1)", str(tmp_path / ".taplo.toml")])
         tm.that(
             error, lacks=["couldn't exec process", "pyproject tooling render failed"]
         )

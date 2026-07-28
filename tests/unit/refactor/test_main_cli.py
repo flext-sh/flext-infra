@@ -552,8 +552,10 @@ class TestsFlextInfraRefactorMainCli:
         violations = [
             violation for project in report.projects for violation in project.violations
         ]
-        assert violations
-        assert all(violation.kind == expected_kind for violation in violations)
+        tm.that(violations, empty=False)
+        tm.that(
+            all(violation.kind == expected_kind for violation in violations), eq=True
+        )
 
     def test_refactor_census_mro_completeness_skips_irrelevant_modules(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

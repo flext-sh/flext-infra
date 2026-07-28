@@ -52,7 +52,7 @@ class TestGateErrorReportingPublicBehavior:
             else:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
     def test_ruff_format_deduplicates_reported_files(self, tmp_path: Path) -> None:
@@ -90,5 +90,5 @@ class TestGateErrorReportingPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)

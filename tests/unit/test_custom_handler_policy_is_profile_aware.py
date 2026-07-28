@@ -29,8 +29,14 @@ from flext_tests import tm
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     def test_every_declared_profile_has_a_custom_handler_policy(self) -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        declared = frozenset(profile.name for profile in config.Infra.codegen.profiles)
-        covered = frozenset(config.Infra.codegen.make.custom_handler_policies)
+        declared = frozenset(
+            c.Infra.MakeProfile(profile.name)
+            for profile in config.Infra.codegen.profiles
+        )
+        covered = frozenset(
+            c.Infra.MakeProfile(profile)
+            for profile in config.Infra.codegen.make.custom_handler_policies
+        )
 
         tm.that(declared - covered, eq=frozenset())
 

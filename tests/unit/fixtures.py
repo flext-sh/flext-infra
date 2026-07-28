@@ -41,7 +41,7 @@ def _modernizer_workspace_pyproject(*members: str) -> str:
 @pytest.fixture
 def deptry_report_payload() -> t.JsonPayload:
     parsed = u.Cli.json_parse(_read_fixture("deps", "deptry_report.json"))
-    tm.that(parsed, none=False)
+    parsed = tm.not_none(parsed)
     tm.ok(parsed)
     return parsed.value
 
@@ -218,8 +218,8 @@ def models_resource(
     resource = u.Infra.get_resource_from_path(
         rope_project, workspace_root / "src" / "rope_demo" / "models.py"
     )
-    assert resource is not None
-    return resource
+    validated: t.Infra.RopeResource = tm.not_none(resource)
+    return validated
 
 
 @pytest.fixture
@@ -231,8 +231,8 @@ def services_resource(
     resource = u.Infra.get_resource_from_path(
         rope_project, workspace_root / "src" / "rope_demo" / "services.py"
     )
-    assert resource is not None
-    return resource
+    validated: t.Infra.RopeResource = tm.not_none(resource)
+    return validated
 
 
 __all__: list[str] = [

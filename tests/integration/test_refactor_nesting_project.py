@@ -108,9 +108,5 @@ class TestsFlextInfraIntegrationRefactorNestingProject:
         )
         result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
         tm.that(result.success, eq=True)
-        assert result.refactored_code is not None
-        tm.that(
-            "Optional[int]" in result.refactored_code
-            or "int" in result.refactored_code,
-            eq=True,
-        )
+        refactored_code = tm.not_none(result.refactored_code)
+        tm.that("Optional[int]" in refactored_code or "int" in refactored_code, eq=True)

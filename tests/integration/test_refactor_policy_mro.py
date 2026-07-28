@@ -99,4 +99,4 @@ class TestsFlextInfraIntegrationRefactorPolicyMro:
             )
         except ValueError:
             raised = True
-        assert raised
+        tm.that(raised, eq=True)

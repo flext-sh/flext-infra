@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
-from flext_infra import c, config
+from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -59,6 +57,20 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="|| make")
         tm.that(workflows, lacks="soft-pass")
 
+    def test_blocking_ci_installs_declared_toolchain_before_make(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated blocking CI provides every binary consumed by canonical Make."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        mise_action = config.Infra.codegen.github_actions["mise"]
+        install = f"{mise_action.repository}@{mise_action.sha}"
+
+        tm.that(workflow, has=install)
+        tm.that(workflow.index(install), lt=workflow.index("run: make setup"))
+
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
         root = self._render_project(tmp_path / "external")
@@ -101,10 +113,10 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
         tm.that(workflow.is_file(), eq=True)
-        content = yaml.safe_load(workflow.read_text(encoding="utf-8"))
-        jobs = content["jobs"]
+        content = u.Cli.yaml_load_mapping(workflow)
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
         for leg in ("distro-matrix", "macos", "windows", "wsl", "kind"):
-            tm.that(leg in jobs, eq=True)
+            tm.that(jobs, has=leg)
 
 
 __all__: list[str] = []

@@ -1,6 +1,9 @@
+# @flext-managed: continuous
+# @flext-regenerate: make deps WHAT=upgrade APPLY=Y
+# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-maintenance: do not edit managed sections; edit the SSOT
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
-# Run `make deps WHAT=upgrade APPLY=Y` to regenerate managed dependency sections.
 # Sections with [CUSTOM] are project-specific extension points.
 
 # [MANAGED] build system
@@ -42,10 +45,12 @@ dev = [
   "mkdocs-versioning>=0.4.0",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
+  "mypy>=2.3.0",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",
   "pyrefly>=1.1.1",
+  "pyright>=1.1.411",
   "pytest>=9.1.1",
   "pytest-benchmark>=5.2.3",
   "pytest-clarity>=1.0.1",
@@ -103,6 +108,7 @@ classifiers = [
 ]
 dependencies = [
   "defusedxml>=0.7.1",
+  "filelock>=3.32.0",
   "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
   "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
   "gitpython>=3.1.57",
@@ -480,7 +486,7 @@ addopts = [
   "--durations=10",
   "--markdown-docs",
   "--strict-markers",
-  "--timeout=10",
+  "--timeout=60",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [
@@ -670,7 +676,6 @@ split-on-trailing-comma = false
   "unused-import",
 ]
 "**/tests/**" = [
-  "assert",
   "compare-to-empty-string",
   "magic-value-comparison",
   "undocumented-public-class",

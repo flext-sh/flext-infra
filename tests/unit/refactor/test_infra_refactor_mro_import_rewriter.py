@@ -30,7 +30,7 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
         tm.that(errors, eq=())
         tm.that(len(migrations), eq=1)
         tm.that(migrations[0].moved_symbols, eq=("DEMO_VALUE",))
-        assert any(item.file.endswith("consumer.py") for item in rewrites)
+        tm.that(any(item.file.endswith("consumer.py") for item in rewrites), eq=True)
 
         constants_text = constants_path.read_text(encoding="utf-8")
         consumer_text = consumer_path.read_text(encoding="utf-8")
@@ -42,8 +42,8 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
         tm.that(consumer_text, lacks=f"from demo_pkg.constants import {'DEMO_VALUE'}")
         tm.that(consumer_text, has=f"from demo_pkg.constants import {'c'}")
         tm.that(consumer_text, has=(f"value = {'c'}.{'DEMO_VALUE'}"))
-        assert constants_path.with_suffix(".py.bak").exists()
-        assert consumer_path.with_suffix(".py.bak").exists()
+        tm.that(constants_path.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(consumer_path.with_suffix(".py.bak").exists(), eq=True)
 
     def test_migrate_workspace_dry_run_preserves_files(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = (
@@ -58,6 +58,6 @@ class TestsFlextInfraRefactorInfraRefactorMroImportRewriter:
 
         tm.that(errors, eq=())
         tm.that(len(migrations), eq=1)
-        assert any(item.file.endswith("consumer.py") for item in rewrites)
+        tm.that(any(item.file.endswith("consumer.py") for item in rewrites), eq=True)
         tm.that(constants_path.read_text(encoding="utf-8"), eq=original_constants)
         tm.that(consumer_path.read_text(encoding="utf-8"), eq=original_consumer)

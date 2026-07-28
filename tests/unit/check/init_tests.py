@@ -23,4 +23,4 @@ class TestFlextInfraCheck:
         """Test dir() returns all exported symbols."""
         exports = dir(check_module)
         tm.that(exports, is_=list)
-        assert exports
+        tm.that(exports, empty=False)

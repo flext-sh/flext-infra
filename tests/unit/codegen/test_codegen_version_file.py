@@ -69,7 +69,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         tm.ok(result)
         version_file = pkg / "__version__.py"
-        assert version_file.exists()
+        tm.that(version_file.exists(), eq=True)
 
     def test_generated_file_contains_class_name(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -99,7 +99,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that(not (pkg / "__version__.py").exists(), eq=True)
 
     def test_dry_run_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -110,7 +110,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that(not (pkg / "__version__.py").exists(), eq=True)
 
     def test_idempotent_when_file_already_correct(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -159,20 +159,26 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert (
-            ws
-            / c.Tests.PROJECT_A_NAME
-            / "src"
-            / c.Tests.PROJECT_A_NAME.replace("-", "_")
-            / "__version__.py"
-        ).exists()
-        assert not (
-            ws
-            / c.Tests.PROJECT_B_NAME
-            / "src"
-            / c.Tests.PROJECT_B_NAME.replace("-", "_")
-            / "__version__.py"
-        ).exists()
+        tm.that(
+            (
+                ws
+                / c.Tests.PROJECT_A_NAME
+                / "src"
+                / c.Tests.PROJECT_A_NAME.replace("-", "_")
+                / "__version__.py"
+            ).exists(),
+            eq=True,
+        )
+        tm.that(
+            not (
+                ws
+                / c.Tests.PROJECT_B_NAME
+                / "src"
+                / c.Tests.PROJECT_B_NAME.replace("-", "_")
+                / "__version__.py"
+            ).exists(),
+            eq=True,
+        )
 
     def test_skips_project_without_src_pkg_dir(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspace"

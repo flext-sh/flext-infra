@@ -89,6 +89,7 @@ class TestCodegenConform:
         tm.that(process.value, eq="✅ pong")
 
     def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+        """Generated Make delegates uv selection to the caller environment."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -103,60 +104,22 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        make_path = shutil.which("make")
-        mise_path = shutil.which("mise")
-        assert make_path is not None
-        assert mise_path is not None
-        hostile_bin = tmp_path / "hostile-bin"
-        hostile_bin.mkdir()
-        hostile_uv = hostile_bin / "uv"
-        hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
-        hostile_uv.chmod(0o755)
-        pwd_path = shutil.which("pwd")
-        printf_path = shutil.which("printf")
-        sh_path = shutil.which("sh")
-        assert pwd_path is not None
-        assert printf_path is not None
-        assert sh_path is not None
-        (hostile_bin / "pwd").symlink_to(pwd_path)
-        (hostile_bin / "printf").symlink_to(printf_path)
-        (hostile_bin / "sh").symlink_to(sh_path)
-        expected_uv = config.Infra.codegen.toolchain.uv_version
-
-        selected = cli.run_raw(
-            [make_path, "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
-            env={"PATH": f"{hostile_bin}{os.pathsep}{os.environ['PATH']}"},
-            remove_env_keys=("MAKEFLAGS",),
-        )
-        help_without_mise = cli.run_raw(
-            [make_path, "-C", str(root), "help"],
-            env={"PATH": str(hostile_bin)},
-            remove_env_keys=("MAKEFLAGS",),
-        )
-        status_without_mise = cli.run_raw(
-            [make_path, "-C", str(root), "_builtin_status_diagnostics"],
-            env={"PATH": str(hostile_bin)},
+        selected = u.Cli.run_raw(
+            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
             remove_env_keys=("MAKEFLAGS",),
         )
 
         selected_process = tm.ok(selected)
         selected_output = selected_process.stdout + selected_process.stderr
         tm.that(selected_process.exit_code, eq=0)
-        tm.that(
-            selected_output, has=f"{mise_path} exec uv@{expected_uv} -- uv --version"
-        )
-        tm.that(selected_output, lacks=str(hostile_uv))
-        help_process = tm.ok(help_without_mise)
-        tm.that(
-            help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
-        )
-        tm.that(help_process.stdout, has="flext-demo [standalone]")
-        missing_process = tm.ok(status_without_mise)
-        tm.that(missing_process.exit_code, ne=0)
-        tm.that(
-            missing_process.stdout + missing_process.stderr,
-            has="mise executable not found on caller PATH",
-        )
+        tm.that(selected_output, has="uv --version")
+        tm.that(selected_output, lacks="uv@")
+        tm.that(selected_output, lacks="UV_VERSION")
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -445,7 +408,14 @@ class TestCodegenConform:
                 if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
-        tm.that(after, eq=before)
+        before_by_path = dict(before)
+        after_by_path = dict(after)
+        changed_paths = tuple(
+            path
+            for path in sorted(before_by_path.keys() | after_by_path.keys())
+            if before_by_path.get(path) != after_by_path.get(path)
+        )
+        tm.that(changed_paths, eq=())
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -640,8 +610,9 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # A custom WHAT keeps the handler offline (no uv/network); the
-        # pre-/post-<verb> hooks prove ordering around it.
+        # The private target is the dispatcher entry point invoked while the
+        # public verb holds the serialization lock. Exercising it directly
+        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -651,7 +622,13 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Cli.run_raw([
+            "make",
+            "-C",
+            str(root),
+            "_serialized_check",
+            "WHAT=probe",
+        ])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
@@ -727,10 +704,8 @@ class TestCodegenConform:
             )
         )
         tm.fail(result)
-        tm.that(
-            result.error,
-            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
-        )
+        tm.that(result.error, has="not a regular file")
+        tm.that(result.error, has=str(root / "custom.mk"))
 
 
 class TestScriptDispatchMakefile:

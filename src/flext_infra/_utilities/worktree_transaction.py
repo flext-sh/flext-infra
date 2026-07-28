@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -12,11 +11,11 @@ from uuid import uuid4
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesWorktreeTransaction:
@@ -169,14 +168,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
-        source_roots = [*cls._source_roots(worktree_root)]
-        inherited_python_path = os.environ.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
-        for raw_path in inherited_python_path.split(
-            c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR
-        ):
-            path = Path(raw_path)
-            if raw_path and path.is_dir() and path not in source_roots:
-                source_roots.append(path)
+        source_roots = cls._source_roots(worktree_root)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
             str(path) for path in source_roots
         )
@@ -185,6 +177,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: python_path,
             c.Infra.ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: "1",
         }
+
+    @staticmethod
+    def _materialize_runtime_environment(worktree_root: Path) -> p.Result[bool]:
+        """Expose the active managed environment at its configured project path."""
+        executable = Path(sys.executable).expanduser().absolute()
+        runtime_root = executable.parent.parent
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        return u.Cli.ensure_symlink(worktree_root / venv_name, runtime_root)
 
     @staticmethod
     def _lint_counts(tool: str, output: str) -> tuple[int, int]:
@@ -220,8 +220,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
     ) -> m.Infra.LintSnapshot:
         """Capture one lint command without hiding a non-zero exit status."""
+        lint_environment = {
+            key: value
+            for key, value in environment.items()
+            if key != c.Infra.ORCHESTRATOR_ENV_PYTHONPATH
+        }
         result = u.Cli.run_raw(
-            command, cwd=worktree_root, env=environment, timeout=timeout_seconds
+            command,
+            cwd=worktree_root,
+            env=lint_environment,
+            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            timeout=timeout_seconds,
         )
         if result.failure:
             return m.Infra.LintSnapshot(
@@ -256,7 +265,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 return r[t.StrSequencePairTuple].fail(
                     f"required transaction lint executable not found: {executable}"
                 )
-            commands.append((tool, (str(executable), *command[1:])))
+            bound_command: t.StrSequence = (str(executable), *command[1:])
+            if tool == c.Infra.PYREFLY:
+                bound_command = (
+                    *bound_command,
+                    "--config",
+                    c.Infra.PYPROJECT_FILENAME,
+                    "--python-interpreter-path",
+                    sys.executable,
+                )
+            commands.append((tool, bound_command))
         return r[t.StrSequencePairTuple].ok(tuple(commands))
 
     @classmethod
@@ -331,7 +349,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         before: t.SequenceOf[m.Infra.LintSnapshot],
         after: t.SequenceOf[m.Infra.LintSnapshot],
     ) -> bool:
-        """Return whether any lint tool gained diagnostics or newly failed."""
+        """Return whether a command introduced or increased diagnostics."""
         return any(
             after_item.errors > before_item.errors
             or after_item.warnings > before_item.warnings
@@ -415,10 +433,18 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """Execute, validate, optionally apply, and always remove one worktree."""
         workspace_root = request.workspace_root.resolve()
         transaction_id = uuid4().hex
-        worktree_root = (
+        primary_result = FlextInfraUtilitiesGitScope.git_primary_worktree_root(
             workspace_root
-            / c.Infra.WORKTREE_TRANSACTION_ROOT
-            / f"transaction-{transaction_id}"
+        )
+        if primary_result.failure:
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                primary_result.error or "failed to resolve primary worktree"
+            )
+        primary_root = primary_result.value
+        worktree_root = primary_root.parent / (
+            c.Infra.WORKTREE_TRANSACTION_NAME_TEMPLATE.format(
+                repository=primary_root.name, transaction_id=transaction_id
+            )
         )
         create_result = cls._create_complete_worktree(
             workspace_root,
@@ -431,6 +457,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 create_result.error or "failed to create complete worktree"
             )
         repositories = create_result.value
+        environment_result = cls._materialize_runtime_environment(worktree_root)
+        if environment_result.failure:
+            cls._cleanup_worktrees(repositories, worktree_root)
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                environment_result.error
+                or "failed to materialize transaction runtime environment"
+            )
         report_result: p.Result[m.Infra.WorktreeTransactionReport]
         try:
             report_result = cls._execute_isolated(
@@ -511,7 +544,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         breakage = (
             command_output.exit_code != 0
             or import_probe.exit_code != 0
-            or (lint_regressed and not request.allow_lint_regression)
+            or lint_regressed
         )
         patch_check = cls._check_patches(deltas)
         if patch_check.failure:
@@ -528,8 +561,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "
             f"applied={'yes' if applied else 'no'}"
         )
-        if lint_regressed and request.allow_lint_regression:
-            summary = f"{summary}; lint-regression=allowed"
         if apply_error:
             summary = f"{summary}; apply-error={apply_error}"
         return r[m.Infra.WorktreeTransactionReport].ok(
@@ -576,6 +607,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 f"{before.warnings}->{after.warnings} "
                 f"({after.warnings - before.warnings:+d})"
             )
+            if before.exit_code != 0 or before.errors or before.warnings:
+                lines.extend((
+                    f"  {before.tool} before output:",
+                    before.output.rstrip(),
+                ))
+            if after.exit_code != 0 or after.errors or after.warnings:
+                lines.extend((f"  {after.tool} after output:", after.output.rstrip()))
         for repository in report.repositories:
             if not repository.patch:
                 continue

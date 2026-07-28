@@ -64,6 +64,27 @@ class FlextInfraUtilitiesBase:
         return tuple(item.strip() for item in values if item.strip())
 
     @staticmethod
+    def classify_process_exit(exit_code: int) -> str:
+        """Classify a nonzero process status as timeout, signal, or failure."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return "timeout"
+        if exit_code < 0:
+            return f"signal={-exit_code}"
+        if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return "failure"
+
+    @staticmethod
+    def normalize_process_exit_code(raw_exit_code: int) -> int:
+        """Map a subprocess signal return code into the portable shell domain."""
+        if raw_exit_code < 0:
+            normalized_exit_code: int = (
+                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - raw_exit_code
+            )
+            return normalized_exit_code
+        return raw_exit_code
+
+    @staticmethod
     def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
         """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
 
