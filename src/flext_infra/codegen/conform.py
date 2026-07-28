@@ -467,10 +467,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if known is None:
                 continue
             local_payload = local.model_dump(
-                mode="json", exclude=c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS
+                mode="json", exclude=set(c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS)
             )
             known_payload = known.model_dump(
-                mode="json", exclude=c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS
+                mode="json", exclude=set(c.Infra.REPOSITORY_CATALOG_EXTENSION_FIELDS)
             )
             if local_payload != known_payload:
                 return r[bool].fail(
@@ -1167,6 +1167,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             (item for item in codegen.providers if item.name == repository.provider),
             None,
         )
+        if provider is None:
+            return r[m.Infra.ProjectRenderContext].fail(
+                f"unsupported repository provider: {repository.provider}"
+            )
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT

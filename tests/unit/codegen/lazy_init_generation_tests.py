@@ -64,10 +64,7 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains="_LAZY_MODULES")
         tm.that(content, contains="_LAZY_ALIAS_GROUPS")
         tm.that(content, contains='".api": ("Demo",)')
-        tm.that(
-            content,
-            contains="from .__version__ import __version__ as __version__",
-        )
+        tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
             content,
             contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo", "__version__", "r")',
@@ -225,10 +222,7 @@ class TestsFlextInfraCodegenGeneration:
 
         compile(init_content, "__init__.py", "exec")
         tm.that(init_content, contains="from flext_tests import tm as tm")
-        tm.that(
-            init_content,
-            contains='".constants": ("TestsDemoConstants", "c"),',
-        )
+        tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
         type_checking_block = init_content.split("if TYPE_CHECKING:", maxsplit=1)[1]
         module_offsets = tuple(
