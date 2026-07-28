@@ -351,7 +351,6 @@ class FlextInfraUtilitiesDocsGenerate:
         for path in sorted(docs_root.rglob("*.md")):
             content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             sanitized = c.Infra.FENCE_NOTEST_RE.sub(r"```\1", content)
-            sanitized = c.Infra.MANUAL_TOC_RE.sub("", sanitized)
             if sanitized == content:
                 continue
             changed.append(
