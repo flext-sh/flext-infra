@@ -55,7 +55,7 @@ class FlextInfraCodegenGenerationStandardMixin(
 
     @classmethod
     def _runtime_import_lines(cls, plan: m.Infra.LazyInitPlan) -> str:
-        """Render eager and wildcard runtime imports."""
+        """Render explicit eager and wildcard runtime imports."""
         lines: t.MutableSequenceOf[str] = [
             f"from {module} import *"
             for module in sorted(set(plan.wildcard_runtime_modules))
@@ -68,7 +68,7 @@ class FlextInfraCodegenGenerationStandardMixin(
             if previous_top is not None and top != previous_top:
                 eager_lines.append("")
             parts = tuple(
-                cls._format_import_part(imported_name, export_name)
+                f"{imported_name} as {export_name}"
                 for export_name, imported_name in sorted(eager_groups[module])
                 if imported_name
             )
@@ -83,9 +83,6 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
         """Build one inline lazy context for a public package root."""
         current_pkg = plan.context.current_pkg
-        # mro-pulj (codex): rendering is fail-closed even if a caller constructs
-        # a plan with implementation-only entries. Only the planner-approved
-        # public exports can become package attributes.
         public_names = frozenset(plan.exports)
         lazy_map = {
             name: target
@@ -112,20 +109,10 @@ class FlextInfraCodegenGenerationStandardMixin(
         return m.Infra.LazyInitRootRender(
             autogen_header=c.Infra.AUTOGEN_HEADER,
             docstring=cls._format_root_package_docstring(current_pkg),
-            current_pkg=current_pkg,
             runtime_import_lines=cls._runtime_import_lines(plan),
             type_checking_lines="\n".join(type_checking_lines),
             lazy_module_groups=lazy_module_groups,
             lazy_alias_groups=lazy_alias_groups,
-            # mro-pulj (codex): direct import and wildcard publication share the
-            # same public symbol set; template helpers are eager plumbing only.
-            direct_imports=tuple(
-                sorted({
-                    *lazy_map,
-                    *plan.eager_dunders,
-                    *c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS,
-                })
-            ),
             exports=cls._build_published_exports(plan.exports, lazy_map),
         )
 

@@ -94,20 +94,29 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         items: t.StrPairSequence,
         root_name: str,
         lines: t.MutableSequenceOf[str],
-    ) -> t.StrSequence:
-        """Emit one TYPE_CHECKING module import group and return bound names."""
+    ) -> None:
+        """Emit one TYPE_CHECKING module import group."""
         alias_exports: t.MutableSequenceOf[str] = []
-        bound_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
+        type_aliases: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
-        for export_name, attr_name in sorted(
-            items,
-            key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
-        ):
-            if FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
-                mod, export_name, attr_name, root_name
-            ):
-                continue
+        selected_items = tuple(
+            item
+            for item in sorted(
+                items,
+                key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
+            )
+            if not FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
+                mod, item[0], item[1], root_name
+            )
+        )
+        identity_attributes = {
+            attr_name
+            for export_name, attr_name in selected_items
+            if attr_name and export_name == attr_name
+        }
+        imported_attributes: set[str] = set()
+        for export_name, attr_name in selected_items:
             if not attr_name:
                 if export_name == module_basename:
                     alias_exports.append(export_name)
@@ -117,14 +126,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                             export_name, export_name
                         )
                     )
-                bound_exports.append(export_name)
                 continue
-            parts.append(
-                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
-                    attr_name, export_name
-                )
+            imported_name = (
+                attr_name if attr_name in identity_attributes else f"_{attr_name}"
             )
-            bound_exports.append(export_name)
+            if attr_name not in imported_attributes:
+                parts.append(f"{attr_name} as {imported_name}")
+                imported_attributes.add(attr_name)
+            if export_name != attr_name:
+                type_aliases.append(f"    {export_name}: type[{imported_name}]")
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
@@ -138,7 +148,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                     "    ", mod, deduped_parts
                 )
             )
-        return tuple(dict.fromkeys(bound_exports))
+        lines.extend(type_aliases)
 
     @staticmethod
     def generate_type_checking(
@@ -181,25 +191,15 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 )
             ),
         )
-        bound_exports: t.MutableSequenceOf[str] = []
         previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
             is_relative = mod.startswith(".")
             if previous_is_relative is False and is_relative:
                 lines.append("")
-            bound_exports.extend(
-                FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
-                    mod, collapsed[mod], root_name, lines
-                )
+            FlextInfraCodegenGenerationTypeCheckingMixin._emit_type_checking_module(
+                mod, collapsed[mod], root_name, lines
             )
             previous_is_relative = is_relative
-        if bound_exports:
-            lines.append("    _ = (")
-            lines.extend(
-                f"        {export_name},"
-                for export_name in tuple(dict.fromkeys(bound_exports))
-            )
-            lines.append("    )")
         return () if len(lines) == 1 else lines
 
 

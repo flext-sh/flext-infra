@@ -587,6 +587,10 @@ class FlextInfraConfigModels:
         workspace_cli_group: Annotated[
             t.NonEmptyStr, m.Field(description="CLI group for workspace orchestration")
         ]
+        project_selection_conflict_error: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mutually exclusive project selector error"),
+        ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
         ]
@@ -611,6 +615,18 @@ class FlextInfraConfigModels:
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
+
+    class GitmodulesRenderSpec(_ConfigContract):
+        """Typed artifact-specific input for the generated Git submodule manifest."""
+
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered governed workspace submodules"),
+        ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered content-only workspace submodules"),
+        ] = ()
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):

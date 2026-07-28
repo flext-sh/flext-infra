@@ -1032,6 +1032,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.EnvironmentRenderContext(dist=dist, scaffold=codegen.scaffold)
             )
+        if destination == ".gitmodules":
+            return r[p.Model].ok(
+                m.Infra.GitmodulesRenderSpec(
+                    workspace_repositories=tuple(workspace.members),
+                    workspace_content_only=tuple(workspace.content_only),
+                )
+            )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = c.Infra.MakeProfile(repository.profile)
             members = (
@@ -1064,6 +1071,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     script_dispatch=repository.script_dispatch,
                     orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                     workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
+                    project_selection_conflict_error=(
+                        c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
+                    ),
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
                     mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,

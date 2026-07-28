@@ -267,7 +267,6 @@ Infra:
         python-envs.workspaceSearchPaths:
           - ./.venv
           - ./*/.venv
-          - ./apps/*/.venv
       map_union_settings:
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
@@ -779,10 +778,9 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # mro-9v0d: the workspace root Makefile has ONE generation owner:
-          # FlextInfraWorkspaceMakefileGenerator (workspace_makefile.mk.j2).
-          # Listing workspace-root here would create a second, competing owner.
-          profiles: [workspace-member, standalone]
+          # The generic conform engine is the single Makefile owner for every
+          # profile; workspace-root fan-out is selected inside this template.
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/custom.mk.j2

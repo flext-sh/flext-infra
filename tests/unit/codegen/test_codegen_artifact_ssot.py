@@ -108,14 +108,14 @@ class TestsCodegenArtifactSsot:
         )
 
     def test_workspace_root_makefile_has_one_owner(self, codegen: CodegenSpec) -> None:
-        """Keep workspace-root Makefile generation out of project templates."""
+        """Keep workspace-root Makefile generation in the single project template."""
         entries = tuple(
             entry
             for entry in codegen.templates.entries
             if entry.destination == "Makefile"
         )
         tm.that(len(entries), eq=1)
-        tm.that(entries[0].profiles, lacks="workspace-root")
+        tm.that(entries[0].profiles, has="workspace-root")
 
     def test_rendered_vscode_settings_follow_ssot(
         self, tmp_path: Path, codegen: CodegenSpec

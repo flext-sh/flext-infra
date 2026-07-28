@@ -1124,14 +1124,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
-            """Provide the typed test helper `extract_lazy_init_exports`."""
-            for name, value_str in u.Infra.get_module_level_assignments(source):
-                if name == c.Infra.DUNDER_ALL:
-                    return (
-                        True,
-                        tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(value_str)),
-                    )
-            return (False, ())
+            """Read the published lazy export contract from generated source."""
+            assignments = dict(u.Infra.get_module_level_assignments(source))
+            all_value = assignments.get(c.Infra.DUNDER_ALL)
+            if all_value is None:
+                return (False, ())
+            literal_exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
+            if literal_exports:
+                return (True, literal_exports)
+            public_value = assignments.get("_PUBLIC_EXPORTS", "")
+            return (
+                "_PUBLIC_EXPORTS" in all_value,
+                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_value)),
+            )
 
         @staticmethod
         def consolidate_codegen(

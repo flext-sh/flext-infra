@@ -83,6 +83,9 @@ class FlextInfraConstantsMake:
         "MFLAGS",
         "MYPYPATH",
         "PYTHONPATH",
+        "UV_PROJECT",
+        "UV_PROJECT_ENVIRONMENT",
+        "VIRTUAL_ENV",
         "WORKSPACE_MISE_SHIMS",
     )
     "Environment keys removed before project-level make orchestration."
