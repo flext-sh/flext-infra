@@ -310,13 +310,17 @@ class TestsCodegenArtifactSsot:
         )
         parsed = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
-        files_exclude = settings["files.exclude"]
-        search_exclude = settings["search.exclude"]
-        watcher_exclude = settings["files.watcherExclude"]
-        tm.that(isinstance(files_exclude, dict), eq=True)
+        files_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["files.exclude"]
+        )
+        search_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["search.exclude"]
+        )
+        watcher_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["files.watcherExclude"]
+        )
         tm.that(files_exclude["**/.mypy_cache"], eq=True)
         tm.that("**/conftest.py" in files_exclude, eq=False)
         tm.that(search_exclude, eq=files_exclude)
-        tm.that(isinstance(watcher_exclude, dict), eq=True)
         tm.that(watcher_exclude["**/.mypy_cache/**"], eq=True)
         tm.that("**/site/**" in watcher_exclude, eq=False)
