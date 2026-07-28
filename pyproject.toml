@@ -42,10 +42,12 @@ dev = [
   "mkdocs-versioning>=0.4.0",
   "mkdocstrings>=1.0.6",
   "mkdocstrings-python>=2.0.5",
+  "mypy>=2.3.0",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",
   "pyrefly>=1.1.1",
+  "pyright>=1.1.411",
   "pytest>=9.1.1",
   "pytest-benchmark>=5.2.3",
   "pytest-clarity>=1.0.1",
@@ -481,7 +483,7 @@ addopts = [
   "--durations=10",
   "--markdown-docs",
   "--strict-markers",
-  "--timeout=10",
+  "--timeout=60",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [

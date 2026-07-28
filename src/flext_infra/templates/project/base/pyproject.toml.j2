@@ -49,7 +49,7 @@ codegen = [
 {% endfor %}
 ]
 dev = [
-{% for item in dependency_profile.dev if item != dist %}
+{% for item in scaffold.project.dev if item != dist %}
   {{ item | tojson }},
 {% endfor %}
 ]
