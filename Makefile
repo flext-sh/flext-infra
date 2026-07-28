@@ -1,5 +1,9 @@
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
+# @flext-managed: continuous
+# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-ssot: flext-infra/config/codegen.yaml and flext-infra/src/flext_infra/templates/project/base/Makefile.j2
+# @flext-maintenance: do not edit generated Makefiles directly
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
@@ -16,7 +20,7 @@ ARGS ?=
 CHECK_GATES ?=
 PROJECT ?=
 PROJECTS ?=
-# Public selector documented by base.mk. Forwarded to the test recipe so a
+# Public selector documented by this Makefile. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
@@ -162,6 +166,10 @@ _BUILTIN_HANDLERS := \
 define _dispatch
 	@what="$(strip $(WHAT))"; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$@)"; fi; \
+	apply_builtin="_builtin_$@_apply"; \
+	if [ "$(APPLY)" = "Y" ] && [ "$$what" = "$(_DEFAULT_$@)" ]; then \
+		case " $(_BUILTIN_HANDLERS) " in *" $$apply_builtin "*) what="apply" ;; esac; \
+	fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
@@ -320,7 +328,6 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
 		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
@@ -337,6 +344,7 @@ _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
 	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
 
 _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)

@@ -27,8 +27,8 @@ class TestsFlextInfraBasemkMain:
         output_file = tmp_path / "base.mk"
 
         tm.that(basemk_main(["generate", "--output", str(output_file)]), eq=0)
-        assert output_file.exists()
-        assert output_file.read_text(encoding="utf-8")
+        tm.that(output_file.exists(), eq=True)
+        tm.that(output_file.read_text(encoding="utf-8"), empty=False)
 
     def test_basemk_main_with_relative_output_writes_raw_content(self) -> None:
         workspace_root = Path.cwd()
@@ -46,26 +46,26 @@ class TestsFlextInfraBasemkMain:
 
             tm.that(exit_code, eq=0)
             generated = output_file.read_text(encoding="utf-8")
-            tm.that(generated, has="PROJECT_NAME ?= ai-hub")
-            tm.that(generated, has="$(if $(wildcard $(VENV_PYTHON))")
+            tm.that(generated, has="PROJECT_NAME := ai-hub")
+            tm.that(generated, has="RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python")
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path
     ) -> None:
         output_file = tmp_path / "base.mk"
 
-        assert (
+        tm.that(
             basemk_main([
                 "generate",
                 "--project-name",
                 "my-project",
                 "--output",
                 str(output_file),
-            ])
-            == 0
+            ]),
+            eq=0,
         )
         tm.that(
-            output_file.read_text(encoding="utf-8"), has="PROJECT_NAME ?= my-project"
+            output_file.read_text(encoding="utf-8"), has="PROJECT_NAME := my-project"
         )
 
     def test_basemk_main_with_invalid_command_returns_usage_error(self) -> None:
@@ -81,6 +81,6 @@ class TestsFlextInfraBasemkMain:
         blocked_parent = tmp_path / "blocked"
         blocked_parent.write_text("occupied", encoding="utf-8")
 
-        assert (
-            basemk_main(["generate", "--output", str(blocked_parent / "base.mk")]) == 1
+        tm.that(
+            basemk_main(["generate", "--output", str(blocked_parent / "base.mk")]), eq=1
         )

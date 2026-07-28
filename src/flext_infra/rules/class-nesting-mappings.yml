@@ -155,12 +155,6 @@ class_nesting:
   target_name: FlextInfraConstantsReporting
   confidence: low
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraConstantsBasemk
-  current_file: flext-core/src/flext_infra/basemk/_constants.py
-  target_namespace: FlextBasemkConstants
-  target_name: FlextInfraConstantsBasemk
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraBaseMkTemplateRenderer
   current_file: flext-core/src/flext_infra/basemk/renderer.py
   target_namespace: FlextBasemkRenderer

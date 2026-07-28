@@ -19,8 +19,8 @@ from flext_infra import c, config
 
 
 class TestsFlextInfraWorkspaceCheckScope:
-    def test_workspace_root_check_paths_cover_every_member(self) -> None:
-        """The generated root Makefile lints the members, not only itself."""
+    def test_workspace_root_check_orchestrates_every_member(self) -> None:
+        """The root check delegates to the manifest-backed member orchestrator."""
         # Members come from the workspace manifest SSOT, never a literal list.
         members = tuple(
             repository.path.as_posix()
@@ -37,6 +37,11 @@ class TestsFlextInfraWorkspaceCheckScope:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
 
-        # RUFF_PATHS/MYPY_PATHS must expand over the members for the root
-        # profile instead of being pinned to the root's own src/tests.
-        tm.that(template, has="WORKSPACE_CHECK_PATHS")
+        tm.that(
+            template, has="WORKSPACE_MEMBERS :={% for member in workspace_members %}"
+        )
+        tm.that(
+            template,
+            has="@$(WORKSPACE_ORCHESTRATE) --verb check $(ORCHESTRATE_PROJECT_ARGS)",
+        )
+        tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
