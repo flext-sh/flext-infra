@@ -46,7 +46,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
     tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
 
 
-def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_unowned(
+def test_root_catalog_survives_project_pass_and_missing_curated_indexes_are_rejected(
     tmp_path: Path,
 ) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
@@ -72,7 +72,11 @@ def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_un
         (workspace / relative_path).unlink()
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
+    tm.that(
+        [(report.scope, report.result) for report in validation.value],
+        eq=[("root", "FAIL"), ("flext-a", "OK")],
+    )
+    tm.that(validation.value[0].message, contains="missing required docs files")
 
 
 def test_generated_collection_rules_pointer_stays_within_consumer_limit(
@@ -98,7 +102,7 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
         if lines[index].startswith("## ")
     )
     collection_rules_lines = [line for line in lines[section_start:section_end] if line]
-    tm.that(max(map(len, collection_rules_lines)), le=240)
+    tm.that(max(map(len, collection_rules_lines)), lte=240)
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(
