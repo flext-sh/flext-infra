@@ -1,5 +1,9 @@
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
+# @flext-managed: continuous
+# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-ssot: flext-infra/src/flext_infra/templates/project/base/Makefile.j2
+# @flext-maintenance: do not edit generated projections; edit the SSOT
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
