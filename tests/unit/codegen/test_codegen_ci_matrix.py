@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from flext_tests import tm
 
 from flext_infra import c
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_tests import tm
 
 
 class TestCodegenCiMatrix:

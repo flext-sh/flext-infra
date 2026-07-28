@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import main as infra_main
+from flext_tests import tm
 
 
 class TestsFlextInfraDepsMainDispatch:

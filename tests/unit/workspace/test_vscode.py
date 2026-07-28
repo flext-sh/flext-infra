@@ -5,9 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_tests import tm
 
 
 def _write_project(project_root: Path) -> None:

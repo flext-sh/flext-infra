@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, m, u
+from flext_tests import tm
 
 
 def _member_ref(distribution: str) -> m.Infra.RepositoryRef:

@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 from tests import c, u
 
 pytestmark = pytest.mark.timeout(60)

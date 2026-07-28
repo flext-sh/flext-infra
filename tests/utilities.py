@@ -7,8 +7,6 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_tests import FlextTestsUtilities, r, tm
-
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -19,6 +17,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import FlextTestsUtilities, r, tm
 from tests import c, m, p, t
 
 if TYPE_CHECKING:

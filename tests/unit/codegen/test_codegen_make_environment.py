@@ -5,11 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_tests import tm
 
 
 class TestsCodegenMakeEnvironment:

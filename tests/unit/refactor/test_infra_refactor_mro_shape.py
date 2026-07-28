@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:

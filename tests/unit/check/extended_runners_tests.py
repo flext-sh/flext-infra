@@ -9,10 +9,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_tests import tm
 from tests import u
 
 

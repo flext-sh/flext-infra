@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from flext_tests import tm
-
 from flext_infra import m, p, r as tr
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_tests import tm
 from tests import t
 
 

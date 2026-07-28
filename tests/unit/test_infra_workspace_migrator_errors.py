@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import r
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
