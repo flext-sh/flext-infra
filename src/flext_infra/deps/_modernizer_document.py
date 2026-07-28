@@ -128,7 +128,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         project_root = project_dir.resolve()
         workspace_root = u.Infra.git_workspace_root(project_root)
         if workspace_root.failure:
-            msg = workspace_root.error or f"unable to resolve Git topology: {project_root}"
+            msg = (
+                workspace_root.error
+                or f"unable to resolve Git topology: {project_root}"
+            )
             raise RuntimeError(msg)
         return workspace_root.value != project_root
 

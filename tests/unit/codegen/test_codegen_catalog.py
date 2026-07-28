@@ -68,6 +68,8 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ),
         eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
     )
+
+
 def test_toolchain_rejects_exact_patch_selectors() -> None:
     """Keep runtime selectors on compatible major.minor release lines."""
     payload = config.Infra.codegen.toolchain.model_dump()
@@ -85,7 +87,7 @@ def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
             requirement
             for profile in project.dependency_profiles
             for requirement in (*profile.runtime, *profile.codegen, *profile.dev)
-        ),
+        )
     ]
     forbidden = {"<", "<=", "==", "===", "~="}
 
