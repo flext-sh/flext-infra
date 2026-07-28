@@ -137,7 +137,7 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FILE)),--make-arg "FILE=$(FILE_RELATIVE)")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
-UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
@@ -182,13 +182,13 @@ _builtin_clean_generated \
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$@)"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	builtin="_builtin_$@_$$what"; \
-	custom="_custom_$@_$$what"; \
-	for hook in "pre-$@" "pre-$@-$$what"; do \
+	builtin="_builtin_$(1)_$$what"; \
+	custom="_custom_$(1)_$$what"; \
+	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done; \
@@ -196,7 +196,7 @@ define _dispatch
 		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
 		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
 	esac; \
-	for hook in "post-$@-$$what" "post-$@"; do \
+	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done
@@ -222,10 +222,33 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup,$(PUBLIC_VERBS)):
-	$(call _dispatch)
+$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+	$(call _dispatch,$@)
+
+
+check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "check"
+
+_serialized_check:
+	$(call _dispatch,check)
+
+
+test: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "test"
+
+_serialized_test:
+	$(call _dispatch,test)
+
+
+codegen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "codegen"
+
+_serialized_codegen:
+	$(call _dispatch,codegen)
+
+
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
@@ -338,11 +361,7 @@ _builtin_require_environment:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
-	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
-	done
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
@@ -351,14 +370,12 @@ _builtin_setup_environment: _builtin_setup_submodules
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
