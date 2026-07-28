@@ -13,6 +13,7 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
+from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -415,11 +416,41 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 )
         return r[bool].ok(True)
 
+    @staticmethod
+    def _transaction_lock_paths(
+        deltas: t.SequenceOf[m.Infra.RepositoryDelta],
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve the configured Make lock for every participating workspace."""
+        relative_lock_path = config.Infra.codegen.make.serialization.lock_path
+        lock_paths: set[Path] = set()
+        for delta in deltas:
+            for repository_root in (delta.source_root, delta.worktree_root):
+                workspace_result = FlextInfraUtilitiesGitScope.git_workspace_root(
+                    repository_root
+                )
+                if workspace_result.failure:
+                    return r[t.SequenceOf[Path]].fail(
+                        workspace_result.error
+                        or f"failed to resolve lock owner for {repository_root}"
+                    )
+                workspace_root = workspace_result.value.resolve()
+                lock_path = (workspace_root / relative_lock_path).resolve()
+                try:
+                    lock_path.relative_to(workspace_root)
+                except ValueError:
+                    return r[t.SequenceOf[Path]].fail(
+                        f"transaction lock escapes workspace owner: {lock_path}"
+                    )
+                lock_paths.add(lock_path)
+        return r[t.SequenceOf[Path]].ok(
+            tuple(sorted(lock_paths, key=lambda path: path.as_posix()))
+        )
+
     @classmethod
-    def git_apply_transaction_patches(
+    def _apply_transaction_patches_locked(
         cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
     ) -> p.Result[bool]:
-        """Preflight every source HEAD before applying repository patches."""
+        """Preflight all source HEADs and apply every patch under acquired locks."""
         head_preflight = cls._preflight_source_heads(deltas)
         if head_preflight.failure:
             return head_preflight
@@ -433,6 +464,35 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     f"{delta.relative_path}: {result.error or 'patch apply failed'}"
                 )
         return r[bool].ok(True)
+
+    @classmethod
+    def git_apply_transaction_patches(
+        cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
+    ) -> p.Result[bool]:
+        """Lock every workspace across source-HEAD preflight and patch apply."""
+        lock_paths_result = cls._transaction_lock_paths(deltas)
+        if lock_paths_result.failure:
+            return r[bool].fail(
+                lock_paths_result.error or "failed to resolve transaction locks"
+            )
+        serialization = config.Infra.codegen.make.serialization
+
+        def timeout_failure(lock_path: Path, timeout_seconds: int) -> p.Result[bool]:
+            return r[bool].fail(
+                "timed out waiting for transaction lock "
+                f"'{lock_path}' after {timeout_seconds}s"
+            )
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            return r[bool].fail(f"transaction lock acquisition failed: {error}")
+
+        return FlextInfraSerializationLockOwner.execute(
+            lock_paths_result.value,
+            serialization.timeout_seconds,
+            lambda: cls._apply_transaction_patches_locked(deltas),
+            timeout_failure=timeout_failure,
+            acquisition_failure=acquisition_failure,
+        )
 
     @classmethod
     def _cleanup_worktrees(

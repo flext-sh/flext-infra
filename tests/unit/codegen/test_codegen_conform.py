@@ -418,10 +418,11 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
 
+    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, infra_git_repo: Path
+        self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
     ) -> None:
-        """Execute both public modes without changing an already conform tree."""
+        """Execute each public mode without changing an already conform tree."""
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -442,50 +443,41 @@ class TestCodegenConform:
                 ["git", "commit", "-q", "-m", "Seed generated project"], cwd=root
             )
         )
-        before = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            )
+        snapshot_excludes = config.Infra.codegen.make.serialization.snapshot_excludes
+        before = tm.ok(
+            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        for mode in ("check", "apply"):
-            # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
-            # module entrypoint; the route and emitted tree are the assertions.
-            process = u.Cli.capture(
-                [
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "codegen",
-                    "conform",
-                    "--root",
-                    str(root),
-                    "--what",
-                    "all",
-                    "--scope",
-                    "self",
-                    "--mode",
-                    mode,
-                ],
-                timeout=60,
-            )
-            tm.ok(process)
-        after = tuple(
-            sorted(
-                (path.relative_to(root).as_posix(), path.read_bytes())
-                for path in root.rglob("*")
-                if path.is_file() and ".git" not in path.relative_to(root).parts
-            )
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
+        # module entrypoint; the route and emitted tree are the assertions.
+        process = u.Cli.capture(
+            [
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "codegen",
+                "conform",
+                "--root",
+                str(root),
+                "--what",
+                "all",
+                "--scope",
+                "self",
+                "--mode",
+                mode,
+            ],
+            timeout=60,
         )
-        before_by_path = dict(before)
-        after_by_path = dict(after)
-        changed_paths = tuple(
-            path
-            for path in sorted(before_by_path.keys() | after_by_path.keys())
-            if before_by_path.get(path) != after_by_path.get(path)
+        tm.ok(process)
+        if mode is c.Infra.CodegenConformMode.APPLY:
+            tm.that(
+                (root / config.Infra.codegen.make.serialization.lock_path).is_file(),
+                where=bool,
+            )
+        after = tm.ok(
+            u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        tm.that(changed_paths, eq=())
+        tm.that(after.digest, eq=before.digest)
+        tm.that(u.Infra.workspace_fingerprint_changes(before, after), eq=())
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
