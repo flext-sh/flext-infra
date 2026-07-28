@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -15,6 +14,7 @@ from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+from flext_tests import tm
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -292,8 +292,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         tm.that(" ".join(touched_files), has="demo/_constants.py")
         target_text = result.target_text
         source_text = result.source_text
-        assert isinstance(target_text, str)
-        assert isinstance(source_text, str)
+        tm.that(isinstance(target_text, str), eq=True)
+        tm.that(isinstance(source_text, str), eq=True)
         tm.that(target_text, has="GROUPS = frozenset({'a'})")
         tm.that(source_text, lacks="GROUPS = frozenset({'a'})")
 
@@ -322,7 +322,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
                 dry_run=True,
             )
 
-        assert not constants_mod.exists()
+        tm.that(not constants_mod.exists(), eq=True)
 
     def test_autofix_dry_run_resolves_project_tests_package(
         self, tmp_path: Path
@@ -351,8 +351,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         target_text = result.target_text
         source_text = result.source_text
-        assert isinstance(target_text, str)
-        assert isinstance(source_text, str)
+        tm.that(isinstance(target_text, str), eq=True)
+        tm.that(isinstance(source_text, str), eq=True)
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
 
@@ -461,8 +461,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         target_text = result.target_text
         source_text = result.source_text
         touched_files = result.touched_files
-        assert isinstance(target_text, str)
-        assert isinstance(source_text, str)
+        tm.that(isinstance(target_text, str), eq=True)
+        tm.that(isinstance(source_text, str), eq=True)
         tm.that(touched_files, is_=(list, tuple))
         tm.that(target_text, has="TEST_VALUE = 1.5")
         tm.that(source_text, lacks="TEST_VALUE = 1.5")
@@ -499,9 +499,11 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         source_text = service.read_text(encoding="utf-8")
         tm.that(source_text, has="from __future__ import annotations")
         tm.that(source_text, has="from . import _constants")
-        assert source_text.index(
-            "from __future__ import annotations"
-        ) < source_text.index("from . import _constants")
+        tm.that(
+            source_text.index("from __future__ import annotations")
+            < source_text.index("from . import _constants"),
+            eq=True,
+        )
         tm.that(source_text, lacks='"""Return value."""\nfrom . import _constants')
         tm.that(source_text, has="return _constants.VALUE")
 
@@ -602,8 +604,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         constants_init = pkg / "_constants" / "__init__.py"
         source_text = service.read_text(encoding="utf-8")
         constants_text = constants.read_text(encoding="utf-8")
-        assert constants.exists()
-        assert constants_init.exists()
+        tm.that(constants.exists(), eq=True)
+        tm.that(constants_init.exists(), eq=True)
         tm.that(source_text, lacks="PRESETS: ClassVar")
         tm.that(source_text, has='return factory.PRESETS["development"]')
         tm.that(source_text, has="from ._constants import factory")
@@ -647,8 +649,8 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         source_text = result.source_text
         target_text = result.target_text
-        assert source_text is not None
-        assert target_text is not None
+        source_text = tm.not_none(source_text)
+        target_text = tm.not_none(target_text)
         tm.that(source_text, lacks="GROUPS: ClassVar")
         tm.that(source_text, has="_constants.GROUPS")
         tm.that(target_text.count("GROUPS"), eq=1)

@@ -27,16 +27,22 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @staticmethod
     def _manifest_path(repository_root: Path) -> Path:
         """Return the repository-local topology manifest path."""
-        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        config_dir: Path = t.Infra.PATH_ADAPTER.validate_python(c.CONFIG_DIR_NAME)
+        manifest_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        return repository_root / config_dir / manifest_name
 
     @staticmethod
     def _schema_path() -> Path:
         """Return the packaged schema consumed by the public config facade."""
-        return (
-            Path(__file__).resolve().parents[1]
-            / c.CONFIG_SCHEMAS_DIR_NAME
-            / c.Infra.WORKSPACE_SCHEMA_FILENAME
+        schemas_dir: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.CONFIG_SCHEMAS_DIR_NAME
         )
+        schema_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_SCHEMA_FILENAME
+        )
+        return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @classmethod
     def load_workspace_spec(
@@ -177,6 +183,31 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         ):
             return c.Infra.WorkspaceMode.WORKSPACE
         return c.Infra.WorkspaceMode.STANDALONE
+
+    @classmethod
+    def effective_repository(
+        cls, repository_root: Path, declared: m.Infra.RepositoryRef
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve runtime topology without changing repository identity."""
+        mode_result = cls().detect(repository_root)
+        if mode_result.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                mode_result.error or "unable to resolve repository topology"
+            )
+        if (
+            mode_result.value is not c.Infra.WorkspaceMode.STANDALONE
+            or declared.role is not c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        ):
+            return r[m.Infra.RepositoryRef].ok(declared)
+        return r[m.Infra.RepositoryRef].ok(
+            m.Infra.RepositoryRef.model_validate({
+                **declared.model_dump(),
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.STANDALONE,
+                "profile": c.Infra.MakeProfile.STANDALONE,
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+            })
+        )
 
     @staticmethod
     def _gitmodule_contract(

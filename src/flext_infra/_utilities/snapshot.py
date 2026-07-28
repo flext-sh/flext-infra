@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 
 from flext_cli import cli, e, r
-from flext_infra import p
+from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesSnapshot:

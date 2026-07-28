@@ -9,8 +9,8 @@ RUN apt-get update \
        bash ca-certificates curl git make build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# mise is the toolchain installer; .mise.toml pins python {{ python_toolchain_version }}
-# and uv {{ uv_version }} via the config SSOT.
+# mise installs the supported Python {{ python_version }} family.
+# uv is supplied by the managed environment without a project patch pin.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

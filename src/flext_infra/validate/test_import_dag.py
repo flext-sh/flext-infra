@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import m, t, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraValidateTestImportDag(s[bool]):
@@ -95,7 +95,8 @@ class FlextInfraValidateTestImportDag(s[bool]):
         for part in parts[1:]:
             for facet, filename in rules.facet_files.items():
                 if part == filename.removesuffix(".py"):
-                    return facet
+                    imported_facet: str = t.Infra.STR_ADAPTER.validate_python(facet)
+                    return imported_facet
         return None
 
     @classmethod

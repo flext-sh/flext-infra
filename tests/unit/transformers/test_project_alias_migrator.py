@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra.transformers.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
+from flext_tests import tm
 
 
 class TestsFlextInfraRefactorProjectAliasMigrator:

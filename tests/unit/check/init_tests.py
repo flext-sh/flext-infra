@@ -6,9 +6,9 @@ Tests lazy loading and __getattr__ fallthrough behavior.
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
 
 import flext_infra.check as check_module
+from flext_tests import tm
 
 
 class TestFlextInfraCheck:
@@ -23,4 +23,4 @@ class TestFlextInfraCheck:
         """Test dir() returns all exported symbols."""
         exports = dir(check_module)
         tm.that(exports, is_=list)
-        assert exports
+        tm.that(exports, empty=False)

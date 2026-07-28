@@ -42,6 +42,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                 output_dir=self.output_dir,
                 apply=self.apply_changes,
             ),
+            failure_predicate=lambda report: not report.passed,
         )
 
     def _fix_scope(
@@ -80,7 +81,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             result=(
                 c.Infra.ResultStatus.OK
                 if apply or not items
-                else c.Infra.ResultStatus.WARN
+                else c.Infra.ResultStatus.FAIL
             ),
             reason=f"changes:{len(items)}",
             passed=apply or not items,

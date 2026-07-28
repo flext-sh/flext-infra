@@ -93,55 +93,32 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        cmd = ["taplo", "format", "-", "--stdin-filepath", str(path)]
-        config_path = self.root / ".taplo.toml"
-        if config_path.is_file():
-            cmd.extend(["--config", str(config_path)])
-        # mro-45r9: do not let a generated target .mise.toml hijack Taplo lookup.
-        format_cwd = next(
-            (candidate for candidate in self.root.parents if candidate.is_dir()),
-            self.root,
+        return u.Infra.format_toml_source(
+            rendered,
+            path=path,
+            toolchain_root=self.root,
+            taplo_version=config.Infra.codegen.toolchain.taplo_version,
         )
-        format_result = u.Cli.run_raw(
-            cmd, cwd=format_cwd, input_data=rendered.encode(c.Cli.ENCODING_DEFAULT)
-        )
-        if format_result.failure:
-            return r[str].fail(format_result.error or "taplo format failed")
-        output = format_result.value
-        if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
-        return r[str].ok(output.stdout)
 
-    def _project_is_flext_child(self, project_dir: Path) -> bool:
-        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
+    def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
+        """Return whether Git declares the project as an attached submodule.
 
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
+        A non-Git scaffold is explicitly local. Environment directories and
+        generated Make projections never participate in topology detection.
         """
-        rules = config.Infra.tooling.tools.pyright.path_rules
-        venv_name = rules.venv_name
-        if (project_dir / venv_name).is_dir():
-            return False
-        if (project_dir.parent / venv_name).is_dir():
-            return True
-        makefile = project_dir / "Makefile"
-        read = u.Cli.files_read_text(makefile)
-        if read.success:
-            for raw_line in read.value.splitlines():
-                stripped = raw_line.strip()
-                if not stripped.startswith("WORKSPACE_ROOT") or ":=" not in stripped:
-                    continue
-                _, _, value = stripped.partition(":=")
-                if value.strip().startswith(".."):
-                    return True
-        return False
+        inside = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--is-inside-work-tree")
+        )
+        if inside.failure or inside.value.strip() != "true":
+            return r[bool].ok(False)
+        superproject = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        )
+        if superproject.failure:
+            return r[bool].fail(
+                superproject.error or "failed to resolve Git superproject"
+            )
+        return r[bool].ok(bool(superproject.value.strip()))
 
     def _process_document_state(
         self,
@@ -150,24 +127,28 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        project_kind: str | None = None,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
-        constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
         declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_root = path.parent.resolve() == self.root.resolve() and not (
-            self._project_is_flext_child(path.parent)
-        )
-        project_kind = "core"
-        if not is_root:
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return [
+                f"failed to resolve Git topology: {child_result.error or path.parent}"
+            ]
+        is_child = child_result.value
+        is_root = path.parent.resolve() == self.root.resolve() and not is_child
+        resolved_project_kind = project_kind or "core"
+        if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
-                project_kind = kind_result.value
+                resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
@@ -180,7 +161,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     payload,
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
-                    policy=constraint_policy,
                 )
             )
         changes.extend(
@@ -199,7 +179,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
-                project_kind=project_kind,
+                project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
             )
@@ -247,7 +227,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
-                payload, project_kind=project_kind
+                payload, project_kind=resolved_project_kind
             )
         )
         changes.extend(

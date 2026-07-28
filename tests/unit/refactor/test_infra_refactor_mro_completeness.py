@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.detectors.mro_completeness_detector import (
     FlextInfraMROCompletenessDetector,
 )
+from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -19,7 +18,8 @@ if TYPE_CHECKING:
 
 def _make_rope(workspace: Path) -> t.Infra.RopeProject:
     """Create a rope project rooted at *workspace*."""
-    return u.Infra.init_rope_project(workspace)
+    rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(workspace)
+    return rope_project
 
 
 def _write_models_project(

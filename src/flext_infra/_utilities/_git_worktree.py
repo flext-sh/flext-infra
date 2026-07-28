@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesGitWorktreeMixin:
@@ -96,6 +98,72 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         if top_level.failure:
             return r[Path].fail(top_level.error or "failed to resolve Git top level")
         return r[Path].ok(Path(top_level.value.strip()).resolve())
+
+    @classmethod
+    def git_primary_worktree_root(cls, repository_path: Path) -> p.Result[Path]:
+        """Resolve the primary worktree from Git's canonical storage topology."""
+        common_dir_result = cls.git_capture(
+            repository_path, ("rev-parse", "--path-format=absolute", "--git-common-dir")
+        )
+        if common_dir_result.failure:
+            return r[Path].fail(
+                common_dir_result.error or "failed to resolve Git common directory"
+            )
+        common_dir = Path(common_dir_result.value.strip()).resolve()
+        configured_result = cls.git_run(
+            repository_path, ("config", "--path", "--get", "core.worktree")
+        )
+        if configured_result.failure:
+            return r[Path].fail(
+                configured_result.error or "failed to inspect Git worktree config"
+            )
+        configured_output = configured_result.value
+        if configured_output.exit_code == 0:
+            configured = Path(configured_output.stdout.strip())
+            primary_root = (
+                configured if configured.is_absolute() else common_dir / configured
+            ).resolve()
+        elif configured_output.exit_code != 1:
+            detail = (configured_output.stderr or configured_output.stdout).strip()
+            return r[Path].fail(
+                detail or f"cannot inspect primary worktree from {common_dir}"
+            )
+        elif common_dir.name == c.Infra.GIT_DIR:
+            primary_root = common_dir.parent
+        else:
+            git_dir_result = cls.git_capture(
+                repository_path, ("rev-parse", "--path-format=absolute", "--git-dir")
+            )
+            if git_dir_result.failure:
+                return r[Path].fail(
+                    git_dir_result.error or "failed to resolve Git directory"
+                )
+            git_dir = Path(git_dir_result.value.strip()).resolve()
+            if git_dir != common_dir:
+                return r[Path].fail(
+                    "cannot derive primary worktree for a linked checkout without "
+                    f"core.worktree: {repository_path}"
+                )
+            caller_top_level = cls.git_capture(
+                repository_path, ("rev-parse", "--show-toplevel")
+            )
+            if caller_top_level.failure:
+                return r[Path].fail(
+                    caller_top_level.error
+                    or f"cannot derive primary worktree from {common_dir}"
+                )
+            primary_root = Path(caller_top_level.value.strip()).resolve()
+        top_level = cls.git_capture(primary_root, ("rev-parse", "--show-toplevel"))
+        if top_level.failure:
+            return r[Path].fail(
+                top_level.error or f"invalid primary worktree: {primary_root}"
+            )
+        resolved_top_level = Path(top_level.value.strip()).resolve()
+        if resolved_top_level != primary_root:
+            return r[Path].fail(
+                f"Git primary worktree mismatch: {primary_root} != {resolved_top_level}"
+            )
+        return r[Path].ok(primary_root)
 
     @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
@@ -247,9 +315,28 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if tree_result.failure
                 else parent_result.error or "failed to resolve checkpoint parent"
             )
+        identity_result = cls.git_capture(
+            worktree_root, ("show", "-s", "--format=%an%x00%ae", parent_result.value)
+        )
+        if identity_result.failure:
+            return r[str].fail(
+                identity_result.error or "failed to resolve checkpoint identity"
+            )
+        identity = identity_result.value.rstrip("\n").split("\0")
+        match identity:
+            case [author_name, author_email] if (
+                author_name.strip() and author_email.strip()
+            ):
+                pass
+            case _:
+                return r[str].fail("checkpoint parent has invalid author identity")
         commit_result = cls.git_capture(
             worktree_root,
             (
+                "-c",
+                f"user.name={author_name}",
+                "-c",
+                f"user.email={author_email}",
                 "commit-tree",
                 tree_result.value.strip(),
                 "-p",
@@ -472,6 +559,25 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         )
         if remove_result.failure:
             return r[bool].fail(remove_result.error or "failed to remove worktree")
+        prune_result = cls.git_capture(source_root, ("worktree", "prune"))
+        if prune_result.failure:
+            return r[bool].fail(
+                prune_result.error or "failed to prune worktree metadata"
+            )
+        return r[bool].ok(True)
+
+    @classmethod
+    def git_remove_clean_worktree(
+        cls, source_root: Path, worktree_root: Path
+    ) -> p.Result[bool]:
+        """Remove an explicitly selected clean worktree and prune metadata."""
+        remove_result = cls.git_capture(
+            source_root, ("worktree", "remove", str(worktree_root))
+        )
+        if remove_result.failure:
+            return r[bool].fail(
+                remove_result.error or "failed to remove clean worktree"
+            )
         prune_result = cls.git_capture(source_root, ("worktree", "prune"))
         if prune_result.failure:
             return r[bool].fail(

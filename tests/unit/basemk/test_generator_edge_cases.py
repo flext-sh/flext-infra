@@ -5,9 +5,8 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING, override
 
-from flext_tests import tm
-
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,7 +32,7 @@ class TestsFlextInfraBasemkGeneratorEdgeCases:
         )
 
         tm.fail(result)
-        assert result.error
+        tm.that(result.error, empty=False)
 
     def test_generator_write_to_stream_handles_oserror(self) -> None:
         result = FlextInfraBaseMkGenerator().write(

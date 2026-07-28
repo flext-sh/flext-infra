@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
+from flext_infra import u as infra_u
 from flext_tests import tm
-
 from tests import u
 
 
@@ -43,7 +44,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         (tmp_path / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
-        assert len(result.value) >= 1
+        tm.that(len(result.value) >= 1, eq=True)
 
     def test_discover_projects_skips_no_pyproject_no_gomod(
         self, tmp_path: Path
@@ -57,7 +58,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        assert not result.value
+        tm.that(not result.value, eq=True)
 
     def test_find_all_pyproject_files_skips_unreadable_subdir(
         self, tmp_path: Path
@@ -75,3 +76,22 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             blocked_dir.chmod(0o755)
         tm.ok(result)
         tm.that(result.value, eq=[])
+
+    def test_external_discovery_skips_inaccessible_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        blocked = tmp_path / "blocked"
+        workspace.mkdir()
+        blocked.mkdir()
+        original_is_file = Path.is_file
+
+        def is_file(path: Path) -> bool:
+            if path == blocked / "pyproject.toml":
+                raise PermissionError(path)
+            return original_is_file(path)
+
+        with patch.object(Path, "is_file", is_file):
+            roots = infra_u.Infra.discover_external_workspace_roots(workspace)
+
+        tm.that(roots, eq=())

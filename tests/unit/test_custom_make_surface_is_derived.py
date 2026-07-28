@@ -18,9 +18,8 @@ import ast
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import c
+from flext_tests import tm
 
 
 def _engine_modules() -> tuple[Path, ...]:

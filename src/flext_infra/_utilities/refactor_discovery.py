@@ -14,7 +14,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
@@ -27,13 +29,14 @@ class FlextInfraUtilitiesRefactorDiscovery:
         settings: t.MappingKV[str, t.Infra.InfraValue],
     ) -> m.Infra.RefactorConfig:
         """Resolve the typed refactor config through the shared CLI DSL."""
-        return m.Infra.RefactorConfig.model_validate(
+        validated: m.Infra.RefactorConfig = m.Infra.RefactorConfig.model_validate(
             u.Cli.rules_resolve_scope(
                 dict(settings),
                 scope_key=c.Infra.RK_REFACTOR,
                 allowed_keys=c.Infra.REFACTOR_CONFIG_KEYS,
             )
         )
+        return validated
 
     @staticmethod
     def filter_refactor_files(

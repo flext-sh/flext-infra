@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.docs.builder import FlextInfraDocBuilder
+from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
@@ -24,7 +23,11 @@ def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None
 
     tm.ok(result)
     tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
-    assert all(report.result == "SKIP" for report in result.value)
+    tm.that(
+        all(report.result == c.Infra.ResultStatus.FAIL for report in result.value),
+        eq=True,
+    )
+    tm.that(all(not report.passed for report in result.value), eq=True)
 
 
 def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
@@ -35,14 +38,16 @@ def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
     )
 
     tm.ok(result)
-    assert (workspace / ".custom-docs/build-report.md").exists()
-    assert (workspace / "flext-a/.custom-docs/build-report.md").exists()
+    tm.that((workspace / ".custom-docs/build-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.custom-docs/build-report.md").exists(), eq=True)
 
 
-def test_build_skip_report_has_empty_site_dir(tmp_path: Path) -> None:
+def test_build_missing_settings_failure_has_empty_site_dir(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder().build(workspace)
 
     tm.ok(result)
+    tm.that(result.value[0].result, eq=c.Infra.ResultStatus.FAIL)
+    tm.that(result.value[0].passed, eq=False)
     tm.that(result.value[0].site_dir, eq="")

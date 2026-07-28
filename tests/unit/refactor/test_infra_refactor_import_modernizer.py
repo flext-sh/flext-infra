@@ -5,12 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import c, m
 from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from tests import t
@@ -205,7 +204,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
             "fix_action": "hoist_to_module_top",
         })
         updated, _ = rule.apply(source, tmp_path)
-        assert updated.startswith("import json\n")
+        tm.that(updated.startswith("import json\n"), eq=True)
         tm.that(updated, has="def build() -> None:\n    return None\n")
 
     def test_lazy_import_rule_uses_fix_action_for_hoist(self, tmp_path: Path) -> None:
@@ -215,7 +214,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
             "fix_action": "hoist_to_module_top",
         })
         updated, _ = rule.apply(source, tmp_path)
-        assert updated.startswith("import json\n")
+        tm.that(updated.startswith("import json\n"), eq=True)
         tm.that(updated, has="def build() -> None:\n    return None\n")
 
     @staticmethod
