@@ -28,8 +28,8 @@ def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -
     tm.ok(result)
     report = result.unwrap()
     tm.that(report.total, eq=2)
-    tm.that(report.success, eq=1)
-    tm.that(report.fail, eq=1)
+    tm.that(report.success, eq=0)
+    tm.that(report.fail, eq=2)
 
 
 def test_run_github_workspace_pull_requests_respects_project_selection(
@@ -51,7 +51,7 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
     report = result.unwrap()
     report_dir = workspace / ".reports/workspace/pr"
     tm.that(report.total, eq=2)
-    tm.that(report.fail, eq=0)
+    tm.that(report.fail, eq=2)
     assert (report_dir / "flext-a.log").is_file()
     assert (report_dir / "flext-b.log").is_file()
     assert not (report_dir / "flext-c.log").exists()

@@ -6,7 +6,7 @@ import re
 import shutil
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_tests import tm
 
 from tests import m, u
@@ -112,7 +112,7 @@ class TestsInfraGithub:
             tm.that(outcome.status, eq="ok")
 
     def test_pull_request_fails_for_minimal_repo(self, tmp_path: Path) -> None:
-        """Return a typed failure when the repository lacks PR state."""
+        """Run native gh and return a typed failure for a non-repository."""
         workspace = u.Tests.create_github_workspace(
             tmp_path, project_names=("flext-a",)
         )
@@ -125,6 +125,28 @@ class TestsInfraGithub:
 
         tm.fail(result)
         tm.that((result.error or ""), has="PR operation exited with code")
+        log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
+        assert log_path.is_file()
+        tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
+
+    def test_pull_request_create_requires_noninteractive_content(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject create before transport when title or body is absent."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a",)
+        )
+
+        result = u.Infra.run_github_pull_request(
+            m.Infra.GithubPullRequestRequest(
+                repo_root=str(workspace / "flext-a"),
+                action=c.Infra.PullRequestAction.CREATE,
+                head="feature/arbitrary",
+            )
+        )
+
+        tm.fail(result)
+        tm.that((result.error or ""), has="title is required")
 
     def test_every_workflow_make_verb_exists_in_the_codegen_ssot(self) -> None:
         """Reject any CI workflow verb absent from the canonical verb SSOT.
