@@ -46,9 +46,10 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
     tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
 
 
-def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_unowned(
+def test_root_generated_catalog_survives_project_pass_and_required_indexes_validate(
     tmp_path: Path,
 ) -> None:
+    """Preserve generated root artifacts and the required curated indexes."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
         workspace_root=workspace, projects=["flext-a"], apply=True
@@ -64,15 +65,20 @@ def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_un
     tm.ok(second)
     tm.that(catalog.exists(), eq=True)
 
-    for relative_path in (
+    required_indexes = (
         "docs/architecture/README.md",
         "docs/projects/README.md",
         "docs/api-reference/README.md",
-    ):
-        (workspace / relative_path).unlink()
+    )
+    tm.that(
+        all(
+            (workspace / relative_path).is_file() for relative_path in required_indexes
+        ),
+        eq=True,
+    )
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
+    tm.that([report.result for report in validation.value], eq=["OK", "OK"])
 
 
 def test_generated_collection_rules_pointer_stays_within_consumer_limit(
@@ -98,7 +104,7 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
         if lines[index].startswith("## ")
     )
     collection_rules_lines = [line for line in lines[section_start:section_end] if line]
-    tm.that(max(map(len, collection_rules_lines)), le=240)
+    tm.that(max(map(len, collection_rules_lines)) <= 240, eq=True)
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(
@@ -136,8 +142,70 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
 
     second = generator.generate(request)
     tm.ok(second)
-    tm.that(second.value[1].generated, eq=0)
+    tm.that([report.generated for report in second.value], eq=[0, 0])
     tm.that((project / "README.md").read_text(encoding="utf-8"), eq=first_readme)
+
+
+def test_generated_mkdocstrings_directive_preserves_indented_options(
+    tmp_path: Path,
+) -> None:
+    """Keep Mkdocstrings directives structural across generated pages."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["flext-a"], apply=True
+    )
+
+    result = FlextInfraDocGenerator().generate(request)
+
+    tm.ok(result)
+    page = (workspace / "flext-a/docs/api-reference/generated/public-api.md").read_text(
+        encoding="utf-8"
+    )
+    tm.that(
+        page,
+        has=(
+            "::: flext_a\n"
+            "    options:\n"
+            "      show_root_heading: true\n"
+            "      show_root_full_path: false\n"
+            "      show_source: false\n"
+        ),
+    )
+    tm.that(page, lacks="::: flext_a options:")
+
+
+def test_generated_prose_wraps_without_reformatting_directive_blocks(
+    tmp_path: Path,
+) -> None:
+    """Wrap prose at the canonical width while preserving directives."""
+    scope = m.Infra.DocScope(
+        name="flext-a",
+        path=tmp_path,
+        report_dir=tmp_path / ".reports/docs",
+        project_class="library",
+        package_name="flext_a",
+    )
+    contract = {"version": "1.0", "description": " ".join(["resilient"] * 20)}
+
+    rendered = u.Infra.docs_project_index(scope, contract)
+
+    description_lines = [
+        line
+        for line in rendered.splitlines()
+        if line.startswith(("- Description:", "  resilient"))
+    ]
+    tm.that(max(map(len, description_lines)) <= 80, eq=True)
+    tm.that(
+        rendered,
+        has=(
+            "::: flext_a\n"
+            "    options:\n"
+            "      members: false\n"
+            "      show_root_heading: false\n"
+            "      show_root_toc_entry: false\n"
+            "      show_source: false\n"
+        ),
+    )
 
 
 def test_generate_dry_run_marks_report_as_warn(tmp_path: Path) -> None:

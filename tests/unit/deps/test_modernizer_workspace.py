@@ -52,7 +52,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
 
-    def test_modernizer_distinguishes_exact_workspace_root_assignment(
+    def test_modernizer_ignores_make_workspace_root_assignments(
         self, tmp_path: Path
     ) -> None:
         project = tmp_path / "project"
@@ -76,7 +76,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         with_exact_marker = tm.ok(modernizer.conform_source(source, path=pyproject))
 
         tm.that(with_relative_marker, eq=before)
-        tm.that(with_exact_marker, ne=before)
+        tm.that(with_exact_marker, eq=before)
 
     def test_main_applies_only_selected_projects(
         self, modernizer_workspace_with_projects: Path

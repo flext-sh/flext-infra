@@ -47,7 +47,12 @@ class TestsFlextInfraBasemkMain:
             tm.that(exit_code, eq=0)
             generated = output_file.read_text(encoding="utf-8")
             tm.that(generated, has="PROJECT_NAME ?= ai-hub")
-            tm.that(generated, has="$(if $(wildcard $(VENV_PYTHON))")
+            tm.that(generated, has="FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)")
+            tm.that(
+                generated,
+                has='test -x "$(FLEXT_INFRA_PYTHON)" || { echo '
+                '"ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python"',
+            )
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path

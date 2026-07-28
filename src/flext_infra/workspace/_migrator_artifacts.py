@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, c, u
 
 if TYPE_CHECKING:
     from pathlib import Path

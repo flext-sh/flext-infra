@@ -89,6 +89,17 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         )
         return f"{safe_stem or 'workspace'}.log"
 
+    @staticmethod
+    def _exit_classification(exit_code: int) -> str:
+        """Return the stable process classification for one failed exit."""
+        if exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE:
+            return "timeout"
+        if exit_code < 0:
+            return f"signal={-exit_code}"
+        if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
+            return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
+        return "process-failure"
+
     def orchestrate(
         self,
         projects: t.StrSequence,
@@ -190,9 +201,10 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
+            classification = self._exit_classification(exit_code)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} exit={exit_code} {classification})"
             )
         return r.ok(results)
 

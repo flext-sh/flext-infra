@@ -1147,13 +1147,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
             """Provide the typed test helper `extract_lazy_init_exports`."""
-            for name, value_str in u.Infra.get_module_level_assignments(source):
-                if name == c.Infra.DUNDER_ALL:
-                    return (
-                        True,
-                        tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(value_str)),
-                    )
-            return (False, ())
+            assignments = dict(u.Infra.get_module_level_assignments(source))
+            all_value = assignments.get(c.Infra.DUNDER_ALL)
+            if all_value is None:
+                return (False, ())
+            exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
+            if exports:
+                return (True, exports)
+            public_exports_name = c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX
+            if public_exports_name not in all_value:
+                return (True, ())
+            public_exports_value = assignments.get(public_exports_name, "")
+            return (
+                True,
+                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_exports_value)),
+            )
 
         @staticmethod
         def consolidate_codegen(

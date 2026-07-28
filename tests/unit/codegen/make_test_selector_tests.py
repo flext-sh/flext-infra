@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import config
 
 
@@ -33,21 +35,26 @@ class TestsMakeTestSelector:
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
-        assert any(verb.name == "test" for verb in config.Infra.codegen.make.verbs)
+        tm.that(
+            any(verb.name == "test" for verb in config.Infra.codegen.make.verbs),
+            eq=True,
+        )
 
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
-        """The recipe must forward the knob `base.mk` documents.
+        """The shared reporter recipe must forward every test selector.
 
         Without this, a targeted run is impossible through `make`, and the only
         way to filter is to call pytest directly -- exactly the loose command the
         canonical-command law forbids.
         """
-        template = _makefile_template().read_text(encoding="utf-8")
-        recipes = [
-            block.split("\n\n", 1)[0]
-            for block in template.split("_builtin_test_all:")[1:]
-        ]
-        assert recipes, "template declares no _builtin_test_all recipe"
-        direct = [r for r in recipes if "pytest" in r]
-        assert direct, "no _builtin_test_all recipe invokes pytest directly"
-        assert all("PYTEST_ARGS" in recipe for recipe in direct)
+        template_path = _makefile_template()
+        template = template_path.read_text(encoding="utf-8")
+        reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(template, has="test_report_recipe(")
+        tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
+        tm.that(reporter, has='if [ -n "$(MATCH)" ]')
+        tm.that(reporter, has='if [ -n "$(FILE)" ]')
+        tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')

@@ -37,6 +37,14 @@ class TestsFlextInfraWorkspaceCheckScope:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
 
-        # RUFF_PATHS/MYPY_PATHS must expand over the members for the root
-        # profile instead of being pinned to the root's own src/tests.
-        tm.that(template, has="WORKSPACE_CHECK_PATHS")
+        # The root delegates checks to each selected member's canonical Make
+        # surface instead of flattening member paths into one root process.
+        tm.that(
+            template,
+            has=[
+                "WORKSPACE_ORCHESTRATE =",
+                "WORKSPACE_PROJECT_ARGS := $(foreach project,$(PROJECTS),--projects $(project))",
+                "$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS)",
+                '--make-arg "CHECK_GATES=$(CHECK_GATES)"',
+            ],
+        )

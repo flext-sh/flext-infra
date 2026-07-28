@@ -98,12 +98,15 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         """Build docs scope for a governed project root."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        project_name = FlextInfraUtilitiesDocsScope.project_name_from_payload(
+            project_root, payload
+        )
         return m.Infra.DocScope(
-            name=project_root.name,
+            name=project_name,
             path=project_root,
             report_dir=(project_root / output_dir).resolve(),
             project_class=FlextInfraUtilitiesDocsScope.classify_project_from_meta(
-                project_root.name, docs_meta
+                project_name, docs_meta
             ),
             package_name=FlextInfraUtilitiesDocsScope.package_name_from_payload(
                 project_root, payload, docs_meta

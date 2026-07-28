@@ -28,7 +28,7 @@ _TARGET_LINE = re.compile(r"^(?P<names>[a-z][a-z0-9 _-]*):(?!=)")
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _custom_surfaces() -> tuple[Path, ...]:
@@ -71,3 +71,18 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         }
 
         tm.that(offenders, eq={})
+
+    def test_basemk_generation_has_a_declared_make_selector(self) -> None:
+        """The infra-only base.mk owner remains callable through Make."""
+        repository = next(
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.distribution == "flext-infra"
+        )
+        verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
+        custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(verbs.get("basemk"), eq="generate")
+        tm.that(custom, has="_custom_basemk_generate:")

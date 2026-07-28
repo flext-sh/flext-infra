@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, u
+from flext_infra import FlextInfraWorkspaceEnvironment, c, m, p, u
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):

@@ -124,40 +124,24 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         return r[str].ok(output.stdout)
 
     def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
-        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
+        """Return whether Git declares the project as an attached submodule.
 
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
+        A non-Git scaffold is explicitly local. Environment directories and
+        generated Make projections never participate in topology detection.
         """
-        rules = config.Infra.tooling.tools.pyright.path_rules
-        venv_name = rules.venv_name
-        if (project_dir / venv_name).is_dir():
+        inside = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--is-inside-work-tree")
+        )
+        if inside.failure or inside.value.strip() != "true":
             return r[bool].ok(False)
-        if (project_dir.parent / venv_name).is_dir():
-            return r[bool].ok(True)
-        makefile = project_dir / "Makefile"
-        if not makefile.exists():
-            return r[bool].ok(False)
-        if not makefile.is_file():
-            return r[bool].fail(f"project Makefile is not a regular file: {makefile}")
-        read = u.Cli.files_read_text(makefile)
-        if read.failure:
+        superproject = u.Infra.git_capture(
+            project_dir, ("rev-parse", "--show-superproject-working-tree")
+        )
+        if superproject.failure:
             return r[bool].fail(
-                read.error or f"project Makefile read failed: {makefile}"
+                superproject.error or "failed to resolve Git superproject"
             )
-        for raw_line in read.value.splitlines():
-            stripped = raw_line.strip()
-            key, separator, value = stripped.partition(":=")
-            if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
-                continue
-            return r[bool].ok(value.strip().startswith(".."))
-        return r[bool].ok(False)
+        return r[bool].ok(bool(superproject.value.strip()))
 
     def _process_document_state(
         self,

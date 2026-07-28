@@ -5,9 +5,11 @@
 - Version: `unknown`
 - Project class: `infra`
 - Package: `flext_infra`
-- Description: FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management
+- Description: FLEXT Infrastructure Tooling—build automation, code generation,
+  and workspace management
 
-This project portal is generated from `pyproject.toml`, package exports, and real docstrings.
+This project portal is generated from `pyproject.toml`, package exports, and
+real docstrings.
 
 ## Start Here
 
@@ -27,11 +29,16 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](../../../AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).
+Read [`/flext/AGENTS.md`](../../../AGENTS.md) §9 for the canonical pre-change
+checklist: parent MRO chain, scope bootstrap, skill loading, zero-debt baseline,
+and slot registry verification.
 
 ## Quality Gates
 
-Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](../../.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.
+Canonical Make verbs are `check`, `test`, `val`, and `docs`. See `AGENTS.md` §5
+and the
+[`flext-quality-gates`](../../.agents/skills/flext-quality-gates/SKILL.md)
+skill for selectors and thresholds.
 
 ## Governance Pointer
 

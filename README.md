@@ -2,13 +2,16 @@
 
 # flext-infra
 
-**Version**: `0.12.0` | **Python**: 3.13+ | **Project class**: `infra`
+**Version**: `0.12.0rc0` | **Python**: 3.13+ | **Project class**: `infra`
 
-> **Alpha (0.12.0).** This package is alpha quality. Every package in the workspace must be re-checked and re-validated at 0.12.0 before any promotion beyond alpha; treat interfaces as unstable.
+> **Alpha (0.12.0).** This package is alpha quality. Every package in the
+> workspace must be re-checked and re-validated at 0.12.0 before any promotion
+> beyond alpha; treat interfaces as unstable.
 
 ## Purpose
 
-FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management
+FLEXT Infrastructure Tooling - Build automation, code generation, and workspace
+management
 
 ## Module Map
 
@@ -21,23 +24,36 @@ FLEXT Infrastructure Tooling - Build automation, code generation, and workspace 
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](../AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).
+Read [`/flext/AGENTS.md`](../AGENTS.md) §9 — Agent Execution Pre-requisites —
+for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill
+loading, zero-debt baseline,
+slot registry verification).
 
 ## Operation Flow
 
-- Public surface: see [`docs/index.md`](docs/index.md) and [`docs/api-reference/README.md`](docs/api-reference/README.md).
-- Generated module overview: [`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md).
-- Settings env prefix: see project `pyproject.toml` `[tool.flext]` and `FlextSettings` ConfigDict.
+- Public surface: see [`docs/index.md`](docs/index.md) and
+  [`docs/api-reference/README.md`](docs/api-reference/README.md).
+- Generated module overview:
+  [`docs/api-reference/generated/overview.md`](docs/api-reference/generated/overview.md).
+- Settings env prefix: see project `pyproject.toml` `[tool.flext]` and
+  `FlextSettings` ConfigDict.
 
 ## Integration Points
 
-- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.
-- Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`, `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols` (+4 more).
+- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array
+  filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of
+  the facade classes listed under Module Map above.
+- Public extensions exposed by this project: `FlextInfra`, `FlextInfraCli`,
+  `FlextInfraConstants`, `FlextInfraModels`,
+  `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols` (+5 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates
 
-Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](../.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.
+Canonical `make` verbs (`check`, `test`, `format WHAT=apply APPLY=Y`, `val`,
+`docs`) — see `AGENTS.md` §5 (Make Contract) and the
+[`flext-quality-gates`](../.agents/skills/flext-quality-gates/SKILL.md) skill
+for selectors and thresholds.
 
 ## Governance Pointer
 

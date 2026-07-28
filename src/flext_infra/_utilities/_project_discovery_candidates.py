@@ -31,38 +31,82 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
     def discover_external_workspace_roots(
         cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
-        """Return sibling workspace roots that opted in as attached.
+        """Return explicitly configured workspace roots outside ``workspace_root``.
 
-        mro-4gbp: selection is declarative and name-agnostic. A sibling joins
-        discovery only by declaring ``[tool.flext.workspace] attached = true``
-        in its own pyproject - the same contract used for attached children.
-        The engine never pattern-matches a directory name it does not own.
+        Selection is bounded by the ``members`` paths or globs declared in the
+        root's ``[tool.flext.workspace]`` or ``[tool.uv.workspace]`` table.
+        Unrelated siblings are never probed. A configured but inaccessible
+        member fails loud with its path.
         """
         resolved_workspace_root = workspace_root.resolve()
-        parent = resolved_workspace_root.parent
-        if not parent.is_dir():
-            return ()
         effective_scan_dirs = scan_dirs or frozenset()
-        configured_member_set = frozenset(
-            FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root)
+        configured_members = FlextInfraUtilitiesPyproject.workspace_member_names(
+            workspace_root
         )
+        configured_member_set = frozenset(configured_members)
+        candidates: set[Path] = set()
+        for member in configured_members:
+            try:
+                matched = (
+                    tuple(resolved_workspace_root.glob(member))
+                    if any(marker in member for marker in ("*", "?", "["))
+                    else (resolved_workspace_root / member,)
+                )
+            except OSError as exc:
+                msg = f"declared workspace member pattern is not accessible: {member}"
+                raise OSError(msg) from exc
+            candidates.update(matched)
         roots: list[Path] = []
         seen: set[Path] = set()
-        for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
-            if not candidate.is_dir():
+        for candidate in sorted(candidates, key=lambda item: item.as_posix()):
+            try:
+                resolved_candidate = candidate.resolve()
+            except OSError as exc:
+                msg = (
+                    "declared external workspace member path cannot be resolved: "
+                    f"{candidate}"
+                )
+                raise PermissionError(msg) from exc
+            if resolved_candidate.is_relative_to(resolved_workspace_root):
                 continue
-            resolved_candidate = candidate.resolve()
-            if resolved_candidate == resolved_workspace_root:
-                continue
+            try:
+                is_directory = resolved_candidate.is_dir()
+            except OSError as exc:
+                msg = (
+                    "declared external workspace member is not accessible: "
+                    f"{resolved_candidate}"
+                )
+                raise PermissionError(msg) from exc
+            if not is_directory:
+                msg = (
+                    "declared external workspace member is not a directory: "
+                    f"{resolved_candidate}"
+                )
+                raise NotADirectoryError(msg)
+            pyproject = resolved_candidate / c.Infra.PYPROJECT_FILENAME
+            try:
+                has_pyproject = pyproject.is_file()
+            except OSError as exc:
+                msg = (
+                    "declared external workspace member is not accessible: "
+                    f"{resolved_candidate}"
+                )
+                raise PermissionError(msg) from exc
+            if not has_pyproject:
+                msg = (
+                    "declared external workspace member has no pyproject.toml: "
+                    f"{resolved_candidate}"
+                )
+                raise FileNotFoundError(msg)
             if resolved_candidate in seen:
-                continue
-            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             metadata_result = u.read_project_metadata(resolved_candidate)
             if metadata_result.failure:
-                continue
-            if not metadata_result.value.flext.workspace.attached:
-                continue
+                msg = (
+                    "declared external workspace member metadata is invalid: "
+                    f"{resolved_candidate}: {metadata_result.error}"
+                )
+                raise ValueError(msg)
             if not cls._looks_like_project(
                 resolved_candidate,
                 effective_scan_dirs=effective_scan_dirs,

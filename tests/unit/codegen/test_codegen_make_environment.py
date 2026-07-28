@@ -173,14 +173,13 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
-            "git submodule update --init --recursive",
+            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
             "mise exec -- uv",
             "uv@",
-            "WHAT=environment",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
         ):

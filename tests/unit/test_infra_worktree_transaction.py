@@ -243,9 +243,8 @@ class TestsFlextInfraWorktreeTransaction:
         )
         report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
-        lint_output = "\n".join(item.output for item in report.lint_after)
 
-        tm.that(report.breakage_detected, eq=False, msg=lint_output)
+        tm.that(report.breakage_detected, eq=False, msg=output)
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)

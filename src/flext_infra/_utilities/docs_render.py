@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fnmatch
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -15,6 +16,59 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
+
+    _MARKDOWN_LINE_LENGTH: ClassVar[int] = 80
+
+    @staticmethod
+    def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:
+        """Wrap one generated prose line without changing Markdown structure."""
+        if len(line) <= FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH:
+            return (line,)
+        stripped = line.lstrip()
+        if (
+            not stripped
+            or stripped != line
+            or stripped.startswith(("#", "|", ":::", "```", "<"))
+        ):
+            return (line,)
+        prefix = ""
+        body = line
+        subsequent_indent = ""
+        if line.startswith(("- ", "* ", "+ ")):
+            prefix, body = line[:2], line[2:]
+            subsequent_indent = "  "
+        elif line.startswith("> "):
+            prefix, body = line[:2], line[2:]
+            subsequent_indent = prefix
+        else:
+            marker, separator, remainder = line.partition(" ")
+            if separator and marker.endswith(".") and marker[:-1].isdigit():
+                prefix, body = f"{marker} ", remainder
+                subsequent_indent = " " * len(prefix)
+        wrapper = textwrap.TextWrapper(
+            width=FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH,
+            initial_indent=prefix,
+            subsequent_indent=subsequent_indent,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        return tuple(wrapper.wrap(body)) or (line,)
+
+    @staticmethod
+    def _render_markdown(lines: t.SequenceOf[str]) -> str:
+        """Render generated Markdown with bounded prose and verbatim code blocks."""
+        rendered: t.MutableSequenceOf[str] = []
+        in_fence = False
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                rendered.append(line)
+            elif in_fence:
+                rendered.append(line)
+            else:
+                rendered.extend(FlextInfraUtilitiesDocsRender._wrap_markdown_line(line))
+        return "\n".join(rendered)
 
     @staticmethod
     def _is_object_list(value: t.Infra.InfraValue | None) -> bool:
@@ -175,7 +229,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
+            f"Canonical `make` verbs (`check`, `test`, `format WHAT=apply APPLY=Y`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
         ]
 
     @staticmethod
@@ -259,7 +313,7 @@ class FlextInfraUtilitiesDocsRender:
         description = str(data.get("description", "")).strip() or "_not declared_"
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name}",
@@ -311,7 +365,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} Guides",
@@ -329,7 +383,7 @@ class FlextInfraUtilitiesDocsRender:
         data = contract
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} API Reference",
@@ -364,9 +418,17 @@ class FlextInfraUtilitiesDocsRender:
 
         SSOT for the ``[GENERATED_HEADER, "", "# title", "", ...body, ""]``
         layout shared by every ``docs_*_page``/``docs_*_index``/``docs_*_readme``
-        renderer. Body lines are passed verbatim — no further escaping.
+        renderer. Structural lines remain verbatim while prose is wrapped by
+        the canonical renderer.
         """
-        return "\n".join([c.Infra.GENERATED_HEADER, "", f"# {title}", "", *body, ""])
+        return FlextInfraUtilitiesDocsRender._render_markdown([
+            c.Infra.GENERATED_HEADER,
+            "",
+            f"# {title}",
+            "",
+            *body,
+            "",
+        ])
 
     @staticmethod
     def _render_block(lines: t.SequenceOf[str]) -> str:
@@ -447,7 +509,7 @@ class FlextInfraUtilitiesDocsRender:
         keywords = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
@@ -485,14 +547,14 @@ class FlextInfraUtilitiesDocsRender:
         ]
         if not modules:
             lines.extend(["_No public modules discovered._", ""])
-            return "\n".join(lines)
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
         for module_name in modules:
             relative_path = FlextInfraUtilitiesDocsRender._module_relative_doc_path(
                 scope.package_name, module_name
             )
             lines.append(f"- [{module_name}]({relative_path})")
         lines.append("")
-        return "\n".join(lines)
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
     def docs_root_mkdocs(
@@ -545,7 +607,7 @@ class FlextInfraUtilitiesDocsRender:
             )
             or "_none_"
         )
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
@@ -577,14 +639,14 @@ class FlextInfraUtilitiesDocsRender:
         ]
         if not entries:
             lines.extend(["_No projects discovered._", ""])
-            return "\n".join(lines)
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
         for entry in entries:
             lines.append(
                 f"- [{entry['name']}]({entry['name']}/modules/index.md)"
                 f" — `{entry['module_count']}` modules"
             )
         lines.append("")
-        return "\n".join(lines)
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
     def docs_project_catalog_page(
@@ -615,7 +677,7 @@ class FlextInfraUtilitiesDocsRender:
                 for pattern in exclude_patterns
             )
         ]
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             "# FLEXT Project Catalog",

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import tomlkit
 from flext_tests import tm
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
-    def test_modernizer_uses_git_topology_for_analyzer_virtualenvs(
+    def test_modernizer_removes_static_analyzer_virtualenvs(
         self, tmp_path: Path
     ) -> None:
-        """Distinguish an attached submodule from an independent linked worktree."""
+        """Runtime-selected interpreters supersede static topology assumptions."""
         child_origin = tmp_path / "child-origin"
         child_origin.mkdir()
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))
@@ -93,25 +93,23 @@ class TestsFlextInfraModernizerPyrefly:
             (linked / "pyproject.toml").read_text(encoding="utf-8")
         )
         if attached_payload is None or linked_payload is None:
-            message = "modernized pyproject must remain valid TOML"
-            raise AssertionError(message)
+            tm.that(
+                attached_payload is not None and linked_payload is not None,
+                eq=True,
+                msg="modernized pyproject must remain valid TOML",
+            )
+            return
         attached_tool = u.Cli.json_as_mapping(attached_payload["tool"])
         linked_tool = u.Cli.json_as_mapping(linked_payload["tool"])
         attached_pyrefly = u.Cli.json_as_mapping(attached_tool["pyrefly"])
         linked_pyrefly = u.Cli.json_as_mapping(linked_tool["pyrefly"])
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
-        rules = config.Infra.tooling.tools.pyright.path_rules
-        tm.that(
-            attached_pyrefly["python-interpreter-path"],
-            eq=f"{rules.project_venv_path}/{rules.venv_name}/bin/python",
-        )
-        tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
-        tm.that(
-            linked_pyrefly["python-interpreter-path"],
-            eq=f"{rules.root_venv_path}/{rules.venv_name}/bin/python",
-        )
-        tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
+        for pyrefly in (attached_pyrefly, linked_pyrefly):
+            tm.that(pyrefly, lacks="python-interpreter-path")
+        for pyright in (attached_pyright, linked_pyright):
+            tm.that(pyright, lacks="venv")
+            tm.that(pyright, lacks="venvPath")
 
     def test_ensure_pyrefly_config_sets_fields_root(
         self, tool_config_document: m.Infra.ToolConfigDocument
@@ -150,7 +148,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc, is_root=True
         )
 
-        tm.that("python-interpreter-path" in pyrefly, eq=True)
+        tm.that("python-interpreter-path" in pyrefly, eq=False)
         tm.that("fallback-python-interpreter-name" in pyrefly, eq=False)
         tm.that(
             any(

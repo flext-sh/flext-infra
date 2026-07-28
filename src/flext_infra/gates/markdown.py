@@ -18,7 +18,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN
     gate_name: ClassVar[str] = "Markdown"
-    can_fix: ClassVar[bool] = True
+    can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.MARKDOWN][1]
 
@@ -84,24 +84,6 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                 )
             )
         return result.exit_code == 0, issues
-
-    @override
-    def _build_fix_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
-    ) -> t.StrSequence:
-        """Build fix command."""
-        _ = ctx
-        return [
-            c.Infra.MARKDOWNLINT,
-            "--fix",
-            *self._resolve_config_args(project_dir),
-            *targets,
-        ]
-
-    @override
-    def _fix_raw_output(self, result: p.Cli.CommandOutput) -> str:
-        """Fix raw output."""
-        return "\n".join(part for part in (result.stdout, result.stderr) if part)
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

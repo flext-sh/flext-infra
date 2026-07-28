@@ -58,8 +58,8 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
-    makefile = next(
+    plan: m.Infra.CodegenPlan = tm.ok(planned)
+    makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
     return makefile.rendered
@@ -127,9 +127,9 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        sync_at = rendered.index("git submodule sync --recursive")
-        update_at = rendered.index("git submodule update --init --recursive")
-        uv_at = rendered.index("uv sync")
+        sync_at = rendered.index("submodule sync --recursive")
+        update_at = rendered.index("submodule update --init --recursive")
+        uv_at = rendered.index("$(UV) sync")
 
         tm.that(sync_at < update_at < uv_at, eq=True)
 
@@ -152,12 +152,13 @@ class TestsWorkspaceRootSetupSubmodules:
             "exit 0\n",
         )
         env = os.environ.copy()
-        env["PATH"] = f"{bin_dir}:{env['PATH']}"
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
-        outcome = u.Cli.run_raw(["make", "setup"], cwd=workspace, env=env)
+        outcome = u.Cli.run_raw(
+            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
+        )
         process = outcome.value
 
         tm.that(process.exit_code, eq=0)
-        tm.that(workspace / "flext-core" / "pyproject.toml", is_file=True)
+        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")

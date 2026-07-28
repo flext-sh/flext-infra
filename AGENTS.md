@@ -172,67 +172,84 @@ never allowed to hardcode, freeze, or implicitly assume the values that exist to
 <!-- /UNIVERSAL-GOVERNANCE -->
 <!-- END AI-HUB MANAGED UNIVERSAL CORE -->
 
-> **General FLEXT law & workspace conventions live in the root [`../AGENTS.md`](../AGENTS.md) — read it first.** It is the SSOT for facade layering, config/settings access, the `make`-only workflow, the testing law, and multi-agent git discipline. This file adds ONLY `flext-infra`-specific knowledge and never repeats the root.
+> **General FLEXT law and workspace conventions live in the root
+> [`../AGENTS.md`](../AGENTS.md)—read it first.** It is the SSOT for facade
+> layering, config/settings access, the `make`-only workflow, testing law, and
+> multi-agent Git discipline. This file adds only `flext-infra` knowledge.
 >
-> **Standalone / independent mode:** if this package is checked out on its own (imported as a dependency, vendored, or cloned solo) there is no parent workspace, so `../AGENTS.md` does not resolve. Then read the root law from the raw file on the SAME branch/release the project is on: <https://raw.githubusercontent.com/flext-sh/flext/0.12.0-dev/AGENTS.md> (pin the branch/tag to your working line, never `main`).
+> **Standalone / independent mode:** if this package is checked out alone,
+> `../AGENTS.md` does not resolve. Read the root law from the raw file on the
+> same branch or release:
+> <https://raw.githubusercontent.com/flext-sh/flext/0.12.0-dev/AGENTS.md>.
 
-**Package:** `flext_infra` · ~82k src LOC (largest in the workspace) · deps: `flext-cli`, `flext-core`
+**Package:** `flext_infra` · ~82k source LOC · dependencies: `flext-cli`,
+`flext-core`
 
 ## Overview
 
-Infrastructure tooling: code generation, workspace conform, dependency modernization, and declarative enforcement. It *drives* `make gen` / `make build` / `make check` and generates other packages' facets and `[MANAGED]` pyproject sections.
+Infrastructure tooling for code generation, workspace conformance, dependency
+modernization, and declarative enforcement. It drives canonical Make commands
+and generates package facets and `[MANAGED]` pyproject sections.
 
 ## Structure
 
-```
+```text
 src/flext_infra/
-├── api.py cli.py __main__.py   # FlextInfra facade + FlextInfraCli (main / docs_main)
-├── iteration.py                # MRO facade over _iteration_{matching,directory,workspace,project}.py
-├── codegen/        # scaffolding, conform, census, lazy-init/facet generation, pipeline, consolidator, py.typed
-├── detectors/      # policy detectors: dep/runtime, MRO shape, class placement, loose-test, silent-failure
+├── api.py cli.py __main__.py   # facade and CLI entry points
+├── iteration.py                # MRO iteration facade
+├── codegen/        # scaffolding, conformance, facets, and pipelines
+├── detectors/      # dependency, MRO, placement, and failure policies
 ├── fixers/         # base/rope/transformer/manual/gate fixers + orchestration
-├── transformers/   # source modernizers: signature, class-nesting, compat, Result/DI
-├── rules/          # YAML policy catalogs (class nesting, typing census, import modernization, constants, legacy)
+├── transformers/   # signature, nesting, compatibility, Result, and DI
+├── rules/          # declarative policy catalogs
 ├── schemas/        # JSON schemas for codegen + workspace manifests
-├── templates/      # Jinja: package roots, lazy-init roots, Makefile/build artifacts
-├── config/         # declarative codegen/enforcement policy (codegen.yaml, …) validated by pydantic
-├── deps/           # dependency detection, extra-paths, pyrefly repair, modernizer.py ([MANAGED] pyproject)
-├── gates/ check/ validate/     # gate resolution, workspace check orchestration, validators (cycles, tiers, …)
+├── templates/      # Jinja package, Makefile, and build artifacts
+├── config/         # validated codegen and enforcement policy
+├── deps/           # detection, repair, and pyproject modernization
+├── gates/ check/ validate/     # gate orchestration and validators
 ├── docs/ github/ maintenance/ release/ workspace/ services/ _enforcement/ basemk/
-├── constants.py typings.py protocols.py models.py utilities.py   # AUTO-GENERATED facets
+├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```
 
 ## Code Map
 
-| Symbol | Kind | Location | Role |
-|--------|------|----------|------|
-| `FlextInfra` | class | `api.py` | public facade (Rope workspace access, health) |
-| `FlextInfraCli` / `main` / `docs_main` | class+fns | `cli.py` | entry points `flext-infra`, `flext-docs` |
-| `FlextInfraEnforcementEngine` | class | `_enforcement/engine.py` | catalog-backed enforcement collector |
-| `FlextInfraCodegenPipeline` | class | `codegen/pipeline.py` | codegen pipeline (used by `services/cli_routes_codegen.py`) |
-| `FlextInfraCodegenConsolidator` | class | `codegen/consolidator.py` | facet consolidation |
-| `FlextInfraPyprojectModernizer` | class | `deps/modernizer.py` | `[MANAGED]` pyproject enforcement |
-| `FlextInfraUtilitiesIteration` | class | `iteration.py` | MRO iteration helpers |
+- `FlextInfra` (`api.py`): public Rope workspace and health facade.
+- `FlextInfraCli`, `main`, `docs_main` (`cli.py`): CLI entry points.
+- `FlextInfraEnforcementEngine` (`_enforcement/engine.py`): catalog-backed
+  enforcement collector.
+- `FlextInfraCodegenPipeline` (`codegen/pipeline.py`): codegen pipeline.
+- `FlextInfraCodegenConsolidator` (`codegen/consolidator.py`): facade
+  consolidation.
+- `FlextInfraPyprojectModernizer` (`deps/modernizer.py`): managed pyproject
+  enforcement.
+- `FlextInfraUtilitiesIteration` (`iteration.py`): MRO iteration helpers.
 
 ## Conventions (specific to this package)
 
-- **Rules-as-data:** policy lives in `rules/*.yaml` + `config/*.yaml`, validated with pydantic `model_validate` — not hardcoded in Python. Add a rule = new YAML row, not a new detector class.
-- **Codegen owns generated output:** package `__init__`/facet roots, `py.typed`, and `[MANAGED]` pyproject sections are generated. Change the codegen source/template + `make build WHAT=gen` (or `WHAT=mod`); never hand-edit the output.
+- **Rules-as-data:** policy lives in `rules/*.yaml` and `config/*.yaml`, validated
+  with Pydantic. Add a YAML row instead of a detector class.
+- **Codegen owns generated output:** package facets, `py.typed`, and `[MANAGED]`
+  pyproject sections are generated. Change their source or template and run the
+  canonical generator; never hand-edit output.
 - Enforcement/detection target a **rope-semantic** path (ADR-005 direction).
 
 ## Anti-Patterns / Gotchas
 
-- **Build/tooling package — NOT a runtime dependency.** Reached only via its CLI (`flext-infra`, `flext-docs`) + its pytest11 enforcement plugin. Only `flext-tests` legitimately depends on it; no other package may `import flext_infra` at runtime.
-- **Rope-only is the target, not yet absolute:** some detectors/fixers/`_utilities` still use AST (`import ast` / `NodeVisitor`). When migrating the detect path, move it to the rope semantic model — but do not claim "AST is banned everywhere"; verify per file.
+- **Build/tooling package—not a runtime dependency.** Reach it through its CLI
+  or pytest enforcement plugin. Only `flext-tests` legitimately depends on it.
+- **Rope-only is the target, not yet absolute:** some detectors and fixers still
+  use AST. Move detection paths to Rope, but verify each file before claiming
+  that AST is prohibited.
 - Do not hand-edit generated packages elsewhere in the workspace — fix them here.
 
 ## Commands
 
 ```bash
 make check PROJECT=flext-infra       # ruff/pyrefly/mypy/pyright
+make format WHAT=apply APPLY=Y       # apply canonical source formatting
 make test  PROJECT=flext-infra       # tests/{unit,integration,refactor}
-make build WHAT=gen                  # regenerate facets workspace-wide (this package is the engine)
+make build WHAT=gen                  # regenerate facets workspace-wide
 ```
 
 <!-- AIHUB-WORKSPACE-PROVIDERS-BEGIN -->

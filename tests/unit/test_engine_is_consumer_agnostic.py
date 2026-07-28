@@ -1,13 +1,8 @@
-"""Tests that the codegen engine carries no downstream-consumer knowledge.
+"""Tests that the codegen engine keeps catalog topology declarative.
 
-``flext-infra`` is a generalized engine. Its configuration SSOT declares only
-the provider and repositories it owns; every downstream consumer declares its
-own topology in its own ``config/workspace.yaml``. Embedding a consumer's
-repositories here couples the engine to projects it must not know about.
-
-The owning identity is never hardcoded: it is derived from the engine's own
-distribution name (``pyproject.toml`` metadata SSOT) resolved against the
-repository catalog the engine publishes.
+``flext-infra`` is a generalized engine. Its configuration SSOT may catalog
+multiple providers and workspaces, but the implementation must not hardcode
+consumer directory names or leave catalog references dangling.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -24,7 +19,7 @@ from flext_infra import config, u
 
 
 @pytest.fixture(scope="module")
-def owned_provider() -> str:
+def engine_provider() -> str:
     """Resolve the engine's own provider from its own catalog entry."""
     engine_root = Path(__file__).resolve().parents[2]
     metadata = tm.ok(u.read_project_metadata(engine_root))
@@ -45,43 +40,23 @@ def owned_provider() -> str:
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:
-    def test_repository_catalog_declares_only_owned_provider(
-        self, owned_provider: str
-    ) -> None:
-        foreign = sorted({
-            repository.provider
-            for repository in config.Infra.codegen.repositories
-            if repository.provider != owned_provider
-        })
+    def test_engine_provider_is_declared(self, engine_provider: str) -> None:
+        declared = {provider.name for provider in config.Infra.codegen.providers}
+        tm.that(engine_provider in declared, eq=True)
 
-        tm.that(foreign, eq=[])
-
-    def test_provider_catalog_declares_only_owned_provider(
-        self, owned_provider: str
-    ) -> None:
-        foreign = sorted(
-            provider.name
-            for provider in config.Infra.codegen.providers
-            if provider.name != owned_provider
-        )
-
-        tm.that(foreign, eq=[])
-
-    def test_workspace_catalog_declares_only_owned_workspaces(
-        self, owned_provider: str
-    ) -> None:
-        owned = {
-            repository.name
-            for repository in config.Infra.codegen.repositories
-            if repository.provider == owned_provider
+    def test_every_repository_provider_is_declared(self) -> None:
+        declared = {provider.name for provider in config.Infra.codegen.providers}
+        referenced = {
+            repository.provider for repository in config.Infra.codegen.repositories
         }
-        foreign = sorted(
-            workspace.name
-            for workspace in config.Infra.codegen.workspaces
-            if workspace.repository not in owned
-        )
+        tm.that(sorted(referenced - declared), eq=[])
 
-        tm.that(foreign, eq=[])
+    def test_every_workspace_repository_is_declared(self) -> None:
+        declared = {repository.name for repository in config.Infra.codegen.repositories}
+        referenced = {
+            workspace.repository for workspace in config.Infra.codegen.workspaces
+        }
+        tm.that(sorted(referenced - declared), eq=[])
 
     def test_engine_declares_no_directory_name_of_a_foreign_workspace(self) -> None:
         """Sibling discovery is declarative, never a directory name in the engine.

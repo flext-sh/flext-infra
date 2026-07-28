@@ -1,15 +1,9 @@
-"""Tests that the workspace ``.gitignore`` is reproducible from the config SSOT.
+"""Tests that this repository's ``.gitignore`` is reproducible from config.
 
-``.gitignore`` is declared a managed artifact, but the workspace root uses a
-whitelist strategy (``/*`` blocks everything, then explicit ``!`` negations
-re-allow the governed paths) that was never declared in
-``codegen.gitignore_sections``. The generator therefore rendered a conventional
-blacklist instead, and ``codegen conform`` proposed replacing 371 lines with
-~76 — which would un-ignore hundreds of paths.
-
-That single unexpressed policy blocks the whole conform transaction, so no
-other generator fix can reach the tree. The strategy must live in the SSOT so
-the rendered output equals the governed file.
+The generator filters the shared policy by the repository profile. Workspace
+roots receive the ordered whitelist while members receive only universal
+ignore sections. This test follows that same typed topology instead of freezing
+the workspace-root projection into every repository.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -27,14 +21,22 @@ from flext_infra import c, config, u
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return every ignore pattern declared by the config SSOT."""
+    """Return ignore patterns declared for this repository's profile."""
+    repository = next(
+        item
+        for item in config.Infra.codegen.repositories
+        if item.distribution == config.Infra.name
+    )
+    profile = repository.profile
+    assert profile is not None
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
+        if not section.profiles or profile in section.profiles
         for pattern in section.patterns
     )
 
@@ -86,12 +88,9 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
     def test_ssot_reproduces_the_governed_pattern_order(self) -> None:
         """The projection opens with the governed sequence, in order.
 
-        A whitelist is order-sensitive: everything before ``/*`` is dead, and a
-        directory ignored before its own ``!`` negation is never re-allowed.
-        Set equality is therefore not enough -- the governed patterns must be
-        reproduced as an exact ordered prefix. Derived artifacts follow in
-        their own trailing section, which is why this is a prefix rather than
-        a whole-sequence comparison.
+        Ignore policy is order-sensitive, so set equality is not enough.
+        Derived artifacts follow the declared sections, which is why this is a
+        prefix rather than a whole-sequence comparison.
         """
         live = _live_patterns()
 

@@ -2,7 +2,8 @@
 
 # flext-infra Guides
 
-Curated operational guides live here. Keep API behavior in generated reference pages sourced from code and docstrings.
+Curated operational guides live here. Keep API behavior in generated reference
+pages sourced from code and docstrings.
 
 - [Back to project docs](../index.md)
 - [API Reference](../api-reference/README.md)

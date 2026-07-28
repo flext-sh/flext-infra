@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
     @pytest.mark.parametrize(
         ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
-        [("old", "base.mk", "new content", "base.mk update failed")],
+        [("old", "base.mk", "new content", "base.mk read failed")],
     )
     def test_write_failure(
         self,

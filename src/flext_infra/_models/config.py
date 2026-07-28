@@ -83,12 +83,6 @@ class FlextInfraConfigModels:
 
         @m.computed_field()
         @property
-        def python_minor_version(self) -> str:
-            """Python major.minor selector used by generated tool configuration."""
-            return self.python_version
-
-        @m.computed_field()
-        @property
         def python_required_version(self) -> str:
             """PEP 440 requirement spanning the configured Python minor line."""
             major, _, minor = self.python_version.partition(".")
@@ -229,6 +223,13 @@ class FlextInfraConfigModels:
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
+        ]
+        docs_phases: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Ordered canonical documentation lifecycle phases",
+            ),
         ]
         custom_handler_policy: Annotated[
             FlextInfraConfigModels.CustomHandlerPolicy,
@@ -645,6 +646,29 @@ class FlextInfraConfigModels:
             m.Field(description="Declared relative path to the workspace root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
+
+    class GitignoreRenderContext(_ConfigContract):
+        """Profile-filtered input consumed by the Git ignore template."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical .gitignore sections for one Make profile",
+            ),
+        ]
+
+    class GitmodulesRenderContext(_ConfigContract):
+        """Workspace topology consumed by the Git submodule template."""
+
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered governed workspace members"),
+        ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered content-only workspace members"),
+        ] = ()
 
     class MakeRenderContext(_ConfigContract):
         """Typed input consumed by the generated Make surface."""

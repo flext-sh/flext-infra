@@ -479,5 +479,24 @@ class FlextInfraUtilitiesGitWorktreeMixin:
             )
         return r[bool].ok(True)
 
+    @classmethod
+    def git_remove_clean_worktree(
+        cls, source_root: Path, worktree_root: Path
+    ) -> p.Result[bool]:
+        """Remove an explicitly selected clean worktree and prune metadata."""
+        remove_result = cls.git_capture(
+            source_root, ("worktree", "remove", str(worktree_root))
+        )
+        if remove_result.failure:
+            return r[bool].fail(
+                remove_result.error or "failed to remove clean worktree"
+            )
+        prune_result = cls.git_capture(source_root, ("worktree", "prune"))
+        if prune_result.failure:
+            return r[bool].fail(
+                prune_result.error or "failed to prune worktree metadata"
+            )
+        return r[bool].ok(True)
+
 
 __all__: list[str] = ["FlextInfraUtilitiesGitWorktreeMixin"]

@@ -208,7 +208,6 @@ class FlextInfraPyprojectModernizer(
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
                 "mypy_path": mypy.get("mypy_path"),
-                "pyrefly_interpreter_path": pyrefly.get("python-interpreter-path"),
                 "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH),
                 "pyrefly_project_includes": (
                     declared_pyrefly_includes or pyrefly.get(c.Infra.PROJECT_INCLUDES)
@@ -219,8 +218,6 @@ class FlextInfraPyprojectModernizer(
                     declared_python_dirs or pyright.get(c.Infra.INCLUDE)
                 ),
                 "pyright_extra_paths": pyright.get(c.Infra.EXTRA_PATHS),
-                "pyright_venv": pyright.get("venv"),
-                "pyright_venv_path": pyright.get("venvPath"),
                 "pyright_settings": [
                     {"name": key, "value": value}
                     for key, value in sorted(pyright.items())

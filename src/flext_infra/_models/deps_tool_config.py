@@ -394,9 +394,6 @@ class FlextInfraModelsDepsToolSettings(
         mypy_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Mypy search paths")
         ]
-        pyrefly_interpreter_path: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
-        ]
         pyrefly_search_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Pyrefly search paths")
         ]
@@ -414,14 +411,6 @@ class FlextInfraModelsDepsToolSettings(
         ]
         pyright_extra_paths: Annotated[
             t.StrTuple, m.Field(description="Resolved Pyright import paths")
-        ]
-        pyright_venv: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Resolved Pyright virtual environment name"),
-        ]
-        pyright_venv_path: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Resolved Pyright virtual environment base"),
         ]
         pyright_settings: Annotated[
             tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],

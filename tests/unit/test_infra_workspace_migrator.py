@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from flext_infra import config
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra import FlextInfraWorkspaceEnvironment, config
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from tests import u
 
@@ -39,6 +38,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
     def test_migrator_apply_updates_project_files(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
+        original_makefile = (project_root / "Makefile").read_text(encoding="utf-8")
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(
@@ -53,8 +53,7 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that("scripts/check/workspace_check.py" not in makefile_text, eq=True)
-        tm.that(makefile_text, has="python -m flext_infra check run")
+        tm.that(makefile_text, eq=original_makefile)
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),

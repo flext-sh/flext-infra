@@ -102,7 +102,11 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        if cls._is_workspace_root(project_name=project_name, workspace=workspace):
+        workspace_overlay = (
+            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            and cls._is_workspace_root(project_name=project_name, workspace=workspace)
+        )
+        if workspace_overlay:
             sources_result = cls._validate_root_uv_sources(
                 source, repositories=repositories, workspace=workspace
             )
@@ -120,13 +124,19 @@ class FlextInfraUtilitiesPyprojectConform:
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
         cls._sync_workspace_dependency_group(
-            source, project_name=project_name, workspace=workspace
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_overlay=workspace_overlay,
         )
         sources_result = (
             r[bool].ok(True)
-            if cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            if workspace_overlay
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                project_name=project_name,
+                workspace=workspace,
+                workspace_overlay=False,
             )
         )
         if sources_result.failure:
@@ -259,6 +269,11 @@ class FlextInfraUtilitiesPyprojectConform:
         head = head_match.group("head").strip()
         marker_text = marker.strip()
         if dependency_name in attached:
+            if "@" in requirement_part:
+                return r[str].fail(
+                    "attached workspace dependency declares direct source: "
+                    f"{dependency_name}"
+                )
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
@@ -362,10 +377,13 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        workspace_overlay: bool | None = None,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
-        workspace_root = cls._is_workspace_root(
-            project_name=project_name, workspace=workspace
+        workspace_root = (
+            cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            if workspace_overlay is None
+            else workspace_overlay
         )
         groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if groups is None:
@@ -467,10 +485,13 @@ class FlextInfraUtilitiesPyprojectConform:
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
+        workspace_overlay: bool | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
-        workspace_root = cls._is_workspace_root(
-            project_name=project_name, workspace=workspace
+        workspace_root = (
+            cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            if workspace_overlay is None
+            else workspace_overlay
         )
         owns_uv_root_policy = cls._owns_uv_root_policy(
             project_name=project_name, workspace=workspace

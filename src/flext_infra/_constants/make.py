@@ -42,8 +42,10 @@ class FlextInfraConstantsMake:
     MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
     MYPY_TIMEOUT_SECONDS_DEFAULT: Final[int] = 600
     MYPY_TIMEOUT_GRACE_SECONDS: Final[int] = 10
-    MYPY_TIMEOUT_EXIT_CODE: Final[int] = 124
-    MYPY_SIGNAL_EXIT_OFFSET: Final[int] = 128
+    PROCESS_TIMEOUT_EXIT_CODE: Final[int] = 124
+    PROCESS_SIGNAL_EXIT_OFFSET: Final[int] = 128
+    MYPY_TIMEOUT_EXIT_CODE: Final[int] = PROCESS_TIMEOUT_EXIT_CODE
+    MYPY_SIGNAL_EXIT_OFFSET: Final[int] = PROCESS_SIGNAL_EXIT_OFFSET
     PRLIMIT_COMMAND: Final[str] = "prlimit"
     PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
     TIMEOUT_COMMAND: Final[str] = "timeout"
@@ -113,6 +115,9 @@ class FlextInfraConstantsMake:
         "MFLAGS",
         "MYPYPATH",
         "PYTHONPATH",
+        "UV_PROJECT",
+        "UV_PROJECT_ENVIRONMENT",
+        "VIRTUAL_ENV",
         "WORKSPACE_MISE_SHIMS",
     )
     "Environment keys removed before project-level make orchestration."

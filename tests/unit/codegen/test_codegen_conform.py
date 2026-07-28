@@ -130,15 +130,12 @@ class TestCodegenConform:
         )
         runtime_bin = root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
+        infra_log = tmp_path / "infra.log"
         runtime_python = runtime_bin / "python"
-        runtime_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-        runtime_python.chmod(0o755)
-        uv_log = tmp_path / "uv.log"
-        runtime_uv = runtime_bin / "uv"
-        runtime_uv.write_text(
-            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$UV_LOG"\n', encoding="utf-8"
+        runtime_python.write_text(
+            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$INFRA_LOG"\n', encoding="utf-8"
         )
-        runtime_uv.chmod(0o755)
+        runtime_python.chmod(0o755)
         lint_gate = next(
             gate
             for gate in config.Infra.codegen.make.check_gates_allowed
@@ -153,8 +150,7 @@ class TestCodegenConform:
                     str(root),
                     "check",
                     f"CHECK_GATES={lint_gate}",
-                    f"UV_LOG={uv_log}",
-                    "UV=uv",
+                    f"INFRA_LOG={infra_log}",
                 ],
                 env=os.environ,
             )
@@ -165,11 +161,12 @@ class TestCodegenConform:
             eq=0,
             msg=f"stdout={outcome.stdout}\nstderr={outcome.stderr}",
         )
-        invocations = uv_log.read_text(encoding="utf-8").splitlines()
+        invocations = infra_log.read_text(encoding="utf-8").splitlines()
         tm.that(invocations, len=1)
-        tm.that(invocations[0], has="ruff check --no-fix")
-        for unselected in ("ruff format", "pyrefly", "mypy", "pyright", "vulture"):
-            tm.that(invocations[0], lacks=unselected)
+        tm.that(
+            invocations[0],
+            has=["-m flext_infra check run", f"--gates {lint_gate}", "--projects ."],
+        )
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -712,7 +709,7 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(
             result.error,
-            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
+            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
         )
 
 

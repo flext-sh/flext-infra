@@ -191,7 +191,6 @@ project-includes = [
   {{ item | tojson }},
 {% endfor %}
 ]
-python-interpreter-path = {{ tooling_runtime.pyrefly_interpreter_path | tojson }}
 python-version = {{ python_version | tojson }}
 search-path = [{% for item in tooling_runtime.pyrefly_search_path %}{{ item | tojson }}{% if not loop.last %}, {% endif %}{% endfor %}]
 use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
@@ -231,8 +230,6 @@ extraPaths = [
   {{ item | tojson }},
 {% endfor %}
 ]
-venv = {{ tooling_runtime.pyright_venv | tojson }}
-venvPath = {{ tooling_runtime.pyright_venv_path | tojson }}
 {% for setting in tooling_runtime.pyright_settings %}
 {% if setting.value is boolean %}
 {{ setting.name }} = {{ setting.value | lower }}
