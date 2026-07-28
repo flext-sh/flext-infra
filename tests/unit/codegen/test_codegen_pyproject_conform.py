@@ -159,13 +159,17 @@ constraint-dependencies = ["uv>=0"]
         )
         tm.that(result.failure, eq=True)
 
-    def test_attached_member_rejects_direct_source(self) -> None:
+    def test_attached_root_rejects_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
-                '[project]\nname = "attached-consumer"\n'
+                '[project]\nname = "workspace-root"\n'
                 f'dependencies = ["{member.distribution} @ git+{member.url}@{member.branch}"]\n'
+                "\n[tool.uv.workspace]\n"
+                'members = ["flext-core"]\n'
+                "\n[tool.uv.sources.flext-core]\n"
+                "workspace = true\n"
             ),
             repositories=(workspace.repository, *workspace.members),
             workspace=workspace,
