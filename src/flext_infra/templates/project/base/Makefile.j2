@@ -277,9 +277,17 @@ _builtin_deps_lock:
 	$(call _require_apply)
 	$(call _run_for_selected_projects,)
 
-_builtin_deps_upgrade:
+_builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
 	$(call _run_for_selected_projects,--upgrade)
+	@set -eu; \
+	selected="$(strip $(PROJECTS))"; \
+	if [ -z "$$selected" ]; then selected="."; fi; \
+	set --; \
+	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
+	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
+		--apply --rewrite-constraints --skip-comments --skip-check "$$@"
+	$(call _run_for_selected_projects,)
 
 {% if make_profile == "workspace-root" %}
 _builtin_build_artifacts:

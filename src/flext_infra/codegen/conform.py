@@ -600,17 +600,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile not in entry.profiles:
                 continue
             if (
-                surface
-                in {
-                    c.Infra.CodegenConformSurface.DEPENDENCIES,
-                    c.Infra.CodegenConformSurface.PYPROJECT,
-                }
-                and entry.destination != c.Infra.PYPROJECT_FILENAME
-            ):
-                continue
-            if (
-                surface is c.Infra.CodegenConformSurface.MAKEFILE
-                and entry.destination != c.Infra.MAKEFILE_FILENAME
+                contract.destinations is not None
+                and entry.destination not in contract.destinations
             ):
                 continue
             source = (templates_root / entry.source).resolve()
@@ -713,7 +704,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"managed file planning failed: {entry.destination}"
                 )
             planned.append(file_plan.value)
-        if surface is c.Infra.CodegenConformSurface.MAKEFILE:
+        if not contract.pyproject:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
         pyproject_entry = next(
             (
