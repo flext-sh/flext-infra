@@ -167,6 +167,57 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has='--make-arg "MATCH=selected_case"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
 
+    def test_generated_make_routes_root_file_only_to_workspace_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep provider-owned root tests in the root project execution lane."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        selected = "tests/unit/test_provider_contract.py"
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    f"FILE={selected}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--projects .")
+        tm.that(output, has=f'--make-arg "FILE={selected}"')
+        for project_name in project_names:
+            tm.that(output, lacks=f"--projects {project_name}")
+
+    def test_generated_make_default_test_includes_root_and_every_member(
+        self, tmp_path: Path
+    ) -> None:
+        """Run provider root tests alongside every configured workspace member."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
+
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
 
