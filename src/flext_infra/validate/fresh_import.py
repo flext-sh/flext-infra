@@ -62,7 +62,9 @@ class FlextInfraValidateFreshImport(s[bool]):
                 continue
             output = smoke_result.value
             rc = output.exit_code
-            lines = (output.stderr.strip() or output.stdout.strip()).splitlines()
+            lines = u.Infra.process_diagnostics(
+                output.stdout, output.stderr
+            ).splitlines()
             last_line = lines[-1] if lines else ""
             if rc != 0:
                 reason = last_line or "ImportError"

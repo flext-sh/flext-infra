@@ -6,9 +6,9 @@ import re
 from pathlib import Path
 from typing import Final
 
-from flext_cli import cli, u
+from flext_cli import cli
 from flext_core import r
-from flext_infra import m, p, t
+from flext_infra import m, p, t, u
 
 _SKIP_DIRS: Final[frozenset[str]] = frozenset({
     "__pycache__",
@@ -155,7 +155,7 @@ class FlextInfraApplyRenames:
                 return r[bool].fail(run_result.error or "ast-grep execution failed")
             output = run_result.value
             if output.exit_code != 0:
-                detail = output.stderr.strip() or output.stdout.strip()
+                detail = u.Infra.process_diagnostics(output.stdout, output.stderr)
                 return r[bool].fail(
                     detail or f"ast-grep failed while renaming {old} to {new}"
                 )

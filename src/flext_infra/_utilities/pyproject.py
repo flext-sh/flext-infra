@@ -15,6 +15,7 @@ from tomlkit import TOMLDocument
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -70,7 +71,9 @@ class FlextInfraUtilitiesPyproject:
             return r[str].fail(result.error or "taplo format failed")
         output = result.value
         if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
+            detail = FlextInfraUtilitiesBase.process_diagnostics(
+                output.stdout, output.stderr
+            )
             return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
         return r[str].ok(output.stdout)
 

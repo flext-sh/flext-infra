@@ -59,7 +59,9 @@ class FlextInfraWorktreeService(s[str]):
         if checked.failure:
             return r.fail(checked.error or f"failed to inspect Git ref: {reference}")
         if checked.value.exit_code not in {0, 1}:
-            detail = (checked.value.stderr or checked.value.stdout).strip()
+            detail = u.Infra.process_diagnostics(
+                checked.value.stdout, checked.value.stderr
+            )
             return r.fail(detail or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.exit_code == 0)
 

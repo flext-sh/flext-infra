@@ -64,6 +64,16 @@ class FlextInfraUtilitiesBase:
         return tuple(item.strip() for item in values if item.strip())
 
     @staticmethod
+    def process_diagnostics(*streams: str) -> str:
+        """Join every non-empty process stream without duplicating diagnostics."""
+        diagnostics: list[str] = []
+        for stream in streams:
+            normalized = stream.strip()
+            if normalized and normalized not in diagnostics:
+                diagnostics.append(normalized)
+        return "\n".join(diagnostics)
+
+    @staticmethod
     def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
         """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
 

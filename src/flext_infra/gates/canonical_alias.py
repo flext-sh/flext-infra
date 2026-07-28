@@ -193,7 +193,9 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                 )
             format_output = format_result.value
             if format_output.exit_code != 0:
-                detail = (format_output.stderr or format_output.stdout).strip()
+                detail = u.Infra.process_diagnostics(
+                    format_output.stdout, format_output.stderr
+                )
                 return self._fix_failure_result(
                     project_dir=project_dir,
                     file_path=project_dir,

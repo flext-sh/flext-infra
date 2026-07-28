@@ -47,7 +47,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(organize_result.error or "ruff import organization failed")
         organized = organize_result.unwrap()
         if organized.exit_code != 0:
-            detail = (organized.stderr or organized.stdout).strip()
+            detail = u.Infra.process_diagnostics(organized.stdout, organized.stderr)
             msg = f"ruff import organization failed ({organized.exit_code}): {detail}"
             raise ValueError(msg)
         format_result = u.Cli.run_raw(
@@ -59,7 +59,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(format_result.error or "ruff format failed")
         output = format_result.unwrap()
         if output.exit_code != 0:
-            detail = (output.stderr or output.stdout).strip()
+            detail = u.Infra.process_diagnostics(output.stdout, output.stderr)
             msg = f"ruff format failed ({output.exit_code}): {detail}"
             raise ValueError(msg)
         rendered_output: str = (

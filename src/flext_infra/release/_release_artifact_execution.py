@@ -109,7 +109,7 @@ class FlextInfraReleaseArtifactExecutionMixin(
                 build_result.error or "uv release build execution failed"
             )
         command = build_result.value
-        output = (command.stdout + "\n" + command.stderr).strip()
+        output = u.Infra.process_diagnostics(command.stdout, command.stderr)
         write_result = self._write_release_text(log_path, output + "\n")
         if write_result.failure:
             return r[p.Cli.CommandOutput].fail(
