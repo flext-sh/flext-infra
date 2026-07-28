@@ -41,6 +41,7 @@ def test_pr_workspace_accepts_repeated_project_options(tmp_path: Path) -> None:
         "flext-a",
         "--projects",
         "flext-b",
+        "--no-fail-fast",
     ])
 
     report_dir = workspace / ".reports/workspace/pr"
