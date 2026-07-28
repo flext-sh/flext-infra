@@ -294,10 +294,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        git_url = cls._git_requirement_url(reference.url)
-        if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{reference.branch}"
+        if not reference.url.startswith("https://"):
+            return r[str].fail(
+                "repository URL must use the configured HTTPS transport: "
+                f"{reference.url}"
+            )
+        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
@@ -524,7 +526,6 @@ class FlextInfraUtilitiesPyprojectConform:
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
-        workspace_overlay: bool | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_attached_workspace_root(
@@ -546,25 +547,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
-        existing_constraints = u.Cli.toml_as_string_list(
-            u.Cli.toml_value(uv, "constraint-dependencies")
-        )
-        selected_constraints = (
-            tuple(constraint_dependencies)
-            if workspace_root and constraint_dependencies is not None
-            else existing_constraints
-        )
-        retained_constraints = tuple(
-            item
-            for item in selected_constraints
-            if FlextInfraUtilitiesDependencies.dep_name(item) != "uv"
-        )
-        if retained_constraints:
-            u.Cli.toml_sync_string_list(
-                uv, "constraint-dependencies", retained_constraints
-            )
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(
@@ -578,6 +560,10 @@ class FlextInfraUtilitiesPyprojectConform:
         else:
             u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         if workspace_root:
+            if constraint_dependencies is not None:
+                u.Cli.toml_sync_string_list(
+                    uv, "constraint-dependencies", tuple(constraint_dependencies)
+                )
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")

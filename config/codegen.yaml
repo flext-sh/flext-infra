@@ -79,6 +79,7 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         snapshot_excludes:

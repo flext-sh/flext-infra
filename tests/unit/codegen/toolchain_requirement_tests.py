@@ -12,7 +12,6 @@ class TestsToolchainRequirement:
     def test_python_requirement_uses_declared_minor_as_floor(self) -> None:
         """The declared Python minor remains the lower compatibility bound."""
         toolchain = config.Infra.codegen.toolchain
-        payload = toolchain.model_dump()
 
         tm.that(
             toolchain.python_required_version, has=f">={toolchain.python_version},<"

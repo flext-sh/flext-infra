@@ -1,8 +1,13 @@
-"""Tests that the codegen engine keeps catalog topology declarative.
+"""Tests that the codegen engine carries no downstream-consumer knowledge.
 
-``flext-infra`` is a generalized engine. Its configuration SSOT may catalog
-multiple providers and workspaces, but the implementation must not hardcode
-consumer directory names or leave catalog references dangling.
+``flext-infra`` is a generalized engine. Its configuration SSOT declares only
+the provider and repositories it owns; every downstream consumer declares its
+own topology in its own ``config/workspace.yaml``. Embedding a consumer's
+repositories here couples the engine to projects it must not know about.
+
+The owning identity is never hardcoded: it is derived from the engine's own
+distribution name (``pyproject.toml`` metadata SSOT) resolved against the
+repository catalog the engine publishes.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -19,7 +24,7 @@ from flext_tests import tm
 
 
 @pytest.fixture(scope="module")
-def engine_provider() -> str:
+def owned_provider() -> str:
     """Resolve the engine's own provider from its own catalog entry."""
     engine_root = Path(__file__).resolve().parents[2]
     metadata = tm.ok(u.read_project_metadata(engine_root))
@@ -56,14 +61,13 @@ class TestsFlextInfraEngineIsConsumerAgnostic:
             for repository in config.Infra.codegen.repositories
             if repository.provider == owned_provider
         }
-        tm.that(sorted(referenced - declared), eq=[])
+        foreign = sorted(
+            workspace.name
+            for workspace in config.Infra.codegen.workspaces
+            if workspace.repository not in owned
+        )
 
-    def test_every_workspace_repository_is_declared(self) -> None:
-        declared = {repository.name for repository in config.Infra.codegen.repositories}
-        referenced = {
-            workspace.repository for workspace in config.Infra.codegen.workspaces
-        }
-        tm.that(sorted(referenced - declared), eq=[])
+        tm.that(foreign, eq=[])
 
     def test_engine_declares_no_directory_name_of_a_foreign_workspace(self) -> None:
         """Sibling discovery is declarative, never a directory name in the engine.

@@ -570,14 +570,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if directory in generated_roots
         )
 
-    @staticmethod
-    def _catalog_project_kind(repository: m.Infra.RepositoryRef) -> str | None:
-        """Resolve the explicit tooling layer owned by a catalog topology profile."""
-        if repository.profile is None:
-            return None
-        profile = c.Infra.MakeProfile(repository.profile)
-        return "platform" if profile is c.Infra.MakeProfile.WORKSPACE_ROOT else None
-
     def _plan_scaffold_repository(
         self,
         *,
@@ -612,13 +604,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
-        project_kind = self._catalog_project_kind(repository)
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
-            project_kind=project_kind,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -689,11 +679,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             ):
                 continue
             if not contract.delegates:
-                continue
-            if (
-                contract.destinations is not None
-                and entry.destination not in contract.destinations
-            ):
                 continue
             # mro-i6nq.10: One formatted path governs validation and planning.
             destination = entry.destination.format(
@@ -788,7 +773,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_render.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
-            project_kind=project_kind,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -811,7 +795,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
-            project_kind=project_kind,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -843,10 +826,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 f"existing repository has no pyproject.toml: {root}; "
                 "scaffold templates are available only through codegen new"
-            )
-        if repository.profile is None:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                f"active repository has no Make profile: {repository.name}"
             )
         metadata = u.read_project_metadata(root)
         if metadata.failure:
@@ -898,7 +877,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
-        project_kind = self._catalog_project_kind(repository)
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
@@ -906,7 +884,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             declared_python_dirs=(
                 config.Infra.tooling.tools.pyright.path_rules.source_dir,
             ),
-            project_kind=project_kind,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -938,7 +915,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject, project_kind=project_kind
+            prepared_result.value, path=pyproject
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -971,7 +948,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned.extend(managed_result.value)
         if contract.custom:
             custom_result = self._plan_existing_custom(
-                root, codegen, profile=c.Infra.MakeProfile(repository.profile)
+                root, codegen, profile=repository.profile
             )
             if custom_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1006,10 +983,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
-            if contract.custom and managed.path.as_posix() == custom_filename:
-                continue
-            if managed.policy in {"delegated", "manual"} or managed.path == Path(
-                c.Infra.PYPROJECT_FILENAME
+            if (
+                managed.policy in {"delegated", "manual"}
+                or managed.path == Path(c.Infra.PYPROJECT_FILENAME)
+                or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
             entries = tuple(
@@ -1028,26 +1005,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if profile not in entry.profiles:
                 continue
             path = root / entry.destination
-            if managed.policy == "create-only":
-                if path.exists() and not path.is_file():
+            if managed.policy == "create-only" and path.is_file():
+                current = u.Cli.files_read_text(path)
+                if current.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        f"create-only destination is not a regular file: {path}"
+                        current.error or f"managed file read failed: {path}"
                     )
-                rendered = ""
-                if path.is_file():
-                    current = u.Cli.files_read_text(path)
-                    if current.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                            current.error or f"managed file read failed: {path}"
-                        )
-                    rendered = current.value
-                file_plan = self._file_plan(root, entry.destination, rendered)
+                file_plan = self._file_plan(root, entry.destination, current.value)
                 if file_plan.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         file_plan.error
                         or f"managed file planning failed: {entry.destination}"
                     )
                 planned.append(file_plan.value)
+                continue
+            if managed.policy == "create-only" and path.exists():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"create-only destination is not a regular file: {path}"
+                )
+            if managed.policy == "create-only":
                 continue
             artifact_context = self._artifact_render_context(
                 dist=repository.distribution,
@@ -1057,7 +1033,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
-                tooling_runtime=tooling_runtime,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1168,8 +1143,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 )
-            make_context = cls.make_render_context(
-                repository, workspace, codegen, tooling_runtime=tooling_runtime
             )
         if project_context is not None:
             return r[p.Model].ok(project_context)
@@ -1403,10 +1376,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         config: m.Infra.CodegenConfigSpec,
         *,
-        profile: c.Infra.MakeProfile,
+        profile: str | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
-        """Validate an existing custom Make surface without creating one."""
-        policy = config.make.custom_handler_policies[profile]
+        """Validate the handwritten Make surface against its profile contract."""
+        policy = config.make.custom_handler_policies.get(
+            profile or "", config.make.custom_handler_policy
+        )
         path = root / policy.filename
         if path.exists() and not path.is_file():
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1462,10 +1437,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if raw_line.startswith(".PHONY:"):
                 names = raw_line.partition(":")[2].split()
-                if names and (
-                    policy.allow_public_targets
-                    or all(target_re.fullmatch(name) for name in names)
-                ):
+                if names and all(target_re.fullmatch(name) for name in names):
                     continue
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
             if target and target_re.fullmatch(target):
@@ -1482,8 +1454,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].fail(
                 f"{policy.filename} line {line_number} is not a private custom handler"
             )
-        if in_define:
-            return r[bool].fail(f"{policy.filename} has an unterminated macro")
         return r[bool].ok(True)
 
     def _file_plan(

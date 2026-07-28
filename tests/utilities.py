@@ -1145,16 +1145,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             all_value = assignments.get(c.Infra.DUNDER_ALL)
             if all_value is None:
                 return (False, ())
-            exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
-            if exports:
-                return (True, exports)
-            public_exports_name = c.Infra.ROOT_PUBLIC_EXPORTS_SUFFIX
-            if public_exports_name not in all_value:
-                return (True, ())
-            public_exports_value = assignments.get(public_exports_name, "")
+            literal_exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
+            if literal_exports:
+                return (True, literal_exports)
+            public_value = assignments.get("_PUBLIC_EXPORTS", "")
             return (
-                True,
-                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_exports_value)),
+                "_PUBLIC_EXPORTS" in all_value,
+                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_value)),
             )
 
         @staticmethod

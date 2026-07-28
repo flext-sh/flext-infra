@@ -5,10 +5,6 @@
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # {{ dist }} — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
-# @flext-managed: continuous
-# @flext-regenerate: make codegen WHAT=apply APPLY=Y
-# @flext-ssot: flext-infra/src/flext_infra/templates/project/base/Makefile.j2
-# @flext-maintenance: do not edit generated projections; edit the SSOT
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
@@ -35,13 +31,17 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-BRANCH ?=
-BASE ?= HEAD
-PYTEST_TARGETS ?=
+PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
+PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
+PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
+CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
+DOCS_PHASES :={% for phase in make.docs_phases %} {{ phase }}{% endfor %}
 SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
 SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}

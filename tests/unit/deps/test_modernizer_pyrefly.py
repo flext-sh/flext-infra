@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import tomlkit
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
-    def test_modernizer_removes_static_analyzer_virtualenvs(
+    def test_modernizer_uses_git_topology_for_analyzer_virtualenvs(
         self, tmp_path: Path
     ) -> None:
         """Distinguish an attached submodule from an independent linked worktree."""

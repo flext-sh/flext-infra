@@ -5,13 +5,9 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_infra import config
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_tests import tm
-
 from flext_infra import FlextInfraWorkspaceEnvironment, config
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -55,7 +51,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         )
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
-        original_makefile = (project_root / "Makefile").read_text(encoding="utf-8")
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
         migrator = u.Tests.build_project_migrator(

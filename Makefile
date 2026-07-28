@@ -4,10 +4,6 @@
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
-# @flext-managed: continuous
-# @flext-regenerate: make codegen WHAT=apply APPLY=Y
-# @flext-ssot: flext-infra/src/flext_infra/templates/project/base/Makefile.j2
-# @flext-maintenance: do not edit generated projections; edit the SSOT
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
@@ -34,13 +30,17 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-BRANCH ?=
-BASE ?= HEAD
-PYTEST_TARGETS ?=
+PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
+PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
+PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree
+PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree basemk
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
+CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
+DOCS_PHASES := generate fix audit build validate
 SERIALIZED_VERBS := check test codegen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests

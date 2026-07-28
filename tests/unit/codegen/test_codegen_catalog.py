@@ -1,11 +1,14 @@
-"""Typed repository-catalog consumer contract."""
+"""Validate the typed repository catalog through its public configuration file."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 from packaging.requirements import Requirement
 
-from flext_infra import c, config, m
+from flext_cli import u
+from flext_infra import config, m, t
 from flext_tests import tm
 
 

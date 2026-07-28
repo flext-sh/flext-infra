@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
 
 import pytest
 from flext_tests import tm
@@ -62,10 +61,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname="root-workspace"\nversion="0.1.0"\n'
-            "[tool.flext.workspace]\n"
-            'members = ["../neighbour-workspace"]\n',
-            encoding="utf-8",
+            '[project]\nname="root-workspace"\nversion="0.1.0"\n', encoding="utf-8"
         )
         external = tmp_path / sibling_name
         (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_workspace").mkdir(parents=True)
@@ -76,7 +72,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
             encoding="utf-8",
         )
 
-        roots = u.Infra.discover_project_roots(workspace, include_attached=True)
+        roots = u.Infra.discover_project_roots(workspace)
 
         tm.that(roots, has=external.resolve())
 
@@ -321,15 +317,14 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
     def test_find_all_pyproject_files_includes_attached_workspace_siblings(
         self, tmp_path: Path
     ) -> None:
-        """Sibling pyprojects are found only within the declared member scope."""
+        """Sibling pyprojects are found when the sibling declares itself attached."""
+        # mro-4gbp: declarative, name-agnostic opt-in through the sibling's own
+        # pyproject. No patching: the real public surface is exercised.
         sibling_name = "neighbour-data"
         workspace = tmp_path / "root-workspace"
         workspace.mkdir()
         (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='root-workspace'\n"
-            "[tool.flext.workspace]\n"
-            f'members = ["../{sibling_name}"]\n',
-            encoding="utf-8",
+            "[project]\nname='root-workspace'\n", encoding="utf-8"
         )
         external = tmp_path / sibling_name
         (external / c.Infra.DEFAULT_SRC_DIR / "neighbour_data").mkdir(parents=True)

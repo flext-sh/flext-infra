@@ -39,8 +39,8 @@ def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelt
             checkpoint_sha=add_result.value,
         )
     )
-    delta: m.Infra.RepositoryDelta = tm.ok(delta_result)
-    return source_root, worktree_root, delta
+    tm.ok(delta_result)
+    return source_root, worktree_root, delta_result.value
 
 
 def _workspace(tmp_path: Path) -> Path:
@@ -251,6 +251,7 @@ class TestsFlextInfraWorktreeTransaction:
         )
         report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
+        lint_output = "\n".join(item.output for item in report.lint_after)
 
         tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")

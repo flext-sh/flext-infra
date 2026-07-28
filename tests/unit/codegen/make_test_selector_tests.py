@@ -82,10 +82,15 @@ class TestsMakeTestSelector:
         way to filter is to call pytest directly -- exactly the loose command the
         canonical-command law forbids.
         """
-        template_path = _makefile_template()
-        template = template_path.read_text(encoding="utf-8")
-        reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
-            encoding="utf-8"
+        template = _makefile_template().read_text(encoding="utf-8")
+        recipes = [
+            block.split("\n\n", 1)[0]
+            for block in template.split("_builtin_test_all:")[1:]
+        ]
+        tm.that(
+            recipes,
+            len=2,
+            msg="template must define workspace-root and local test handlers",
         )
         direct = [r for r in recipes if "pytest" in r]
         tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
