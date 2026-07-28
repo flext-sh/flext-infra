@@ -385,8 +385,44 @@ class FlextInfraUtilitiesWorktreeTransaction:
         return r[bool].ok(True)
 
     @staticmethod
-    def _apply_patches(deltas: t.SequenceOf[m.Infra.RepositoryDelta]) -> p.Result[bool]:
-        """Forward-check and apply every patch, deepest repositories first."""
+    def _preflight_source_heads(
+        deltas: t.SequenceOf[m.Infra.RepositoryDelta],
+    ) -> p.Result[bool]:
+        """Reject every transaction when any source HEAD moved after checkpoint."""
+        for delta in deltas:
+            checkpoint_parent = FlextInfraUtilitiesGitScope.git_capture(
+                delta.worktree_root, ("rev-parse", f"{delta.checkpoint_sha}^")
+            )
+            if checkpoint_parent.failure:
+                return r[bool].fail(
+                    checkpoint_parent.error
+                    or f"{delta.relative_path}: failed to resolve checkpoint parent"
+                )
+            source_head = FlextInfraUtilitiesGitScope.git_repository_head(
+                delta.source_root
+            )
+            if source_head.failure:
+                return r[bool].fail(
+                    source_head.error
+                    or f"{delta.relative_path}: failed to resolve source HEAD"
+                )
+            expected = checkpoint_parent.value.strip()
+            actual = source_head.value.strip()
+            if actual != expected:
+                return r[bool].fail(
+                    f"{delta.relative_path}: source HEAD changed during isolated "
+                    f"transaction: expected {expected}, found {actual}"
+                )
+        return r[bool].ok(True)
+
+    @classmethod
+    def git_apply_transaction_patches(
+        cls, deltas: t.SequenceOf[m.Infra.RepositoryDelta]
+    ) -> p.Result[bool]:
+        """Preflight every source HEAD before applying repository patches."""
+        head_preflight = cls._preflight_source_heads(deltas)
+        if head_preflight.failure:
+            return head_preflight
         ordered = sorted(
             deltas, key=lambda delta: len(Path(delta.relative_path).parts), reverse=True
         )
@@ -552,7 +588,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         applied = False
         apply_error = ""
         if request.apply_patch and not breakage:
-            apply_result = cls._apply_patches(deltas)
+            apply_result = cls.git_apply_transaction_patches(deltas)
             applied = apply_result.success
             apply_error = apply_result.error or "" if apply_result.failure else ""
             breakage = apply_result.failure

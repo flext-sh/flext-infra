@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from importlib import metadata
 from typing import TYPE_CHECKING
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
+from flext_infra import c
 from flext_tests import tm
 from tests import m, u
 
@@ -23,20 +27,25 @@ def _git_status(repository_root: Path) -> bytes:
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
     source_root = tmp_path / "source"
-    source_root.mkdir()
+    source_root.mkdir(parents=True)
     artifact = source_root / "artifact.txt"
     artifact.write_bytes(b"before\n")
     u.Tests.initialize_git_repo(source_root)
     worktree_root = tmp_path / "isolated"
     add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
     tm.ok(add_result)
+    checkpoint = tm.ok(
+        u.Infra.git_checkpoint_worktree(
+            worktree_root, message="test isolated transaction checkpoint"
+        )
+    )
     (worktree_root / artifact.name).write_bytes(b"after\n")
     delta_result = u.Infra.git_repository_delta(
         m.Infra.RepositoryWorktree(
             relative_path=".",
             source_root=source_root,
             worktree_root=worktree_root,
-            checkpoint_sha=add_result.value,
+            checkpoint_sha=checkpoint,
         )
     )
     tm.ok(delta_result)
@@ -138,7 +147,7 @@ class TestsFlextInfraWorktreeTransaction:
         artifact.write_bytes(b"after\n")
         converged_status = _git_status(source_root)
 
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
 
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=converged_status)
@@ -147,13 +156,46 @@ class TestsFlextInfraWorktreeTransaction:
         """Apply the same real patch twice without a second mutation or failure."""
         source_root, _worktree_root, delta = _operation_delta(tmp_path)
         artifact = source_root / "artifact.txt"
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
         applied_status = _git_status(source_root)
 
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
 
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=applied_status)
+
+    def test_transaction_apply_preflights_all_heads_before_any_patch(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject one advanced source before applying any repository delta."""
+        first_source, _first_worktree, first_delta = _operation_delta(
+            tmp_path / "first"
+        )
+        second_source, _second_worktree, second_delta = _operation_delta(
+            tmp_path / "second"
+        )
+        first_artifact = first_source / "artifact.txt"
+        second_artifact = second_source / "artifact.txt"
+        concurrent = second_source / "concurrent.txt"
+        concurrent.write_text("new head\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(second_source, ("add", concurrent.name)))
+        tm.ok(
+            u.Infra.git_capture(
+                second_source, ("commit", "-m", "advance source during transaction")
+            )
+        )
+        first_status = _git_status(first_source)
+        second_status = _git_status(second_source)
+        first_bytes = first_artifact.read_bytes()
+        second_bytes = second_artifact.read_bytes()
+
+        result = u.Infra.git_apply_transaction_patches((first_delta, second_delta))
+
+        tm.fail(result, has="source HEAD changed during isolated transaction")
+        tm.that(first_artifact.read_bytes(), eq=first_bytes)
+        tm.that(second_artifact.read_bytes(), eq=second_bytes)
+        tm.that(_git_status(first_source), eq=first_status)
+        tm.that(_git_status(second_source), eq=second_status)
 
     def test_apply_replaces_existing_ignored_canonical_addition(
         self, tmp_path: Path
@@ -263,6 +305,20 @@ class TestsFlextInfraWorktreeTransaction:
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
+
+    def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
+        """Installed artifacts carry every executable required by transactions."""
+        runtime_requirements = metadata.requires("flext-infra") or ()
+        runtime_names = {
+            canonicalize_name(Requirement(requirement).name)
+            for requirement in runtime_requirements
+        }
+        required_names = {
+            canonicalize_name(command[0])
+            for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }
+
+        tm.that(required_names <= runtime_names, eq=True)
 
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""
