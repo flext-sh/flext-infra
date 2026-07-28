@@ -163,16 +163,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
-        constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
         declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        is_root = path.parent.resolve() == self.root.resolve() and not (
-            self._project_is_flext_child(path.parent)
-        )
+        is_child = self._project_is_flext_child(path.parent)
+        is_root = path.parent.resolve() == self.root.resolve() and not is_child
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
@@ -190,7 +188,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     payload,
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
-                    policy=constraint_policy,
                 )
             )
         changes.extend(

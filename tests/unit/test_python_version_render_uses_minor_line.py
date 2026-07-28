@@ -1,8 +1,8 @@
-r"""Tests that ``.python-version`` carries only the compatible Python line.
+r"""Tests that the rendered ``.python-version`` carries only the minor line.
 
 ``.python-version`` is consumed by tooling that reads the file as a bare version
 string. A Jinja comment line in the template ends with a newline, so the render
-began with an empty line and the file gained permanent generated drift. That made
+began with an empty line and the file became ``"\\n3.13\\n"``. That made
 ``codegen conform`` report a permanent pending change, which blocks the whole
 transaction and therefore every other generator fix.
 
@@ -31,14 +31,12 @@ def _render_python_version() -> str:
         autoescape=select_autoescape(default=False, default_for_string=False),
     )
     template = environment.get_template("project/base/python-version.j2")
-    return template.render(
-        python_minor_version=config.Infra.codegen.toolchain.python_minor_version
-    )
+    return template.render(python_version=config.Infra.codegen.toolchain.python_version)
 
 
-class TestsFlextInfraPythonVersionRenderIsCompatibleLine:
-    def test_render_is_the_compatible_line_and_nothing_else(self) -> None:
-        """Render exactly the configured compatible line plus one newline."""
-        expected = f"{config.Infra.codegen.toolchain.python_minor_version}\n"
+class TestsFlextInfraPythonVersionRenderUsesMinorLine:
+    def test_render_is_the_minor_line_and_nothing_else(self) -> None:
+        """The rendered file is exactly the configured line plus one newline."""
+        expected = f"{config.Infra.codegen.toolchain.python_version}\n"
 
         tm.that(_render_python_version(), eq=expected)

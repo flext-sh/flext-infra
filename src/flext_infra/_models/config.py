@@ -37,21 +37,19 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime versions shared by generated projects.
 
-        Python and uv declare only their compatible major.minor lines. PEP 440
-        requirements and loose mise selectors are derived, while the lockfile
-        owns concrete patch resolution.
+        Only the Python minor line ``python_version`` (e.g. ``3.13``) is
+        declared for the language runtime. The environment resolves its newest
+        compatible patch. The PEP 440 family requirement is derived, so a
+        version-line bump touches exactly one value. uv is supplied by the caller
+        environment. Linters/type-checkers are NOT here: their floors live in
+        pyproject and uv.lock owns the resolved versions.
         """
 
-        python_minor_version: Annotated[
+        python_version: Annotated[
             t.NonEmptyStr,
             m.Field(
-                pattern=r"^\d+\.\d+$", description="Compatible Python major.minor line"
-            ),
-        ]
-        uv_minor_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                pattern=r"^\d+\.\d+$", description="Compatible uv major.minor line"
+                pattern=r"^[0-9]+\.[0-9]+$",
+                description="Python major.minor line, e.g. '3.13'",
             ),
         ]
         uv_link_mode: Annotated[
@@ -85,30 +83,10 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def python_required_version(self) -> str:
-            """Allow every Python patch in the configured compatible line."""
-            major, _, minor = self.python_minor_version.partition(".")
+            """PEP 440 requirement spanning the configured Python minor line."""
+            major, _, minor = self.python_version.partition(".")
             next_minor = int(minor) + 1
-            return f">={self.python_minor_version},<{major}.{next_minor}"
-
-        @m.computed_field()
-        @property
-        def python_mise_version(self) -> str:
-            """Mise loose selector for the configured Python line."""
-            return f"prefix:{self.python_minor_version}"
-
-        @m.computed_field()
-        @property
-        def uv_required_version(self) -> str:
-            """Allow every uv patch in the configured compatible line."""
-            major, _, minor = self.uv_minor_version.partition(".")
-            next_minor = int(minor) + 1
-            return f">={self.uv_minor_version},<{major}.{next_minor}"
-
-        @m.computed_field()
-        @property
-        def uv_mise_version(self) -> str:
-            """Mise loose selector for the configured uv line."""
-            return f"prefix:{self.uv_minor_version}"
+            return f">={self.python_version},<{major}.{next_minor}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -528,18 +506,12 @@ class FlextInfraConfigModels:
         ] = None
 
     class MakefileRenderSpec(_ConfigContract):
-        """Typed artifact-specific input for the generated project Makefile."""
+        """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
-        ]
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Generated directive including the custom Make surface"
-            ),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
@@ -551,24 +523,16 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Repositories editable from the selected workspace"),
         ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared content-only workspace repositories"),
+        ] = ()
         uv_link_mode: Annotated[
-            t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
-        ]
-        uv_mise_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Loose mise selector for the compatible uv line"),
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
-        ]
-        check_gates_allowed: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical comma-separated Make check gate names"),
-        ]
-        check_gates_default: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical default Make check gate selection"),
         ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -578,15 +542,18 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        makefile_custom_include: Annotated[
+            str, m.Field(description="Optional custom Make policy include directive")
+        ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
+                description="Workspace-root gate verbs orchestrated across members"
             ),
         ] = ()
         workspace_cli_group: Annotated[
-            t.NonEmptyStr, m.Field(description="CLI group for workspace orchestration")
-        ]
+            str, m.Field(description="CLI group used for workspace orchestration")
+        ] = ""
         project_selection_conflict_error: Annotated[
             t.NonEmptyStr,
             m.Field(description="Mutually exclusive project selector error"),
@@ -616,17 +583,21 @@ class FlextInfraConfigModels:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
 
-    class GitmodulesRenderSpec(_ConfigContract):
-        """Typed artifact-specific input for the generated Git submodule manifest."""
+    class ToolchainRenderSpec(_ConfigContract):
+        """Field-only render projection of the canonical toolchain owner."""
 
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered governed workspace submodules"),
-        ] = ()
-        workspace_content_only: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered content-only workspace submodules"),
-        ] = ()
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Python toolchain version")
+        ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
@@ -714,19 +685,11 @@ class FlextInfraConfigModels:
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
 
-        python_minor_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible Python major.minor line")
-        ]
-        python_mise_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Loose mise selector for the compatible Python line"),
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
-        ]
-        uv_mise_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Loose mise selector for the compatible uv line"),
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -775,21 +738,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
-
-    class EnvironmentRenderContext(_ConfigContract):
-        """Typed input consumed by the generated environment example."""
-
-        @m.computed_field()
-        @property
-        def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name."""
-            return f"{self.dist.upper().replace('-', '_')}_"
-
-        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
-        scaffold: Annotated[
-            FlextInfraConfigModels.ScaffoldSpec,
-            m.Field(description="Generated project scaffold policy"),
-        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
@@ -850,14 +798,11 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        uv_minor_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
         ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
-        ]
-        uv_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 uv compatibility requirement")
         ]
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")

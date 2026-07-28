@@ -14,7 +14,11 @@ UV_LINK_MODE := copy
 APPLY ?= N
 ARGS ?=
 CHECK_GATES ?=
+PROJECT ?=
 PROJECTS ?=
+# Public selector documented by base.mk. Forwarded to the test recipe so a
+# focused run stays inside the canonical Make surface instead of forcing a
+# loose pytest invocation.
 PYTEST_ARGS ?=
 PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 WHAT ?=
@@ -23,9 +27,7 @@ PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
-MISE := $(shell command -v mise 2>/dev/null)
-UV_MISE_VERSION := prefix:0.11
-UV = $(if $(MISE),$(MISE) exec uv@$(UV_MISE_VERSION) -- uv,sh -c 'printf "%s\n" "ERROR: mise executable not found on caller PATH" >&2; exit 2' --)
+UV ?= uv
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -73,7 +75,6 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
-FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -94,13 +95,23 @@ endif
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 ORCHESTRATED_VERBS := build check clean docs scan test val
+ORCHESTRATE_PROJECT_ARGS = $(if $(strip $(PROJECT)),--projects $(strip $(PROJECT)),$(if $(strip $(PROJECTS)),--projects $(strip $(PROJECTS))))
+ORCHESTRATE_CHECK_ARGS = $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
+ORCHESTRATE_TEST_ARGS = $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
 
 UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
+
+ifneq ($(strip $(PROJECT)),)
+ifneq ($(strip $(PROJECTS)),)
+$(error ERROR: Cannot use PROJECT and PROJECTS together)
+endif
+endif
 
 
 -include custom.mk
@@ -154,7 +165,7 @@ endef
 
 define _run_for_selected_projects
 	@set -eu; \
-	selected="$(strip $(PROJECTS))"; \
+	selected="$(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	for project in $$selected; do \
 		case " $(ALLOWED_PROJECTS) " in \
@@ -276,26 +287,26 @@ ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
+		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
 	done
-	@$(UV) pip check --python "$(RUNTIME_PYTHON)"
+	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" setup WHAT=environment
+	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_PYTHON)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
@@ -305,22 +316,30 @@ _builtin_deps_lock:
 	$(call _require_apply)
 	$(call _run_for_selected_projects,)
 
-_builtin_deps_upgrade:
+_builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
 	$(call _run_for_selected_projects,--upgrade)
+	@set -eu; \
+	selected="$(strip $(PROJECTS))"; \
+	if [ -z "$$selected" ]; then selected="."; fi; \
+	set --; \
+	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
+	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
+		--apply --rewrite-constraints --skip-check "$$@"
+	$(call _run_for_selected_projects,)
 
 
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all: _builtin_require_environment
-	@gates="$(CHECK_GATES)"; \
-	if [ -z "$$gates" ]; then gates="lint,format,pyrefly,mypy,pyright,security,markdown,smells"; fi; \
-	$(PROJECT_FLEXT_INFRA) check run \
-		--workspace "$(PROJECT_ROOT)" \
-		--projects . \
-		--gates "$$gates" \
-		--reports-dir "$(PROJECT_ROOT)/.reports/check"
+	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
+	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
+	@$(UV_RUN) pyrefly check
+	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
+	@$(UV_RUN) pyright
+	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
+	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
 	@$(UV_RUN) python -m pytest $(PYTEST_TARGETS) $(PYTEST_ARGS)
@@ -344,7 +363,7 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
-		$(UV) pip check --python "$(RUNTIME_PYTHON)"; \
+		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
@@ -359,12 +378,12 @@ _builtin_clean_generated:
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
-_builtin_release_status:
+_builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-_builtin_codegen_check:
+_builtin_codegen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_codegen_apply: _builtin_require_environment

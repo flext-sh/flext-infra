@@ -65,7 +65,6 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             workspace=workspace,
             link_mode=toolchain.uv_link_mode,
-            required_version=toolchain.uv_required_version,
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -306,6 +305,15 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         return r.ok(reference)
 
+    @staticmethod
+    def _git_requirement_url(url: str) -> p.Result[str]:
+        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
+        if not url.startswith("https://"):
+            return r[str].fail(
+                f"repository URL must use the configured HTTPS transport: {url}"
+            )
+        return r[str].ok(f"git+{url}")
+
     @classmethod
     def _sync_dependency_groups(
         cls,
@@ -462,7 +470,6 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         link_mode: str | None = None,
-        required_version: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
@@ -483,8 +490,7 @@ class FlextInfraUtilitiesPyprojectConform:
             if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
-        if required_version is not None:
-            u.Cli.toml_sync_value(uv, "required-version", required_version)
+        u.Cli.toml_remove_key_if_present(uv, "required-version")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(

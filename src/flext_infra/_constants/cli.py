@@ -35,7 +35,6 @@ class FlextInfraConstantsCli:
     )
     _SHARED_VALUE_FLAG_VALUES: Final[tuple[str, ...]] = (
         "--checks",
-        "--constraint-policy",
         "--docstring-min",
         "--workspace",
         "--projects",

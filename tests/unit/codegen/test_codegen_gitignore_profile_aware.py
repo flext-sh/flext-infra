@@ -16,7 +16,7 @@ from flext_tests import tm
 from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 
-_ROOT = Path(__file__).resolve().parents[3].parent
+_ROOT = Path(__file__).resolve().parents[3]
 _WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")
 
 

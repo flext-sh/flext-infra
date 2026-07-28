@@ -172,33 +172,13 @@ class FlextInfraProtocolsBase(Protocol):
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
         @property
-        def python_minor_version(self) -> str:
-            """Compatible Python major.minor line."""
-            ...
-
-        @property
         def python_required_version(self) -> str:
             """PEP 440 requirement for the compatible Python line."""
             ...
 
         @property
-        def python_mise_version(self) -> str:
-            """Loose mise selector for the compatible Python line."""
-            ...
-
-        @property
-        def uv_minor_version(self) -> str:
-            """Compatible uv major.minor line."""
-            ...
-
-        @property
-        def uv_required_version(self) -> str:
-            """PEP 440 requirement for the compatible uv line."""
-            ...
-
-        @property
-        def uv_mise_version(self) -> str:
-            """Loose mise selector for the compatible uv line."""
+        def python_version(self) -> str:
+            """Compatible Python major.minor line."""
             ...
 
         @property

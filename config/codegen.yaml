@@ -4,10 +4,12 @@ Infra:
     version: 1
 
     toolchain:
-      # Single-source compatible runtime lines. ToolchainSpec derives PEP 440
-      # ranges and loose mise selectors; uv.lock owns concrete patch selection.
-      python_minor_version: "3.13"
-      uv_minor_version: "0.11"
+      # Single-source Python minor line. The environment resolves the newest
+      # compatible 3.13 patch; no patch is pinned in generated repositories.
+      # python_required_version is derived as >=3.13,<3.14.
+      # uv is supplied by the caller environment and is deliberately not pinned.
+      # Dependency floors live in pyproject; uv.lock owns resolved versions.
+      python_version: "3.13"
       uv_link_mode: copy
       # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
       # .mise.toml and the ci-matrix workflow kind leg.

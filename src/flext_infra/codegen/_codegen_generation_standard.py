@@ -64,7 +64,10 @@ class FlextInfraCodegenGenerationStandardMixin(
         eager_groups = cls._group_imports(plan.eager_dunders)
         previous_top: str | None = None
         for module in sorted(eager_groups, key=str.lower):
-            top = module.split(".", maxsplit=1)[0]
+            rendered_module = cls._compact_lazy_module_path(
+                plan.context.current_pkg, module
+            )
+            top = rendered_module.split(".", maxsplit=1)[0]
             if previous_top is not None and top != previous_top:
                 eager_lines.append("")
             parts = tuple(
@@ -72,7 +75,7 @@ class FlextInfraCodegenGenerationStandardMixin(
                 for export_name, imported_name in sorted(eager_groups[module])
                 if imported_name
             )
-            eager_lines.extend(cls._format_import("", module, parts))
+            eager_lines.extend(cls._format_import("", rendered_module, parts))
             previous_top = top
         if lines and eager_lines:
             lines.append("")

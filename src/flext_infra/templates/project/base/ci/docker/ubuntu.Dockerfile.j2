@@ -9,8 +9,8 @@ RUN apt-get update \
        bash ca-certificates curl git make build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# mise resolves compatible Python {{ python_minor_version }} and uv
-# {{ uv_minor_version }} lines from the config SSOT.
+# mise installs the Python and deployment toolchain declared in .mise.toml.
+# uv is supplied by the caller environment and remains intentionally unpinned.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

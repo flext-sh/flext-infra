@@ -1,12 +1,13 @@
-"""Behavioral validation of the typed codegen repository catalog."""
+"""Validate the typed repository catalog through its public configuration file."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
 from flext_cli import u
-from flext_infra import c, m
+from flext_tests import tm
+
+from flext_infra import m, t
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
@@ -17,13 +18,13 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ["git", "ls-files", "--error-unmatch", "config/codegen.yaml"],
         cwd=repository_root,
     )
-    tracked_value = tm.ok(tracked)
-    tm.that(tracked_value.exit_code, eq=0)
-    tm.that(tracked_value.stdout.strip(), eq="config/codegen.yaml")
+    process = tm.ok(tracked)
+    tm.that(process.exit_code, eq=0)
+    tm.that(process.stdout.strip(), eq="config/codegen.yaml")
 
     payload = u.Cli.yaml_load_mapping(catalog_path)
-    infra = u.Cli.json_as_mapping(payload["Infra"])
-    catalog = u.Cli.json_as_mapping(infra["codegen"])
+    infra = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["Infra"])
+    catalog = t.Cli.JSON_MAPPING_ADAPTER.validate_python(infra["codegen"])
     repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
         catalog["repositories"]
     )
@@ -46,7 +47,7 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
     cosmos = tuple(by_name[name] for name in cosmos_names)
 
     workspace = m.Infra.WorkspaceSpec.model_validate({
-        "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+        "version": 2,
         "name": "cosmos-main",
         "repository": cosmos[0],
         "members": cosmos[1:3],

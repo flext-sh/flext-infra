@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -98,17 +97,6 @@ def _write_fake_uv(bin_root: Path, log_path: Path) -> None:
         encoding="utf-8",
     )
     uv_path.chmod(0o755)
-    mise_path = bin_root / "mise"
-    mise_path.write_text(
-        "#!/bin/sh\n"
-        'while [ "$#" -gt 0 ]; do\n'
-        '  if [ "$1" = "--" ]; then shift; exec "$(dirname "$0")/uv" "$@"; fi\n'
-        "  shift\n"
-        "done\n"
-        "exit 2\n",
-        encoding="utf-8",
-    )
-    mise_path.chmod(0o755)
 
 
 class TestsWorkspaceRootMakeContract:
@@ -152,15 +140,18 @@ class TestsWorkspaceRootMakeContract:
         fake_bin = tmp_path / "bin"
         uv_log = tmp_path / "uv.log"
         _write_fake_uv(fake_bin, uv_log)
-        monkeypatch.setenv(
-            "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
-        )
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw(["make", "-C", str(workspace_root), "setup"])
+            cli.run_raw([
+                "make",
+                "-C",
+                str(workspace_root),
+                "setup",
+                f"UV={fake_bin / 'uv'}",
+            ])
         )
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)

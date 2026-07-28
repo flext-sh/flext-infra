@@ -184,10 +184,10 @@ class TestsFlextInfraDepsModernizerMainExtra:
         tm.that(rendered, has='rich = ">=14.2.0"')
         tm.that(rendered, has='version = ">=3.1.0"')
 
-    def test_run_apply_rewrites_constraints_with_compatible_policy(
+    def test_run_apply_rewrites_constraints_as_open_floor(
         self, modernizer_workspace: Path
     ) -> None:
-        """Honor the compatible constraint policy selected by the caller."""
+        """Use uv.lock as the floor without imposing an artificial upper bound."""
         (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
             (
                 "[project]\n"
@@ -214,7 +214,6 @@ class TestsFlextInfraDepsModernizerMainExtra:
             workspace_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
-            constraint_policy=c.Infra.DependencyConstraintPolicy.COMPATIBLE,
             skip_comments=True,
             skip_check=True,
         )
@@ -224,7 +223,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
                 encoding="utf-8"
             ),
-            has='"requests~=2.32.4"',
+            has='"requests>=2.32.4"',
         )
 
     def test_run_scopes_default_audit_to_root_without_external_siblings(

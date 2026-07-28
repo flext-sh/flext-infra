@@ -37,7 +37,7 @@ class TestsCodegenWorkspaceRootFanout:
 
 def _render_root_makefile() -> str:
     """Render base/Makefile.j2 for the real workspace-root profile via conform."""
-    workspace_root = Path(__file__).resolve().parents[3].parent
+    workspace_root = Path(__file__).resolve().parents[3]
     plan = (
         FlextInfraCodegenConform()
         .plan(

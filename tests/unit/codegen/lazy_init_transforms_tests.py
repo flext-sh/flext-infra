@@ -103,15 +103,10 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(
-            content, has="from flext_demo.__version__ import __version__ as __version__"
-        )
+        tm.that(content, has="from .__version__ import __version__ as __version__")
         tm.that(
             content,
-            has=(
-                "from flext_demo.__version__ import "
-                "__version_info__ as __version_info__"
-            ),
+            has="from .__version__ import __version_info__ as __version_info__",
         )
         tm.that(content, has="__version__")
         tm.that(content, has="__version_info__")

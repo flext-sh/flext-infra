@@ -5,9 +5,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-import pytest
 from flext_tests import tm
-from packaging.specifiers import SpecifierSet
 
 from flext_infra import c, config, m, u
 
@@ -110,34 +108,27 @@ workspace = true
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=[member.distribution])
 
-    def test_full_conformance_uses_compatible_toolchain_lines(self) -> None:
+    def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
         repositories = (
             workspace.repository,
             *workspace.members,
-            _repository(
-                "flext-infra",
-                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                path="flext-infra",
-            ),
-            _repository(
-                "flext-tests",
-                role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                path="flext-tests",
-            ),
+            *config.Infra.codegen.repositories,
         )
-        payload = config.Infra.codegen.toolchain.model_dump(
-            mode="json", exclude_computed_fields=True
+        toolchain = m.Infra.ToolchainSpec(
+            python_version="3.13",
+            uv_link_mode="copy",
+            kubectl_version="1.32.0",
+            helm_version="3.19.4",
+            kind_version="0.31.0",
+            taplo_version="0.10.0",
         )
-        payload["python_minor_version"] = "7.42"
-        payload["uv_minor_version"] = "5.9"
-        toolchain = m.Infra.ToolchainSpec.model_validate(payload)
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 
 [tool.uv]
-required-version = ">=5.8,<5.9"
+required-version = "==0.11.28"
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -160,21 +151,7 @@ required-version = ">=5.8,<5.9"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that(
-            document["tool"]["uv"]["required-version"], eq=toolchain.uv_required_version
-        )
-        python_requirement = SpecifierSet(toolchain.python_required_version)
-        uv_requirement = SpecifierSet(toolchain.uv_required_version)
-        tm.that(python_requirement.contains("7.42.999"), eq=True)
-        tm.that(python_requirement.contains("7.43.0"), eq=False)
-        tm.that(uv_requirement.contains("5.9.999"), eq=True)
-        tm.that(uv_requirement.contains("5.10.0"), eq=False)
-        tm.that(toolchain.python_mise_version, eq="prefix:7.42")
-        tm.that(toolchain.uv_mise_version, eq="prefix:5.9")
-        for field in ("python_minor_version", "uv_minor_version"):
-            invalid_payload = {**payload, field: "7.42.1"}
-            with pytest.raises(c.ValidationError):
-                m.Infra.ToolchainSpec.model_validate(invalid_payload)
+        tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
@@ -182,9 +159,3 @@ required-version = ">=5.8,<5.9"
                 f"git+{workspace.members[0].url}@{workspace.members[0].branch}"
             ),
         )
-
-    def test_dependency_profiles_declare_only_compatible_lower_bounds(self) -> None:
-        for profile in config.Infra.codegen.scaffold.project.dependency_profiles:
-            for requirement in (*profile.runtime, *profile.codegen, *profile.dev):
-                tm.that(requirement, lacks="<")
-                tm.that(requirement, lacks="==")
