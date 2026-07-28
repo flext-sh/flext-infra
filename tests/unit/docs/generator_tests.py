@@ -9,7 +9,6 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -48,35 +47,6 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
     tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
 
 
-def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_unowned(
-    tmp_path: Path,
-) -> None:
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-    request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=True
-    )
-    generator = FlextInfraDocGenerator()
-
-    first = generator.generate(request)
-    tm.ok(first)
-    catalog = workspace / "docs/projects/generated/catalog.md"
-    tm.that(catalog.exists(), eq=True)
-
-    second = generator.generate(request)
-    tm.ok(second)
-    tm.that(catalog.exists(), eq=True)
-
-    for relative_path in (
-        "docs/architecture/README.md",
-        "docs/projects/README.md",
-        "docs/api-reference/README.md",
-    ):
-        (workspace / relative_path).unlink()
-    validation = FlextInfraDocValidator().validate_workspace(request)
-    tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
-
-
 def test_generated_collection_rules_pointer_stays_within_consumer_limit(
     tmp_path: Path,
 ) -> None:
@@ -100,7 +70,7 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
         if lines[index].startswith("## ")
     )
     collection_rules_lines = [line for line in lines[section_start:section_end] if line]
-    tm.that(max(map(len, collection_rules_lines)), le=240)
+    tm.that(max(map(len, collection_rules_lines)), lte=240)
 
 
 def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
@@ -156,7 +126,8 @@ def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
         (workspace / relative_path).unlink()
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
+    for report in validation.value:
+        tm.that(report.result, eq="OK")
     generator.generate(request)
     tm.that(catalog.read_bytes(), eq=first_output)
 
