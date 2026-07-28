@@ -61,7 +61,6 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        # mro-i6nq.10: Assert runtime installation through observable exports.
         tm.that(
             init_content,
             has="from flext_core.lazy import build_lazy_import_map, install_lazy_exports",
@@ -187,7 +186,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        tm.that(generated, contains="_DIRECT_IMPORTS: tuple[str, ...]")
+        tm.that(generated, lacks="_DIRECT_IMPORTS")
         tm.that(generated, lacks="FlextDemoConversion")
 
         extra_path = utilities_dir / "extra.py"
@@ -399,7 +398,6 @@ class TestsFlextInfraLazyInitHelpers:
         init_content = self._generated_init(package_root)
         exports_content = self._generated_exports(package_root)
 
-        # mro-wkii.17 (Codex): aliases live in the inline root contract.
         tm.that(init_content, has="_LAZY_MODULES: dict[str, tuple[str, ...]]")
         tm.that(init_content, has="__all__: tuple[str, ...]")
         tm.that(init_content, has="install_lazy_exports(")
@@ -408,13 +406,10 @@ class TestsFlextInfraLazyInitHelpers:
         ruff_ordered_aliases = ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x")
         for alias_name in ruff_ordered_aliases:
             tm.that(exports_content, has=f'    "{alias_name}",')
-        public_exports = exports_content.split(
-            "__all__: tuple[str, ...] =", maxsplit=1
-        )[1]
-        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
-        # exclusively in the static facade imports.
+        has_all, public_exports = u.Tests.extract_lazy_init_exports(exports_content)
+        tm.that(has_all, eq=True)
         alias_positions = tuple(
-            public_exports.index(f'"{alias}"') for alias in ruff_ordered_aliases
+            public_exports.index(alias) for alias in ruff_ordered_aliases
         )
         tm.that(alias_positions, eq=tuple(sorted(alias_positions)))
         tm.that(

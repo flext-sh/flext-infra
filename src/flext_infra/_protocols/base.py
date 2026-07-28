@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -171,6 +171,16 @@ class FlextInfraProtocolsBase(Protocol):
 
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement for the compatible Python line."""
+            ...
+
+        @property
+        def python_version(self) -> str:
+            """Compatible Python major.minor line."""
+            ...
+
         @property
         def uv_link_mode(self) -> str:
             """Portable uv installation link mode."""
@@ -575,3 +585,14 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...
+
+    @runtime_checkable
+    class GithubPullRequestFields(Protocol):
+        """Shared pull-request fields consumed by native GitHub execution."""
+
+        action: c.Infra.PullRequestAction
+        base: str | None
+        head: str | None
+        title: str | None
+        body: str | None
+        draft: bool

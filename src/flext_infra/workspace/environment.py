@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -71,6 +70,7 @@ class FlextInfraWorkspaceEnvironment:
     @classmethod
     def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
+        del workspace_root
         rendered = cls._render_environment_template(
             c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
         )
@@ -79,10 +79,6 @@ class FlextInfraWorkspaceEnvironment:
         doc = u.Cli.toml_parse_text(rendered.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
-        python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            tools = u.Cli.toml_ensure_table(doc, "tools")
-            tools["python"] = python_version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
     @staticmethod
@@ -156,9 +152,6 @@ class FlextInfraWorkspaceEnvironment:
                     f"canonical .mise.toml [tools].{name} must be a string"
                 )
             selectors[name] = value
-        python_version = cls.workspace_python_version(workspace_root)
-        if python_version is not None:
-            selectors["python"] = python_version
         return r[dict[str, str]].ok(selectors)
 
     @staticmethod
@@ -166,25 +159,6 @@ class FlextInfraWorkspaceEnvironment:
         """Return whether the workspace declares Python project metadata."""
         pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
         return (workspace_root / pyproject_filename).is_file()
-
-    @staticmethod
-    def workspace_python_version(workspace_root: Path) -> str | None:
-        """Return the Python minor version declared by ``pyproject.toml``."""
-        pyproject_filename: str = c.Infra.PYPROJECT_FILENAME
-        pyproject = workspace_root / pyproject_filename
-        if not pyproject.is_file():
-            return None
-        mapping_result = u.Cli.toml_read_json(pyproject)
-        if mapping_result.failure:
-            return None
-        project = u.Cli.toml_mapping_child(mapping_result.value, c.Infra.PROJECT)
-        if project is None:
-            return None
-        requires_python = project.get("requires-python")
-        if not isinstance(requires_python, str):
-            return None
-        match = re.search(r">=\s*(3\.\d+)", requires_python)
-        return match.group(1) if match else None
 
     @classmethod
     def remove_generated_environment_files(

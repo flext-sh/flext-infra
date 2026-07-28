@@ -82,12 +82,6 @@ class FlextInfraConfigModels:
 
         @m.computed_field()
         @property
-        def python_minor_version(self) -> str:
-            """Python major.minor selector used by generated tool configuration."""
-            return self.python_version
-
-        @m.computed_field()
-        @property
         def python_required_version(self) -> str:
             """PEP 440 requirement spanning the configured Python minor line."""
             major, _, minor = self.python_version.partition(".")
@@ -512,18 +506,12 @@ class FlextInfraConfigModels:
         ] = None
 
     class MakefileRenderSpec(_ConfigContract):
-        """Typed artifact-specific input for the generated project Makefile."""
+        """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
-        ]
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Generated directive including the custom Make surface"
-            ),
         ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
@@ -540,7 +528,7 @@ class FlextInfraConfigModels:
             m.Field(description="Declared content-only workspace repositories"),
         ] = ()
         uv_link_mode: Annotated[
-            t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -554,14 +542,21 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+        makefile_custom_include: Annotated[
+            str, m.Field(description="Optional custom Make policy include directive")
+        ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
+                description="Workspace-root gate verbs orchestrated across members"
             ),
         ] = ()
         workspace_cli_group: Annotated[
-            t.NonEmptyStr, m.Field(description="CLI group for workspace orchestration")
+            str, m.Field(description="CLI group used for workspace orchestration")
+        ] = ""
+        project_selection_conflict_error: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mutually exclusive project selector error"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")

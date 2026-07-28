@@ -60,3 +60,5 @@ class TestsMakeTestSelector:
         direct = [r for r in recipes if "pytest" in r]
         tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
         tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)
+        tm.that(template, has="PYTEST_TARGETS ?=\n")
+        tm.that(direct[0], has="$(if $(strip $(PYTEST_TARGETS))")

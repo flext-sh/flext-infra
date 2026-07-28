@@ -6,9 +6,7 @@ Infra:
     toolchain:
       # Single-source Python minor line. The environment resolves the newest
       # compatible 3.13 patch; no patch is pinned in generated repositories.
-      # Derived as computed fields on ToolchainSpec:
-      #   python_minor_version    -> python_version (3.13)
-      #   python_required_version -> >=3.13,<3.14
+      # python_required_version is derived as >=3.13,<3.14.
       # uv is supplied by the caller environment and is deliberately not pinned.
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
@@ -274,7 +272,6 @@ Infra:
         python-envs.workspaceSearchPaths:
           - ./.venv
           - ./*/.venv
-          - ./apps/*/.venv
       map_union_settings:
         python.analysis.diagnosticSeverityOverrides:
           reportUntypedBaseClass: none
@@ -786,7 +783,8 @@ Infra:
           overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
-          # One typed template owns the complete Make surface for every profile.
+          # The generic conform engine is the single Makefile owner for every
+          # profile; workspace-root fan-out is selected inside this template.
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false

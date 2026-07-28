@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
-from tests import m, u
+from tests import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -19,7 +19,9 @@ def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -
 
     result = u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), action="status", fail_fast=False
+            workspace=str(workspace),
+            action=c.Infra.PullRequestAction.STATUS,
+            fail_fast=False,
         )
     )
 

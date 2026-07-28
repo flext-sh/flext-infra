@@ -52,30 +52,25 @@ class FlextInfraModelsCodegenRender:
     # NOTE (multi-agent, mro-wkii.17.26 / agent: codex): root lazy data is
     # rendered inline; the removed __unit__ sidecar is no longer a model surface.
     class LazyInitRootRender(m.ArbitraryTypesModel):
-        """Template context for one public root ``__init__.py``."""
+        """Template context for one lazy public root ``__init__.py``."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
-        current_pkg: t.NonEmptyStr = m.Field(description="Importable package name.")
         runtime_import_lines: str = m.Field(
             default_factory=str,
-            description="Eager runtime imports (``__version__`` dunders).",
+            description="Eager runtime imports for explicit reexports.",
         )
         type_checking_lines: str = m.Field(
             default_factory=str,
-            description="Derived ``if TYPE_CHECKING:`` imports for static resolvers.",
+            description="Static declarations for public lazy exports.",
         )
         lazy_module_groups: t.StrSequencePairSequence = m.Field(
             default_factory=tuple, description="Public lazy imports grouped by module."
         )
         lazy_alias_groups: t.StrPairSequencePairSequence = m.Field(
             default_factory=tuple, description="Public lazy aliases grouped by module."
-        )
-        direct_imports: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Frozen root names supported through direct imports.",
         )
         exports: t.StrSequence = m.Field(
             default_factory=tuple, description="Published root ``__all__`` names."

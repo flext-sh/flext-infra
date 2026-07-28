@@ -38,10 +38,10 @@ class TestsVscodeOwnerMerge:
         return m.Infra.CodegenPlan.model_validate(planned.value)
 
     def test_merge_marks_drift_and_renders_canonical_content(
-        self, tmp_path: Path
+        self, infra_git_repo: Path
     ) -> None:
         """Plan a changed merge artifact with canonical and custom keys."""
-        root = tmp_path / "project"
+        root = infra_git_repo
         settings_path = root / ".vscode" / "settings.json"
         _ = self._plan(root)
         settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,9 +71,9 @@ class TestsVscodeOwnerMerge:
         )
         tm.that("./apps/*/.venv" in search_paths, eq=False)
 
-    def test_merge_reaches_fixed_point_after_apply(self, tmp_path: Path) -> None:
+    def test_merge_reaches_fixed_point_after_apply(self, infra_git_repo: Path) -> None:
         """Replan a written merge artifact with zero residual drift."""
-        root = tmp_path / "project"
+        root = infra_git_repo
         settings_path = root / ".vscode" / "settings.json"
         _ = self._plan(root)
         settings_path.parent.mkdir(parents=True, exist_ok=True)

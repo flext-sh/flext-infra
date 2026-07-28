@@ -19,9 +19,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
 
     @staticmethod
     def _validate_github_pr_create_request(
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
+        request: p.Infra.GithubPullRequestFields,
     ) -> p.Result[t.StrPair]:
         """Require complete non-interactive content before Git or GH execution."""
         if request.title is None:
@@ -32,12 +30,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
 
     @staticmethod
     def _github_pr_list_command(
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
-        head: str,
-        *,
-        url_only: bool,
+        request: p.Infra.GithubPullRequestFields, head: str, *, url_only: bool
     ) -> list[str]:
         """Build the native idempotence/status query."""
         command = [
@@ -61,10 +54,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
 
     @staticmethod
     def _github_pr_create_command(
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
-        head: str,
+        request: p.Infra.GithubPullRequestFields, head: str
     ) -> p.Result[t.StrSequence]:
         """Build one fully non-interactive native create command."""
         validation = FlextInfraUtilitiesGithubPrExecutionMixin._validate_github_pr_create_request(
@@ -142,9 +132,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     def _github_pr_execute_create(
         cls,
         *,
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
+        request: p.Infra.GithubPullRequestFields,
         repo_root: Path,
         head: str,
         display: str,
@@ -175,9 +163,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     def execute_github_pull_request(
         cls,
         *,
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
+        request: p.Infra.GithubPullRequestFields,
         repo_root: Path,
         display: str,
         log_path: Path,
