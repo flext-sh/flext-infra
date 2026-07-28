@@ -96,7 +96,7 @@ class TestBanditAndMarkdownGates:
                 ),
                 False,
                 1,
-                "",
+                "README.md:1:1: [MD001] Heading level",
             ),
             (
                 "# Test\n",
@@ -211,6 +211,26 @@ class TestBanditAndMarkdownGates:
         tm.that(result.result.passed, eq=False)
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].file, eq="invalid/README.md")
+
+    def test_markdown_rechecks_link_target_state_without_cache(
+        self, tmp_path: Path
+    ) -> None:
+        """A cached source hash must not hide a removed relative-link target."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-cache-state")
+        target = project_dir / "target.md"
+        (project_dir / "README.md").write_text(
+            "# Documentation\n\n[Target](target.md)\n", encoding="utf-8"
+        )
+        target.write_text("# Target\n", encoding="utf-8")
+        gate = FlextInfraMarkdownGate(tmp_path)
+
+        first = gate.check(project_dir, self.make_ctx(tmp_path))
+        target.unlink()
+        second = gate.check(project_dir, self.make_ctx(tmp_path))
+
+        tm.that(first.result.passed, eq=True)
+        tm.that(second.result.passed, eq=False)
+        tm.that(second.issues[0].code, eq="MD057")
 
 
 __all__: t.StrSequence = []

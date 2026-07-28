@@ -76,7 +76,7 @@ class FlextInfraGate(ABC):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output=result.stderr,
+            raw_output=self._raw_output(result),
         )
 
     def check_files(
@@ -110,7 +110,7 @@ class FlextInfraGate(ABC):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output=result.stderr,
+            raw_output=self._raw_output(result),
         )
 
     # ------------------------------------------------------------------
@@ -226,6 +226,11 @@ class FlextInfraGate(ABC):
         """Assemble raw output from fix result. Default: stderr only."""
         stderr: str = result.stderr
         return stderr
+
+    @staticmethod
+    def _raw_output(result: p.Cli.CommandOutput) -> str:
+        """Preserve diagnostics regardless of the stream selected by a tool."""
+        return "\n".join(output for output in (result.stdout, result.stderr) if output)
 
     def _run(
         self,
