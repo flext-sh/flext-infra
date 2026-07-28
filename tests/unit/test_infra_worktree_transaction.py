@@ -18,8 +18,8 @@ def _git_status(repository_root: Path) -> bytes:
     result = u.Infra.git_capture_bytes(
         repository_root, ("status", "--porcelain=v1", "-z")
     )
-    tm.ok(result)
-    return result.value
+    status: bytes = tm.ok(result)
+    return status
 
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
@@ -253,11 +253,7 @@ class TestsFlextInfraWorktreeTransaction:
         output = u.Infra.render_worktree_transaction_report(report)
         lint_output = "\n".join(item.output for item in report.lint_after)
 
-        tm.that(
-            report.breakage_detected,
-            eq=False,
-            msg=f"{output}\n{lint_output}",
-        )
+        tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)

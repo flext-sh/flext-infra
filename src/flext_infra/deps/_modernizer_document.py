@@ -101,34 +101,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
 
     def _project_is_flext_child(self, project_dir: Path) -> bool:
-        """Detect a FLEXT consumer that shares a parent workspace ``.venv``.
-
-        A workspace *root* owns the canonical virtualenv locally
-        (``<project>/.venv``); a *child* (any flext-based consumer repo)
-        references the parent workspace venv (``../.venv``). This keeps the
-        pyright ``venvPath`` / pyrefly interpreter classification correct even
-        when ``deps modernize`` is invoked from inside the child itself (so
-        ``workspace_root`` defaults to the child dir). The committed
-        ``Makefile`` ``WORKSPACE_ROOT`` assignment is the durable backstop when
-        no virtualenv exists at modernize time.
-        """
-        rules = config.Infra.tooling.tools.pyright.path_rules
-        venv_name = rules.venv_name
-        if (project_dir / venv_name).is_dir():
-            return False
-        if (project_dir.parent / venv_name).is_dir():
-            return True
-        makefile = project_dir / "Makefile"
-        read = u.Cli.files_read_text(makefile)
-        if read.success:
-            for raw_line in read.value.splitlines():
-                stripped = raw_line.strip()
-                key, separator, value = stripped.partition(":=")
-                if separator != ":=" or key.strip() != "WORKSPACE_ROOT":
-                    continue
-                if value.strip().startswith(".."):
-                    return True
-        return False
+        """Detect an attached member exclusively from canonical Git topology."""
+        workspace_root: Path = u.Infra.git_workspace_root(project_dir).unwrap()
+        return workspace_root != project_dir.expanduser().resolve()
 
     def _process_document_state(
         self,

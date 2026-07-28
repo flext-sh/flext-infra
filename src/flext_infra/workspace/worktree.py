@@ -69,7 +69,7 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail("worktree add requires --apply")
         lane_result = self._lane_path(primary_root, branch)
         if lane_result.failure:
-            return lane_result
+            return r.fail(lane_result.error or "failed to resolve worktree lane")
         lane = lane_result.value
         if lane.exists():
             return r.fail(f"worktree lane already exists: {lane}")
@@ -109,7 +109,7 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail("worktree remove requires --apply")
         lane_result = self._lane_path(primary_root, branch)
         if lane_result.failure:
-            return lane_result
+            return r.fail(lane_result.error or "failed to resolve worktree lane")
         lane = lane_result.value
         removed = u.Infra.git_capture(self.root, ("worktree", "remove", str(lane)))
         if removed.failure:

@@ -31,7 +31,7 @@ class TestsFlextInfraWorktreeService:
 
         listed = tm.ok(
             FlextInfraWorktreeService(
-                workspace=repository, operation=c.Infra.WorktreeOperation.LIST
+                workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
             ).execute()
         )
 
@@ -47,10 +47,10 @@ class TestsFlextInfraWorktreeService:
 
         added = tm.ok(
             FlextInfraWorktreeService(
-                workspace=repository,
+                workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
-                apply=True,
+                apply_changes=True,
             ).execute()
         )
 
@@ -63,10 +63,10 @@ class TestsFlextInfraWorktreeService:
 
         removed = tm.ok(
             FlextInfraWorktreeService(
-                workspace=repository,
+                workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.REMOVE,
                 branch=branch,
-                apply=True,
+                apply_changes=True,
             ).execute()
         )
 
@@ -78,7 +78,7 @@ class TestsFlextInfraWorktreeService:
         repository = self._repository(tmp_path)
 
         result = FlextInfraWorktreeService(
-            workspace=repository,
+            workspace_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch="feature/no-apply",
         ).execute()

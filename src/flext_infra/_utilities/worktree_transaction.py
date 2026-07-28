@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 
 if TYPE_CHECKING:
@@ -177,6 +177,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
             c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: python_path,
             c.Infra.ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: "1",
         }
+
+    @staticmethod
+    def _materialize_runtime_environment(worktree_root: Path) -> p.Result[bool]:
+        """Expose the active managed environment at its configured project path."""
+        executable = Path(sys.executable).expanduser().absolute()
+        runtime_root = executable.parent.parent
+        venv_name = config.Infra.tooling.tools.pyright.path_rules.venv_name
+        return u.Cli.ensure_symlink(worktree_root / venv_name, runtime_root)
 
     @staticmethod
     def _lint_counts(tool: str, output: str) -> tuple[int, int]:
@@ -440,6 +448,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 create_result.error or "failed to create complete worktree"
             )
         repositories = create_result.value
+        environment_result = cls._materialize_runtime_environment(worktree_root)
+        if environment_result.failure:
+            cls._cleanup_worktrees(repositories, worktree_root)
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                environment_result.error
+                or "failed to materialize transaction runtime environment"
+            )
         report_result: p.Result[m.Infra.WorktreeTransactionReport]
         try:
             report_result = cls._execute_isolated(
