@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 from flext_tests import tm
 
+from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import m, u
 
@@ -99,6 +101,64 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
     )
     collection_rules_lines = [line for line in lines[section_start:section_end] if line]
     tm.that(max(map(len, collection_rules_lines)), le=240)
+
+
+def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    (workspace / "src/flext_infra_fixture").mkdir(parents=True)
+    (workspace / "src/flext_infra_fixture/__init__.py").write_text(
+        'def fixture_entry() -> str:\n    return "fixture"\n\n__all__ = ["fixture_entry"]\n',
+        encoding="utf-8",
+    )
+    (workspace / "pyproject.toml").write_text(
+        '[project]\nname = "flext-infra-fixture"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    (workspace / "Makefile").write_text("test:\n\t@true\n", encoding="utf-8")
+    for relative_path in (
+        "README.md",
+        "docs/README.md",
+        "docs/index.md",
+        "docs/architecture/README.md",
+        "docs/guides/README.md",
+        "docs/projects/README.md",
+        "docs/api-reference/README.md",
+    ):
+        path = workspace / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# Docs\n", encoding="utf-8")
+    request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["flext-infra-fixture"], apply=True
+    )
+    generator = FlextInfraDocGenerator()
+
+    scopes = u.Infra.build_scopes(workspace, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
+    tm.ok(scopes)
+    tm.that([scope.name for scope in scopes.value], eq=["root", "flext-infra-fixture"])
+    tm.that(scopes.value[0].path.resolve(), eq=scopes.value[1].path.resolve())
+
+    generated = generator.generate(request)
+    tm.ok(generated)
+    catalog = workspace / "docs/projects/generated/catalog.md"
+    tm.that(catalog.exists(), eq=True)
+    stale = workspace / "docs/api-reference/generated/stale.md"
+    stale.write_text("stale\n", encoding="utf-8")
+    generator.generate(request)
+    tm.that(stale.exists(), eq=False)
+    first_output = catalog.read_bytes()
+
+    for relative_path in (
+        "docs/README.md",
+        "docs/architecture/README.md",
+        "docs/projects/README.md",
+    ):
+        (workspace / relative_path).unlink()
+    validation = FlextInfraDocValidator().validate_workspace(request)
+    tm.ok(validation)
+    assert all(report.result == "OK" for report in validation.value)
+    generator.generate(request)
+    tm.that(catalog.read_bytes(), eq=first_output)
 
 
 def test_generate_preserves_declared_export_order_and_is_idempotent(

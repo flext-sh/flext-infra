@@ -101,11 +101,7 @@ class FlextInfraUtilitiesDocsValidate:
         if scope.name == c.Infra.RK_ROOT:
             required = [
                 "README.md",
-                "docs/README.md",
                 "docs/index.md",
-                "docs/architecture/README.md",
-                "docs/guides/README.md",
-                "docs/projects/README.md",
                 "docs/api-reference/README.md",
                 "docs/api-reference/generated/overview.md",
                 "docs/projects/generated/catalog.md",
