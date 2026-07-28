@@ -37,6 +37,8 @@ PUBLIC_VERBS := help setup deps build check test format run status docs clean re
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
+CALLER_PATH := $(PATH)
+CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -84,10 +86,18 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+SANITIZED_CALLER_PATH := $(CALLER_PATH)
+ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
+SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
+SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
+ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
+SANITIZED_CALLER_PATH :=
+endif
+endif
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
-override PATH := $(RUNTIME_VENV)/bin:/usr/local/bin:/usr/bin:/bin
+override PATH := $(RUNTIME_VENV)/bin:$(SANITIZED_CALLER_PATH)
 export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace-root)
