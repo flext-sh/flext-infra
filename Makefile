@@ -24,7 +24,7 @@ FIX ?= 0
 MATCH ?=
 PROJECT ?=
 PROJECTS ?=
-BASE ?= HEAD
+BASE ?=
 BRANCH ?=
 # Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
@@ -39,6 +39,7 @@ WHAT ?=
 PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
+WORKSPACE ?= $(PROJECT_ROOT)
 PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
@@ -188,6 +189,7 @@ _builtin_clean_generated \
 	_builtin_codegen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
+	_builtin_worktree_update \
 	_builtin_worktree_remove
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
@@ -241,21 +243,21 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 
 
 check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "check"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "check"
 
 _serialized_check:
 	$(call _dispatch,check)
 
 
 test: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "test"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "test"
 
 _serialized_test:
 	$(call _dispatch,test)
 
 
 codegen: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "codegen"
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "codegen"
 
 _serialized_codegen:
 	$(call _dispatch,codegen)
@@ -327,6 +329,8 @@ _builtin_help_usage:
 
 	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate'
 
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)'
+	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update'
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
@@ -609,12 +613,16 @@ _builtin_codegen_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation list
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
 
 _builtin_worktree_add:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
 
 _builtin_worktree_remove:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply

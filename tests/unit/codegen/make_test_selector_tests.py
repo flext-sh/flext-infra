@@ -74,6 +74,8 @@ class TestsMakeTestSelector:
         """An external -f invocation keeps the selected Make owner and runtime."""
         caller_root = tmp_path / "consumer"
         caller_root.mkdir()
+        target_root = tmp_path / "target"
+        target_root.mkdir()
         engine_root = tmp_path / "engine"
         engine_root.mkdir()
         selected_makefile = engine_root / "canonical.mk"
@@ -97,6 +99,7 @@ class TestsMakeTestSelector:
                     str(selected_makefile),
                     "worktree",
                     "WHAT=list",
+                    f"WORKSPACE={target_root}",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
@@ -109,8 +112,55 @@ class TestsMakeTestSelector:
             has=[
                 str(engine_root / "src"),
                 "-m flext_infra workspace worktree",
-                f"--workspace {caller_root}",
+                f"--workspace {target_root}",
                 "--operation list",
+            ],
+        )
+
+    def test_external_makefile_owns_the_serialization_engine(
+        self, tmp_path: Path
+    ) -> None:
+        """A selected Make owner, not its caller, owns runtime and lock routing."""
+        caller_root = tmp_path / "consumer"
+        caller_root.mkdir()
+        engine_root = tmp_path / "engine"
+        engine_root.mkdir()
+        selected_makefile = engine_root / "canonical.mk"
+        selected_makefile.write_text(
+            tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
+        )
+        invocation_log = engine_root / "python-args.log"
+        test_u.Tests.write_executable(
+            engine_root / ".venv" / "bin" / "python",
+            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+        )
+        test_u.Tests.write_executable(
+            caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
+        )
+        uv = caller_root / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        executed = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "-f",
+                    str(selected_makefile),
+                    "test",
+                    f"UV={uv}",
+                ],
+                cwd=caller_root,
+            )
+        )
+
+        tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
+        tm.that(
+            invocation_log.read_text(encoding="utf-8"),
+            has=[
+                "-m flext_infra workspace serialize-make",
+                f"--workspace {caller_root}",
+                f"--makefile {selected_makefile}",
+                "--verb test",
             ],
         )
 

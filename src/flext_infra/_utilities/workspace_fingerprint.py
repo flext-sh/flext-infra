@@ -31,8 +31,12 @@ class FlextInfraUtilitiesWorkspaceFingerprint:
     @staticmethod
     def _read_content_digest(path: Path) -> bytes:
         """Hash one path without following symlinks."""
-        metadata = path.lstat()
         digest = hashlib.sha256()
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            digest.update(b"missing\0")
+            return digest.digest()
         digest.update(str(stat.S_IMODE(metadata.st_mode)).encode())
         if stat.S_ISLNK(metadata.st_mode):
             digest.update(b"symlink\0")

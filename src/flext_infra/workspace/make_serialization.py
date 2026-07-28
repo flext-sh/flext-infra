@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from filelock import FileLock, Timeout
 from flext_core import r
@@ -11,15 +12,20 @@ from flext_core import r
 from flext_infra import c, config, m, p, t, u
 from flext_infra.base import s
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
     """Run one configured private Make target under a native process lock."""
 
     verb: Annotated[
         str, m.Field(description="Configured public Make verb to serialize")
+    ]
+    makefile: Annotated[
+        Path,
+        m.Field(
+            description=(
+                "Selected Make owner used for nested dispatch and lock ownership"
+            )
+        ),
     ]
 
     @classmethod
@@ -103,6 +109,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
         serialization: m.Infra.MakeSerializationSpec,
         *,
         fixed_point_what: str | None,
+        makefile: Path,
     ) -> p.Result[m.Infra.ProcessExit]:
         """Run the primary phase and optional fixed point under one lock."""
         before_result = self._capture_fingerprint(
@@ -116,7 +123,13 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
         primary = self._run_make(
             checkout,
-            (c.Infra.MAKE, "--no-print-directory", f"_serialized_{self.verb}"),
+            (
+                c.Infra.MAKE,
+                "--no-print-directory",
+                "-f",
+                str(makefile),
+                f"_serialized_{self.verb}",
+            ),
             failure_context=f"serialized Make {self.verb} failed",
         )
         after_result = self._capture_fingerprint(
@@ -146,6 +159,8 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             (
                 c.Infra.MAKE,
                 "--no-print-directory",
+                "-f",
+                str(makefile),
                 f"_serialized_{self.verb}",
                 f"{make_config.selector}={fixed_point_what}",
                 f"{make_config.apply_variable}=",
@@ -203,12 +218,18 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
             )
 
         checkout = self.root.resolve()
-        lock_path = (checkout / serialization.lock_path).resolve()
+        selected_makefile = self.makefile.resolve()
+        if not selected_makefile.is_file():
+            return r[m.Infra.ProcessExit].fail(
+                f"Selected Make owner does not exist: {selected_makefile}"
+            )
+        engine_root = selected_makefile.parent
+        lock_path = (engine_root / serialization.lock_path).resolve()
         try:
-            lock_path.relative_to(checkout)
+            lock_path.relative_to(engine_root)
         except ValueError:
             return r[m.Infra.ProcessExit].fail(
-                f"Make serialization lock escapes checkout: {lock_path}"
+                f"Make serialization lock escapes selected Make owner: {lock_path}"
             )
 
         try:
@@ -223,6 +244,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     make_config,
                     serialization,
                     fixed_point_what=fixed_point_what,
+                    makefile=selected_makefile,
                 )
         except Timeout:
             return self._process_failure(

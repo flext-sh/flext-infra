@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 from filelock import FileLock, Timeout
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -97,6 +97,28 @@ class TestsFlextInfraMakeSerialization:
             u.Infra.workspace_fingerprint_changes(baseline, mixed), eq=(tracked.name,)
         )
 
+    def test_fingerprint_represents_a_deleted_tracked_path(
+        self, tmp_path: Path
+    ) -> None:
+        """A tracked deletion is snapshot state, not a fingerprint read failure."""
+        tracked = tmp_path / "tracked.txt"
+        tracked.write_text("base", encoding="utf-8")
+        test_u.Tests.initialize_git_repo(tmp_path)
+        exclusions = config.Infra.codegen.make.serialization.snapshot_excludes
+        baseline = tm.ok(
+            u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
+        )
+
+        tracked.unlink()
+        deleted = tm.ok(
+            u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
+        )
+
+        tm.that(deleted.digest, ne=baseline.digest)
+        tm.that(
+            u.Infra.workspace_fingerprint_changes(baseline, deleted), eq=(tracked.name,)
+        )
+
     def test_serialized_validations_cannot_overlap_in_one_checkout(
         self, tmp_path: Path
     ) -> None:
@@ -155,6 +177,8 @@ class TestsFlextInfraMakeSerialization:
             "serialize-make",
             "--workspace",
             str(tmp_path),
+            "--makefile",
+            str(makefile),
             "--verb",
         ]
 
@@ -201,6 +225,105 @@ class TestsFlextInfraMakeSerialization:
             eq=True,
         )
 
+    def test_external_callers_share_the_selected_make_engine_lock(
+        self, tmp_path: Path
+    ) -> None:
+        """Different callers of one selected Make owner cannot overlap."""
+        validation_verb = config.Infra.codegen.make.serialization.verbs[0]
+        engine_root = tmp_path / "engine"
+        engine_root.mkdir()
+        state = engine_root / "state"
+        worker = engine_root / "worker.py"
+        worker.write_text(
+            (
+                "from pathlib import Path\n"
+                "import sys\n"
+                "import time\n"
+                "state = Path(sys.argv[1])\n"
+                "state.mkdir(parents=True, exist_ok=True)\n"
+                "active = state / 'active'\n"
+                "started = state / 'started'\n"
+                "release = state / 'release'\n"
+                "overlap = state / 'overlap'\n"
+                "if not started.exists():\n"
+                "    active.write_text('incumbent', encoding='utf-8')\n"
+                "    started.write_text('', encoding='utf-8')\n"
+                "    deadline = time.monotonic() + 30\n"
+                "    while time.monotonic() < deadline and not release.exists():\n"
+                "        time.sleep(0.01)\n"
+                "    if not release.exists():\n"
+                "        raise SystemExit(9)\n"
+                "    active.unlink()\n"
+                "else:\n"
+                "    try:\n"
+                "        with active.open('x', encoding='utf-8') as stream:\n"
+                "            stream.write('contender')\n"
+                "    except FileExistsError:\n"
+                "        overlap.write_text('', encoding='utf-8')\n"
+                "        raise SystemExit(3)\n"
+                "    active.unlink()\n"
+            ),
+            encoding="utf-8",
+        )
+        selected_makefile = engine_root / "canonical.mk"
+        selected_makefile.write_text(
+            (
+                f".PHONY: _serialized_{validation_verb}\n"
+                f"_serialized_{validation_verb}:\n"
+                f"\t@{sys.executable} {worker} {state}\n"
+            ),
+            encoding="utf-8",
+        )
+        callers = (tmp_path / "caller-a", tmp_path / "caller-b")
+        for caller in callers:
+            caller.mkdir()
+            test_u.Tests.initialize_git_repo(caller)
+
+        def command(caller: Path) -> p.Result[p.Cli.CommandOutput]:
+            return u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    c.Infra.PACKAGE_IMPORT_NAME,
+                    c.Infra.CLI_GROUP_WORKSPACE,
+                    "serialize-make",
+                    "--workspace",
+                    str(caller),
+                    "--makefile",
+                    str(selected_makefile),
+                    "--verb",
+                    validation_verb,
+                ],
+                cwd=caller,
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            incumbent_future = executor.submit(command, callers[0])
+            deadline = time.monotonic() + self._process_start_timeout_seconds
+            while (
+                not (state / "started").exists()
+                and not incumbent_future.done()
+                and time.monotonic() < deadline
+            ):
+                time.sleep(0.01)
+            tm.that((state / "started").exists(), eq=True)
+            contender_future = executor.submit(command, callers[1])
+            (state / "release").write_text("", encoding="utf-8")
+            incumbent = tm.ok(
+                incumbent_future.result(timeout=self._process_start_timeout_seconds)
+            )
+            contender = tm.ok(
+                contender_future.result(timeout=self._process_start_timeout_seconds)
+            )
+
+        tm.that(incumbent.exit_code, eq=0)
+        tm.that(contender.exit_code, eq=0)
+        tm.that((state / "overlap").exists(), eq=False)
+        tm.that(
+            (engine_root / config.Infra.codegen.make.serialization.lock_path).is_file(),
+            eq=True,
+        )
+
     def test_private_failure_reaches_cli_and_outer_make(self, tmp_path: Path) -> None:
         """A private nonzero status is never coerced into public success."""
         validation_verb = config.Infra.codegen.make.serialization.verbs[0]
@@ -210,7 +333,7 @@ class TestsFlextInfraMakeSerialization:
         cli_command = (
             f"{sys.executable} -m {c.Infra.PACKAGE_IMPORT_NAME} "
             f"{c.Infra.CLI_GROUP_WORKSPACE} serialize-make "
-            f"--workspace {tmp_path} --verb {validation_verb}"
+            f"--workspace {tmp_path} --makefile {makefile} --verb {validation_verb}"
         )
         makefile.write_text(
             (
@@ -234,6 +357,8 @@ class TestsFlextInfraMakeSerialization:
                     "serialize-make",
                     "--workspace",
                     str(tmp_path),
+                    "--makefile",
+                    str(makefile),
                     "--verb",
                     validation_verb,
                 ],
@@ -250,6 +375,30 @@ class TestsFlextInfraMakeSerialization:
         tm.that(direct.stdout + direct.stderr, has=f"Error {private_exit_code}")
         tm.that(outer_make.exit_code, eq=make_failure_exit_code)
         tm.that(outer_make.exit_code, ne=0)
+
+    def test_selected_makefile_is_required_at_the_cli_boundary(
+        self, tmp_path: Path
+    ) -> None:
+        """A caller cannot silently fall back to a different Make owner."""
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    c.Infra.PACKAGE_IMPORT_NAME,
+                    c.Infra.CLI_GROUP_WORKSPACE,
+                    "serialize-make",
+                    "--workspace",
+                    str(tmp_path),
+                    "--verb",
+                    config.Infra.codegen.make.serialization.verbs[0],
+                ],
+                cwd=tmp_path,
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(process.stdout + process.stderr, has="makefile")
 
     def test_writer_ignoring_lock_invalidates_gate_snapshot(
         self, tmp_path: Path
@@ -289,6 +438,8 @@ class TestsFlextInfraMakeSerialization:
                     "serialize-make",
                     "--workspace",
                     str(tmp_path),
+                    "--makefile",
+                    str(makefile),
                     "--verb",
                     validation_verb,
                 ],
@@ -344,6 +495,8 @@ class TestsFlextInfraMakeSerialization:
                     "serialize-make",
                     "--workspace",
                     str(tmp_path),
+                    "--makefile",
+                    str(makefile),
                     "--verb",
                     mutation_verb,
                 ],
@@ -418,6 +571,8 @@ class TestsFlextInfraMakeSerialization:
             "serialize-make",
             "--workspace",
             str(tmp_path),
+            "--makefile",
+            str(makefile),
             "--verb",
         ]
 

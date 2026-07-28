@@ -25,7 +25,7 @@ FIX ?= 0
 MATCH ?=
 PROJECT ?=
 PROJECTS ?=
-BASE ?= HEAD
+BASE ?=
 BRANCH ?=
 # Public selector documented by base.mk. Forwarded to the test recipe so a
 # focused run stays inside the canonical Make surface instead of forcing a
@@ -40,6 +40,7 @@ WHAT ?=
 PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
+WORKSPACE ?= $(PROJECT_ROOT)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
@@ -175,6 +176,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_codegen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
+	_builtin_worktree_update \
 	_builtin_worktree_remove
 
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
@@ -253,7 +255,7 @@ $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 
 {% for verb in make.serialization.verbs %}
 {{ verb }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --verb "{{ verb }}"
+	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "{{ verb }}"
 
 _serialized_{{ verb }}:
 	$(call _dispatch,{{ verb }})
@@ -275,6 +277,8 @@ _builtin_help_usage:
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}'
 {% endfor %}
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)'
+	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update'
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
@@ -468,12 +472,16 @@ _builtin_codegen_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_worktree_list:
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation list
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list
 
 _builtin_worktree_add:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
 
 _builtin_worktree_remove:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
