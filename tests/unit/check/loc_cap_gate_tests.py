@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import r
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_tests import tm
 from tests import u
@@ -54,6 +55,23 @@ class TestLocCapGate:
         result = u.Tests.run_gate_check(FlextInfraLocCapGate, tmp_path, project)
 
         tm.that(result.result.passed, eq=True)
+
+    def test_tool_failure_is_reported(self, tmp_path: Path) -> None:
+        project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
+        runner = u.Tests.SequenceRunner([
+            r.ok(
+                u.Tests.stub_run(stderr="tokei executable unavailable", returncode=127)
+            )
+        ])
+
+        result = u.Tests.run_gate_check(
+            FlextInfraLocCapGate, tmp_path, project, runner=runner
+        )
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(result.issues, len=1)
+        tm.that(result.issues[0].code, eq="tokei-exec")
+        tm.that(result.issues[0].message, has="tokei executable unavailable")
 
 
 __all__: t.StrSequence = []

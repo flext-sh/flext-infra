@@ -64,6 +64,14 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact Gitleaks binary version, e.g. '8.30.1'"),
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact tokei binary version, e.g. '14.0.0'"),
+        ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -835,6 +843,12 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks binary version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact tokei binary version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

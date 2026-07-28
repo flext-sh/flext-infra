@@ -139,7 +139,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _evaluate_rules(
         self, context: m.Infra.SkillRuleEvaluationContext
-    ) -> tuple[t.IntMapping, t.StrSequence]:
+    ) -> p.Result[tuple[t.IntMapping, t.StrSequence]]:
         """Evaluate skill validation rules and return counts plus violations."""
         counts: t.MutableIntMapping = {}
         violations: t.MutableSequenceOf[str] = []
@@ -147,7 +147,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
             rule_obj = u.Cli.json_as_mapping(rule_obj_raw)
             if not rule_obj:
                 continue
-            self._evaluate_single_rule(
+            evaluation = self._evaluate_single_rule(
                 rule_obj,
                 context.skill_dir,
                 context.root,
@@ -157,7 +157,11 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
                 counts,
                 violations,
             )
-        return counts, tuple(violations)
+            if evaluation.failure:
+                return r[tuple[t.IntMapping, t.StrSequence]].fail(
+                    evaluation.error or "skill rule evaluation failed"
+                )
+        return r[tuple[t.IntMapping, t.StrSequence]].ok((counts, tuple(violations)))
 
     def _skill_report_model(
         self, context: m.Infra.SkillReportContext
@@ -203,7 +207,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
             return r[m.Infra.ValidationReport].fail(
                 rules_list_result.error or "rules must be a list"
             )
-        counts, violations = self._evaluate_rules(
+        evaluation = self._evaluate_rules(
             m.Infra.SkillRuleEvaluationContext(
                 rules_list=rules_list_result.value,
                 skill_dir=skills_dir / skill_name,
@@ -213,6 +217,11 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
                 exclude_globs=exclude_globs,
             )
         )
+        if evaluation.failure:
+            return r[m.Infra.ValidationReport].fail(
+                evaluation.error or "skill rule evaluation failed"
+            )
+        counts, violations = evaluation.value
         return r[m.Infra.ValidationReport].ok(
             self._skill_report_model(
                 m.Infra.SkillReportContext(

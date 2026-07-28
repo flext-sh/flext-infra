@@ -418,19 +418,10 @@ class TestsEnforcementFixerOrchestrator:
             tm.that(output.exit_code, eq=0)
 
         run_git(("init",))
+        run_git(("config", "user.name", "FLEXT Test"))
+        run_git(("config", "user.email", "test@example.invalid"))
         run_git(("add", "--", "pyproject.toml", "src"))
-        run_git((
-            "-c",
-            "user.name=FLEXT Test",
-            "-c",
-            "user.email=test@example.invalid",
-            "commit",
-            "-m",
-            "baseline",
-            "--",
-            "pyproject.toml",
-            "src",
-        ))
+        run_git(("commit", "-m", "baseline", "--", "pyproject.toml", "src"))
         runner_root = Path(__file__).parents[4]
 
         def git_status() -> str:

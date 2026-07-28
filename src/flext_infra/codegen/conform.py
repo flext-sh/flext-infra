@@ -1301,6 +1301,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                gitleaks_version=codegen.toolchain.gitleaks_version,
+                tokei_version=codegen.toolchain.tokei_version,
                 author_name=project.author_name,
                 author_email=project.author_email,
                 repository=project.homepage,
