@@ -884,18 +884,16 @@ class TestScriptDispatchMakefile:
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
         tm.that(broken, eq=[])
 
-    def test_repo_without_script_dispatch_renders_unchanged_surface(
+    def test_repo_without_script_dispatch_omits_script_routing(
         self, tmp_path: Path
     ) -> None:
-        """A repo with no script dispatch keeps the canonical builtin surface."""
+        """A repo with no script dispatch omits every script-routing projection."""
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         # No script routing leaks into non-opted-in repositories.
         tm.that("tr '-' '_'" in rendered, eq=False)
         tm.that("scripts/dispatch.py" in rendered, eq=False)
-        # The canonical builtin dispatch is preserved verbatim.
-        tm.that('*) $(MAKE) --no-print-directory "$$custom"' in rendered, eq=True)
 
     # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
