@@ -44,7 +44,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         self, scope: m.Infra.DocScope, *, request: m.Infra.DocsGenerateRequest
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
-        report = u.Infra.docs_generate_scope(
+        report: m.Infra.DocsPhaseReport = u.Infra.docs_generate_scope(
             scope,
             apply=request.apply,
             workspace_root=request.workspace_root,

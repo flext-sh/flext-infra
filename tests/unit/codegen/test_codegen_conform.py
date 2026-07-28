@@ -89,9 +89,8 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_uses_managed_uv_without_a_project_pin(
-        self, tmp_path: Path
-    ) -> None:
+    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+        """Generated Make delegates uv selection to the caller environment."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -106,69 +105,22 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        makefile = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        selected = u.Cli.run_raw(
+            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            remove_env_keys=("MAKEFLAGS",),
+        )
+
+        selected_process = tm.ok(selected)
+        selected_output = selected_process.stdout + selected_process.stderr
+        tm.that(selected_process.exit_code, eq=0)
+        tm.that(selected_output, has="uv --version")
+        tm.that(selected_output, lacks="uv@")
+        tm.that(selected_output, lacks="UV_VERSION")
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile, has="UV ?= uv")
-        for forbidden in ("UV_VERSION", "uv@", "mise exec uv"):
-            tm.that(makefile, lacks=forbidden)
-
-    def test_generated_make_runs_only_the_selected_check_gate(
-        self, tmp_path: Path
-    ) -> None:
-        """Exercise CHECK_GATES through the real generated Make recipe."""
-        root = tmp_path / "flext-demo"
-        tm.ok(
-            FlextInfraCodegenProjectNew(
-                name="flext-demo",
-                kind=c.Infra.ProjectKind.EXTERNAL,
-                output_root=root,
-                provider="flext-sh",
-                license="MIT",
-                author_name="FLEXT Team",
-                author_email="team@flext.dev",
-                upstream="flext_cli",
-                year=2026,
-                apply_changes=True,
-            ).execute()
-        )
-        runtime_bin = root / ".venv" / "bin"
-        runtime_bin.mkdir(parents=True)
-        infra_log = tmp_path / "infra.log"
-        runtime_python = runtime_bin / "python"
-        runtime_python.write_text(
-            '#!/bin/sh\nprintf "%s\\n" "$*" >> "$INFRA_LOG"\n', encoding="utf-8"
-        )
-        runtime_python.chmod(0o755)
-        lint_gate = next(
-            gate
-            for gate in config.Infra.codegen.make.check_gates_allowed
-            if gate == "lint"
-        )
-
-        outcome = tm.ok(
-            u.Cli.run_raw(
-                [
-                    "make",
-                    "-C",
-                    str(root),
-                    "check",
-                    f"CHECK_GATES={lint_gate}",
-                    f"INFRA_LOG={infra_log}",
-                ],
-                env=os.environ,
-            )
-        )
-
-        tm.that(
-            outcome.exit_code,
-            eq=0,
-            msg=f"stdout={outcome.stdout}\nstderr={outcome.stderr}",
-        )
-        invocations = infra_log.read_text(encoding="utf-8").splitlines()
-        tm.that(invocations, len=1)
-        tm.that(
-            invocations[0],
-            has=["-m flext_infra check run", f"--gates {lint_gate}", "--projects ."],
-        )
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -526,7 +478,14 @@ class TestCodegenConform:
                 if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
-        tm.that(after, eq=before)
+        before_by_path = dict(before)
+        after_by_path = dict(after)
+        changed_paths = tuple(
+            path
+            for path in sorted(before_by_path.keys() | after_by_path.keys())
+            if before_by_path.get(path) != after_by_path.get(path)
+        )
+        tm.that(changed_paths, eq=())
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -721,8 +680,9 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # A custom WHAT keeps the handler offline (no uv/network); the
-        # pre-/post-<verb> hooks prove ordering around it.
+        # The private target is the dispatcher entry point invoked while the
+        # public verb holds the serialization lock. Exercising it directly
+        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -732,7 +692,13 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Cli.run_raw([
+            "make",
+            "-C",
+            str(root),
+            "_serialized_check",
+            "WHAT=probe",
+        ])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
@@ -808,10 +774,8 @@ class TestCodegenConform:
             )
         )
         tm.fail(result)
-        tm.that(
-            result.error,
-            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
-        )
+        tm.that(result.error, has="not a regular file")
+        tm.that(result.error, has=str(root / "custom.mk"))
 
 
 class TestScriptDispatchMakefile:

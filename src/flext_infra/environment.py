@@ -50,7 +50,7 @@ class FlextInfraWorkspaceEnvironment:
     def sync_mise_toml(
         cls, workspace_root: Path, *, apply: bool = True
     ) -> p.Result[bool]:
-        """Render or merge canonical Python tool selectors into ``.mise.toml``."""
+        """Render or merge canonical tool selectors into ``.mise.toml``."""
         target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
         rendered = cls.render_mise_toml(workspace_root)
         if rendered.failure:

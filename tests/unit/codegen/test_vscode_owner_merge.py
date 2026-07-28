@@ -61,7 +61,7 @@ class TestsVscodeOwnerMerge:
         )
         tm.that(doc["python.languageServer"], eq="None")
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
-        search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
+        search_paths = t.Infra.STR_SEQ_ADAPTER.validate_python(
             doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         )
         tm.that(

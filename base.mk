@@ -6,38 +6,38 @@
 # =============================================================================
 
 # === CONFIGURATION (override before include) ===
-PROJECT_NAME ?= unnamed
+PROJECT_NAME ?= flext-infra
 PYTHON_VERSION ?= 3.13
 SRC_DIR ?= src
 TESTS_DIR ?= tests
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
-PYTEST_ARGS ?= 
+PYTEST_ARGS ?=
 PYTEST_TARGETS ?= tests
 DIAG ?= 0
-CHECK_GATES ?= 
-VALIDATE_GATES ?= 
+CHECK_GATES ?=
+VALIDATE_GATES ?=
 SCOPE ?= project
-NAMESPACE ?= 
-GATES ?= 
-PROPAGATE ?= 
+NAMESPACE ?=
+GATES ?=
+PROPAGATE ?=
 DOCS_PHASE ?= all
-FIX ?= 
+FIX ?=
 PR_ACTION ?= status
-PR_BASE ?= 
-PR_HEAD ?= 
-PR_TITLE ?= 
-PR_BODY ?= 
+PR_BASE ?=
+PR_HEAD ?=
+PR_TITLE ?=
+PR_BODY ?=
 PR_DRAFT ?= 0
-FILE ?= 
-FILES ?= 
-CHANGED_ONLY ?= 
-MATCH ?= 
-RUFF_ARGS ?= 
-PYRIGHT_ARGS ?= 
-CHECK_ONLY ?= 
-FAIL_FAST ?= 
-VERBOSE ?= 
+FILE ?=
+FILES ?=
+CHANGED_ONLY ?=
+MATCH ?=
+RUFF_ARGS ?=
+PYRIGHT_ARGS ?=
+CHECK_ONLY ?=
+FAIL_FAST ?=
+VERBOSE ?=
 
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
@@ -47,8 +47,10 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
-CALLER_PATH := $(PATH)
-CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
+CANONICAL_PROJECT_ROOT := $(shell common=$$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0; configured=$$(git config --path --get core.worktree 2>/dev/null); if [ -n "$$configured" ]; then cd "$$common/$$configured" 2>/dev/null && pwd -P; elif [ "$${common##*/}" = ".git" ]; then cd "$$common/.." 2>/dev/null && pwd -P; fi)
+ifeq ($(CANONICAL_PROJECT_ROOT),)
+CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
+endif
 
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
@@ -76,36 +78,23 @@ endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
 else
-WORKSPACE_ROOT := $(PROJECT_ROOT)
+WORKSPACE_ROOT := $(CANONICAL_PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 
 override UV_PROJECT := $(WORKSPACE_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
 override VIRTUAL_ENV := $(ACTIVE_VENV)
-MISE := $(shell command -v mise 2>/dev/null)
-SANITIZED_CALLER_PATH := $(CALLER_PATH)
-ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
-SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
-SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
-ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
-SANITIZED_CALLER_PATH :=
-endif
-endif
-override PATH := $(ACTIVE_VENV)/bin:$(SANITIZED_CALLER_PATH)
+override PATH := $(ACTIVE_VENV)/bin:$(PATH)
 export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
-VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
 UV ?= uv
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
 
-# Quality tool (flext-quality with fallback)
-QUALITY_CMD ?= flext-quality
-QUALITY_AVAILABLE := $(shell command -v $(QUALITY_CMD) 2>/dev/null)
 DMPY_SOCKET := .dmypy/socket.$(PROJECT_NAME)
 PYRIGHT_PIDFILE := .pyright/daemon.pid
 PYRIGHT_LOG := .pyright/daemon.log
@@ -132,7 +121,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra validate
+BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -192,7 +181,7 @@ PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_INFRA_SRC)
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
-PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check
 PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen
 PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) deps
@@ -397,9 +386,9 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 _check_impl:
 	$(Q)gates="$(CHECK_GATES)"; \
 	if [ -n "$$gates" ]; then \
-			for g in $$(echo "$$gates" | tr ',' ' '); do \
-				case "$$g" in \
-					lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+		for g in $$(echo "$$gates" | tr ',' ' '); do \
+			case "$$g" in \
+				lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
 				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells)"; exit 2;; \
 			esac; \
 		done; \
@@ -628,6 +617,7 @@ _test_impl:
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
+	if [ "$$interrupted" = "1" ]; then rc=130; fi; \
 	if [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \

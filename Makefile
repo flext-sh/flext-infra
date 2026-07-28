@@ -4,13 +4,17 @@
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
+# @flext-managed: continuous
+# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-ssot: flext-infra/src/flext_infra/templates/project/base/Makefile.j2
+# @flext-maintenance: do not edit generated projections; edit the SSOT
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
-WORKSPACE_ROOT_REL := ..
+MAKE_PROFILE := standalone
+WORKSPACE_ROOT_REL := .
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -30,17 +34,15 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
-PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
-PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
-PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_REPORTS_DIR ?= .reports/tests
+BRANCH ?=
+BASE ?= HEAD
+PYTEST_TARGETS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree basemk
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
-CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
-DOCS_PHASES := generate fix audit build validate
+PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree
+SERIALIZED_VERBS := check test codegen
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
@@ -122,17 +124,12 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
-SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
-WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(PYTEST_ARGS)),--make-arg "PYTEST_ARGS=$(strip $(PYTEST_ARGS))")
-DOCS_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
+WORKSPACE_ORCHESTRATE = $(PROJECT_FLEXT_INFRA) workspace orchestrate
 ORCHESTRATED_VERBS := build check clean docs scan test val
 
-UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):/usr/bin:/bin" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -152,6 +149,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
 	_builtin_build_artifacts \
+	_builtin_build_gen \
 	_builtin_check_all \
 	_builtin_test_all \
 	_builtin_format_check \
@@ -175,13 +173,13 @@ _builtin_clean_generated \
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$@)"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	builtin="_builtin_$@_$$what"; \
-	custom="_custom_$@_$$what"; \
-	for hook in "pre-$@" "pre-$@-$$what"; do \
+	builtin="_builtin_$(1)_$$what"; \
+	custom="_custom_$(1)_$$what"; \
+	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done; \
@@ -189,7 +187,7 @@ define _dispatch
 		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
 		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
 	esac; \
-	for hook in "post-$@-$$what" "post-$@"; do \
+	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done
@@ -215,17 +213,40 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup,$(PUBLIC_VERBS)):
-	$(call _dispatch)
+$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+	$(call _dispatch,$@)
+
+
+check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "check"
+
+_serialized_check:
+	$(call _dispatch,check)
+
+
+test: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "test"
+
+_serialized_test:
+	$(call _dispatch,test)
+
+
+codegen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --verb "codegen"
+
+_serialized_codegen:
+	$(call _dispatch,codegen)
+
+
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
 	@$(MAKE) --no-print-directory _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' ''
+	@printf '%s\n' 'flext-infra [standalone]' ''
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage'
@@ -331,11 +352,7 @@ _builtin_require_environment:
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
-	@set -eu; for member in $(WORKSPACE_MEMBERS); do \
-		$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)/$$member" --link-mode "$(UV_LINK_MODE)"; \
-	done
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
@@ -344,14 +361,12 @@ _builtin_setup_environment: _builtin_setup_submodules
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --no-install-project
-	@$(UV) pip install --python "$(RUNTIME_VENV)" --no-deps --editable "$(PROJECT_ROOT)" --link-mode "$(UV_LINK_MODE)"
+	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
 
 _builtin_deps_check: _builtin_require_environment
@@ -372,6 +387,10 @@ _builtin_deps_upgrade: _builtin_require_environment
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_selected_projects,)
+
+_builtin_build_gen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) basemk generate --project-name "$(PROJECT_NAME)" --output "$(PROJECT_ROOT)/base.mk"
 
 
 _builtin_build_artifacts:

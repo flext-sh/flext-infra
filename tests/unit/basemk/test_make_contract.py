@@ -41,6 +41,7 @@ _MAKE_TEST_ENV_KEYS = (
     "MAKELEVEL",
     "GNUMAKEFLAGS",
     "FLEXT_INFRA_PYTHON",
+    "UV",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -52,6 +53,7 @@ def _render_base_mk() -> str:
 
 
 def _write_executable(path: Path, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
@@ -69,9 +71,8 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
         + str(log_path)
         + '"\nif [ "$1" = "sync" ]; then\n'
-        + '  mkdir -p "${UV_PROJECT_ENVIRONMENT:-.venv}/bin"\n'
-        + '  cp "$(dirname "$0")/python" '
-        + '"${UV_PROJECT_ENVIRONMENT:-.venv}/bin/python"\n'
+        + '  mkdir -p "${UV_PROJECT_ENVIRONMENT}/bin"\n'
+        + '  cp "$(dirname "$0")/python" "${UV_PROJECT_ENVIRONMENT}/bin/python"\n'
         + "fi\nexit 0\n",
     )
 
@@ -440,12 +441,7 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has=(
-                'BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)" || '
-                '{ echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed '
-                'Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH '
-                "-u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT"
-            ),
+            has="BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate",
             lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
         )
 
@@ -559,7 +555,7 @@ class TestsFlextInfraBasemkMakeContract:
         )
 
         tm.that(result.exit_code, eq=0)
-        tm.that(log_path.read_text(encoding="utf-8"), has="run mypy src/demo.py")
+        tm.that(log_path.read_text(encoding="utf-8"), has="uv run mypy src/demo.py")
 
     def test_rendered_base_mk_bounds_every_mypy_process(self) -> None:
         """Verify generated Mypy and dmypy commands inherit the finite cap."""
@@ -709,7 +705,6 @@ class TestsFlextInfraBasemkMakeContract:
             "check",
             "CHECK_GATES=mypy",
             env={
-                "PATH": f"{bin_dir}:{os.environ['PATH']}",
                 "PYTHONPATH": str(tmp_path / "poison-pythonpath"),
                 "MYPYPATH": str(tmp_path / "poison-mypypath"),
             },
@@ -730,8 +725,6 @@ class TestsFlextInfraBasemkMakeContract:
     ) -> None:
         """Verify full checks forward fix and analyzer arguments."""
         log_path = tmp_path / "tool.log"
-        bin_dir = tmp_path / "bin"
-        _write_stubs(bin_dir, log_path)
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, log_path)
         (tmp_path / "src").mkdir()
@@ -744,8 +737,6 @@ class TestsFlextInfraBasemkMakeContract:
             "FIX=1",
             "RUFF_ARGS=--select E501",
             "PYRIGHT_ARGS=--level basic",
-            f"UV={bin_dir / 'uv'}",
-            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
         )
 
         tm.that(result.exit_code, eq=0)
@@ -783,11 +774,7 @@ class TestsFlextInfraBasemkMakeContract:
             env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
         )
 
-        tm.that(
-            result.exit_code,
-            eq=0,
-            msg=result.stderr or result.stdout or "make check failed without output",
-        )
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
         tm.that(log_path.read_text(encoding="utf-8"), has="run ruff check src/demo.py")
         tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 

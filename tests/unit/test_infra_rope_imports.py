@@ -71,7 +71,7 @@ class TestsFlextInfraRopeImports:
 
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
-            assert resource is not None
+            resource = tm.not_none(resource)
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)
@@ -98,7 +98,7 @@ class TestsFlextInfraRopeImports:
 
         with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
             resource = rope.resource(module_path)
-            assert resource is not None
+            resource = tm.not_none(resource)
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
 
         tm.ok(result)

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
@@ -36,14 +36,16 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Compatible runtime selectors shared by generated projects.
+        """Language-runtime and native-tool versions shared by generated projects.
 
         Only the Python minor line ``python_version`` (e.g. ``3.13``) is
         declared for the language runtime. The environment resolves its newest
         compatible patch. The PEP 440 family requirement is derived, so a
         version-line bump touches exactly one value. uv is supplied by the caller
-        environment. Linters/type-checkers are NOT here: their floors live in
-        pyproject and uv.lock owns the resolved versions.
+        environment. Python linters/type-checkers are NOT here: their floors live
+        in pyproject and uv.lock owns the resolved versions. Native executables
+        required by canonical Make gates are declared here for reproducible
+        provisioning through mise.
         """
 
         python_version: Annotated[
@@ -79,6 +81,15 @@ class FlextInfraConfigModels:
         ] = ()
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
 
         @m.computed_field()
@@ -237,6 +248,67 @@ class FlextInfraConfigModels:
             default=None, description="Permit toolchain declarations"
         )
 
+    class MakeSerializationSpec(_ConfigContract):
+        """Portable per-checkout serialization for state-sensitive Make verbs."""
+
+        lock_path: Annotated[
+            Path, m.Field(description="Repository-relative native process-lock path")
+        ]
+        snapshot_excludes: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Repository-relative lock and report artifacts omitted "
+                    "from gate-integrity fingerprints"
+                )
+            ),
+        ]
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description="Maximum seconds to wait for the checkout validation lock",
+            ),
+        ]
+        verbs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1, description="Public Make verbs serialized per checkout"
+            ),
+        ]
+
+        @m.field_validator("lock_path")
+        @classmethod
+        def _validate_lock_path(cls, value: Path) -> Path:
+            """Keep every validation lock within its owning checkout."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "make serialization lock_path must be repository-relative"
+                raise ValueError(msg)
+            return value
+
+        @m.field_validator("snapshot_excludes")
+        @classmethod
+        def _validate_snapshot_excludes(
+            cls, values: tuple[Path, ...]
+        ) -> tuple[Path, ...]:
+            """Keep explicit snapshot exclusions within their owning checkout."""
+            for value in values:
+                if value.is_absolute() or not value.parts or ".." in value.parts:
+                    msg = (
+                        "make serialization snapshot_excludes must be "
+                        "repository-relative"
+                    )
+                    raise ValueError(msg)
+            return values
+
+        @u.model_validator(mode="after")
+        def _validate_lock_excluded_from_snapshot(self) -> Self:
+            """Require the native lock artifact to remain outside fingerprints."""
+            if self.lock_path not in self.snapshot_excludes:
+                msg = "make serialization lock_path must be snapshot-excluded"
+                raise ValueError(msg)
+            return self
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -248,6 +320,10 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        serialization: Annotated[
+            FlextInfraConfigModels.MakeSerializationSpec,
+            m.Field(description="Per-checkout Make validation serialization"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -271,6 +347,23 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_serialized_verbs(self) -> Self:
+            """Require serialization to target declared non-bootstrap verbs."""
+            declared = {verb.name for verb in self.verbs}
+            serialized = set(self.serialization.verbs)
+            invalid = serialized - declared
+            if invalid:
+                msg = (
+                    "make serialization verbs are not declared public verbs: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
+            if "setup" in serialized:
+                msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            return self
 
         @m.computed_field()
         @property
@@ -382,10 +475,6 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Code-generation requirements"),
         ] = ()
-        dev: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Development and validation requirements"),
-        ] = ()
 
     class ScaffoldProjectSpec(_ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
@@ -402,6 +491,13 @@ class FlextInfraConfigModels:
         keywords: Annotated[
             tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
         ] = ()
+        dev: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical development and validation requirements",
+            ),
+        ]
         dependency_profiles: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
             m.Field(min_length=1, description="Upstream dependency profiles"),
@@ -467,6 +563,14 @@ class FlextInfraConfigModels:
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Generated Git ignore sections"),
+        ]
+
+    class GitignoreRenderContext(_ConfigContract):
+        """Profile-filtered input consumed by the Git ignore template."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
     class RepositoryRef(_ConfigContract):
@@ -538,6 +642,105 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
+    class MakeCommandContext(_ConfigContract):
+        """Shared command identity required by every generated Make surface."""
+
+        infra_cli: Annotated[
+            t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
+        ]
+
+    class MakefileRenderSpec(MakeCommandContext):
+        """Field-only render input for an existing repository Makefile."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        make_profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile,
+            m.Field(description="Selected repository Make profile"),
+        ]
+        workspace_root_rel: Annotated[
+            t.NonEmptyStr, m.Field(description="Relative workspace root path")
+        ]
+        workspace_members: Annotated[
+            tuple[str, ...], m.Field(description="Declared workspace member paths")
+        ] = ()
+        workspace_repositories: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Repositories editable from the selected workspace"),
+        ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared content-only workspace repositories"),
+        ] = ()
+        uv_link_mode: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
+        ]
+        extra_verbs: Annotated[
+            tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
+            m.Field(description="Repository-specific public Make verbs"),
+        ] = ()
+        script_dispatch: Annotated[
+            FlextInfraConfigModels.ScriptDispatchSpec | None,
+            m.Field(description="Optional script command dispatch contract"),
+        ] = None
+
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Generated custom Make policy include directive"),
+        ]
+        orchestrated_verbs: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description="Workspace-root gate verbs routed through orchestration"
+            ),
+        ] = ()
+        workspace_cli_group: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="CLI group used for workspace orchestration"),
+        ]
+        project_selection_conflict_error: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mutually exclusive project selector error"),
+        ]
+        mypy_memory_limit_mb: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
+        ]
+        mypy_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Generated Mypy wall-time limit in seconds")
+        ]
+        mypy_timeout_exit_code: Annotated[
+            int, m.Field(gt=0, description="Wall-time limiter timeout exit code")
+        ]
+        mypy_signal_exit_offset: Annotated[
+            int, m.Field(gt=0, description="Shell signal exit-code offset")
+        ]
+        prlimit_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter executable")
+        ]
+        prlimit_address_space_option: Annotated[
+            t.NonEmptyStr, m.Field(description="Address-space limiter option")
+        ]
+        timeout_command: Annotated[
+            t.NonEmptyStr, m.Field(description="Wall-time limiter executable")
+        ]
+        timeout_kill_after_seconds: Annotated[
+            int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class GitignoreRenderSpec(_ConfigContract):
+        """Typed, profile-filtered input for the generated Git ignore file."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical ignore sections applicable to one profile",
+            ),
+        ]
+
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
@@ -586,30 +789,7 @@ class FlextInfraConfigModels:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
-    class GitignoreRenderContext(_ConfigContract):
-        """Profile-filtered input consumed by the Git ignore template."""
-
-        gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
-            m.Field(
-                min_length=1,
-                description="Canonical .gitignore sections for one Make profile",
-            ),
-        ]
-
-    class GitmodulesRenderContext(_ConfigContract):
-        """Workspace topology consumed by the Git submodule template."""
-
-        workspace_repositories: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered governed workspace members"),
-        ] = ()
-        workspace_content_only: Annotated[
-            tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered content-only workspace members"),
-        ] = ()
-
-    class MakeRenderContext(_ConfigContract):
+    class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
         make: Annotated[
@@ -775,6 +955,18 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+        taplo_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

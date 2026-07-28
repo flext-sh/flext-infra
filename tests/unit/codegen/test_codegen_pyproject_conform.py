@@ -171,11 +171,7 @@ constraint-dependencies = ["uv>=0.11"]
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
+        tm.fail(result, has="attached workspace dependency declares direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
@@ -187,6 +183,7 @@ constraint-dependencies = ["uv>=0.11"]
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
+        required_dev = config.Infra.codegen.scaffold.project.dev
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
@@ -207,6 +204,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         second = tm.ok(
@@ -216,6 +214,7 @@ python-interpreter-path = "../.venv/bin/python"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         document = tomllib.loads(first)

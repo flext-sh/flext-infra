@@ -112,8 +112,8 @@ class FlextInfraModelsDepsToml:
 
                     @override
                     def build(self) -> FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig:
-                        """Return the typed immutable phase owned by this builder."""
-                        phase: FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig = (
+                        """Return the validated phase without losing its nested type."""
+                        phase: FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig = FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig.model_validate(
                             self.state
                         )
                         return phase

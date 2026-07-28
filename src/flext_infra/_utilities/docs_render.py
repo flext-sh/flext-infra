@@ -5,13 +5,10 @@ from __future__ import annotations
 import fnmatch
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m
-
-if TYPE_CHECKING:
-    from flext_infra import t
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -484,7 +481,9 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_PROJECT
         )
-        rendered: str = u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
         return rendered
 
     @staticmethod
@@ -589,7 +588,9 @@ class FlextInfraUtilitiesDocsRender:
             / "templates"
             / c.Infra.TEMPLATE_MKDOCS_ROOT
         )
-        rendered: str = u.Cli.template_render(template_path, context).unwrap()
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
         return rendered
 
     @staticmethod

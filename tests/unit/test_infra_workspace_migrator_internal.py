@@ -82,7 +82,9 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
 
         migration: m.Infra.MigrationResult = tm.ok(migrator.execute())[0]
 
-        tm.that(any("TOML write" in err for err in migration.errors), eq=True)
+        tm.that(
+            any("pyproject update failed" in err for err in migration.errors), eq=True
+        )
 
     def test_execute_skips_flext_core_dependency_changes(self, tmp_path: Path) -> None:
         project_root = self._write_project_files(

@@ -70,7 +70,15 @@ class TestsFlextInfraDepsDetectionModels:
         """Verify default module to types package mapping."""
         service = FlextInfraDependencyDetectionService()
         limits = service.load_dependency_limits()
-        tm.that(service.module_to_types_package("yaml", limits), eq="types-pyyaml")
+        typing_libraries = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            limits["typing_libraries"]
+        )
+        module_to_package = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            typing_libraries["module_to_package"]
+        )
+        expected = module_to_package["yaml"]
+
+        tm.that(service.module_to_types_package("yaml", limits), eq=expected)
 
     def test_none_value(self) -> None:
         """Verify none value."""

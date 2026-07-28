@@ -118,3 +118,14 @@ class TestsCodegenArtifactSsot:
             settings["files.watcherExclude"],
             eq=dict(codegen.vscode_watcher_exclude_map),
         )
+        search_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["search.exclude"]
+        )
+        watcher_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            settings["files.watcherExclude"]
+        )
+        tm.that(files_exclude["**/.mypy_cache"], eq=True)
+        tm.that("**/conftest.py" in files_exclude, eq=False)
+        tm.that(search_exclude, eq=files_exclude)
+        tm.that(watcher_exclude["**/.mypy_cache/**"], eq=True)
+        tm.that("**/site/**" in watcher_exclude, eq=False)

@@ -99,6 +99,12 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
         toolchain = config.Infra.codegen.toolchain
         tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
+        for field in type(toolchain).model_fields:
+            if field == "python_version" or not field.endswith("_version"):
+                continue
+            version = getattr(toolchain, field)
+            tool_name = field.removesuffix("_version").replace("_", "-")
+            tm.that(mise_text, has=f'{tool_name} = "{version}"', msg=field)
         tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")

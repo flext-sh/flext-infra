@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, u
+from flext_infra import c, m, t, u
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
@@ -16,7 +16,7 @@ from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraCodegenPipelineStagesMixin:
@@ -124,7 +124,7 @@ class FlextInfraCodegenPipelineStagesMixin:
             if result.failure:
                 msg = result.error or "dependency conform failed"
                 raise RuntimeError(msg)
-            applied: bool = result.unwrap()
+            applied: bool = t.Infra.BOOL_ADAPTER.validate_python(result.unwrap())
             return applied
 
         return self._run_stage(

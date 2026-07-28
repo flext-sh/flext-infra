@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, u
+from flext_infra import c, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import m, t
+    from flext_infra import m
 
 
 class FlextInfraCodegenLazyInitGenerationRegistryMixin:
@@ -164,7 +164,7 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         if read.failure:
             message = f"reading {path}: {read.error}"
             raise OSError(message)
-        content: str = read.value
+        content: str = t.Infra.STR_ADAPTER.validate_python(read.value)
         return content
 
 

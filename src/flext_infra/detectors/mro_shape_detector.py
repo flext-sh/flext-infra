@@ -9,12 +9,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import m, u
+from flext_infra import m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra import t
 
 
 class FlextInfraMROShapeDetector:
@@ -130,8 +128,10 @@ class FlextInfraMROShapeDetector:
     def _project_prefix(project_name: str) -> str:
         """Return the public class prefix for an installed or staged project."""
         try:
-            class_stem: str = u.derive_class_stem(project_name)
-            return class_stem
+            derived: str = t.Infra.STR_ADAPTER.validate_python(
+                u.derive_class_stem(project_name)
+            )
+            return derived
         except RuntimeError:
             normalized_name = project_name.replace("-", "_").replace(".", "_")
             return "".join(

@@ -96,7 +96,7 @@ class TestRunProjectsPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        assert (tmp_path / "reports" / report_name).exists()
+        tm.that((tmp_path / "reports" / report_name).exists(), eq=True)
 
     def test_run_projects_creates_project_scoped_reports_dir(
         self, tmp_path: Path
@@ -118,7 +118,7 @@ class TestRunProjectsPublicBehavior:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        assert (tmp_path / "reports" / "p1").is_dir()
+        tm.that((tmp_path / "reports" / "p1").is_dir(), eq=True)
 
     def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)

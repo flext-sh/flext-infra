@@ -100,13 +100,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         Validates u.Infra MRO output methods are available:
         - status, summary, error, warning, info, header, progress
         """
-        assert callable(u.Cli.status)
-        assert callable(u.Cli.summary)
-        assert callable(u.Cli.error)
-        assert callable(u.Cli.warning)
-        assert callable(u.Cli.info)
-        assert callable(u.Cli.header)
-        assert callable(u.Cli.progress)
+        tm.that(callable(u.Cli.status), eq=True)
+        tm.that(callable(u.Cli.summary), eq=True)
+        tm.that(callable(u.Cli.error), eq=True)
+        tm.that(callable(u.Cli.warning), eq=True)
+        tm.that(callable(u.Cli.info), eq=True)
+        tm.that(callable(u.Cli.header), eq=True)
+        tm.that(callable(u.Cli.progress), eq=True)
 
     @pytest.mark.integration
     def test_output_methods_are_callable_via_u_infra(self) -> None:
@@ -115,13 +115,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         Validates:
         - All methods are callable through u.Infra
         """
-        assert callable(u.Cli.status)
-        assert callable(u.Cli.summary)
-        assert callable(u.Cli.error)
-        assert callable(u.Cli.warning)
-        assert callable(u.Cli.info)
-        assert callable(u.Cli.header)
-        assert callable(u.Cli.progress)
+        tm.that(callable(u.Cli.status), eq=True)
+        tm.that(callable(u.Cli.summary), eq=True)
+        tm.that(callable(u.Cli.error), eq=True)
+        tm.that(callable(u.Cli.warning), eq=True)
+        tm.that(callable(u.Cli.info), eq=True)
+        tm.that(callable(u.Cli.header), eq=True)
+        tm.that(callable(u.Cli.progress), eq=True)
 
     @pytest.mark.integration
     def test_service_result_chaining_with_map(self) -> None:
@@ -205,13 +205,13 @@ class TestsFlextInfraIntegrationInfraIntegration:
         - discover_projects is callable via u.Infra MRO
         - workspace_root is callable via u.Infra MRO
         """
-        assert callable(u.Infra.discover_projects)
-        assert callable(u.Infra.resolve_workspace_root_or_cwd)
+        tm.that(callable(u.Infra.discover_projects), eq=True)
+        tm.that(callable(u.Infra.resolve_workspace_root_or_cwd), eq=True)
 
     @pytest.mark.integration
     def test_path_utilities_via_mro(self) -> None:
         """Test u.Infra path utility methods are available via MRO."""
-        assert callable(u.Infra.resolve_project_root)
+        tm.that(callable(u.Infra.resolve_project_root), eq=True)
 
     @pytest.mark.integration
     def test_cli_capture_git_current_branch_in_real_repo(self, tmp_path: Path) -> None:

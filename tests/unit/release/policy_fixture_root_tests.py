@@ -1,14 +1,8 @@
-"""Contract test for how release fixtures locate workspace-owned policy files.
+"""Contract test for isolated release policy fixtures.
 
-The release workspace fixture copies workspace-owned policy files (build
-constraints, gitleaks config) into a temporary workspace. It has to find them
-first, and it must keep finding them regardless of where the repository is
-checked out.
-
-Counting parent directories encodes the checkout depth into the test suite. A
-linked worktree adds path segments, so a positional lookup silently resolves to
-a directory that holds no policy file and every release test fails with
-FileNotFoundError -- a failure that says nothing about the code under test.
+The release workspace factory copies repository-owned test policies into a
+temporary workspace. The fixture must remain independent from an enclosing
+FLEXT workspace so a standalone clone and a linked worktree behave identically.
 """
 
 from __future__ import annotations
@@ -39,11 +33,6 @@ class TestsReleasePolicyFixtureRoot:
             tm.that((workspace_root / policy_path).is_file(), eq=True)
 
     def test_policy_root_is_not_derived_by_counting_parents(self) -> None:
-        """A fixed parent index cannot be correct for every checkout layout.
-
-        `tests/utilities.py` -> parents[2] resolves to the workspace root only
-        when the repository is exactly two levels below it. Inside
-        `<repo>/.worktrees/<lane>/` the same index lands mid-path.
-        """
-        positional = Path(u.Tests.__module__.replace(".", "/"))
-        tm.that(u.Tests.release_policy_root(), ne=positional)
+        """The fixture belongs to this test package, not an ambient parent."""
+        expected = Path(__file__).resolve().parents[2] / "fixtures" / "release"
+        tm.that(u.Tests.release_policy_root(), eq=expected)

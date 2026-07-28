@@ -31,7 +31,7 @@ def test_json_write_accepts_pydantic_model(tmp_path: Path) -> None:
     result = u.Cli.json_write(json_file, report)
 
     tm.ok(result)
-    assert json_file.exists()
+    tm.that(json_file.exists(), eq=True)
 
 
 def test_write_markdown_writes_exact_content(tmp_path: Path) -> None:
@@ -50,7 +50,7 @@ def test_write_markdown_preserves_empty_lines(tmp_path: Path) -> None:
     result = u.Infra.write_markdown(md_file, ["# Title", "", "", "Content"])
 
     tm.ok(result)
-    assert md_file.read_text().count("\n") >= _MIN_MARKDOWN_NEWLINES
+    tm.that(md_file.read_text().count("\n") >= _MIN_MARKDOWN_NEWLINES, eq=True)
 
 
 def test_write_markdown_fails_for_non_directory_parent() -> None:

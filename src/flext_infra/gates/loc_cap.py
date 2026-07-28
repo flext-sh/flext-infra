@@ -42,6 +42,20 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tokei JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
+        if result.exit_code != 0:
+            return (
+                False,
+                (
+                    m.Infra.Issue(
+                        file="<tokei>",
+                        line=0,
+                        column=0,
+                        code="LOC_CAP_EXEC",
+                        message=result.stderr or "tokei execution failed",
+                        severity="ERROR",
+                    ),
+                ),
+            )
         issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 

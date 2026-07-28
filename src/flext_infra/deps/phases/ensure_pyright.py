@@ -272,8 +272,19 @@ class FlextInfraEnsurePyrightConfigPhase:
             "integration": overrides.integration,
             "app": overrides.app,
         }
-        selected: m.Infra.ProjectTypeOverrideConfig | None = kind_map.get(project_kind)
-        return selected
+        raw = kind_map.get(project_kind)
+        if raw is None:
+            return None
+        validated: m.Infra.ProjectTypeOverrideConfig = (
+            m.Infra.ProjectTypeOverrideConfig.model_validate(raw)
+        )
+        return validated
+
+    def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
+        """Venv settings."""
+        rules = self._tool_config.tools.pyright.path_rules
+        venv_path = rules.root_venv_path if is_root else rules.project_venv_path
+        return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
     def _expected_excludes(self) -> t.StrSequence:
         """Return the complete config-owned Pyright exclude list."""

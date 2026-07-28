@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.services.cli_transaction import CliTransactionService
 from flext_tests import tm
 from tests import m, u
 
@@ -48,9 +47,19 @@ def _workspace(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
     package_root = workspace_root / "src" / "transaction_fixture"
     package_root.mkdir(parents=True)
-    (package_root / "__init__.py").write_text("", encoding="utf-8")
+    (package_root / "__init__.py").write_text(
+        '"""Transaction fixture package."""\n', encoding="utf-8"
+    )
     (workspace_root / "pyproject.toml").write_text(
-        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
+        (
+            "[project]\n"
+            "name = 'transaction-fixture'\n"
+            "version = '0.1.0'\n"
+            "\n"
+            "[tool.pyrefly]\n"
+            "project-includes = ['src/**/*.py*']\n"
+            "python-version = '3.13'\n"
+        ),
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
@@ -237,14 +246,13 @@ class TestsFlextInfraWorktreeTransaction:
                     "--apply",
                 ),
                 apply_patch=False,
-                allow_lint_regression=True,
                 timeout_seconds=120,
             )
         )
         report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
 
-        tm.that(report.breakage_detected, eq=False, msg=output)
+        tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
@@ -252,48 +260,19 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
 
-class TestsFlextInfraWorktreeTransactionLintRegression:
-    """Contract for the explicit lint-regression allowance."""
+class TestsFlextInfraWorktreeTransactionLint:
+    """Contract for fail-closed differential transaction lint evidence."""
 
-    def test_lint_regressed_detects_diagnostic_increase(self) -> None:
-        """Flag diagnostic growth as regression; stable diagnostics are safe."""
-        before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
-        after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
+    def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
+        """Stable debt is reported; every introduced diagnostic is rejected."""
+        clean = (m.Infra.LintSnapshot(tool="ruff", exit_code=0),)
+        errors = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=1),)
+        warnings = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, warnings=1),)
+        nonzero = (m.Infra.LintSnapshot(tool="ruff", exit_code=1, errors=1),)
 
-        regressed = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
-            before, after
-        )
-        stable = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
-            before, before
-        )
+        lint_regressed = u.Infra._lint_regressed  # ruff:ignore[private-member-access]
 
-        tm.that(regressed, eq=True)
-        tm.that(stable, eq=False)
-
-    def test_request_defaults_to_rejecting_lint_regression(
-        self, tmp_path: Path
-    ) -> None:
-        """Default transactions keep rejecting lint regressions."""
-        request = m.Infra.WorktreeTransactionRequest(
-            workspace_root=tmp_path, command=("deps", "modernize"), timeout_seconds=60
-        )
-
-        tm.that(request.allow_lint_regression, eq=False)
-
-    def test_inner_args_strip_allow_lint_regression_flag(self) -> None:
-        """Strip the outer allowance flag before the isolated invocation."""
-        args = (
-            "modernize",
-            "--apply",
-            "--allow-lint-regression",
-            "--projects",
-            "flext-infra",
-        )
-
-        normalized = CliTransactionService.transaction_inner_args(
-            "deps:modernize", args
-        )
-
-        tm.that("--allow-lint-regression" in normalized, eq=False)
-        tm.that("--apply" in normalized, eq=True)
-        tm.that("--projects" in normalized, eq=True)
+        tm.that(lint_regressed(clean, errors), eq=True)
+        tm.that(lint_regressed(clean, warnings), eq=True)
+        tm.that(lint_regressed(clean, nonzero), eq=True)
+        tm.that(lint_regressed(errors, errors), eq=False)

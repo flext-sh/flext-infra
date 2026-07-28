@@ -44,11 +44,15 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.DEFAULT_UNNAMED,
             python_version="3.13",
-            package_manager=c.Infra.POETRY,
             source_dir=c.Infra.DEFAULT_SRC_DIR,
             tests_dir=c.Infra.DIR_TESTS,
-            lint_gates=list(c.Infra.PROJECT_FAST_PATH_CHECK_GATE_VALUES),
-            test_command=c.Infra.PYTEST,
+            lint_gates=[
+                c.Infra.LINT,
+                c.Infra.FORMAT,
+                c.Infra.PYREFLY,
+                c.Infra.MYPY,
+                c.Infra.PYRIGHT,
+            ],
         )
 
     @staticmethod
@@ -101,8 +105,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                     mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
-                    mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
-                    mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                    mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                    mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                     prlimit_command=c.Infra.PRLIMIT_COMMAND,
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,

@@ -196,10 +196,10 @@ class FlextInfraEnsureRuffConfigPhase:
             .build()
         )
         if include_handler:
-            configured_phase: m.Infra.Deps.Toml.PhaseConfig = phase.model_copy(
+            configured: m.Infra.Deps.Toml.PhaseConfig = phase.model_copy(
                 update={"custom_handler": self._remove_stale_lint_section}
             )
-            return configured_phase
+            return configured
         return phase
 
     def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:

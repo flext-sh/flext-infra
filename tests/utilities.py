@@ -610,26 +610,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def release_policy_root() -> Path:
-            """Locate the checkout that owns the release policy files.
-
-            Counting parent directories encodes the checkout depth into the
-            suite: inside `<repo>/.worktrees/<lane>/` the extra segments make a
-            fixed index land mid-path, and every release test then fails with
-            FileNotFoundError for a reason unrelated to the code under test.
-
-            Walk upwards instead and stop at the first directory that actually
-            holds the policy file, so the lookup is correct for a plain clone,
-            a linked worktree, and any future layout.
-            """
-            marker = Path(c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH)
-            for candidate in Path(__file__).resolve().parents:
-                if (candidate / marker).is_file():
-                    return candidate
-            msg = (
-                f"no ancestor of {Path(__file__).resolve()} provides "
-                f"{c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH}"
-            )
-            raise FileNotFoundError(msg)
+            """Return the repository-owned isolated release policy fixture."""
+            return Path(__file__).resolve().parent / "fixtures" / "release"
 
         @staticmethod
         def create_release_workspace(
@@ -777,10 +759,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            result = cli_facade.capture(
-                [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
+                cli_facade.capture(
+                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+                ).success
             )
-            exists: bool = result.success
             return exists
 
         @staticmethod
@@ -811,6 +794,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 cli_facade.run_checked(
                     [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
                     cwd=repo_root,
+                )
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
+                    cwd=bare_remote,
                 )
             )
             return bare_remote
@@ -982,6 +971,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 }
             )
             return result
+
+        @staticmethod
+        def write_executable(path: Path, body: str) -> None:
+            """Write one executable fixture with deterministic permissions."""
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+            path.chmod(0o755)
 
         @staticmethod
         def create_migrator_dir_layout(
@@ -1296,11 +1292,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
-            command: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
+            validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
             })
-            return command
+            return validated
 
         @staticmethod
         def create_detector_deps_stub(

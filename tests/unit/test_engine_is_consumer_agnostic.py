@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, u
+from flext_infra import config, t, u
 from flext_tests import tm
 
 
@@ -35,19 +35,26 @@ def engine_provider() -> str:
     if entry is None:
         msg = f"engine absent from its own catalog: {distribution}"
         raise AssertionError(msg)
-    provider: str = entry.provider
+    provider: str = t.Infra.STR_ADAPTER.validate_python(entry.provider)
     return provider
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:
-    def test_engine_provider_is_declared(self, engine_provider: str) -> None:
-        declared = {provider.name for provider in config.Infra.codegen.providers}
-        tm.that(engine_provider in declared, eq=True)
-
-    def test_every_repository_provider_is_declared(self) -> None:
+    def test_repository_catalog_uses_declared_providers(self) -> None:
         declared = {provider.name for provider in config.Infra.codegen.providers}
         referenced = {
             repository.provider for repository in config.Infra.codegen.repositories
+        }
+
+        tm.that(referenced - declared, eq=set())
+
+    def test_workspace_catalog_declares_only_owned_workspaces(
+        self, owned_provider: str
+    ) -> None:
+        owned = {
+            repository.name
+            for repository in config.Infra.codegen.repositories
+            if repository.provider == owned_provider
         }
         tm.that(sorted(referenced - declared), eq=[])
 

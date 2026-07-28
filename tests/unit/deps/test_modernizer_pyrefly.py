@@ -26,7 +26,9 @@ class TestsFlextInfraModernizerPyrefly:
     def test_modernizer_removes_static_analyzer_virtualenvs(
         self, tmp_path: Path
     ) -> None:
-        """Runtime-selected interpreters supersede static topology assumptions."""
+        """Distinguish an attached submodule from an independent linked worktree."""
+        rules = config.Infra.tooling.tools.pyright.path_rules
+        (tmp_path / rules.venv_name).mkdir()
         child_origin = tmp_path / "child-origin"
         child_origin.mkdir()
         tm.ok(u.Cli.run_raw(["git", "init"], cwd=child_origin))
@@ -102,11 +104,10 @@ class TestsFlextInfraModernizerPyrefly:
         linked_pyrefly = u.Cli.json_as_mapping(linked_tool["pyrefly"])
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
-        for pyrefly in (attached_pyrefly, linked_pyrefly):
-            tm.that(pyrefly, lacks="python-interpreter-path")
-        for pyright in (attached_pyright, linked_pyright):
-            tm.that(pyright, lacks="venv")
-            tm.that(pyright, lacks="venvPath")
+        tm.that(attached_pyrefly, lacks="python-interpreter-path")
+        tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
+        tm.that(linked_pyrefly, lacks="python-interpreter-path")
+        tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
 
     def test_ensure_pyrefly_config_sets_fields_root(
         self, tool_config_document: m.Infra.ToolConfigDocument

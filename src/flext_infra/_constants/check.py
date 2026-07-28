@@ -218,7 +218,7 @@ class FlextInfraConstantsCheck:
         "push",
         "tag",
     })
-    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
+    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep"})
     MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
     MANUAL_CMD_UV_RUN_VALUE_OPTIONS: Final[frozenset[str]] = frozenset({
         "--default-index",

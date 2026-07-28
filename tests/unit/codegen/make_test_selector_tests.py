@@ -1,22 +1,13 @@
-"""Contract test for the generated `test` verb argument surface.
-
-`base.mk` advertises `PYTEST_ARGS="-k expr"` as a public knob, and the canonical
-law is that validation runs through `make`, never through a loose `pytest`
-invocation. Those two only hold together if the generated recipe actually
-forwards the variable.
-
-When it does not, `make test PYTEST_ARGS=...` silently runs the entire suite.
-The selector appears to work, so the operator is pushed into calling pytest
-directly to get a focused run -- which bypasses the guards, locks and evidence
-that the Make surface exists to enforce.
-"""
+"""Behavior contract for focused pytest selection through generated Make."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, u
 from flext_tests import tm
+
+from flext_infra import config, u
+from tests import u as test_u
 
 
 def _makefile_template() -> Path:
@@ -34,15 +25,36 @@ class TestsMakeTestSelector:
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
-        tm.that(
-            any(verb.name == "test" for verb in config.Infra.codegen.make.verbs),
-            eq=True,
+        matches = tuple(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == "test"
         )
+        tm.that(matches, len=1)
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        test_u.Tests.write_executable(
+            tmp_path / ".venv" / "bin" / "python",
+            (
+                "#!/bin/sh\n"
+                "verb=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                '  exec make --no-print-directory "_serialized_${verb}"\n'
+                "fi\n"
+                "exit 2\n"
+            ),
+        )
+        invocation_log = tmp_path / "uv-args.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f'#!/bin/sh\nprintf "%s\\n" "$@" > "{invocation_log}"\n'
+        )
         selected = "tests/unit/selected_test.py"
 
         executed = tm.ok(
@@ -50,20 +62,21 @@ class TestsMakeTestSelector:
                 [
                     "make",
                     "--no-print-directory",
-                    "-n",
-                    "_builtin_test_all",
+                    "test",
                     f"PYTEST_TARGETS={selected}",
+                    f"UV={uv}",
                 ],
                 cwd=tmp_path,
             )
         )
 
         tm.that(executed.exit_code, eq=0)
-        tm.that(executed.stdout, has=f'_pytest_run="{selected}"')
-        tm.that(f'_pytest_run="{tmp_path / "tests"}"' in executed.stdout, eq=False)
+        arguments = invocation_log.read_text(encoding="utf-8")
+        tm.that(arguments, has=selected)
+        tm.that(str(tmp_path / "tests") in arguments, eq=False)
 
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
-        """The shared reporter recipe must forward every test selector.
+        """Forward both supported pytest selectors through the local recipe.
 
         Without this, a targeted run is impossible through `make`, and the only
         way to filter is to call pytest directly -- exactly the loose command the
@@ -74,10 +87,27 @@ class TestsMakeTestSelector:
         reporter = (template_path.parent / "base_test_report_recipe.j2").read_text(
             encoding="utf-8"
         )
+        direct = [r for r in recipes if "pytest" in r]
+        tm.that(direct, len=1, msg="_builtin_test_all must invoke pytest directly")
+        tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)
+        tm.that(template, has="PYTEST_TARGETS ?=\n")
+        tm.that(direct[0], has="$(if $(strip $(PYTEST_TARGETS))")
 
-        tm.that(template, has="test_report_recipe(")
-        tm.that(reporter, has='_all_pytest_args="$(PYTEST_ARGS)"')
-        tm.that(reporter, has='if [ -n "$(MATCH)" ]')
-        tm.that(reporter, has='if [ -n "$(FILE)" ]')
-        tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
-        tm.that(template, has='"$(PYTEST_TARGETS)"')
+    def test_generated_build_gen_routes_both_generated_owners(self) -> None:
+        """The documented build/gen selector regenerates both Make surfaces."""
+        template = _makefile_template().read_text(encoding="utf-8")
+
+        tm.that(template, has="_builtin_build_gen")
+        tm.that(
+            template,
+            has=[
+                (
+                    'codegen conform --root "$(PROJECT_ROOT)" '
+                    '--scope "$(CODEGEN_SCOPE)" --mode apply'
+                ),
+                (
+                    'basemk generate --project-name "$(PROJECT_NAME)" '
+                    '--output "$(PROJECT_ROOT)/base.mk"'
+                ),
+            ],
+        )

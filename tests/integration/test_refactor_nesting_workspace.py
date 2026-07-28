@@ -45,8 +45,8 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
             violations_count += (
                 int(raw_violations) if isinstance(raw_violations, (int, float)) else 0
             )
-        assert files_scanned >= _MIN_SCANNED_FILES
-        assert violations_count >= 0
+        tm.that(files_scanned >= _MIN_SCANNED_FILES, eq=True)
+        tm.that(violations_count >= 0, eq=True)
 
     def test_cross_project_references_updated(self, tmp_path: Path) -> None:
         """Test that cross-project references are scanned correctly."""
@@ -67,7 +67,7 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
         for result in (result_a, result_b):
             raw = result.value.get("files_scanned", 0)
             total_files += int(raw) if isinstance(raw, (int, float)) else 0
-        assert total_files >= _MIN_TOTAL_FILES
+        tm.that(total_files >= _MIN_TOTAL_FILES, eq=True)
 
     def test_all_projects_consistent(self, tmp_path: Path) -> None:
         """Verify all projects remain consistent after refactor."""
@@ -93,6 +93,6 @@ class TestsFlextInfraIntegrationRefactorNestingWorkspace:
                         all_violations.append(
                             m.Infra.LooseClassViolation.model_validate(v_item)
                         )
-        assert len(all_violations) >= _MIN_VIOLATIONS
+        tm.that(len(all_violations) >= _MIN_VIOLATIONS, eq=True)
         for v in all_violations:
             tm.that({"high", "medium", "low"}, has=v.confidence)

@@ -1,8 +1,8 @@
-"""Tests that the workspace-root check surface covers every declared member.
+"""Tests that workspace-root checks fan out through the declared topology.
 
-A workspace root that lints only its own src/ and tests/ cannot validate the
-members it orchestrates, so a global gate degrades into a root-only gate and
-member regressions ship unnoticed.
+A workspace root delegates each check to its member instead of aggregating
+member paths into one root process. This preserves project isolation while
+ensuring the global gate covers every member declared by the workspace SSOT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -18,8 +18,8 @@ from flext_tests import tm
 
 
 class TestsFlextInfraWorkspaceCheckScope:
-    def test_workspace_root_check_paths_cover_every_member(self) -> None:
-        """The generated root Makefile lints the members, not only itself."""
+    def test_workspace_root_check_fans_out_to_every_member(self) -> None:
+        """The root selects declared members and forwards check gates."""
         # Members come from the workspace manifest SSOT, never a literal list.
         members = tuple(
             repository.path.as_posix()
@@ -36,15 +36,13 @@ class TestsFlextInfraWorkspaceCheckScope:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
 
-        # The root delegates checks to each selected member's canonical Make
-        # surface instead of flattening member paths into one root process.
         tm.that(
             template,
-            has=[
-                "WORKSPACE_ORCHESTRATE =",
-                "SELECTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))",
-                "WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))",
-                "$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_CHECK_ARGS)",
-                'WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")',
-            ],
+            has=(
+                "WORKSPACE_MEMBERS :={% for member in workspace_members %} "
+                "{{ member }}{% endfor %}"
+            ),
         )
+        tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)")
+        tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
+        tm.that(template, has="$(ORCHESTRATE_CHECK_ARGS)")

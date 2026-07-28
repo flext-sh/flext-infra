@@ -65,6 +65,8 @@ class FlextInfraConstantsBase(
     "Project/package name key."
     PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
     "Canonical import package name for flext-infra itself."
+    WORKSPACE_FINGERPRINT_READ_CHUNK_BYTES: Final[int] = 1024 * 1024
+    "Bounded read size used while hashing workspace files."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"
@@ -101,6 +103,8 @@ class FlextInfraConstantsBase(
     "Pyrefly/pyright python-version settings key (hyphenated)."
     PYTHON_VERSION_FILENAME: Final[str] = ".python-version"
     "Interpreter-selection file consumed by pyenv/asdf/mise."
+    TAPLO_CONFIG_FILENAME: Final[str] = ".taplo.toml"
+    "Taplo workspace formatting configuration filename."
     PYTHON_VERSION_UNDERSCORE: Final[str] = "python_version"
     "Mypy python_version settings key (underscored)."
     EXTEND: Final[str] = "extend"
@@ -240,8 +244,8 @@ class FlextInfraConstantsBase(
         "UV_NO_VERIFY_HASHES",
     )
     "Ambient uv variables removed before a policy-bound release build."
-    SG: Final[str] = "sg"
-    "ast-grep (sg) binary."
+    SG: Final[str] = "ast-grep"
+    "Canonical ast-grep binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
     RUMDL: Final[str] = "rumdl"

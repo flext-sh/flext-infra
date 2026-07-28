@@ -11,9 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
+from tests import u as test_u
 
 _WORKSPACE_ONLY_MARKERS = ("!flext-*/", "!/config/workspace.yaml", "!flext-*/**")
 
@@ -23,12 +24,7 @@ class TestsCodegenGitignoreProfileAware:
         self, tmp_path: Path
     ) -> None:
         """A member .gitignore excludes workspace-root-only allowlist patterns."""
-        project_root, workspace = _fixture_workspace(
-            tmp_path, c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        )
-        rendered = _render_gitignore(
-            project_root, workspace_root=project_root, workspace=workspace
-        )
+        rendered = _render_gitignore(_ROOT)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker not in rendered, eq=True, msg=f"phantom {marker} in member")
 
@@ -36,12 +32,36 @@ class TestsCodegenGitignoreProfileAware:
         self, tmp_path: Path
     ) -> None:
         """The workspace-root .gitignore keeps the member-directory allowlist."""
-        workspace_root, workspace = _fixture_workspace(
-            tmp_path, c.Infra.RepositoryRole.WORKSPACE_ROOT
+        root = tmp_path / "flext"
+        root.mkdir()
+        root_repository = next(
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.name == "flext"
         )
-        rendered = _render_gitignore(
-            workspace_root, workspace_root=workspace_root, workspace=workspace
+        member = next(
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.name == "flext-core"
         )
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(
+            "[project]\nname = 'flext'\nversion = '0.12.0.dev0'\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=root_repository.name,
+            repository=root_repository,
+            members=(member,),
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                workspace.model_dump(mode="json", exclude_none=True),
+            )
+        )
+        test_u.Tests.initialize_git_repo(root)
+        rendered = _render_gitignore(root)
         for marker in _WORKSPACE_ONLY_MARKERS:
             tm.that(marker in rendered, eq=True, msg=f"missing {marker} at root")
 

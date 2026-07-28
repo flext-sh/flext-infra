@@ -30,7 +30,7 @@ def test_fix_apply_updates_docs_file_and_writes_reports(tmp_path: Path) -> None:
 
     tm.ok(result)
     tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
-    assert (workspace / ".reports/docs/fix-report.md").exists()
+    tm.that((workspace / ".reports/docs/fix-report.md").exists(), eq=True)
 
 
 def test_fix_report_warns_without_apply_when_changes_exist(tmp_path: Path) -> None:

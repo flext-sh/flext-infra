@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 from flext_cli import u as cli_u
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_tests import r, tm
+from flext_infra import r
+from flext_tests import tm
 from tests import u as test_u
 
 if TYPE_CHECKING:
@@ -108,7 +109,7 @@ class TestFlextInfraWorkspaceChecker:
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
         tm.ok(result)
-        tm.that(result.value, eq=())
+        tm.that(result.value, eq=[])
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""

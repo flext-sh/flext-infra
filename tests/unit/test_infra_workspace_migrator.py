@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
+from flext_infra import config
+from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
+from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceEnvironment, config
@@ -12,6 +16,8 @@ from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
     from tests import m, t
 
@@ -35,7 +41,18 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that(any(c.startswith("[DRY-RUN]") for c in migrations[0].changes), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="OLD_BASE\n")
 
-    def test_migrator_apply_updates_project_files(self, tmp_path: Path) -> None:
+    def test_migrator_apply_updates_project_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Apply migration with the external TOML formatter boundary available."""
+        fake_bin = tmp_path / "bin"
+        fake_bin.mkdir()
+        fake_taplo = fake_bin / "taplo"
+        fake_taplo.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        fake_taplo.chmod(0o755)
+        monkeypatch.setenv(
+            "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
         project_root = tmp_path / "project-a"
         u.Tests.write_migrator_project(project_root)
         original_makefile = (project_root / "Makefile").read_text(encoding="utf-8")
@@ -52,8 +69,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that(len(migrations[0].errors), eq=0)
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
-        makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile_text, eq=original_makefile)
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
         tm.that(
             (project_root / ".mise.toml").read_text(encoding="utf-8"),

@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
@@ -17,11 +16,14 @@ from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import Callable as _CensusCallable
 
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 _log = u.fetch_logger(__name__)
 
@@ -569,33 +571,34 @@ class FlextInfraUtilitiesRefactorCensus:
 
         def _rewrite_single(match: t.Infra.RegexMatch) -> str:
             """Rewrite single."""
-            body = match.group("body")
+            body: str = t.Infra.STR_ADAPTER.validate_python(match.group("body"))
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
             result: str
             if len(remaining) == len(entries):
-                original_text = match.group(0)
+                original_text: str = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                 result = original_text
             else:
-                prefix = match.group("prefix")
+                prefix: str = t.Infra.STR_ADAPTER.validate_python(match.group("prefix"))
                 result = f"{prefix}[{', '.join(remaining)}]"
             return result
 
         def _rewrite_multi(match: t.Infra.RegexMatch) -> str:
             """Rewrite multi."""
-            body = match.group("body")
-            result: str
+            body: str = t.Infra.STR_ADAPTER.validate_python(match.group("body"))
             if "\n" not in body:
-                original_text = match.group(0)
+                original_text: str = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                 result = original_text
             else:
                 entries = [entry.strip() for entry in body.split(",") if entry.strip()]
                 remaining = [entry for entry in entries if entry not in quoted_target]
                 if len(remaining) == len(entries):
-                    original_text = match.group(0)
+                    original_text = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                     result = original_text
                 else:
-                    prefix = match.group("prefix")
+                    prefix: str = t.Infra.STR_ADAPTER.validate_python(
+                        match.group("prefix")
+                    )
                     if not remaining:
                         result = f"{prefix}[]"
                     else:
@@ -816,7 +819,10 @@ class FlextInfraUtilitiesRefactorCensus:
         candidate: m.Infra.Census.RemovalCandidate,
     ) -> tuple[m.Infra.Census.ReferenceSite, ...]:
         """Supporting reference sites."""
-        return candidate.script_reference_sites
+        sites: tuple[m.Infra.Census.ReferenceSite, ...] = tuple(
+            candidate.script_reference_sites
+        )
+        return sites
 
     @staticmethod
     def _definition_line_range(
