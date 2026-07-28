@@ -18,6 +18,7 @@ import flext_infra
 from flext_tests import tm
 
 from flext_infra import c, config, u
+from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
 
 def _workspace_root() -> Path:
@@ -70,6 +71,52 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
+    def test_generated_claude_policy_tracks_only_approved_files(
+        self, tmp_path: Path
+    ) -> None:
+        root = tmp_path / "generated-project"
+        generated = FlextInfraCodegenProjectNew(
+            name="generated-project",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(generated)
+        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=root))
+        paths = (
+            ".claude/CLAUDE.md",
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/private-token.txt",
+        )
+        for relative_path in paths:
+            target = root / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("test\n", encoding="utf-8")
+
+        probes = tuple(
+            tm.ok(
+                u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
+            ).exit_code
+            for relative_path in paths
+        )
+
+        tm.that(
+            probes,
+            eq=(
+                int(c.Infra.ScriptExitCode.FAIL),
+                int(c.Infra.ScriptExitCode.FAIL),
+                int(c.Infra.ScriptExitCode.PASS),
+                int(c.Infra.ScriptExitCode.PASS),
+            ),
+        )
+
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 
