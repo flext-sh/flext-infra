@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
-from flext_infra import c, config
+from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -101,8 +99,8 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         workflow = root / ".github" / "workflows" / "ci-matrix.yml"
         tm.that(workflow.is_file(), eq=True)
-        content = yaml.safe_load(workflow.read_text(encoding="utf-8"))
-        jobs = content["jobs"]
+        content = u.Cli.yaml_load_mapping(workflow)
+        jobs = t.Cli.JSON_MAPPING_ADAPTER.validate_python(content["jobs"])
         for leg in ("distro-matrix", "macos", "windows", "wsl", "kind"):
             tm.that(leg in jobs, eq=True)
 
