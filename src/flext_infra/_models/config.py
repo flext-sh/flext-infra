@@ -555,6 +555,12 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Generated directive including the custom Make surface"
+            ),
+        ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -590,15 +596,14 @@ class FlextInfraConfigModels:
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs orchestrated across members"
+                description="Workspace-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[
             str, m.Field(description="CLI group used for workspace orchestration")
         ] = ""
         project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
+            t.NonEmptyStr, m.Field(description="Mutually exclusive project selector error")
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")

@@ -103,11 +103,60 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
-        tm.that(makefile, lacks="UV_VERSION")
-        tm.that(makefile, lacks="uv@")
-        tm.that(makefile, lacks="mise exec")
+        make_path = shutil.which("make")
+        mise_path = shutil.which("mise")
+        assert make_path is not None
+        assert mise_path is not None
+        hostile_bin = tmp_path / "hostile-bin"
+        hostile_bin.mkdir()
+        hostile_uv = hostile_bin / "uv"
+        hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+        hostile_uv.chmod(0o755)
+        pwd_path = shutil.which("pwd")
+        printf_path = shutil.which("printf")
+        sh_path = shutil.which("sh")
+        assert pwd_path is not None
+        assert printf_path is not None
+        assert sh_path is not None
+        (hostile_bin / "pwd").symlink_to(pwd_path)
+        (hostile_bin / "printf").symlink_to(printf_path)
+        (hostile_bin / "sh").symlink_to(sh_path)
+        expected_uv = config.Infra.codegen.toolchain.uv_version
+
+        selected = cli.run_raw(
+            [make_path, "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            env={"PATH": f"{hostile_bin}{os.pathsep}{os.environ['PATH']}"},
+            remove_env_keys=("MAKEFLAGS",),
+        )
+        help_without_mise = cli.run_raw(
+            [make_path, "-C", str(root), "help"],
+            env={"PATH": str(hostile_bin)},
+            remove_env_keys=("MAKEFLAGS",),
+        )
+        status_without_mise = cli.run_raw(
+            [make_path, "-C", str(root), "_builtin_status_diagnostics"],
+            env={"PATH": str(hostile_bin)},
+            remove_env_keys=("MAKEFLAGS",),
+        )
+
+        selected_process = tm.ok(selected)
+        selected_output = selected_process.stdout + selected_process.stderr
+        tm.that(selected_process.exit_code, eq=0)
+        tm.that(
+            selected_output, has=f"{mise_path} exec uv@{expected_uv} -- uv --version"
+        )
+        tm.that(selected_output, lacks=str(hostile_uv))
+        help_process = tm.ok(help_without_mise)
+        tm.that(
+            help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
+        )
+        tm.that(help_process.stdout, has="flext-demo [standalone]")
+        missing_process = tm.ok(status_without_mise)
+        tm.that(missing_process.exit_code, ne=0)
+        tm.that(
+            missing_process.stdout + missing_process.stderr,
+            has="mise executable not found on caller PATH",
+        )
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
