@@ -61,3 +61,22 @@ class TestsMakeTestSelector:
             msg="no _builtin_test_all recipe invokes pytest directly",
         )
         tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)
+
+    def test_generated_build_gen_routes_both_generated_owners(self) -> None:
+        """The documented build/gen selector regenerates both Make surfaces."""
+        template = _makefile_template().read_text(encoding="utf-8")
+
+        tm.that(template, has="_builtin_build_gen")
+        tm.that(
+            template,
+            has=[
+                (
+                    'codegen conform --root "$(PROJECT_ROOT)" '
+                    '--scope "$(CODEGEN_SCOPE)" --mode apply'
+                ),
+                (
+                    'basemk generate --project-name "$(PROJECT_NAME)" '
+                    '--output "$(PROJECT_ROOT)/base.mk"'
+                ),
+            ],
+        )

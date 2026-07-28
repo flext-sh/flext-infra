@@ -140,6 +140,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_deps_lock \
 	_builtin_deps_upgrade \
 	_builtin_build_artifacts \
+	_builtin_build_gen \
 	_builtin_check_all \
 	_builtin_test_all \
 	_builtin_format_check \
@@ -344,6 +345,10 @@ _builtin_deps_upgrade: _builtin_require_environment
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_selected_projects,)
+
+_builtin_build_gen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) basemk generate --project-name "$(PROJECT_NAME)" --output "$(PROJECT_ROOT)/base.mk"
 
 
 _builtin_build_artifacts:
