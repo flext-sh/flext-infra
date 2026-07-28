@@ -446,6 +446,7 @@ Infra:
             - "!.taplo.toml"
             - "!pyrefly.toml"
             - "!poetry.lock"
+            - "!uv.lock"
             - "!ruff-shared.toml"
         - name: "mise toolchain pinning"
           patterns:

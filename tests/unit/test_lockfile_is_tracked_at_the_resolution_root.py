@@ -19,16 +19,34 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+import flext_infra
 from flext_tests import tm
 
 from flext_infra import c, config, t, u
 
 
+def _workspace_root() -> Path:
+    """Return the repository root that owns the imported package."""
+    return Path(flext_infra.__file__).resolve().parents[2]
+
+
+def _repository_profile() -> c.Infra.MakeProfile:
+    """Return this repository's declared Make profile from the catalog SSOT."""
+    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
+    return next(
+        repository.profile
+        for repository in config.Infra.codegen.repositories
+        if repository.name == repository_name and repository.profile is not None
+    )
+
+
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return every ignore pattern declared by the config SSOT."""
+    """Return ignore patterns applicable to this repository's declared profile."""
+    profile = _repository_profile()
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
+        if not section.profiles or profile in section.profiles
         for pattern in section.patterns
     )
 
