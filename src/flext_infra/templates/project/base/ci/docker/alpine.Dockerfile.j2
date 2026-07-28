@@ -4,7 +4,7 @@
 FROM alpine:3.21
 
 RUN apk add --no-cache \
-      bash ca-certificates curl git make build-base util-linux-misc
+      bash ca-certificates coreutils curl git make build-base util-linux-misc
 
 # uv is an environment-provided executable, intentionally without a project
 # patch pin. It installs the declared Python family before canonical bootstrap.

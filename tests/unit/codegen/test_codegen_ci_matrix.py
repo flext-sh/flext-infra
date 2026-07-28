@@ -105,6 +105,7 @@ class TestCodegenCiMatrix:
             tm.that(content, lacks="soft-pass")
             tm.that(content, lacks="EXTERNAL BLOCKER")
             if distro == "alpine":
+                tm.that(content, has="coreutils")
                 tm.that(content, has="util-linux-misc")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
@@ -196,6 +197,7 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         content = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(content, has="ifeq ($(OS),Windows_NT)")
+        tm.that(content, has="SHELL := bash")
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")

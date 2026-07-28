@@ -5,7 +5,11 @@
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 
+ifeq ($(OS),Windows_NT)
+SHELL := bash
+else
 SHELL := /bin/sh
+endif
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
