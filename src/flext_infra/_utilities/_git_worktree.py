@@ -290,9 +290,28 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 if tree_result.failure
                 else parent_result.error or "failed to resolve checkpoint parent"
             )
+        identity_result = cls.git_capture(
+            worktree_root, ("show", "-s", "--format=%an%x00%ae", parent_result.value)
+        )
+        if identity_result.failure:
+            return r[str].fail(
+                identity_result.error or "failed to resolve checkpoint identity"
+            )
+        identity = identity_result.value.rstrip("\n").split("\0")
+        match identity:
+            case [author_name, author_email] if (
+                author_name.strip() and author_email.strip()
+            ):
+                pass
+            case _:
+                return r[str].fail("checkpoint parent has invalid author identity")
         commit_result = cls.git_capture(
             worktree_root,
             (
+                "-c",
+                f"user.name={author_name}",
+                "-c",
+                f"user.email={author_email}",
                 "commit-tree",
                 tree_result.value.strip(),
                 "-p",
