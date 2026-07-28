@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
+from flext_infra import u as infra_u
 from flext_tests import tm
-
 from tests import u
 
 
@@ -75,3 +76,22 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
             blocked_dir.chmod(0o755)
         tm.ok(result)
         tm.that(result.value, eq=[])
+
+    def test_external_discovery_skips_inaccessible_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        blocked = tmp_path / "blocked"
+        workspace.mkdir()
+        blocked.mkdir()
+        original_is_file = Path.is_file
+
+        def is_file(path: Path) -> bool:
+            if path == blocked / "pyproject.toml":
+                raise PermissionError(path)
+            return original_is_file(path)
+
+        with patch.object(Path, "is_file", is_file):
+            roots = infra_u.Infra.discover_external_workspace_roots(workspace)
+
+        tm.that(roots, eq=())

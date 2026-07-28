@@ -5,9 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
+from flext_tests import tm
 
 
 def _repository(
@@ -93,7 +92,7 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
-    def test_attached_member_removes_direct_source(self) -> None:
+    def test_attached_member_rejects_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
@@ -105,8 +104,13 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        document = tomllib.loads(tm.ok(result))
-        tm.that(document["project"]["dependencies"], eq=[member.distribution])
+        tm.fail(
+            result,
+            has=(
+                "attached workspace dependency declares direct source: "
+                f"{member.distribution}"
+            ),
+        )
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
@@ -115,14 +119,8 @@ workspace = true
             *workspace.members,
             *config.Infra.codegen.repositories,
         )
-        toolchain = m.Infra.ToolchainSpec(
-            python_version="3.13",
-            uv_link_mode="copy",
-            kubectl_version="1.32.0",
-            helm_version="3.19.4",
-            kind_version="0.31.0",
-            taplo_version="0.10.0",
-        )
+        toolchain = config.Infra.codegen.toolchain
+        required_dev = config.Infra.codegen.scaffold.project.dev
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
@@ -137,6 +135,7 @@ required-version = "==0.11.28"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         second = tm.ok(
@@ -146,6 +145,7 @@ required-version = "==0.11.28"
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
+                required_dev_dependencies=required_dev,
             )
         )
         document = tomllib.loads(first)

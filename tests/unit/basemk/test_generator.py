@@ -5,10 +5,9 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,11 +35,9 @@ class TestsFlextInfraBasemkGenerator:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
             python_version="3.13",
-            package_manager="poetry",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["mypy"],
-            test_command="pytest",
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)

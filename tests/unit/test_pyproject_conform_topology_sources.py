@@ -15,9 +15,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
+from flext_tests import tm
 
 _ROLE = c.Infra.RepositoryRole
 # mro-o26p: provider identity, branch and base URL come from the config SSOT,
@@ -166,7 +165,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         tm.that(result.failure, eq=True)
         tm.that(
-            result.error or "", has="attached workspace dependency declares Git source"
+            result.error or "",
+            has="attached workspace dependency declares direct source",
         )
 
         local_result = u.Infra.pyproject_dependencies_conform(
@@ -182,7 +182,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(local_result.failure, eq=True)
         tm.that(
             local_result.error or "",
-            has="attached workspace dependency declares Git source",
+            has="attached workspace dependency declares direct source",
         )
 
     def test_standalone_rejects_workspace_source_without_git_requirement(self) -> None:
@@ -195,9 +195,11 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-        rendered = tm.ok(result)
         member = workspace.members[0]
-        tm.that(
-            rendered, has=f"{member.distribution} @ git+{member.url}@{member.branch}"
+        tm.fail(
+            result,
+            has=(
+                "standalone dependency lacks configured Git source: "
+                f"{member.distribution}"
+            ),
         )
-        tm.that("workspace = true" not in rendered, eq=True)

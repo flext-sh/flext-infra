@@ -12,16 +12,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 import flext_infra
 from flext_infra import c, config
+from flext_tests import tm
 
 
 class TestsFlextInfraWorkspaceCheckScope:
-    def test_workspace_root_check_paths_cover_every_member(self) -> None:
-        """The generated root Makefile lints the members, not only itself."""
-        # Members come from the workspace manifest SSOT, never a literal list.
+    def test_workspace_root_checks_fan_out_to_declared_members(self) -> None:
         members = tuple(
             repository.path.as_posix()
             for repository in config.Infra.codegen.repositories
@@ -37,6 +34,5 @@ class TestsFlextInfraWorkspaceCheckScope:
             / "Makefile.j2"
         ).read_text(encoding="utf-8")
 
-        # RUFF_PATHS/MYPY_PATHS must expand over the members for the root
-        # profile instead of being pinned to the root's own src/tests.
-        tm.that(template, has="WORKSPACE_CHECK_PATHS")
+        tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
+        tm.that(template, has="ORCHESTRATE_PROJECT_ARGS")

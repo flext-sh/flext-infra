@@ -12,9 +12,8 @@ exposes it at all, and that it cannot be invoked destructively by accident.
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import config, m
+from flext_tests import tm
 
 
 class TestsCodegenWorktreeVerb:

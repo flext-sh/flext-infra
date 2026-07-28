@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import r
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
+from flext_tests import tm
 from tests import u
 
 
@@ -17,7 +16,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
     def test_module_to_types_package(self) -> None:
         """Verify module to types package."""
         service = FlextInfraDependencyDetectionService()
-        tm.that(service.module_to_types_package("yaml", {}), eq="types-pyyaml")
+        tm.that(service.module_to_types_package("yaml", {}), eq=None)
         tm.that(service.module_to_types_package("flext_core", {}), eq=None)
         tm.that(
             service.module_to_types_package(
@@ -31,7 +30,7 @@ class TestsFlextInfraDepsDetectionTypingsFlow:
             eq="custom-types-yaml",
         )
         tm.that(service.module_to_types_package("unknown_module", {}), eq=None)
-        tm.that(service.module_to_types_package("yaml.parser", {}), eq="types-pyyaml")
+        tm.that(service.module_to_types_package("yaml.parser", {}), eq=None)
 
     def test_get_current_typings_from_pyproject(self) -> None:
         """Verify get current typings from pyproject."""

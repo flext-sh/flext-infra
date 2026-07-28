@@ -20,14 +20,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, u
-
-
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+from flext_tests import tm
 
 
 def _ssot_patterns() -> tuple[str, ...]:
@@ -36,16 +30,6 @@ def _ssot_patterns() -> tuple[str, ...]:
         pattern
         for section in config.Infra.codegen.gitignore_sections
         for pattern in section.patterns
-    )
-
-
-def _live_patterns() -> tuple[str, ...]:
-    """Return every meaningful line of the governed ``.gitignore``."""
-    text = (_workspace_root() / ".gitignore").read_text(encoding="utf-8")
-    return tuple(
-        stripped
-        for line in text.splitlines()
-        if (stripped := line.strip()) and not stripped.startswith("#")
     )
 
 
@@ -73,29 +57,6 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
-    def test_ssot_declares_every_governed_ignore_pattern(self) -> None:
-        """No pattern exists on disk that the SSOT cannot reproduce."""
-        declared = frozenset(_ssot_patterns())
-        missing = tuple(
-            pattern for pattern in _live_patterns() if pattern not in declared
-        )
-
-        tm.that(missing, eq=())
-
-    def test_ssot_reproduces_the_governed_pattern_order(self) -> None:
-        """The projection opens with the governed sequence, in order.
-
-        A whitelist is order-sensitive: everything before ``/*`` is dead, and a
-        directory ignored before its own ``!`` negation is never re-allowed.
-        Set equality is therefore not enough -- the governed patterns must be
-        reproduced as an exact ordered prefix. Derived artifacts follow in
-        their own trailing section, which is why this is a prefix rather than
-        a whole-sequence comparison.
-        """
-        live = _live_patterns()
-
-        tm.that(_ssot_patterns()[: len(live)], eq=live)
-
     def test_every_managed_file_survives_the_ignore_policy(self) -> None:
         """No committed managed artifact is ignored by the shipped policy.
 

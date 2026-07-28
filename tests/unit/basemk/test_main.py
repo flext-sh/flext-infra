@@ -5,9 +5,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import main as infra_main
+from flext_tests import tm
 
 
 def basemk_main(argv: list[str]) -> int:
@@ -47,7 +46,8 @@ class TestsFlextInfraBasemkMain:
             tm.that(exit_code, eq=0)
             generated = output_file.read_text(encoding="utf-8")
             tm.that(generated, has="PROJECT_NAME ?= ai-hub")
-            tm.that(generated, has="$(if $(wildcard $(VENV_PYTHON))")
+            tm.that(generated, has='test -x "$(FLEXT_INFRA_PYTHON)"')
+            tm.that(generated, lacks="$(if $(wildcard $(VENV_PYTHON))")
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path

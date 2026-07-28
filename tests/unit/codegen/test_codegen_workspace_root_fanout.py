@@ -10,10 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import c, config, m
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 
 class TestsCodegenWorkspaceRootFanout:
@@ -27,17 +26,56 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(makefile_entries, len=1)
         tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
-    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(self) -> None:
+    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(
+        self, tmp_path: Path
+    ) -> None:
         """Generated workspace-root check/test route through workspace orchestrate."""
-        rendered = _render_root_makefile()
+        rendered = _render_root_makefile(tmp_path)
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
         tm.that(rendered, has="MAKE_PROFILE := workspace-root")
+        tm.that(rendered, lacks="python -m flext_infra")
 
 
-def _render_root_makefile() -> str:
-    """Render base/Makefile.j2 for the real workspace-root profile via conform."""
-    workspace_root = Path(__file__).resolve().parents[3]
+def _render_root_makefile(tmp_path: Path) -> str:
+    """Render the workspace-root profile from an isolated manifest consumer."""
+    provider = config.Infra.codegen.providers[0]
+    root_repository = next(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+        and repository.provider == provider.name
+    )
+    members = tuple(
+        repository
+        for repository in config.Infra.codegen.repositories
+        if repository.role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
+        and repository.provider == root_repository.provider
+    )
+    workspace_root = tmp_path / root_repository.name
+    workspace_root.mkdir()
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace_root / c.Infra.PYPROJECT_FILENAME,
+            (
+                "[project]\n"
+                f'name = "{root_repository.distribution}"\n'
+                'version = "0.1.0"\n'
+            ),
+        )
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=root_repository.name,
+        repository=root_repository,
+        members=members,
+    )
+    tm.ok(
+        u.Cli.yaml_dump(
+            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+            workspace.model_dump(mode="json", exclude_none=True),
+        )
+    )
     plan = (
         FlextInfraCodegenConform()
         .plan(

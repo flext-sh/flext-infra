@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import config
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)
@@ -157,8 +157,8 @@ class TestsFlextInfraWorkspaceSync:
                 "{\n"
                 '  "editor.formatOnSave": true,\n'
                 '  "python.analysis.diagnosticSeverityOverrides": {\n'
-                '    "reportUnknownMemberType": "none",\n'
-                "  },\n"
+                '    "reportUnknownMemberType": "none"\n'
+                "  }\n"
                 "}\n"
             ),
             encoding="utf-8",
@@ -296,10 +296,9 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
-        tm.that(makefile_text, has="UV_RUN := uv run")
+        tm.that(makefile_text, has="UV_RUN := $(UV) run")
         tm.that(makefile_text, has="_builtin_setup_environment:")
         tm.that(makefile_text, lacks="poetry")
-        tm.that(makefile_text, lacks="pip install")
         tm.that(makefile_text, lacks="_bootstrap-venv")
         tm.that(makefile_text, lacks="BOOTSTRAP_VENV")
         tm.that(
@@ -325,10 +324,13 @@ class TestsFlextInfraWorkspaceSync:
 
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile_text, has="uv sync")
-        tm.that(makefile_text, has="uv run flext-infra")
+        tm.that(makefile_text, has="$(UV) sync")
+        tm.that(
+            makefile_text, has=f"PROJECT_FLEXT_INFRA := $(UV_RUN) {config.Infra.name}"
+        )
         tm.that(makefile_text, lacks="pip install flext-infra")
         tm.that(makefile_text, lacks="python -m flext_infra")
+        tm.that(makefile_text, lacks="PYTHONPATH=")
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""

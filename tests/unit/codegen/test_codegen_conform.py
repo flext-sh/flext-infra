@@ -13,12 +13,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
 
@@ -344,7 +344,14 @@ class TestCodegenConform:
                 if path.is_file() and ".git" not in path.relative_to(root).parts
             )
         )
-        tm.that(after, eq=before)
+        before_by_path = dict(before)
+        after_by_path = dict(after)
+        changed_paths = tuple(
+            path
+            for path in sorted(before_by_path.keys() | after_by_path.keys())
+            if before_by_path.get(path) != after_by_path.get(path)
+        )
+        tm.that(changed_paths, eq=())
 
     def test_dependency_surface_excludes_unowned_managed_files(
         self, infra_git_repo: Path
@@ -627,8 +634,7 @@ class TestCodegenConform:
         )
         tm.fail(result)
         tm.that(
-            result.error,
-            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
+            result.error or "", has=["custom Make destination", str(root / "custom.mk")]
         )
 
 

@@ -6,10 +6,10 @@ import os
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 
 class TestsCodegenMakeEnvironment:
@@ -240,8 +240,8 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "UV ?= uv",
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
-            "--no-install-project",
-            '--editable "$(PROJECT_ROOT)"',
+            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '--link-mode "$(UV_LINK_MODE)"',
             "submodule update --init --recursive",
             "refs/heads/$$branch",
         ):
@@ -252,6 +252,8 @@ class TestsCodegenMakeEnvironment:
             "WHAT=environment",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
+            "--no-install-project",
+            "pip install",
         ):
             tm.that(makefile, lacks=forbidden)
 
