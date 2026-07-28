@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
     from flext_infra import t
 
+_log = u.fetch_logger(__name__)
+
 
 class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
     FlextInfraUtilitiesProjectDiscoveryShapeMixin
@@ -49,14 +51,24 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         roots: list[Path] = []
         seen: set[Path] = set()
         for candidate in sorted(parent.iterdir(), key=lambda item: item.name):
-            if not candidate.is_dir():
+            try:
+                is_directory = candidate.is_dir()
+                resolved_candidate = candidate.resolve()
+                has_manifest = (
+                    resolved_candidate / c.Infra.PYPROJECT_FILENAME
+                ).is_file()
+            except OSError as exc:
+                _log.info(
+                    "project_discovery_candidate_inaccessible",
+                    candidate=str(candidate),
+                    error=str(exc),
+                )
                 continue
-            resolved_candidate = candidate.resolve()
+            if not is_directory or not has_manifest:
+                continue
             if resolved_candidate == resolved_workspace_root:
                 continue
             if resolved_candidate in seen:
-                continue
-            if not (resolved_candidate / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             metadata_result = u.read_project_metadata(resolved_candidate)
             if metadata_result.failure:

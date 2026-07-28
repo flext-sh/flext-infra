@@ -208,10 +208,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if report.breakage_detected or check_failed
             else c.Cli.MessageTypes.INFO
         )
-        if len(rendered) > c.Cli.OUTPUT_PLAIN_MESSAGE_THRESHOLD:
-            self.display_message_plain(rendered, message_type)
-        else:
-            self.display_message(rendered, message_type)
+        self.display_message_plain(rendered, message_type)
         if (
             report.breakage_detected
             or check_failed

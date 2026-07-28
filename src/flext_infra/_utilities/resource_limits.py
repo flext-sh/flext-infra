@@ -130,9 +130,9 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
         resource_failure = (
-            output.exit_code == c.Infra.MYPY_TIMEOUT_EXIT_CODE
+            output.exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE
             or output.exit_code < 0
-            or output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
+            or output.exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
             or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
         )
         if not resource_failure:
@@ -140,8 +140,8 @@ class FlextInfraUtilitiesResourceLimits:
         signal = (
             -output.exit_code
             if output.exit_code < 0
-            else output.exit_code - c.Infra.MYPY_SIGNAL_EXIT_OFFSET
-            if output.exit_code >= c.Infra.MYPY_SIGNAL_EXIT_OFFSET
+            else output.exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
+            if output.exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
             else "none"
         )
         detail = (output.stderr or output.stdout).strip() or "resource limit reached"

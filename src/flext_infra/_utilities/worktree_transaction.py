@@ -256,7 +256,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 return r[t.StrSequencePairTuple].fail(
                     f"required transaction lint executable not found: {executable}"
                 )
-            commands.append((tool, (str(executable), *command[1:])))
+            bound_command: t.StrSequence = (str(executable), *command[1:])
+            if tool == c.Infra.PYREFLY:
+                bound_command = (
+                    *bound_command,
+                    "--config",
+                    c.Infra.PYPROJECT_FILENAME,
+                    "--python-interpreter-path",
+                    sys.executable,
+                )
+            commands.append((tool, bound_command))
         return r[t.StrSequencePairTuple].ok(tuple(commands))
 
     @classmethod
@@ -576,6 +585,13 @@ class FlextInfraUtilitiesWorktreeTransaction:
                 f"{before.warnings}->{after.warnings} "
                 f"({after.warnings - before.warnings:+d})"
             )
+            if before.exit_code != 0 or before.errors or before.warnings:
+                lines.extend((
+                    f"  {before.tool} before output:",
+                    before.output.rstrip(),
+                ))
+            if after.exit_code != 0 or after.errors or after.warnings:
+                lines.extend((f"  {after.tool} after output:", after.output.rstrip()))
         for repository in report.repositories:
             if not repository.patch:
                 continue

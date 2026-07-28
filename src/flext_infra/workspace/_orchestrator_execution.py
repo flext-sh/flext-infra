@@ -190,9 +190,10 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         if failed > 0:
             failures = self._collect_failures(projects, results)
             self._failure_summary(verb, failures)
+            classification = u.Infra.classify_process_exit(exit_code)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit code {exit_code})"
+                f"(first failure {failed_project} exit={exit_code}; {classification})"
             )
         return r.ok(results)
 

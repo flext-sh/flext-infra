@@ -28,6 +28,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
+        required_dev_dependencies: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
@@ -43,7 +44,10 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name = project_name_raw.strip()
 
         cls._sync_dependency_groups(
-            source, project_name=project_name, workspace=workspace
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            required_dev_dependencies=required_dev_dependencies,
         )
         normalized = cls._normalize_requirements(
             source,
@@ -259,6 +263,11 @@ class FlextInfraUtilitiesPyprojectConform:
         head = head_match.group("head").strip()
         marker_text = marker.strip()
         if dependency_name in attached:
+            if "@" in requirement_part:
+                return r[str].fail(
+                    "attached workspace dependency declares direct source: "
+                    f"{dependency_name}"
+                )
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
@@ -321,6 +330,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and set canonical generated groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
@@ -334,13 +344,14 @@ class FlextInfraUtilitiesPyprojectConform:
         dev = [
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
+            *(
+                requirement
+                for requirement in required_dev_dependencies
+                if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+            ),
         ]
-        if project_name != "flext-tests":
-            dev.append("flext-tests")
         u.Cli.toml_sync_string_list(
-            groups,
-            str(c.Infra.DEV),
-            tuple(dict.fromkeys(item.strip() for item in dev if item.strip())),
+            groups, str(c.Infra.DEV), FlextInfraUtilitiesDependencies.dedupe_specs(dev)
         )
 
         codegen = list(u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")))

@@ -378,10 +378,6 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Code-generation requirements"),
         ] = ()
-        dev: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Development and validation requirements"),
-        ] = ()
 
     class ScaffoldProjectSpec(_ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
@@ -398,6 +394,13 @@ class FlextInfraConfigModels:
         keywords: Annotated[
             tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
         ] = ()
+        dev: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical development and validation requirements",
+            ),
+        ]
         dependency_profiles: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
             m.Field(min_length=1, description="Upstream dependency profiles"),
@@ -463,6 +466,14 @@ class FlextInfraConfigModels:
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Generated Git ignore sections"),
+        ]
+
+    class GitignoreRenderContext(_ConfigContract):
+        """Profile-filtered input consumed by the Git ignore template."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
     class RepositoryRef(_ConfigContract):
@@ -534,7 +545,14 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
-    class MakefileRenderSpec(_ConfigContract):
+    class MakeCommandContext(_ConfigContract):
+        """Shared command identity required by every generated Make surface."""
+
+        infra_cli: Annotated[
+            t.NonEmptyStr, m.Field(description="Installed infrastructure CLI command")
+        ]
+
+    class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
@@ -676,7 +694,7 @@ class FlextInfraConfigModels:
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
-    class MakeRenderContext(_ConfigContract):
+    class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
         make: Annotated[
