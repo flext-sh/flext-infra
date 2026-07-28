@@ -40,13 +40,19 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     ) -> None:
         source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
         code = _transform_source(tmp_path, source)
-        assert (
-            "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
-        assert (
-            "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
         tm.that(code, has='    """timeout docs"""')
         tm.that(code, has="class FlextDispatcher:")

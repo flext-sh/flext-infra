@@ -111,7 +111,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
 
     def test_run_pyrefly_with_errors(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -134,7 +134,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_pyrefly_with_invalid_json(self, tmp_path: Path) -> None:
@@ -153,7 +153,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
 
     def test_run_pyrefly_with_list_output(self, tmp_path: Path) -> None:
         _, proj_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -199,7 +199,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
         tm.that(
             log_file.read_text(encoding="utf-8").splitlines()[0:4],
             eq=["check", "src", "tests", "--config"],
@@ -227,7 +227,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
         tm.that(
             log_file.read_text(encoding="utf-8").splitlines()[0:2],
             eq=["check", "--config"],
@@ -251,7 +251,7 @@ class TestRunnerPublicBehavior:
             if original_pythonpath:
                 os.environ["PYTHONPATH"] = original_pythonpath
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="pyrefly-exec")
         tm.that(result.issues[0].message, has="pyrefly crashed")
@@ -261,7 +261,7 @@ class TestRunnerPublicBehavior:
 
         result = u.Tests.run_gate_check(FlextInfraMypyGate, tmp_path, proj_dir)
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
         tm.that(len(result.issues), eq=0)
 
     def test_run_mypy_with_json_output(self, tmp_path: Path) -> None:
@@ -283,7 +283,7 @@ class TestRunnerPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
 
     def test_run_mypy_skips_empty_lines(self, tmp_path: Path) -> None:
@@ -307,7 +307,7 @@ class TestRunnerPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
 
     def test_run_mypy_limits_check_to_local_python_dirs_and_root_files(
@@ -332,7 +332,7 @@ class TestRunnerPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
         command_args = log_file.read_text(encoding="utf-8").splitlines()
         tm.that(command_args[0:4], eq=["src", "tests", "conftest.py", "--config-file"])
         tm.that(command_args, lacks="scripts")
@@ -364,7 +364,7 @@ class TestRunnerPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert result.result.passed
+        tm.that(result.result.passed, eq=True)
         command_args = log_file.read_text(encoding="utf-8").splitlines()
         tm.that(command_args, has="src")
         tm.that(command_args, lacks="tmp_flow_test")
@@ -388,7 +388,7 @@ class TestRunnerPublicBehavior:
             else:
                 os.environ.pop("PYTHONPATH", None)
 
-        assert not result.result.passed
+        tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="mypy-exec")
         tm.that(result.issues[0].message, has="mypy timed out")

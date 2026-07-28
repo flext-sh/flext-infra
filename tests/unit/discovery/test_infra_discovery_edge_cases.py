@@ -44,7 +44,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         (tmp_path / "pyproject.toml").touch()
         result = service.find_all_pyproject_files(tmp_path)
         tm.ok(result)
-        assert len(result.value) >= 1
+        tm.that(len(result.value) >= 1, eq=True)
 
     def test_discover_projects_skips_no_pyproject_no_gomod(
         self, tmp_path: Path
@@ -58,7 +58,7 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        assert not result.value
+        tm.that(not result.value, eq=True)
 
     def test_find_all_pyproject_files_skips_unreadable_subdir(
         self, tmp_path: Path

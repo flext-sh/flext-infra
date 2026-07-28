@@ -50,7 +50,7 @@ class TestWorkspaceCheckerResolveGates:
         ]
         result = FlextInfraWorkspaceChecker.resolve_gates(gates)
         tm.ok(result)
-        assert len(result.value) > 0
+        tm.that(len(result.value) > 0, eq=True)
 
     def test_resolve_gates_accepts_silent_failure(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["silent-failure"])

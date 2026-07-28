@@ -126,7 +126,7 @@ class TestsInfraGithub:
         tm.fail(result)
         tm.that((result.error or ""), has="PR operation exited with code")
         log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
-        assert log_path.is_file()
+        tm.that(log_path.is_file(), eq=True)
         tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
 
     def test_pull_request_create_requires_noninteractive_content(

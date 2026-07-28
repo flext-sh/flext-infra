@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
+from flext_tests import tm
 
 
 class TestsReleasePolicyFixtureRoot:
@@ -36,7 +37,7 @@ class TestsReleasePolicyFixtureRoot:
             c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
             c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
         ):
-            assert (workspace_root / policy_path).is_file()
+            tm.that((workspace_root / policy_path).is_file(), eq=True)
 
     def test_policy_root_is_not_derived_by_counting_parents(self) -> None:
         """A fixed parent index cannot be correct for every checkout layout.
@@ -48,4 +49,4 @@ class TestsReleasePolicyFixtureRoot:
         from tests import u
 
         positional = Path(u.Tests.__module__.replace(".", "/"))
-        assert u.Tests.release_policy_root() != positional
+        tm.that(u.Tests.release_policy_root() != positional, eq=True)

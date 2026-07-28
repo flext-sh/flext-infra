@@ -204,7 +204,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
             "fix_action": "hoist_to_module_top",
         })
         updated, _ = rule.apply(source, tmp_path)
-        assert updated.startswith("import json\n")
+        tm.that(updated.startswith("import json\n"), eq=True)
         tm.that(updated, has="def build() -> None:\n    return None\n")
 
     def test_lazy_import_rule_uses_fix_action_for_hoist(self, tmp_path: Path) -> None:
@@ -214,7 +214,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
             "fix_action": "hoist_to_module_top",
         })
         updated, _ = rule.apply(source, tmp_path)
-        assert updated.startswith("import json\n")
+        tm.that(updated.startswith("import json\n"), eq=True)
         tm.that(updated, has="def build() -> None:\n    return None\n")
 
     @staticmethod

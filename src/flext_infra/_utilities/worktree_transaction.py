@@ -12,11 +12,13 @@ from uuid import uuid4
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesWorktreeTransaction:
@@ -340,7 +342,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         before: t.SequenceOf[m.Infra.LintSnapshot],
         after: t.SequenceOf[m.Infra.LintSnapshot],
     ) -> bool:
-        """Return whether any lint tool gained diagnostics or newly failed."""
+        """Return whether a command introduced or increased diagnostics."""
         return any(
             after_item.errors > before_item.errors
             or after_item.warnings > before_item.warnings
@@ -520,7 +522,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         breakage = (
             command_output.exit_code != 0
             or import_probe.exit_code != 0
-            or (lint_regressed and not request.allow_lint_regression)
+            or lint_regressed
         )
         patch_check = cls._check_patches(deltas)
         if patch_check.failure:
@@ -537,8 +539,6 @@ class FlextInfraUtilitiesWorktreeTransaction:
             f"patch-check={'ok' if patch_check.success else patch_check.error}; "
             f"applied={'yes' if applied else 'no'}"
         )
-        if lint_regressed and request.allow_lint_regression:
-            summary = f"{summary}; lint-regression=allowed"
         if apply_error:
             summary = f"{summary}; apply-error={apply_error}"
         return r[m.Infra.WorktreeTransactionReport].ok(

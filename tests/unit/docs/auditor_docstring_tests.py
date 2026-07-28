@@ -62,9 +62,9 @@ class TestsDocstringCoverage:
 
             coverage = u.Infra.docstring_coverage(project, contract)
 
-            assert coverage.checked > 0
-            assert coverage.documented > 0
-            assert coverage.documented < coverage.checked
+            tm.that(coverage.checked > 0, eq=True)
+            tm.that(coverage.documented > 0, eq=True)
+            tm.that(coverage.documented < coverage.checked, eq=True)
             tm.that(
                 coverage.percent,
                 eq=round(100.0 * coverage.documented / coverage.checked, 1),
@@ -108,8 +108,8 @@ class TestsDocstringCoverage:
                 (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
             metric = summary["summary"]["docstring_coverage"]
-            assert metric["checked"] > 0
-            assert 0.0 <= metric["percent"] < _FULL_COVERAGE_PERCENT
+            tm.that(metric["checked"] > 0, eq=True)
+            tm.that(0.0 <= metric["percent"] < _FULL_COVERAGE_PERCENT, eq=True)
 
     class TestExecuteChecksSelector:
         """execute() honors the CLI --checks selector (no hardcoded "all")."""
@@ -128,7 +128,7 @@ class TestsDocstringCoverage:
                 )
             )["summary"]
             tm.that(summary["checks"], eq=["docstrings"])
-            assert summary["docstring_coverage"]["checked"] > 0
+            tm.that(summary["docstring_coverage"]["checked"] > 0, eq=True)
 
         def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
@@ -160,8 +160,12 @@ class TestsDocstringCoverage:
                     encoding="utf-8"
                 )
             )["summary"]
-            assert (
-                summary["docstring_coverage"]["percent"] < _PARTIAL_COVERAGE_THRESHOLD
+            tm.that(
+                (
+                    summary["docstring_coverage"]["percent"]
+                    < _PARTIAL_COVERAGE_THRESHOLD
+                ),
+                eq=True,
             )
 
         def test_coverage_above_minimum_keeps_audit_green(self, tmp_path: Path) -> None:

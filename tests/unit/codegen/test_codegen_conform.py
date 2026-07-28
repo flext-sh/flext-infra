@@ -546,8 +546,9 @@ class TestCodegenConform:
                 apply_changes=True,
             ).execute()
         )
-        # A custom WHAT keeps the handler offline (no uv/network); the
-        # pre-/post-<verb> hooks prove ordering around it.
+        # The private target is the dispatcher entry point invoked while the
+        # public verb holds the serialization lock. Exercising it directly
+        # keeps this test focused on hook ordering and independent of bootstrap.
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "custom.mk",
@@ -557,7 +558,13 @@ class TestCodegenConform:
                 "post-check:\n\t@echo HOOK_POST\n",
             )
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Cli.run_raw([
+            "make",
+            "-C",
+            str(root),
+            "_serialized_check",
+            "WHAT=probe",
+        ])
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr

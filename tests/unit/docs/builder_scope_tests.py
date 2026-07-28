@@ -23,7 +23,7 @@ def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None
 
     tm.ok(result)
     tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
-    assert all(report.result == "SKIP" for report in result.value)
+    tm.that(all(report.result == "SKIP" for report in result.value), eq=True)
 
 
 def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
@@ -34,8 +34,8 @@ def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
     )
 
     tm.ok(result)
-    assert (workspace / ".custom-docs/build-report.md").exists()
-    assert (workspace / "flext-a/.custom-docs/build-report.md").exists()
+    tm.that((workspace / ".custom-docs/build-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.custom-docs/build-report.md").exists(), eq=True)
 
 
 def test_build_skip_report_has_empty_site_dir(tmp_path: Path) -> None:

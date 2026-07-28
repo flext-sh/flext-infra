@@ -70,8 +70,8 @@ class TestsFlextInfraDocServer:
         def test_default_bind_address_is_localhost(self) -> None:
             server = FlextInfraDocServer()
             tm.that(server.dev_addr, eq="127.0.0.1:8000")
-            assert server.livereload
-            assert server.strict
+            tm.that(server.livereload, eq=True)
+            tm.that(server.strict, eq=True)
 
         def test_output_dir_default_matches_docs_pipeline(self) -> None:
             server = FlextInfraDocServer()
@@ -93,4 +93,4 @@ class TestsFlextInfraDocServer:
 
             tm.that(report.phase, eq="serve")
             tm.that(report.result, eq="SKIP")
-            assert report.passed
+            tm.that(report.passed, eq=True)

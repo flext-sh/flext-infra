@@ -80,7 +80,7 @@ class TestsFlextInfraTransformersInfraTransformerHelperConsolidation:
         tm.that(modified, has="def unmapped_helper()")
         lines = modified.strip().split("\n")
         unmapped_line = next(line for line in lines if "unmapped_helper" in line)
-        assert not unmapped_line.startswith(" ")
+        tm.that(not unmapped_line.startswith(" "), eq=True)
 
     def test_existing_namespace_extended(self, tmp_path: Path) -> None:
         """Test that existing namespace class is extended."""

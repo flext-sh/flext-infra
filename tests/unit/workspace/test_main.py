@@ -275,19 +275,22 @@ class TestsFlextInfraWorkspaceMain:
         ])
 
         tm.that(exit_code, eq=0)
-        assert (project_root / "Makefile").exists()
-        assert not (project_root / "base.mk").exists()
+        tm.that((project_root / "Makefile").exists(), eq=True)
+        tm.that(not (project_root / "base.mk").exists(), eq=True)
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
-        assert (
-            workspace_main([
-                "orchestrate",
-                "--verb",
-                "legacy-check",
-                "--projects",
-                "p-a",
-            ])
-            == 1
+        tm.that(
+            (
+                workspace_main([
+                    "orchestrate",
+                    "--verb",
+                    "legacy-check",
+                    "--projects",
+                    "p-a",
+                ])
+                == 1
+            ),
+            eq=True,
         )
 
     def test_workspace_main_without_command_returns_failure(self) -> None:

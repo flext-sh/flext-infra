@@ -7,7 +7,8 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra import config, t
+from flext_infra._config import config
+from flext_infra.typings import t
 from flext_infra._utilities._rope_core_pymodule import (
     FlextInfraUtilitiesRopeCorePyModuleMixin,
 )

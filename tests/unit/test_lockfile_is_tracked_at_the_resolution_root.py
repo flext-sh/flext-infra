@@ -44,10 +44,10 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         target.write_text("", encoding="utf-8")
         # `git check-ignore` exits 0 when the path IS ignored, so a failed run
         # is the success case for a file that must stay trackable.
-        probe = u.Cli.run_checked(
-            ["git", "check-ignore", "-q", relative_path], cwd=root
+        probe = tm.ok(
+            u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
-    return probe.failure
+    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
 
 
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:

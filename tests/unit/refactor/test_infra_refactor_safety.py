@@ -116,8 +116,8 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         loaded = service.load_rules()
         tm.ok(loaded)
         results = service.refactor_project(tmp_path, dry_run=False, apply_safety=True)
-        assert results
-        assert all(item.success for item in results)
+        tm.that(results, empty=False)
+        tm.that(all(item.success for item in results), eq=True)
         tm.that(stub.calls, eq=["checkpoint", "checkpoint-state", "validate", "clear"])
         tm.that(stub.kept_paths, eq=[src_dir / "sample.py"])
 
@@ -133,8 +133,8 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         cleared = manager.clear_checkpoint(keep=[keep_file])
 
         tm.ok(cleared)
-        assert keep_file.with_suffix(".py.bak").exists()
-        assert not drop_file.with_suffix(".py.bak").exists()
+        tm.that(keep_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(not drop_file.with_suffix(".py.bak").exists(), eq=True)
 
     def test_create_pre_transformation_checkpoint_tracks_python_files(
         self, tmp_path: Path
@@ -164,5 +164,5 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
         created = manager.create_pre_transformation_checkpoint(tmp_path)
 
         tm.ok(created)
-        assert tracked_file.with_suffix(".py.bak").exists()
-        assert second_file.with_suffix(".py.bak").exists()
+        tm.that(tracked_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(second_file.with_suffix(".py.bak").exists(), eq=True)

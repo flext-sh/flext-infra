@@ -65,6 +65,8 @@ class FlextInfraConstantsBase(
     "Project/package name key."
     PACKAGE_IMPORT_NAME: Final[str] = "flext_infra"
     "Canonical import package name for flext-infra itself."
+    WORKSPACE_FINGERPRINT_READ_CHUNK_BYTES: Final[int] = 1024 * 1024
+    "Bounded read size used while hashing workspace files."
     VERSION: Final[str] = "version"
     "Version key within project or tool sections."
     PYREFLY: Final[str] = "pyrefly"

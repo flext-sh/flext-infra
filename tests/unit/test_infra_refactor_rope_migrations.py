@@ -138,7 +138,7 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         )
 
         tm.that(updated, has="NewName")
-        assert changes
+        tm.that(changes, empty=False)
         tm.that(file_path.read_text(encoding="utf-8"), eq=original_source)
 
     def test_class_name_not_renamed(self, tmp_path: Path) -> None:

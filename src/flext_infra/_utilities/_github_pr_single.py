@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import c, m
+from flext_infra.constants import c
+from flext_infra.models import m
 from flext_infra._utilities._github_pr_execution import (
     FlextInfraUtilitiesGithubPrExecutionMixin,
 )
@@ -14,7 +15,7 @@ from flext_infra._utilities._github_pr_execution import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutionMixin):

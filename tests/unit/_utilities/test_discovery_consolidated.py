@@ -388,9 +388,12 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
         tm.ok(result)
         tm.that(len(result.value), eq=1)
-        assert (
-            result.value[0].workspace_role
-            == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+        tm.that(
+            (
+                result.value[0].workspace_role
+                == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+            ),
+            eq=True,
         )
 
     def test_discover_projects_accepts_project_root_as_workspace(

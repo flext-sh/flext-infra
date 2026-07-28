@@ -50,9 +50,11 @@ def test_generator_execute_writes_reports_for_root_and_selected_project(
     ).execute()
 
     tm.ok(result)
-    assert (workspace / ".reports/docs/generate-report.md").exists()
-    assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
-    assert not (workspace / "flext-b/.reports/docs/generate-report.md").exists()
+    tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
+    tm.that(
+        not (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=True
+    )
 
 
 def test_validator_execute_fails_before_generation_and_succeeds_after(
@@ -72,7 +74,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
         workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
     ).execute()
     tm.ok(after)
-    assert (workspace / "flext-a/TODOS.md").exists()
+    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
 
 
 def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
@@ -81,7 +83,7 @@ def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
     result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     tm.ok(result)
-    assert (workspace / ".reports/docs/build-report.md").exists()
+    tm.that((workspace / ".reports/docs/build-report.md").exists(), eq=True)
 
 
 def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> None:

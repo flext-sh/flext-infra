@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra import c
+from flext_infra.constants import c
 from flext_infra._utilities._project_discovery_shape import (
     FlextInfraUtilitiesProjectDiscoveryShapeMixin,
 )
@@ -19,7 +19,7 @@ from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import t
+    from flext_infra.typings import t
 
 _log = u.fetch_logger(__name__)
 

@@ -51,7 +51,7 @@ class TestsExtendedProjectRunners:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
+        tm.that({"lint", "format", "pyrefly"} <= set(result.value[0].gates), eq=True)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(

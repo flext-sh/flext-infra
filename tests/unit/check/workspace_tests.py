@@ -104,7 +104,7 @@ class TestFlextInfraWorkspaceChecker:
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
         tm.ok(result)
-        assert not result.value
+        tm.that(not result.value, eq=True)
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
@@ -112,7 +112,7 @@ class TestFlextInfraWorkspaceChecker:
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
         tm.ok(result)
-        assert reports_dir.exists()
+        tm.that(reports_dir.exists(), eq=True)
 
     def test_lint_returns_gate_result(self, tmp_path: Path) -> None:
         """Test that lint() returns a GateResult."""

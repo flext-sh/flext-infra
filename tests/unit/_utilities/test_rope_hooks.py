@@ -53,12 +53,19 @@ class TestsFlextInfraUtilitiesRopeHooks:
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=False)
         )
 
-        assert any(
-            result.file_path == consumer_path and result.modified for result in results
+        tm.that(
+            any(
+                result.file_path == consumer_path and result.modified
+                for result in results
+            ),
+            eq=True,
         )
-        assert (
-            'class FlextDemoConstants:\n    FOO = "value"'
-            in constants_path.read_text(encoding="utf-8")
+        tm.that(
+            (
+                'class FlextDemoConstants:\n    FOO = "value"'
+                in constants_path.read_text(encoding="utf-8")
+            ),
+            eq=True,
         )
         consumer_text = consumer_path.read_text(encoding="utf-8")
         tm.that(consumer_text, has="from demo_pkg.constants import c")
@@ -73,7 +80,7 @@ class TestsFlextInfraUtilitiesRopeHooks:
             u.Infra.run_rope_post_hooks(workspace_root, dry_run=True)
         )
 
-        assert any(result.file_path == consumer_path for result in results)
-        assert all(not result.modified for result in results)
+        tm.that(any(result.file_path == consumer_path for result in results), eq=True)
+        tm.that(all(not result.modified for result in results), eq=True)
         tm.that(constants_path.read_text(encoding="utf-8"), eq=original_constants)
         tm.that(consumer_path.read_text(encoding="utf-8"), eq=original_consumer)

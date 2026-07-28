@@ -83,12 +83,13 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
         self.logger.info(
             "docs_serve_scope_started", project=scope.name, dev_addr=self.dev_addr
         )
-        return u.Infra.docs_serve_mkdocs(
+        report: m.Infra.DocsPhaseReport = u.Infra.docs_serve_mkdocs(
             scope,
             dev_addr=self.dev_addr,
             livereload=self.livereload,
             strict=self.strict,
         )
+        return report
 
 
 __all__: list[str] = ["FlextInfraDocServer"]

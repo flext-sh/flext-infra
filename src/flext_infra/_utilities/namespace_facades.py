@@ -9,7 +9,9 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra import c, m, t
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_common import (

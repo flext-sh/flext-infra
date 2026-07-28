@@ -674,7 +674,6 @@ split-on-trailing-comma = false
   "unused-import",
 ]
 "**/tests/**" = [
-  "assert",
   "compare-to-empty-string",
   "magic-value-comparison",
   "undocumented-public-class",

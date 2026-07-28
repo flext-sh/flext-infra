@@ -6,43 +6,38 @@
 # =============================================================================
 
 # === CONFIGURATION (override before include) ===
-PROJECT_NAME ?= unnamed
+PROJECT_NAME ?= flext-infra
 PYTHON_VERSION ?= 3.13
 SRC_DIR ?= src
 TESTS_DIR ?= tests
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
-PYTEST_ARGS ?= 
+PYTEST_ARGS ?=
+PYTEST_TARGETS ?= tests
 DIAG ?= 0
-CHECK_GATES ?= 
-VALIDATE_GATES ?= 
+CHECK_GATES ?=
+VALIDATE_GATES ?=
 SCOPE ?= project
-NAMESPACE ?= 
-GATES ?= 
-PROPAGATE ?= 
+NAMESPACE ?=
+GATES ?=
+PROPAGATE ?=
 DOCS_PHASE ?= all
-FIX ?= 
+FIX ?=
 PR_ACTION ?= status
-PR_BASE ?= main
-PR_HEAD ?= 
-PR_NUMBER ?= 
-PR_TITLE ?= 
-PR_BODY ?= 
+PR_BASE ?=
+PR_HEAD ?=
+PR_TITLE ?=
+PR_BODY ?=
 PR_DRAFT ?= 0
-PR_MERGE_METHOD ?= squash
-PR_AUTO ?= 0
-PR_DELETE_BRANCH ?= 0
-PR_CHECKS_STRICT ?= 0
-PR_RELEASE_ON_MERGE ?= 1
-FILE ?= 
-FILES ?= 
-CHANGED_ONLY ?= 
-MATCH ?= 
-RUFF_ARGS ?= 
-PYRIGHT_ARGS ?= 
-CHECK_ONLY ?= 
-FAIL_FAST ?= 
-VERBOSE ?= 
+FILE ?=
+FILES ?=
+CHANGED_ONLY ?=
+MATCH ?=
+RUFF_ARGS ?=
+PYRIGHT_ARGS ?=
+CHECK_ONLY ?=
+FAIL_FAST ?=
+VERBOSE ?=
 
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
@@ -52,7 +47,9 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
-CANONICAL_PROJECT_ROOT := $(shell git worktree list --porcelain 2>/dev/null | awk '/^worktree / { print substr($$0, 10); exit }')
+CALLER_PATH := $(PATH)
+CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
+CANONICAL_PROJECT_ROOT := $(shell common=$$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0; configured=$$(git config --path --get core.worktree 2>/dev/null); if [ -n "$$configured" ]; then cd "$$common/$$configured" 2>/dev/null && pwd -P; elif [ "$${common##*/}" = ".git" ]; then cd "$$common/.." 2>/dev/null && pwd -P; fi)
 ifeq ($(CANONICAL_PROJECT_ROOT),)
 CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
 endif
@@ -83,22 +80,29 @@ endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
 else
-WORKSPACE_ROOT := $(PROJECT_ROOT)
+WORKSPACE_ROOT := $(CANONICAL_PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
 endif
 
 override UV_PROJECT := $(WORKSPACE_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
 override VIRTUAL_ENV := $(ACTIVE_VENV)
-override PATH := $(ACTIVE_VENV)/bin:/usr/local/bin:/usr/bin:/bin
+SANITIZED_CALLER_PATH := $(CALLER_PATH)
+ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
+SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
+SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
+ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
+SANITIZED_CALLER_PATH :=
+endif
+endif
+override PATH := $(ACTIVE_VENV)/bin:$(SANITIZED_CALLER_PATH)
 export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
 VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
-UV_VERSION := 0.11.29
-UV := mise exec uv@$(UV_VERSION) -- uv
+UV ?= uv
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
 
@@ -288,7 +292,7 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "Selectors and options:"
 
-	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"
 
 	$(Q)echo "  MYPY_MEMORY_LIMIT_MB=6144  Mypy address-space cap"
 
@@ -309,6 +313,8 @@ help: ## Show commands
 	$(Q)echo "  PYRIGHT_ARGS=\"--level basic\" Extra args for pyright"
 
 	$(Q)echo "  PYTEST_ARGS=\"-k expr\"       Extra pytest args"
+
+	$(Q)echo "  PYTEST_TARGETS=\"tests/unit\" Pytest collection targets"
 
 	$(Q)echo "  MATCH=test_name             Alias for pytest -k"
 
@@ -331,17 +337,11 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "PR variables:"
 
-	$(Q)echo "  PR_ACTION=status|create|view|checks|merge|close"
+	$(Q)echo "  PR_ACTION=status|create"
 
-	$(Q)echo "  PR_BASE=main  PR_HEAD=<branch>  PR_NUMBER=<id>"
+	$(Q)echo "  PR_BASE=<branch>  PR_HEAD=<branch>"
 
 	$(Q)echo "  PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1"
-
-	$(Q)echo "  PR_MERGE_METHOD=squash|merge|rebase  PR_AUTO=0|1"
-
-	$(Q)echo "  PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1"
-
-	$(Q)echo "  PR_RELEASE_ON_MERGE=0|1"
 
 
 	$(Q)echo ""
@@ -368,7 +368,7 @@ _boot_impl:
 	$(Q)$(UV) lock
 	$(Q)$(UV) sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
-		hooks_path=$$(git config --get core.hooksPath || true); \
+		hooks_path=$$(git config --get --default '' core.hooksPath); \
 		if [ -n "$$hooks_path" ]; then \
 			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
 		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
@@ -390,7 +390,7 @@ _build_impl:
 	$(UV) build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
-check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
+check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells to select)
 	$(call _run_verb_hooks,pre,check,$(WHAT))
 	$(call _run_verb_body,check,_check_impl)
 	$(call _run_verb_hooks,post,check,$(WHAT))
@@ -400,14 +400,14 @@ _check_impl:
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
 			case "$$g" in \
-				lint|format|pyrefly|mypy|pyright|security|markdown|smells|type) ;; \
-				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells,type)"; exit 2;; \
+				lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells)"; exit 2;; \
 			esac; \
 		done; \
 	else \
 		gates="lint,format,pyrefly,mypy,pyright,security,markdown,smells"; \
 	fi; \
-	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
+	gates=$$(echo "$$gates" | tr ',' ' ' | tr ' ' ','); \
 	_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -431,19 +431,19 @@ _check_impl:
 		echo "Fast-path check: $$_files"; \
 		status=0; \
 		case ",$$gates," in \
-			*,lint,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff check $$_files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$?;; \
+			*,lint,*) env -u PYTHONPATH -u MYPYPATH $(UV) run ruff check $$_files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,format,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff format $$_files $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),--check,--quiet),--check) || status=$$?;; \
+			*,format,*) env -u PYTHONPATH -u MYPYPATH $(UV) run ruff format $$_files $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),--check,--quiet),--check) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,pyright,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyright $$_files $(PYRIGHT_ARGS) || status=$$?;; \
+			*,pyright,*) env -u PYTHONPATH -u MYPYPATH $(UV) run pyright $$_files $(PYRIGHT_ARGS) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyrefly check $$_files || status=$$?;; \
+			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(UV) run pyrefly check $$_files || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) env -u PYTHONPATH -u MYPYPATH $(POETRY) run mypy $$_files || { $(REPORT_MYPY_FAILURE); status=$$code; };; \
+			*,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) env -u PYTHONPATH -u MYPYPATH $(UV) run mypy $$_files || { $(REPORT_MYPY_FAILURE); status=$$code; };; \
 		esac; \
 		exit $$status; \
 	fi; \
@@ -501,9 +501,9 @@ _fmt_impl:
 	fi; \
 	if [ -n "$$_fmt_files" ]; then _fmt_target="$$_fmt_files"; fi; \
 	if [ "$(CHECK_ONLY)" = "1" ]; then \
-		$(POETRY) run ruff format $$_fmt_target --check; \
+		$(UV) run ruff format $$_fmt_target --check; \
 	else \
-		$(POETRY) run ruff format $$_fmt_target --quiet; \
+		$(UV) run ruff format $$_fmt_target --quiet; \
 	fi
 	$(Q)if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ] && [ -n "$(ALL_PROJECTS)" ]; then \
 		md_roots=". $(ALL_PROJECTS)"; \
@@ -699,7 +699,7 @@ _val_impl:
 		echo "ERROR: FIX must be empty or 1, got '$(FIX)'"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(FIX)" = "1" ]; then $(POETRY) run ruff check --fix . --quiet; fi
+	$(Q)if [ "$(FIX)" = "1" ]; then $(UV) run ruff check --fix . --quiet; fi
 	$(Q)gates="$(VALIDATE_GATES)"; \
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
@@ -712,8 +712,8 @@ _val_impl:
 		gates="complexity,docstring"; \
 	fi; \
 	if echo "$$gates" | grep -qw complexity; then \
-		$(POETRY) run radon cc $(SRC_DIR) -n E -a --total-average; \
-		$(POETRY) run radon mi $(SRC_DIR) -n C -s --sort; \
+		$(UV) run radon cc $(SRC_DIR) -n E -a --total-average; \
+		$(UV) run radon mi $(SRC_DIR) -n C -s --sort; \
 	fi; \
 	if echo "$$gates" | grep -qw docstring; then \
 		$(PROJECT_INFRA_DOCS) audit --workspace . --checks docstrings --docstring-min $(DOCSTRING_MIN) --output-dir .reports/docs; \
@@ -805,17 +805,11 @@ pr: ## Manage pull requests for this repository
 	$(Q)$(PROJECT_INFRA_GITHUB) pr \
 		--repo-root "$(CURDIR)" \
 		--action "$(PR_ACTION)" \
-		--base "$(PR_BASE)" \
+		$(if $(PR_BASE),--base "$(PR_BASE)",) \
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
-		$(if $(PR_NUMBER),--number "$(PR_NUMBER)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)" \
-		--merge-method "$(PR_MERGE_METHOD)" \
-		--auto "$(PR_AUTO)" \
-		--delete-branch "$(PR_DELETE_BRANCH)" \
-		--checks-strict "$(PR_CHECKS_STRICT)" \
-		--release-on-merge "$(PR_RELEASE_ON_MERGE)"
+		--draft "$(PR_DRAFT)"
 
 clean: ## Clean artifacts
 	$(Q)rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage* \

@@ -24,6 +24,9 @@ class TestsFlextInfraBasemkRenderer:
 
         tm.ok(result)
         tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
+        tm.that(
+            any(line != line.rstrip() for line in result.value.splitlines()), eq=False
+        )
 
     def test_render_all_has_no_scripts_path_references(self) -> None:
         """Exclude legacy script paths from the rendered contract."""
