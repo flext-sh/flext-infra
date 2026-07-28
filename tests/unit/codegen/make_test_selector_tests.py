@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import config
 
 
@@ -33,7 +35,10 @@ class TestsMakeTestSelector:
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
-        assert any(verb.name == "test" for verb in config.Infra.codegen.make.verbs)
+        tm.that(
+            any(verb.name == "test" for verb in config.Infra.codegen.make.verbs),
+            eq=True,
+        )
 
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
         """The recipe must forward the knob `base.mk` documents.
@@ -47,7 +52,13 @@ class TestsMakeTestSelector:
             block.split("\n\n", 1)[0]
             for block in template.split("_builtin_test_all:")[1:]
         ]
-        assert recipes, "template declares no _builtin_test_all recipe"
+        tm.that(
+            bool(recipes), eq=True, msg="template declares no _builtin_test_all recipe"
+        )
         direct = [r for r in recipes if "pytest" in r]
-        assert direct, "no _builtin_test_all recipe invokes pytest directly"
-        assert all("PYTEST_ARGS" in recipe for recipe in direct)
+        tm.that(
+            bool(direct),
+            eq=True,
+            msg="no _builtin_test_all recipe invokes pytest directly",
+        )
+        tm.that(all("PYTEST_ARGS" in recipe for recipe in direct), eq=True)

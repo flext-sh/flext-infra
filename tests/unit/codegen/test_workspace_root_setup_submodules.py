@@ -58,12 +58,13 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
+    tm.ok(planned)
+    plan = m.Infra.CodegenPlan.model_validate(planned.value)
     makefiles = tuple(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefiles, len=1)
-    rendered = makefiles[0].rendered
+    rendered: str = makefiles[0].rendered
     tm.that(rendered, has="MAKE_PROFILE := workspace-root")
     return rendered
 

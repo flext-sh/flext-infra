@@ -119,7 +119,8 @@ class TestsInfraGithub:
 
         result = u.Infra.run_github_pull_request(
             m.Infra.GithubPullRequestRequest(
-                repo_root=str(workspace / "flext-a"), action="status"
+                repo_root=str(workspace / "flext-a"),
+                action=c.Infra.PullRequestAction.STATUS,
             )
         )
 
@@ -159,7 +160,7 @@ class TestsInfraGithub:
         hardcoding verb names) keeps this test correct when the SSOT changes.
         """
         declared = {verb.name for verb in config.Infra.codegen.make.verbs}
-        workspace_root = Path(__file__).resolve().parents[3].parent
+        workspace_root = Path(__file__).resolve().parents[3]
         workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(
             (workspace_root / ".github/workflows").glob("*.yml")
         )

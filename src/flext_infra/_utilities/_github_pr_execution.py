@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, m
+from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -18,7 +19,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
 
     @staticmethod
     def _github_pr_list_command(
-        request: m.Infra.GithubPullRequestRequest, head: str, *, url_only: bool
+        request: p.Infra.GithubPullRequestFields, head: str, *, url_only: bool
     ) -> list[str]:
         """Build the native idempotence/status query."""
         command = [
@@ -42,7 +43,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
 
     @staticmethod
     def _github_pr_create_command(
-        request: m.Infra.GithubPullRequestRequest, head: str
+        request: p.Infra.GithubPullRequestFields, head: str
     ) -> p.Result[t.StrSequence]:
         """Build one fully non-interactive native create command."""
         if request.title is None:
@@ -104,7 +105,9 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     @staticmethod
     def _github_pr_current_head(repo_root: Path) -> p.Result[str]:
         """Resolve a non-detached current branch."""
-        result = u.Infra.git_capture(repo_root, ("branch", "--show-current"))
+        result = FlextInfraUtilitiesGitWorktreeMixin.git_capture(
+            repo_root, ("branch", "--show-current")
+        )
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
         head = result.value.strip()
@@ -116,7 +119,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     def _github_pr_execute_create(
         cls,
         *,
-        request: m.Infra.GithubPullRequestRequest,
+        request: p.Infra.GithubPullRequestFields,
         repo_root: Path,
         head: str,
         display: str,
@@ -147,7 +150,7 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     def execute_github_pull_request(
         cls,
         *,
-        request: m.Infra.GithubPullRequestRequest,
+        request: p.Infra.GithubPullRequestFields,
         repo_root: Path,
         display: str,
         log_path: Path,
@@ -160,14 +163,14 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
             if request.head is not None
             else cls._github_pr_current_head(repo_root)
         )
-        if request.action is c.Infra.PullRequestAction.STATUS and head_result.failure:
+        if request.action == c.Infra.PullRequestAction.STATUS and head_result.failure:
             execution = u.Cli.run_raw(
                 (c.Infra.GH, c.Infra.PR, c.Infra.PullRequestAction.STATUS),
                 cwd=repo_root,
             )
         elif head_result.failure:
             return r.fail(head_result.error or "head branch is required")
-        elif request.action is c.Infra.PullRequestAction.CREATE:
+        elif request.action == c.Infra.PullRequestAction.CREATE:
             return cls._github_pr_execute_create(
                 request=request,
                 repo_root=repo_root,

@@ -23,6 +23,15 @@ PYTEST_ARGS ?=
 PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 WHAT ?=
 
+comma := ,
+CHECK_GATE_NAMES := lint format pyrefly mypy pyright vulture
+CHECK_GATE_LIST := $(subst $(comma), ,$(strip $(CHECK_GATES)))
+UNKNOWN_CHECK_GATES := $(filter-out $(CHECK_GATE_NAMES),$(CHECK_GATE_LIST))
+ifneq ($(strip $(UNKNOWN_CHECK_GATES)),)
+$(error ERROR: unsupported CHECK_GATES: $(UNKNOWN_CHECK_GATES))
+endif
+_check_gate_selected = $(if $(CHECK_GATE_LIST),$(filter $(1),$(CHECK_GATE_LIST)),all)
+
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
@@ -333,13 +342,13 @@ _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
 
 _builtin_check_all: _builtin_require_environment
-	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
-	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-	@$(UV_RUN) pyrefly check
-	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
-	@$(UV_RUN) pyright
+	$(if $(call _check_gate_selected,lint),@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS))
+	$(if $(call _check_gate_selected,format),@$(UV_RUN) ruff format --check $(RUFF_PATHS))
+	$(if $(call _check_gate_selected,pyrefly),@$(UV_RUN) pyrefly check)
+	$(if $(call _check_gate_selected,mypy),@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; })
+	$(if $(call _check_gate_selected,pyright),@$(UV_RUN) pyright)
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
-	@$(UV_RUN) vulture
+	$(if $(call _check_gate_selected,vulture),@$(UV_RUN) vulture)
 
 _builtin_test_all: _builtin_require_environment
 	@$(UV_RUN) python -m pytest $(PYTEST_TARGETS) $(PYTEST_ARGS)
