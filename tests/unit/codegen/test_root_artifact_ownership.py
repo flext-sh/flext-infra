@@ -20,10 +20,17 @@ class TestsRootArtifactOwnership:
         paths = tuple(item.path.as_posix() for item in configured)
 
         tm.that(len(paths), eq=len(set(paths)))
-        for workflow in (".github/workflows/ci.yml", ".github/workflows/ci-matrix.yml"):
-            owned = next(
-                item for item in configured if item.path.as_posix() == workflow
-            )
+        required = (
+            ".github/workflows/ci.yml",
+            ".github/workflows/ci-matrix.yml",
+            "ci/docker/alpine.Dockerfile",
+            "ci/docker/arch.Dockerfile",
+            "ci/docker/debian.Dockerfile",
+            "ci/docker/fedora.Dockerfile",
+            "ci/docker/ubuntu.Dockerfile",
+        )
+        for path in required:
+            owned = next(item for item in configured if item.path.as_posix() == path)
             tm.that(owned.owner, eq="codegen")
             tm.that(owned.policy, eq="full")
 

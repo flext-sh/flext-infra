@@ -1100,8 +1100,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
+                    repository_branch=repository.branch,
                     python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
+                )
+            )
+        destination_path = Path(destination)
+        if (
+            destination_path.parent.as_posix() == "ci/docker"
+            and destination_path.suffix == ".Dockerfile"
+        ):
+            return r[p.Model].ok(
+                m.Infra.DistroDockerRenderSpec(
+                    package_name=dist.replace("-", "_"),
+                    python_version=codegen.toolchain.python_version,
                 )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:

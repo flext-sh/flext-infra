@@ -132,12 +132,25 @@ class FlextInfraConfigModels:
         """Typed input consumed by generated GitHub workflow templates."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        repository_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Repository integration branch")
+        ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
+        ]
+
+    class DistroDockerRenderSpec(_ConfigContract):
+        """Typed input consumed by generated distro Dockerfiles."""
+
+        package_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Python import package name")
+        ]
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
