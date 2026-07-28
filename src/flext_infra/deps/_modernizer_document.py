@@ -93,12 +93,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
 
     def _format_rendered_pyproject(self, path: Path, rendered: str) -> p.Result[str]:
         """Format rendered pyproject TOML with the workspace Taplo contract."""
-        return u.Infra.format_toml_source(
-            rendered,
-            path=path,
-            toolchain_root=self.root,
-            taplo_version=config.Infra.codegen.toolchain.taplo_version,
-        )
+        return u.Infra.format_toml_source(rendered, path=path, toolchain_root=self.root)
 
     def _project_is_flext_child(self, project_dir: Path) -> bool:
         """Resolve physical attachment from canonical Git topology."""

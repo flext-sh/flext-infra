@@ -68,6 +68,7 @@ dev = [
   "pyupgrade>=3.21.2",
   "radon>=6.0.1",
   "ruff>=0.16.0",
+  "taplo>=0.9.3",
   "types-cachetools>=7.0.0.20260713",
   "types-cffi>=2.0.0.20260518",
   "types-click>=7.1.8",

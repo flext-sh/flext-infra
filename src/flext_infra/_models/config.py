@@ -76,9 +76,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
-        taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
-        ]
 
         @m.computed_field()
         @property

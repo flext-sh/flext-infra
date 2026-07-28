@@ -41,20 +41,10 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     def format_toml_source(
-        source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+        source: str, *, path: Path, toolchain_root: Path
     ) -> p.Result[str]:
-        """Format TOML through the configured workspace Taplo toolchain."""
-        command = [
-            "mise",
-            "exec",
-            f"taplo@{taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            str(path),
-        ]
+        """Format TOML through the Taplo binary resolved by the uv environment."""
+        command = ["taplo", "format", "-", "--stdin-filepath", str(path)]
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
         if config_path.is_file():
             command.extend(("--config", str(config_path)))

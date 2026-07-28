@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -72,7 +72,6 @@ class FlextInfraProjectMigratorPyprojectMixin:
                 document.as_string(),
                 path=pyproject_path,
                 toolchain_root=self.workspace_root,
-                taplo_version=config.Infra.codegen.toolchain.taplo_version,
             )
             if formatted.failure:
                 return r[str].fail(formatted.error or "pyproject format failed")
