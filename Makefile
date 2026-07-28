@@ -24,7 +24,7 @@ PYTEST_TARGETS ?=
 WHAT ?=
 
 comma := ,
-CHECK_GATE_NAMES := lint format pyrefly mypy pyright vulture
+CHECK_GATE_NAMES := lint format pyrefly mypy pyright vulture workflows
 CHECK_GATE_LIST := $(subst $(comma), ,$(strip $(CHECK_GATES)))
 UNKNOWN_CHECK_GATES := $(filter-out $(CHECK_GATE_NAMES),$(CHECK_GATE_LIST))
 ifneq ($(strip $(UNKNOWN_CHECK_GATES)),)
@@ -365,6 +365,7 @@ _builtin_check_all: _builtin_require_environment
 	$(if $(call _check_gate_selected,pyright),@$(UV_RUN) pyright)
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.
 	$(if $(call _check_gate_selected,vulture),@$(UV_RUN) vulture)
+	$(if $(call _check_gate_selected,workflows),@$(UV_RUN) actionlint)
 
 _builtin_test_all: _builtin_require_environment
 	@$(UV_RUN) python -m pytest $(if $(strip $(PYTEST_TARGETS)),$(PYTEST_TARGETS),$(if $(strip $(PYTEST_ARGS)),,"$(PROJECT_ROOT)/tests")) $(PYTEST_ARGS)

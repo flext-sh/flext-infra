@@ -949,8 +949,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
-            if managed.policy in {"delegated", "manual"} or managed.path == Path(
-                c.Infra.PYPROJECT_FILENAME
+            if (
+                managed.policy in {"delegated", "manual"}
+                or managed.path == Path(c.Infra.PYPROJECT_FILENAME)
+                or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
             entries = tuple(
@@ -1046,6 +1048,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(codegen)
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+        if destination in {
+            ".github/workflows/ci.yml",
+            ".github/workflows/ci-matrix.yml",
+        }:
+            return r[p.Model].ok(
+                m.Infra.GithubWorkflowRenderSpec(
+                    dist=dist,
+                    python_version=codegen.toolchain.python_version,
+                    github_actions=codegen.github_actions,
+                )
+            )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = c.Infra.MakeProfile(repository.profile)
             members = (

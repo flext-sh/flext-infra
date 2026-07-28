@@ -158,7 +158,8 @@ def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
         (workspace / relative_path).unlink()
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    tm.that(all(report.result == "OK" for report in validation.value), eq=True)
+    for report in validation.value:
+        tm.that(report.result, eq="OK")
     generator.generate(request)
     tm.that(catalog.read_bytes(), eq=first_output)
 

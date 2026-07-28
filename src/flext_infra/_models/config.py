@@ -98,6 +98,35 @@ class FlextInfraConfigModels:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
+    class GithubActionPinSpec(_ConfigContract):
+        """One immutable GitHub Action reference from the codegen catalog."""
+
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="GitHub owner/repository action name")
+        ]
+        version: Annotated[
+            t.NonEmptyStr, m.Field(description="Human-readable upstream release tag")
+        ]
+        sha: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9a-f]{40}$",
+                description="Immutable upstream action commit",
+            ),
+        ]
+
+    class GithubWorkflowRenderSpec(_ConfigContract):
+        """Typed input consumed by generated GitHub workflow templates."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+        github_actions: Annotated[
+            Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
+            m.Field(description="Immutable GitHub Action catalog"),
+        ]
+
     class UvPackageSelectorSpec(_ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
 
@@ -938,6 +967,10 @@ class FlextInfraConfigModels:
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
+        ]
+        github_actions: Annotated[
+            Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
+            m.Field(description="Immutable GitHub Action catalog"),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
