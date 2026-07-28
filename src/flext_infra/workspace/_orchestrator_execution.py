@@ -159,9 +159,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             )
             results.append(cmd_output)
             state = "PASS" if succeeded else "FAIL"
+            classification = u.Infra.process_exit_classification(cmd_output.exit_code)
             u.Cli.emit_raw(
                 f"[{idx}/{total}] {state} {project} {verb} "
-                f"exit={cmd_output.exit_code} duration={cmd_output.duration:.2f}s\n"
+                f"exit={cmd_output.exit_code} classification={classification} "
+                f"duration={cmd_output.duration:.2f}s\n"
             )
             if succeeded:
                 success += 1
@@ -182,9 +184,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         exit_code = next(
             (output.exit_code for output in results if output.exit_code != 0), 0
         )
+        exit_classification = u.Infra.process_exit_classification(exit_code)
         u.Cli.emit_raw(
             f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
-            f"passed={success} failed={failed} skipped={skipped} exit={exit_code}\n"
+            f"passed={success} failed={failed} skipped={skipped} exit={exit_code} "
+            f"classification={exit_classification}\n"
         )
         _ = elapsed_total
         if failed > 0:
@@ -193,7 +197,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             classification = u.Infra.classify_process_exit(exit_code)
             return r.fail(
                 f"orchestration completed with failures: {failed} "
-                f"(first failure {failed_project} exit={exit_code}; {classification})"
+                f"(first failure {failed_project} exit={exit_code} "
+                f"{exit_classification})"
             )
         return r.ok(results)
 
@@ -260,7 +265,8 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
     def _gates_of(make_args: t.StrSequence) -> str:
         """Return the gate selection carried by make arguments, if declared."""
         prefix = f"{c.Infra.CHECK_GATES_VARIABLE}="
-        for make_arg in make_args:
+        for raw_make_arg in make_args:
+            make_arg: str = t.Infra.STR_ADAPTER.validate_python(raw_make_arg)
             if make_arg.startswith(prefix):
                 return make_arg[len(prefix) :]
         return ""

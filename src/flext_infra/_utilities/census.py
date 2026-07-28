@@ -571,31 +571,33 @@ class FlextInfraUtilitiesRefactorCensus:
 
         def _rewrite_single(match: t.Infra.RegexMatch) -> str:
             """Rewrite single."""
-            body: str = match.group("body")
+            body: str = t.Infra.STR_ADAPTER.validate_python(match.group("body"))
             entries = [entry.strip() for entry in body.split(",") if entry.strip()]
             remaining = [entry for entry in entries if entry not in quoted_target]
             if len(remaining) == len(entries):
-                original_text: str = match.group(0)
+                original_text: str = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                 result = original_text
             else:
-                prefix: str = match.group("prefix")
+                prefix: str = t.Infra.STR_ADAPTER.validate_python(match.group("prefix"))
                 result = f"{prefix}[{', '.join(remaining)}]"
             return result
 
         def _rewrite_multi(match: t.Infra.RegexMatch) -> str:
             """Rewrite multi."""
-            body: str = match.group("body")
+            body: str = t.Infra.STR_ADAPTER.validate_python(match.group("body"))
             if "\n" not in body:
-                original_text: str = match.group(0)
+                original_text: str = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                 result = original_text
             else:
                 entries = [entry.strip() for entry in body.split(",") if entry.strip()]
                 remaining = [entry for entry in entries if entry not in quoted_target]
                 if len(remaining) == len(entries):
-                    original_text = match.group(0)
+                    original_text = t.Infra.STR_ADAPTER.validate_python(match.group(0))
                     result = original_text
                 else:
-                    prefix: str = match.group("prefix")
+                    prefix: str = t.Infra.STR_ADAPTER.validate_python(
+                        match.group("prefix")
+                    )
                     if not remaining:
                         result = f"{prefix}[]"
                     else:

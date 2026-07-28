@@ -103,6 +103,8 @@ class FlextInfraConstantsBase(
     "Pyrefly/pyright python-version settings key (hyphenated)."
     PYTHON_VERSION_FILENAME: Final[str] = ".python-version"
     "Interpreter-selection file consumed by pyenv/asdf/mise."
+    TAPLO_CONFIG_FILENAME: Final[str] = ".taplo.toml"
+    "Taplo workspace formatting configuration filename."
     PYTHON_VERSION_UNDERSCORE: Final[str] = "python_version"
     "Mypy python_version settings key (underscored)."
     EXTEND: Final[str] = "extend"
@@ -242,8 +244,8 @@ class FlextInfraConstantsBase(
         "UV_NO_VERIFY_HASHES",
     )
     "Ambient uv variables removed before a policy-bound release build."
-    SG: Final[str] = "sg"
-    "ast-grep (sg) binary."
+    SG: Final[str] = "ast-grep"
+    "Canonical ast-grep binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
     MARKDOWNLINT: Final[str] = "markdownlint"

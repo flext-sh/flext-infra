@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, overload, override
 
+from flext_infra import r
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.service import FlextInfraRefactorService
-from flext_tests import r, tm
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -133,7 +134,7 @@ class TestsFlextInfraRefactorInfraRefactorSafety:
 
         tm.ok(cleared)
         tm.that(keep_file.with_suffix(".py.bak").exists(), eq=True)
-        tm.that(not drop_file.with_suffix(".py.bak").exists(), eq=True)
+        tm.that(drop_file.with_suffix(".py.bak").exists(), eq=False)
 
     def test_create_pre_transformation_checkpoint_tracks_python_files(
         self, tmp_path: Path

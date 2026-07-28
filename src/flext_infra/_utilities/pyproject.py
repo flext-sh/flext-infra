@@ -8,12 +8,16 @@ from __future__ import annotations
 
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tomlkit import TOMLDocument
 
 from flext_cli import u
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_core import r
+from flext_infra import c, t
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
@@ -33,6 +37,42 @@ def _validate_infra_payload(payload: object) -> t.JsonMapping | None:
 
 class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
+
+    @staticmethod
+    def format_toml_source(
+        source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+    ) -> p.Result[str]:
+        """Format TOML through the configured workspace Taplo toolchain."""
+        command = [
+            "mise",
+            "exec",
+            f"taplo@{taplo_version}",
+            "--",
+            "taplo",
+            "format",
+            "-",
+            "--stdin-filepath",
+            str(path),
+        ]
+        config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
+        if config_path.is_file():
+            command.extend(("--config", str(config_path)))
+        result = u.Cli.run_raw(
+            command,
+            cwd=next(
+                candidate
+                for candidate in (toolchain_root, *toolchain_root.parents)
+                if candidate.is_dir()
+            ),
+            input_data=source.encode(c.Cli.ENCODING_DEFAULT),
+        )
+        if result.failure:
+            return r[str].fail(result.error or "taplo format failed")
+        output = result.value
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
+        return r[str].ok(output.stdout)
 
     @staticmethod
     @cache

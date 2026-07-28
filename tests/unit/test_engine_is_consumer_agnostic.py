@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, u
+from flext_infra import config, t, u
 from flext_tests import tm
 
 
@@ -40,7 +40,8 @@ def owned_provider() -> str:
     if entry is None:
         msg = f"engine absent from its own catalog: {distribution}"
         raise AssertionError(msg)
-    return entry.provider
+    provider: str = t.Infra.STR_ADAPTER.validate_python(entry.provider)
+    return provider
 
 
 class TestsFlextInfraEngineIsConsumerAgnostic:

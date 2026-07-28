@@ -46,8 +46,11 @@ class TestsFlextInfraBasemkMain:
             tm.that(exit_code, eq=0)
             generated = output_file.read_text(encoding="utf-8")
             tm.that(generated, has="PROJECT_NAME ?= ai-hub")
-            tm.that(generated, has='test -x "$(FLEXT_INFRA_PYTHON)"')
-            tm.that(generated, lacks="$(if $(wildcard $(VENV_PYTHON))")
+            tm.that(
+                generated,
+                has='PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)"',
+                lacks="$(if $(wildcard $(VENV_PYTHON))",
+            )
 
     def test_basemk_main_with_project_name_overrides_output(
         self, tmp_path: Path
@@ -55,17 +58,14 @@ class TestsFlextInfraBasemkMain:
         output_file = tmp_path / "base.mk"
 
         tm.that(
-            (
-                basemk_main([
-                    "generate",
-                    "--project-name",
-                    "my-project",
-                    "--output",
-                    str(output_file),
-                ])
-                == 0
-            ),
-            eq=True,
+            basemk_main([
+                "generate",
+                "--project-name",
+                "my-project",
+                "--output",
+                str(output_file),
+            ]),
+            eq=0,
         )
         tm.that(
             output_file.read_text(encoding="utf-8"), has="PROJECT_NAME ?= my-project"
@@ -85,9 +85,5 @@ class TestsFlextInfraBasemkMain:
         blocked_parent.write_text("occupied", encoding="utf-8")
 
         tm.that(
-            (
-                basemk_main(["generate", "--output", str(blocked_parent / "base.mk")])
-                == 1
-            ),
-            eq=True,
+            basemk_main(["generate", "--output", str(blocked_parent / "base.mk")]), eq=1
         )

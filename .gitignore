@@ -46,6 +46,7 @@ scripts/maintenance/
 !.taplo.toml
 !pyrefly.toml
 !poetry.lock
+!uv.lock
 !ruff-shared.toml
 
 # mise toolchain pinning

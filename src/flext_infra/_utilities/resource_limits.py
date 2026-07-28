@@ -6,9 +6,8 @@ import shutil
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import u
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m, t
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -134,19 +133,17 @@ class FlextInfraUtilitiesResourceLimits:
         """Return a controlled diagnostic only for timeout or memory exhaustion."""
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
-        resource_failure = (
-            output.exit_code == c.Infra.PROCESS_TIMEOUT_EXIT_CODE
-            or output.exit_code < 0
-            or output.exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
-            or any(marker in combined for marker in cls._MEMORY_FAILURE_MARKERS)
+        classification = FlextInfraUtilitiesProcess.process_exit_classification(
+            output.exit_code
+        )
+        resource_failure = classification != "failure" or any(
+            marker in combined for marker in cls._MEMORY_FAILURE_MARKERS
         )
         if not resource_failure:
             return None
         signal = (
-            -output.exit_code
-            if output.exit_code < 0
-            else output.exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
-            if output.exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET
+            classification.removeprefix("signal=")
+            if classification.startswith("signal=")
             else "none"
         )
         detail = (output.stderr or output.stdout).strip() or "resource limit reached"

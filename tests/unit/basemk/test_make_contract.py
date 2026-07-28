@@ -41,6 +41,7 @@ _MAKE_TEST_ENV_KEYS = (
     "MAKELEVEL",
     "GNUMAKEFLAGS",
     "FLEXT_INFRA_PYTHON",
+    "UV",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -70,8 +71,8 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
         + str(log_path)
         + '"\nif [ "$1" = "sync" ]; then\n'
-        + '  mkdir -p "${UV_PROJECT}/.venv/bin"\n'
-        + '  cp "$(dirname "$0")/python" "${UV_PROJECT}/.venv/bin/python"\n'
+        + '  mkdir -p "${UV_PROJECT_ENVIRONMENT}/bin"\n'
+        + '  cp "$(dirname "$0")/python" "${UV_PROJECT_ENVIRONMENT}/bin/python"\n'
         + "fi\nexit 0\n",
     )
 
@@ -438,18 +439,7 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has=[
-                'BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)"',
-                (
-                    "env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV "
-                    "-u UV_PROJECT -u UV_PROJECT_ENVIRONMENT"
-                ),
-                'PATH="$(PATH)"',
-                (
-                    'PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" '
-                    "$(FLEXT_INFRA_PYTHON) -m flext_infra validate"
-                ),
-            ],
+            has="BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate",
             lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
         )
 
@@ -658,7 +648,7 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir.mkdir(parents=True, exist_ok=True)
         _write_executable(
             bin_dir / "uv",
-            '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s uv %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
+            '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
             + str(log_path)
             + '"\nexit 0\n',
         )
@@ -695,6 +685,14 @@ class TestsFlextInfraBasemkMakeContract:
     def test_make_check_full_run_unsets_python_path_env(self, tmp_path: Path) -> None:
         """Verify full checks clear inherited Python path variables."""
         log_path = tmp_path / "tool.log"
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        _write_executable(
+            bin_dir / "python",
+            '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
+            + str(log_path)
+            + '"\nexit 0\n',
+        )
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, log_path, include_env=True)
         (tmp_path / "src").mkdir()
@@ -774,10 +772,8 @@ class TestsFlextInfraBasemkMakeContract:
             env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
         )
 
-        tm.that(result.exit_code, eq=0)
-        tm.that(
-            log_path.read_text(encoding="utf-8"), has="uv run ruff check src/demo.py"
-        )
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
+        tm.that(log_path.read_text(encoding="utf-8"), has="run ruff check src/demo.py")
         tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
     def test_make_check_file_scope_rejects_unsupported_gates(

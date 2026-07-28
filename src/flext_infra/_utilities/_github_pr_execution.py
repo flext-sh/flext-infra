@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGithubPrExecutionMixin:
+class FlextInfraUtilitiesGithubPrExecutionMixin(FlextInfraUtilitiesGitWorktreeMixin):
     """Execute the minimal, native pull-request publication contract."""
 
     @staticmethod
@@ -117,12 +117,10 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
             )
         )
 
-    @staticmethod
-    def _github_pr_current_head(repo_root: Path) -> p.Result[str]:
+    @classmethod
+    def _github_pr_current_head(cls, repo_root: Path) -> p.Result[str]:
         """Resolve a non-detached current branch."""
-        result = FlextInfraUtilitiesGitWorktreeMixin.git_capture(
-            repo_root, ("branch", "--show-current")
-        )
+        result = cls.git_capture(repo_root, ("branch", "--show-current"))
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
         head = result.value.strip()

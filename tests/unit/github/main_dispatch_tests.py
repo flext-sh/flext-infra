@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests import c, m, u
+
+from flext_infra import c
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path

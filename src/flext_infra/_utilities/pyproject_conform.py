@@ -48,6 +48,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             workspace=workspace,
+            workspace_mode=workspace_mode,
             required_dev_dependencies=required_dev_dependencies,
         )
         normalized = cls._normalize_requirements(
@@ -69,6 +70,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             workspace=workspace,
+            workspace_mode=workspace_mode,
             link_mode=toolchain.uv_link_mode,
             exclude_dependencies=uv_exclude_dependencies,
         )
@@ -107,7 +109,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        if cls._is_workspace_root(project_name=project_name, workspace=workspace):
+        attached_workspace_root = cls._is_attached_workspace_root(
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
+        )
+        if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
                 source, repositories=repositories, workspace=workspace
             )
@@ -125,13 +132,19 @@ class FlextInfraUtilitiesPyprojectConform:
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
         cls._sync_workspace_dependency_group(
-            source, project_name=project_name, workspace=workspace
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
         sources_result = (
             r[bool].ok(True)
-            if cls._is_workspace_root(project_name=project_name, workspace=workspace)
+            if attached_workspace_root
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                project_name=project_name,
+                workspace=workspace,
+                workspace_mode=workspace_mode,
             )
         )
         if sources_result.failure:
@@ -331,6 +344,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.WorkspaceMode,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
@@ -370,7 +384,10 @@ class FlextInfraUtilitiesPyprojectConform:
         else:
             u.Cli.toml_remove_key_if_present(groups, "codegen")
         cls._sync_workspace_dependency_group(
-            document, project_name=project_name, workspace=workspace
+            document,
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
 
         if optional is not None:
@@ -385,10 +402,13 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.WorkspaceMode,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
-        workspace_root = cls._is_workspace_root(
-            project_name=project_name, workspace=workspace
+        workspace_root = cls._is_attached_workspace_root(
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
         groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if groups is None:
@@ -413,6 +433,20 @@ class FlextInfraUtilitiesPyprojectConform:
         """Identify the real multi-project root, not an autonomous repository."""
         return bool(workspace.members) and (
             project_name == workspace.repository.distribution
+        )
+
+    @classmethod
+    def _is_attached_workspace_root(
+        cls,
+        *,
+        project_name: str,
+        workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.WorkspaceMode,
+    ) -> bool:
+        """Identify the root only when the active topology is attached."""
+        return (
+            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
 
     @staticmethod
@@ -488,13 +522,16 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        workspace_mode: c.Infra.WorkspaceMode,
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
-        workspace_root = cls._is_workspace_root(
-            project_name=project_name, workspace=workspace
+        workspace_root = cls._is_attached_workspace_root(
+            project_name=project_name,
+            workspace=workspace,
+            workspace_mode=workspace_mode,
         )
         owns_uv_root_policy = cls._owns_uv_root_policy(
             project_name=project_name, workspace=workspace

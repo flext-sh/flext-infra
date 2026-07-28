@@ -47,8 +47,6 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
-CALLER_PATH := $(PATH)
-CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 CANONICAL_PROJECT_ROOT := $(shell common=$$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0; configured=$$(git config --path --get core.worktree 2>/dev/null); if [ -n "$$configured" ]; then cd "$$common/$$configured" 2>/dev/null && pwd -P; elif [ "$${common##*/}" = ".git" ]; then cd "$$common/.." 2>/dev/null && pwd -P; fi)
 ifeq ($(CANONICAL_PROJECT_ROOT),)
 CANONICAL_PROJECT_ROOT := $(PROJECT_ROOT)
@@ -87,28 +85,16 @@ endif
 override UV_PROJECT := $(WORKSPACE_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
 override VIRTUAL_ENV := $(ACTIVE_VENV)
-SANITIZED_CALLER_PATH := $(CALLER_PATH)
-ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
-SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
-SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
-ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
-SANITIZED_CALLER_PATH :=
-endif
-endif
-override PATH := $(ACTIVE_VENV)/bin:$(SANITIZED_CALLER_PATH)
+override PATH := $(ACTIVE_VENV)/bin:$(PATH)
 export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
-VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
 UV ?= uv
 FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
 export FLEXT_INFRA_PYTHON
 
-# Quality tool (flext-quality with fallback)
-QUALITY_CMD ?= flext-quality
-QUALITY_AVAILABLE := $(shell command -v $(QUALITY_CMD) 2>/dev/null)
 DMPY_SOCKET := .dmypy/socket.$(PROJECT_NAME)
 PYRIGHT_PIDFILE := .pyright/daemon.pid
 PYRIGHT_LOG := .pyright/daemon.log
@@ -135,7 +121,7 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_VALIDATE := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra validate
+BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
@@ -619,8 +605,9 @@ _test_impl:
 		-p no:metadata \
 		--junitxml="$$junit_file" \
 		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args 2>&1 | tee "$$log_file"; \
-	rc=$${PIPESTATUS[0]}; \
+		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
+	rc=$$?; \
+	cat "$$log_file"; \
 	if [ "$$interrupted" = "1" ]; then rc=130; fi; \
 	if [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \

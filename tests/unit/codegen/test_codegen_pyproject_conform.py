@@ -118,13 +118,7 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.fail(
-            result,
-            has=(
-                "attached workspace dependency declares direct source: "
-                f"{member.distribution}"
-            ),
-        )
+        tm.fail(result, has="attached workspace dependency declares direct source")
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()

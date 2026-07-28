@@ -35,14 +35,16 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Language-runtime versions shared by generated projects.
+        """Language-runtime and native-tool versions shared by generated projects.
 
         Only the Python minor line ``python_version`` (e.g. ``3.13``) is
         declared for the language runtime. The environment resolves its newest
         compatible patch. The PEP 440 family requirement is derived, so a
         version-line bump touches exactly one value. uv is supplied by the caller
-        environment. Linters/type-checkers are NOT here: their floors live in
-        pyproject and uv.lock owns the resolved versions.
+        environment. Python linters/type-checkers are NOT here: their floors live
+        in pyproject and uv.lock owns the resolved versions. Native executables
+        required by canonical Make gates are declared here for reproducible
+        provisioning through mise.
         """
 
         python_version: Annotated[
@@ -78,6 +80,15 @@ class FlextInfraConfigModels:
         ] = ()
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
 
         @m.computed_field()
@@ -642,12 +653,6 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        makefile_custom_include: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Generated directive including the custom Make surface"
-            ),
-        ]
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
@@ -677,6 +682,11 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Optional script command dispatch contract"),
         ] = None
+
+        makefile_custom_include: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Generated custom Make policy include directive"),
+        ]
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
@@ -684,8 +694,9 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         workspace_cli_group: Annotated[
-            str, m.Field(description="CLI group used for workspace orchestration")
-        ] = ""
+            t.NonEmptyStr,
+            m.Field(description="CLI group used for workspace orchestration"),
+        ]
         project_selection_conflict_error: Annotated[
             t.NonEmptyStr,
             m.Field(description="Mutually exclusive project selector error"),
@@ -713,6 +724,17 @@ class FlextInfraConfigModels:
         ]
         timeout_kill_after_seconds: Annotated[
             int, m.Field(gt=0, description="Forced-termination grace period")
+        ]
+
+    class GitignoreRenderSpec(_ConfigContract):
+        """Typed, profile-filtered input for the generated Git ignore file."""
+
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                min_length=1,
+                description="Canonical ignore sections applicable to one profile",
+            ),
         ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
@@ -925,6 +947,18 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+        taplo_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

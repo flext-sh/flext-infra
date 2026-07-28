@@ -45,6 +45,7 @@ from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -102,6 +103,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,

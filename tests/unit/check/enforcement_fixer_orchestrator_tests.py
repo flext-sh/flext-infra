@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib
+import os
+import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import ClassVar
@@ -442,26 +444,25 @@ class TestsEnforcementFixerOrchestrator:
             return stdout
 
         pre_status = git_status()
-        result = cli.run_raw(
-            [
-                "uv",
-                "run",
-                "python",
-                "-m",
-                "flext_infra",
-                "check",
-                "fix-enforcement",
-                "--workspace",
-                str(project_dir),
-                "--rules",
-                "ENFORCE-079",
-                "--dry-run",
-                "--no-check-after",
-            ],
-            cwd=runner_root,
-        ).value
+        with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
+            result = cli.run_raw(
+                [
+                    sys.executable,
+                    "-m",
+                    "flext_infra",
+                    "check",
+                    "fix-enforcement",
+                    "--workspace",
+                    str(project_dir),
+                    "--rules",
+                    "ENFORCE-079",
+                    "--dry-run",
+                    "--no-check-after",
+                ],
+                cwd=runner_root,
+            ).value
         post_status = git_status()
-        tm.that(result.exit_code, eq=0)
+        tm.that(result.exit_code, eq=0, msg=result.stderr or result.stdout)
         tm.that(result.stdout, has="fixed: 1")
         tm.that(result.stdout, has="breakage=no")
         tm.that(result.stdout, has="applied=no")

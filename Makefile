@@ -1,5 +1,9 @@
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
+# @flext-managed: continuous
+# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-ssot: flext-infra/src/flext_infra/templates/project/base/Makefile.j2
+# @flext-maintenance: do not edit generated projections; edit the SSOT
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
@@ -20,6 +24,8 @@ PROJECTS ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
+BRANCH ?=
+BASE ?= HEAD
 PYTEST_TARGETS ?=
 WHAT ?=
 
@@ -156,7 +162,9 @@ _BUILTIN_HANDLERS := \
 	_builtin_release_status \
 	_builtin_codegen_check \
 	_builtin_codegen_apply \
-	_builtin_worktree_list
+	_builtin_worktree_list \
+	_builtin_worktree_add \
+	_builtin_worktree_remove
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
@@ -441,4 +449,12 @@ _builtin_codegen_apply: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_worktree_list:
-	@git -C "$(PROJECT_ROOT)" worktree list --porcelain
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation list
+
+_builtin_worktree_add:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_remove:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply

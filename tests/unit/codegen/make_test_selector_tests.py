@@ -1,22 +1,13 @@
-"""Contract test for the generated `test` verb argument surface.
-
-`base.mk` advertises `PYTEST_ARGS="-k expr"` as a public knob, and the canonical
-law is that validation runs through `make`, never through a loose `pytest`
-invocation. Those two only hold together if the generated recipe actually
-forwards the variable.
-
-When it does not, `make test PYTEST_ARGS=...` silently runs the entire suite.
-The selector appears to work, so the operator is pushed into calling pytest
-directly to get a focused run -- which bypasses the guards, locks and evidence
-that the Make surface exists to enforce.
-"""
+"""Behavior contract for focused pytest selection through generated Make."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
 from flext_tests import tm
+
+from flext_infra import config, u
+from tests import u as test_u
 
 
 def _makefile_template() -> Path:
@@ -34,13 +25,45 @@ class TestsMakeTestSelector:
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
-        tm.that(
-            any(verb.name == "test" for verb in config.Infra.codegen.make.verbs),
-            eq=True,
+        matches = tuple(
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == "test"
+        )
+        tm.that(matches, len=1)
+
+    def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
+        """A focused target is the pytest target, not an appendix to tests/."""
+        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        test_u.Tests.write_executable(
+            tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
+        )
+        invocation_log = tmp_path / "uv-args.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f'#!/bin/sh\nprintf "%s\\n" "$@" > "{invocation_log}"\n'
+        )
+        selected = "tests/unit/selected_test.py"
+
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    "make",
+                    "--no-print-directory",
+                    "test",
+                    f"PYTEST_ARGS={selected}",
+                    f"UV={uv}",
+                ],
+                cwd=tmp_path,
+            )
         )
 
+        tm.that(executed.exit_code, eq=0)
+        arguments = invocation_log.read_text(encoding="utf-8")
+        tm.that(arguments, has=selected)
+        tm.that(str(tmp_path / "tests") in arguments, eq=False)
+
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
-        """The recipe must forward the knob `base.mk` documents.
+        """Forward both supported pytest selectors through the local recipe.
 
         Without this, a targeted run is impossible through `make`, and the only
         way to filter is to call pytest directly -- exactly the loose command the

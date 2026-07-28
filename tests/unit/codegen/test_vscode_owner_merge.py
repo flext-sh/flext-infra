@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from flext_infra import c, config, m
+from flext_infra import c, config, m, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
@@ -56,10 +55,14 @@ class TestsVscodeOwnerMerge:
         tm.that(settings_plan.changed, eq=True)
         tm.that(settings_plan.owner, eq="vscode")
         tm.that(settings_plan.policy, eq="merge")
-        doc = json.loads(settings_plan.rendered)
+        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(settings_plan.rendered))
+        )
         tm.that(doc["python.languageServer"], eq="None")
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
-        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        search_paths = t.Infra.STR_SEQ_ADAPTER.validate_python(
+            doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
+        )
         tm.that(
             search_paths,
             eq=list(

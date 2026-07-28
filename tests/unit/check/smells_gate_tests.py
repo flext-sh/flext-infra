@@ -16,14 +16,13 @@ import pytest
 
 from flext_core import e as core_e
 from flext_infra import c, m, u
+from tests import t
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import t
 
 _SMELL_CODES: t.StrSequence = tuple(sorted(c.Infra.SMELLS_RULE_TAGS))
 
@@ -59,7 +58,8 @@ def _sarif_fixture(project: str, codes: t.StrSequence = _SMELL_CODES) -> str:
     })
     payload = u.Cli.json_dumps({"runs": [{"results": results}]}).unwrap()
     tm.that(payload, is_=str)
-    return payload
+    validated_payload: str = t.Infra.STR_ADAPTER.validate_python(payload)
+    return validated_payload
 
 
 def _scanner_gate(

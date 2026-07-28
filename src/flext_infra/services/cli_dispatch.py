@@ -55,11 +55,14 @@ class CliDispatchService(CliTransactionService):
 
     def normalize_group_args(self, args: t.StrSequence) -> list[str]:
         """Normalize group arguments."""
-        return u.Cli.reorder_prefixed_options(
-            args,
-            bool_options=tuple(self.shared_bool_flags),
-            value_options=tuple(self.shared_value_flags),
+        normalized = t.Cli.STR_SEQUENCE_ADAPTER.validate_python(
+            u.Cli.reorder_prefixed_options(
+                args,
+                bool_options=tuple(self.shared_bool_flags),
+                value_options=tuple(self.shared_value_flags),
+            )
         )
+        return list(normalized)
 
     def register_group_commands(self, group: str, app: p.Cli.Application) -> None:
         """Register one group's command routes."""

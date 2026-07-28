@@ -1,6 +1,9 @@
+# @flext-managed: continuous
+# @flext-regenerate: make deps WHAT=upgrade APPLY=Y
+# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-maintenance: do not edit managed sections; edit the SSOT
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
-# Run `make deps WHAT=upgrade APPLY=Y` to regenerate managed dependency sections.
 # Sections with [CUSTOM] are project-specific extension points.
 
 # [MANAGED] build system

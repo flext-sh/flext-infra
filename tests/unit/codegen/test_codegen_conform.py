@@ -104,16 +104,22 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        makefile = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
-        tm.that(
-            makefile,
-            has=(
-                "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
-                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
-            ),
+        selected = u.Cli.run_raw(
+            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
+            remove_env_keys=("MAKEFLAGS",),
         )
-        tm.that(makefile, lacks=["mise exec -- uv", "uv@"])
+
+        selected_process = tm.ok(selected)
+        selected_output = selected_process.stdout + selected_process.stderr
+        tm.that(selected_process.exit_code, eq=0)
+        tm.that(selected_output, has="uv --version")
+        tm.that(selected_output, lacks="uv@")
+        tm.that(selected_output, lacks="UV_VERSION")
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -698,9 +704,8 @@ class TestCodegenConform:
             )
         )
         tm.fail(result)
-        tm.that(
-            result.error or "", has=["custom Make destination", str(root / "custom.mk")]
-        )
+        tm.that(result.error, has="not a regular file")
+        tm.that(result.error, has=str(root / "custom.mk"))
 
 
 class TestScriptDispatchMakefile:
