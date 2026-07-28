@@ -173,6 +173,7 @@ class TestsFlextInfraWorktreeService:
             )
         )
         attached = superproject / "attached"
+        tm.ok(u.Infra.git_capture(attached, ("config", "--unset", "core.worktree")))
         tm.that(
             tm.ok(u.Infra.git_primary_worktree_root(attached)), eq=attached.resolve()
         )
