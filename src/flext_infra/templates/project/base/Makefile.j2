@@ -34,6 +34,8 @@ _check_gate_selected = $(if $(CHECK_GATE_LIST),$(filter $(1),$(CHECK_GATE_LIST))
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
+SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
+SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
 UV ?= uv
@@ -145,13 +147,13 @@ _BUILTIN_HANDLERS := \
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
-	if [ -z "$$what" ]; then what="$(_DEFAULT_$@)"; fi; \
+	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
 	case "$$what" in \
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
-	builtin="_builtin_$@_$$what"; \
-	custom="_custom_$@_$$what"; \
-	for hook in "pre-$@" "pre-$@-$$what"; do \
+	builtin="_builtin_$(1)_$$what"; \
+	custom="_custom_$(1)_$$what"; \
+	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done; \
@@ -161,8 +163,8 @@ define _dispatch
 	for root in $(_SCRIPT_DISPATCH_ROOTS); do \
 		for cand in "$$what_norm" "$$what"; do \
 			for ext in py sh; do \
-				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$@/$$cand.$$ext" ]; then \
-					script="$(PROJECT_ROOT)/$$root/$@/$$cand.$$ext"; script_what="$$cand"; \
+				if [ -z "$$script" ] && [ -f "$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext" ]; then \
+					script="$(PROJECT_ROOT)/$$root/$(1)/$$cand.$$ext"; script_what="$$cand"; \
 				fi; \
 			done; \
 		done; \
@@ -171,11 +173,11 @@ define _dispatch
 	if [ "$$custom_rc" -ne 2 ]; then \
 		$(MAKE) --no-print-directory "$$custom" || exit $$?; \
 	elif [ -n "$$script" ]; then \
-		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$@" || exit $$?; \
+		WHAT="$$script_what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$?; \
 	else \
 		case " $(_BUILTIN_HANDLERS) " in \
 			*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
-			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$@" || exit $$? ;; \
+			*) WHAT="$$what" $(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "$(1)" || exit $$? ;; \
 		esac; \
 	fi; \
 {%- else %}
@@ -184,7 +186,7 @@ define _dispatch
 		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
 	esac; \
 {%- endif %}
-	for hook in "post-$@-$$what" "post-$@"; do \
+	for hook in "post-$(1)-$$what" "post-$(1)"; do \
 		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
 		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
 	done
@@ -210,10 +212,19 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
-$(filter-out setup,$(PUBLIC_VERBS)):
-	$(call _dispatch)
+$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+	$(call _dispatch,$@)
+
+{% for verb in make.serialization.verbs %}
+{{ verb }}: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) {{ workspace_cli_group }} serialize-make --workspace "$(PROJECT_ROOT)" --verb "{{ verb }}"
+
+_serialized_{{ verb }}:
+	$(call _dispatch,{{ verb }})
+
+{% endfor %}
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi

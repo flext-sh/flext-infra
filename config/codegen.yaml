@@ -72,6 +72,10 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      serialization:
+        lock_path: .state/flext-infra/make-validation.lock
+        timeout_seconds: 1800
+        verbs: [check, test, codegen]
       verbs:
         - name: help
           default_what: usage

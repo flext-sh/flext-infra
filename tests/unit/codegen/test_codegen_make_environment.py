@@ -169,6 +169,12 @@ class TestsCodegenMakeEnvironment:
             "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
             '  chmod +x "$3/bin/python"\n'
             "fi\n"
+            'case " $* " in\n'
+            '  *" flext-infra workspace serialize-make "*)\n'
+            '    for argument in "$@"; do verb="$argument"; done\n'
+            '    exec make --no-print-directory "_serialized_$verb"\n'
+            "    ;;\n"
+            "esac\n"
             "exit 0\n",
             encoding="utf-8",
         )
@@ -230,6 +236,28 @@ class TestsCodegenMakeEnvironment:
         tm.that("$(UV_RUN) actionlint" in makefile, eq=True)
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    def test_serialized_gate_fails_closed_before_managed_environment_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """A serialized gate preserves the canonical setup-required diagnostic."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["make", "--no-print-directory", "test"],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr,
+            has=["missing environment interpreter", "make setup creates it"],
+        )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
         project_root, _workspace_root = self._render_makefile(

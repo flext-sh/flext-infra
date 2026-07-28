@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m
+from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
@@ -252,6 +252,35 @@ class FlextInfraConfigModels:
             default=None, description="Permit help declarations"
         )
 
+    class MakeSerializationSpec(_ConfigContract):
+        """Portable per-checkout serialization for state-sensitive Make verbs."""
+
+        lock_path: Annotated[
+            Path, m.Field(description="Repository-relative native process-lock path")
+        ]
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description="Maximum seconds to wait for the checkout validation lock",
+            ),
+        ]
+        verbs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1, description="Public Make verbs serialized per checkout"
+            ),
+        ]
+
+        @m.field_validator("lock_path")
+        @classmethod
+        def _validate_lock_path(cls, value: Path) -> Path:
+            """Keep every validation lock within its owning checkout."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "make serialization lock_path must be repository-relative"
+                raise ValueError(msg)
+            return value
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -263,6 +292,10 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        serialization: Annotated[
+            FlextInfraConfigModels.MakeSerializationSpec,
+            m.Field(description="Per-checkout Make validation serialization"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -279,6 +312,23 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_serialized_verbs(self) -> Self:
+            """Require serialization to target declared non-bootstrap verbs."""
+            declared = {verb.name for verb in self.verbs}
+            serialized = set(self.serialization.verbs)
+            invalid = serialized - declared
+            if invalid:
+                msg = (
+                    "make serialization verbs are not declared public verbs: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
+            if "setup" in serialized:
+                msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            return self
 
         @m.computed_field()
         @property
