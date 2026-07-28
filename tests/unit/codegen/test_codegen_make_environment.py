@@ -174,7 +174,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "git submodule update --init --recursive",
-            'refs/heads/$$branch',
+            "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (
@@ -185,3 +185,16 @@ class TestsCodegenMakeEnvironment:
             "SETUP_BRANCH :=",
         ):
             tm.that(makefile, lacks=forbidden)
+
+    def test_generated_dependency_upgrade_projects_lock_floors(
+        self, tmp_path: Path
+    ) -> None:
+        """Make owns lock upgrade, open-floor projection, and final resolution."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+
+        tm.that(makefile, has="deps modernize")
+        tm.that(makefile, has="--rewrite-constraints")
+        tm.that(makefile, lacks="--constraint-policy")

@@ -14,8 +14,9 @@ import re
 from pathlib import Path
 
 import pytest
+from flext_tests import tm
 
-from flext_infra import c, config, t
+from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
 
 CodegenSpec = type(config.Infra.codegen)
@@ -33,8 +34,8 @@ class TestsCodegenArtifactSsot:
     def test_artifact_list_is_single_source(self, codegen: CodegenSpec) -> None:
         """Every artifact name is unique and non-empty (SSOT well-formed)."""
         names = [artifact.name for artifact in codegen.artifacts]
-        assert len(names) == len(set(names))
-        assert all(names)
+        tm.that(len(names), eq=len(set(names)))
+        tm.that(all(names), eq=True)
 
     # P1 — vscode_files_exclude_map -------------------------------------
 
@@ -42,8 +43,8 @@ class TestsCodegenArtifactSsot:
         """Every key is a ``**/<name>`` glob and every value is True."""
         mapping = codegen.vscode_files_exclude_map
         for key, value in mapping.items():
-            assert re.fullmatch(r"\*\*/[^/]+", key), key
-            assert value is True
+            tm.that(re.fullmatch(r"\*\*/[^/]+", key) is not None, eq=True, msg=key)
+            tm.that(value, eq=True)
 
     def test_vscode_files_exclude_map_filter_bidirectional(
         self, codegen: CodegenSpec
@@ -51,32 +52,38 @@ class TestsCodegenArtifactSsot:
         """Presence in the map equals the artifact's vscode_exclude flag."""
         mapping = codegen.vscode_files_exclude_map
         for artifact in codegen.artifacts:
-            assert (f"**/{artifact.name}" in mapping) == artifact.vscode_exclude, (
-                artifact.name
+            tm.that(
+                f"**/{artifact.name}" in mapping,
+                eq=artifact.vscode_exclude,
+                msg=artifact.name,
             )
-        assert len(mapping) == sum(
-            artifact.vscode_exclude for artifact in codegen.artifacts
+        tm.that(
+            len(mapping),
+            eq=sum(artifact.vscode_exclude for artifact in codegen.artifacts),
         )
 
     def test_vscode_files_exclude_map_order(self, codegen: CodegenSpec) -> None:
         """Map preserves artifact declaration order (renderer keeps it)."""
         mapping = codegen.vscode_files_exclude_map
-        assert list(mapping) == [
-            f"**/{artifact.name}"
-            for artifact in codegen.artifacts
-            if artifact.vscode_exclude
-        ]
+        tm.that(
+            list(mapping),
+            eq=[
+                f"**/{artifact.name}"
+                for artifact in codegen.artifacts
+                if artifact.vscode_exclude
+            ],
+        )
 
     def test_vscode_files_exclude_map_anchors(self, codegen: CodegenSpec) -> None:
         """Anchors evaluated against real config flags (non-vacuous)."""
         mapping = codegen.vscode_files_exclude_map
         by_name = {artifact.name: artifact for artifact in codegen.artifacts}
         # .mypy_cache really has vscode_exclude=true in config/codegen.yaml.
-        assert by_name[".mypy_cache"].vscode_exclude is True
-        assert mapping["**/.mypy_cache"] is True
+        tm.that(by_name[".mypy_cache"].vscode_exclude, eq=True)
+        tm.that(mapping["**/.mypy_cache"], eq=True)
         # conftest.py is source-scan-only: vscode_exclude=false in real config.
-        assert by_name["conftest.py"].vscode_exclude is False
-        assert "**/conftest.py" not in mapping
+        tm.that(by_name["conftest.py"].vscode_exclude, eq=False)
+        tm.that("**/conftest.py" in mapping, eq=False)
 
     # P2 — vscode_watcher_exclude_map ------------------------------------
 
@@ -84,8 +91,8 @@ class TestsCodegenArtifactSsot:
         """Every key is a ``**/<name>/**`` glob and every value is True."""
         mapping = codegen.vscode_watcher_exclude_map
         for key, value in mapping.items():
-            assert re.fullmatch(r"\*\*/[^/]+/\*\*", key), key
-            assert value is True
+            tm.that(re.fullmatch(r"\*\*/[^/]+/\*\*", key) is not None, eq=True, msg=key)
+            tm.that(value, eq=True)
 
     def test_vscode_watcher_exclude_map_filter_bidirectional(
         self, codegen: CodegenSpec
@@ -93,11 +100,14 @@ class TestsCodegenArtifactSsot:
         """Presence in the map equals the artifact's watch_exclude flag."""
         mapping = codegen.vscode_watcher_exclude_map
         for artifact in codegen.artifacts:
-            assert (f"**/{artifact.name}/**" in mapping) == artifact.watch_exclude, (
-                artifact.name
+            tm.that(
+                f"**/{artifact.name}/**" in mapping,
+                eq=artifact.watch_exclude,
+                msg=artifact.name,
             )
-        assert len(mapping) == sum(
-            artifact.watch_exclude for artifact in codegen.artifacts
+        tm.that(
+            len(mapping),
+            eq=sum(artifact.watch_exclude for artifact in codegen.artifacts),
         )
 
     def test_vscode_watcher_diverges_from_files_exclude(
@@ -110,11 +120,11 @@ class TestsCodegenArtifactSsot:
         """
         by_name = {artifact.name: artifact for artifact in codegen.artifacts}
         site = by_name["site"]
-        assert site.vscode_exclude is True
-        assert site.watch_exclude is False
-        assert "**/site" in codegen.vscode_files_exclude_map
-        assert "**/site/**" not in codegen.vscode_watcher_exclude_map
-        assert "**/.mypy_cache/**" in codegen.vscode_watcher_exclude_map
+        tm.that(site.vscode_exclude, eq=True)
+        tm.that(site.watch_exclude, eq=False)
+        tm.that("**/site" in codegen.vscode_files_exclude_map, eq=True)
+        tm.that("**/site/**" in codegen.vscode_watcher_exclude_map, eq=False)
+        tm.that("**/.mypy_cache/**" in codegen.vscode_watcher_exclude_map, eq=True)
 
     # P3 — vscode_search_exclude_map -------------------------------------
 
@@ -122,8 +132,9 @@ class TestsCodegenArtifactSsot:
         self, codegen: CodegenSpec
     ) -> None:
         """THE law: search.exclude is the same projection as files.exclude."""
-        assert dict(codegen.vscode_search_exclude_map) == dict(
-            codegen.vscode_files_exclude_map
+        tm.that(
+            dict(codegen.vscode_search_exclude_map),
+            eq=dict(codegen.vscode_files_exclude_map),
         )
 
     # P4 — source_scan_ignored -------------------------------------------
@@ -131,9 +142,9 @@ class TestsCodegenArtifactSsot:
     def test_source_scan_ignored_shape(self, codegen: CodegenSpec) -> None:
         """Raw unique names in a tuple — no glob characters or path parts."""
         ignored = codegen.source_scan_ignored
-        assert isinstance(ignored, tuple)
-        assert all("*" not in name and "/" not in name for name in ignored)
-        assert len(ignored) == len(set(ignored))
+        tm.that(isinstance(ignored, tuple), eq=True)
+        tm.that(all("*" not in name and "/" not in name for name in ignored), eq=True)
+        tm.that(len(ignored), eq=len(set(ignored)))
 
     def test_source_scan_ignored_filter_bidirectional(
         self, codegen: CodegenSpec
@@ -141,16 +152,18 @@ class TestsCodegenArtifactSsot:
         """Presence in the tuple equals the artifact's source_scan_ignore flag."""
         ignored = codegen.source_scan_ignored
         for artifact in codegen.artifacts:
-            assert (artifact.name in ignored) == artifact.source_scan_ignore, (
-                artifact.name
+            tm.that(
+                artifact.name in ignored,
+                eq=artifact.source_scan_ignore,
+                msg=artifact.name,
             )
 
     def test_source_scan_ignored_independence_anchor(
         self, codegen: CodegenSpec
     ) -> None:
         """conftest.py is scanned-out but NOT vscode-excluded (independence)."""
-        assert "conftest.py" in codegen.source_scan_ignored
-        assert "**/conftest.py" not in codegen.vscode_files_exclude_map
+        tm.that("conftest.py" in codegen.source_scan_ignored, eq=True)
+        tm.that("**/conftest.py" in codegen.vscode_files_exclude_map, eq=False)
 
     # P5 — gitignore_artifact_patterns -----------------------------------
 
@@ -163,8 +176,8 @@ class TestsCodegenArtifactSsot:
             if not artifact.gitignore:
                 continue
             emitted = artifact.name + "/" if artifact.is_dir else artifact.name
-            assert emitted in patterns, artifact.name
-            assert emitted.endswith("/") == artifact.is_dir
+            tm.that(emitted in patterns, eq=True, msg=artifact.name)
+            tm.that(emitted.endswith("/"), eq=artifact.is_dir)
 
     def test_gitignore_artifact_patterns_filter_bidirectional(
         self, codegen: CodegenSpec
@@ -173,36 +186,37 @@ class TestsCodegenArtifactSsot:
         patterns = codegen.gitignore_artifact_patterns
         for artifact in codegen.artifacts:
             emitted = artifact.name + "/" if artifact.is_dir else artifact.name
-            assert (emitted in patterns) == artifact.gitignore, artifact.name
+            tm.that(emitted in patterns, eq=artifact.gitignore, msg=artifact.name)
 
     def test_gitignore_artifact_patterns_shape(self, codegen: CodegenSpec) -> None:
         """No ``**/`` prefix anywhere; patterns are unique."""
         patterns = codegen.gitignore_artifact_patterns
-        assert isinstance(patterns, tuple)
-        assert all(not pattern.startswith("**/") for pattern in patterns)
-        assert len(patterns) == len(set(patterns))
+        tm.that(isinstance(patterns, tuple), eq=True)
+        tm.that(all(not pattern.startswith("**/") for pattern in patterns), eq=True)
+        tm.that(len(patterns), eq=len(set(patterns)))
 
     def test_gitignore_artifact_patterns_order(self, codegen: CodegenSpec) -> None:
         """Byte output order is load-bearing: stripped patterns track SSOT order."""
         patterns = codegen.gitignore_artifact_patterns
-        assert [pattern.rstrip("/") for pattern in patterns] == [
-            artifact.name for artifact in codegen.artifacts if artifact.gitignore
-        ]
+        tm.that(
+            [pattern.rstrip("/") for pattern in patterns],
+            eq=[artifact.name for artifact in codegen.artifacts if artifact.gitignore],
+        )
 
     def test_gitignore_artifact_patterns_anchors(self, codegen: CodegenSpec) -> None:
         """Dir artifacts gain a slash; file artifacts stay bare (real flags)."""
         patterns = codegen.gitignore_artifact_patterns
         by_name = {artifact.name: artifact for artifact in codegen.artifacts}
         # .mypy_cache: real config has is_dir=true, gitignore=true.
-        assert by_name[".mypy_cache"].is_dir is True
-        assert by_name[".mypy_cache"].gitignore is True
-        assert ".mypy_cache/" in patterns
+        tm.that(by_name[".mypy_cache"].is_dir, eq=True)
+        tm.that(by_name[".mypy_cache"].gitignore, eq=True)
+        tm.that(".mypy_cache/" in patterns, eq=True)
         # .mcp.json: real config has is_dir=false, gitignore=true.
         mcp = by_name[".mcp.json"]
-        assert mcp.is_dir is False
-        assert mcp.gitignore is True
-        assert ".mcp.json" in patterns
-        assert ".mcp.json/" not in patterns
+        tm.that(mcp.is_dir, eq=False)
+        tm.that(mcp.gitignore, eq=True)
+        tm.that(".mcp.json" in patterns, eq=True)
+        tm.that(".mcp.json/" in patterns, eq=False)
 
     # P6 — gitignore_sections ---------------------------------------------
 
@@ -233,16 +247,16 @@ class TestsCodegenArtifactSsot:
             if pattern not in flat and pattern not in governed
         ]
 
-        assert unaccounted == []
+        tm.that(unaccounted, eq=[])
 
     def test_gitignore_sections_static_origin_proof(self, codegen: CodegenSpec) -> None:
         """Environment patterns reach .gitignore from the static section only."""
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
-        assert ".env" in flat
-        assert "!.env.example" in flat
-        assert ".env" not in codegen.gitignore_artifact_patterns
-        assert "!.env.example" not in codegen.gitignore_artifact_patterns
+        tm.that(".env" in flat, eq=True)
+        tm.that("!.env.example" in flat, eq=True)
+        tm.that(".env" in codegen.gitignore_artifact_patterns, eq=False)
+        tm.that("!.env.example" in codegen.gitignore_artifact_patterns, eq=False)
 
     def test_gitignore_sections_header_order(self, codegen: CodegenSpec) -> None:
         """The projection preserves the declared section order (P0: no frozen names).
@@ -259,10 +273,10 @@ class TestsCodegenArtifactSsot:
         declared = [section.name for section in codegen.scaffold.gitignore_sections]
         derived = [section.name for section in codegen.gitignore_sections]
 
-        assert derived[: len(declared)] == declared
-        assert derived[len(declared) :] in (
-            [],
-            [c.Infra.GITIGNORE_DERIVED_SECTION_NAME],
+        tm.that(derived[: len(declared)], eq=declared)
+        tm.that(
+            derived[len(declared) :] in ([], [c.Infra.GITIGNORE_DERIVED_SECTION_NAME]),
+            eq=True,
         )
 
     def test_workspace_root_makefile_has_one_generation_owner(
@@ -275,31 +289,34 @@ class TestsCodegenArtifactSsot:
             if entry.destination == "Makefile"
         ]
 
-        assert len(makefile_entries) == 1
-        assert "workspace-root" not in makefile_entries[0].profiles
+        tm.that(len(makefile_entries), eq=1)
+        tm.that("workspace-root" in makefile_entries[0].profiles, eq=False)
 
     def test_gitignore_sections_anchors(self, codegen: CodegenSpec) -> None:
         """Artifact-origin and static-origin anchors coexist in the body."""
         sections = codegen.gitignore_sections
         flat = [pattern for section in sections for pattern in section.patterns]
-        assert ".mypy_cache/" in flat  # artifact origin
-        assert ".env" in flat  # static secrets origin
+        tm.that(".mypy_cache/" in flat, eq=True)
+        tm.that(".env" in flat, eq=True)
 
     # Rendered-surface anchor (cheap, in-process) -------------------------
 
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
-        settings: t.MutableJsonMapping = {}
-        FlextInfraCodegen._apply_canonical_settings(
-            settings, Path("/nonexistent-workspace-root")
+        rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                Path("/nonexistent-workspace-root")
+            )
         )
+        parsed = tm.ok(u.Cli.json_parse(rendered))
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
         files_exclude = settings["files.exclude"]
         search_exclude = settings["search.exclude"]
         watcher_exclude = settings["files.watcherExclude"]
-        assert isinstance(files_exclude, dict)
-        assert files_exclude["**/.mypy_cache"] is True
-        assert "**/conftest.py" not in files_exclude
-        assert search_exclude == files_exclude
-        assert isinstance(watcher_exclude, dict)
-        assert watcher_exclude["**/.mypy_cache/**"] is True
-        assert "**/site/**" not in watcher_exclude
+        tm.that(isinstance(files_exclude, dict), eq=True)
+        tm.that(files_exclude["**/.mypy_cache"], eq=True)
+        tm.that("**/conftest.py" in files_exclude, eq=False)
+        tm.that(search_exclude, eq=files_exclude)
+        tm.that(isinstance(watcher_exclude, dict), eq=True)
+        tm.that(watcher_exclude["**/.mypy_cache/**"], eq=True)
+        tm.that("**/site/**" in watcher_exclude, eq=False)

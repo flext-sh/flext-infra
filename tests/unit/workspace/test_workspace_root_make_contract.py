@@ -11,10 +11,8 @@ from flext_tests import tm
 
 from flext_cli import cli
 from flext_infra import c, config, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.workspace_makefile import (
-    FlextInfraWorkspaceMakefileGenerator,
-)
 
 if TYPE_CHECKING:
     from flext_cli import p as cli_p
@@ -49,6 +47,25 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,
         name=root_repository.name,
         repository=root_repository,
+        project=m.Infra.ProjectSpec(
+            package_name=root_repository.distribution.replace("-", "_"),
+            class_stem="Flext",
+            namespace="Flext",
+            constant_name="flext",
+            namespace_attribute="flext",
+            alias="flext",
+            environment_prefix="FLEXT_",
+            description="FLEXT workspace",
+            version="0.1.0",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            homepage=root_repository.url.removesuffix(".git"),
+            documentation=root_repository.url.removesuffix(".git"),
+            workspace_root_rel=".",
+            year=2026,
+        ),
         members=members,
     )
     tm.ok(
@@ -63,7 +80,16 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         (project_root / "pyproject.toml").write_text(
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
-    tm.ok(FlextInfraWorkspaceMakefileGenerator().generate(workspace_root))
+    tm.ok(
+        FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=workspace_root,
+                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+            initial_workspace=manifest,
+        )
+    )
     return workspace_root, project_names
 
 

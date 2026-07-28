@@ -70,9 +70,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -128,17 +126,13 @@ class FlextInfraUtilitiesPyprojectConform:
             r[bool].ok(True)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source,
-                project_name=project_name,
-                workspace=workspace,
+                source, project_name=project_name, workspace=workspace
             )
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -284,9 +278,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         canonical = f"{head} @ {url_result.value}@{reference.branch}"
         return r[str].ok(
-            f"{canonical}; {marker_text}"
-            if separator and marker_text
-            else canonical
+            f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod
@@ -312,6 +304,15 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
+
+    @staticmethod
+    def _git_requirement_url(url: str) -> p.Result[str]:
+        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
+        if not url.startswith("https://"):
+            return r[str].fail(
+                f"repository URL must use the configured HTTPS transport: {url}"
+            )
+        return r[str].ok(f"git+{url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -659,7 +660,10 @@ class FlextInfraUtilitiesPyprojectConform:
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if workspace_mode is c.Infra.WorkspaceMode.STANDALONE and not has_direct_source:
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
                 return r[bool].fail(
                     "standalone dependency lacks configured Git source: "
                     f"{dependency_name}"

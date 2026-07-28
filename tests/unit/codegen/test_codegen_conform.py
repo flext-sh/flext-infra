@@ -9,14 +9,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import shutil
 import sys
 from pathlib import Path
 
 import pytest
 from flext_tests import tm
 
-from flext_cli import cli
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -89,9 +87,7 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_selects_config_pinned_uv_and_fails_without_mise(
-        self, tmp_path: Path
-    ) -> None:
+    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -106,73 +102,11 @@ class TestCodegenConform:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        make_path = shutil.which("make")
-        mise_path = shutil.which("mise")
-        assert make_path is not None
-        assert mise_path is not None
-        hostile_bin = tmp_path / "hostile-bin"
-        hostile_bin.mkdir()
-        hostile_uv = hostile_bin / "uv"
-        hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
-        hostile_uv.chmod(0o755)
-        pwd_path = shutil.which("pwd")
-        printf_path = shutil.which("printf")
-        sh_path = shutil.which("sh")
-        assert pwd_path is not None
-        assert printf_path is not None
-        assert sh_path is not None
-        (hostile_bin / "pwd").symlink_to(pwd_path)
-        (hostile_bin / "printf").symlink_to(printf_path)
-        (hostile_bin / "sh").symlink_to(sh_path)
-        expected_uv = config.Infra.codegen.toolchain.uv_version
-
-        selected = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "--dry-run",
-                "_builtin_status_diagnostics",
-            ],
-            env={"PATH": f"{hostile_bin}{os.pathsep}{os.environ['PATH']}"},
-            remove_env_keys=("MAKEFLAGS",),
-        )
-        help_without_mise = cli.run_raw(
-            [make_path, "-C", str(root), "help"],
-            env={"PATH": str(hostile_bin)},
-            remove_env_keys=("MAKEFLAGS",),
-        )
-        status_without_mise = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "_builtin_status_diagnostics",
-            ],
-            env={"PATH": str(hostile_bin)},
-            remove_env_keys=("MAKEFLAGS",),
-        )
-
-        selected_process = tm.ok(selected)
-        selected_output = selected_process.stdout + selected_process.stderr
-        tm.that(selected_process.exit_code, eq=0)
-        tm.that(
-            selected_output, has=f"{mise_path} exec uv@{expected_uv} -- uv --version"
-        )
-        tm.that(selected_output, lacks=str(hostile_uv))
-        help_process = tm.ok(help_without_mise)
-        tm.that(
-            help_process.exit_code,
-            eq=0,
-            msg=help_process.stdout + help_process.stderr,
-        )
-        tm.that(help_process.stdout, has="flext-demo [standalone]")
-        missing_process = tm.ok(status_without_mise)
-        tm.that(missing_process.exit_code, ne=0)
-        tm.that(
-            missing_process.stdout + missing_process.stderr,
-            has="mise executable not found on caller PATH",
-        )
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
@@ -248,7 +182,7 @@ class TestCodegenConform:
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
-            "custom.mk": "_custom_status:\n\t@true\n",
+            "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -370,29 +304,6 @@ class TestCodegenConform:
             tuple(item.name for item in environment.editable_repositories),
             eq=("flext-core",),
         )
-
-    def test_make_context_accepts_manifest_without_project_or_known_provider(
-        self,
-    ) -> None:
-        """Build Make context from repository-owned data alone."""
-        repository = config.Infra.codegen.repositories[0].model_copy(
-            update={"provider": "consumer-owned"}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name="consumer",
-            repository=repository,
-        )
-        context = FlextInfraCodegenConform._make_render_context(
-            repository,
-            workspace,
-            config.Infra.codegen,
-            tooling_runtime=config.Infra.tooling.runtime,
-        )
-        rendered = tm.ok(context)
-        tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
-        tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
-        tm.that(rendered.workspace_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
@@ -519,8 +430,8 @@ class TestCodegenConform:
         )
         tm.ok(process)
 
-    def test_invalid_public_custom_make_is_preserved_with_rejection(
-        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    def test_invalid_public_custom_make_fails_without_side_effects(
+        self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
@@ -546,17 +457,12 @@ class TestCodegenConform:
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
-        tm.ok(result)
-        output = capsys.readouterr().out
+        tm.fail(result)
         rejection = Path(f"{custom}.rej")
-        tm.that("WARN:" in output, eq=True)
-        tm.that("custom.mk line 1 is not a private custom handler" in output, eq=True)
-        tm.that(rejection.is_file(), eq=True)
         tm.that(
-            "custom.mk line 1 is not a private custom handler"
-            in rejection.read_text(encoding="utf-8"),
-            eq=True,
+            result.error or "", has="custom.mk line 1 is not a private custom handler"
         )
+        tm.that(rejection.exists(), eq=False)
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     def test_valid_private_custom_make_has_no_rejection(
@@ -743,7 +649,7 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(
             result.error,
-            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
+            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
         )
 
 
