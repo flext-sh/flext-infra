@@ -35,7 +35,20 @@ class TestsMakeTestSelector:
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
         test_u.Tests.write_executable(
-            tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
+            tmp_path / ".venv" / "bin" / "python",
+            (
+                "#!/bin/sh\n"
+                "verb=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                '  exec make --no-print-directory "_serialized_${verb}"\n'
+                "fi\n"
+                "exit 2\n"
+            ),
         )
         invocation_log = tmp_path / "uv-args.log"
         uv = tmp_path / "bin" / "uv"
@@ -50,7 +63,7 @@ class TestsMakeTestSelector:
                     "make",
                     "--no-print-directory",
                     "test",
-                    f"PYTEST_ARGS={selected}",
+                    f"PYTEST_TARGETS={selected}",
                     f"UV={uv}",
                 ],
                 cwd=tmp_path,

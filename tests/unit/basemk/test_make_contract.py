@@ -679,7 +679,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(result.exit_code, eq=0)
         tm.that(
             log_path.read_text(encoding="utf-8"),
-            has="PYTHONPATH=unset MYPYPATH=unset uv run mypy src/demo.py",
+            has="PYTHONPATH=unset MYPYPATH=unset run mypy src/demo.py",
         )
 
     def test_make_check_full_run_unsets_python_path_env(self, tmp_path: Path) -> None:

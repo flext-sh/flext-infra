@@ -58,9 +58,12 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 declares_project = (
                     resolved_candidate / c.Infra.PYPROJECT_FILENAME
                 ).is_file()
-            except OSError:
-                # Unreadable parent siblings are outside the requested workspace
-                # until they expose the explicit attached-project contract.
+            except OSError as exc:
+                _log.info(
+                    "project_discovery_candidate_inaccessible",
+                    candidate=str(candidate),
+                    error=str(exc),
+                )
                 continue
             if resolved_candidate == resolved_workspace_root:
                 continue

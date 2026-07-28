@@ -185,7 +185,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             has="attached workspace dependency declares direct source",
         )
 
-    def test_standalone_rejects_workspace_source_without_git_requirement(self) -> None:
+    def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
@@ -196,10 +196,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
         member = workspace.members[0]
-        tm.fail(
-            result,
-            has=(
-                "standalone dependency lacks configured Git source: "
-                f"{member.distribution}"
-            ),
+        document = tomllib.loads(tm.ok(result))
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
+        uv_config = document.get("tool", {}).get("uv", {})
+        tm.that("sources" in uv_config, eq=False)
