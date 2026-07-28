@@ -71,18 +71,22 @@ class TestsMakeTestSelector:
     def test_recursive_dispatch_preserves_explicit_makefile(
         self, tmp_path: Path
     ) -> None:
-        """An external -f invocation keeps the selected generated Make owner."""
-        selected_makefile = tmp_path / "canonical.mk"
+        """An external -f invocation keeps the selected Make owner and runtime."""
+        caller_root = tmp_path / "consumer"
+        caller_root.mkdir()
+        engine_root = tmp_path / "engine"
+        engine_root.mkdir()
+        selected_makefile = engine_root / "canonical.mk"
         selected_makefile.write_text(
             tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
         )
-        (tmp_path / "Makefile").write_text("all:\n\t@exit 99\n", encoding="utf-8")
-        invocation_log = tmp_path / "python-args.log"
+        (caller_root / "Makefile").write_text("all:\n\t@exit 99\n", encoding="utf-8")
+        invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
-            tmp_path / ".venv" / "bin" / "python",
-            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+            engine_root / ".venv" / "bin" / "python",
+            (f'#!/bin/sh\nprintf "%s\\n" "$PYTHONPATH" "$*" > "{invocation_log}"\n'),
         )
-        uv = tmp_path / "bin" / "uv"
+        uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
         executed = tm.ok(
@@ -95,7 +99,7 @@ class TestsMakeTestSelector:
                     "WHAT=list",
                     f"UV={uv}",
                 ],
-                cwd=tmp_path,
+                cwd=caller_root,
             )
         )
 
@@ -103,8 +107,9 @@ class TestsMakeTestSelector:
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
             has=[
+                str(engine_root / "src"),
                 "-m flext_infra workspace worktree",
-                f"--workspace {tmp_path}",
+                f"--workspace {caller_root}",
                 "--operation list",
             ],
         )

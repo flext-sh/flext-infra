@@ -38,6 +38,8 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
+SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
+MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
@@ -82,6 +84,8 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
+FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/bin/python
 SANITIZED_CALLER_PATH := $(CALLER_PATH)
 ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
 SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
@@ -95,7 +99,7 @@ ifeq ($(strip $(RESOLVED_UV)),)
 $(error Required uv executable not found: $(UV_REQUESTED))
 endif
 override UV := $(RESOLVED_UV)
-override FLEXT_INFRA_PYTHON := $(RUNTIME_PYTHON)
+override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
@@ -128,7 +132,7 @@ DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(projec
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
-PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_ROOT)/src
+PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
@@ -173,7 +177,6 @@ _BUILTIN_HANDLERS := \
 	_builtin_worktree_add \
 	_builtin_worktree_remove
 
-SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
