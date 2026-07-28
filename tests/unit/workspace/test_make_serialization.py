@@ -6,10 +6,14 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 
 import pytest
 from filelock import FileLock, Timeout
-from flext_infra import c, config, m, p, u
+from flext_core import r
+from flext_infra import c, config, m, p, t, u
+from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
+from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import u as test_u
 
@@ -43,6 +47,40 @@ class TestsFlextInfraMakeSerialization:
         tm.that(serialization.lock_path in serialization.snapshot_excludes, where=bool)
         for excluded_path in serialization.snapshot_excludes:
             tm.that(not excluded_path.is_absolute(), where=bool)
+
+    def test_operation_oserror_is_not_classified_as_lock_acquisition(
+        self, tmp_path: Path
+    ) -> None:
+        """Only lock acquisition errors reach the acquisition failure callback."""
+        serialization = config.Infra.codegen.make.serialization
+        lock_path = tmp_path / serialization.lock_path
+        lock_path.parent.mkdir(parents=True)
+        acquisition_failures: list[str] = []
+        operation_error = "protected operation failed"
+
+        def operation() -> p.Result[bool]:
+            raise OSError(operation_error)
+
+        def timeout_failure(
+            timed_out_path: Path, timeout_seconds: int
+        ) -> p.Result[bool]:
+            return r[bool].fail(
+                f"{timed_out_path} remained locked for {timeout_seconds}s"
+            )
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            acquisition_failures.append(error)
+            return r[bool].fail(error)
+
+        with pytest.raises(OSError, match=operation_error):
+            FlextInfraSerializationLockOwner.execute(
+                (lock_path,),
+                serialization.timeout_seconds,
+                operation,
+                timeout_failure=timeout_failure,
+                acquisition_failure=acquisition_failure,
+            )
+        tm.that(acquisition_failures, eq=[])
 
     def test_mutation_mapping_requires_a_fixed_point(self) -> None:
         """Every declared mutating selector has a validation selector."""
@@ -514,14 +552,14 @@ class TestsFlextInfraMakeSerialization:
     @pytest.mark.parametrize(
         ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
     )
-    def test_mutation_lock_covers_fixed_point(
+    def test_transaction_owned_mutation_avoids_nested_lock_and_locks_fixed_point(
         self,
         tmp_path: Path,
         mutation_verb: str,
         mutation_what: str,
         fixed_point_what: str,
     ) -> None:
-        """The checkout lock covers apply, fixed-point validation, and final snapshot."""
+        """The child owns apply serialization before Make locks the fixed point."""
         make_config = config.Infra.codegen.make
         worker = tmp_path / "worker.py"
         worker.write_text(
@@ -595,13 +633,13 @@ class TestsFlextInfraMakeSerialization:
             ):
                 time.sleep(0.01)
             tm.that((state / "mutation-started").exists(), where=bool)
-            mutation_lock_held = False
+            mutation_lock_available = False
             try:
                 with FileLock(lock_path, timeout=0):
-                    pass
+                    mutation_lock_available = True
             except Timeout:
-                mutation_lock_held = True
-            tm.that(mutation_lock_held, where=bool)
+                mutation_lock_available = False
+            tm.that(mutation_lock_available, where=bool)
             (state / "mutation-release").write_text("", encoding="utf-8")
 
             deadline = time.monotonic() + self._process_start_timeout_seconds
@@ -635,4 +673,74 @@ class TestsFlextInfraMakeSerialization:
                 "fixed-point-start",
                 "fixed-point-end",
             ],
+        )
+
+    @pytest.mark.parametrize(
+        ("mutation_verb", "mutation_what", "fixed_point_what"), _MUTATION_CASES
+    )
+    def test_transaction_to_fixed_point_lock_gap_fails_closed_on_drift(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        mutation_verb: str,
+        mutation_what: str,
+        fixed_point_what: str,
+    ) -> None:
+        """Reject drift after transaction apply and before fixed-point lock entry."""
+        make_config = config.Infra.codegen.make
+        projection = tmp_path / "projection.txt"
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            (
+                f".PHONY: _serialized_{mutation_verb}\n"
+                f"_serialized_{mutation_verb}:\n"
+                f'\t@if [ "$({make_config.selector})" = "{mutation_what}" ]; then '
+                f"printf 'generated\\n' > {projection}; "
+                f'elif [ "$({make_config.selector})" = "{fixed_point_what}" ]; then '
+                ":; else exit 8; fi\n"
+            ),
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(tmp_path)
+        lock_path = tmp_path / make_config.serialization.lock_path
+        post_transaction_captured = Event()
+        original_fingerprint = u.Infra.workspace_fingerprint
+        fingerprint_calls = 0
+
+        def observed_fingerprint(
+            checkout: Path, *, excluded_paths: t.SequenceOf[Path] = ()
+        ) -> p.Result[m.Infra.WorkspaceFingerprint]:
+            nonlocal fingerprint_calls
+            result = original_fingerprint(checkout, excluded_paths=excluded_paths)
+            fingerprint_calls += 1
+            if fingerprint_calls == 1:
+                post_transaction_captured.set()
+            return result
+
+        monkeypatch.setattr(u.Infra, "workspace_fingerprint", observed_fingerprint)
+        monkeypatch.setenv(make_config.selector, mutation_what)
+        monkeypatch.setenv(make_config.apply_variable, make_config.apply_value)
+        service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": tmp_path,
+            "verb": mutation_verb,
+            "makefile": makefile,
+        })
+
+        incumbent_lock = FileLock(
+            lock_path, timeout=0, fallback_to_soft=False, preserve_lock_file=True
+        )
+        incumbent_lock.acquire()
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                execution_future = executor.submit(service.execute)
+                tm.that(post_transaction_captured.wait(timeout=10), where=bool)
+                (tmp_path / "concurrent.txt").write_text("drift\n", encoding="utf-8")
+                incumbent_lock.release()
+                result = execution_future.result(timeout=15)
+        finally:
+            incumbent_lock.release()
+
+        tm.fail(
+            result,
+            has="workspace changed between transaction apply and fixed-point lock",
         )

@@ -635,10 +635,6 @@ _builtin_worktree_update:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
 
-_builtin_worktree_update:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
-
 _builtin_worktree_remove:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation remove --branch "$(BRANCH)" --apply
