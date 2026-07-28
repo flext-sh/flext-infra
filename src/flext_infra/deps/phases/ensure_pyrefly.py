@@ -30,11 +30,6 @@ class FlextInfraEnsurePyreflyConfigPhase:
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical pyrefly phase definition."""
         pyrefly_rules = self._tool_config.tools.pyrefly
-        venv_rules = self._tool_config.tools.pyright.path_rules
-        venv_path = (
-            venv_rules.root_venv_path if is_root else venv_rules.project_venv_path
-        )
-        interpreter_path = f"{venv_path}/{venv_rules.venv_name}/bin/python"
         if project_dir is not None and paths_manager is not None:
             expected_search = paths_manager.pyrefly_search_paths(
                 project_dir=project_dir, is_root=is_root
@@ -78,7 +73,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             .Builder("pyrefly")
             .table(c.Infra.PYREFLY)
             .value(c.Infra.PYTHON_VERSION_HYPHEN, pyrefly_rules.python_version)
-            .value("python-interpreter-path", interpreter_path)
+            .deprecated("python-interpreter-path")
             .deprecated("disable-search-path-heuristics")
             .deprecated("fallback-python-interpreter-name")
             # Interpreter discovery resolves PEP 660 editable sibling packages.

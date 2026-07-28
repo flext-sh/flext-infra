@@ -37,17 +37,20 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime versions shared by generated projects.
 
-        Python uses a major.minor compatibility selector so mise resolves the
-        current patch. uv comes from the caller environment and is intentionally
-        absent from generated version contracts. Linters and type checkers live
-        in the shared pyproject dependency requirements.
+        Only the Python minor line ``python_version`` (e.g. ``3.13``) is
+        declared for the language runtime. The environment resolves its newest
+        compatible patch. The PEP 440 family requirement is derived, so a
+        version-line bump touches exactly one value. uv is supplied by the caller
+        environment. Linters/type-checkers are NOT here: their floors live in
+        pyproject and uv.lock owns the resolved versions.
         """
 
-        VERSION_SELECTOR_PARTS: ClassVar[int] = 2
-
-        python_version_selector: Annotated[
+        python_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Compatible Python major.minor selector, e.g. '3.13'"),
+            m.Field(
+                pattern=r"^[0-9]+\.[0-9]+$",
+                description="Python major.minor line, e.g. '3.13'",
+            ),
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
@@ -77,25 +80,19 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
 
-        @m.field_validator("python_version_selector")
-        @classmethod
-        def validate_python_version_selector(cls, value: str) -> str:
-            """Reject exact Python patches and invalid mise selectors."""
-            parts = value.split(".")
-            if len(parts) != cls.VERSION_SELECTOR_PARTS or any(
-                not part.isdigit() for part in parts
-            ):
-                msg = "toolchain versions must be non-exact major.minor selectors"
-                raise ValueError(msg)
-            return value
+        @m.computed_field()
+        @property
+        def python_minor_version(self) -> str:
+            """Python major.minor selector used by generated tool configuration."""
+            return self.python_version
 
         @m.computed_field()
         @property
         def python_required_version(self) -> str:
-            """Allow every patch in the selected Python release line."""
-            major, minor = self.python_version_selector.split(".")
+            """PEP 440 requirement spanning the configured Python minor line."""
+            major, _, minor = self.python_version.partition(".")
             next_minor = int(minor) + 1
-            return f">={self.python_version_selector},<{major}.{next_minor}"
+            return f">={self.python_version},<{major}.{next_minor}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -345,7 +342,7 @@ class FlextInfraConfigModels:
         ]
 
     class ScaffoldDependencyProfileSpec(_ConfigContract):
-        """Runtime dependencies selected by the declared upstream FLEXT facade."""
+        """Dependencies selected by the declared upstream FLEXT facade."""
 
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Supported upstream facade package")
@@ -354,6 +351,14 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Runtime requirements"),
         ]
+        codegen: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Code-generation requirements"),
+        ] = ()
+        dev: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Development and validation requirements"),
+        ] = ()
 
     class ScaffoldProjectSpec(_ConfigContract):
         """Project metadata policy for newly scaffolded distributions."""
@@ -369,14 +374,6 @@ class FlextInfraConfigModels:
         ]
         keywords: Annotated[
             tuple[t.NonEmptyStr, ...], m.Field(description="Default project keywords")
-        ] = ()
-        codegen_requirements: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Shared code-generation requirements"),
-        ] = ()
-        development_requirements: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Shared development and validation requirements"),
         ] = ()
         dependency_profiles: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldDependencyProfileSpec, ...],
@@ -790,9 +787,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_version_selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]

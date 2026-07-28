@@ -123,12 +123,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
         return r[str].ok(output.stdout)
 
-    def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]:
+    def _project_is_flext_child(self, project_dir: Path) -> bool:
         """Resolve physical attachment from canonical Git topology."""
         project_root = project_dir.resolve()
-        return u.Infra.git_workspace_root(project_root).map(
-            lambda workspace_root: workspace_root != project_root
-        )
+        workspace_root = u.Infra.git_workspace_root(project_root)
+        if workspace_root.failure:
+            msg = workspace_root.error or f"unable to resolve Git topology: {project_root}"
+            raise RuntimeError(msg)
+        return workspace_root.value != project_root
 
     def _process_document_state(
         self,
@@ -140,19 +142,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
-        constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
         declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
         original_rendered = state.original_rendered
         payload = state.payload
-        child_result = self._project_is_flext_child(path.parent)
-        if child_result.failure:
-            return [child_result.error or "failed to resolve project Git topology"]
-        is_root = (
-            path.parent.resolve() == self.root.resolve() and not child_result.value
-        )
+        is_child = self._project_is_flext_child(path.parent)
+        is_root = path.parent.resolve() == self.root.resolve() and not is_child
         project_kind = "core"
         if not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
@@ -170,7 +167,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     payload,
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
-                    policy=constraint_policy,
                 )
             )
         changes.extend(

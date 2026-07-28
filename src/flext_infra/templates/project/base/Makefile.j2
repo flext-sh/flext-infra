@@ -14,6 +14,10 @@ UV_LINK_MODE := {{ uv_link_mode }}
 APPLY ?= N
 ARGS ?=
 PROJECTS ?=
+# Public selector documented by base.mk. Forwarded to the test recipe so a
+# focused run stays inside the canonical Make surface instead of forcing a
+# loose pytest invocation.
+PYTEST_ARGS ?=
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -271,9 +275,17 @@ _builtin_deps_lock:
 	$(call _require_apply)
 	$(call _run_for_selected_projects,)
 
-_builtin_deps_upgrade:
+_builtin_deps_upgrade: _builtin_require_environment
 	$(call _require_apply)
 	$(call _run_for_selected_projects,--upgrade)
+	@set -eu; \
+	selected="$(strip $(PROJECTS))"; \
+	if [ -z "$$selected" ]; then selected="."; fi; \
+	set --; \
+	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
+	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
+		--apply --rewrite-constraints --skip-check "$$@"
+	$(call _run_for_selected_projects,)
 
 {% if make_profile == "workspace-root" %}
 _builtin_build_artifacts:
@@ -298,7 +310,7 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest $(if $(strip $(ARGS)),$(ARGS),"$(PROJECT_ROOT)/tests")
+	@$(UV_RUN) python -m pytest $(if $(strip $(PYTEST_ARGS)),$(PYTEST_ARGS),"$(PROJECT_ROOT)/tests")
 {% endif %}
 
 _builtin_format_check: _builtin_require_environment
@@ -334,12 +346,12 @@ _builtin_clean_generated:
 	@rm -rf "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov"
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
-_builtin_release_status:
+_builtin_release_status: _builtin_require_environment
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-_builtin_codegen_check:
+_builtin_codegen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
 _builtin_codegen_apply: _builtin_require_environment

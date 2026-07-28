@@ -88,6 +88,27 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
+    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
+        root = tmp_path / "flext-demo"
+        created = FlextInfraCodegenProjectNew(
+            name="flext-demo",
+            kind=c.Infra.ProjectKind.EXTERNAL,
+            output_root=root,
+            provider="flext-sh",
+            license="MIT",
+            author_name="FLEXT Team",
+            author_email="team@flext.dev",
+            upstream="flext_cli",
+            year=2026,
+            apply_changes=True,
+        ).execute()
+        tm.ok(created)
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        tm.that(makefile, has="UV ?= uv")
+        tm.that(makefile, lacks="UV_VERSION")
+        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, lacks="mise exec")
+
     def test_existing_manifest_converges_to_identical_tree(
         self, tmp_path: Path, infra_git_repo: Path
     ) -> None:
@@ -162,7 +183,7 @@ class TestCodegenConform:
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
-            "custom.mk": "_custom_status:\n\t@true\n",
+            "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
         tm.ok(
             u.Cli.atomic_write_text_file(
@@ -440,8 +461,8 @@ class TestCodegenConform:
         )
         tm.ok(process)
 
-    def test_invalid_public_custom_make_is_preserved_with_rejection(
-        self, infra_git_repo: Path, capsys: pytest.CaptureFixture[str]
+    def test_invalid_public_custom_make_fails_without_side_effects(
+        self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
@@ -467,17 +488,12 @@ class TestCodegenConform:
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
-        tm.ok(result)
-        output = capsys.readouterr().out
+        tm.fail(result)
         rejection = Path(f"{custom}.rej")
-        tm.that("WARN:" in output, eq=True)
-        tm.that("custom.mk line 1 is not a private custom handler" in output, eq=True)
-        tm.that(rejection.is_file(), eq=True)
         tm.that(
-            "custom.mk line 1 is not a private custom handler"
-            in rejection.read_text(encoding="utf-8"),
-            eq=True,
+            result.error or "", has="custom.mk line 1 is not a private custom handler"
         )
+        tm.that(rejection.exists(), eq=False)
         tm.that(custom.read_text(encoding="utf-8"), eq=content)
 
     def test_valid_private_custom_make_has_no_rejection(
@@ -664,7 +680,7 @@ class TestCodegenConform:
         tm.fail(result)
         tm.that(
             result.error,
-            eq=f"custom Make destination is not a regular file: {root / 'custom.mk'}",
+            eq=f"create-only destination is not a regular file: {root / 'custom.mk'}",
         )
 
 

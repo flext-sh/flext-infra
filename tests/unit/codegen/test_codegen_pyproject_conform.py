@@ -124,6 +124,11 @@ workspace = true
 
     def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
         workspace = _workspace()
+        repositories = (
+            workspace.repository,
+            *workspace.members,
+            *config.Infra.codegen.repositories,
+        )
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={"uv_link_mode": "copy"}
         )
@@ -132,7 +137,7 @@ name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 
 [dependency-groups]
-dev = ["custom-tool>=1", "mypy<2"]
+dev = ["custom-tool>=1"]
 
 [tool.uv]
 required-version = "==0.11.28"
@@ -143,31 +148,19 @@ python-interpreter-path = "../.venv/bin/python"
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                repositories=(workspace.repository, *workspace.members),
+                repositories=repositories,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
-                codegen_requirements=(
-                    config.Infra.codegen.scaffold.project.codegen_requirements
-                ),
-                development_requirements=(
-                    config.Infra.codegen.scaffold.project.development_requirements
-                ),
             )
         )
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                repositories=(workspace.repository, *workspace.members),
+                repositories=repositories,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
-                codegen_requirements=(
-                    config.Infra.codegen.scaffold.project.codegen_requirements
-                ),
-                development_requirements=(
-                    config.Infra.codegen.scaffold.project.development_requirements
-                ),
             )
         )
         document = tomllib.loads(first)
@@ -176,8 +169,6 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
-        tm.that("mypy>=2.3.0" in document["dependency-groups"]["dev"], eq=True)
-        tm.that("mypy<2" in document["dependency-groups"]["dev"], eq=False)
         tm.that(
             document["project"]["dependencies"][0],
             eq=(

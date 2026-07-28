@@ -1,4 +1,4 @@
-"""Workspace-root submodule setup contract tests."""
+"""Validate workspace-root submodule setup through generated Make behavior."""
 
 from __future__ import annotations
 

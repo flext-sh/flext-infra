@@ -1,8 +1,7 @@
-"""Typed codegen catalog contract tests."""
+"""Validate the typed repository catalog through its public configuration file."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,7 @@ from flext_cli import u
 from flext_tests import tm
 from packaging.requirements import Requirement
 
-from flext_infra import config, m
+from flext_infra import config, m, t
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
@@ -26,12 +25,8 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
     tm.that(process.stdout.strip(), eq="config/codegen.yaml")
 
     payload = u.Cli.yaml_load_mapping(catalog_path)
-    infra: Mapping[str, object] = m.TypeAdapter(Mapping[str, object]).validate_python(
-        payload["Infra"]
-    )
-    catalog: Mapping[str, object] = m.TypeAdapter(Mapping[str, object]).validate_python(
-        infra["codegen"]
-    )
+    infra = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["Infra"])
+    catalog = t.Cli.JSON_MAPPING_ADAPTER.validate_python(infra["codegen"])
     repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
         catalog["repositories"]
     )
@@ -73,17 +68,12 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ),
         eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
     )
-
-
-@pytest.mark.parametrize(
-    ("field", "exact_patch"), [("python_version_selector", "3.13.11")]
-)
-def test_toolchain_rejects_exact_patch_selectors(field: str, exact_patch: str) -> None:
+def test_toolchain_rejects_exact_patch_selectors() -> None:
     """Keep runtime selectors on compatible major.minor release lines."""
     payload = config.Infra.codegen.toolchain.model_dump()
-    payload[field] = exact_patch
+    payload["python_version"] = "3.13.11"
 
-    with pytest.raises(ValueError, match=r"non-exact major\.minor"):
+    with pytest.raises(ValueError, match="python_version"):
         m.Infra.ToolchainSpec.model_validate(payload)
 
 
@@ -91,12 +81,10 @@ def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
     """Keep library requirements floor-only and let uv own concrete resolution."""
     project = config.Infra.codegen.scaffold.project
     requirements = [
-        *project.codegen_requirements,
-        *project.development_requirements,
         *(
             requirement
             for profile in project.dependency_profiles
-            for requirement in profile.runtime
+            for requirement in (*profile.runtime, *profile.codegen, *profile.dev)
         ),
     ]
     forbidden = {"<", "<=", "==", "===", "~="}

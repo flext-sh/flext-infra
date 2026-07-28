@@ -28,8 +28,6 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
-        codegen_requirements: t.StrSequence,
-        development_requirements: t.StrSequence,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
@@ -45,11 +43,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name = project_name_raw.strip()
 
         cls._sync_dependency_groups(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            codegen_requirements=codegen_requirements,
-            development_requirements=development_requirements,
+            source, project_name=project_name, workspace=workspace
         )
         normalized = cls._normalize_requirements(
             source,
@@ -327,10 +321,8 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        codegen_requirements: t.StrSequence,
-        development_requirements: t.StrSequence,
     ) -> None:
-        """Migrate optional dev dependencies and set canonical generated groups."""
+        """Migrate optional dev dependencies and normalize declared groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
         optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
@@ -340,33 +332,27 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_value(optional, str(c.Infra.DEV))
             )
         dev = [
-            *(
-                item
-                for item in development_requirements
-                if FlextInfraUtilitiesDependencies.dep_name(item) != project_name
-            ),
-            *optional_dev,
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
+            *optional_dev,
         ]
-        u.Cli.toml_sync_string_list(
-            groups,
-            str(c.Infra.DEV),
-            FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
-        )
+        if dev:
+            u.Cli.toml_sync_string_list(
+                groups,
+                str(c.Infra.DEV),
+                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(dev)),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(groups, str(c.Infra.DEV))
 
-        codegen = [
-            *(
-                item
-                for item in codegen_requirements
-                if FlextInfraUtilitiesDependencies.dep_name(item) != project_name
-            ),
-            *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")),
-        ]
-        u.Cli.toml_sync_string_list(
-            groups,
-            "codegen",
-            FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
-        )
+        codegen = u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen"))
+        if codegen:
+            u.Cli.toml_sync_string_list(
+                groups,
+                "codegen",
+                FlextInfraUtilitiesDependencies.dedupe_specs(tuple(codegen)),
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(groups, "codegen")
         cls._sync_workspace_dependency_group(
             document, project_name=project_name, workspace=workspace
         )

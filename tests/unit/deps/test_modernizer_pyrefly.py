@@ -86,15 +86,16 @@ class TestsFlextInfraModernizerPyrefly:
             )
             tm.that(changes, lacks="failed to resolve")
 
-        attached_payload = u.Cli.toml_mapping_from_text(
-            (attached / "pyproject.toml").read_text(encoding="utf-8")
+        attached_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_from_text(
+                (attached / "pyproject.toml").read_text(encoding="utf-8")
+            )
         )
-        linked_payload = u.Cli.toml_mapping_from_text(
-            (linked / "pyproject.toml").read_text(encoding="utf-8")
+        linked_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_from_text(
+                (linked / "pyproject.toml").read_text(encoding="utf-8")
+            )
         )
-        if attached_payload is None or linked_payload is None:
-            message = "modernized pyproject must remain valid TOML"
-            raise AssertionError(message)
         attached_tool = u.Cli.json_as_mapping(attached_payload["tool"])
         linked_tool = u.Cli.json_as_mapping(linked_payload["tool"])
         attached_pyrefly = u.Cli.json_as_mapping(attached_tool["pyrefly"])
@@ -102,15 +103,9 @@ class TestsFlextInfraModernizerPyrefly:
         attached_pyright = u.Cli.json_as_mapping(attached_tool["pyright"])
         linked_pyright = u.Cli.json_as_mapping(linked_tool["pyright"])
         rules = config.Infra.tooling.tools.pyright.path_rules
-        tm.that(
-            attached_pyrefly["python-interpreter-path"],
-            eq=f"{rules.project_venv_path}/{rules.venv_name}/bin/python",
-        )
+        tm.that(attached_pyrefly, lacks="python-interpreter-path")
         tm.that(attached_pyright["venvPath"], eq=rules.project_venv_path)
-        tm.that(
-            linked_pyrefly["python-interpreter-path"],
-            eq=f"{rules.root_venv_path}/{rules.venv_name}/bin/python",
-        )
+        tm.that(linked_pyrefly, lacks="python-interpreter-path")
         tm.that(linked_pyright["venvPath"], eq=rules.root_venv_path)
 
     def test_ensure_pyrefly_config_sets_fields_root(
@@ -150,7 +145,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc, is_root=True
         )
 
-        tm.that("python-interpreter-path" in pyrefly, eq=True)
+        tm.that(pyrefly, lacks="python-interpreter-path")
         tm.that("fallback-python-interpreter-name" in pyrefly, eq=False)
         tm.that(
             any(

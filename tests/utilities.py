@@ -611,6 +611,29 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace
 
         @staticmethod
+        def release_policy_root() -> Path:
+            """Locate the checkout that owns the release policy files.
+
+            Counting parent directories encodes the checkout depth into the
+            suite: inside `<repo>/.worktrees/<lane>/` the extra segments make a
+            fixed index land mid-path, and every release test then fails with
+            FileNotFoundError for a reason unrelated to the code under test.
+
+            Walk upwards instead and stop at the first directory that actually
+            holds the policy file, so the lookup is correct for a plain clone,
+            a linked worktree, and any future layout.
+            """
+            marker = Path(c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH)
+            for candidate in Path(__file__).resolve().parents:
+                if (candidate / marker).is_file():
+                    return candidate
+            msg = (
+                f"no ancestor of {Path(__file__).resolve()} provides "
+                f"{c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH}"
+            )
+            raise FileNotFoundError(msg)
+
+        @staticmethod
         def create_release_workspace(
             root: Path,
             *,
@@ -640,7 +663,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             )
             for policy_path in policy_paths:
-                policy_source = Path(__file__).resolve().parents[2] / policy_path
+                policy_source = (
+                    TestsFlextInfraUtilities.Tests.release_policy_root() / policy_path
+                )
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(policy_source, policy_target)

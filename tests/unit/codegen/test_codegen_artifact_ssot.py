@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from flext_tests import tm
 
-from flext_infra import c, config, t
+from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
 
 CodegenSpec = type(config.Infra.codegen)
@@ -53,8 +53,8 @@ class TestsCodegenArtifactSsot:
         mapping = codegen.vscode_files_exclude_map
         for artifact in codegen.artifacts:
             tm.that(
-                (f"**/{artifact.name}" in mapping) == artifact.vscode_exclude,
-                eq=True,
+                f"**/{artifact.name}" in mapping,
+                eq=artifact.vscode_exclude,
                 msg=artifact.name,
             )
         tm.that(
@@ -101,8 +101,8 @@ class TestsCodegenArtifactSsot:
         mapping = codegen.vscode_watcher_exclude_map
         for artifact in codegen.artifacts:
             tm.that(
-                (f"**/{artifact.name}/**" in mapping) == artifact.watch_exclude,
-                eq=True,
+                f"**/{artifact.name}/**" in mapping,
+                eq=artifact.watch_exclude,
                 msg=artifact.name,
             )
         tm.that(
@@ -153,8 +153,8 @@ class TestsCodegenArtifactSsot:
         ignored = codegen.source_scan_ignored
         for artifact in codegen.artifacts:
             tm.that(
-                (artifact.name in ignored) == artifact.source_scan_ignore,
-                eq=True,
+                artifact.name in ignored,
+                eq=artifact.source_scan_ignore,
                 msg=artifact.name,
             )
 
@@ -186,9 +186,7 @@ class TestsCodegenArtifactSsot:
         patterns = codegen.gitignore_artifact_patterns
         for artifact in codegen.artifacts:
             emitted = artifact.name + "/" if artifact.is_dir else artifact.name
-            tm.that(
-                (emitted in patterns) == artifact.gitignore, eq=True, msg=artifact.name
-            )
+            tm.that(emitted in patterns, eq=artifact.gitignore, msg=artifact.name)
 
     def test_gitignore_artifact_patterns_shape(self, codegen: CodegenSpec) -> None:
         """No ``**/`` prefix anywhere; patterns are unique."""
@@ -305,21 +303,20 @@ class TestsCodegenArtifactSsot:
 
     def test_rendered_vscode_settings_anchor(self) -> None:
         """Rendered settings.json carries the SSOT maps byte-for-byte."""
-        rendered = FlextInfraCodegen.render_vscode_settings(
-            Path("/nonexistent-workspace-root")
+        rendered = tm.ok(
+            FlextInfraCodegen.render_vscode_settings(
+                Path("nonexistent-workspace-root")
+            )
         )
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_json(rendered.unwrap())
-        files_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            settings["files.exclude"]
-        )
-        search_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            settings["search.exclude"]
-        )
-        watcher_exclude = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            settings["files.watcherExclude"]
-        )
+        parsed = tm.ok(u.Cli.json_parse(rendered))
+        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
+        files_exclude = settings["files.exclude"]
+        search_exclude = settings["search.exclude"]
+        watcher_exclude = settings["files.watcherExclude"]
+        tm.that(isinstance(files_exclude, dict), eq=True)
         tm.that(files_exclude["**/.mypy_cache"], eq=True)
-        tm.that(files_exclude, lacks="**/conftest.py")
+        tm.that("**/conftest.py" in files_exclude, eq=False)
         tm.that(search_exclude, eq=files_exclude)
+        tm.that(isinstance(watcher_exclude, dict), eq=True)
         tm.that(watcher_exclude["**/.mypy_cache/**"], eq=True)
-        tm.that(watcher_exclude, lacks="**/site/**")
+        tm.that("**/site/**" in watcher_exclude, eq=False)

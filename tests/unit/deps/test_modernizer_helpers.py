@@ -9,7 +9,7 @@ import tomlkit
 import tomlkit.items
 from flext_tests import tm
 
-from tests import c, u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -297,7 +297,6 @@ class TestsFlextInfraDepsModernizerHelpers:
             u.Infra.rewrite_requirement_constraint(
                 "httpx[socks]>=0.1; python_version < '3.14'",
                 locked_versions={"httpx": "0.28.1"},
-                policy=c.Infra.DependencyConstraintPolicy.FLOOR,
             ),
             eq="httpx[socks]>=0.28.1; python_version < '3.14'",
         )
