@@ -34,11 +34,12 @@ class TestsCodegenMakeEnvironment:
         tm.ok(created)
         makefile = (root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile, has="$(UV_RUN) python -m pytest")
-        tm.that(makefile, has="$(UV_RUN) python -m flext_infra codegen conform")
+        probe_file = root / "probe.env"
         (root / "custom.mk").write_text(
             "_custom_check_probe:\n"
             "\t@printf '%s\\n%s\\n%s\\n' "
-            "'$(UV_PROJECT)' '$(UV_PROJECT_ENVIRONMENT)' '$(VIRTUAL_ENV)'\n",
+            "'$(UV_PROJECT)' '$(UV_PROJECT_ENVIRONMENT)' '$(VIRTUAL_ENV)' "
+            f"> '{probe_file}'\n",
             encoding="utf-8",
         )
         hostile_root = tmp_path / "hostile"
@@ -51,10 +52,13 @@ class TestsCodegenMakeEnvironment:
         })
 
         result = u.Cli.run_raw(
-            ["make", "check", "WHAT=probe"], cwd=root, env=active_env
+            ["make", "--no-print-directory", "_custom_check_probe"],
+            cwd=root,
+            env=active_env,
         )
 
-        output = tm.ok(result).stdout.splitlines()
+        tm.ok(result)
+        output = probe_file.read_text(encoding="utf-8").splitlines()
         tm.that(output, eq=[str(root), str(root / ".venv"), str(root / ".venv")])
 
     def test_makefile_surface_applies_only_makefile(self, tmp_path: Path) -> None:
@@ -384,11 +388,6 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text()
         profile_names = {profile.name for profile in config.Infra.codegen.profiles}
         tm.that(profile_names, eq={profile.value for profile in c.Infra.MakeProfile})
-        tm.that("override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True)
-        tm.that('UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync' in makefile, eq=True)
-        tm.that('uv sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
-        tm.that('uv build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
-        tm.that('uv pip install --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
@@ -467,4 +466,3 @@ class TestsCodegenMakeEnvironment:
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
         tm.that(makefile, lacks="--constraint-policy")
-

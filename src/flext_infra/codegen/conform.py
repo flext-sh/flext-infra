@@ -66,9 +66,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @classmethod
-    def _surface_contract(
+    def surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
     ) -> SurfaceContract:
+        """Return the typed planning contract for a public conform surface."""
         match surface:
             case c.Infra.CodegenConformSurface.ALL:
                 return cls.SurfaceContract(complete_governed=True)
@@ -250,7 +251,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        contract = self.surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -332,7 +333,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root: Path,
         planned: t.SequenceOf[m.Infra.CodegenFilePlan],
         codegen: m.Infra.CodegenConfigSpec,
-        contract: SurfaceContract = SurfaceContract(complete_governed=True),
+        contract: SurfaceContract,
         *,
         profile: c.Infra.MakeProfile,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
@@ -989,8 +990,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
-            if managed.policy in {"create-only", "merge"}:
-                continue
             entries = tuple(
                 entry
                 for entry in codegen.templates.entries
@@ -1186,9 +1185,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
-                python_version=codegen.toolchain.python_minor_version,
-                python_toolchain_version=codegen.toolchain.python_version,
-                uv_version=codegen.toolchain.uv_version,
+                python_version=codegen.toolchain.python_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
