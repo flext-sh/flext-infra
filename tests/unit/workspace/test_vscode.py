@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
+from flext_infra.services.codegen import FlextInfraCodegen
 
 
 def _write_project(project_root: Path) -> None:
@@ -55,7 +55,6 @@ class TestsFlextInfraCodegenVscode:
             doc["python.defaultInterpreterPath"],
             eq="${workspaceFolder}/.venv/bin/python",
         )
-        search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
             search_paths,

@@ -6,10 +6,9 @@ from pathlib import Path
 
 from flext_core import r
 from flext_infra import c, m, p, u
+from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.workspace.base import FlextInfraWorkspaceGeneratorBase
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
-from flext_infra.workspace.project_makefile import FlextInfraProjectMakefileUpdater
-from flext_infra.services.codegen import FlextInfraCodegen
 
 
 class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
@@ -19,35 +18,6 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     (SHA256 / exact-line compare) and surfaces generator/IO failures as r.fail.
     Inherits the generator field + ``_get_generator`` from the workspace base.
     """
-
-    def _sync_makefile_if_needed(
-        self, resolved: Path, effective_root: Path | None, *, apply: bool
-    ) -> p.Result[int]:
-        """Sync the generated project Makefile section for any profile.
-
-        The full Makefile (including the workspace-root member gate fan-out) is
-        owned by ``codegen conform`` for every profile, so sync only refreshes
-        the bootstrap section that ``FlextInfraProjectMakefileUpdater`` manages.
-        """
-        if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
-            makefile_result = self._sync_project_makefile(
-                resolved, effective_root or resolved, apply=apply
-            )
-            if makefile_result.failure:
-                return r[int].fail(
-                    makefile_result.error or "project Makefile generation failed"
-                )
-            return r[int].ok(1 if makefile_result.value else 0)
-        return r[int].ok(0)
-
-    @staticmethod
-    def _sync_project_makefile(
-        workspace_root: Path, canonical_root: Path, *, apply: bool
-    ) -> p.Result[bool]:
-        """Sync the generated section of a project Makefile from pyproject.toml."""
-        return FlextInfraProjectMakefileUpdater().update(
-            workspace_root, canonical_root=canonical_root, apply=apply
-        )
 
     @staticmethod
     def _is_workspace_root(workspace_root: Path, canonical_root: Path | None) -> bool:
@@ -93,9 +63,7 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
         if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return r[bool].ok(False)
         settings_path = (
-            workspace_root
-            / c.Infra.VSCODE_DIRNAME
-            / c.Infra.VSCODE_SETTINGS_FILENAME
+            workspace_root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         )
         rendered = FlextInfraCodegen.render_vscode_settings(workspace_root)
         if rendered.failure:

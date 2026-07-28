@@ -159,6 +159,16 @@ class TestsCodegenMakeEnvironment:
             'UV_RUN := $(UV) run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
             eq=True,
         )
+        tm.that(
+            'pyrefly check --python-interpreter-path "$(RUNTIME_PYTHON)"' in makefile,
+            eq=True,
+        )
+        tm.that("FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)" in makefile, eq=True)
+        tm.that(
+            "export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT "
+            "VIRTUAL_ENV PATH" in makefile,
+            eq=True,
+        )
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
@@ -174,7 +184,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "git submodule update --init --recursive",
-            'refs/heads/$$branch',
+            "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
         for forbidden in (

@@ -57,11 +57,12 @@ endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 RUNTIME_PYTHON := $(RUNTIME_VENV)/bin/python
+FLEXT_INFRA_PYTHON ?= $(RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_VENV)/bin:/usr/local/bin:/usr/bin:/bin
-export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+export FLEXT_INFRA_PYTHON UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace-root)
 CODEGEN_SCOPE := all
@@ -298,7 +299,7 @@ _builtin_build_artifacts:
 _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
-	@$(UV_RUN) pyrefly check
+	@$(UV_RUN) pyrefly check --python-interpreter-path "$(RUNTIME_PYTHON)"
 	@$(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) $(UV_RUN) python -m mypy $(MYPY_PATHS) || { $(REPORT_MYPY_FAILURE); exit $$code; }
 	@$(UV_RUN) pyright
 	@# NOTE (multi-agent, mro-j47u): Vulture reads its scope from generated pyproject.

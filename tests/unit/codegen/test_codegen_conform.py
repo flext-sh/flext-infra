@@ -18,6 +18,7 @@ from flext_tests import tm
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 pytestmark = pytest.mark.timeout(60)
@@ -285,7 +286,7 @@ class TestCodegenConform:
         )
 
     def test_make_context_accepts_manifest_without_project_or_known_provider(
-        self,
+        self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
         repository = config.Infra.codegen.repositories[0].model_copy(
@@ -296,11 +297,18 @@ class TestCodegenConform:
             name="consumer",
             repository=repository,
         )
-        context = FlextInfraCodegenConform._make_render_context(
-            repository,
-            workspace,
-            config.Infra.codegen,
-            tooling_runtime=config.Infra.tooling.runtime,
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=repository.distribution,
+                package_name=repository.distribution.replace("-", "_"),
+                path=tmp_path / c.Infra.PYPROJECT_FILENAME,
+                declared_python_dirs=("src",),
+            )
+        )
+        context = FlextInfraCodegenConform.make_render_context(
+            repository, workspace, config.Infra.codegen, tooling_runtime=tooling_runtime
         )
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)

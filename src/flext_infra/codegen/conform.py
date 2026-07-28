@@ -41,6 +41,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     class SurfaceContract(m.Value):
+        """Typed capabilities selected by one conform surface."""
+
         destinations: frozenset[str] | None = m.Field(
             default=None, description="Output paths selected for conformance planning"
         )
@@ -233,9 +235,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
-        contract = self._surface_contract(
-            c.Infra.CodegenConformSurface(request.what)
-        )
+        contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         for repository in selected:
@@ -677,7 +677,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
             artifact_context = self._artifact_render_context(
-                dist=context.dist,
                 repository=repository,
                 workspace=workspace,
                 codegen=codegen,
@@ -744,6 +743,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            dev_dependencies=context.dependency_profile.dev,
+            codegen_dependencies=context.dependency_profile.codegen,
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -765,6 +766,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            dev_dependencies=context.dependency_profile.dev,
+            codegen_dependencies=context.dependency_profile.codegen,
         )
         if pyproject_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -847,6 +850,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"pyproject dependency planning failed: {pyproject}"
                 )
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
+        dependency_profile_result = self._dependency_profile_for_repository(
+            repository,
+            metadata.value.project.dependencies,
+            codegen.scaffold.project.dependency_profiles,
+        )
+        if dependency_profile_result.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                dependency_profile_result.error
+                or f"dependency profile resolution failed: {repository.distribution}"
+            )
+        dependency_profile = dependency_profile_result.value
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
@@ -878,6 +892,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            dev_dependencies=dependency_profile.dev,
+            codegen_dependencies=dependency_profile.codegen,
         )
         if prepared_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -899,6 +915,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
             uv_exclude_dependencies=uv_exclude_dependencies,
+            dev_dependencies=dependency_profile.dev,
+            codegen_dependencies=dependency_profile.codegen,
         )
         if pyproject_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -956,7 +974,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"active repository has no Make profile: {repository.name}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
-        context_result = self._make_render_context(
+        context_result = self.make_render_context(
             repository, workspace, codegen, tooling_runtime=tooling_runtime
         )
         if context_result.failure:
@@ -1014,7 +1032,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 continue
             context_result = self._artifact_render_context(
-                dist=dist,
                 repository=repository,
                 workspace=workspace,
                 codegen=codegen,
@@ -1045,7 +1062,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _artifact_render_context(
         *,
-        dist: str,
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
@@ -1072,7 +1088,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
-                    dist=dist,
+                    dist=repository.distribution,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=workspace_root_rel,
@@ -1103,7 +1119,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[p.Model].ok(project_context)
 
     @staticmethod
-    def _make_render_context(
+    def make_render_context(
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
@@ -1269,7 +1285,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 python_toolchain_version=codegen.toolchain.python_version,
                 python_required_version=codegen.toolchain.python_required_version,
                 uv_version=codegen.toolchain.uv_version,
-                uv_required_version=codegen.toolchain.uv_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,

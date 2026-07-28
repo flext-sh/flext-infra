@@ -29,6 +29,8 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
+        dev_dependencies: t.StrSequence = (),
+        codegen_dependencies: t.StrSequence = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -43,7 +45,11 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name = project_name_raw.strip()
 
         cls._sync_dependency_groups(
-            source, project_name=project_name, workspace=workspace
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            dev_dependencies=dev_dependencies,
+            codegen_dependencies=codegen_dependencies,
         )
         normalized = cls._normalize_requirements(
             source,
@@ -70,9 +76,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -128,17 +132,13 @@ class FlextInfraUtilitiesPyprojectConform:
             r[bool].ok(True)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source,
-                project_name=project_name,
-                workspace=workspace,
+                source, project_name=project_name, workspace=workspace
             )
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -277,16 +277,9 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
-        url_result = cls._git_requirement_url(reference.url)
-        if url_result.failure:
-            return r[str].fail(
-                url_result.error or f"Git URL normalization failed: {dependency_name}"
-            )
-        canonical = f"{head} @ {url_result.value}@{reference.branch}"
+        canonical = f"{head} @ git+{reference.url}@{reference.branch}"
         return r[str].ok(
-            f"{canonical}; {marker_text}"
-            if separator and marker_text
-            else canonical
+            f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
 
     @staticmethod
@@ -320,6 +313,8 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        dev_dependencies: t.StrSequence,
+        codegen_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and set canonical generated groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
@@ -333,6 +328,7 @@ class FlextInfraUtilitiesPyprojectConform:
         dev = [
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
+            *dev_dependencies,
         ]
         if project_name != "flext-tests":
             dev.append("flext-tests")
@@ -342,7 +338,10 @@ class FlextInfraUtilitiesPyprojectConform:
             tuple(dict.fromkeys(item.strip() for item in dev if item.strip())),
         )
 
-        codegen = list(u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")))
+        codegen = [
+            *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, "codegen")),
+            *codegen_dependencies,
+        ]
         if project_name != "flext-infra":
             codegen.append("flext-infra")
         u.Cli.toml_sync_string_list(
@@ -659,7 +658,10 @@ class FlextInfraUtilitiesPyprojectConform:
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if workspace_mode is c.Infra.WorkspaceMode.STANDALONE and not has_direct_source:
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
                 return r[bool].fail(
                     "standalone dependency lacks configured Git source: "
                     f"{dependency_name}"
