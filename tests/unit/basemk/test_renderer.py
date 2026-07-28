@@ -38,7 +38,7 @@ class TestsFlextInfraBasemkRenderer:
             "git submodule update --init --recursive",
             'test -z "$$(git status --porcelain)"',
             'test "$$(git rev-parse HEAD)" = "$$sha1"',
-            'refs/heads/$(SETUP_BRANCH)',
+            "refs/heads/$(SETUP_BRANCH)",
             'git checkout --quiet -b "$(SETUP_BRANCH)"',
             "--no-install-project",
         ):

@@ -11,7 +11,6 @@ from flext_tests import tm
 
 from flext_infra import c, config
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_infra import config
 from tests import c, m, t, u
 
 pytestmark = pytest.mark.timeout(60)

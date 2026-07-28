@@ -8,7 +8,6 @@ from pathlib import Path
 from flext_tests import tm
 
 from flext_infra import c, config
-from flext_infra.workspace.vscode import FlextInfraWorkspaceVscode
 
 
 def _write_project(project_root: Path) -> None:

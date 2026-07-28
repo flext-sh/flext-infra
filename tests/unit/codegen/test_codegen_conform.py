@@ -127,13 +127,7 @@ class TestCodegenConform:
         expected_uv = config.Infra.codegen.toolchain.uv_version
 
         selected = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "--dry-run",
-                "_builtin_status_diagnostics",
-            ],
+            [make_path, "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
             env={"PATH": f"{hostile_bin}{os.pathsep}{os.environ['PATH']}"},
             remove_env_keys=("MAKEFLAGS",),
         )
@@ -143,12 +137,7 @@ class TestCodegenConform:
             remove_env_keys=("MAKEFLAGS",),
         )
         status_without_mise = cli.run_raw(
-            [
-                make_path,
-                "-C",
-                str(root),
-                "_builtin_status_diagnostics",
-            ],
+            [make_path, "-C", str(root), "_builtin_status_diagnostics"],
             env={"PATH": str(hostile_bin)},
             remove_env_keys=("MAKEFLAGS",),
         )
@@ -162,9 +151,7 @@ class TestCodegenConform:
         tm.that(selected_output, lacks=str(hostile_uv))
         help_process = tm.ok(help_without_mise)
         tm.that(
-            help_process.exit_code,
-            eq=0,
-            msg=help_process.stdout + help_process.stderr,
+            help_process.exit_code, eq=0, msg=help_process.stdout + help_process.stderr
         )
         tm.that(help_process.stdout, has="flext-demo [standalone]")
         missing_process = tm.ok(status_without_mise)
