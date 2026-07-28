@@ -28,20 +28,7 @@ class FlextInfraWorktreeService(s[str]):
 
     def _primary_root(self) -> p.Result[Path]:
         """Resolve the primary worktree from Git's canonical registry."""
-        listed = u.Infra.git_capture(self.root, ("worktree", "list", "--porcelain"))
-        if listed.failure:
-            return r.fail(listed.error or "failed to list Git worktrees")
-        first = next(
-            (
-                line.removeprefix("worktree ").strip()
-                for line in listed.value.splitlines()
-                if line.startswith("worktree ")
-            ),
-            "",
-        )
-        if not first:
-            return r.fail("Git worktree registry contains no primary worktree")
-        return r.ok(Path(first).resolve())
+        return u.Infra.git_primary_worktree_root(self.root)
 
     def _validated_branch(self) -> p.Result[str]:
         """Validate and return the branch required by mutating operations."""

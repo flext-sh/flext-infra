@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -169,14 +168,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
     @classmethod
     def _transaction_environment(cls, worktree_root: Path) -> t.StrMapping:
         """Build the isolated source and recursion-guard environment."""
-        source_roots = [*cls._source_roots(worktree_root)]
-        inherited_python_path = os.environ.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
-        for raw_path in inherited_python_path.split(
-            c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR
-        ):
-            path = Path(raw_path)
-            if raw_path and path.is_dir() and path not in source_roots:
-                source_roots.append(path)
+        source_roots = cls._source_roots(worktree_root)
         python_path = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(
             str(path) for path in source_roots
         )
@@ -220,8 +212,17 @@ class FlextInfraUtilitiesWorktreeTransaction:
         timeout_seconds: int,
     ) -> m.Infra.LintSnapshot:
         """Capture one lint command without hiding a non-zero exit status."""
+        lint_environment = {
+            key: value
+            for key, value in environment.items()
+            if key != c.Infra.ORCHESTRATOR_ENV_PYTHONPATH
+        }
         result = u.Cli.run_raw(
-            command, cwd=worktree_root, env=environment, timeout=timeout_seconds
+            command,
+            cwd=worktree_root,
+            env=lint_environment,
+            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            timeout=timeout_seconds,
         )
         if result.failure:
             return m.Infra.LintSnapshot(
@@ -415,10 +416,18 @@ class FlextInfraUtilitiesWorktreeTransaction:
         """Execute, validate, optionally apply, and always remove one worktree."""
         workspace_root = request.workspace_root.resolve()
         transaction_id = uuid4().hex
-        worktree_root = (
+        primary_result = FlextInfraUtilitiesGitScope.git_primary_worktree_root(
             workspace_root
-            / c.Infra.WORKTREE_TRANSACTION_ROOT
-            / f"transaction-{transaction_id}"
+        )
+        if primary_result.failure:
+            return r[m.Infra.WorktreeTransactionReport].fail(
+                primary_result.error or "failed to resolve primary worktree"
+            )
+        primary_root = primary_result.value
+        worktree_root = primary_root.parent / (
+            c.Infra.WORKTREE_TRANSACTION_NAME_TEMPLATE.format(
+                repository=primary_root.name, transaction_id=transaction_id
+            )
         )
         create_result = cls._create_complete_worktree(
             workspace_root,
