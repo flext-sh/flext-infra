@@ -27,11 +27,8 @@ class FlextInfraUtilitiesDocsScope:
     def _project_state(project_root: str) -> mw.ProjectPyprojectState:
         """Return cached parsed pyproject state for one project root.
 
-        When the pyproject is absent or empty, the returned state carries
-        empty ``project_name``/``package_name`` (legitimate "not a project"
-        signal). When the pyproject is present but missing ``[project]`` or
-        ``[project].name``, :meth:`project_name_from_payload` raises — no
-        silent fallback to directory-name.
+        Missing or incomplete project identity fails closed through the
+        canonical pyproject metadata resolvers.
         """
         root = Path(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
@@ -42,6 +39,7 @@ class FlextInfraUtilitiesDocsScope:
                 payload
             )
         )
+<<<<<<< HEAD
         if not payload:
             empty_state: mw.ProjectPyprojectState = (
                 mw.ProjectPyprojectState.model_construct(
@@ -56,6 +54,9 @@ class FlextInfraUtilitiesDocsScope:
             )
             return empty_state
         state: mw.ProjectPyprojectState = mw.ProjectPyprojectState.model_construct(
+=======
+        return mw.ProjectPyprojectState(
+>>>>>>> origin/main
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,
@@ -159,7 +160,11 @@ class FlextInfraUtilitiesDocsScope:
             if is_workspace_member
             else c.Infra.WorkspaceProjectRole.ATTACHED
         )
+<<<<<<< HEAD
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
+=======
+        return mw.ProjectInfo(
+>>>>>>> origin/main
             path=entry,
             name=project_state.project_name,
             stack="python/flext",

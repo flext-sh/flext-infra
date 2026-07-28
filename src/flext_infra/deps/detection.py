@@ -16,17 +16,18 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
 
     _log = u.fetch_logger(__name__)
 
+<<<<<<< HEAD
     def __init__(self) -> None:
         """Initialize the dependency detection service with selector, toml, and runner."""
         self.selector: p.Infra.ProjectSelector | None = None
         self.toml: p.Infra.TomlReader | None = None
         self.runner: p.Cli.CommandRunner | None = None
 
+=======
+>>>>>>> origin/main
     @override
     def _read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
         """Read plain."""
-        if self.toml is not None:
-            return self.toml.read_plain(path)
         plain_result = u.Cli.toml_read_json(path)
         if plain_result.failure:
             return r[t.JsonMapping].fail(plain_result.error or f"failed to read {path}")
@@ -44,8 +45,6 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         env: t.StrMapping | None = None,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run raw."""
-        if self.runner is not None:
-            return self.runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
         return u.Cli.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
 
     @staticmethod
@@ -115,11 +114,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         For full ProjectInfo metadata, use u.Infra.discover_projects().
         """
         names = projects_filter or []
-        result = (
-            self.selector.resolve_projects(workspace_root, names)
-            if self.selector is not None
-            else u.Infra.resolve_projects(workspace_root, names)
-        )
+        result = u.Infra.resolve_projects(workspace_root, names)
         if result.failure:
             return r[t.SequenceOf[Path]].fail(
                 result.error or "project resolution failed"

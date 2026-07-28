@@ -15,8 +15,13 @@ import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+<<<<<<< HEAD
 from flext_core import e as core_e
 from flext_infra import c, m, u
+=======
+from flext_core import e
+from flext_infra.constants import c, c as core_c
+>>>>>>> origin/main
 from flext_infra.gates.base_gate import FlextInfraGate
 
 # mro-0ftd.3.5: the empty package initializer is not a compatibility export;
@@ -76,7 +81,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
             if fixed:
                 changes.extend(fix_changes)
         for issue in issues:
+<<<<<<< HEAD
             warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
+=======
+            warnings.warn(issue.formatted, e.SmellViolation, stacklevel=2)
+>>>>>>> origin/main
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -108,7 +117,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
         for issue in issues:
+<<<<<<< HEAD
             warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
+=======
+            warnings.warn(issue.formatted, e.SmellViolation, stacklevel=2)
+>>>>>>> origin/main
         passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
         return self._build_gate_result(
             result=m.Infra.GateResult(

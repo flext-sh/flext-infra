@@ -23,10 +23,10 @@ class FlextInfraBaseMkGenerator(s[str]):
         Path | None, m.Field(description="Optional file path for generated content")
     ] = None
 
-    template_renderer: Annotated[
-        p.Infra.TemplateRenderer | None,
-        m.Field(exclude=True, description="Template renderer"),
-    ] = None
+    @property
+    def _get_template_renderer(self) -> p.Infra.TemplateRenderer:
+        """Return the template renderer."""
+        return FlextInfraBaseMkTemplateRenderer()
 
     @property
     def _get_runner(self) -> p.Cli.CommandRunner:
@@ -59,10 +59,14 @@ class FlextInfraBaseMkGenerator(s[str]):
         if config_result.failure:
             return r[str].fail(config_result.error or "invalid base.mk configuration")
         config_value = config_result.value
+<<<<<<< HEAD
         render_result = (
             self.template_renderer
             or FlextInfraBaseMkTemplateRenderer(workspace_root=self.workspace_root)
         ).render_all(config_value)
+=======
+        render_result = self._get_template_renderer.render_all(config_value)
+>>>>>>> origin/main
         if render_result.failure:
             return r[str].fail(render_result.error or "base.mk render failed")
         return self._validate_generated_output(render_result.value)

@@ -16,7 +16,10 @@ import pkgutil
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
+<<<<<<< HEAD
 from flext_infra import c, config, m, u
+=======
+>>>>>>> origin/main
 from flext_infra.base import s
 
 if TYPE_CHECKING:

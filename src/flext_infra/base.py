@@ -24,6 +24,15 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
+<<<<<<< HEAD
+=======
+    @property
+    @override
+    def settings(self) -> cli_p.Cli.Settings:
+        """Return the typed CLI settings via the canonical cli facade."""
+        return cli.settings
+
+>>>>>>> origin/main
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
         """Bootstrap service runtime using the shared CLI settings namespace."""

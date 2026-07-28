@@ -11,7 +11,12 @@ import pytest
 from flext_tests import tm
 
 from flext_cli import cli
+<<<<<<< HEAD
 from flext_core import r
+=======
+from flext_core import r, u
+from flext_core._models.enforcement import FlextModelsEnforcement as me
+>>>>>>> origin/main
 from flext_infra import m, p, t, u
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
@@ -24,7 +29,11 @@ class TestsEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
+<<<<<<< HEAD
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
+=======
+    def _rule(rule_id: str) -> me.EnforcementRuleSpec:
+>>>>>>> origin/main
         catalog = u.build_canonical_catalog()
         return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
 
@@ -298,6 +307,10 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_explicit_unsafe_rule_fails_under_safe_only(self, tmp_path: Path) -> None:
         """Explicit unsafe fix requests must fail instead of becoming no-op success."""
+<<<<<<< HEAD
+=======
+        catalog = u.build_canonical_catalog()
+>>>>>>> origin/main
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
             workspace_root=tmp_path,
             selected_projects=("demo",),

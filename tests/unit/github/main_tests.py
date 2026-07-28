@@ -137,7 +137,8 @@ class TestsInfraGithub:
         hardcoding verb names) keeps this test correct when the SSOT changes.
         """
         declared = {
-            verb.name for verb in config.Infra.codegen.make.verbs  # type: ignore[attr-defined]
+            verb.name
+            for verb in config.Infra.codegen.make.verbs  # type: ignore[attr-defined]
         }
         workspace_root = Path(__file__).resolve().parents[3].parent
         workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(

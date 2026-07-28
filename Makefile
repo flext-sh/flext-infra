@@ -5,11 +5,25 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
+<<<<<<< HEAD
 MAKE_PROFILE := workspace-member
 WORKSPACE_ROOT_REL := ..
 WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
+=======
+PYTHON_VERSION ?= >=3.13,<3.14
+SRC_DIR ?= src
+TESTS_DIR ?= tests
+# Detect workspace root by walking up until we find the parent repo's .gitmodules.
+# In a workspace, base.mk lives in flext-infra/ and is the single source of truth.
+FLEXT_WORKSPACE_ROOT := $(shell \
+	current="$(CURDIR)"; \
+	while [ "$$current" != "/" ]; do \
+		if [ -f "$$current/.gitmodules" ]; then echo "$$current"; break; fi; \
+		current="$$(dirname "$$current")"; \
+	done)
+>>>>>>> origin/main
 
 APPLY ?= N
 ARGS ?=

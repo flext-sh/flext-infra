@@ -10,8 +10,12 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import r
+<<<<<<< HEAD
 from flext_infra import c, m, p, t, u
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
+=======
+from flext_core._models.enforcement import FlextModelsEnforcement as me
+>>>>>>> origin/main
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
@@ -74,6 +78,10 @@ class FlextInfraEnforcementFixerOrchestrator(
     @override
     def execute(self) -> p.Result[str]:
         """Run the enforcement fix pipeline and return a human-readable report."""
+<<<<<<< HEAD
+=======
+        catalog = u.build_canonical_catalog()
+>>>>>>> origin/main
         try:
             selected_rules = self._selected_rules()
         except ValueError as exc:

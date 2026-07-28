@@ -1,7 +1,7 @@
 """Tests for the qlty code-smells gate (report-only posture, warnings always).
 
 The gate parses a qlty SARIF payload into per-project issues, emits one
-``FlextSmellViolation`` warning per finding on every run, and passes while
+``e.SmellViolation`` warning per finding on every run, and passes while
 ``SMELLS_GATE_MODE`` is WARN. A failed/absent scanner surfaces as a visible
 issue instead of a silent pass. All assertions run against a literal SARIF
 fixture returned by an owned temporary ``qlty`` executable, exercising only
@@ -15,7 +15,11 @@ from typing import TYPE_CHECKING
 import pytest
 from flext_tests import tm
 
+<<<<<<< HEAD
 from flext_core import e as core_e
+=======
+from flext_core import c as core_c, e
+>>>>>>> origin/main
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
@@ -160,7 +164,11 @@ class TestSmellsGate:
         project_dir = tmp_path / "demo-project"
         project_dir.mkdir()
 
+<<<<<<< HEAD
         with pytest.warns(core_e.SmellViolation):
+=======
+        with pytest.warns(e.SmellViolation):
+>>>>>>> origin/main
             execution = gate.check(project_dir, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)
@@ -186,7 +194,11 @@ class TestSmellsGate:
         project_dir = tmp_path / "demo-project"
         project_dir.mkdir()
 
+<<<<<<< HEAD
         with pytest.warns(core_e.SmellViolation):
+=======
+        with pytest.warns(e.SmellViolation):
+>>>>>>> origin/main
             execution = gate.check(project_dir, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=True)

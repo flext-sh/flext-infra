@@ -58,9 +58,14 @@ class FlextInfraCodegenVersionFile(s[bool]):
         for project_info in discovered.value:
             metadata_result = u.read_project_metadata(project_info.path)
             if metadata_result.failure:
+<<<<<<< HEAD
                 return r[bool].fail(
                     metadata_result.error
                     or f"version-file: cannot load {project_info.path}"
+=======
+                return r[int].fail(
+                    metadata_result.error or "project metadata read failed"
+>>>>>>> origin/main
                 )
             meta = metadata_result.value
             class_name = f"{meta.class_stem}Version"
@@ -77,12 +82,22 @@ class FlextInfraCodegenVersionFile(s[bool]):
                 continue
 
             target = src_pkg / "__version__.py"
+<<<<<<< HEAD
             rendered = u.Cli.template_render(template_path, meta)
             if rendered.failure:
                 return r[bool].fail(
                     rendered.error or f"version-file: cannot render {target}"
                 )
             content = rendered.value
+=======
+            content = (
+                template.render(
+                    project_name=meta.project.name,
+                    class_name=class_name,
+                ).rstrip()
+                + "\n"
+            )
+>>>>>>> origin/main
 
             if target.is_file():
                 current = u.Cli.files_read_text(target)

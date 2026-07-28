@@ -56,12 +56,24 @@ class FlextInfraProjectMakefileUpdater:
         if not pyproject.exists():
             result = r[bool].ok(False)
         else:
+<<<<<<< HEAD
             metadata_result = u.read_project_metadata(project_root)
             if metadata_result.failure:
                 result = r[bool].fail(
                     metadata_result.error or "pyproject.toml metadata load failed"
                 )
             else:
+=======
+            try:
+                metadata_result = u.read_project_metadata(project_root)
+            except (FileNotFoundError, ValueError) as exc:
+                result = r[bool].fail_op("pyproject.toml parse", exc)
+            else:
+                if metadata_result.failure:
+                    return r[bool].fail(
+                        metadata_result.error or "project metadata read failed"
+                    )
+>>>>>>> origin/main
                 meta = metadata_result.value
                 bootstrap_result = (
                     FlextInfraBaseMkTemplateRenderer.render_bootstrap_include()
@@ -143,7 +155,11 @@ class FlextInfraProjectMakefileUpdater:
             sep,
             "",
             f"PROJECT_NAME := {meta.project.name}",
+<<<<<<< HEAD
             f"PYTHON_VERSION ?= {FlextInfraProjectMakefileUpdater._python_selector(meta.project.requires_python)}",
+=======
+            f"PYTHON_VERSION ?= {meta.project.requires_python}",
+>>>>>>> origin/main
             f"SRC_DIR ?= {c.Infra.DEFAULT_SRC_DIR}",
             f"TESTS_DIR ?= {tests_dir}",
             bootstrap,

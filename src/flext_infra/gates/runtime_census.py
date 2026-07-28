@@ -1,7 +1,7 @@
 """Runtime enforcement census quality gate.
 
 Imports every ``flext_*`` module in the selected project and runs
-``FlextUtilitiesEnforcement.check()`` against every locally-defined class.
+``u.check()`` against every locally-defined class.
 """
 
 from __future__ import annotations

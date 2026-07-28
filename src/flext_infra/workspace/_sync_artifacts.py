@@ -23,12 +23,16 @@ class FlextInfraWorkspaceSyncArtifactsMixin(FlextInfraWorkspaceGeneratorBase):
     def _sync_makefile_if_needed(
         self, resolved: Path, effective_root: Path | None, *, apply: bool
     ) -> p.Result[int]:
+<<<<<<< HEAD
         """Sync the generated project Makefile section for any profile.
 
         The full Makefile (including the workspace-root member gate fan-out) is
         owned by ``codegen conform`` for every profile, so sync only refreshes
         the bootstrap section that ``FlextInfraProjectMakefileUpdater`` manages.
         """
+=======
+        """Sync the canonical generated Makefile section for any profile."""
+>>>>>>> origin/main
         if (resolved / c.Infra.PYPROJECT_FILENAME).exists():
             makefile_result = self._sync_project_makefile(
                 resolved, effective_root or resolved, apply=apply
