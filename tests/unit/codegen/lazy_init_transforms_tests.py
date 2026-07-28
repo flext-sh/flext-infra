@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -102,11 +103,23 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        tm.that(content, has="from .__version__ import (")
-        tm.that(content, has="__version__ as __version__")
-        tm.that(content, has="__version_info__ as __version_info__")
-        tm.that(content, has="__version__")
-        tm.that(content, has="__version_info__")
+        source_root = workspace_root / c.Infra.DEFAULT_SRC_DIR
+        imported = tm.ok(
+            u.Cli.run_raw(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import flext_demo; "
+                        "print(f'{flext_demo.__version__}|"
+                        "{flext_demo.__version_info__}')"
+                    ),
+                ],
+                cwd=source_root,
+            )
+        )
+        tm.that(imported.exit_code, eq=0)
+        tm.that(imported.stdout.strip(), eq="1.0.0|(1, 0, 0)")
         # mro-wkii.17 (Codex): version-only roots publish one static initializer.
         tm.that(content, has="__all__: tuple[str, ...]")
         tm.that(content, has='"__version__"')
