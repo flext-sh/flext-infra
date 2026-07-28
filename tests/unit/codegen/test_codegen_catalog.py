@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_cli import u
 from flext_tests import tm
+from packaging.requirements import Requirement
 
-from flext_infra import m, t
+from flext_infra import config, m, t
 
 
 def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
@@ -66,3 +68,33 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
         ),
         eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
     )
+
+
+def test_toolchain_rejects_exact_patch_selectors() -> None:
+    """Keep runtime selectors on compatible major.minor release lines."""
+    payload = config.Infra.codegen.toolchain.model_dump()
+    payload["python_version"] = "3.13.11"
+
+    with pytest.raises(ValueError, match="python_version"):
+        m.Infra.ToolchainSpec.model_validate(payload)
+
+
+def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
+    """Keep library requirements floor-only and let uv own concrete resolution."""
+    project = config.Infra.codegen.scaffold.project
+    requirements = [
+        *(
+            requirement
+            for profile in project.dependency_profiles
+            for requirement in (*profile.runtime, *profile.codegen, *profile.dev)
+        )
+    ]
+    forbidden = {"<", "<=", "==", "===", "~="}
+
+    for raw_requirement in requirements:
+        parsed = Requirement(raw_requirement)
+        tm.that(
+            forbidden.isdisjoint(specifier.operator for specifier in parsed.specifier),
+            eq=True,
+            msg=raw_requirement,
+        )

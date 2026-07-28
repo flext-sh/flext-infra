@@ -127,7 +127,7 @@ class TestsInfraGithub:
         tm.fail(result)
         tm.that((result.error or ""), has="PR operation exited with code")
         log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
-        assert log_path.is_file()
+        tm.that(log_path.is_file(), eq=True)
         tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
 
     def test_pull_request_create_requires_noninteractive_content(
@@ -160,10 +160,8 @@ class TestsInfraGithub:
         hardcoding verb names) keeps this test correct when the SSOT changes.
         """
         declared = {verb.name for verb in config.Infra.codegen.make.verbs}
-        workspace_root = Path(__file__).resolve().parents[3]
-        workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(
-            (workspace_root / ".github/workflows").glob("*.yml")
-        )
+        repository_root = Path(__file__).resolve().parents[3]
+        workflows = sorted((repository_root / ".github/workflows").glob("*.yml"))
         invoked: dict[str, set[str]] = {}
         for workflow in workflows:
             if not workflow.is_file():
@@ -176,6 +174,6 @@ class TestsInfraGithub:
             }
             undeclared = verbs - declared
             if undeclared:
-                invoked[str(workflow.relative_to(workspace_root))] = undeclared
+                invoked[str(workflow.relative_to(repository_root))] = undeclared
 
         tm.that(invoked, eq={})

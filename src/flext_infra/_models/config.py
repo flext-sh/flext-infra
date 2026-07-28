@@ -583,22 +583,6 @@ class FlextInfraConfigModels:
             int, m.Field(gt=0, description="Forced-termination grace period")
         ]
 
-    class ToolchainRenderSpec(_ConfigContract):
-        """Field-only render projection of the canonical toolchain owner."""
-
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Python toolchain version")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
@@ -798,9 +782,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]

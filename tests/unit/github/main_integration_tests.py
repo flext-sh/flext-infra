@@ -30,9 +30,9 @@ def test_workflows_subcommand_applies_templates(tmp_path: Path) -> None:
     ])
 
     tm.that(result, eq=0)
-    assert report_path.is_file()
-    assert (workspace / "flext-a/.github/workflows/ci.yml").is_file()
-    assert (workspace / "flext-b/.github/workflows/ci.yml").is_file()
+    tm.that(report_path.is_file(), eq=True)
+    tm.that((workspace / "flext-a/.github/workflows/ci.yml").is_file(), eq=True)
+    tm.that((workspace / "flext-b/.github/workflows/ci.yml").is_file(), eq=True)
 
 
 def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
@@ -48,7 +48,7 @@ def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
         str(report_path),
     ])
 
-    assert report_path.is_file()
+    tm.that(report_path.is_file(), eq=True)
     tm.that(result, eq=0)
 
 
@@ -66,7 +66,7 @@ def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
 
     tm.that(result, ne=0)
     log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
-    assert log_path.is_file()
+    tm.that(log_path.is_file(), eq=True)
     tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
 
 

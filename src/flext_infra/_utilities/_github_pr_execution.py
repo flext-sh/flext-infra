@@ -18,6 +18,17 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
     """Execute the minimal, native pull-request publication contract."""
 
     @staticmethod
+    def _validate_github_pr_create_request(
+        request: p.Infra.GithubPullRequestFields,
+    ) -> p.Result[t.StrPair]:
+        """Require complete non-interactive content before Git or GH execution."""
+        if request.title is None:
+            return r.fail("title is required for pull-request creation")
+        if request.body is None:
+            return r.fail("body is required for pull-request creation")
+        return r.ok((request.title, request.body))
+
+    @staticmethod
     def _github_pr_list_command(
         request: p.Infra.GithubPullRequestFields, head: str, *, url_only: bool
     ) -> list[str]:
@@ -46,20 +57,22 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
         request: p.Infra.GithubPullRequestFields, head: str
     ) -> p.Result[t.StrSequence]:
         """Build one fully non-interactive native create command."""
-        if request.title is None:
-            return r.fail("title is required for pull-request creation")
-        if request.body is None:
-            return r.fail("body is required for pull-request creation")
-        command = [
+        validation = FlextInfraUtilitiesGithubPrExecutionMixin._validate_github_pr_create_request(
+            request
+        )
+        if validation.failure:
+            return r.fail(validation.error or "invalid pull-request create request")
+        title, body = validation.value
+        command: list[str] = [
             c.Infra.GH,
             c.Infra.PR,
-            c.Infra.PullRequestAction.CREATE,
+            c.Infra.PullRequestAction.CREATE.value,
             "--head",
             head,
             "--title",
-            request.title,
+            title,
             "--body",
-            request.body,
+            body,
         ]
         if request.base is not None:
             command.extend(["--base", request.base])
@@ -158,6 +171,10 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
         """Execute one validated status or idempotent create action."""
         if not repo_root.is_dir():
             return r.fail(f"repository root is not a directory: {repo_root}")
+        if request.action == c.Infra.PullRequestAction.CREATE:
+            validation = cls._validate_github_pr_create_request(request)
+            if validation.failure:
+                return r.fail(validation.error or "invalid pull-request create request")
         head_result = (
             r.ok(request.head)
             if request.head is not None

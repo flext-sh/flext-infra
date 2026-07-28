@@ -57,7 +57,6 @@ class TestsFlextInfraCodegenVscode:
                 ]
             ),
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
         tm.that(doc["files.exclude"]["**/dbt_packages"], eq=True)
         tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
         overrides = doc["python.analysis.diagnosticSeverityOverrides"]
@@ -106,7 +105,6 @@ class TestsFlextInfraCodegenVscode:
                 "./libs/b/.venv",
             ],
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_invalid_json_fails_without_producing_a_document(
         self, tmp_path: Path

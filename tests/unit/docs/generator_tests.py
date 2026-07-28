@@ -9,7 +9,6 @@ from flext_tests import tm
 from flext_infra import c
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.docs.validator import FlextInfraDocValidator
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -51,6 +50,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
 def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_unowned(
     tmp_path: Path,
 ) -> None:
+    """Preserve root output while leaving optional curated indexes unowned."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
         workspace_root=workspace, projects=["flext-a"], apply=True
@@ -67,14 +67,15 @@ def test_root_generated_catalog_survives_project_pass_and_curated_indexes_are_un
     tm.that(catalog.exists(), eq=True)
 
     for relative_path in (
+        "docs/README.md",
         "docs/architecture/README.md",
+        "docs/guides/README.md",
         "docs/projects/README.md",
-        "docs/api-reference/README.md",
     ):
         (workspace / relative_path).unlink()
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
+    tm.that(all(report.result == "OK" for report in validation.value), eq=True)
 
 
 def test_generated_collection_rules_pointer_stays_within_consumer_limit(
@@ -100,12 +101,13 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
         if lines[index].startswith("## ")
     )
     collection_rules_lines = [line for line in lines[section_start:section_end] if line]
-    tm.that(max(map(len, collection_rules_lines)), le=240)
+    tm.that(max(map(len, collection_rules_lines)), lte=240)
 
 
 def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
     tmp_path: Path,
 ) -> None:
+    """Keep colocated root output stable without owning curated indexes."""
     workspace = tmp_path
     (workspace / "src/flext_infra_fixture").mkdir(parents=True)
     (workspace / "src/flext_infra_fixture/__init__.py").write_text(
@@ -156,7 +158,7 @@ def test_root_catalog_survives_project_generation_and_curated_paths_are_unowned(
         (workspace / relative_path).unlink()
     validation = FlextInfraDocValidator().validate_workspace(request)
     tm.ok(validation)
-    assert all(report.result == "OK" for report in validation.value)
+    tm.that(all(report.result == "OK" for report in validation.value), eq=True)
     generator.generate(request)
     tm.that(catalog.read_bytes(), eq=first_output)
 
