@@ -214,7 +214,7 @@ class TestCodegenConform:
             name="consumer",
             repository=repository,
         )
-        context = FlextInfraCodegenConform._make_render_context(
+        context = FlextInfraCodegenConform.make_render_context(
             repository,
             workspace,
             config.Infra.codegen,

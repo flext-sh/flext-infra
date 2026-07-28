@@ -3,10 +3,12 @@
 /*/
 !/LICENSE
 
+# Allow all FLEXT ecosystem project directories
+!flext-*/
+
 # WHITELIST: Workspace Directories
 !docker/
 !docs/
-!config/
 !examples/
 !.github/
 !src/
@@ -18,6 +20,7 @@
 !.claude/
 !.claude-plugin/
 !/config/
+!/config/workspace.yaml
 !.claude/CLAUDE.md
 !.claude/settings.json
 !.claude/settings.local.json
@@ -32,15 +35,20 @@
 scripts/*.py
 scripts/*.sh
 scripts/*.md
+scripts/maintenance/
 !scripts/dispatch.py
 !scripts/__init__.py
+
+# TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local.
+!.beads/
+.beads/*
+!.beads/config.yaml
 
 # Python configuration
 !pyproject.toml
 !.taplo.toml
 !pyrefly.toml
 !poetry.lock
-!uv.lock
 !ruff-shared.toml
 
 # mise toolchain pinning
@@ -67,6 +75,7 @@ scripts/*.md
 
 # Git configuration
 !.gitignore
+!.gitmodules
 !.gitattributes
 
 # direnv environment (no secrets — venv activation only)
@@ -79,9 +88,9 @@ scripts/*.md
 !.env.template
 
 # WHITELIST: Contents Inside Allowed Directories
+!flext-*/**
 !docker/**
 !docs/**
-!config/**
 !examples/**
 !.github/**
 !src/**
@@ -286,7 +295,14 @@ secrets.yml
 !base.mk
 
 # FINAL BEADS TRACKING POLICY
+!.beads/
+.beads/*
+.beads/.*
+!.beads/config.yaml
+.beads/proxieddb/
+.dolt/
 *.db
+.beads-credential-key
 .worktrees/
 legado/
 

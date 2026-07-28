@@ -572,8 +572,35 @@ class FlextInfraConfigModels:
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
 
+        @m.computed_field()
+        @property
+        def repository_env_prefix(self) -> str:
+            """Settings environment prefix derived from the distribution name."""
+            return f"{self.dist.upper().replace('-', '_')}_"
+
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
+        ]
+        python_toolchain_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
+        ]
+        python_required_version: Annotated[
+            t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
+        ]
+        uv_required_version: Annotated[
+            t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
+        ]
+        kubectl_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+        ]
+        helm_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+        ]
+        kind_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
@@ -625,28 +652,19 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
+        gitignore_sections: Annotated[
+            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
+            m.Field(
+                description="Canonical .gitignore sections selected for the profile"
+            ),
+        ] = ()
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
-        @m.computed_field()
-        @property
-        def repository_env_prefix(self) -> str:
-            """Settings environment prefix derived from the distribution name."""
-            return f"{self.dist.upper().replace('-', '_')}_"
-
         scaffold: Annotated[
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="New-project scaffold policy"),
-        ]
-        gitignore_sections: Annotated[
-            tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Canonical .gitignore sections derived from the artifact SSOT"
-                ),
-            ),
         ]
         dependency_profile: Annotated[
             FlextInfraConfigModels.ScaffoldDependencyProfileSpec,
@@ -685,27 +703,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
-        python_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv toolchain version")
-        ]
-        uv_required_version: Annotated[
-            t.NonEmptyStr, m.Field(description="PEP 440 uv requirement")
-        ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
         ]

@@ -205,7 +205,7 @@ branch = "wrong"
 
     def test_full_conform_preserves_distinct_dev_dependency_variants(self) -> None:
         workspace, repositories, toolchain = _fixtures()
-        source = f'''[project]
+        source = f"""[project]
 name = "{workspace.name}"
 
 [project.optional-dependencies]
@@ -217,7 +217,7 @@ codegen = [
     "flext-infra[docs]; python_version >= '3.13'",
     "flext-infra[test]; python_version < '3.13'",
 ]
-'''
+"""
         first = u.Infra.pyproject_conform(
             source, repositories=repositories, workspace=workspace, toolchain=toolchain
         )
@@ -251,12 +251,9 @@ codegen = [
 
     def test_dependency_only_root_validates_exact_typed_resolution(self) -> None:
         workspace, repositories, _ = _fixtures()
-        source = """[project]
+        root_overlay_source = """[project]
 name = "fleet-root"
 dependencies = ["flext-external[one] @ ../old", "flext-external[two]>=4"]
-
-[tool.uv.workspace]
-members = ["packages/member"]
 
 [tool.uv.sources.flext-member]
 workspace = true
@@ -266,16 +263,15 @@ git = "ssh://git@git.example/deps/flext-external.git"
 branch = "feature/arbitrary"
 
 [tool.uv.sources.flext-tests]
-workspace = true
+git = "https://git.example/tools/flext-tests.git"
+branch = "tests-line"
 
-[tool.uv.sources.flext-web]
-workspace = true
-
-[tool.uv]
-override-dependencies = ["pathspec>=1.0.0"]
+[tool.uv.sources.flext-infra]
+git = "https://git.example/tools/flext-infra.git"
+branch = "infra-line"
 
 [tool.uv.workspace]
-members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
+members = ["packages/member"]
 """
         root_overlay = u.Infra.pyproject_dependencies_conform(
             root_overlay_source,
@@ -283,9 +279,9 @@ members = ["flext-core", "flext-infra", "flext-tests", "flext-web"]
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
-        tm.that(first.success, eq=True, msg=first.error)
+        tm.that(root_overlay.success, eq=True, msg=root_overlay.error)
         tm.that(
-            _table(_payload(first.value), "project")["dependencies"],
+            _table(_payload(root_overlay.value), "project")["dependencies"],
             eq=["flext-external[one]", "flext-external[two]"],
         )
         root_overlay_second = u.Infra.pyproject_dependencies_conform(
@@ -401,8 +397,9 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
-        tm.that(second.success, eq=True)
-        tm.that(second.value, eq=result.value)
+        tm.that(empty_uv_second.success, eq=True)
+        tm.that(empty_uv_second.value, eq=empty_uv_rendered)
+        tm.that("[tool.uv]" not in empty_uv_rendered, eq=True)
 
     def test_full_non_root_removes_empty_uv_and_is_idempotent(self) -> None:
         workspace, repositories, toolchain = _fixtures()
@@ -424,7 +421,7 @@ path = "../external"
 editable = true
 """
         first = u.Infra.pyproject_conform(
-            root_source,
+            source,
             repositories=repositories,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
@@ -529,7 +526,7 @@ branch = "infra-line"
         tests = repository_by_name["flext-tests"]
         infra = repository_by_name["flext-infra"]
         member = workspace.members[0]
-        source = f'''[project]
+        source = f"""[project]
 name = "{workspace.name}"
 
 [tool.uv.workspace]
@@ -549,7 +546,7 @@ branch = "{tests.branch}"
 [tool.uv.sources.flext-infra]
 git = "{infra.url}"
 branch = "{infra.branch}"
-'''
+"""
         first = u.Infra.pyproject_conform(
             source, repositories=repositories, workspace=workspace, toolchain=toolchain
         )
@@ -560,7 +557,10 @@ branch = "{infra.branch}"
             eq=(member.distribution, "flext-external", "flext-tests", "flext-infra"),
         )
         second = u.Infra.pyproject_conform(
-            first.value, repositories=repositories, workspace=workspace, toolchain=toolchain
+            first.value,
+            repositories=repositories,
+            workspace=workspace,
+            toolchain=toolchain,
         )
         tm.that(second.success, eq=True, msg=second.error)
         tm.that(second.value, eq=first.value)

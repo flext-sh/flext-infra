@@ -71,9 +71,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -138,9 +136,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         provenance_result = cls._validate_dependency_provenance(
-            source,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
+            source, workspace=workspace, workspace_mode=workspace_mode
         )
         if provenance_result.failure:
             return r[str].fail(
@@ -665,7 +661,10 @@ class FlextInfraUtilitiesPyprojectConform:
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if workspace_mode is c.Infra.WorkspaceMode.STANDALONE and not has_direct_source:
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
                 return r[bool].fail(
                     "standalone dependency lacks configured Git source: "
                     f"{dependency_name}"
@@ -708,7 +707,10 @@ class FlextInfraUtilitiesPyprojectConform:
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if workspace_mode is c.Infra.WorkspaceMode.STANDALONE and not has_direct_source:
+            if (
+                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
+                and not has_direct_source
+            ):
                 return r[bool].fail(
                     "standalone dependency lacks configured Git source: "
                     f"{dependency_name}"

@@ -5,14 +5,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
 from flext_tests import tm
 
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 
 
 class TestsCodegenMakeEnvironment:
+    """Prove generated operations ignore the caller shell environment."""
+
     def test_generated_make_overrides_inherited_uv_environment(
         self, tmp_path: Path
     ) -> None:
@@ -103,25 +106,6 @@ class TestsCodegenMakeEnvironment:
         tm.that(tuple(path.name for path in applied.written_files), eq=("Makefile",))
         tm.that(custom.read_text(encoding="utf-8"), eq=custom_content)
 
-
-__all__: tuple[str, ...] = ()
-"""Generated Make environment isolation contract."""
-
-from __future__ import annotations
-
-import os
-from pathlib import Path
-
-import pytest
-from flext_tests import tm
-
-from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-
-
-class TestsCodegenMakeEnvironment:
-    """Prove generated operations ignore the caller shell environment."""
-
     @staticmethod
     def _render_makefile(
         tmp_path: Path, profile: c.Infra.MakeProfile
@@ -168,9 +152,7 @@ class TestsCodegenMakeEnvironment:
                 homepage="https://github.com/flext-sh/fixture-project",
                 documentation="https://github.com/flext-sh/fixture-project",
                 workspace_root_rel=(
-                    ".."
-                    if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                    else "."
+                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
                 ),
                 year=2026,
             ),
@@ -182,16 +164,16 @@ class TestsCodegenMakeEnvironment:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         planned = FlextInfraCodegenConform(
-            workspace_root=workspace_root,
-            request=request,
-            initial_workspace=workspace,
+            workspace_root=workspace_root, request=request, initial_workspace=workspace
         ).plan(request)
         plan = tm.ok(planned)
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
         project_root.mkdir(parents=True)
-        tm.ok(u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered))
+        tm.ok(
+            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
+        )
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
@@ -204,11 +186,7 @@ class TestsCodegenMakeEnvironment:
         ],
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
-        self,
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-        *,
-        attached: bool,
+        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
         project_root, workspace_root = self._render_makefile(tmp_path, profile)
@@ -261,8 +239,16 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text()
         profile_names = {profile.name for profile in config.Infra.codegen.profiles}
         tm.that(profile_names, eq={profile.value for profile in c.Infra.MakeProfile})
-        tm.that("override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True)
-        tm.that('UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync' in makefile, eq=True)
+        tm.that(
+            "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
+        )
+        tm.that(
+            'UV_RUN := uv run --project "$(RUNTIME_ROOT)" --no-sync' in makefile,
+            eq=True,
+        )
         tm.that('uv sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('uv build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('uv pip install --python "$(RUNTIME_PYTHON)"' in makefile, eq=True)
+
+
+__all__: tuple[str, ...] = ()

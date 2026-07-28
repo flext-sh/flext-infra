@@ -198,7 +198,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
         rendered = tm.ok(result)
         member = workspace.members[0]
         tm.that(
-            rendered,
-            has=f"{member.distribution} @ git+{member.url}@{member.branch}",
+            rendered, has=f"{member.distribution} @ git+{member.url}@{member.branch}"
         )
         tm.that("workspace = true" not in rendered, eq=True)

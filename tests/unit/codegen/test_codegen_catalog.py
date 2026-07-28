@@ -1,3 +1,5 @@
+"""Behavior contracts for the tracked typed codegen catalog."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
