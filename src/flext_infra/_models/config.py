@@ -97,8 +97,15 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def uv_required_version(self) -> str:
-            """Exact PEP 440 uv requirement derived from the declared version."""
-            return f"=={self.uv_version}"
+            """PEP 440 requirement: patch floor with next-minor ceiling.
+
+            Mirrors ``python_required_version``. Exact patch pins prevent a
+            project from running the canonical Make surface while a compatible
+            toolchain patch is propagating through generated consumers.
+            """
+            major, _, rest = self.uv_version.partition(".")
+            minor, _, _patch = rest.partition(".")
+            return f">={self.uv_version},<{major}.{int(minor) + 1}"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -1143,7 +1150,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Mise/Python version selector")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact required uv version")
+            t.NonEmptyStr, m.Field(description="Declared uv baseline version")
         ]
         groups: Annotated[
             tuple[str, ...],
