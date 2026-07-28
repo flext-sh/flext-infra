@@ -188,7 +188,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         default_package: str | None = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
         if default_package is not None:
             return default_package
-        return f"types-{root.lower()}"
+        return None
 
 
 __all__: list[str] = ["FlextInfraDependencyDetectionAnalysis"]
