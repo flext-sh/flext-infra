@@ -36,7 +36,9 @@ class TestsVscodeOwnerMerge:
             what=c.Infra.CodegenConformSurface.ALL,
             scope=c.Infra.CodegenConformScope.SELF,
         )
-        return tm.ok(FlextInfraCodegenConform(workspace_root=root).plan(request))
+        planned = FlextInfraCodegenConform(workspace_root=root).plan(request)
+        tm.ok(planned)
+        return m.Infra.CodegenPlan.model_validate(planned.value)
 
     def test_merge_marks_drift_and_renders_canonical_content(
         self, infra_git_repo: Path

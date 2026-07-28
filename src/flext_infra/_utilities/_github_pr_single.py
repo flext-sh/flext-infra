@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_cli import u
 from flext_core import r
 from flext_infra import c, m
 from flext_infra._utilities._github_pr_execution import (
@@ -46,9 +47,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
         *,
         repo_root: Path,
         workspace_root: Path,
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
+        request: p.Infra.GithubPullRequestFields,
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name

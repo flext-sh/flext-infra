@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -585,3 +585,14 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...
+
+    @runtime_checkable
+    class GithubPullRequestFields(Protocol):
+        """Shared pull-request fields consumed by native GitHub execution."""
+
+        action: c.Infra.PullRequestAction
+        base: str | None
+        head: str | None
+        title: str | None
+        body: str | None
+        draft: bool
