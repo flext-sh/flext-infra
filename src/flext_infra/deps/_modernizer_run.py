@@ -23,7 +23,6 @@ class FlextInfraPyprojectModernizerRunMixin:
         skip_check: bool
         skip_comments: bool
         rewrite_constraints: bool
-        constraint_policy: c.Infra.DependencyConstraintPolicy
 
         @property
         def root(self) -> Path: ...
@@ -48,7 +47,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             rewrite_constraints: bool = False,
             locked_versions: t.MappingKV[str, str] | None = None,
             internal_names: t.StrSequence = (),
-            constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
         ) -> t.StrSequence: ...
 
     def process_file(
@@ -233,7 +231,6 @@ class FlextInfraPyprojectModernizerRunMixin:
                     rewrite_constraints=self.rewrite_constraints,
                     locked_versions=locked_versions,
                     internal_names=internal_names,
-                    constraint_policy=self.constraint_policy,
                 )
             if not changes:
                 continue

@@ -163,7 +163,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
-        constraint_policy: c.Infra.DependencyConstraintPolicy = c.Infra.DependencyConstraintPolicy.FLOOR,
         declared_python_dirs: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
@@ -189,7 +188,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                     payload,
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
-                    policy=constraint_policy,
                 )
             )
         changes.extend(

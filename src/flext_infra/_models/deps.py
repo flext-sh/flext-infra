@@ -99,21 +99,6 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
                 description="Rewrite dependency constraints from uv.lock",
             ),
         ] = False
-        constraint_policy: Annotated[
-            c.Infra.DependencyConstraintPolicy,
-            m.Field(
-                alias="constraint-policy",
-                description="Policy used when rewriting dependency constraints",
-            ),
-            m.BeforeValidator(
-                lambda v: (
-                    c.Infra.DependencyConstraintPolicy(v.strip().lower())
-                    if isinstance(v, str)
-                    else v
-                )
-            ),
-        ] = c.Infra.DependencyConstraintPolicy.FLOOR
-
     # NOTE (multi-agent, mro-wkii.17.9): codegen consumes the pure pyproject
     # renderer directly, so no deps CLI payload remains for path/workspace modes.
 
