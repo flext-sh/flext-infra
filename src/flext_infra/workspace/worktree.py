@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorktreeService(s[str]):
-    """List, add, and remove development lanes under the owning repository."""
+    """List, add, update, and remove development lanes under the repository."""
 
     operation: Annotated[
         c.Infra.WorktreeOperation, m.Field(description="Worktree lifecycle operation")
@@ -119,6 +119,34 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(pruned.error or "failed to prune worktree registry")
         return r.ok(str(lane))
 
+    def _update(self, primary_root: Path, branch: str) -> p.Result[str]:
+        """Fast-forward one clean canonical lane to the requested base."""
+        if not self.apply_changes:
+            return r.fail("worktree update requires --apply")
+        lane_result = self._lane_path(primary_root, branch)
+        if lane_result.failure:
+            return r.fail(lane_result.error or "failed to resolve worktree lane")
+        lane = lane_result.value
+        if not lane.is_dir():
+            return r.fail(f"worktree lane does not exist: {lane}")
+        current_branch = u.Infra.git_capture(
+            lane, ("symbolic-ref", "--quiet", "--short", "HEAD")
+        )
+        if current_branch.failure:
+            return r.fail(current_branch.error or f"failed to inspect lane {lane}")
+        if current_branch.value.strip() != branch:
+            return r.fail(
+                f"worktree lane branch mismatch: expected {branch}, "
+                f"found {current_branch.value.strip()}"
+            )
+        updated = u.Infra.git_capture(lane, ("merge", "--ff-only", self.base))
+        if updated.failure:
+            return r.fail(
+                updated.error
+                or f"worktree update cannot fast-forward {branch} to {self.base}"
+            )
+        return r.ok(str(lane))
+
     @override
     def execute(self) -> p.Result[str]:
         """Execute the selected worktree operation."""
@@ -135,6 +163,8 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(branch.error or "invalid worktree branch")
         if operation == c.Infra.WorktreeOperation.ADD:
             return self._add(primary.value, branch.value)
+        if operation == c.Infra.WorktreeOperation.UPDATE:
+            return self._update(primary.value, branch.value)
         return self._remove(primary.value, branch.value)
 
 

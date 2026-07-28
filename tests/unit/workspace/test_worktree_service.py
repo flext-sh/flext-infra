@@ -73,6 +73,46 @@ class TestsFlextInfraWorktreeService:
         tm.that(removed, eq=str(lane))
         tm.that(lane.exists(), eq=False)
 
+    def test_update_fast_forwards_a_clean_lane_to_the_requested_base(
+        self, tmp_path: Path
+    ) -> None:
+        """Update advances an existing lane only through a clean fast-forward."""
+        repository = self._repository(tmp_path)
+        branch = "feature/update"
+        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                apply_changes=True,
+            ).execute()
+        )
+        (repository / "owner.txt").write_text("owner\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(repository, ("add", "owner.txt")))
+        tm.ok(
+            u.Infra.git_capture(
+                repository, ("commit", "-m", "test: advance update base")
+            )
+        )
+        base = tm.ok(u.Infra.git_capture(repository, ("rev-parse", "HEAD"))).strip()
+
+        updated = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=lane,
+                operation=c.Infra.WorktreeOperation.UPDATE,
+                branch=branch,
+                base=base,
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(updated, eq=str(lane))
+        tm.that(
+            tm.ok(u.Infra.git_capture(lane, ("rev-parse", "HEAD"))).strip(),
+            eq=base,
+        )
+
     def test_mutation_without_apply_fails_closed(self, tmp_path: Path) -> None:
         """A branch alone never authorizes repository mutation."""
         repository = self._repository(tmp_path)

@@ -184,6 +184,7 @@ _builtin_clean_generated \
 	_builtin_codegen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
+	_builtin_worktree_update \
 	_builtin_worktree_remove
 
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
@@ -611,6 +612,10 @@ _builtin_worktree_list:
 _builtin_worktree_add:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_update:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation update --branch "$(BRANCH)" --base "$(BASE)" --apply
 
 _builtin_worktree_remove:
 	$(call _require_apply)
