@@ -461,7 +461,11 @@ class TestsEnforcementFixerOrchestrator:
             cwd=runner_root,
         ).value
         post_status = git_status()
-        tm.that(result.exit_code, eq=0)
+        tm.that(
+            result.exit_code,
+            eq=0,
+            msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
         tm.that(result.stdout, has="fixed: 1")
         tm.that(result.stdout, has="breakage=no")
         tm.that(result.stdout, has="applied=no")
