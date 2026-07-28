@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -102,10 +103,23 @@ class TestsFlextInfraLazyInitTransforms:
         content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
+        version_imports = tuple(
+            node
+            for node in ast.parse(content).body
+            if isinstance(node, ast.ImportFrom)
+            and node.level == 1
+            and node.module == "__version__"
+        )
         tm.that(result, eq=0)
-        tm.that(content, has="from .__version__ import __version__ as __version__")
+        tm.that(len(version_imports), eq=1)
         tm.that(
-            content, has="from .__version__ import __version_info__ as __version_info__"
+            tuple(
+                sorted((alias.name, alias.asname) for alias in version_imports[0].names)
+            ),
+            eq=(
+                ("__version__", "__version__"),
+                ("__version_info__", "__version_info__"),
+            ),
         )
         tm.that(content, has="__version__")
         tm.that(content, has="__version_info__")

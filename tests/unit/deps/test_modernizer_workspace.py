@@ -52,7 +52,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
 
-    def test_modernizer_distinguishes_exact_workspace_root_assignment(
+    def test_modernizer_distinguishes_canonical_git_workspace_topology(
         self, tmp_path: Path
     ) -> None:
         project = tmp_path / "project"
@@ -66,17 +66,14 @@ class TestsFlextInfraDepsModernizerWorkspace:
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=project, skip_check=True, skip_comments=True
         )
-        before = tm.ok(modernizer.conform_source(source, path=pyproject))
-        (project / "Makefile").write_text(
-            "WORKSPACE_ROOT_REL := ..\n", encoding="utf-8"
-        )
+        standalone = tm.ok(modernizer.conform_source(source, path=pyproject))
+        git_init = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
+        tm.ok(git_init)
+        tm.that(git_init.value.exit_code, eq=0)
 
-        with_relative_marker = tm.ok(modernizer.conform_source(source, path=pyproject))
-        (project / "Makefile").write_text("WORKSPACE_ROOT := ..\n", encoding="utf-8")
-        with_exact_marker = tm.ok(modernizer.conform_source(source, path=pyproject))
+        attached = tm.ok(modernizer.conform_source(source, path=pyproject))
 
-        tm.that(with_relative_marker, eq=before)
-        tm.that(with_exact_marker, ne=before)
+        tm.that(attached, ne=standalone)
 
     def test_main_applies_only_selected_projects(
         self, modernizer_workspace_with_projects: Path
