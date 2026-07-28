@@ -5,12 +5,7 @@
 # flext-infra — generated project interface.
 # Managed by flext-infra codegen conform for new and existing repositories.
 
-ifeq ($(OS),Windows_NT)
-WINDOWS_GIT_EXEC_PATH := $(shell git --exec-path)
-SHELL := $(abspath $(WINDOWS_GIT_EXEC_PATH)/../../../bin/bash.exe)
-else
 SHELL := /bin/sh
-endif
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
@@ -287,72 +282,72 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' ''
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' 'usage'
-
-
-
-	@printf '  %-10s\n' 'setup'
+	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'deps' 'check'
+	@printf '  %-10s\n' 'setup';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts'
+	@printf '  %-10s WHAT=%s\n' 'deps' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' 'all'
+	@printf '  %-10s WHAT=%s\n' 'build' 'artifacts';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'test' 'all'
+	@printf '  %-10s WHAT=%s\n' 'check' 'all';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check'
+	@printf '  %-10s WHAT=%s\n' 'test' 'all';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'run' 'default'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics'
+	@printf '  %-10s WHAT=%s\n' 'run' 'default';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'check'
+	@printf '  %-10s WHAT=%s\n' 'status' 'diagnostics';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'clean' 'generated'
+	@printf '  %-10s WHAT=%s\n' 'docs' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' 'status'
+	@printf '  %-10s WHAT=%s\n' 'clean' 'generated';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check'
+	@printf '  %-10s WHAT=%s\n' 'release' 'status';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'worktree' 'list'
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check';
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate'
 
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)'
-	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update'
-	@printf '\n%s\n' 'Custom hooks (custom.mk):'
-	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
-	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
-	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.'
+	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
+
+
+	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
+
+	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
+	@printf '\n%s\n' 'Custom hooks (custom.mk):';
+	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
+	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,';
+	@printf '  %s\n' 'for all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT.';
 	@if [ -f custom.mk ]; then \
 		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
 		if [ -n "$$hooks" ]; then \
