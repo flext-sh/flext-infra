@@ -12,16 +12,17 @@ exposes it at all, and that it cannot be invoked destructively by accident.
 
 from __future__ import annotations
 
-from flext_infra import config
+from flext_tests import tm
+
+from flext_infra import config, m
 
 
 class TestsCodegenWorktreeVerb:
     """The `worktree` verb is part of the canonical public Make surface."""
 
-    def _verb(self, name: str) -> object | None:
+    def _verb(self, name: str) -> m.Infra.MakeVerbSpec:
         return next(
-            (verb for verb in config.Infra.codegen.make.verbs if verb.name == name),
-            None,
+            verb for verb in config.Infra.codegen.make.verbs if verb.name == name
         )
 
     def test_worktree_is_a_canonical_public_verb(self) -> None:
@@ -31,7 +32,7 @@ class TestsCodegenWorktreeVerb:
         would defeat the purpose: every project must expose the same lane
         surface.
         """
-        assert self._verb("worktree") is not None
+        tm.that(self._verb("worktree").name, eq="worktree")
 
     def test_worktree_defaults_to_a_read_only_selector(self) -> None:
         """`make worktree` with no WHAT must never mutate a repository.
@@ -40,8 +41,7 @@ class TestsCodegenWorktreeVerb:
         worktree registry, so it is the safe default.
         """
         verb = self._verb("worktree")
-        assert verb is not None
-        assert verb.default_what == "list"
+        tm.that(verb.default_what, eq="list")
 
     def test_worktree_is_not_verb_level_apply_guarded(self) -> None:
         """The read-only default must not demand APPLY=Y.
@@ -50,5 +50,4 @@ class TestsCodegenWorktreeVerb:
         selectors enforce the guard individually in their own recipes instead.
         """
         verb = self._verb("worktree")
-        assert verb is not None
-        assert verb.apply_guarded is False
+        tm.that(verb.apply_guarded, eq=False)

@@ -18,10 +18,12 @@ PROJECTS ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
+BRANCH ?=
+BASE ?= HEAD
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
-PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen
+PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 UV ?= uv
@@ -48,6 +50,7 @@ _DEFAULT_docs := check
 _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
+_DEFAULT_worktree := list
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
@@ -121,7 +124,10 @@ _BUILTIN_HANDLERS := \
 	_builtin_clean_generated \
 	_builtin_release_status \
 	_builtin_codegen_check \
-	_builtin_codegen_apply
+	_builtin_codegen_apply \
+	_builtin_worktree_list \
+	_builtin_worktree_add \
+	_builtin_worktree_remove
 
 define _dispatch
 	@what="$(strip $(WHAT))"; \
@@ -230,6 +236,10 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check'
 
 
+
+	@printf '  %-10s WHAT=%s\n' 'worktree' 'list'
+
+
 	@printf '\n%s\n' 'Custom hooks (custom.mk):'
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>'
 	@printf '  %s\n' 'in custom.mk to run extra steps at the start or end of any verb,'
@@ -332,7 +342,7 @@ _builtin_check_all: _builtin_require_environment
 	@$(UV_RUN) vulture
 
 _builtin_test_all: _builtin_require_environment
-	@$(UV_RUN) python -m pytest "$(PROJECT_ROOT)/tests" $(PYTEST_ARGS)
+	@$(UV_RUN) python -m pytest $(if $(strip $(PYTEST_ARGS)),$(PYTEST_ARGS),"$(PROJECT_ROOT)/tests")
 
 
 _builtin_format_check: _builtin_require_environment
@@ -379,3 +389,14 @@ _builtin_codegen_check: _builtin_require_environment
 _builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+
+_builtin_worktree_list:
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation list
+
+_builtin_worktree_add:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation add --branch "$(BRANCH)" --base "$(BASE)" --apply
+
+_builtin_worktree_remove:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(PROJECT_ROOT)" --operation remove --branch "$(BRANCH)" --apply

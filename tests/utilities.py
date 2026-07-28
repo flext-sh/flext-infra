@@ -989,6 +989,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             path.chmod(0o444)
 
         @staticmethod
+        def write_executable(path: Path, body: str) -> None:
+            """Write one executable fixture with deterministic permissions."""
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+            path.chmod(0o755)
+
+        @staticmethod
         def create_migrator_dir_layout(
             tmp_path: Path,
             *,
