@@ -35,14 +35,16 @@ class FlextInfraConfigModels:
     # the flext-cli loading boundary and is immediately model-validated here.
 
     class ToolchainSpec(_ConfigContract):
-        """Language-runtime versions shared by generated projects.
+        """Language-runtime and native-tool versions shared by generated projects.
 
         Only the Python minor line ``python_version`` (e.g. ``3.13``) is
         declared for the language runtime. The environment resolves its newest
         compatible patch. The PEP 440 family requirement is derived, so a
         version-line bump touches exactly one value. uv is supplied by the caller
-        environment. Linters/type-checkers are NOT here: their floors live in
-        pyproject and uv.lock owns the resolved versions.
+        environment. Python linters/type-checkers are NOT here: their floors live
+        in pyproject and uv.lock owns the resolved versions. Native executables
+        required by canonical Make gates are declared here for reproducible
+        provisioning through mise.
         """
 
         python_version: Annotated[
@@ -78,6 +80,15 @@ class FlextInfraConfigModels:
         ] = ()
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+        ]
+        ast_grep_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+        ]
+        gitleaks_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+        ]
+        tokei_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
 
         @m.computed_field()

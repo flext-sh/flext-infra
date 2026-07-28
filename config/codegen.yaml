@@ -11,12 +11,14 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
-      # Deploy toolchain pins (kubectl/helm/kind) consumed by the generated
-      # .mise.toml and the ci-matrix workflow kind leg.
+      # Non-Python toolchain pins consumed by generated .mise.toml and CI.
       kubectl_version: "1.32.0"
       helm_version: "3.19.4"
       kind_version: "0.31.0"
       taplo_version: "0.10.0"
+      ast_grep_version: "0.45.0"
+      gitleaks_version: "8.30.1"
+      tokei_version: "14.0.0"
 
     github_actions:
       checkout:

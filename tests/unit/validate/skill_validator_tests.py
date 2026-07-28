@@ -149,34 +149,30 @@ class TestSkillValidatorAstGrepRules:
         package_root.mkdir(parents=True)
         (package_root / "m.py").write_text(source, encoding="utf-8")
 
-    def test_empty_ast_grep_rule_file_yields_no_violations(
-        self, tmp_path: Path
-    ) -> None:
-        """An ast-grep rule with an empty file contributes zero violations."""
+    def test_empty_ast_grep_rule_file_fails_closed(self, tmp_path: Path) -> None:
+        """An ast-grep rule with an empty file is invalid configuration."""
         self._write_skill(
             tmp_path, 'rules:\n  - id: t\n    type: ast-grep\n    file: ""\n'
         )
-        report = tm.ok(
+        tm.fail(
             FlextInfraSkillValidator(skill="test-skill").build_report(
                 tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
-            )
+            ),
+            has="non-empty file",
         )
-        tm.that(report.passed, eq=True)
 
-    def test_missing_ast_grep_rule_file_yields_no_violations(
-        self, tmp_path: Path
-    ) -> None:
-        """An ast-grep rule pointing at a missing file contributes zero."""
+    def test_missing_ast_grep_rule_file_fails_closed(self, tmp_path: Path) -> None:
+        """An ast-grep rule pointing at a missing file is invalid configuration."""
         self._write_skill(
             tmp_path,
             'rules:\n  - id: t\n    type: ast-grep\n    file: "nonexistent.yml"\n',
         )
-        report = tm.ok(
+        tm.fail(
             FlextInfraSkillValidator(skill="test-skill").build_report(
                 tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
-            )
+            ),
+            has="does not exist",
         )
-        tm.that(report.passed, eq=True)
 
     def test_matching_ast_grep_rule_reports_violation(self, tmp_path: Path) -> None:
         """A matching ast-grep rule over include globs surfaces a violation."""
@@ -194,18 +190,18 @@ class TestSkillValidatorAstGrepRules:
         tm.that(report.passed, eq=False)
         tm.that(report.summary, has="1 violations")
 
-    def test_missing_custom_script_yields_no_violations(self, tmp_path: Path) -> None:
-        """A custom rule pointing at a missing script contributes zero."""
+    def test_missing_custom_script_fails_closed(self, tmp_path: Path) -> None:
+        """A custom rule pointing at a missing script is invalid configuration."""
         self._write_skill(
             tmp_path,
             'rules:\n  - id: t\n    type: custom\n    script: "nonexistent.py"\n',
         )
-        report = tm.ok(
+        tm.fail(
             FlextInfraSkillValidator(skill="test-skill").build_report(
                 tmp_path, "test-skill", mode=c.Infra.OperationMode.STRICT
-            )
+            ),
+            has="does not exist",
         )
-        tm.that(report.passed, eq=True)
 
 
 class TestSkillValidatorBaselineTemplate:
