@@ -9,10 +9,10 @@ from flext_cli import u
 from flext_tests import tm
 from packaging.requirements import Requirement
 
-from flext_infra import config, m, t
+from flext_infra import c, config, m, t
 
 
-def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None:
+def test_codegen_catalog_is_tracked_typed_and_models_external_workspace() -> None:
     repository_root = Path(__file__).resolve().parents[3]
     catalog_path = repository_root / "config" / "codegen.yaml"
 
@@ -27,46 +27,86 @@ def test_codegen_catalog_is_tracked_typed_and_accepts_cosmos_workspace() -> None
     payload = u.Cli.yaml_load_mapping(catalog_path)
     infra = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["Infra"])
     catalog = t.Cli.JSON_MAPPING_ADAPTER.validate_python(infra["codegen"])
-    repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
+    provider_payloads = t.Cli.JSON_LIST_ADAPTER.validate_python(catalog["providers"])
+    repository_payloads = t.Cli.JSON_LIST_ADAPTER.validate_python(
         catalog["repositories"]
     )
-    by_name = {repository.name: repository for repository in repositories}
-    cosmos_names = (
-        "cosmos-main",
-        "cosmos-charts",
-        "cosmos-gitops",
-        "cosmos-inventory",
-        "cosmos-automation",
-        "cosmos-frontend",
-        "cosmos-observability",
-        "cosmos-templates",
-        "cosmos-zabbix",
-        "cosmos-monitoring",
-        "cosmos-hook",
-        "cosmosec-backend",
-        "cosmosec-frontend",
+    typed_catalog = m.Infra.CodegenConfigSpec.model_validate(catalog)
+    tm.that(typed_catalog.repositories, len=len(repository_payloads))
+    provider = m.Infra.ProviderSpec(
+        name="consumer",
+        organization="consumer",
+        base_url="https://github.com/consumer",
+        branch="main",
     )
-    cosmos = tuple(by_name[name] for name in cosmos_names)
-
-    workspace = m.Infra.WorkspaceSpec.model_validate({
-        "version": 2,
-        "name": "cosmos-main",
-        "repository": cosmos[0],
-        "members": cosmos[1:3],
-        "content_only": cosmos[3:],
-        "exclusions": (),
-    })
-    workspace_repositories = (
-        workspace.repository,
-        *workspace.members,
-        *workspace.content_only,
-    )
-
-    tm.that(
-        tuple(
-            repository.model_dump(mode="json") for repository in workspace_repositories
+    repositories = (
+        m.Infra.RepositoryRef(
+            name="consumer-root",
+            distribution="consumer-root",
+            provider=provider.name,
+            url=f"{provider.base_url}/consumer-root.git",
+            branch=provider.branch,
+            path=Path(),
+            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+            checkout=c.Infra.CheckoutKind.ROOT,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=False,
+            editable=False,
+            read_only=False,
         ),
-        eq=tuple(repository.model_dump(mode="json") for repository in cosmos),
+        m.Infra.RepositoryRef(
+            name="consumer-member",
+            distribution="consumer-member",
+            provider=provider.name,
+            url=f"{provider.base_url}/consumer-member.git",
+            branch=provider.branch,
+            path=Path("consumer-member"),
+            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
+        ),
+        m.Infra.RepositoryRef(
+            name="consumer-content",
+            distribution="consumer-content",
+            provider=provider.name,
+            url=f"{provider.base_url}/consumer-content.git",
+            branch=provider.branch,
+            path=Path("consumer-content"),
+            role=c.Infra.RepositoryRole.CONTENT_ONLY,
+            state=c.Infra.RepositoryState.CONTENT_ONLY,
+            profile=None,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            codegen=c.Infra.CodegenKind.NONE,
+            package=False,
+            editable=False,
+            read_only=True,
+        ),
+    )
+    external_catalog = m.Infra.CodegenConfigSpec.model_validate({
+        **catalog,
+        "providers": (*provider_payloads, provider.model_dump(mode="json")),
+        "repositories": (
+            *repository_payloads,
+            *(repository.model_dump(mode="json") for repository in repositories),
+        ),
+    })
+    workspace = m.Infra.WorkspaceSpec(
+        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+        name=repositories[0].name,
+        repository=repositories[0],
+        members=(repositories[1],),
+        content_only=(repositories[2],),
+    )
+
+    tm.that(external_catalog.repositories[-len(repositories) :], eq=repositories)
+    tm.that(
+        (workspace.repository, *workspace.members, *workspace.content_only),
+        eq=repositories,
     )
 
 
