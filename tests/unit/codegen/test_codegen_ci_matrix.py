@@ -57,6 +57,20 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="|| make")
         tm.that(workflows, lacks="soft-pass")
 
+    def test_blocking_ci_installs_declared_toolchain_before_make(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated blocking CI provides every binary consumed by canonical Make."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        mise_action = config.Infra.codegen.github_actions["mise"]
+        install = f"{mise_action.repository}@{mise_action.sha}"
+
+        tm.that(workflow, has=install)
+        tm.that(workflow.index(install), lt=workflow.index("run: make setup"))
+
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
         root = self._render_project(tmp_path / "external")
