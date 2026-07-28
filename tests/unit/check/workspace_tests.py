@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import r, tm
-
 from flext_cli import u as cli_u
 from flext_infra import main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_tests import r, tm
 from tests import u as test_u
 
 if TYPE_CHECKING:

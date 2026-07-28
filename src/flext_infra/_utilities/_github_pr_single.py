@@ -46,9 +46,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
         *,
         repo_root: Path,
         workspace_root: Path,
-        request: (
-            m.Infra.GithubPullRequestRequest | m.Infra.GithubPullRequestWorkspaceRequest
-        ),
+        request: p.Infra.GithubPullRequestFields,
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
         display = workspace_root.name if repo_root == workspace_root else repo_root.name

@@ -12,18 +12,19 @@ exposes it at all, and that it cannot be invoked destructively by accident.
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import config, m
+from flext_tests import tm
 
 
 class TestsCodegenWorktreeVerb:
     """The `worktree` verb is part of the canonical public Make surface."""
 
     def _verb(self, name: str) -> m.Infra.MakeVerbSpec:
-        return next(
+        matches = tuple(
             verb for verb in config.Infra.codegen.make.verbs if verb.name == name
         )
+        tm.that(matches, len=1)
+        return matches[0]
 
     def test_worktree_is_a_canonical_public_verb(self) -> None:
         """Lanes are created through `make`, so the verb must be canonical.

@@ -10,6 +10,7 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
+  "actionlint-py>=1.7.12.24",
   "autoflake>=2.3.3",
   "bandit>=1.9.4",
   "black>=26.5.1",
@@ -268,7 +269,6 @@ project-excludes = [
   "vendor/**",
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
-python-interpreter-path = "./.venv/bin/python"
 python-version = "3.13"
 search-path = [".", "src"]
 use-ignore-files = false

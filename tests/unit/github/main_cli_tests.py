@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main as infra_main
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -27,9 +26,7 @@ def test_main_returns_nonzero_on_unknown() -> None:
 
 def test_pr_workspace_accepts_repeated_project_options(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b", "flext-c"),
-        pr_exit_codes={"flext-a": "0", "flext-b": "0", "flext-c": "1"},
+        tmp_path, project_names=("flext-a", "flext-b", "flext-c")
     )
 
     result = infra_main([

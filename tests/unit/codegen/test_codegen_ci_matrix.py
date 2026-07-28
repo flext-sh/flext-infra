@@ -9,10 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from flext_tests import tm
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_tests import tm
 
 
 class TestCodegenCiMatrix:
@@ -41,6 +41,23 @@ class TestCodegenCiMatrix:
         """Generated project carries .github/workflows/ci-matrix.yml."""
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
+
+    def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
+        """Generated blocking CI resolves every action from the typed SSOT."""
+        root = self._render_project(tmp_path / "external")
+        workflows = "\n".join(
+            (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
+            for filename in ("ci.yml", "ci-matrix.yml")
+        )
+
+        for action in config.Infra.codegen.github_actions.values():
+            tm.that(workflows, has=f"{action.repository}@{action.sha}")
+            tm.that(workflows, has=f"# {action.version}")
+
+        tm.that(workflows, lacks="continue-on-error")
+        tm.that(workflows, lacks="set +e")
+        tm.that(workflows, lacks="|| make")
+        tm.that(workflows, lacks="soft-pass")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""

@@ -101,9 +101,16 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
 
     def _project_is_flext_child(self, project_dir: Path) -> bool:
-        """Detect an attached member exclusively from canonical Git topology."""
-        workspace_root: Path = u.Infra.git_workspace_root(project_dir).unwrap()
-        return workspace_root != project_dir.expanduser().resolve()
+        """Resolve physical attachment from canonical Git topology."""
+        project_root = project_dir.resolve()
+        workspace_root = u.Infra.git_workspace_root(project_root)
+        if workspace_root.failure:
+            msg = (
+                workspace_root.error
+                or f"unable to resolve Git topology: {project_root}"
+            )
+            raise RuntimeError(msg)
+        return workspace_root.value != project_root
 
     def _process_document_state(
         self,

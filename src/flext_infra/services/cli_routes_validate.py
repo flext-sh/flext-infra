@@ -21,22 +21,13 @@ class ValidationRoutes(ValidationCommandRoutes):
     """Own documentation, GitHub, maintenance, and validation routes."""
 
     @staticmethod
-    def _run_github_workspace_route(
-        params: m.Infra.GithubPullRequestWorkspaceRequest,
+    def _require_successful_pull_request_workspace(
+        report: m.Infra.GithubPullRequestWorkspaceReport,
     ) -> p.Result[t.Cli.ResultValue]:
-        """Map aggregate repository failures to the CLI process boundary."""
-        result = u.Infra.run_github_workspace_pull_requests(params)
-        if result.failure:
-            return r[t.Cli.ResultValue].fail(
-                result.error or "workspace pull-request operation failed"
-            )
-        report = result.value
+        """Fail the CLI boundary when any repository operation failed."""
         if report.fail:
-            return r[t.Cli.ResultValue].fail(
-                f"workspace pull-request operation failed for "
-                f"{report.fail}/{report.total} repositories"
-            )
-        return r[t.Cli.ResultValue].ok(report)
+            return r.fail(report.message)
+        return r.ok(report)
 
     validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_DOCS: tuple(
@@ -115,7 +106,9 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name="pr-workspace",
                 help_text="Manage pull requests across workspace projects",
                 model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=_run_github_workspace_route,
+                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
+                    params
+                ).flat_map(ValidationRoutes._require_successful_pull_request_workspace),
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

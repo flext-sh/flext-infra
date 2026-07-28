@@ -98,6 +98,35 @@ class FlextInfraConfigModels:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
+    class GithubActionPinSpec(_ConfigContract):
+        """One immutable GitHub Action reference from the codegen catalog."""
+
+        repository: Annotated[
+            t.NonEmptyStr, m.Field(description="GitHub owner/repository action name")
+        ]
+        version: Annotated[
+            t.NonEmptyStr, m.Field(description="Human-readable upstream release tag")
+        ]
+        sha: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[0-9a-f]{40}$",
+                description="Immutable upstream action commit",
+            ),
+        ]
+
+    class GithubWorkflowRenderSpec(_ConfigContract):
+        """Typed input consumed by generated GitHub workflow templates."""
+
+        dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+        github_actions: Annotated[
+            Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
+            m.Field(description="Immutable GitHub Action catalog"),
+        ]
+
     class UvPackageSelectorSpec(_ConfigContract):
         """Package selector for one official uv scoped dependency exclusion."""
 
@@ -506,7 +535,7 @@ class FlextInfraConfigModels:
         ] = None
 
     class MakefileRenderSpec(_ConfigContract):
-        """Typed render input for the generated project Makefile."""
+        """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
@@ -595,22 +624,6 @@ class FlextInfraConfigModels:
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
             ),
-        ]
-
-    class ToolchainRenderSpec(_ConfigContract):
-        """Field-only render projection of the canonical toolchain owner."""
-
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Python toolchain version")
-        ]
-        kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
-        ]
-        helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
-        ]
-        kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
 
     # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
@@ -812,9 +825,6 @@ class FlextInfraConfigModels:
         ]
         version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
-        python_toolchain_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python toolchain version selector")
-        ]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
@@ -971,6 +981,10 @@ class FlextInfraConfigModels:
         toolchain: Annotated[
             FlextInfraConfigModels.ToolchainSpec,
             m.Field(description="Exact generated toolchain"),
+        ]
+        github_actions: Annotated[
+            Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
+            m.Field(description="Immutable GitHub Action catalog"),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],

@@ -14,9 +14,8 @@ import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
-from flext_tests import FlextTestsConstants
-
 from flext_infra import c
+from flext_tests import FlextTestsConstants
 
 if TYPE_CHECKING:
     from flext_infra import t

@@ -21,9 +21,8 @@ import tomllib
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import config
+from flext_tests import tm
 
 
 def _workspace_root() -> Path:

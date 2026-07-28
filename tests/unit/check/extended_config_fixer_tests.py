@@ -9,11 +9,10 @@ from __future__ import annotations
 import tomllib
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import config
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
+from flext_tests import tm
 from tests import t, u
 
 if TYPE_CHECKING:

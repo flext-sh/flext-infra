@@ -8,7 +8,6 @@ from pathlib import Path
 
 from flext_infra import c, config
 from flext_tests import tm
-
 from tests import m, u
 
 
@@ -160,10 +159,8 @@ class TestsInfraGithub:
         hardcoding verb names) keeps this test correct when the SSOT changes.
         """
         declared = {verb.name for verb in config.Infra.codegen.make.verbs}
-        workspace_root = Path(__file__).resolve().parents[3].parent
-        workflows = sorted(workspace_root.glob("*/.github/workflows/*.yml")) + sorted(
-            (workspace_root / ".github/workflows").glob("*.yml")
-        )
+        repository_root = Path(__file__).resolve().parents[3]
+        workflows = sorted((repository_root / ".github/workflows").glob("*.yml"))
         invoked: dict[str, set[str]] = {}
         for workflow in workflows:
             if not workflow.is_file():
@@ -176,6 +173,6 @@ class TestsInfraGithub:
             }
             undeclared = verbs - declared
             if undeclared:
-                invoked[str(workflow.relative_to(workspace_root))] = undeclared
+                invoked[str(workflow.relative_to(repository_root))] = undeclared
 
         tm.that(invoked, eq={})

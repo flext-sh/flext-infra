@@ -10,9 +10,9 @@ import json
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:

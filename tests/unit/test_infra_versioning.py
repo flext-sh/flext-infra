@@ -11,9 +11,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tf, tm
 
 from flext_infra import u
+from flext_tests import tf, tm
 
 if TYPE_CHECKING:
     from pathlib import Path

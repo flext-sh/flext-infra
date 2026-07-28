@@ -190,6 +190,20 @@ class FlextInfraModelsMixins:
             c.Infra.PullRequestAction,
             m.Field(description="Pull-request publication action"),
         ] = c.Infra.PullRequestAction.STATUS
+
+        @m.field_validator("action", mode="before")
+        @classmethod
+        def _validate_pull_request_action(
+            cls, value: object
+        ) -> c.Infra.PullRequestAction:
+            """Normalize the CLI string boundary to the strict action enum."""
+            if isinstance(value, c.Infra.PullRequestAction):
+                return value
+            if isinstance(value, str):
+                return c.Infra.PullRequestAction(value)
+            msg = "pull-request action must be a string or PullRequestAction"
+            raise TypeError(msg)
+
         base: Annotated[
             t.NonEmptyStr | None,
             m.Field(description="Base branch; repository default when omitted"),

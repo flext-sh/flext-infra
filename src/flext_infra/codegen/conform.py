@@ -16,10 +16,10 @@ from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
+from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.services.codegen import FlextInfraCodegen
 
 # A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
 # Matched at column 0 only, so an indented recipe line is never mistaken for
@@ -658,6 +658,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
+            if (
+                contract.destinations is not None
+                and entry.destination not in contract.destinations
+            ):
+                continue
             if not contract.delegates:
                 continue
             # mro-i6nq.10: One formatted path governs validation and planning.
@@ -961,8 +966,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
-            if managed.policy in {"delegated", "manual"} or managed.path == Path(
-                c.Infra.PYPROJECT_FILENAME
+            if (
+                managed.policy in {"delegated", "manual"}
+                or managed.path == Path(c.Infra.PYPROJECT_FILENAME)
+                or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
             entries = tuple(
@@ -1031,6 +1038,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+    @staticmethod
+    def _workspace_root_rel(
+        repository: m.Infra.RepositoryRef, workspace: m.Infra.WorkspaceSpec
+    ) -> str:
+        """Resolve the workspace root from its typed topology owner."""
+        if workspace.project is not None:
+            project_root_rel: str = workspace.project.workspace_root_rel
+            return project_root_rel
+        profile = c.Infra.MakeProfile(repository.profile)
+        if profile is not c.Infra.MakeProfile.WORKSPACE_MEMBER:
+            return "."
+        return Path(*(".." for _ in repository.path.parts)).as_posix()
+
     def _artifact_render_context(
         self,
         *,
@@ -1056,6 +1076,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+        if destination in {
+            ".github/workflows/ci.yml",
+            ".github/workflows/ci-matrix.yml",
+        }:
+            return r[p.Model].ok(
+                m.Infra.GithubWorkflowRenderSpec(
+                    dist=dist,
+                    python_version=codegen.toolchain.python_version,
+                    github_actions=codegen.github_actions,
+                )
+            )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = c.Infra.MakeProfile(repository.profile)
             members = (
@@ -1063,22 +1094,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
-            workspace_root_rel = (
-                workspace.project.workspace_root_rel
-                if workspace.project is not None
-                else (
-                    Path(*(".." for _ in repository.path.parts)).as_posix()
-                    if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                    and repository.path.parts
-                    else "."
-                )
-            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=workspace_root_rel,
+                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                        repository, workspace
+                    ),
                     workspace_members=tuple(
                         item.path.as_posix() for item in workspace.members
                     ),
@@ -1116,7 +1139,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[p.Model].ok(context_result.value)
 
     @staticmethod
-    def _make_render_context(
+    def make_render_context(
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
@@ -1129,11 +1152,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
-        )
-        workspace_root_rel = (
-            Path(*(".." for _ in repository.path.parts)).as_posix()
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.path.parts
-            else "."
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
@@ -1153,7 +1171,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=workspace_root_rel,
+                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
@@ -1254,7 +1274,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=project.workspace_root_rel,
+                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository, workspace
+                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
@@ -1275,7 +1297,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 description=project.description,
                 version=project.version,
                 license=project.license,
-                python_toolchain_version=codegen.toolchain.python_version,
                 python_required_version=codegen.toolchain.python_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,

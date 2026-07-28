@@ -6,10 +6,9 @@ import os
 import stat
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import c, config, m, t, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 from tests import u as test_u
 
 
@@ -58,12 +57,13 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
+    tm.ok(planned)
+    plan = m.Infra.CodegenPlan.model_validate(planned.value)
     makefiles = tuple(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefiles, len=1)
-    rendered: str = t.Infra.STR_ADAPTER.validate_python(makefiles[0].rendered)
+    rendered: str = makefiles[0].rendered
     tm.that(rendered, has="MAKE_PROFILE := workspace-root")
     return rendered
 

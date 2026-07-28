@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
-from flext_tests import tm
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+import flext_infra
 from flext_infra import config
+from flext_tests import tm
 
 
 def _render_python_version() -> str:

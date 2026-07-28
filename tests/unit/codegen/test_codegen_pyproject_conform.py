@@ -5,9 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
+from flext_tests import tm
 
 
 def _repository(
@@ -93,6 +92,20 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
+    def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
+        workspace = _workspace()
+        member = workspace.members[0].model_copy(
+            update={"url": "git@github.com:flext-sh/flext-core.git"}
+        )
+        invalid_workspace = workspace.model_copy(update={"members": (member,)})
+        result = u.Infra.pyproject_dependencies_conform(
+            '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
+            repositories=(invalid_workspace.repository, member),
+            workspace=invalid_workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+        tm.that(result.failure, eq=True)
+
     def test_attached_member_removes_direct_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
@@ -115,20 +128,21 @@ workspace = true
             *workspace.members,
             *config.Infra.codegen.repositories,
         )
-        toolchain = m.Infra.ToolchainSpec(
-            python_version="3.13",
-            uv_link_mode="copy",
-            kubectl_version="1.32.0",
-            helm_version="3.19.4",
-            kind_version="0.31.0",
-            taplo_version="0.10.0",
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={"uv_link_mode": "copy"}
         )
         source = """[project]
 name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 
+[dependency-groups]
+dev = ["custom-tool>=1"]
+
 [tool.uv]
 required-version = "==0.11.28"
+
+[tool.pyrefly]
+python-interpreter-path = "../.venv/bin/python"
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -152,6 +166,8 @@ required-version = "==0.11.28"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
+        tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
+        tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
         tm.that(
             document["project"]["dependencies"][0],
             eq=(

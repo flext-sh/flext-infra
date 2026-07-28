@@ -7,8 +7,6 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_tests import FlextTestsUtilities, tm
-
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
@@ -19,6 +17,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
 if TYPE_CHECKING:
@@ -585,7 +584,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             project_names: t.StrSequence = (),
             source_workflow: str = "name: CI\n",
-            pr_exit_codes: t.StrMapping | None = None,
         ) -> Path:
             """Create a GitHub workflow workspace fixture."""
             workspace = root / "workspace"
@@ -593,7 +591,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workflow_dir = workspace / ".github/workflows"
             workflow_dir.mkdir(parents=True, exist_ok=True)
             (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
-            exit_codes = dict(pr_exit_codes or {})
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
@@ -609,10 +606,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
-                exit_code = exit_codes.get(name, "0")
-                (project / "Makefile").write_text(
-                    f"pr:\n\t@exit {exit_code}\n", encoding="utf-8"
-                )
             return workspace
 
         @staticmethod

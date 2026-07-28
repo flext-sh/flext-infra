@@ -208,7 +208,6 @@ class FlextInfraPyprojectModernizer(
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
                 "mypy_path": mypy.get("mypy_path"),
-                "pyrefly_interpreter_path": pyrefly.get("python-interpreter-path"),
                 "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH),
                 "pyrefly_project_includes": (
                     declared_pyrefly_includes or pyrefly.get(c.Infra.PROJECT_INCLUDES)

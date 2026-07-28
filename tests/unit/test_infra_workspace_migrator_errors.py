@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraInfraWorkspaceMigratorErrors:
+    @staticmethod
+    def _make_read_only(path: Path) -> None:
+        path.chmod(0o444)
+
     @pytest.mark.parametrize(
         ("base_mk", "read_only_name", "new_base_mk", "expected_error"),
         [("old", "base.mk", "new content", "base.mk update failed")],

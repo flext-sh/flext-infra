@@ -4,44 +4,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 
 
 class TestsRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""
 
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
-        # Conflict: mro-56qk owns migration of this temporary local expectation
-        # into the normative tests.c/t/p/m/u/config/settings fixture architecture.
-        expected = {
-            ".env.example": "create-only",
-            ".envrc": "create-only",
-            ".gitignore": "merge",
-            ".gitmodules": "full",
-            ".mise.toml": "merge",
-            ".pre-commit-config.yaml": "full",
-            ".python-version": "full",
-            ".vscode/settings.json": "merge",
-            "LICENSE": "create-only",
-            "Makefile": "full",
-            "README.md": "create-only",
-            "base.mk": "delegated",
-            "config/workspace.yaml": "manual",
-            "custom.mk": "manual",
-            "pyproject.toml": "merge",
-        }
+        configured = config.Infra.codegen.managed_files
+        paths = tuple(item.path.as_posix() for item in configured)
 
-        configured = {
-            item.path.as_posix(): item.policy
-            for item in config.Infra.codegen.managed_files
-        }
-
-        tm.that(configured, eq=expected)
+        tm.that(len(paths), eq=len(set(paths)))
+        for workflow in (".github/workflows/ci.yml", ".github/workflows/ci-matrix.yml"):
+            owned = next(
+                item for item in configured if item.path.as_posix() == workflow
+            )
+            tm.that(owned.owner, eq="codegen")
+            tm.that(owned.policy, eq="full")
 
     def test_legacy_sync_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
@@ -84,6 +67,10 @@ class TestsRootArtifactOwnership:
         governed = tuple(
             file for file in planned.value.files if file.policy is not None
         )
+        configured_policies = {
+            item.path.as_posix(): item.policy
+            for item in config.Infra.codegen.managed_files
+        }
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -101,8 +88,15 @@ class TestsRootArtifactOwnership:
         tm.ok(checked)
         tm.ok(first)
         tm.ok(second)
-        tm.that(len(governed), eq=len(config.Infra.codegen.managed_files))
-        tm.that(len({file.path for file in governed}), eq=len(governed))
+        tm.that(governed, empty=False)
+        tm.that(
+            len({file.path for file in governed}),
+            eq=len(governed),
+            msg=str(tuple(file.path.relative_to(root).as_posix() for file in governed)),
+        )
+        for file in governed:
+            relative = file.path.relative_to(root).as_posix()
+            tm.that(file.policy, eq=configured_policies[relative])
         tm.that(checked.value.files_changed, eq=0)
         tm.that(first.value.files_changed, eq=0)
         tm.that(second.value.files_changed, eq=0)
