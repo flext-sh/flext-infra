@@ -32,21 +32,25 @@ class TestsFlextInfraBasemkRenderer:
         for required in (
             "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
             "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
-            "UV_PROJECT_ENVIRONMENT=$(SETUP_VENV)",
-            "uv venv --clear",
-            "uv sync --all-extras --all-groups",
+            'UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"',
+            "SETUP_UV ?= uv",
+            "$(SETUP_UV) venv --clear",
+            "$(SETUP_UV) sync --project",
             "git submodule update --init --recursive",
             'test -z "$$(git status --porcelain)"',
             'test "$$(git rev-parse HEAD)" = "$$sha1"',
             "refs/heads/$(SETUP_BRANCH)",
             'git checkout --quiet -b "$(SETUP_BRANCH)"',
-            "--no-install-project",
+            "$(SETUP_PYTHON) -m flext_infra",
         ):
             tm.that(rendered, has=required)
         for forbidden in (
             "BOOTSTRAP_PIP",
             "pip install",
             "poetry",
+            "UV_VERSION",
+            "mise exec",
+            "uv@",
             "$(PYTHON_CMD) -c 'import flext_infra'",
         ):
             tm.that(rendered, lacks=forbidden)
@@ -73,9 +77,7 @@ class TestsFlextInfraBasemkRenderer:
         rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
 
         tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
-        tm.that(
-            rendered, has=["MISE := $(shell command -v mise 2>/dev/null)", "UV ?= uv"]
-        )
+        tm.that(rendered, has="UV ?= uv")
         tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
         tm.that(rendered, lacks="$(POETRY) build")
 
@@ -84,7 +86,6 @@ class TestsFlextInfraBasemkRenderer:
         settings = m.Infra.BaseMkConfig(
             project_name="sample-project",
             python_version="3.13",
-            package_manager="poetry",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["lint", "mypy"],
@@ -148,7 +149,7 @@ class TestsFlextInfraBasemkRenderer:
         text = result.value
         for part in (
             "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"',
+            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"',
             'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
             'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
             'echo "  DIAG=1                      Emit extended pytest diagnostics"',

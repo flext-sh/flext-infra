@@ -42,6 +42,7 @@ _MAKE_TEST_ENV_KEYS = (
     "MAKELEVEL",
     "GNUMAKEFLAGS",
     "FLEXT_INFRA_PYTHON",
+    "UV",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
 
@@ -53,18 +54,13 @@ def _render_base_mk() -> str:
 
 
 def _write_executable(path: Path, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def _write_stubs(bin_dir: Path, log_path: Path) -> None:
     bin_dir.mkdir(parents=True, exist_ok=True)
-    _write_executable(
-        bin_dir / "poetry",
-        '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "'
-        + str(log_path)
-        + '"\nexit 0\n',
-    )
     _write_executable(
         bin_dir / "python",
         '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
@@ -76,8 +72,8 @@ def _write_stubs(bin_dir: Path, log_path: Path) -> None:
         '#!/usr/bin/env bash\nprintf \'uv %s\\n\' "$*" >> "'
         + str(log_path)
         + '"\nif [ "$1" = "sync" ]; then\n'
-        + "  mkdir -p .venv/bin\n"
-        + '  cp "$(dirname "$0")/python" .venv/bin/python\n'
+        + '  mkdir -p "${UV_PROJECT_ENVIRONMENT}/bin"\n'
+        + '  cp "$(dirname "$0")/python" "${UV_PROJECT_ENVIRONMENT}/bin/python"\n'
         + "fi\nexit 0\n",
     )
 
@@ -324,7 +320,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             result.stdout,
             has=[
-                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type",
+                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells",
                 "FILE=src/foo.py             Single file for check/fmt/test",
                 'FILES="a.py b.py"          Multiple files for check/fmt/test',
                 "CHANGED_ONLY=1              Git-changed Python files for check",
@@ -440,7 +436,7 @@ class TestsFlextInfraBasemkMakeContract:
         rendered = _render_base_mk()
         tm.that(
             rendered,
-            has="BASE_INFRA_VALIDATE := $(PROJECT_INFRA_ROOT) validate",
+            has="BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate",
             lacks='PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src"',
         )
 
@@ -580,7 +576,7 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
         _write_executable(
-            bin_dir / "poetry",
+            bin_dir / "uv",
             "#!/usr/bin/env bash\n"
             "echo 'demo.py:1: error: incompatible type' >&2\n"
             "exit 1\n",
@@ -610,7 +606,7 @@ class TestsFlextInfraBasemkMakeContract:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         _write_stubs(bin_dir, log_path)
-        _write_executable(bin_dir / "poetry", "#!/usr/bin/env bash\nexit 124\n")
+        _write_executable(bin_dir / "uv", "#!/usr/bin/env bash\nexit 124\n")
         _write_project(tmp_path)
         _write_venv_python_stub(tmp_path, log_path)
         (tmp_path / "src").mkdir()
@@ -645,7 +641,7 @@ class TestsFlextInfraBasemkMakeContract:
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
         _write_executable(
-            bin_dir / "poetry",
+            bin_dir / "uv",
             '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
             + str(log_path)
             + '"\nexit 0\n',
@@ -684,12 +680,6 @@ class TestsFlextInfraBasemkMakeContract:
         log_path = tmp_path / "tool.log"
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
-        _write_executable(
-            bin_dir / "poetry",
-            '#!/usr/bin/env bash\nprintf \'PYTHONPATH=%s MYPYPATH=%s %s\\n\' "${PYTHONPATH-unset}" "${MYPYPATH-unset}" "$*" >> "'
-            + str(log_path)
-            + '"\nexit 0\n',
-        )
         _write_executable(
             bin_dir / "python",
             '#!/usr/bin/env bash\nprintf \'python %s\\n\' "$*" >> "'
@@ -778,7 +768,7 @@ class TestsFlextInfraBasemkMakeContract:
             env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
         )
 
-        tm.that(result.exit_code, eq=0)
+        tm.that(result.exit_code, eq=0, msg=result.stdout + result.stderr)
         tm.that(log_path.read_text(encoding="utf-8"), has="run ruff check src/demo.py")
         tm.that("--fix" not in log_path.read_text(encoding="utf-8"), eq=True)
 
@@ -821,8 +811,7 @@ class TestsFlextInfraBasemkMakeContract:
         log_lines = log_path.read_text(encoding="utf-8").splitlines()
         initial_sync = "uv sync --all-extras --all-groups"
         extra_paths = (
-            "run python -m flext_infra deps extra-paths --apply --workspace "
-            f"{project_root}"
+            f"python -m flext_infra deps extra-paths --apply --workspace {project_root}"
         )
         lock = "uv lock"
         reinstall_sync = (

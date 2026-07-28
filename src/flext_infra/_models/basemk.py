@@ -18,9 +18,6 @@ class FlextInfraModelsBasemk:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Target Python version")
         ]
-        package_manager: Annotated[str, m.Field(description="Dependency manager")] = (
-            c.Infra.POETRY
-        )
         source_dir: Annotated[str, m.Field(description="Source directory path")] = (
             c.Infra.DEFAULT_SRC_DIR
         )
