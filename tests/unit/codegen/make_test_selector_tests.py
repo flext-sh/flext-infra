@@ -68,6 +68,47 @@ class TestsMakeTestSelector:
             eq=calls_before_retired,
         )
 
+    def test_recursive_dispatch_preserves_explicit_makefile(
+        self, tmp_path: Path
+    ) -> None:
+        """An external -f invocation keeps the selected generated Make owner."""
+        selected_makefile = tmp_path / "canonical.mk"
+        selected_makefile.write_text(
+            tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
+        )
+        (tmp_path / "Makefile").write_text("all:\n\t@exit 99\n", encoding="utf-8")
+        invocation_log = tmp_path / "python-args.log"
+        test_u.Tests.write_executable(
+            tmp_path / ".venv" / "bin" / "python",
+            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+        )
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        executed = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "-f",
+                    str(selected_makefile),
+                    "worktree",
+                    "WHAT=list",
+                    f"UV={uv}",
+                ],
+                cwd=tmp_path,
+            )
+        )
+
+        tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
+        tm.that(
+            invocation_log.read_text(encoding="utf-8"),
+            has=[
+                "-m flext_infra workspace worktree",
+                f"--workspace {tmp_path}",
+                "--operation list",
+            ],
+        )
+
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))

@@ -186,6 +186,9 @@ _builtin_clean_generated \
 	_builtin_worktree_add \
 	_builtin_worktree_remove
 
+SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
+SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
+
 define _dispatch
 	@what="$(strip $(WHAT))"; \
 	if [ -z "$$what" ]; then what="$(_DEFAULT_$(1))"; fi; \
@@ -195,16 +198,16 @@ define _dispatch
 	builtin="_builtin_$(1)_$$what"; \
 	custom="_custom_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done; \
 	case " $(_BUILTIN_HANDLERS) " in \
-		*" $$builtin "*) $(MAKE) --no-print-directory "$$builtin" || exit $$? ;; \
-		*) $(MAKE) --no-print-directory "$$custom" || exit $$? ;; \
+		*" $$builtin "*) $(SELF_MAKE) "$$builtin" || exit $$? ;; \
+		*) $(SELF_MAKE) "$$custom" || exit $$? ;; \
 	esac; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
 	done
 endef
 
@@ -258,7 +261,7 @@ _serialized_codegen:
 
 setup:
 	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
-	@$(MAKE) --no-print-directory _builtin_setup_environment
+	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' ''
@@ -372,7 +375,7 @@ _builtin_setup_environment: _builtin_setup_submodules
 else ifeq ($(MAKE_PROFILE),workspace-member)
 ifeq ($(ATTACHED_MEMBER),Y)
 _builtin_setup_environment: _builtin_setup_submodules
-	@$(MAKE) --no-print-directory -C "$(RUNTIME_ROOT)" _builtin_setup_environment
+	@$(SELF_MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
 else
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
