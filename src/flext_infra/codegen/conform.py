@@ -972,6 +972,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 or managed.path == Path(c.Infra.CUSTOM_MAKE_FILENAME)
             ):
                 continue
+            if managed.policy in {"create-only", "merge"}:
+                continue
             entries = tuple(
                 entry
                 for entry in codegen.templates.entries
@@ -1166,6 +1168,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
+                python_version=codegen.toolchain.python_minor_version,
+                python_toolchain_version=codegen.toolchain.python_version,
+                uv_version=codegen.toolchain.uv_version,
+                kubectl_version=codegen.toolchain.kubectl_version,
+                helm_version=codegen.toolchain.helm_version,
+                kind_version=codegen.toolchain.kind_version,
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,

@@ -279,6 +279,7 @@ project-excludes = [
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
 search-path = [".", "src"]
+search-path = [".", "src"]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
