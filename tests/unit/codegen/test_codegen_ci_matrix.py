@@ -98,7 +98,9 @@ class TestCodegenCiMatrix:
                 encoding="utf-8"
             )
             tm.that(content, has="UV_UNMANAGED_INSTALL=/usr/local/bin")
+            tm.that(content, has="RUN uv python install 3.13")
             tm.that(content, has="RUN make setup")
+            tm.that(content, lacks="mise install")
             tm.that(content, lacks="set +e")
             tm.that(content, lacks="soft-pass")
             tm.that(content, lacks="EXTERNAL BLOCKER")
@@ -166,6 +168,7 @@ class TestCodegenCiMatrix:
                 tm.that(host, has=action)
             tm.that(host.index(expected[0]), lt=host.index("run: make setup"))
             tm.that(host.index(expected[1]), lt=host.index("run: make setup"))
+        tm.that(windows.count("shell: bash"), eq=2)
 
     def test_workflow_branches_derive_from_workspace_manifest(
         self, tmp_path: Path

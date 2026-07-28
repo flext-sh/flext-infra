@@ -76,7 +76,8 @@ jobs:
       - name: Install declared toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
       - name: Bootstrap
+        shell: bash
         run: make setup
       - name: Verb surface
-        shell: pwsh
+        shell: bash
         run: make help

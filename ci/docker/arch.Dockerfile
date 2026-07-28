@@ -8,20 +8,14 @@ RUN pacman -Syu --noconfirm --needed \
       bash ca-certificates curl git make base-devel \
     && pacman -Scc --noconfirm
 
-# mise installs the supported Python 3.13 family.
-# uv is supplied by the managed environment without a project patch pin.
-RUN curl -fsSL https://mise.run | sh
-ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
+# uv is an environment-provided executable, intentionally without a project
+# patch pin. It installs the declared Python family before canonical bootstrap.
+RUN curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
+RUN uv python install 3.13
 
 WORKDIR /workspace
 COPY . .
-
-RUN mise trust .mise.toml && mise install --yes
-
-# uv is an environment-provided executable, intentionally without a project
-# patch pin. The official installer places it on the declared runtime PATH.
-RUN curl -LsSf https://astral.sh/uv/install.sh \
-    | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
 
 RUN make setup
 
