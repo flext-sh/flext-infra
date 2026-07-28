@@ -52,7 +52,12 @@ class FlextInfraPyprojectModernizer(
     ] = False
 
     def conform_source(
-        self, source: str, *, path: Path, declared_python_dirs: t.StrSequence = ()
+        self,
+        source: str,
+        *,
+        path: Path,
+        declared_python_dirs: t.StrSequence = (),
+        project_kind: str | None = None,
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply."""
         payload_source = u.Cli.toml_mapping_from_text(source)
@@ -78,6 +83,7 @@ class FlextInfraPyprojectModernizer(
             dry_run=True,
             skip_comments=False,
             declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
         )
         if not state.rendered:
             return r[str].fail(
@@ -92,6 +98,7 @@ class FlextInfraPyprojectModernizer(
         package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        project_kind: str | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # mro-j47u (codex): resolve values only; template retains the full structure.
@@ -109,7 +116,10 @@ class FlextInfraPyprojectModernizer(
         # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
         # so first generation and post-write conformance are the same fixed point.
         conformed = self.conform_source(
-            u.Cli.toml_dumps(seed), path=path, declared_python_dirs=declared_python_dirs
+            u.Cli.toml_dumps(seed),
+            path=path,
+            declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
         )
         if conformed.failure:
             return r[m.Infra.ToolingRuntimeContext].fail(
@@ -192,19 +202,21 @@ class FlextInfraPyprojectModernizer(
             if declared_python_dirs
             else ()
         )
-        project_kind = "core"
+        resolved_project_kind = project_kind or "core"
         is_child = self._project_is_flext_child(path.parent)
-        if path.parent.resolve() != self.root.resolve() or is_child:
+        if project_kind is None and (
+            path.parent.resolve() != self.root.resolve() or is_child
+        ):
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(
                     classified.error or f"project classification failed: {path}"
                 )
-            project_kind = classified.value
+            resolved_project_kind = classified.value
         try:
             environments = self._tooling_pyright_environments(raw_environments)
             runtime = m.Infra.ToolingRuntimeContext.model_validate({
-                "project_kind": project_kind,
+                "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
                 "mypy_path": mypy.get("mypy_path"),

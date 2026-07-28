@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -364,6 +365,75 @@ class TestCodegenConform:
         tm.that(
             tuple(item.name for item in environment.editable_repositories),
             eq=("flext-core",),
+        )
+
+    def test_workspace_root_catalog_profile_preserves_platform_coverage(
+        self, tmp_path: Path
+    ) -> None:
+        """Route an arbitrary workspace root through its typed catalog profile."""
+        provider = config.Infra.codegen.providers[0]
+        repository = config.Infra.codegen.repositories[0].model_copy(
+            update={
+                "name": "arbitrary-root",
+                "distribution": "arbitrary-root",
+                "url": f"{provider.base_url}/arbitrary-root.git",
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.WORKSPACE_ROOT,
+                "profile": c.Infra.MakeProfile.WORKSPACE_ROOT,
+                "package": False,
+                "editable": False,
+            }
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="arbitrary-root",
+            repository=repository,
+            project=m.Infra.ProjectSpec(
+                package_name="arbitrary_root",
+                class_stem="ArbitraryRoot",
+                namespace="ArbitraryRoot",
+                constant_name="arbitrary-root",
+                namespace_attribute="arbitrary_root",
+                alias="arbitrary_root",
+                environment_prefix="ARBITRARY_ROOT_",
+                description="Arbitrary workspace root",
+                version="0.1.0",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                homepage=f"{provider.base_url}/arbitrary-root",
+                documentation=f"{provider.base_url}/arbitrary-root",
+                workspace_root_rel=".",
+                year=2026,
+            ),
+        )
+        root = tmp_path / "arbitrary-root"
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        first = tm.ok(service.plan(request))
+        second = tm.ok(service.plan(request))
+        first_pyproject = next(
+            item for item in first.files if item.path.name == c.Infra.PYPROJECT_FILENAME
+        )
+        second_pyproject = next(
+            item
+            for item in second.files
+            if item.path.name == c.Infra.PYPROJECT_FILENAME
+        )
+        report = tomllib.loads(first_pyproject.rendered)["tool"]["coverage"]["report"]
+
+        tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
+        tm.that(
+            report["fail_under"],
+            eq=config.Infra.tooling.tools.coverage.fail_under.platform,
         )
 
     def test_make_context_accepts_manifest_without_project_or_known_provider(

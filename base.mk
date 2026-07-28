@@ -13,6 +13,7 @@ TESTS_DIR ?= tests
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
 PYTEST_ARGS ?= 
+PYTEST_TARGETS ?= tests
 DIAG ?= 0
 CHECK_GATES ?= 
 VALIDATE_GATES ?= 
@@ -23,17 +24,11 @@ PROPAGATE ?=
 DOCS_PHASE ?= all
 FIX ?= 
 PR_ACTION ?= status
-PR_BASE ?= main
+PR_BASE ?= 
 PR_HEAD ?= 
-PR_NUMBER ?= 
 PR_TITLE ?= 
 PR_BODY ?= 
 PR_DRAFT ?= 0
-PR_MERGE_METHOD ?= squash
-PR_AUTO ?= 0
-PR_DELETE_BRANCH ?= 0
-PR_CHECKS_STRICT ?= 0
-PR_RELEASE_ON_MERGE ?= 1
 FILE ?= 
 FILES ?= 
 CHANGED_ONLY ?= 
@@ -296,7 +291,7 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "Selectors and options:"
 
-	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"
 
 	$(Q)echo "  MYPY_MEMORY_LIMIT_MB=6144  Mypy address-space cap"
 
@@ -317,6 +312,8 @@ help: ## Show commands
 	$(Q)echo "  PYRIGHT_ARGS=\"--level basic\" Extra args for pyright"
 
 	$(Q)echo "  PYTEST_ARGS=\"-k expr\"       Extra pytest args"
+
+	$(Q)echo "  PYTEST_TARGETS=\"tests/unit\" Pytest collection targets"
 
 	$(Q)echo "  MATCH=test_name             Alias for pytest -k"
 
@@ -339,17 +336,11 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "PR variables:"
 
-	$(Q)echo "  PR_ACTION=status|create|view|checks|merge|close"
+	$(Q)echo "  PR_ACTION=status|create"
 
-	$(Q)echo "  PR_BASE=main  PR_HEAD=<branch>  PR_NUMBER=<id>"
+	$(Q)echo "  PR_BASE=<branch>  PR_HEAD=<branch>"
 
 	$(Q)echo "  PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1"
-
-	$(Q)echo "  PR_MERGE_METHOD=squash|merge|rebase  PR_AUTO=0|1"
-
-	$(Q)echo "  PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1"
-
-	$(Q)echo "  PR_RELEASE_ON_MERGE=0|1"
 
 
 	$(Q)echo ""
@@ -398,7 +389,7 @@ _build_impl:
 	$(UV) build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
-check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
+check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells to select)
 	$(call _run_verb_hooks,pre,check,$(WHAT))
 	$(call _run_verb_body,check,_check_impl)
 	$(call _run_verb_hooks,post,check,$(WHAT))
@@ -408,14 +399,14 @@ _check_impl:
 	if [ -n "$$gates" ]; then \
 			for g in $$(echo "$$gates" | tr ',' ' '); do \
 				case "$$g" in \
-					lint|format|pyrefly|mypy|pyright|security|markdown|smells|type) ;; \
-				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells,type)"; exit 2;; \
+					lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells)"; exit 2;; \
 			esac; \
 		done; \
 	else \
 		gates="lint,format,pyrefly,mypy,pyright,security,markdown,smells"; \
 	fi; \
-	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
+	gates=$$(echo "$$gates" | tr ',' ' ' | tr ' ' ','); \
 	_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -494,7 +485,7 @@ _scan_impl:
 		--projects "$$project_key"; \
 	exit $$?
 
-fmt: ## Run code formatting (ruff + markdownlint on tracked files)
+fmt: ## Run code formatting (ruff + rumdl on tracked files)
 	$(call _run_verb_hooks,pre,fmt,$(WHAT))
 	$(call _run_verb_body,fmt,_fmt_impl)
 	$(call _run_verb_hooks,post,fmt,$(WHAT))
@@ -537,7 +528,7 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --deny-config-warnings --color never $$md_config; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
@@ -811,17 +802,11 @@ pr: ## Manage pull requests for this repository
 	$(Q)$(PROJECT_INFRA_GITHUB) pr \
 		--repo-root "$(CURDIR)" \
 		--action "$(PR_ACTION)" \
-		--base "$(PR_BASE)" \
+		$(if $(PR_BASE),--base "$(PR_BASE)",) \
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
-		$(if $(PR_NUMBER),--number "$(PR_NUMBER)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)" \
-		--merge-method "$(PR_MERGE_METHOD)" \
-		--auto "$(PR_AUTO)" \
-		--delete-branch "$(PR_DELETE_BRANCH)" \
-		--checks-strict "$(PR_CHECKS_STRICT)" \
-		--release-on-merge "$(PR_RELEASE_ON_MERGE)"
+		--draft "$(PR_DRAFT)"
 
 clean: ## Clean artifacts
 	$(Q)rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage* \

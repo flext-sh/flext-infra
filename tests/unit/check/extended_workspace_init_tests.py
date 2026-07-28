@@ -35,9 +35,9 @@ class TestWorkspaceChecker:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).execute()
         tm.fail(result, has="Use execute_command() directly")
 
-    def test_resolve_gates_maps_type_alias_and_deduplicates(self) -> None:
+    def test_resolve_gates_deduplicates_explicit_gates(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates([
-            c.Infra.TYPE_ALIAS,
+            c.Infra.PYREFLY,
             c.Infra.PYREFLY,
             c.Infra.LINT,
             c.Infra.LINT,

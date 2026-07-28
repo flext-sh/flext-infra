@@ -30,6 +30,7 @@ BRANCH ?=
 # focused run stays inside the canonical Make surface instead of forcing a
 # loose pytest invocation.
 PYTEST_ARGS ?=
+PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
@@ -37,7 +38,7 @@ WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
 PUBLIC_VERBS := help setup deps build check test format run status docs clean release codegen worktree basemk
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells type
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_PHASES := generate fix audit build validate
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
@@ -399,7 +400,7 @@ _builtin_test_all: _builtin_require_environment
 		esac; \
 		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
 	fi; \
-	_pytest_run="$(PROJECT_ROOT)/tests"; \
+	_pytest_run="$(PYTEST_TARGETS)"; \
 	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
 	for target in $$_pytest_run; do \
 		if [ ! -e "$$target" ]; then \

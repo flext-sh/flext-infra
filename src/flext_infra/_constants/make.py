@@ -61,7 +61,6 @@ class FlextInfraConstantsMake:
         "security",
         "markdown",
         "smells",
-        "type",
     )
     PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",

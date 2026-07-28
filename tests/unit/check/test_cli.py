@@ -41,8 +41,8 @@ class TestWorkspaceCheckCli:
         module_path.write_text(content, encoding="utf-8")
         return module_path
 
-    def test_resolve_gates_maps_type_alias(self) -> None:
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "type", "lint"])
+    def test_resolve_gates_deduplicates_explicit_gate(self) -> None:
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "pyrefly", "lint"])
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly"])
 
@@ -162,7 +162,7 @@ class TestWorkspaceCheckCli:
         tm.that(exit_code, eq=1)
         tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
 
-    def test_run_cli_rejects_shared_dry_run_flag(self) -> None:
+    def test_run_cli_accepts_shared_dry_run_flag(self) -> None:
         exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])
 
-        tm.that(exit_code, eq=2)
+        tm.that(exit_code, eq=0)

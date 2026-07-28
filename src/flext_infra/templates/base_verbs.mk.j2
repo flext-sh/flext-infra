@@ -232,7 +232,7 @@ _scan_impl:
 		--projects "$$project_key"; \
 	exit $$?
 
-fmt: ## Run code formatting (ruff + markdownlint on tracked files)
+fmt: ## Run code formatting (ruff + rumdl on tracked files)
 	$(call _run_verb_hooks,pre,fmt,$(WHAT))
 	$(call _run_verb_body,fmt,_fmt_impl)
 	$(call _run_verb_hooks,post,fmt,$(WHAT))
@@ -275,7 +275,7 @@ _fmt_impl:
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --deny-config-warnings --color never $$md_config; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
@@ -332,7 +332,7 @@ _test_impl:
 {{ test_report_recipe(
     "$(VENV_PYTHON) -m pytest",
     "$(PROJECT_INFRA_VALIDATE)",
-    "$(TESTS_DIR)",
+    "$(PYTEST_TARGETS)",
     "$(Q)",
 ) }}
 

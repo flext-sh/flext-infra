@@ -72,14 +72,14 @@ exist today.
     authority conflicts or an action would be destructive; otherwise continue
     to the observable stop condition.
 13. **Short validated slices.** Deliver in small, independently validated
-   units that merge to the integration branch quickly — one Bead, one
-   reviewable PR, hours not days. Mega-lanes and long-lived WIP are defects;
-   the orchestrator splits any unit that cannot merge green within a session.
+    units that merge to the integration branch quickly — one Bead, one
+    reviewable PR, hours not days. Mega-lanes and long-lived WIP are defects;
+    the orchestrator splits any unit that cannot merge green within a session.
 14. **Living documentation.** Project knowledge is durable, never rebuilt
-   per session. On entering a project, read its docs first and validate key
-   claims quickly against live reality. Every change that produces new
-   understanding or behavior updates the affected docs in the SAME change;
-   stale docs are defects filed as beads, never worked around.
+    per session. On entering a project, read its docs first and validate key
+    claims quickly against live reality. Every change that produces new
+    understanding or behavior updates the affected docs in the SAME change;
+    stale docs are defects filed as beads, never worked around.
 15. **Runtime reality precedes implementation and tests.** Establish the
     correct behavior from the official external contract and the real consumer
     first. For generated or deployed artifacts, validate the staged artifact
@@ -200,15 +200,12 @@ exist today.
 <!-- /UNIVERSAL-GOVERNANCE -->
 <!-- END AI-HUB MANAGED UNIVERSAL CORE -->
 
-> **General FLEXT law and workspace conventions live in the root
-> [`../AGENTS.md`](../AGENTS.md)—read it first.** It is the SSOT for facade
-> layering, config/settings access, the `make`-only workflow, testing law, and
-> multi-agent Git discipline. This file adds only `flext-infra` knowledge.
->
-> **Standalone / independent mode:** if this package is checked out alone,
-> `../AGENTS.md` does not resolve. Read the root law from the raw file on the
-> same branch or release:
-> <https://raw.githubusercontent.com/flext-sh/flext/0.12.0-dev/AGENTS.md>.
+> **General FLEXT law and workspace conventions live in the
+> [root AGENTS.md](https://github.com/flext-sh/flext/blob/main/AGENTS.md)—read
+> it first.** It is the SSOT for facade layering, config/settings access, the
+> `make`-only workflow, testing law, and multi-agent Git discipline. This file
+> adds only `flext-infra` knowledge and resolves identically in workspace,
+> worktree, and standalone checkouts.
 
 **Package:** `flext_infra` · ~82k source LOC · dependencies: `flext-cli`,
 `flext-core`

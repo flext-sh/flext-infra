@@ -244,8 +244,8 @@ class FlextInfraConstantsBase(
     "ast-grep (sg) binary."
     BANDIT: Final[str] = "bandit"
     "Bandit security linter binary."
-    MARKDOWNLINT: Final[str] = "markdownlint"
-    "Markdown linter binary."
+    RUMDL: Final[str] = "rumdl"
+    "uv-managed Markdown linter console script."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
     PR: Final[str] = "pr"
@@ -262,7 +262,6 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
-    TYPE_ALIAS: Final[str] = "type"
     DEFAULT_CSV: Final[str] = (
         "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
     )

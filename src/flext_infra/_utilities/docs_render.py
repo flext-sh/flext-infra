@@ -174,8 +174,8 @@ class FlextInfraUtilitiesDocsRender:
     project docs tree with relative paths.
     """
 
-    _LINK_PREFIX_README: ClassVar[str] = ".."
-    """Relative path from ``<project>/README.md`` to workspace root."""
+    _LINK_PREFIX_README: ClassVar[str] = c.Infra.GITHUB_REPO_URL
+    """Canonical governance URL shared by workspace and standalone READMEs."""
 
     @staticmethod
     def _public_surface_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
@@ -408,7 +408,7 @@ class FlextInfraUtilitiesDocsRender:
             f"- Primary facades: {FlextInfraUtilitiesDocsRender._preview(facades)}",
             f"- Generated module pages: `{len(modules)}`",
             "",
-            "- [Back to project docs](../index.md)",
+            "Back to [project docs](../index.md).",
             "",
         ])
 

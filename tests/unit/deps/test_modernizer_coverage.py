@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import tomllib
+from pathlib import Path
+
 import tomlkit
 from tomlkit import TOMLDocument
 
 from flext_infra import config
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_coverage import FlextInfraEnsureCoverageConfigPhase
 from flext_tests import tm
 from tests import t, u
@@ -66,3 +70,43 @@ class TestsFlextInfraDepsModernizerCoverage:
         second_changes = phase.apply(doc, project_kind="core")
 
         tm.that(second_changes, empty=True)
+
+    def test_explicit_platform_root_and_inferred_member_app_are_idempotent(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep topology-owned roots distinct from dependency-classified members."""
+        thresholds = config.Infra.tooling.tools.coverage.fail_under
+        root_path = tmp_path / "pyproject.toml"
+        root_source = '[project]\nname = "arbitrary-root"\n'
+        root_modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=tmp_path, skip_check=True
+        )
+        root_first = tm.ok(
+            root_modernizer.conform_source(
+                root_source, path=root_path, project_kind="platform"
+            )
+        )
+        root_second = tm.ok(
+            root_modernizer.conform_source(
+                root_first, path=root_path, project_kind="platform"
+            )
+        )
+
+        member_path = tmp_path / "arbitrary-member" / "pyproject.toml"
+        member_source = """[project]
+name = "arbitrary-member"
+dependencies = ["flext-core", "flext-cli", "flext-ldap"]
+"""
+        member_first = tm.ok(
+            root_modernizer.conform_source(member_source, path=member_path)
+        )
+        member_second = tm.ok(
+            root_modernizer.conform_source(member_first, path=member_path)
+        )
+
+        root_report = tomllib.loads(root_first)["tool"]["coverage"]["report"]
+        member_report = tomllib.loads(member_first)["tool"]["coverage"]["report"]
+        tm.that(root_second, eq=root_first)
+        tm.that(member_second, eq=member_first)
+        tm.that(root_report["fail_under"], eq=thresholds.platform)
+        tm.that(member_report["fail_under"], eq=thresholds.app)

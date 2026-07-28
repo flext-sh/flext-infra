@@ -141,6 +141,10 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
 
     generated = generator.generate(request)
     tm.ok(generated)
+    api_readme = (workspace / "docs/api-reference/README.md").read_text(
+        encoding="utf-8"
+    )
+    tm.that(api_readme, has="Back to [project docs](../index.md).")
     public_api = workspace / "docs/api-reference/generated/public-api.md"
     tm.that(public_api.exists(), eq=True)
     stale = workspace / "docs/api-reference/generated/stale.md"
@@ -192,6 +196,8 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     first = generator.generate(request)
     tm.ok(first)
     first_readme = (project / "README.md").read_text(encoding="utf-8")
+    tm.that(first_readme, has=f"{c.Infra.GITHUB_REPO_URL}/blob/main/AGENTS.md")
+    tm.that(first_readme, lacks="](../AGENTS.md)")
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True
     )

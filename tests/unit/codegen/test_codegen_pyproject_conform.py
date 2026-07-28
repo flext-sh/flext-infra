@@ -92,6 +92,59 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
         )
 
+    def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
+        workspace = _workspace()
+        source = """[project]
+name = "external-consumer"
+dependencies = ["requests>=2"]
+
+[tool.uv]
+constraint-dependencies = ["uv==0.11.32", "requests<3"]
+"""
+        first = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+        second = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                first,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+
+        document = tomllib.loads(first)
+        tm.that(second, eq=first)
+        tm.that(document["tool"]["uv"]["constraint-dependencies"], eq=["requests<3"])
+
+    def test_dependency_conformance_deletes_empty_uv_constraint_key(self) -> None:
+        workspace = _workspace()
+        source = """[project]
+name = "external-consumer"
+dependencies = ["requests>=2"]
+
+[tool.uv]
+link-mode = "copy"
+constraint-dependencies = ["uv>=0.11"]
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source,
+                repositories=(workspace.repository, *workspace.members),
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+
+        uv_config = tomllib.loads(conformed)["tool"]["uv"]
+        tm.that(uv_config["link-mode"], eq="copy")
+        tm.that("constraint-dependencies" not in uv_config, eq=True)
+
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
         member = workspace.members[0].model_copy(

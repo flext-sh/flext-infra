@@ -324,7 +324,7 @@ class TestsFlextInfraBasemkMakeContract:
         tm.that(
             result.stdout,
             has=[
-                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type",
+                "CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells",
                 "FILE=src/foo.py             Single file for check/fmt/test",
                 'FILES="a.py b.py"          Multiple files for check/fmt/test',
                 "CHANGED_ONLY=1              Git-changed Python files for check",

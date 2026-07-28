@@ -286,6 +286,8 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
+            if not execution.result.passed and execution.raw_output.strip():
+                u.Cli.error(execution.raw_output.strip())
             status: t.Cli.PipelineStageStatus = (
                 c.Cli.PipelineStageStatus.OK
                 if execution.result.passed

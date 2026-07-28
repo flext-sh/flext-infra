@@ -5,13 +5,12 @@ from __future__ import annotations
 import sys
 import time
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -42,6 +41,11 @@ class FlextInfraGate(ABC):
         module command shared by all gates.
         """
         return (sys.executable, "-m", module, *args)
+
+    @staticmethod
+    def _python_console_script_command(tool: str, *args: str) -> t.StrSequence:
+        """Invoke a uv-managed console script from the active interpreter directory."""
+        return (str(Path(sys.executable).with_name(tool)), *args)
 
     # ------------------------------------------------------------------
     # Template method: check

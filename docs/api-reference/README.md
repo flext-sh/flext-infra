@@ -24,4 +24,4 @@ This section is generated from public exports and real docstrings.
   `FlextInfraProtocols` (+5 more)
 - Generated module pages: `12`
 
-- [Back to project docs](../index.md)
+Back to [project docs](../index.md).

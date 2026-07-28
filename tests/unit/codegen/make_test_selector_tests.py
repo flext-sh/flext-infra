@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, u
 from flext_tests import tm
 
 
@@ -39,6 +39,29 @@ class TestsMakeTestSelector:
             eq=True,
         )
 
+    def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
+        """A focused target is the pytest target, not an appendix to tests/."""
+        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
+        selected = "tests/unit/selected_test.py"
+
+        executed = tm.ok(
+            u.Cli.run_raw(
+                [
+                    "make",
+                    "--no-print-directory",
+                    "-n",
+                    "_builtin_test_all",
+                    f"PYTEST_TARGETS={selected}",
+                ],
+                cwd=tmp_path,
+            )
+        )
+
+        tm.that(executed.exit_code, eq=0)
+        tm.that(executed.stdout, has=f'_pytest_run="{selected}"')
+        tm.that(f'_pytest_run="{tmp_path / "tests"}"' in executed.stdout, eq=False)
+
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
         """The shared reporter recipe must forward every test selector.
 
@@ -57,3 +80,4 @@ class TestsMakeTestSelector:
         tm.that(reporter, has='if [ -n "$(MATCH)" ]')
         tm.that(reporter, has='if [ -n "$(FILE)" ]')
         tm.that(reporter, has='if [ "$(FAIL_FAST)" = "1" ]')
+        tm.that(template, has='"$(PYTEST_TARGETS)"')

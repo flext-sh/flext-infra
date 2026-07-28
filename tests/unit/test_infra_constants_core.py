@@ -48,9 +48,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
 
-    def test_type_alias_gate(self) -> None:
-        tm.that(c.Infra.TYPE_ALIAS, eq="type")
-
     def test_default_csv_contains_gates(self) -> None:
         csv = c.Infra.DEFAULT_CSV
         tm.that(csv, contains="lint")

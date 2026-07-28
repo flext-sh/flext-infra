@@ -538,6 +538,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if directory in generated_roots
         )
 
+    @staticmethod
+    def _catalog_project_kind(repository: m.Infra.RepositoryRef) -> str | None:
+        """Resolve the explicit tooling layer owned by a catalog topology profile."""
+        if repository.profile is None:
+            return None
+        profile = c.Infra.MakeProfile(repository.profile)
+        return "platform" if profile is c.Infra.MakeProfile.WORKSPACE_ROOT else None
+
     def _plan_scaffold_repository(
         self,
         *,
@@ -572,11 +580,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
+        project_kind = self._catalog_project_kind(repository)
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -745,6 +755,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_render.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -766,6 +777,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -852,6 +864,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        project_kind = self._catalog_project_kind(repository)
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
@@ -859,6 +872,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             declared_python_dirs=(
                 config.Infra.tooling.tools.pyright.path_rules.source_dir,
             ),
+            project_kind=project_kind,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -889,7 +903,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
         tooling_result = modernizer.conform_source(
-            prepared_result.value, path=pyproject
+            prepared_result.value, path=pyproject, project_kind=project_kind
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(

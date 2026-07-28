@@ -150,6 +150,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         canonical_dev: t.StrSequence,
         dry_run: bool,
         skip_comments: bool,
+        project_kind: str | None = None,
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
@@ -161,11 +162,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         payload = state.payload
         is_child = self._project_is_flext_child(path.parent)
         is_root = path.parent.resolve() == self.root.resolve() and not is_child
-        project_kind = "core"
-        if not is_root:
+        resolved_project_kind = project_kind or "core"
+        if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
-                project_kind = kind_result.value
+                resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
@@ -196,7 +197,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
-                project_kind=project_kind,
+                project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
             )
@@ -244,7 +245,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
-                payload, project_kind=project_kind
+                payload, project_kind=resolved_project_kind
             )
         )
         changes.extend(

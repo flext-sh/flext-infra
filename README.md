@@ -24,9 +24,9 @@ management
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](../AGENTS.md) §9 — Agent Execution Pre-requisites —
-for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill
-loading, zero-debt baseline,
+Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+§9 — Agent Execution Pre-requisites — for the canonical pre-change checklist
+(parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,
 slot registry verification).
 
 ## Operation Flow
@@ -52,13 +52,17 @@ slot registry verification).
 
 Canonical `make` verbs (`check`, `test`, `format WHAT=apply APPLY=Y`, `val`,
 `docs`) — see `AGENTS.md` §5 (Make Contract) and the
-[`flext-quality-gates`](../.agents/skills/flext-quality-gates/SKILL.md) skill
-for selectors and thresholds.
+[`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md)
+skill for selectors and thresholds.
 
 ## Governance Pointer
 
-- Engineering law: [`/flext/AGENTS.md`](../AGENTS.md)
-- Governance + ADRs: [`/flext/docs/GOVERNANCE.md`](../docs/GOVERNANCE.md)
-- Skills index: [`/flext/.agents/skills/`](../.agents/skills/)
-- Onboarding: [`/flext/docs/guides/onboarding.md`](../docs/guides/onboarding.md)
+- Engineering law:
+  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+- Governance + ADRs:
+  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/main/docs/GOVERNANCE.md)
+- Skills index:
+  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/main/.agents/skills/)
+- Onboarding:
+  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/main/docs/guides/onboarding.md)
 - Full project portal: [`docs/index.md`](docs/index.md).
