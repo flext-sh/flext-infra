@@ -45,7 +45,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         @property
         def root(self) -> Path: ...
 
-        tool_config: m.Infra.ToolConfigDocument
+        tomlsort_sort_first: t.StrSequence
 
         def _ensure_build_system_payload(
             self, payload: t.MutableJsonMapping
@@ -171,12 +171,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
         changes.extend(
-            FlextInfraEnsurePytestConfigPhase(self.tool_config).apply_payload(payload)
+            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
         )
         # mro-j47u (codex): Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(self.tool_config).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 workspace_root=self.root,
@@ -187,7 +189,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(self.tool_config).apply_payload(
+            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 project_dir=path.parent,
@@ -196,15 +198,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsureMypyConfigPhase(self.tool_config).apply_payload(payload)
+            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(payload)
         )
         changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(self.tool_config).apply_payload(
+            FlextInfraEnsurePydanticMypyConfigPhase(config.Infra.tooling).apply_payload(
                 payload
             )
         )
         changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(self.tool_config).apply_payload(
+            FlextInfraEnsureFormattingToolingPhase(config.Infra.tooling).apply_payload(
                 payload
             )
         )
@@ -212,21 +214,23 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
         )
         changes.extend(
-            FlextInfraEnsureRuffConfigPhase(self.tool_config).apply_payload(
+            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
                 payload, path=path
             )
         )
         changes.extend(
-            FlextInfraEnsurePackagingPhase(self.tool_config).apply_payload(
+            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
                 payload, path=path, is_root=is_root
             )
         )
         # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
-            FlextInfraEnsureVultureConfigPhase(self.tool_config).apply_payload(payload)
+            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
         )
         changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(self.tool_config).apply_payload(
+            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
                 payload, project_kind=resolved_project_kind
             )
         )
@@ -236,9 +240,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
-        self._reorder_document_inplace(
-            doc, preferred_first=self.tool_config.tools.tomlsort.sort_first
-        )
+        self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
         if not skip_comments:
