@@ -45,8 +45,19 @@ class FlextInfraWorktreeService(s[str]):
 
     @staticmethod
     def _lanes_root(primary_root: Path) -> p.Result[Path]:
-        """Keep every lane under the Git registry's primary repository root."""
-        return r.ok((primary_root.resolve() / c.Infra.WORKTREES_DIRNAME).resolve())
+        """Place new lanes outside every ancestor project discovery boundary."""
+        resolved_primary = primary_root.resolve()
+        outermost_project = resolved_primary
+        for candidate in resolved_primary.parents:
+            if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                outermost_project = candidate
+        namespace_digest = u.Cli.sha256_content(str(resolved_primary))[
+            : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
+        ]
+        namespace = f"{resolved_primary.name}-{namespace_digest}"
+        return r.ok(
+            (outermost_project.parent / c.Infra.WORKTREES_DIRNAME / namespace).resolve()
+        )
 
     @classmethod
     def _lane_path(cls, primary_root: Path, branch: str) -> p.Result[Path]:
@@ -88,6 +99,47 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(detail or f"failed to inspect Git ref: {reference}")
         return r.ok(checked.value.exit_code == 0)
 
+    @staticmethod
+    def _rollback_new_lane(
+        primary_root: Path,
+        lane: Path,
+        branch: str,
+        created_branch_oid: str | None,
+        setup_error: str,
+    ) -> p.Result[str]:
+        """Roll back only a clean lane created by the current add operation."""
+        status = u.Infra.git_capture(
+            lane, ("status", "--porcelain", "--untracked-files=all")
+        )
+        if status.failure:
+            return r.fail(
+                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
+                f"{status.error or 'cannot prove the new lane is clean'}"
+            )
+        if status.value.strip():
+            return r.fail(
+                f"worktree setup failed: {setup_error}; preserving lane {lane} "
+                "because setup left worktree changes"
+            )
+        cleanup = u.Infra.git_remove_clean_worktree(primary_root, lane)
+        if cleanup.failure:
+            return r.fail(
+                f"worktree setup failed: {setup_error}; preserving lane {lane}: "
+                f"{cleanup.error or 'clean lane rollback failed'}"
+            )
+        if created_branch_oid is not None:
+            branch_cleanup = u.Infra.git_capture(
+                primary_root,
+                ("update-ref", "-d", f"refs/heads/{branch}", created_branch_oid),
+            )
+            if branch_cleanup.failure:
+                return r.fail(
+                    f"worktree setup failed: {setup_error}; "
+                    "created branch cleanup failed: "
+                    f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
+                )
+        return r.fail(f"worktree setup failed: {setup_error}; clean lane rolled back")
+
     def _add(self, primary_root: Path, branch: str, base: str) -> p.Result[str]:
         """Create and set up one branch worktree transactionally."""
         if not self.apply_changes:
@@ -126,32 +178,48 @@ class FlextInfraWorktreeService(s[str]):
         added = u.Infra.git_capture(self.workspace_root, arguments)
         if added.failure:
             return r.fail(added.error or f"failed to add worktree for {branch}")
-        setup = u.Cli.run_raw((c.Infra.MAKE, "setup", "WHAT="), cwd=lane)
-        setup_error = ""
+        created_branch_oid: str | None = None
+        if not local.value:
+            created_oid = u.Infra.git_capture(lane, ("rev-parse", "HEAD"))
+            if created_oid.failure:
+                return self._rollback_new_lane(
+                    primary_root,
+                    lane,
+                    branch,
+                    None,
+                    created_oid.error or "failed to retain created branch identity",
+                )
+            created_branch_oid = created_oid.value.strip()
+        metadata = u.read_project_metadata(lane)
+        if metadata.failure:
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                created_branch_oid,
+                metadata.error or "invalid lane project metadata",
+            )
+        setup = u.Cli.run_live(
+            (c.Infra.MAKE, "setup", "WHAT=", f"WORKSPACE={lane}"),
+            cwd=lane,
+            remove_env_keys=(
+                "MAKEFLAGS",
+                "MAKELEVEL",
+                "MAKEOVERRIDES",
+                "MFLAGS",
+                "UV_PROJECT",
+                "UV_PROJECT_ENVIRONMENT",
+                "VIRTUAL_ENV",
+            ),
+        )
         if setup.failure:
-            setup_error = setup.error or "make setup execution failed"
-        elif setup.value.exit_code != 0:
-            setup_error = (setup.value.stderr or setup.value.stdout).strip()
-            if not setup_error:
-                setup_error = f"make setup exited {setup.value.exit_code}"
-        if setup_error:
-            cleanup = u.Infra.git_remove_worktree(primary_root, lane)
-            if cleanup.failure:
-                return r.fail(
-                    f"worktree setup failed: {setup_error}; "
-                    f"cleanup failed: {cleanup.error or 'unknown cleanup failure'}"
-                )
-            if not local.value:
-                branch_cleanup = u.Infra.git_capture(
-                    primary_root, ("branch", "-D", branch)
-                )
-                if branch_cleanup.failure:
-                    return r.fail(
-                        f"worktree setup failed: {setup_error}; "
-                        "created branch cleanup failed: "
-                        f"{branch_cleanup.error or 'unknown branch cleanup failure'}"
-                    )
-            return r.fail(f"worktree setup failed: {setup_error}")
+            return self._rollback_new_lane(
+                primary_root,
+                lane,
+                branch,
+                created_branch_oid,
+                setup.error or "make setup execution failed",
+            )
         return r.ok(str(lane))
 
     def _remove(self, primary_root: Path, branch: str) -> p.Result[str]:
