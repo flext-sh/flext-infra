@@ -57,10 +57,10 @@ def test_build_scopes_without_filter_still_returns_root_scope(tmp_path: Path) ->
 
 
 def test_build_scopes_treats_non_flext_project_as_its_own_root(tmp_path: Path) -> None:
-    project_root = tmp_path / "cosmos-gitops"
+    project_root = tmp_path / "acme-content"
     project_root.mkdir()
     (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='cosmos-gitops'\n", encoding="utf-8"
+        "[project]\nname='acme-content'\n", encoding="utf-8"
     )
 
     result = u.Infra.build_scopes(
@@ -70,7 +70,7 @@ def test_build_scopes_treats_non_flext_project_as_its_own_root(tmp_path: Path) -
     tm.ok(result)
     tm.that(
         [(scope.name, scope.path) for scope in result.value],
-        eq=[("cosmos-gitops", project_root)],
+        eq=[("acme-content", project_root)],
     )
 
 
@@ -115,10 +115,10 @@ def test_build_scopes_preserves_declared_workspace_without_materialized_members(
 
 
 def test_build_scopes_preserves_disabled_root_policy(tmp_path: Path) -> None:
-    project_root = tmp_path / "cosmos-gitops"
+    project_root = tmp_path / "acme-content"
     project_root.mkdir()
     (project_root / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='cosmos-gitops'\n\n[tool.flext.docs]\nenabled=false\n",
+        "[project]\nname='acme-content'\n\n[tool.flext.docs]\nenabled=false\n",
         encoding="utf-8",
     )
 
