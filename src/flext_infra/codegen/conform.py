@@ -1036,6 +1036,51 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return "."
         return Path(*(".." for _ in repository.path.parts)).as_posix()
 
+    @staticmethod
+    def _infra_repository(
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve the single configured repository that owns the infrastructure CLI."""
+        matches = tuple(
+            item
+            for item in codegen.repositories
+            if item.distribution == config.Infra.name
+        )
+        if len(matches) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "repository catalog must declare exactly one infrastructure CLI owner"
+            )
+        return r[m.Infra.RepositoryRef].ok(matches[0])
+
+    @staticmethod
+    def _infra_source_root_rel(
+        repository: m.Infra.RepositoryRef,
+        workspace: m.Infra.WorkspaceSpec,
+        infra_repository: m.Infra.RepositoryRef,
+    ) -> str | None:
+        """Return a local engine source path only when the workspace declares it."""
+        workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
+            workspace.repository,
+            *workspace.members,
+        )
+        local: m.Infra.RepositoryRef | None = next(
+            (
+                item
+                for item in workspace_repositories
+                if item.distribution == infra_repository.distribution
+                and item.url == infra_repository.url
+                and item.branch == infra_repository.branch
+            ),
+            None,
+        )
+        if local is None:
+            return None
+        workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(
+            repository, workspace
+        )
+        local_path: Path = local.path
+        return (Path(workspace_root_rel) / local_path).as_posix()
+
     def _artifact_render_context(
         self,
         *,
@@ -1091,10 +1136,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
+            infra_repository = self._infra_repository(codegen)
+            if infra_repository.failure:
+                return r[p.Model].fail(
+                    infra_repository.error
+                    or "infrastructure CLI repository resolution failed"
+                )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     dist=dist,
                     infra_cli=config.Infra.name,
+                    infra_repository=infra_repository.value,
+                    infra_source_root_rel=self._infra_source_root_rel(
+                        repository, workspace, infra_repository.value
+                    ),
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                     workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
@@ -1146,6 +1201,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = c.Infra.MakeProfile(repository.profile)
+        infra_repository = FlextInfraCodegenConform._infra_repository(codegen)
+        if infra_repository.failure:
+            return r[m.Infra.MakeRenderContext].fail(
+                infra_repository.error
+                or "infrastructure CLI repository resolution failed"
+            )
         members = (
             tuple(workspace.members)
             if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
@@ -1165,6 +1226,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
+                infra_repository=infra_repository.value,
+                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
+                    repository, workspace, infra_repository.value
+                ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,
@@ -1219,6 +1284,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"supported licenses: {supported}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
+        infra_repository = FlextInfraCodegenConform._infra_repository(codegen)
+        if infra_repository.failure:
+            return r[m.Infra.ProjectRenderContext].fail(
+                infra_repository.error
+                or "infrastructure CLI repository resolution failed"
+            )
         flext_provider = codegen.providers[0]
         members = (
             tuple(workspace.members)
@@ -1265,6 +1336,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_runtime,
                 dist=repository.distribution,
                 infra_cli=config.Infra.name,
+                infra_repository=infra_repository.value,
+                infra_source_root_rel=FlextInfraCodegenConform._infra_source_root_rel(
+                    repository, workspace, infra_repository.value
+                ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
                 make_profile=profile,

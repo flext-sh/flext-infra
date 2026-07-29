@@ -82,3 +82,19 @@ class TestIterMarkdownFiles:
         (nm_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
         tm.that(not any("node_modules" in str(f) for f in files), eq=True)
+
+    def test_excludes_archived_markdown(self, tmp_path: Path) -> None:
+        """Test historical backup files and legado roots remain evidence-only."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        backup = docs_dir / "guide.bak-legacy.md"
+        backup.write_text("# Archived backup\n")
+        legado = docs_dir / "legado"
+        legado.mkdir()
+        archived = legado / "guide.md"
+        archived.write_text("# Archived tree\n")
+
+        files = u.Infra.iter_markdown_files(tmp_path)
+
+        tm.that(backup in files, eq=False)
+        tm.that(archived in files, eq=False)
