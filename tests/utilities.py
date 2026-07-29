@@ -810,20 +810,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
             )
             for command in commands:
-                _ = cli_facade.run_checked(list(command), cwd=repo_root)
+                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @classmethod
         def initialize_git_repo(cls, repo_root: Path) -> None:
             """Initialize and commit a deterministic Git fixture."""
-            _ = cli_facade.run_checked(
-                [c.Infra.GIT, "init", "-b", "main"], cwd=repo_root
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "init", "-b", "main"], cwd=repo_root
+                )
             )
             cls.configure_git_identity(repo_root)
             for command in (
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "-m", "init"),
             ):
-                _ = cli_facade.run_checked(list(command), cwd=repo_root)
+                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
         def to_pascal(snake: str) -> str:
