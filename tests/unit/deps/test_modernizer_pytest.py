@@ -29,6 +29,12 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
+    def test_tooling_policy_enforces_case_and_session_timeouts(self) -> None:
+        addopts = set(config.Infra.tooling.tools.pytest.standard_addopts)
+
+        tm.that(addopts, has="--timeout=10")
+        tm.that(addopts, has="--session-timeout=60")
+
     def test_apply_sets_expected_ini_options(self) -> None:
         """Populate every canonical pytest option in an empty document."""
         tool_config = config.Infra.tooling
