@@ -1,10 +1,10 @@
+# flext_infra.api
+
 <!-- TOC START -->
 - No sections found
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext_infra.api
 
 ::: flext_infra.api
     options:
