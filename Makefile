@@ -43,7 +43,7 @@ WORKSPACE ?= $(PROJECT_ROOT)
 PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
-DOCS_PHASES := generate fix audit build validate
+DOCS_ACTIONS := generate fix audit build validate
 SERIALIZED_VERBS := check test codegen
 SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
 RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
@@ -73,7 +73,7 @@ _DEFAULT_test := all
 _DEFAULT_fmt := check
 _DEFAULT_run := default
 _DEFAULT_status := diagnostics
-_DEFAULT_docs := check
+_DEFAULT_docs := all
 _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
@@ -199,7 +199,6 @@ _BUILTIN_HANDLERS := \
 	_builtin_fmt_apply \
 	_builtin_run_default \
 	_builtin_status_diagnostics \
-	_builtin_docs_check \
 	_builtin_docs_all \
 _builtin_docs_generate \
 _builtin_docs_fix \
@@ -331,7 +330,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'docs' 'check';
+	@printf '  %-10s WHAT=%s\n' 'docs' 'all|generate|fix|audit|build|validate';
 
 
 
@@ -697,37 +696,34 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_docs_check:
+_builtin_docs_all:
 	@set -eu; \
-	for phase in $(DOCS_PHASES); do \
-		case "$$phase" in generate|fix) mode=--check ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
+	for action in $(DOCS_ACTIONS); do \
+		case "$$action" in generate|fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
+		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
-_builtin_docs_all:
-	$(call _require_apply)
-	@set -eu; \
-	for phase in $(DOCS_PHASES); do \
-		case "$$phase" in generate|fix) mode=--apply ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$phase" --workspace "$(PROJECT_ROOT)" $$mode $(DOCS_PROJECT_ARGS); \
-	done
 
 _builtin_docs_generate:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
+
 
 _builtin_docs_fix:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) docs fix --workspace "$(PROJECT_ROOT)" --apply $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs fix --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
+
 
 _builtin_docs_audit:
-	@$(PROJECT_FLEXT_INFRA) docs audit --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs audit --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
+
 
 _builtin_docs_build:
-	@$(PROJECT_FLEXT_INFRA) docs build --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs build --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
+
 
 _builtin_docs_validate:
-	@$(PROJECT_FLEXT_INFRA) docs validate --workspace "$(PROJECT_ROOT)" $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs validate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
+
+
 
 _builtin_clean_generated:
 	$(call _require_apply)

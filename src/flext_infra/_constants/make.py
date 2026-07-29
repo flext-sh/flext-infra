@@ -85,7 +85,6 @@ class FlextInfraConstantsMake:
         PROJECT_FAST_PATH_CHECK_GATE_VALUES
     )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
-    DOCS_PHASES_ALLOWED: Final[str] = "all|generate|fix|audit|build|validate"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
         "build",
         "check",
@@ -133,7 +132,6 @@ class FlextInfraConstantsMake:
         ("NAMESPACE", ""),
         ("GATES", ""),
         ("PROPAGATE", ""),
-        ("DOCS_PHASE", "all"),
         ("FIX", ""),
         ("PR_ACTION", "status"),
         ("PR_BASE", ""),
@@ -158,7 +156,6 @@ class FlextInfraConstantsMake:
         ("PYTEST_ARGS", ""),
         ("PYTEST_TARGETS", "tests"),
         ("VALIDATE_SCOPE", "all"),
-        ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
         ("JOBS", ""),
         (CHECK_GATES_VARIABLE, ""),
@@ -210,7 +207,7 @@ class FlextInfraConstantsMake:
         ),
         ("scan", "Run all security checks"),
         ("fmt", "Run all formatting"),
-        ("docs", "Build docs (DOCS_PHASE= to select)"),
+        ("docs", "Run docs (WHAT= to select)"),
         ("test", "Run pytest (PYTEST_ARGS= for options)"),
         ("val", "Run validate gates (FIX=1 to auto-fix)"),
         ("clean", "Clean build/test/type artifacts"),
@@ -237,7 +234,6 @@ class FlextInfraConstantsMake:
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",
-        "DOCS_PHASE=all|generate|fix|audit|build|validate",
         "FIX=1                       Auto-fix supported gates",
         "APPLY=1                     Apply enforcement fixes (default dry-run)",
         "PROJECTS=p1,p2              Scope fix-enforcement to projects",
@@ -315,10 +311,6 @@ class FlextInfraConstantsMake:
         ("RUFF_ARGS", FORWARD_MODE_VALUE),
         ("PYRIGHT_ARGS", FORWARD_MODE_VALUE),
         ("CHECK_ONLY", FORWARD_MODE_ENABLED),
-    )
-    DOCS_FORWARD_ARGS: Final[t.StrPairSequence] = (
-        ("DOCS_PHASE", FORWARD_MODE_VALUE),
-        ("FIX", FORWARD_MODE_ENABLED),
     )
     TEST_FORWARD_ARGS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", FORWARD_MODE_VALUE),

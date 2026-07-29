@@ -220,6 +220,24 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
 
+    class MakeDocsSpec(_ConfigContract):
+        """Generated Make documentation lifecycle policy."""
+
+        actions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Ordered public documentation actions"),
+        ]
+        default_action: Annotated[
+            t.NonEmptyStr, m.Field(description="Default documentation WHAT action")
+        ]
+        mutable_actions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Actions enabled for writes only by APPLY=Y"),
+        ]
+        reports_dir: Annotated[
+            Path, m.Field(description="Repository-relative documentation report path")
+        ]
+
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -398,12 +416,9 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Ordered canonical public verbs"),
         ]
-        docs_phases: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                min_length=1,
-                description="Ordered canonical documentation lifecycle phases",
-            ),
+        docs: Annotated[
+            FlextInfraConfigModels.MakeDocsSpec,
+            m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
             FlextInfraConfigModels.CustomHandlerPolicy,
@@ -431,6 +446,20 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             if "setup" in serialized:
                 msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            docs_actions = set(self.docs.actions)
+            if self.docs.default_action not in docs_actions:
+                msg = "make docs default_action must be declared in actions"
+                raise ValueError(msg)
+            invalid_mutable = set(self.docs.mutable_actions) - docs_actions
+            if invalid_mutable:
+                msg = "make docs mutable_actions must be declared in actions"
+                raise ValueError(msg)
+            if (
+                self.docs.reports_dir.is_absolute()
+                or ".." in self.docs.reports_dir.parts
+            ):
+                msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
 

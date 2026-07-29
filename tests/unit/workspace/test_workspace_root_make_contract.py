@@ -215,35 +215,91 @@ class TestsWorkspaceRootMakeContract:
 
     def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
         workspace_root, project_names = _write_workspace(tmp_path)
+        docs = config.Infra.codegen.make.docs
+        invocation_log = workspace_root / "docs.log"
+        test_u.Tests.write_executable(
+            workspace_root / ".venv" / "bin" / "python",
+            (
+                "#!/bin/sh\n"
+                "verb=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then exec make --no-print-directory "_serialized_${verb}"; fi\n'
+                f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
+            ),
+        )
+        uv = workspace_root / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        process: cli_p.Cli.CommandOutput = tm.ok(
+        for action in docs.actions:
+            invocation_log.write_text("", encoding="utf-8")
+            process: cli_p.Cli.CommandOutput = tm.ok(
+                test_u.Tests.run_isolated_make(
+                    [
+                        "-C",
+                        str(workspace_root),
+                        "docs",
+                        f"WHAT={action}",
+                        f"PROJECTS={project_names[0]}",
+                        f"UV={uv}",
+                    ],
+                    cwd=workspace_root,
+                )
+            )
+            tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+            output = invocation_log.read_text(encoding="utf-8")
+            expected_actions = (
+                tuple(item for item in docs.actions if item != docs.default_action)
+                if action == docs.default_action
+                else (action,)
+            )
+            for expected_action in expected_actions:
+                tm.that(output, has=f"docs {expected_action}")
+            tm.that(output, has=f"--output-dir {workspace_root / docs.reports_dir}")
+            tm.that(output, has=f"--projects {project_names[0]}")
+            tm.that(output, lacks=f"--projects {project_names[1]}")
+            if action in docs.mutable_actions:
+                tm.that(output, has="--check")
+                tm.that(output, lacks="--apply")
+                invocation_log.write_text("", encoding="utf-8")
+                applied = tm.ok(
+                    test_u.Tests.run_isolated_make(
+                        [
+                            "-C",
+                            str(workspace_root),
+                            "docs",
+                            f"WHAT={action}",
+                            "APPLY=Y",
+                            f"PROJECTS={project_names[0]}",
+                            f"UV={uv}",
+                        ],
+                        cwd=workspace_root,
+                    )
+                )
+                tm.that(applied.exit_code, eq=0, msg=applied.stdout + applied.stderr)
+                applied_output = invocation_log.read_text(encoding="utf-8")
+                tm.that(applied_output, has="--apply")
+                tm.that(applied_output, lacks="--check")
+            elif action != docs.default_action:
+                tm.that(output, lacks="--apply")
+                tm.that(output, lacks="--check")
+
+        invalid = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "-C",
-                    str(workspace_root),
-                    "--dry-run",
-                    "_builtin_docs_all",
-                    "APPLY=Y",
-                    f"PROJECTS={project_names[0]}",
-                ],
+                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
                 cwd=workspace_root,
             )
         )
-        output = process.stdout + process.stderr
-
-        tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(
-            output,
-            has=f"for phase in {' '.join(config.Infra.codegen.make.docs_phases)}",
-        )
-        tm.that(output, has='docs "$phase"')
-        tm.that(output, has=f"--projects {project_names[0]}")
-        tm.that(output, lacks=f"--projects {project_names[1]}")
+        tm.that(invalid.exit_code, ne=0)
 
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workspace_root, _ = _write_workspace(tmp_path)
+        (workspace_root / ".gitmodules").write_text("", encoding="utf-8")
         fake_bin = tmp_path / "bin"
         uv_log = tmp_path / "uv.log"
         _write_fake_uv(fake_bin, uv_log)
@@ -264,12 +320,15 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         calls = uv_log.read_text(encoding="utf-8").splitlines()
         expected_environment = str(workspace_root / ".venv")
-        for call in calls:
+        managed_calls = tuple(
+            call for call in calls if call.startswith(f"{workspace_root}|")
+        )
+        for call in managed_calls:
             project, environment, virtual_env, _arguments = call.split("|", 3)
             tm.that(project, eq=str(workspace_root))
             tm.that(environment, eq=expected_environment)
             tm.that(virtual_env, eq=expected_environment)
-        arguments_log = "\n".join(calls)
+        arguments_log = "\n".join(managed_calls)
         tm.that(arguments_log, has=f"venv --clear {expected_environment}")
         tm.that(arguments_log, has=f"--python {expected_environment}")
 
