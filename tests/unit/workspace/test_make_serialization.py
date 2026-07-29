@@ -220,37 +220,52 @@ class TestsFlextInfraMakeSerialization:
             "--verb",
         ]
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        executor = ThreadPoolExecutor(max_workers=2)
+        try:
             incumbent_future = executor.submit(
                 u.Cli.run_raw, [*command, validation_verb], tmp_path
             )
-            deadline = time.monotonic() + self._process_start_timeout_seconds
-            while (
-                not (
-                    tmp_path / ".reports" / "serialization-test" / "incumbent-started"
-                ).exists()
-                and not incumbent_future.done()
-                and time.monotonic() < deadline
-            ):
-                time.sleep(0.01)
-            tm.that(
-                (
-                    tmp_path / ".reports" / "serialization-test" / "incumbent-started"
-                ).exists(),
-                where=bool,
-            )
-            contender_future = executor.submit(
-                u.Cli.run_raw, [*command, validation_verb], tmp_path
-            )
-            (
-                tmp_path / ".reports" / "serialization-test" / "incumbent-release"
-            ).write_text("", encoding="utf-8")
-            incumbent_process = tm.ok(
-                incumbent_future.result(timeout=self._process_start_timeout_seconds)
-            )
-            contender_process = tm.ok(
-                contender_future.result(timeout=self._process_start_timeout_seconds)
-            )
+            contender_future = None
+            release = tmp_path / ".reports" / "serialization-test" / "incumbent-release"
+            try:
+                deadline = time.monotonic() + self._process_start_timeout_seconds
+                while (
+                    not (
+                        tmp_path
+                        / ".reports"
+                        / "serialization-test"
+                        / "incumbent-started"
+                    ).exists()
+                    and not incumbent_future.done()
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.01)
+                tm.that(
+                    (
+                        tmp_path
+                        / ".reports"
+                        / "serialization-test"
+                        / "incumbent-started"
+                    ).exists(),
+                    where=bool,
+                )
+                contender_future = executor.submit(
+                    u.Cli.run_raw, [*command, validation_verb], tmp_path
+                )
+                release.write_text("", encoding="utf-8")
+                incumbent_process = tm.ok(
+                    incumbent_future.result(timeout=self._process_start_timeout_seconds)
+                )
+                contender_process = tm.ok(
+                    contender_future.result(timeout=self._process_start_timeout_seconds)
+                )
+            finally:
+                release.touch()
+                incumbent_future.cancel()
+                if contender_future is not None:
+                    contender_future.cancel()
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(incumbent_process.exit_code, eq=0)
         tm.that(contender_process.exit_code, eq=0)
@@ -335,24 +350,35 @@ class TestsFlextInfraMakeSerialization:
                 cwd=caller,
             )
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        executor = ThreadPoolExecutor(max_workers=2)
+        try:
             incumbent_future = executor.submit(command, callers[0])
-            deadline = time.monotonic() + self._process_start_timeout_seconds
-            while (
-                not (state / "started").exists()
-                and not incumbent_future.done()
-                and time.monotonic() < deadline
-            ):
-                time.sleep(0.01)
-            tm.that((state / "started").exists(), where=bool)
-            contender_future = executor.submit(command, callers[1])
-            (state / "release").write_text("", encoding="utf-8")
-            incumbent = tm.ok(
-                incumbent_future.result(timeout=self._process_start_timeout_seconds)
-            )
-            contender = tm.ok(
-                contender_future.result(timeout=self._process_start_timeout_seconds)
-            )
+            contender_future = None
+            release = state / "release"
+            try:
+                deadline = time.monotonic() + self._process_start_timeout_seconds
+                while (
+                    not (state / "started").exists()
+                    and not incumbent_future.done()
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.01)
+                tm.that((state / "started").exists(), where=bool)
+                contender_future = executor.submit(command, callers[1])
+                release.write_text("", encoding="utf-8")
+                incumbent = tm.ok(
+                    incumbent_future.result(timeout=self._process_start_timeout_seconds)
+                )
+                contender = tm.ok(
+                    contender_future.result(timeout=self._process_start_timeout_seconds)
+                )
+            finally:
+                release.touch()
+                incumbent_future.cancel()
+                if contender_future is not None:
+                    contender_future.cancel()
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(incumbent.exit_code, eq=0)
         tm.that(contender.exit_code, eq=0)
@@ -615,7 +641,9 @@ class TestsFlextInfraMakeSerialization:
         ]
 
         lock_path = tmp_path / make_config.serialization.lock_path
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            state.mkdir(parents=True, exist_ok=True)
             mutation_future = executor.submit(
                 u.Cli.run_raw,
                 [*command, mutation_verb],
@@ -625,42 +653,49 @@ class TestsFlextInfraMakeSerialization:
                     make_config.selector: mutation_what,
                 },
             )
-            deadline = time.monotonic() + self._process_start_timeout_seconds
-            while (
-                not (state / "mutation-started").exists()
-                and not mutation_future.done()
-                and time.monotonic() < deadline
-            ):
-                time.sleep(0.01)
-            tm.that((state / "mutation-started").exists(), where=bool)
-            mutation_lock_available = False
             try:
-                with FileLock(lock_path, timeout=0):
-                    mutation_lock_available = True
-            except Timeout:
+                deadline = time.monotonic() + self._process_start_timeout_seconds
+                while (
+                    not (state / "mutation-started").exists()
+                    and not mutation_future.done()
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.01)
+                tm.that((state / "mutation-started").exists(), where=bool)
                 mutation_lock_available = False
-            tm.that(mutation_lock_available, where=bool)
-            (state / "mutation-release").write_text("", encoding="utf-8")
+                try:
+                    with FileLock(lock_path, timeout=0):
+                        mutation_lock_available = True
+                except Timeout:
+                    mutation_lock_available = False
+                tm.that(mutation_lock_available, where=bool)
+                (state / "mutation-release").write_text("", encoding="utf-8")
 
-            deadline = time.monotonic() + self._process_start_timeout_seconds
-            while (
-                not (state / "fixed-point-started").exists()
-                and not mutation_future.done()
-                and time.monotonic() < deadline
-            ):
-                time.sleep(0.01)
-            tm.that((state / "fixed-point-started").exists(), where=bool)
-            fixed_point_lock_held = False
-            try:
-                with FileLock(lock_path, timeout=0):
-                    pass
-            except Timeout:
-                fixed_point_lock_held = True
-            tm.that(fixed_point_lock_held, where=bool)
-            (state / "fixed-point-release").write_text("", encoding="utf-8")
-            mutation = tm.ok(
-                mutation_future.result(timeout=self._process_start_timeout_seconds)
-            )
+                deadline = time.monotonic() + self._process_start_timeout_seconds
+                while (
+                    not (state / "fixed-point-started").exists()
+                    and not mutation_future.done()
+                    and time.monotonic() < deadline
+                ):
+                    time.sleep(0.01)
+                tm.that((state / "fixed-point-started").exists(), where=bool)
+                fixed_point_lock_held = False
+                try:
+                    with FileLock(lock_path, timeout=0):
+                        pass
+                except Timeout:
+                    fixed_point_lock_held = True
+                tm.that(fixed_point_lock_held, where=bool)
+                (state / "fixed-point-release").write_text("", encoding="utf-8")
+                mutation = tm.ok(
+                    mutation_future.result(timeout=self._process_start_timeout_seconds)
+                )
+            finally:
+                (state / "mutation-release").touch()
+                (state / "fixed-point-release").touch()
+                mutation_future.cancel()
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(mutation.exit_code, eq=0, msg=mutation.stdout + mutation.stderr)
         with FileLock(lock_path, timeout=0):
@@ -733,10 +768,16 @@ class TestsFlextInfraMakeSerialization:
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 execution_future = executor.submit(service.execute)
-                tm.that(post_transaction_captured.wait(timeout=10), where=bool)
-                (tmp_path / "concurrent.txt").write_text("drift\n", encoding="utf-8")
-                incumbent_lock.release()
-                result = execution_future.result(timeout=15)
+                try:
+                    tm.that(post_transaction_captured.wait(timeout=8), where=bool)
+                    (tmp_path / "concurrent.txt").write_text(
+                        "drift\n", encoding="utf-8"
+                    )
+                    incumbent_lock.release()
+                    result = execution_future.result(timeout=8)
+                finally:
+                    incumbent_lock.release()
+                    execution_future.cancel()
         finally:
             incumbent_lock.release()
 

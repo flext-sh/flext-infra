@@ -9,8 +9,8 @@ that the pytest process reaps at teardown.
 from __future__ import annotations
 
 import http.client
+import multiprocessing
 import socket
-import threading
 import time
 from typing import TYPE_CHECKING
 
@@ -24,8 +24,7 @@ pytestmark = pytest.mark.timeout(60)
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 90.0
-_POLL_INTERVAL_SECONDS = 0.5
+_DEADLINE_SECONDS = 6.0
 _HTTP_OK = 200
 
 
@@ -39,7 +38,7 @@ def _free_local_port() -> int:
 def _http_get_body(host: str, port: int) -> str | None:
     """Return the response body when the dev server answers HTTP 200, else None."""
     try:
-        connection = http.client.HTTPConnection(host, port, timeout=5)
+        connection = http.client.HTTPConnection(host, port, timeout=0.25)
         connection.request("GET", "/")
         response = connection.getresponse()
         body = (
@@ -51,6 +50,10 @@ def _http_get_body(host: str, port: int) -> str | None:
     except OSError:
         return None
     return body
+
+
+def _serve_docs(root: Path, dev_addr: str) -> None:
+    FlextInfraDocServer(dev_addr=dev_addr, livereload=False, strict=False).serve(root)
 
 
 class TestsFlextInfraIntegrationDocsServeE2e:
@@ -66,22 +69,22 @@ class TestsFlextInfraIntegrationDocsServeE2e:
         )
         port = _free_local_port()
         dev_addr = f"127.0.0.1:{port}"
-        outcome: dict[str, object] = {}
+        process = multiprocessing.get_context("fork").Process(
+            target=_serve_docs, args=(tmp_path, dev_addr)
+        )
+        process.start()
+        try:
+            deadline = time.monotonic() + _DEADLINE_SECONDS
+            body: str | None = None
+            while body is None and time.monotonic() < deadline:
+                body = _http_get_body("127.0.0.1", port)
 
-        def _run_server() -> None:
-            outcome["result"] = FlextInfraDocServer(
-                dev_addr=dev_addr, livereload=False, strict=False
-            ).serve(tmp_path)
-
-        thread = threading.Thread(target=_run_server, daemon=True)
-        thread.start()
-        deadline = time.monotonic() + _DEADLINE_SECONDS
-        body: str | None = None
-        while body is None and time.monotonic() < deadline:
-            body = _http_get_body("127.0.0.1", port)
-            if body is None:
-                time.sleep(_POLL_INTERVAL_SECONDS)
-
-        tm.that(body, none=False)
-        tm.that(body, has="Flext Demo Docs")
-        tm.that(body, has="Hello from the real dev server.")
+            tm.that(body, none=False)
+            tm.that(body, has="Flext Demo Docs")
+            tm.that(body, has="Hello from the real dev server.")
+        finally:
+            process.terminate()
+            process.join(timeout=2)
+            if process.is_alive():
+                process.kill()
+                process.join()
