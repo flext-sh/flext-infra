@@ -420,6 +420,58 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        )
+        tm.that(rendered.infra_repository, eq=infra_repository)
+        tm.that(rendered.infra_source_root_rel, eq=None)
+
+    def test_make_context_resolves_attached_infra_member_from_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        """An attached member bootstraps from its declared local checkout."""
+        workspace_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=workspace_repository.name,
+            repository=workspace_repository,
+            members=(infra_repository,),
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=infra_repository.distribution,
+                package_name=infra_repository.distribution.replace("-", "_"),
+                path=tmp_path / infra_repository.path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                infra_repository,
+                workspace,
+                config.Infra.codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+
+        tm.that(
+            rendered.infra_source_root_rel,
+            eq=(Path("..") / infra_repository.path).as_posix(),
+        )
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
