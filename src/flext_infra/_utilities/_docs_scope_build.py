@@ -50,9 +50,7 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes without exception wrapping."""
         resolved_root = workspace_root.resolve()
-        if FlextInfraUtilitiesDocsScope.is_governed_project(
-            resolved_root.name, resolved_root.parent
-        ):
+        if (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
                     resolved_root, output_dir
