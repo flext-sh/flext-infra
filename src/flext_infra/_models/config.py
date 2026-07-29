@@ -92,6 +92,10 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        beads_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="mise selector for the canonical Beads CLI"),
+        ]
 
         @m.computed_field()
         @property
@@ -151,6 +155,13 @@ class FlextInfraConfigModels:
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+
+    class MiseRenderSpec(ToolchainSpec):
+        """Typed toolchain projection with repository-scoped Beads ownership."""
+
+        beads_enabled: Annotated[
+            bool, m.Field(description="Provision Beads for the selected repository")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):

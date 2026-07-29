@@ -149,6 +149,13 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(gitmodules, has="flext-managed = true")
         tm.that(gitmodules, has="flext-managed = false")
+        mise = tomllib.loads(
+            next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
+        )
+        tm.that(
+            mise["tools"]["github:gastownhall/beads"],
+            eq=config.Infra.codegen.toolchain.beads_version,
+        )
         pyproject = tomllib.loads(
             next(
                 file.rendered

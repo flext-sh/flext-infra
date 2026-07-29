@@ -248,6 +248,8 @@ class TestCodegenConform:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.that((root / "Makefile").is_file(), eq=True)
         tm.that((root / ".mise.toml").is_file(), eq=True)
+        mise = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))
+        tm.that("github:gastownhall/beads" in mise["tools"], eq=False)
         tm.that((root / ".python-version").is_file(), eq=True)
         tm.that((root / ".gitignore").is_file(), eq=True)
         tm.that((root / ".env.example").exists(), eq=False)
