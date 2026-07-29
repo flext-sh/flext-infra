@@ -112,6 +112,19 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
             cwd=source,
         )
     )
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                "git",
+                "config",
+                "-f",
+                ".gitmodules",
+                "submodule.flext-core.flext-managed",
+                "true",
+            ],
+            cwd=source,
+        )
+    )
     test_u.Tests.commit_git_changes(source, "Declare workspace member")
     remote_root = tmp_path / "workspace-remote"
     remote_root.mkdir()
@@ -129,11 +142,12 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        sync_at = rendered.index("submodule sync --recursive")
-        update_at = rendered.index("submodule update --init --recursive")
+        managed_at = rendered.index("flext-managed")
+        sync_at = rendered.index("submodule sync --quiet --")
+        update_at = rendered.index("submodule update --init --")
         uv_at = rendered.index("$(UV) sync")
 
-        tm.that(sync_at < update_at < uv_at, eq=True)
+        tm.that(managed_at < sync_at < update_at < uv_at, eq=True)
 
     def test_make_setup_initializes_local_submodule_before_uv_probe(
         self, tmp_path: Path

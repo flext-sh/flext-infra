@@ -248,7 +248,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS) _builtin_setup_submodules
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -353,79 +353,129 @@ _builtin_help_usage:
 		fi; \
 	fi
 
-# A project owns the sources it declares. Setup makes the tree exactly what the
-# manifest declares, using nothing outside the tree: every declared submodule is
-# initialised recursively at its recorded gitlink and placed on the branch
-# declared in .gitmodules. It is a no-op when the project declares no
-# submodules, and it converges on re-run. It never moves a branch that holds
-# work the superproject does not record: that is an error, never a warning, so
-# setup can never report success over a tree that is not what it declares.
+# A project owns the sources declared by its manifest. The generated setup
+# reconciler validates every initialized checkout before mutation, initializes
+# only missing modules, and preserves declared branches that fix forward beyond
+# the recorded gitlink.
+.PHONY: _builtin_setup_submodules
+
 _builtin_setup_submodules:
 	@set -eu; \
-	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
-	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
-	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
-		current=$$(git branch --show-current); \
-		if [ -n "$$(git status --porcelain)" ]; then \
-			printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
-			exit 1; \
-		fi; \
-		if [ -z "$$branch" ]; then \
-			if [ -n "$$current" ]; then \
-				printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
+	root="$(PROJECT_ROOT)"; \
+	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	preflight_managed_submodules() { \
+		superproject="$$1"; \
+		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
+		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
+		while IFS=' ' read -r path_key child_path; do \
+			prefix=$${path_key%.path}; \
+			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
+			if [ "$$managed" != true ]; then continue; fi; \
+			state=$$(git -C "$$superproject" submodule status -- "$$child_path"); \
+			case "$$state" in -*) continue ;; esac; \
+			checkout="$$superproject/$$child_path"; \
+			displaypath=$${checkout#"$$root"/}; \
+			sha1=$$(git -C "$$superproject" rev-parse "HEAD:$$child_path"); \
+			branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$prefix.branch"); \
+			current=$$(git -C "$$checkout" branch --show-current); \
+			if [ -n "$$(git -C "$$checkout" status --porcelain)" ]; then \
+				printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
 				exit 1; \
 			fi; \
-			exit 0; \
-		fi; \
-		if [ "$$branch" = "." ]; then \
-			branch=$$(git -C "$$toplevel" branch --show-current); \
 			if [ -z "$$branch" ]; then \
-				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+				if [ -n "$$current" ]; then \
+					printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
+					exit 1; \
+				fi; \
+			elif [ "$$branch" = "." ]; then \
+				branch=$$(git -C "$$superproject" branch --show-current); \
+				if [ -z "$$branch" ]; then \
+					printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+					exit 1; \
+				fi; \
+			fi; \
+			if [ -n "$$branch" ]; then \
+				git check-ref-format --branch "$$branch" >/dev/null || { \
+					printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+					exit 1; \
+				}; \
+			fi; \
+			if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
+				printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
 				exit 1; \
 			fi; \
-		fi; \
-		git check-ref-format --branch "$$branch" >/dev/null || { \
-			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
-			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
-			exit 1; \
-		fi; \
-		if [ -n "$$current" ] && [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
-			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short "$$sha1")" >&2; \
-			exit 1; \
-		fi'; \
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
-	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
-		if [ -z "$$branch" ]; then exit 0; fi; \
-		if [ "$$branch" = "." ]; then \
-			branch=$$(git -C "$$toplevel" branch --show-current); \
-			if [ -z "$$branch" ]; then \
-				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+			if [ -z "$$current" ] && [ "$$(git -C "$$checkout" rev-parse HEAD)" != "$$sha1" ]; then \
+				printf "ERROR: %s: detached HEAD diverges from recorded gitlink %s\n" "$$displaypath" "$$(git -C "$$checkout" rev-parse --short "$$sha1")" >&2; \
 				exit 1; \
 			fi; \
-		fi; \
-		git check-ref-format --branch "$$branch" >/dev/null || { \
-			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		current=$$(git branch --show-current); \
-		if [ "$$current" = "$$branch" ]; then exit 0; fi; \
-		if [ -n "$$current" ]; then \
-			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
-			exit 1; \
-		fi; \
-		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
-			git checkout --quiet -b "$$branch"; \
-		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
-			git checkout --quiet "$$branch"; \
-		else \
-			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short HEAD)" >&2; \
-			exit 1; \
-		fi'
+			if [ -n "$$current" ] && ! git -C "$$checkout" merge-base --is-ancestor "$$sha1" HEAD; then \
+				printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git -C "$$checkout" rev-parse --short "$$sha1")" >&2; \
+				exit 1; \
+			fi; \
+			preflight_managed_submodules "$$checkout"; \
+		done; \
+	}; \
+	initialize_declared_submodules() { \
+		superproject="$$1"; \
+		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
+		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
+		while IFS=' ' read -r path_key child_path; do \
+			prefix=$${path_key%.path}; \
+			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
+			if [ "$$managed" != true ]; then continue; fi; \
+			git -C "$$superproject" submodule sync --quiet -- "$$child_path"; \
+			state=$$(git -C "$$superproject" submodule status -- "$$child_path"); \
+			case "$$state" in \
+				-*) git -C "$$superproject" submodule update --init -- "$$child_path" ;; \
+			esac; \
+			initialize_declared_submodules "$$superproject/$$child_path"; \
+		done; \
+	}; \
+	reconcile_managed_submodules() { \
+		superproject="$$1"; \
+		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
+		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
+		while IFS=' ' read -r path_key child_path; do \
+			prefix=$${path_key%.path}; \
+			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
+			if [ "$$managed" != true ]; then continue; fi; \
+			checkout="$$superproject/$$child_path"; \
+			displaypath=$${checkout#"$$root"/}; \
+			sha1=$$(git -C "$$superproject" rev-parse "HEAD:$$child_path"); \
+			branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$prefix.branch"); \
+			if [ -n "$$branch" ]; then \
+				if [ "$$branch" = "." ]; then \
+					branch=$$(git -C "$$superproject" branch --show-current); \
+					if [ -z "$$branch" ]; then \
+						printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+						exit 1; \
+					fi; \
+				fi; \
+				git check-ref-format --branch "$$branch" >/dev/null || { \
+					printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+					exit 1; \
+				}; \
+				current=$$(git -C "$$checkout" branch --show-current); \
+				if [ "$$current" = "$$branch" ]; then \
+					:; \
+				elif [ -n "$$current" ]; then \
+					printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
+					exit 1; \
+				elif ! git -C "$$checkout" rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
+					git -C "$$checkout" checkout --quiet -b "$$branch"; \
+				elif git -C "$$checkout" merge-base --is-ancestor "$$sha1" "refs/heads/$$branch"; then \
+					git -C "$$checkout" checkout --quiet "$$branch"; \
+				else \
+					printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git -C "$$checkout" rev-parse --short "$$sha1")" >&2; \
+					exit 1; \
+				fi; \
+			fi; \
+			reconcile_managed_submodules "$$checkout"; \
+		done; \
+	}; \
+	preflight_managed_submodules "$$root"; \
+	initialize_declared_submodules "$$root"; \
+	reconcile_managed_submodules "$$root"
 
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
