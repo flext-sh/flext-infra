@@ -75,6 +75,9 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      bootstrap_requirements:
+        - &pyrefly_requirement pyrefly>=1.1.1
+        - &ruff_requirement ruff>=0.15.12
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
@@ -383,6 +386,7 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        conflict_sections: [tool.uv]
 
     scaffold:
       build:
@@ -406,10 +410,10 @@ Infra:
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
           - mypy>=2.3.0
-          - pyrefly>=1.1.1
+          - *pyrefly_requirement
           - pyright>=1.1.411
           - pytest>=9.0.3
-          - ruff>=0.15.12
+          - *ruff_requirement
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:

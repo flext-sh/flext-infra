@@ -370,6 +370,15 @@ class FlextInfraConfigModels:
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
+        bootstrap_requirements: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Requirements needed by pre-environment transactional setup"
+                ),
+            ),
+        ]
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Single selector variable name")
         ]
@@ -481,6 +490,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        conflict_sections: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "TOML sections whose merge conflicts the canonical owner "
+                    "can recover before regeneration"
+                )
+            ),
+        ] = ()
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""

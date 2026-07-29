@@ -55,6 +55,7 @@ UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository.branch }}
+FLEXT_INFRA_BOOTSTRAP_TOOL_ARGS :={% for requirement in make.bootstrap_requirements %} --with "{{ requirement }}"{% endfor %}
 FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
 
 {% include "base_mypy_limit.mk.j2" %}
@@ -125,10 +126,10 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" $(FLEXT_INFRA_BOOTSTRAP_TOOL_ARGS) python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" $(FLEXT_INFRA_BOOTSTRAP_TOOL_ARGS) python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -198,6 +199,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_release_status \
 	_builtin_codegen_check \
 	_builtin_codegen_apply \
+	_builtin_codegen_init \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
@@ -319,7 +321,7 @@ _builtin_help_usage:
 # reconciler validates every initialized checkout before mutation, initializes
 # only missing modules, and preserves declared branches that fix forward beyond
 # the recorded gitlink.
-{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
+{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", "$(REQUESTED_PROJECTS)") }}
 
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
@@ -479,6 +481,10 @@ _builtin_codegen_check: _builtin_require_environment
 _builtin_codegen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+
+_builtin_codegen_init: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
 
 _builtin_worktree_list:
 	@$(PROJECT_FLEXT_INFRA) workspace worktree --workspace "$(WORKSPACE)" --operation list

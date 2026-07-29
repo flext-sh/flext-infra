@@ -1,15 +1,28 @@
-{% macro submodule_setup_recipe(target, project_root) -%}
+{% macro submodule_setup_recipe(target, project_root, selected_projects="") -%}
 .PHONY: {{ target }}
 
 {{ target }}:
 	@set -eu; \
 	root="{{ project_root }}"; \
+	selected="{{ selected_projects }}"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	setup_selected() { \
+		candidate="$$1"; \
+		if [ -z "$$selected" ]; then return 0; fi; \
+		for project in $$selected; do \
+			if [ "$$project" = "." ]; then continue; fi; \
+			case "$$project" in \
+				"$$candidate"|"$$candidate"/*) return 0 ;; \
+			esac; \
+		done; \
+		return 1; \
+	}; \
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -20,10 +33,6 @@
 			sha1=$$(git -C "$$superproject" rev-parse "HEAD:$$child_path"); \
 			branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$prefix.branch"); \
 			current=$$(git -C "$$checkout" branch --show-current); \
-			if [ -n "$$(git -C "$$checkout" status --porcelain)" ]; then \
-				printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
-				exit 1; \
-			fi; \
 			if [ -z "$$branch" ]; then \
 				if [ -n "$$current" ]; then \
 					printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
@@ -62,6 +71,7 @@
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -78,6 +88,7 @@
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \

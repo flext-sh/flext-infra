@@ -129,6 +129,162 @@ def _workspace(tmp_path: Path) -> Path:
 class TestsFlextInfraWorktreeTransaction:
     """Exercise transaction invariants through real Git state."""
 
+    def test_complete_worktree_includes_declared_existing_nested_repository(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = _workspace(tmp_path)
+        nested_root = workspace_root / "nested-repository"
+        nested_root.mkdir()
+        marker = nested_root / "marker.txt"
+        marker.write_text("nested state\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(nested_root)
+        marker.write_text("nested WIP\n", encoding="utf-8")
+        manifest = workspace_root / "config" / "workspace.yaml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "members: []\n",
+                "members:\n"
+                "  - name: nested-repository\n"
+                "    distribution: nested-repository\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/nested-repository.git\n"
+                "    branch: main\n"
+                "    path: nested-repository\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    classification: managed\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false\n",
+            ),
+            encoding="utf-8",
+        )
+        worktree_root = tmp_path / "isolated"
+
+        repositories = tm.ok(
+            u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
+                workspace_root, worktree_root, "transaction-test"
+            )
+        )
+
+        tm.that(
+            tuple(repository.relative_path for repository in repositories),
+            has="nested-repository",
+        )
+        tm.that(
+            (worktree_root / "nested-repository" / "marker.txt").read_text(
+                encoding="utf-8"
+            ),
+            eq="nested WIP\n",
+        )
+        tm.that(marker.read_text(encoding="utf-8"), eq="nested WIP\n")
+        tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
+
+    def test_nested_checkpoint_transport_preserves_source_head_gitlink(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = _workspace(tmp_path)
+        nested_root = workspace_root / "nested-repository"
+        nested_root.mkdir()
+        (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(nested_root)
+        source_head = tm.ok(u.Infra.git_repository_head(nested_root))
+        manifest = workspace_root / "config" / "workspace.yaml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "members: []\n",
+                "members:\n"
+                "  - name: nested-repository\n"
+                "    distribution: nested-repository\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/nested-repository.git\n"
+                "    branch: main\n"
+                "    path: nested-repository\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    classification: managed\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false\n",
+            ),
+            encoding="utf-8",
+        )
+        worktree_root = tmp_path / "isolated"
+        repositories = tm.ok(
+            u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
+                workspace_root, worktree_root, "gitlink-identity-test"
+            )
+        )
+        nested = next(
+            repository
+            for repository in repositories
+            if repository.relative_path == "nested-repository"
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                worktree_root,
+                (
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    "160000",
+                    nested.checkpoint_sha,
+                    nested.relative_path,
+                ),
+            )
+        )
+
+        deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
+        root_delta = next(delta for delta in deltas if delta.relative_path == ".")
+
+        tm.that(root_delta.patch.decode(), has=f"Subproject commit {source_head}")
+        tm.that(root_delta.patch.decode(), hasnt=nested.checkpoint_sha)
+        tm.ok(u.Infra.git_apply_patch(root_delta))
+        staged = tm.ok(
+            u.Infra.git_capture(
+                workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
+            )
+        )
+        tm.that(staged, eq=f"160000 {source_head} 0\t{nested.relative_path}")
+        tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
+
+    def test_transaction_apply_removes_source_and_sandbox_lock_state(
+        self, tmp_path: Path
+    ) -> None:
+        source_root, worktree_root, delta = _operation_delta(tmp_path)
+        lock_path = config.Infra.codegen.make.serialization.lock_path
+
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
+
+        tm.that((source_root / lock_path).exists(), eq=False)
+        tm.that((worktree_root / lock_path).exists(), eq=False)
+        tm.that((source_root / lock_path.parts[0]).exists(), eq=False)
+        tm.that((worktree_root / lock_path.parts[0]).exists(), eq=False)
+
+    def test_detached_transaction_worktree_does_not_run_repository_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep synthetic validation worktrees independent of operator hooks."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        u.Tests.initialize_git_repo(source_root)
+        hooks_root = source_root / ".git" / "hooks"
+        hooks_root.mkdir(exist_ok=True)
+        post_checkout = hooks_root / "post-checkout"
+        post_checkout.write_text("#!/bin/sh\nexit 70\n", encoding="utf-8")
+        post_checkout.chmod(0o755)
+        worktree_root = tmp_path / "isolated"
+
+        head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
+
+        tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+
     def test_preview_validates_isolated_target_without_touching_source(
         self, tmp_path: Path
     ) -> None:

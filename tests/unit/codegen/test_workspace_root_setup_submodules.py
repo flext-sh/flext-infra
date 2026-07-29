@@ -178,3 +178,78 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(process.exit_code, eq=0)
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")
+
+    def test_project_setup_ignores_dirty_unselected_managed_member(
+        self, tmp_path: Path
+    ) -> None:
+        """Scope setup preflight and reconciliation to the requested member."""
+        rendered = _render_workspace_root_makefile(tmp_path)
+        workspace = _create_uninitialized_workspace(tmp_path, rendered)
+        other_source = tmp_path / "other-source"
+        other_source.mkdir()
+        (other_source / "pyproject.toml").write_text(
+            "[project]\nname = 'flext-api'\nversion = '0.1.0'\n", encoding="utf-8"
+        )
+        test_u.Tests.initialize_git_repo(other_source)
+        other_remote_root = tmp_path / "other-remote"
+        other_remote_root.mkdir()
+        other_origin = test_u.Tests.configure_local_origin(
+            other_source, other_remote_root
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-q",
+                    "-b",
+                    "main",
+                    str(other_origin),
+                    "flext-api",
+                ],
+                cwd=workspace,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "config",
+                    "-f",
+                    ".gitmodules",
+                    "submodule.flext-api.flext-managed",
+                    "true",
+                ],
+                cwd=workspace,
+            )
+        )
+        test_u.Tests.commit_git_changes(workspace, "Declare second managed member")
+        dirty_marker = workspace / "flext-api" / "local-wip.txt"
+        dirty_marker.write_text("preserve\n", encoding="utf-8")
+        bin_dir = tmp_path / "bin"
+        bin_dir.mkdir()
+        probe_log = tmp_path / "uv.log"
+        _write_executable(
+            bin_dir / "uv",
+            "#!/bin/sh\n"
+            'test -f "$PWD/flext-core/pyproject.toml" || exit 42\n'
+            f'printf "%s\\n" "$*" >> "{probe_log}"\n'
+            "exit 0\n",
+        )
+        env = os.environ.copy()
+        env["GIT_ALLOW_PROTOCOL"] = "file"
+
+        outcome = tm.ok(
+            u.Cli.run_raw(
+                ["make", "setup", "PROJECT=flext-core", f"UV={bin_dir / 'uv'}"],
+                cwd=workspace,
+                env=env,
+            )
+        )
+
+        tm.that(outcome.exit_code, eq=0)
+        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.that(dirty_marker.read_text(encoding="utf-8"), eq="preserve\n")

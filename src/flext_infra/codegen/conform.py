@@ -87,6 +87,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     templates=False,
                     custom=False,
                 )
+            case c.Infra.CodegenConformSurface.GITMODULES:
+                return cls.SurfaceContract(
+                    destinations=frozenset({c.Infra.GITMODULES}),
+                    pyproject=False,
+                    custom=False,
+                )
             case c.Infra.CodegenConformSurface.MAKEFILE:
                 return cls.SurfaceContract(
                     destinations=frozenset({c.Infra.MAKEFILE_FILENAME}),
@@ -163,6 +169,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     result.error or f"atomic write failed: {file.path}"
                 )
             written.append(file.path)
+        adopted = self._adopt_declared_submodules(request, plan)
+        if adopted.failure:
+            return r[m.Infra.CodegenResult].fail(
+                adopted.error or "declared submodule adoption failed"
+            )
         verified = self.plan(request)
         if verified.failure:
             return r[m.Infra.CodegenResult].fail(
@@ -178,6 +189,56 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.CodegenResult].ok(
             m.Infra.CodegenResult(plan=verified_plan, written_files=tuple(written))
         )
+
+    @staticmethod
+    def _adopt_declared_submodules(
+        request: m.Infra.CodegenConformRequest, plan: m.Infra.CodegenPlan
+    ) -> p.Result[bool]:
+        """Register existing declared checkouts as root gitlinks without mutation."""
+        if (
+            c.Infra.CodegenConformMode(request.mode)
+            is not c.Infra.CodegenConformMode.APPLY
+            or plan.workspace.repository not in plan.repositories
+        ):
+            return r[bool].ok(False)
+        root = request.root.expanduser().resolve()
+        changed = False
+        for repository in (*plan.workspace.members, *plan.workspace.content_only):
+            if repository.checkout is not c.Infra.CheckoutKind.SUBMODULE:
+                continue
+            path = repository.path.as_posix()
+            checkout = (root / repository.path).resolve()
+            head = u.Cli.capture(
+                [c.Infra.GIT, "rev-parse", "--verify", "HEAD^{commit}"], cwd=checkout
+            )
+            if head.failure or not head.value:
+                return r[bool].fail(
+                    head.error or f"declared submodule HEAD is missing: {path}"
+                )
+            indexed = u.Cli.capture(
+                [c.Infra.GIT, "ls-files", "--stage", "--", path], cwd=root
+            )
+            expected = f"160000 {head.value} 0\t{path}"
+            if indexed.success and indexed.value == expected:
+                continue
+            updated = u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    "160000",
+                    head.value,
+                    path,
+                ],
+                cwd=root,
+            )
+            if updated.failure:
+                return r[bool].fail(
+                    updated.error or f"declared submodule gitlink update failed: {path}"
+                )
+            changed = True
+        return r[bool].ok(changed)
 
     def plan(
         self, request: m.Infra.CodegenConformRequest
@@ -499,7 +560,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         mutable = tuple(
             repository
             for repository in selected
-            if repository.codegen is not c.Infra.CodegenKind.NONE
+            if repository.classification is c.Infra.RepositoryClassification.MANAGED
+            and repository.codegen is not c.Infra.CodegenKind.NONE
             and not repository.read_only
         )
         if not mutable:
@@ -1028,7 +1090,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef, workspace: m.Infra.WorkspaceSpec
     ) -> str:
         """Resolve the workspace root from its typed topology owner."""
-        if workspace.project is not None:
+        if repository == workspace.repository and workspace.project is not None:
             project_root_rel: str = workspace.project.workspace_root_rel
             return project_root_rel
         profile = c.Infra.MakeProfile(repository.profile)
