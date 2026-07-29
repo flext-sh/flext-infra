@@ -293,6 +293,34 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             (tuple(sorted(managed_paths)), tuple(sorted(external_paths)))
         )
 
+    @classmethod
+    def analysis_exclusion_paths(
+        cls, repository_root: Path
+    ) -> p.Result[tuple[Path, ...]]:
+        """Derive analyzer exclusions from immutable repositories and path overlays."""
+        if not cls._manifest_path(repository_root).is_file():
+            # Without the config owner there is no declared external tree.
+            return r[tuple[Path, ...]].ok(())
+        workspace_result = cls.load_workspace_spec(repository_root)
+        if workspace_result.failure:
+            return r[tuple[Path, ...]].fail(
+                workspace_result.error or "workspace analysis scope is unavailable"
+            )
+        return r[tuple[Path, ...]].ok(
+            cls.workspace_analysis_exclusion_paths(workspace_result.value)
+        )
+
+    @staticmethod
+    def workspace_analysis_exclusion_paths(
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> tuple[Path, ...]:
+        """Project one analysis scope from a validated workspace contract."""
+        paths = dict.fromkeys((
+            *(repository.path for repository in workspace.content_only),
+            *(exclusion.path for exclusion in workspace.exclusions),
+        ))
+        return tuple(paths)
+
     @staticmethod
     def _gitmodule_contract(
         superproject_root: Path, member_path: str

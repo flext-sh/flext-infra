@@ -40,7 +40,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
             checkout=(
                 c.Infra.CheckoutKind.ROOT
                 if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-                else c.Infra.CheckoutKind.SUBMODULE
+                else (
+                    c.Infra.CheckoutKind.INDEPENDENT
+                    if role is c.Infra.RepositoryRole.STANDALONE
+                    else c.Infra.CheckoutKind.SUBMODULE
+                )
             ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
@@ -65,12 +69,16 @@ class TestsFlextInfraInfraWorkspaceDetector:
             content_only=content_only,
             exclusions=(),
         )
-        tm.ok(
-            u.Cli.yaml_dump(
-                repository_root / "config" / "workspace.yaml",
-                spec.model_dump(mode="json", exclude_none=True),
-            )
-        )
+        payload = spec.model_dump(mode="json", exclude_none=True)
+        serialized_content = payload.get("content_only")
+        if isinstance(serialized_content, list):
+            for content_record in serialized_content:
+                if isinstance(content_record, dict):
+                    content_record["profile"] = None
+        rendered = tm.ok(u.Cli.json_dumps(payload, indent=2))
+        manifest = repository_root / "config" / "workspace.yaml"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(manifest, f"{rendered}\n"))
 
     @staticmethod
     def _initialize_repository(repository_root: Path) -> None:
@@ -322,6 +330,23 @@ class TestsFlextInfraInfraWorkspaceDetector:
             FlextInfraWorkspaceDetector().detect(project_root),
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
+
+    def test_content_only_paths_are_analysis_exclusions(self, tmp_path: Path) -> None:
+        """Project immutable content paths into every analyzer exclusion set."""
+        root = self._repository(
+            name="consumer",
+            path=".",
+            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+        )
+        fork = self._external_repository("vendor/upstream-fork")
+        self._write_manifest(tmp_path, root, content_only=(fork,))
+
+        excluded = tm.ok(
+            FlextInfraWorkspaceDetector.analysis_exclusion_paths(tmp_path)
+        )
+
+        tm.that(excluded, eq=(Path("vendor/upstream-fork"),))
 
     def test_repository_with_indexed_submodule_is_workspace(
         self, tmp_path: Path

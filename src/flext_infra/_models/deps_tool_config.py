@@ -450,6 +450,9 @@ class FlextInfraModelsDepsToolSettings(
         ruff_src: Annotated[
             t.StrTuple, m.Field(description="Resolved Ruff source roots")
         ]
+        ruff_exclude: Annotated[
+            t.StrTuple, m.Field(description="Resolved Ruff exclusions")
+        ]
         ruff_ignore: Annotated[
             t.StrTuple,
             m.Field(description="Resolved ordinary and justified Ruff ignores"),
