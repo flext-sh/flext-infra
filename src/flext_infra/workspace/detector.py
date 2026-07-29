@@ -190,21 +190,36 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         repository_root: Path,
         declared: m.Infra.RepositoryRef,
         overlay: m.Infra.ProjectConformOverlay | None = None,
+        *,
+        parent_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Derive conform topology from owned submodules, with explicit exceptions."""
         if overlay is not None and overlay.profile is not None:
             profile = overlay.profile
         else:
-            owned_result = cls.owned_submodules(repository_root)
-            if owned_result.failure:
-                return r[m.Infra.RepositoryRef].fail(
-                    owned_result.error or "unable to resolve owned submodules"
-                )
-            profile = (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if owned_result.value
-                else c.Infra.MakeProfile.STANDALONE
+            mode_result = cls().detect(
+                repository_root, parent_workspace=parent_workspace
             )
+            if mode_result.failure:
+                return r[m.Infra.RepositoryRef].fail(
+                    mode_result.error or "unable to resolve repository topology"
+                )
+            if (
+                parent_workspace is not None
+                and mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
+            ):
+                profile = c.Infra.MakeProfile.WORKSPACE_MEMBER
+            else:
+                owned_result = cls.owned_submodules(repository_root)
+                if owned_result.failure:
+                    return r[m.Infra.RepositoryRef].fail(
+                        owned_result.error or "unable to resolve owned submodules"
+                    )
+                profile = (
+                    c.Infra.MakeProfile.WORKSPACE_ROOT
+                    if owned_result.value
+                    else c.Infra.MakeProfile.STANDALONE
+                )
         role = {
             c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.RepositoryRole.WORKSPACE_ROOT,
             c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.RepositoryRole.WORKSPACE_MEMBER,
@@ -413,6 +428,8 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         project_root: Path,
         superproject_root: Path,
         workspace_spec: m.Infra.WorkspaceSpec | None,
+        *,
+        parent_workspace: m.Infra.WorkspaceSpec | None = None,
     ) -> p.Result[c.Infra.WorkspaceMode]:
         """Validate a real submodule against the parent and local manifests."""
         member_root_result = u.Cli.capture(
@@ -545,7 +562,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 member_head.error or f"workspace member HEAD is missing: {member_path}"
             )
-        if gitmodule_url != declared.url or origin.value != declared.url:
+        if parent_workspace is None and (
+            gitmodule_url != declared.url or origin.value != declared.url
+        ):
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )
@@ -560,7 +579,12 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE)
 
-    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
+    def detect(
+        self,
+        project_root: Path,
+        *,
+        parent_workspace: m.Infra.WorkspaceSpec | None = None,
+    ) -> p.Result[c.Infra.WorkspaceMode]:
         """Detect workspace mode from typed manifests and real Git metadata."""
         try:
             resolved_project_root = project_root.resolve()
@@ -613,6 +637,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             resolved_project_root,
             Path(superproject_result.value).resolve(),
             workspace_spec,
+            parent_workspace=parent_workspace,
         )
 
     @override

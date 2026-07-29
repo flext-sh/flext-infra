@@ -90,6 +90,16 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         return tuple(normalized)
 
     @staticmethod
+    def transaction_workspace_args(
+        route_key: str, args: t.StrSequence, workspace_root: Path
+    ) -> t.StrSequence:
+        """Preserve the manifest owner when relocating conform into isolation."""
+        normalized = list(CliTransactionService.transaction_inner_args(route_key, args))
+        if route_key == "codegen:conform":
+            normalized.extend(("--workspace-root", str(workspace_root)))
+        return tuple(normalized)
+
+    @staticmethod
     def transaction_workspace_argument(args: t.StrSequence) -> Path:
         """Resolve an explicit workspace/root argument or the current directory."""
         path_flags = frozenset({"--root", "--workspace"})
@@ -182,7 +192,12 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         apply_requested = self.transaction_apply_requested(route_key, args)
         request = m.Infra.WorktreeTransactionRequest(
             workspace_root=workspace_result.value,
-            command=(group, *self.transaction_inner_args(route_key, args)),
+            command=(
+                group,
+                *self.transaction_workspace_args(
+                    route_key, args, workspace_result.value
+                ),
+            ),
             apply_patch=apply_requested,
             timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             scoped_paths=self.transaction_scoped_paths(args, workspace_result.value),

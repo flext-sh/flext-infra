@@ -615,6 +615,90 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
+    def test_member_codegen_transaction_uses_parent_workspace_manifest(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = _workspace(tmp_path)
+        member_source = tmp_path / "member-source"
+        member_source.mkdir()
+        (member_source / "pyproject.toml").write_text(
+            "[project]\nname = 'consumer-member'\nversion = '0.1.0'\n", encoding="utf-8"
+        )
+        u.Tests.initialize_git_repo(member_source)
+        tm.ok(
+            u.Infra.git_capture(
+                workspace_root,
+                (
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    "-q",
+                    "-b",
+                    "main",
+                    str(member_source),
+                    "consumer-member",
+                ),
+            )
+        )
+        manifest = workspace_root / "config" / "workspace.yaml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "members: []",
+                (
+                    "members:\n"
+                    "- name: consumer-member\n"
+                    "  distribution: consumer-member\n"
+                    "  provider: consumer-owned\n"
+                    "  url: https://github.com/consumer-owned/consumer-member.git\n"
+                    "  branch: main\n"
+                    "  path: consumer-member\n"
+                    "  role: workspace-member\n"
+                    "  state: active\n"
+                    "  profile: workspace-member\n"
+                    "  checkout: submodule\n"
+                    "  codegen: conform\n"
+                    "  package: true\n"
+                    "  editable: true\n"
+                    "  read_only: false"
+                ),
+            ),
+            encoding="utf-8",
+        )
+        tm.ok(u.Infra.git_capture(workspace_root, ("add", "-A")))
+        tm.ok(
+            u.Infra.git_capture(
+                workspace_root, ("commit", "-q", "-m", "Add consumer member")
+            )
+        )
+        transaction_result = u.Infra.execute_worktree_transaction(
+            m.Infra.WorktreeTransactionRequest(
+                workspace_root=workspace_root,
+                command=(
+                    "codegen",
+                    "conform",
+                    "--root",
+                    str(workspace_root / "consumer-member"),
+                    "--workspace-root",
+                    str(workspace_root),
+                    "--scope",
+                    "self",
+                    "--mode",
+                    "apply",
+                ),
+                apply_patch=False,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+                scoped_paths=(Path("consumer-member"),),
+            )
+        )
+
+        report = tm.ok(transaction_result)
+        tm.that(
+            report.command_output.exit_code,
+            eq=0,
+            msg=u.Infra.render_worktree_transaction_report(report),
+        )
+
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""

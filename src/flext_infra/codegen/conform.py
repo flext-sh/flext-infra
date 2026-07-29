@@ -249,14 +249,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
-                root
-            )
-            if workspace_root_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    workspace_root_result.error or "workspace root resolution failed"
+            if request.workspace_root is not None:
+                workspace_root = request.workspace_root.expanduser().resolve()
+            else:
+                workspace_root_result = (
+                    FlextInfraWorkspaceDetector.resolve_workspace_root(root)
                 )
-            workspace_root = workspace_root_result.value
+                if workspace_root_result.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        workspace_root_result.error
+                        or "workspace root resolution failed"
+                    )
+                workspace_root = workspace_root_result.value
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 workspace_root
             )
@@ -288,6 +292,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root,
                 current_repository,
                 config_spec.project_overlays.get(current_repository.name),
+                parent_workspace=workspace,
             )
             if effective_repository.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -324,7 +329,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         or f"Beads namespace validation failed for {repository.name}"
                     )
                 effective_result = FlextInfraWorkspaceDetector.effective_repository(
-                    repository_root, repository, overlay
+                    repository_root, repository, overlay, parent_workspace=workspace
                 )
                 if effective_result.failure:
                     return r[m.Infra.CodegenPlan].fail(

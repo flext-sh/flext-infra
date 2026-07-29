@@ -1581,6 +1581,10 @@ class FlextInfraConfigModels:
         """Validated public request for ``flext-infra codegen conform``."""
 
         root: Annotated[Path, m.Field(description="Repository or workspace root")]
+        workspace_root: Annotated[
+            Path | None,
+            m.Field(description="Parent manifest root for one attached repository"),
+        ] = None
         what: Annotated[
             FlextInfraConstantsCodegenProject.CodegenConformSurface,
             m.Field(description="Managed file selection"),
