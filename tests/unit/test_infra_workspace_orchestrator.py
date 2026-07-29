@@ -228,6 +228,36 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
 
         tm.ok(orchestrator.execute(), eq=True)
 
+    def test_test_selectors_become_exact_make_argv_elements(self) -> None:
+        """Preserve whitespace and punctuation without reparsing selector strings."""
+        orchestrator = FlextInfraOrchestratorService(
+            verb="test",
+            file="tests/unit/sample test.py::TestsSample::test exact",
+            match="exact name and not slow",
+            what="all",
+        )
+
+        tm.that(
+            orchestrator.make_args,
+            eq=(
+                "FILE=tests/unit/sample test.py::TestsSample::test exact",
+                "MATCH=exact name and not slow",
+                "WHAT=all",
+            ),
+        )
+
+    def test_test_rejects_generic_make_argument_channel(self) -> None:
+        """Keep arbitrary pytest flags out of whitespace-delimited Make strings."""
+        with pytest.raises(c.ValidationError, match="generic make-arg is forbidden"):
+            FlextInfraOrchestratorService(
+                verb="test", make_arg=("PYTEST_ARGS=-o addopts=",)
+            )
+
+    def test_non_test_verb_rejects_pytest_selectors(self) -> None:
+        """Keep test-only selector fields out of unrelated orchestrated verbs."""
+        with pytest.raises(c.ValidationError, match="only valid for the test verb"):
+            FlextInfraOrchestratorService(verb="check", match="sample")
+
     def test_empty_project_list(
         self, orchestrator: FlextInfraOrchestratorService
     ) -> None:

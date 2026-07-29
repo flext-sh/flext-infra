@@ -1125,6 +1125,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
+                    pytest=config.Infra.tooling.tools.pytest,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1185,6 +1186,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
+                pytest=config.Infra.tooling.tools.pytest,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1289,6 +1291,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
+                pytest=config.Infra.tooling.tools.pytest,
                 scaffold=codegen.scaffold,
                 gitignore_sections=profile_gitignore_sections,
                 dependency_profile=dependency_profile,
@@ -1429,10 +1432,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
         in_define = False
+        in_phony = False
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
             if in_define:
                 in_define = not raw_line.startswith("endef")
                 continue
+            if in_phony:
+                declaration = raw_line.strip()
+                in_phony = declaration.endswith("\\")
+                names = declaration.removesuffix("\\").split()
+                if names and all(target_re.fullmatch(name) for name in names):
+                    continue
+                return r[bool].fail(
+                    f"{policy.filename} line {line_number} "
+                    "is not a private custom handler"
+                )
             if raw_line.startswith("define "):
                 if not policy.allow_toolchain_declarations:
                     return r[bool].fail(
@@ -1448,7 +1462,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if _CONDITIONAL_RE.match(raw_line):
                 continue
             if raw_line.startswith(".PHONY:"):
-                names = raw_line.partition(":")[2].split()
+                declaration = raw_line.partition(":")[2].strip()
+                in_phony = declaration.endswith("\\")
+                names = declaration.removesuffix("\\").split()
+                if in_phony and not names:
+                    continue
                 if names and all(target_re.fullmatch(name) for name in names):
                     continue
             target = raw_line.partition(":")[0].strip() if ":" in raw_line else ""
@@ -1465,6 +1483,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             return r[bool].fail(
                 f"{policy.filename} line {line_number} is not a private custom handler"
+            )
+        if in_phony:
+            return r[bool].fail(
+                f"{policy.filename} has an unterminated .PHONY continuation"
             )
         return r[bool].ok(True)
 

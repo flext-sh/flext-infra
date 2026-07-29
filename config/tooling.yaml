@@ -476,6 +476,17 @@ Infra:
           project-shared-search-paths: ["."]
       pytest:
         # mro-j47u (codex): scaffold/modernizer consume one complete pytest model.
+        case-timeout-seconds: 10
+        run-timeout-seconds: 60
+        termination-grace-seconds: 2
+        enforcement-plugin: flext_tests_enforcement
+        progress-args: [--verbose]
+        report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
+        diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
+        parallel-workers: 4
+        parallel-distribution: worksteal
+        profile-sort: cumulative
+        profile-limit: 50
         min-version: "8.0"
         python-classes: ["Test*"]
         python-files: ["*_test.py", "*_tests.py", "test_*.py"]
@@ -507,8 +518,6 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          - --timeout=10
-          - --session-timeout=60
       tomlsort:
         all: true
         in_place: true

@@ -29,11 +29,20 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
-    def test_tooling_policy_enforces_case_and_session_timeouts(self) -> None:
-        addopts = set(config.Infra.tooling.tools.pytest.standard_addopts)
+    def test_tooling_policy_enforces_configured_case_timeout(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+        phase = FlextInfraEnsurePytestConfigPhase(config.Infra.tooling)
+        doc = tomlkit.document()
 
-        tm.that(addopts, has="--timeout=10")
-        tm.that(addopts, has="--session-timeout=60")
+        _ = phase.apply(doc)
+
+        ini = _mapping(
+            _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
+        )
+        tm.that(
+            set(_strings(ini["addopts"])),
+            has=[f"--timeout={policy.case_timeout_seconds}"],
+        )
 
     def test_apply_sets_expected_ini_options(self) -> None:
         """Populate every canonical pytest option in an empty document."""
@@ -53,7 +62,10 @@ class TestsFlextInfraDepsModernizerPytest:
         )
         tm.that(
             set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
+            eq={
+                *tool_config.tools.pytest.standard_addopts,
+                f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
+            },
         )
         tm.that(
             set(_strings(ini["markers"])),
@@ -87,7 +99,10 @@ markers = ["custom: custom marker"]
         )
         tm.that(
             set(_strings(ini["addopts"])),
-            eq=set(tool_config.tools.pytest.standard_addopts),
+            eq={
+                *tool_config.tools.pytest.standard_addopts,
+                f"--timeout={tool_config.tools.pytest.case_timeout_seconds}",
+            },
         )
         tm.that(
             set(_strings(ini["markers"])),

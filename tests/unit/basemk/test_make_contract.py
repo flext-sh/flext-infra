@@ -6,6 +6,7 @@ import os
 import stat
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 from tests import m, p, u
@@ -23,13 +24,13 @@ _MAKE_ISOLATION_ENV_KEYS = (
 )
 _MAKE_TEST_ENV_KEYS = (
     "BASH_ENV",
+    "DEPENDENCY",
     "FILE",
     "FILES",
     "CHANGED_ONLY",
     "CHECK_GATES",
     "VALIDATE_GATES",
     "PYTEST_ARGS",
-    "PYTEST_TARGETS",
     "MATCH",
     "FAIL_FAST",
     "RUFF_ARGS",
@@ -42,6 +43,16 @@ _MAKE_TEST_ENV_KEYS = (
     "MAKELEVEL",
     "GNUMAKEFLAGS",
     "FLEXT_INFRA_PYTHON",
+    "FLEXT_PYTEST_ARGS_RAW",
+    "FLEXT_PYTEST_DIAG_RAW",
+    "FLEXT_PYTEST_FAIL_FAST_RAW",
+    "FLEXT_PYTEST_FILE_RAW",
+    "FLEXT_PYTEST_FILES_RAW",
+    "FLEXT_PYTEST_MATCH_RAW",
+    "FLEXT_PYTEST_REPORTS_RAW",
+    "FLEXT_PYTEST_TARGET_RAW",
+    "FLEXT_PYTEST_VERBOSE_RAW",
+    "FLEXT_PYTEST_WHAT_RAW",
     "UV",
     *_MAKE_ISOLATION_ENV_KEYS,
 )
@@ -113,23 +124,13 @@ def _write_managed_python_stub(path: Path, log_path: Path) -> None:
 def _write_pytest_diag_python_stub(
     project_root: Path, *, payload: str, exit_code: int
 ) -> None:
+    del payload, exit_code
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
     body = (
         "#!/usr/bin/env bash\n"
-        "junit_file=''\n"
-        'for argument in "$@"; do\n'
-        '  case "$argument" in --junitxml=*) junit_file="${argument#--junitxml=}" ;; esac\n'
-        "done\n"
-        'if [[ "$*" == *"-m pytest"* ]]; then\n'
-        '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
+        'if [[ "$*" == *"-m flext_infra._pytest_entry"* ]]; then\n'
         "  exit 0\n"
-        "fi\n"
-        'if [[ "$*" == *"-m flext_infra validate pytest-diag"* ]]; then\n'
-        "  cat <<'FLEXT_PYTEST_DIAG_COUNTS'\n"
-        f"{payload.rstrip()}\n"
-        "FLEXT_PYTEST_DIAG_COUNTS\n"
-        f"  exit {exit_code}\n"
         "fi\n"
         "exit 97\n"
     )
@@ -456,121 +457,59 @@ class TestsFlextInfraBasemkMakeContract:
         )
         tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
 
-    def test_rendered_base_mk_disables_addopts_coverage_for_filtered_tests(
-        self,
-    ) -> None:
-        """Verify filtered test runs disable global coverage addopts."""
+    def test_rendered_base_mk_delegates_pytest_to_one_typed_runner(self) -> None:
+        """Keep process policy and report ownership out of generated shell."""
         rendered = _render_base_mk()
         tm.that(
             rendered,
             has=[
-                'if [ -n "$$_files" ] || [ -n "$(MATCH)" ] ||',
-                '[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then',
-                '_coverage_args="--no-cov";',
-                '_coverage_value="not-generated";',
+                "$(UV_RUN) python -m flext_infra._pytest_entry",
+                "FLEXT_PYTEST_FILE_RAW",
+                "FLEXT_PYTEST_MATCH_RAW",
+                "FLEXT_PYTEST_WHAT_RAW",
+            ],
+            lacks=["_all_pytest_args", "pytest-diag", "PYTEST_TARGETS"],
+        )
+
+    def test_rendered_base_mk_does_not_reimplement_pytest_reports_in_shell(
+        self,
+    ) -> None:
+        """The typed Python owner validates reports without shell parsing."""
+        rendered = _render_base_mk()
+        tm.that(
+            rendered,
+            lacks=[
+                "_coverage_args=",
+                "coverage report was not generated",
+                "pytest diagnostic extraction failed",
+                "invalid pytest diagnostic counts contract",
+                'source "$$',
+                '. "$$',
             ],
         )
 
-    def test_rendered_base_mk_activates_config_owned_coverage_source(self) -> None:
-        """Activate coverage while leaving its source in project configuration."""
+    def test_rendered_base_mk_exports_config_owned_pytest_deadlines(self) -> None:
+        """Expose immutable typed policy while rejecting command-line overrides."""
         rendered = _render_base_mk()
+        policy = config.Infra.tooling.tools.pytest
         tm.that(
-            rendered, has='_coverage_args="--cov --cov-report=xml:$$coverage_file";'
-        )
-        tm.that(rendered, lacks='_coverage_args="--cov=$(SRC_DIR)')
-
-    def test_full_test_fails_when_coverage_artifact_is_missing(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail a full run that reports success without a coverage artifact."""
-        _write_project(tmp_path)
-        _write_pytest_diag_python_stub(
-            tmp_path,
-            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
-            exit_code=0,
-        )
-
-        result = _run_make(tmp_path, "test")
-
-        tm.that(result.exit_code, ne=0)
-        tm.that(
-            result.stdout + result.stderr,
-            has="coverage report was not generated or is empty",
-        )
-
-    def test_focused_runs_report_coverage_not_generated(self, tmp_path: Path) -> None:
-        """Record truthful coverage state for every supported focused selector."""
-        for selector in ("FILE=tests", "MATCH=contract", "PYTEST_TARGETS=tests/unit"):
-            project_root = tmp_path / selector.split("=", maxsplit=1)[0].lower()
-            _write_project(project_root)
-            (project_root / "tests" / "unit").mkdir(exist_ok=True)
-            _write_pytest_diag_python_stub(
-                project_root,
-                payload=(
-                    "failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"
+            rendered,
+            has=[
+                (
+                    "override PYTEST_CASE_TIMEOUT_SECONDS := "
+                    f"{policy.case_timeout_seconds}"
                 ),
-                exit_code=0,
-            )
-
-            result = _run_make(project_root, "test", selector)
-            summary = (
-                project_root / ".reports" / "tests" / "latest" / "summary.txt"
-            ).read_text(encoding="utf-8")
-
-            tm.that(result.exit_code, eq=0)
-            tm.that(summary, has="coverage=not-generated")
-
-    def test_make_pytest_diag_accepts_exact_numeric_counts(
-        self, tmp_path: Path
-    ) -> None:
-        """Accept the four-key machine-output contract before sourcing it."""
-        _write_project(tmp_path)
-        _write_pytest_diag_python_stub(
-            tmp_path,
-            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
-            exit_code=0,
+                (
+                    "override PYTEST_RUN_TIMEOUT_SECONDS := "
+                    f"{policy.run_timeout_seconds}"
+                ),
+                (
+                    "override PYTEST_TERMINATION_GRACE_SECONDS := "
+                    f"{policy.termination_grace_seconds}"
+                ),
+                "override PYTEST_TIMEOUT_EXIT_CODE :=",
+            ],
         )
-
-        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
-
-        tm.that(result.exit_code, eq=0)
-        tm.that(
-            result.stdout + result.stderr,
-            has="DIAG COMPLETED | failed=0 errors=0 warnings=0 skipped=0",
-        )
-
-    def test_make_pytest_diag_preserves_producer_failure(self, tmp_path: Path) -> None:
-        """Stop with the producer status and its exact stdout evidence."""
-        _write_project(tmp_path)
-        _write_pytest_diag_python_stub(
-            tmp_path, payload="diagnostic producer failed", exit_code=23
-        )
-
-        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
-
-        output = result.stdout + result.stderr
-        tm.that(result.exit_code, ne=0)
-        tm.that(output, has="pytest diagnostic extraction failed (exit=23)")
-        tm.that(output, has="diagnostic producer failed")
-
-    def test_make_pytest_diag_rejects_payload_before_sourcing(
-        self, tmp_path: Path
-    ) -> None:
-        """Reject shell text from a successful producer without executing it."""
-        marker = tmp_path / "injected-marker"
-        _write_project(tmp_path)
-        _write_pytest_diag_python_stub(
-            tmp_path,
-            payload=(f"failed_count=0\nerror_count=0\ntouch {marker}\nskipped_count=0"),
-            exit_code=0,
-        )
-
-        result = _run_make(tmp_path, "test", "DIAG=1", "MATCH=contract")
-
-        output = result.stdout + result.stderr
-        tm.that(result.exit_code, ne=0)
-        tm.that(output, has="invalid pytest diagnostic counts contract")
-        tm.that(marker.exists(), eq=False)
 
     def test_rendered_base_mk_changed_only_filters_deleted_and_untracked(self) -> None:
         """Verify changed-only discovery includes live tracked and untracked files."""

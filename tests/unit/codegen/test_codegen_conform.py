@@ -383,10 +383,11 @@ class TestCodegenConform:
         rendered_tooling = tomllib.loads(first_pyproject.rendered)["tool"]
         report = rendered_tooling["coverage"]["report"]
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
+        pytest_policy = config.Infra.tooling.tools.pytest
 
         tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
-        tm.that(addopts, has="--timeout=10")
-        tm.that(addopts, has="--session-timeout=60")
+        tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
+        tm.that(addopts, lacks="--session-timeout")
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
@@ -601,7 +602,14 @@ class TestCodegenConform:
         custom = root / "custom.mk"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                custom, ".PHONY: _custom_check_demo\n_custom_check_demo:\n\t@true\n"
+                custom,
+                (
+                    ".PHONY: \\\n"
+                    "\t_custom_check_demo \\\n"
+                    "\t_custom_run_demo\n"
+                    "_custom_check_demo:\n\t@true\n"
+                    "_custom_run_demo:\n\t@true\n"
+                ),
             )
         )
         result = FlextInfraCodegenConform.execute_request(
@@ -614,6 +622,18 @@ class TestCodegenConform:
         tm.ok(result)
         tm.that("WARN:" in capsys.readouterr().out, eq=False)
         tm.that(Path(f"{custom}.rej").exists(), eq=False)
+
+    def test_custom_make_rejects_unterminated_phony_continuation(self) -> None:
+        """Fail closed when a multiline private-handler declaration is truncated."""
+        policy = config.Infra.codegen.make.custom_handler_policies[
+            c.Infra.MakeProfile.STANDALONE
+        ]
+
+        result = FlextInfraCodegenConform.validate_custom_make(
+            ".PHONY: \\\n\t_custom_check_demo \\", policy
+        )
+
+        tm.fail(result, has="unterminated .PHONY continuation")
 
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
         self, infra_git_repo: Path

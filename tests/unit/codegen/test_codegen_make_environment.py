@@ -312,6 +312,81 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
+    def test_dependency_upgrade_selects_only_one_distribution(
+        self, tmp_path: Path
+    ) -> None:
+        """Refresh one Git dependency without globally upgrading the lock."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
+        )
+        tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+
+    def test_dependency_upgrade_rejects_non_distribution_selector(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail before uv when the dependency selector is not one package name."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        uv_log = tmp_path / "uv.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(
+            uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
+        )
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "DEPENDENCY=flext-cli --all",
+                    "APPLY=Y",
+                ],
+                cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
+        )
+        tm.that(uv_log.exists(), eq=False)
+
     def test_serialized_gate_fails_closed_before_managed_environment_exists(
         self, tmp_path: Path
     ) -> None:

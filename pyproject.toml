@@ -489,7 +489,6 @@ root = "tests"
 addopts = [
   "--durations=10",
   "--markdown-docs",
-  "--session-timeout=60",
   "--strict-markers",
   "--timeout=10",
 ]
