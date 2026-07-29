@@ -146,16 +146,6 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 if entry.is_dir()
                 and entry.resolve().is_relative_to(resolved_workspace_root)
             )
-        tracked_child_dirs = (
-            FlextInfraUtilitiesGitScope.git_tracked_top_level_dir_names(
-                resolved_workspace_root
-            )
-        )
-        attached_child_dirs = (
-            cls._attached_top_level_dir_names(resolved_workspace_root)
-            if include_attached
-            else frozenset()
-        )
         external_workspace_roots = (
             cls.discover_external_workspace_roots(
                 resolved_workspace_root, scan_dirs=scan_dirs
@@ -172,33 +162,16 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             resolved_workspace_root, resolved_workspace_root
         ):
             roots.append(resolved_workspace_root)
-        if tracked_child_dirs is None and not attached_child_dirs:
-            candidate_entries: t.SequenceOf[Path] = sorted(
-                {*workspace_root.iterdir(), *configured_entries},
-                key=lambda item: item.as_posix(),
-            )
-        else:
-            candidate_entries = sorted(
-                {
-                    *configured_entries,
-                    *(
-                        resolved_workspace_root / dir_name
-                        for dir_name in frozenset(tracked_child_dirs or ())
-                        | attached_child_dirs
-                    ),
-                },
-                key=lambda item: item.as_posix(),
-            )
+        candidate_entries: t.SequenceOf[Path] = sorted(
+            configured_entries, key=lambda item: item.as_posix()
+        )
         roots.extend([
             entry.resolve()
             for entry in candidate_entries
             if entry.is_dir()
             and not entry.name.startswith(".")
-            and (
-                entry.name in attached_child_dirs
-                or FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
-                    resolved_workspace_root, entry.resolve()
-                )
+            and FlextInfraUtilitiesGitScope.project_descriptor_is_tracked(
+                resolved_workspace_root, entry.resolve()
             )
             and cls._looks_like_project(
                 entry.resolve(),
