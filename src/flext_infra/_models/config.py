@@ -1416,8 +1416,31 @@ class FlextInfraConfigModels:
         ]
         dependencies: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(description="Earlier bootstrap nodes required by this project"),
+            m.Field(description="Earlier public artifacts required by this project"),
         ] = ()
+        workspace_validation_sources: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Later local sources used only for bootstrap validation"),
+        ] = ()
+
+    class ReleaseRevalidationSpec(_ConfigContract):
+        """One public-only verification after every bootstrap artifact exists."""
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^flext-[a-z0-9-]+$", description="Distribution name"),
+        ]
+        resolution_context: Annotated[
+            Literal["standalone-verification"],
+            m.Field(description="Final no-local-source verification boundary"),
+        ]
+        dependencies: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Public artifacts required for standalone verification",
+            ),
+        ]
 
     class ReleaseConfigSpec(_ConfigContract):
         """Public prerelease provenance and its ordered bootstrap DAG."""
@@ -1439,14 +1462,16 @@ class FlextInfraConfigModels:
                 description="Topologically ordered public bootstrap dependencies",
             ),
         ]
-        verification_context: Annotated[
-            Literal["standalone-verification"],
-            m.Field(description="Final no-local-source verification boundary"),
+        revalidation: Annotated[
+            FlextInfraConfigModels.ReleaseRevalidationSpec,
+            m.Field(description="Post-public standalone artifact verification"),
         ]
 
         @u.model_validator(mode="after")
         def _validate_dependency_dag(self) -> Self:
-            """Require a workspace seed followed only by public predecessors."""
+            """Separate public predecessors from local bootstrap validation."""
+            distributions = tuple(node.distribution for node in self.dependency_dag)
+            declared = set(distributions)
             available: t.Infra.StrSet = set()
             for index, node in enumerate(self.dependency_dag):
                 if node.distribution in available:
@@ -1462,25 +1487,103 @@ class FlextInfraConfigModels:
                         f"{node.distribution}: {', '.join(sorted(missing))}"
                     )
                     raise ValueError(msg)
-                expected_context = (
-                    "workspace-bootstrap" if index == 0 else "public-predecessors"
-                )
-                if node.resolution_context != expected_context:
+                validation_sources = set(node.workspace_validation_sources)
+                missing_sources = validation_sources - declared
+                if missing_sources:
                     msg = (
-                        "release dependency DAG has invalid resolution context for "
-                        f"{node.distribution}: {node.resolution_context}"
+                        "release dependency DAG has unknown workspace validation "
+                        f"sources for {node.distribution}: "
+                        f"{', '.join(sorted(missing_sources))}"
                     )
                     raise ValueError(msg)
-                if index == 0 and node.dependencies:
-                    msg = "workspace bootstrap release node cannot have predecessors"
+                invalid_sources = validation_sources & (
+                    available | {node.distribution} | set(node.dependencies)
+                )
+                if invalid_sources:
+                    msg = (
+                        "workspace validation sources must be later non-predecessor "
+                        f"nodes for {node.distribution}: "
+                        f"{', '.join(sorted(invalid_sources))}"
+                    )
+                    raise ValueError(msg)
+                if index == 0 and (
+                    node.resolution_context != "workspace-bootstrap"
+                    or node.dependencies
+                    or validation_sources
+                ):
+                    msg = "first release node must be a dependency-free workspace seed"
                     raise ValueError(msg)
                 if index > 0 and not node.dependencies:
                     msg = (
-                        "public-predecessor release node requires an earlier dependency: "
+                        "release node requires an earlier public dependency: "
                         f"{node.distribution}"
                     )
                     raise ValueError(msg)
+                if (
+                    index > 0
+                    and node.resolution_context == "workspace-bootstrap"
+                    and not validation_sources
+                ):
+                    msg = (
+                        "later workspace bootstrap node requires a local validation "
+                        f"source: {node.distribution}"
+                    )
+                    raise ValueError(msg)
+                if (
+                    node.resolution_context == "public-predecessors"
+                    and validation_sources
+                ):
+                    msg = (
+                        "public-predecessor node cannot consume local validation "
+                        f"sources: {node.distribution}"
+                    )
+                    raise ValueError(msg)
                 available.add(node.distribution)
+            by_distribution = {
+                node.distribution: node for node in self.dependency_dag
+            }
+            for node in self.dependency_dag:
+                for source in node.workspace_validation_sources:
+                    if node.distribution not in by_distribution[source].dependencies:
+                        msg = (
+                            "workspace validation source must consume the published "
+                            f"bootstrap artifact: {source} -> {node.distribution}"
+                        )
+                        raise ValueError(msg)
+            if self.revalidation.distribution not in available:
+                msg = (
+                    "standalone revalidation references an unknown distribution: "
+                    f"{self.revalidation.distribution}"
+                )
+                raise ValueError(msg)
+            missing_revalidation = set(self.revalidation.dependencies) - available
+            if missing_revalidation:
+                msg = (
+                    "standalone revalidation references unpublished dependencies: "
+                    f"{', '.join(sorted(missing_revalidation))}"
+                )
+                raise ValueError(msg)
+            revalidated = next(
+                node
+                for node in self.dependency_dag
+                if node.distribution == self.revalidation.distribution
+            )
+            if not revalidated.workspace_validation_sources:
+                msg = (
+                    "standalone revalidation target must replace local validation "
+                    f"sources: {revalidated.distribution}"
+                )
+                raise ValueError(msg)
+            missing_validation_sources = set(
+                revalidated.workspace_validation_sources
+            ) - set(self.revalidation.dependencies)
+            if missing_validation_sources:
+                msg = (
+                    "standalone revalidation must replace every local validation "
+                    f"source with its public artifact: "
+                    f"{', '.join(sorted(missing_validation_sources))}"
+                )
+                raise ValueError(msg)
             return self
 
         @m.computed_field()

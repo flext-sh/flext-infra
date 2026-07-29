@@ -42,15 +42,47 @@ class TestsFlextInfraReleaseHelpers:
                 tuple(distribution for distribution, _ in ordered),
                 eq=bootstrap_order,
             )
-            tm.that(nodes[0].resolution_context, eq="workspace-bootstrap")
-            tm.that(
-                tuple(node.resolution_context for node in nodes[1:]),
-                eq=tuple("public-predecessors" for _ in nodes[1:]),
+            bootstrap_validated = tuple(
+                node for node in nodes if node.workspace_validation_sources
             )
             tm.that(
-                config.Infra.release.verification_context,
+                tuple(node.resolution_context for node in nodes),
+                eq=tuple(
+                    "workspace-bootstrap"
+                    if index == 0 or node.workspace_validation_sources
+                    else "public-predecessors"
+                    for index, node in enumerate(nodes)
+                ),
+            )
+            tm.that(
+                config.Infra.release.revalidation.resolution_context,
                 eq="standalone-verification",
             )
+            for validated_node in bootstrap_validated:
+                for validation_source in validated_node.workspace_validation_sources:
+                    validation_node = next(
+                        node
+                        for node in nodes
+                        if node.distribution == validation_source
+                    )
+                    tm.that(
+                        validation_source in validated_node.dependencies,
+                        eq=False,
+                    )
+                    tm.that(
+                        validated_node.distribution in validation_node.dependencies,
+                        eq=True,
+                    )
+                if (
+                    config.Infra.release.revalidation.distribution
+                    == validated_node.distribution
+                ):
+                    tm.that(
+                        set(validated_node.workspace_validation_sources).issubset(
+                            config.Infra.release.revalidation.dependencies
+                        ),
+                        eq=True,
+                    )
 
         @staticmethod
         def test_dependency_dag_rejects_forward_references() -> None:
@@ -61,6 +93,7 @@ class TestsFlextInfraReleaseHelpers:
                 m.Infra.ReleaseConfigSpec(
                     version=config.Infra.release.version,
                     dependency_dag=tuple(reversed(nodes)),
+                    revalidation=config.Infra.release.revalidation,
                 )
 
         @staticmethod

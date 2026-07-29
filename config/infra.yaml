@@ -2,19 +2,23 @@ Infra:
   name: flext-infra
   release:
     version: "0.12.0rc1"
-    verification_context: standalone-verification
     dependency_dag:
       - distribution: flext-core
         resolution_context: workspace-bootstrap
       - distribution: flext-cli
         resolution_context: public-predecessors
         dependencies: [flext-core]
+      - distribution: flext-infra
+        resolution_context: workspace-bootstrap
+        dependencies: [flext-core, flext-cli]
+        workspace_validation_sources: [flext-tests]
       - distribution: flext-tests
         resolution_context: public-predecessors
-        dependencies: [flext-core, flext-cli]
-      - distribution: flext-infra
-        resolution_context: public-predecessors
-        dependencies: [flext-core, flext-cli, flext-tests]
+        dependencies: [flext-core, flext-cli, flext-infra]
+    revalidation:
+      distribution: flext-infra
+      resolution_context: standalone-verification
+      dependencies: [flext-core, flext-cli, flext-tests]
   source_scan:
     roots:
       - src
