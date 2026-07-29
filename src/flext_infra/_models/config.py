@@ -1097,17 +1097,6 @@ class FlextInfraConfigModels:
             m.Field(description="Ordered paths deliberately excluded from inventory"),
         ] = ()
 
-    class WorkspaceCatalogRef(_ConfigContract):
-        """Global pointer to a local workspace topology manifest."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
-        repository: Annotated[
-            t.NonEmptyStr, m.Field(description="Root repository catalog key")
-        ]
-        manifest: Annotated[
-            Path, m.Field(description="Repository-relative manifest path")
-        ]
-
     # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
     # ephemeral/generated resources; VS Code excludes and source_scan ignores
     # are derived projections, never re-declared in YAML.
@@ -1165,7 +1154,10 @@ class FlextInfraConfigModels:
         ] = ()
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
-            m.Field(description="Ordered Git providers"),
+            m.Field(
+                min_length=1,
+                description="Ordered FLEXT-owned Git providers",
+            ),
         ]
         profiles: Annotated[
             tuple[FlextInfraConfigModels.ProfileSpec, ...],
@@ -1306,10 +1298,6 @@ class FlextInfraConfigModels:
         repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered repository catalog"),
-        ]
-        workspaces: Annotated[
-            tuple[FlextInfraConfigModels.WorkspaceCatalogRef, ...],
-            m.Field(description="Pointers to local workspace topology manifests"),
         ]
 
     # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
