@@ -249,7 +249,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS) _builtin_setup_submodules
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -367,17 +367,66 @@ _builtin_setup_submodules:
 	@set -eu; \
 	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
 	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
+	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
+		current=$$(git branch --show-current); \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$branch" ]; then \
+			if [ -n "$$current" ]; then \
+				printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
+				exit 1; \
+			fi; \
+			exit 0; \
+		fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$toplevel" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
+			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
+		if [ -n "$$current" ] && [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
+			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short "$$sha1")" >&2; \
+			exit 1; \
+		fi'; \
 	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
 		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
 		if [ -z "$$branch" ]; then exit 0; fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$toplevel" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		current=$$(git branch --show-current); \
+		if [ "$$current" = "$$branch" ]; then exit 0; fi; \
+		if [ -n "$$current" ]; then \
+			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
 		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
 			git checkout --quiet -b "$$branch"; \
 		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
 			git checkout --quiet "$$branch"; \
 		else \
-			printf "ERROR: %s: branch %s is at %s but the superproject records %s\n" "$$name" "$$branch" "$$(git rev-parse --short "refs/heads/$$branch")" "$$(git rev-parse --short HEAD)" >&2; \
-			printf "Reconcile that branch with the recorded gitlink, then re-run setup\n" >&2; \
+			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short HEAD)" >&2; \
 			exit 1; \
 		fi'
 

@@ -527,6 +527,7 @@ mi_min = "B"
 [tool.ruff]
 exclude = [
   "**/__pyrefly_virtual__/**",
+  ".archive",
   ".git",
   ".mypy_cache",
   ".pytest_cache",
@@ -681,6 +682,7 @@ split-on-trailing-comma = false
   "unused-import",
 ]
 "**/tests/**" = [
+  "assert",
   "compare-to-empty-string",
   "magic-value-comparison",
   "undocumented-public-class",
