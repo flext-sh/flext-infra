@@ -383,7 +383,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
+            'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
