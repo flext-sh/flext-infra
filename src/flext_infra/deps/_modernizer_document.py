@@ -45,8 +45,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         @property
         def root(self) -> Path: ...
 
-        @property
-        def tool_config(self) -> m.Infra.ToolConfigDocument: ...
+        tool_config: m.Infra.ToolConfigDocument
 
         def _ensure_build_system_payload(
             self, payload: t.MutableJsonMapping
