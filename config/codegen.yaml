@@ -44,6 +44,10 @@ Infra:
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
 
     uv_exclude_dependencies:
+      # Standalone flext-infra installs flext-tests from its dev group, while
+      # flext-tests also declares flext-infra for its own tooling. Scope the
+      # official uv exclusion to that transitive self-edge only; every other
+      # flext-tests dependency remains part of bootstrap and release validation.
       - project: flext-infra
         package:
           name: flext-tests
@@ -75,6 +79,10 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      bootstrap:
+        environment: isolated
+        dependency_groups: all
+        extras: all
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock

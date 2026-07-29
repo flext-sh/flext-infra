@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
 from concurrent.futures import ThreadPoolExecutor
-from importlib import metadata
 from pathlib import Path
 from threading import Event
 
 import pytest
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, p, t
@@ -434,6 +433,44 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(_git_status(workspace_root), eq=before_status)
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
+    def test_public_transaction_fails_before_command_when_managed_tool_is_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Reject a managed PATH that cannot resolve every declared lint tool."""
+        workspace_root = _workspace(tmp_path)
+        before_status = _git_status(workspace_root)
+        before_pyproject = (workspace_root / "pyproject.toml").read_bytes()
+        git_executable = shutil.which(c.Infra.GIT)
+        if git_executable is None:
+            pytest.fail("git executable is required by the transaction test")
+        git_bin = Path(git_executable).parent
+        missing_tool = c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS[0][1][0]
+        tm.that(shutil.which(missing_tool, path=str(git_bin)), eq=None)
+        monkeypatch.setenv(c.Infra.ORCHESTRATOR_ENV_PATH, str(git_bin))
+
+        transaction_result = u.Infra.execute_worktree_transaction(
+            m.Infra.WorktreeTransactionRequest(
+                workspace_root=workspace_root,
+                command=(
+                    sys.executable,
+                    "-c",
+                    "raise SystemExit('transaction command must not execute')",
+                ),
+                apply_patch=False,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
+            )
+        )
+
+        tm.fail(
+            transaction_result,
+            has=(
+                "required transaction lint executable not found on managed PATH: "
+                f"{missing_tool}"
+            ),
+        )
+        tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
+        tm.that(_git_status(workspace_root), eq=before_status)
+
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
@@ -444,20 +481,6 @@ class TestsFlextInfraWorktreeTransactionLint:
 
         tm.that(commands["ruff"], has="--statistics")
         tm.that(commands["ruff-details"], has="concise")
-
-    def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
-        """Installed artifacts carry every executable required by transactions."""
-        runtime_requirements = metadata.requires("flext-infra") or ()
-        runtime_names = {
-            canonicalize_name(Requirement(requirement).name)
-            for requirement in runtime_requirements
-        }
-        required_names = {
-            canonicalize_name(command[0])
-            for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
-        }
-
-        tm.that(required_names <= runtime_names, eq=True)
 
     def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
         """Stable debt is reported; every introduced diagnostic is rejected."""

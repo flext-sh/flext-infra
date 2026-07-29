@@ -659,7 +659,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#cbe851dcf23408489e1e1c0301245bf3dba68b4f" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#644e197758974aa88b03782e6f18e9d689907d44" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -686,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#4cf57b608a0d4d56bd4a820336c7ef0433cf9105" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#0f0c90c182ae78724797a3696cbd98a501b01b0d" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -727,9 +727,7 @@ dependencies = [
     { name = "mkdocs-section-index" },
     { name = "mkdocstrings" },
     { name = "mkdocstrings-python" },
-    { name = "pyrefly" },
     { name = "rope" },
-    { name = "ruff" },
 ]
 
 [package.dev-dependencies]
@@ -828,9 +826,7 @@ requires-dist = [
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
     { name = "mkdocstrings", specifier = ">=1.0.6" },
     { name = "mkdocstrings-python", specifier = ">=2.0.5" },
-    { name = "pyrefly", specifier = ">=1.1.1" },
     { name = "rope", specifier = ">=1.14.0" },
-    { name = "ruff", specifier = ">=0.16.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -918,7 +914,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#2de7a0204ef587716e076370d079c60e48da7945" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#39994f6499dff44713fe272f2dd58fc1a50c9345" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },

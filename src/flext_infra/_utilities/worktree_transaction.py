@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -257,14 +258,20 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools to the transaction interpreter before cwd mutation."""
-        executable_root = Path(sys.executable).parent
+        """Bind lint tools from the managed process environment before mutation."""
+        managed_path = u.Cli.process_env().get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable = executable_root / command[0]
+            resolved = shutil.which(command[0], path=managed_path)
+            if resolved is None:
+                return r[t.StrSequencePairTuple].fail(
+                    "required transaction lint executable not found on managed PATH: "
+                    f"{command[0]}"
+                )
+            executable = Path(resolved).resolve()
             if not executable.is_file():
                 return r[t.StrSequencePairTuple].fail(
-                    f"required transaction lint executable not found: {executable}"
+                    f"resolved transaction lint executable is not a file: {executable}"
                 )
             bound_command: t.StrSequence = (str(executable), *command[1:])
             if tool == c.Infra.PYREFLY:

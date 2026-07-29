@@ -258,7 +258,18 @@ class TestsCodegenMakeEnvironment:
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has=["run --no-project", "codegen conform"])
+        bootstrap = config.Infra.codegen.make.bootstrap
+        tm.that(
+            commands[0],
+            has=[
+                f"run --project {project_root}",
+                f"--{bootstrap.environment}",
+                f"--{bootstrap.dependency_groups}-groups",
+                f"--{bootstrap.extras}-extras",
+                "codegen conform",
+            ],
+        )
+        tm.that(commands[0], lacks="--no-project")
         if local_infra:
             tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
             tm.that(commands[0], lacks="git+")
