@@ -557,6 +557,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             _write(workspace / "docs/guides/README.md", "# Guides\n")
             _write(workspace / "docs/projects/README.md", "# Projects\n")
             _write(workspace / "docs/api-reference/README.md", "# API Reference\n")
+            if project_names:
+                members = ", ".join(f'"{name}"' for name in project_names)
+                _write(
+                    workspace / "pyproject.toml",
+                    (
+                        '[project]\nname = "workspace"\n\n'
+                        f"[tool.uv.workspace]\nmembers = [{members}]\n"
+                    ),
+                )
 
             for name in project_names:
                 project = workspace / name

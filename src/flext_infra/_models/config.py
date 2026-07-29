@@ -237,6 +237,12 @@ class FlextInfraConfigModels:
         reports_dir: Annotated[
             Path, m.Field(description="Repository-relative documentation report path")
         ]
+        cross_project_relative_link_pattern: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Forbidden cross-project relative Markdown link pattern"
+            ),
+        ]
 
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
