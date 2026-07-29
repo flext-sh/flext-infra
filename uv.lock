@@ -914,7 +914,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#39994f6499dff44713fe272f2dd58fc1a50c9345" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#ce0d2f3b033ec014181bdc81a24d9726b9c353e0" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },
