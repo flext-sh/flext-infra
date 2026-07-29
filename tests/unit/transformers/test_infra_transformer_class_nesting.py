@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import u
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
+from flext_tests import tm
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _transform_source(tmp_path: Path, source: str) -> str:
     file_path = tmp_path / "class_nesting.py"
     file_path.write_text(source, encoding="utf-8")
     transformer = FlextInfraRefactorClassNestingTransformer(
-        {"TimeoutEnforcer": "FlextDispatcher"},
-        {},
-        {},
+        {"TimeoutEnforcer": "FlextDispatcher"}, {}, {}
     )
     rope_project = u.Infra.init_rope_project(tmp_path)
     try:
@@ -38,35 +40,40 @@ class TestsFlextInfraTransformersInfraTransformerClassNesting:
     ) -> None:
         source = '@decorator\nclass TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):\n    """timeout docs"""\n    value: T\n'
         code = _transform_source(tmp_path, source)
-        assert (
-            "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
-        assert (
-            "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
-            in code
+        tm.that(
+            (
+                "@decorator\n    class TimeoutEnforcer[T](BaseEnforcer, Generic[T], metaclass=Meta):"
+                in code
+            ),
+            eq=True,
         )
-        assert '    """timeout docs"""' in code
-        assert "class FlextDispatcher:" in code
+        tm.that(code, has='    """timeout docs"""')
+        tm.that(code, has="class FlextDispatcher:")
 
     def test_class_nesting_appends_to_existing_namespace_and_removes_pass(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         source = (
             "class FlextDispatcher:\n    pass\n\nclass TimeoutEnforcer:\n    pass\n"
         )
         code = _transform_source(tmp_path, source)
-        assert "class FlextDispatcher:" in code
-        assert "    class TimeoutEnforcer:" in code
-        assert "class TimeoutEnforcer:\n    pass\n" not in code
-        assert "class FlextDispatcher:\n    pass\n" not in code
+        tm.that(code, has="class FlextDispatcher:")
+        tm.that(code, has="    class TimeoutEnforcer:")
+        tm.that(code, lacks="class TimeoutEnforcer:\n    pass\n")
+        tm.that(code, lacks="class FlextDispatcher:\n    pass\n")
 
     def test_class_nesting_keeps_unmapped_top_level_classes(
         self, tmp_path: Path
     ) -> None:
         source = "class TimeoutEnforcer:\n    pass\n\nclass OtherClass:\n    pass\n"
         code = _transform_source(tmp_path, source)
-        assert "class FlextDispatcher:" in code
-        assert "    class TimeoutEnforcer:" in code
-        assert "class OtherClass:\n    pass\n" in code
+        tm.that(code, has="class FlextDispatcher:")
+        tm.that(code, has="    class TimeoutEnforcer:")
+        tm.that(code, has="class OtherClass:\n    pass\n")

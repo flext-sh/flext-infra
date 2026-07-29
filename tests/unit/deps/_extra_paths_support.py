@@ -13,12 +13,10 @@ class ExtraPathsTestSupport:
     """Factory helpers for validated extra-path manager instances."""
 
     @staticmethod
-    def manager(
-        workspace_root: Path | None = None,
-    ) -> FlextInfraExtraPathsManager:
+    def manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
         """Return a manager built through the Pydantic validation path."""
         return FlextInfraExtraPathsManager(
-            workspace=workspace_root or _TEST_WORKSPACE_ROOT,
+            workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
         )
 
 

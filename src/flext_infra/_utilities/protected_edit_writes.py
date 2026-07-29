@@ -10,7 +10,5 @@ from flext_infra._utilities.protected_edit_apply import (
 class FlextInfraUtilitiesProtectedEditWrites(FlextInfraUtilitiesProtectedEditApply):
     """Shared write, rollback, and backup helpers for protected edits."""
 
-    pass
-
 
 __all__: list[str] = ["FlextInfraUtilitiesProtectedEditWrites"]

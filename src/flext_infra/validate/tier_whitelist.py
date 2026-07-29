@@ -19,12 +19,15 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c
 from flext_infra.validate._rope_import_boundary import _RopeImportBoundaryBase
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
@@ -54,7 +57,7 @@ class FlextInfraValidateTierWhitelist(_RopeImportBoundaryBase):
 
         Settings modules (``*/settings.py``) are additionally allowed to
         import ``pydantic_settings`` — the canonical pattern for project
-        configuration is ``class Foo(FlextSettingsBase, BaseSettings)`` per
+        configuration is ``class Foo(FlextSettings, BaseSettings)`` per
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
         """

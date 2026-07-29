@@ -6,43 +6,38 @@
 # =============================================================================
 
 # === CONFIGURATION (override before include) ===
-PROJECT_NAME ?= unnamed
+PROJECT_NAME ?= flext-infra
 PYTHON_VERSION ?= 3.13
 SRC_DIR ?= src
 TESTS_DIR ?= tests
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
-PYTEST_ARGS ?= 
+PYTEST_ARGS ?=
+PYTEST_TARGETS ?= tests
 DIAG ?= 0
-CHECK_GATES ?= 
-VALIDATE_GATES ?= 
+CHECK_GATES ?=
+VALIDATE_GATES ?=
 SCOPE ?= project
-NAMESPACE ?= 
-GATES ?= 
-PROPAGATE ?= 
+NAMESPACE ?=
+GATES ?=
+PROPAGATE ?=
 DOCS_PHASE ?= all
-FIX ?= 
+FIX ?=
 PR_ACTION ?= status
-PR_BASE ?= main
-PR_HEAD ?= 
-PR_NUMBER ?= 
-PR_TITLE ?= 
-PR_BODY ?= 
+PR_BASE ?=
+PR_HEAD ?=
+PR_TITLE ?=
+PR_BODY ?=
 PR_DRAFT ?= 0
-PR_MERGE_METHOD ?= squash
-PR_AUTO ?= 0
-PR_DELETE_BRANCH ?= 0
-PR_CHECKS_STRICT ?= 0
-PR_RELEASE_ON_MERGE ?= 1
-FILE ?= 
-FILES ?= 
-CHANGED_ONLY ?= 
-MATCH ?= 
-RUFF_ARGS ?= 
-PYRIGHT_ARGS ?= 
-CHECK_ONLY ?= 
-FAIL_FAST ?= 
-VERBOSE ?= 
+FILE ?=
+FILES ?=
+CHANGED_ONLY ?=
+MATCH ?=
+RUFF_ARGS ?=
+PYRIGHT_ARGS ?=
+CHECK_ONLY ?=
+FAIL_FAST ?=
+VERBOSE ?=
 
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
@@ -52,6 +47,8 @@ PYTEST_REPORTS_DIR ?= .reports/tests
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 PROJECT_ROOT := $(CURDIR)
+CALLER_PATH := $(PATH)
+CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
 ifeq ($(FLEXT_STANDALONE),1)
 FLEXT_MODE := standalone
@@ -77,39 +74,34 @@ ifndef WORKSPACE_ROOT
 WORKSPACE_ROOT := $(BASE_MK_DIR)
 endif
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
-ifeq ($(wildcard $(WORKSPACE_VENV)),)
-ACTIVE_VENV := $(PROJECT_ROOT)/.venv
-export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := true
-export POETRY_VIRTUALENVS_CREATE := true
-else
 ACTIVE_VENV := $(WORKSPACE_VENV)
-export POETRY_VIRTUALENVS_PATH := $(WORKSPACE_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := false
-export POETRY_VIRTUALENVS_CREATE := false
-endif
 else
 WORKSPACE_ROOT := $(PROJECT_ROOT)
 ACTIVE_VENV := $(PROJECT_ROOT)/.venv
-export POETRY_VIRTUALENVS_PATH := $(PROJECT_ROOT)
-export POETRY_VIRTUALENVS_IN_PROJECT := true
-export POETRY_VIRTUALENVS_CREATE := true
 endif
+
+override UV_PROJECT := $(WORKSPACE_ROOT)
+override UV_PROJECT_ENVIRONMENT := $(ACTIVE_VENV)
+override VIRTUAL_ENV := $(ACTIVE_VENV)
+MISE := $(shell command -v mise 2>/dev/null)
+SANITIZED_CALLER_PATH := $(CALLER_PATH)
+ifneq ($(strip $(CALLER_VIRTUAL_ENV)),)
+SANITIZED_CALLER_PATH := $(subst $(CALLER_VIRTUAL_ENV)/bin:,,$(SANITIZED_CALLER_PATH))
+SANITIZED_CALLER_PATH := $(subst :$(CALLER_VIRTUAL_ENV)/bin,,$(SANITIZED_CALLER_PATH))
+ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV)/bin)
+SANITIZED_CALLER_PATH :=
+endif
+endif
+override PATH := $(ACTIVE_VENV)/bin:$(SANITIZED_CALLER_PATH)
+export UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 export PYTHON_KEYRING_BACKEND := keyring.backends.null.Keyring
 
 VENV_PYTHON := $(ACTIVE_VENV)/bin/python
-VENV_ACTIVATE := source $(ACTIVE_VENV)/bin/activate
-export VIRTUAL_ENV := $(ACTIVE_VENV)
+UV ?= uv
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
 
-export PATH := $(ACTIVE_VENV)/bin:$(PATH)
-
-# Poetry command (uses workspace venv automatically)
-POETRY := poetry
-
-# Quality tool (flext-quality with fallback)
-QUALITY_CMD ?= flext-quality
-QUALITY_AVAILABLE := $(shell command -v $(QUALITY_CMD) 2>/dev/null)
 DMPY_SOCKET := .dmypy/socket.$(PROJECT_NAME)
 PYRIGHT_PIDFILE := .pyright/daemon.pid
 PYRIGHT_LOG := .pyright/daemon.log
@@ -117,6 +109,15 @@ PYRIGHT_LOG := .pyright/daemon.log
 # Export for subprocesses
 export PROJECT_NAME PYTHON_VERSION
 export FLEXT_ROOT := $(WORKSPACE_ROOT)
+
+# === MYPY RESOURCE LIMIT ===
+# mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
+MYPY_MEMORY_LIMIT_MB ?= 6144
+MYPY_TIMEOUT_SECONDS ?= 600
+MYPY_BOUNDED = timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --
+VALIDATE_MYPY_LIMITS = case "$(MYPY_MEMORY_LIMIT_MB)" in ""|*[!0-9]*) echo "ERROR: MYPY_MEMORY_LIMIT_MB must be a positive integer"; exit 2;; esac; [ "$(MYPY_MEMORY_LIMIT_MB)" -gt 0 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be greater than zero"; exit 2; }; [ "$(MYPY_MEMORY_LIMIT_MB)" -le 6144 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144"; exit 2; }; case "$(MYPY_TIMEOUT_SECONDS)" in ""|*[!0-9]*) echo "ERROR: MYPY_TIMEOUT_SECONDS must be a positive integer"; exit 2;; esac; [ "$(MYPY_TIMEOUT_SECONDS)" -gt 0 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be greater than zero"; exit 2; }; [ "$(MYPY_TIMEOUT_SECONDS)" -le 600 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be less than or equal to 600"; exit 2; }; command -v timeout >/dev/null 2>&1 || { echo "ERROR: required executable not found: timeout"; exit 2; }; command -v prlimit >/dev/null 2>&1 || { echo "ERROR: required executable not found: prlimit"; exit 2; }
+REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signal=$$(( $$code - 128 )); fi; if [ "$$code" -eq 124 ] || [ "$$signal" != none ]; then reason="resource limit triggered"; else reason="type check failed under enforced limits"; fi; echo "ERROR: Mypy $$reason: memory_limit=$(MYPY_MEMORY_LIMIT_MB) MiB; timeout=$(MYPY_TIMEOUT_SECONDS)s; exit=$$code; signal=$$signal" >&2
+export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
 
 # === SILENT MODE ===
 Q := @
@@ -127,13 +128,13 @@ endif
 # === CACHE ===
 LINT_CACHE_DIR := .lint-cache
 CACHE_TIMEOUT := 300
-BASE_INFRA_WORKSPACE := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(WORKSPACE_ROOT)/flext-infra/src" $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),python) -m flext_infra workspace
+BASE_INFRA_VALIDATE = $(PROJECT_INFRA_ROOT) validate
 
 $(LINT_CACHE_DIR):
 	$(Q)mkdir -p $(LINT_CACHE_DIR)
 
 # === SIMPLE VERB SURFACE ===
-.PHONY: help boot build check scan fmt docs test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
+.PHONY: help boot build check scan fmt docs docs-serve test val clean pr _preflight daemon-start-mypy daemon-stop-mypy daemon-status-mypy daemon-start-pyright daemon-stop-pyright daemon-status-pyright daemon-start daemon-stop daemon-status daemon-restart
 STANDARD_VERBS := boot build check scan fmt docs test val clean pr
 $(STANDARD_VERBS): _preflight
 
@@ -141,12 +142,8 @@ define ENFORCE_WORKSPACE_VENV
 if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 	if [ -d "$(WORKSPACE_ROOT)/.venv" ]; then \
 		if [ -d ".venv" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-			echo "[preflight] Removing local .venv in $(CURDIR) (workspace venv enforced)"; \
-			rm -rf .venv; \
-			if [ -d ".venv" ]; then \
-				echo "ERROR: [preflight] Unable to remove local .venv in $(CURDIR)"; \
-				exit 1; \
-			fi; \
+			echo "ERROR: [preflight] Project-local .venv violates the workspace environment contract: $(CURDIR)/.venv"; \
+			exit 1; \
 		fi; \
 	elif [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		echo "ERROR: [preflight] Workspace venv not found. Run 'make boot' at workspace root."; \
@@ -159,23 +156,28 @@ if [ "$(FLEXT_MODE)" = "workspace" ]; then \
 	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
 	echo "INFO: [preflight] Running in standalone mode (workspace features unavailable)."; \
-elif [ "$(filter boot,$(MAKECMDGOALS))" != "boot" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
+elif [ "$(filter boot setup,$(MAKECMDGOALS))" = "" ] && [ ! -d "$(ACTIVE_VENV)" ]; then \
 	echo "ERROR: [preflight] No venv found at $(ACTIVE_VENV). Run 'make boot' in $(PROJECT_NAME)."; \
 	exit 1; \
 fi
 endef
 
-define AUTO_SYNC_BASE_AND_SCRIPTS
+# mro-wkii.17.27 (codex): validation verbs detect drift without mutating files.
+define VALIDATE_CANONICAL_BASE_MK
 if [ "$(FLEXT_MODE)" = "workspace" ] && [ "$(CURDIR)" != "$(WORKSPACE_ROOT)" ]; then \
-	$(BASE_INFRA_WORKSPACE) sync \
-		--workspace "$(CURDIR)" --canonical-root "$(WORKSPACE_ROOT)" --apply; \
+	if [ "$(filter boot,$(MAKECMDGOALS))" = "boot" ] && [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then \
+		echo "INFO: [preflight] Deferring canonical base.mk validation until boot creates the workspace environment."; \
+	elif ! $(BASE_INFRA_VALIDATE) basemk-validate --workspace "$(WORKSPACE_ROOT)/flext-infra"; then \
+		echo "ERROR: [preflight] Canonical base.mk is stale. Run 'make -C $(WORKSPACE_ROOT) build WHAT=sync PROJECT=$(PROJECT_NAME)'."; \
+		exit 1; \
+	fi; \
 elif [ "$(FLEXT_MODE)" = "standalone" ]; then \
-	echo "INFO: [preflight] Standalone mode: skipping workspace dependency sync."; \
+	echo "INFO: [preflight] Standalone mode: skipping workspace base.mk validation."; \
 fi
 endef
 
-_preflight: ## Preflight: sync base.mk and enforce venv contract
-	$(Q)$(AUTO_SYNC_BASE_AND_SCRIPTS)
+_preflight: ## Preflight: validate base.mk and enforce venv contract
+	$(Q)$(VALIDATE_CANONICAL_BASE_MK)
 	$(Q)$(ENFORCE_WORKSPACE_VENV)
 
 PROJECT_INFRA_HOME := $(WORKSPACE_ROOT)/flext-infra
@@ -183,14 +185,65 @@ ifeq ($(wildcard $(PROJECT_INFRA_HOME)/src/flext_infra),)
 PROJECT_INFRA_HOME := $(PROJECT_ROOT)
 endif
 PROJECT_INFRA_SRC := $(PROJECT_INFRA_HOME)/src
-PROJECT_INFRA_BOOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(POETRY) run python -m flext_infra
-PROJECT_INFRA_ROOT := env -u PYTHONPATH -u MYPYPATH PYTHONPATH="$(PROJECT_INFRA_SRC)" $(VENV_PYTHON) -m flext_infra
+PROJECT_INFRA_PYTHONPATH ?= $(PROJECT_INFRA_SRC)
+FLEXT_INFRA_PYTHON ?= $(VENV_PYTHON)
+export FLEXT_INFRA_PYTHON
+PROJECT_INFRA_ROOT := test -x "$(FLEXT_INFRA_PYTHON)" || { echo "ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python" >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 PROJECT_INFRA_CHECK := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) check
-PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_BOOT) deps
+PROJECT_INFRA_CODEGEN := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) codegen
+PROJECT_INFRA_DEPS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) deps
 PROJECT_INFRA_DOCS := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) docs
 PROJECT_INFRA_GITHUB := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) github
 PROJECT_INFRA_REFACTOR := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) refactor
 PROJECT_INFRA_VALIDATE := FLEXT_WORKSPACE_ROOT="$(WORKSPACE_ROOT)" $(PROJECT_INFRA_ROOT) validate
+
+# Verb hook seam: custom.mk may define pre-<verb>, post-<verb>, pre-<verb>-<what>,
+# and post-<verb>-<what> targets to append work at the start or end of any verb,
+# for all or some WHATs. Undefined hooks are no-ops (make -q returns 2 when a
+# target is absent). $(1)=phase (pre|post), $(2)=verb, $(3)=optional WHAT.
+define _run_verb_hooks
+	@phase="$(1)"; verb="$(2)"; what="$(3)"; \
+	hooks="$$phase-$$verb"; \
+	if [ -n "$$what" ]; then \
+		if [ "$$phase" = "pre" ]; then hooks="$$phase-$$verb $$phase-$$verb-$$what"; \
+		else hooks="$$phase-$$verb-$$what $$phase-$$verb"; fi; \
+	fi; \
+	for hook in $$hooks; do \
+		$(MAKE) --no-print-directory -q "$$hook" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then $(MAKE) --no-print-directory "$$hook" || exit $$?; fi; \
+	done
+endef
+
+# Custom-WHAT dispatch: run the custom.mk handler _custom_<verb>_<what> when it
+# exists. Used by the generic `run` verb and by any verb given a WHAT that has no
+# builtin meaning. $(1)=verb, $(2)=what. Fails clearly if the handler is absent.
+define _run_custom_what
+	@verb="$(1)"; what="$(2)"; \
+	if [ -z "$$what" ]; then \
+		printf 'ERROR: make %s requires WHAT=<action>\n' "$$verb" >&2; exit 2; \
+	fi; \
+	target="_custom_$${verb}_$${what}"; \
+	$(MAKE) --no-print-directory -q "$$target" >/dev/null 2>&1; rc=$$?; \
+	if [ "$$rc" -eq 2 ]; then \
+		printf 'ERROR: no custom handler %s for make %s WHAT=%s (define it in custom.mk)\n' "$$target" "$$verb" "$$what" >&2; \
+		exit 2; \
+	fi; \
+	$(MAKE) --no-print-directory "$$target"
+endef
+
+# Verb body dispatch: if custom.mk defines _custom_<verb>_<what> for the current
+# WHAT, run that custom handler; otherwise run the builtin implementation. This
+# lets every verb accept project-specific WHATs while preserving builtin WHATs.
+# $(1)=verb, $(2)=builtin impl target.
+define _run_verb_body
+	@verb="$(1)"; impl="$(2)"; what="$(WHAT)"; \
+	if [ -n "$$what" ]; then \
+		custom="_custom_$${verb}_$${what}"; \
+		$(MAKE) --no-print-directory -q "$$custom" >/dev/null 2>&1; rc=$$?; \
+		if [ "$$rc" -ne 2 ]; then exec $(MAKE) --no-print-directory "$$custom"; fi; \
+	fi; \
+	exec $(MAKE) --no-print-directory "$$impl"
+endef
 
 help: ## Show commands
 	$(Q)echo "================================================"
@@ -234,7 +287,11 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "Selectors and options:"
 
-	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+	$(Q)echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"
+
+	$(Q)echo "  MYPY_MEMORY_LIMIT_MB=6144  Mypy address-space cap"
+
+	$(Q)echo "  MYPY_TIMEOUT_SECONDS=600  Mypy wall-time cap"
 
 	$(Q)echo "  VALIDATE_GATES=complexity,docstring"
 
@@ -251,6 +308,8 @@ help: ## Show commands
 	$(Q)echo "  PYRIGHT_ARGS=\"--level basic\" Extra args for pyright"
 
 	$(Q)echo "  PYTEST_ARGS=\"-k expr\"       Extra pytest args"
+
+	$(Q)echo "  PYTEST_TARGETS=\"tests/unit\" Pytest collection targets"
 
 	$(Q)echo "  MATCH=test_name             Alias for pytest -k"
 
@@ -273,48 +332,77 @@ help: ## Show commands
 	$(Q)echo ""
 	$(Q)echo "PR variables:"
 
-	$(Q)echo "  PR_ACTION=status|create|view|checks|merge|close"
+	$(Q)echo "  PR_ACTION=status|create"
 
-	$(Q)echo "  PR_BASE=main  PR_HEAD=<branch>  PR_NUMBER=<id>"
+	$(Q)echo "  PR_BASE=<branch>  PR_HEAD=<branch>"
 
 	$(Q)echo "  PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1"
 
-	$(Q)echo "  PR_MERGE_METHOD=squash|merge|rebase  PR_AUTO=0|1"
 
-	$(Q)echo "  PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1"
-
-	$(Q)echo "  PR_RELEASE_ON_MERGE=0|1"
-
+	$(Q)echo ""
+	$(Q)echo "Custom hooks (custom.mk):"
+	$(Q)echo "  Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>"
+	$(Q)echo "  in custom.mk to run extra steps at the start or end of any verb, for"
+	$(Q)echo "  all or some WHATs. Add _custom_<verb>_<what> to define a new WHAT."
+	$(Q)if [ -f custom.mk ]; then \
+		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
+		if [ -n "$$hooks" ]; then \
+			echo "  Defined in this project:"; \
+			for hook in $$hooks; do echo "    $$hook"; done; \
+		fi; \
+	fi
 
 boot: ## Complete setup
-	$(Q)$(PROJECT_INFRA_DEPS) path-sync --mode auto --apply --workspace "$(CURDIR)"
-	$(Q)$(PROJECT_INFRA_DEPS) internal-sync --workspace "$(CURDIR)"
-	$(Q)$(POETRY) lock
-	$(Q)$(POETRY) install --all-extras --all-groups
+	$(call _run_verb_hooks,pre,boot,$(WHAT))
+	$(call _run_verb_body,boot,_boot_impl)
+	$(call _run_verb_hooks,post,boot,$(WHAT))
+
+_boot_impl:
+	$(Q)$(UV) sync --all-extras --all-groups
+	$(Q)$(PROJECT_INFRA_DEPS) extra-paths --apply --workspace "$(CURDIR)"
+	$(Q)$(UV) lock
+	$(Q)$(UV) sync --all-extras --all-groups --reinstall-package "$(PROJECT_NAME)"
 	$(Q)if git rev-parse --git-dir >/dev/null 2>&1; then \
-		$(POETRY) run pre-commit install; \
+		hooks_path=$$(git config --get --default '' core.hooksPath); \
+		if [ -n "$$hooks_path" ]; then \
+			echo "INFO: skipping pre-commit install (core.hooksPath=$$hooks_path)"; \
+		elif [ -f .pre-commit-config.yaml ] || [ -f .pre-commit-config.yml ]; then \
+			$(UV) run pre-commit install; \
+		else \
+			echo "INFO: skipping pre-commit install (no pre-commit config)"; \
+		fi; \
 	else \
 		echo "INFO: skipping pre-commit install (no git repository)"; \
 	fi
 
 build: ## Build distributable artifacts
-	$(Q)build_start=$$(date +%s); \
-	$(POETRY) build; \
+	$(call _run_verb_hooks,pre,build,$(WHAT))
+	$(call _run_verb_body,build,_build_impl)
+	$(call _run_verb_hooks,post,build,$(WHAT))
+
+_build_impl:
+	$(Q)build_start=$$(date +%s) && \
+	$(UV) build --project "$(CURDIR)" --no-sources && \
 	echo "Build complete: $(PROJECT_NAME) ($$(($$(date +%s) - $$build_start))s)"
 
-check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells,type to select)
+check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells to select)
+	$(call _run_verb_hooks,pre,check,$(WHAT))
+	$(call _run_verb_body,check,_check_impl)
+	$(call _run_verb_hooks,post,check,$(WHAT))
+
+_check_impl:
 	$(Q)gates="$(CHECK_GATES)"; \
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
 			case "$$g" in \
-				lint|format|pyrefly|mypy|pyright|security|markdown|smells|type) ;; \
-				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells,type)"; exit 2;; \
+				lint|format|pyrefly|mypy|pyright|security|markdown|smells) ;; \
+				*) echo "ERROR: unknown CHECK_GATES value '$$g' (allowed: lint,format,pyrefly,mypy,pyright,security,markdown,smells)"; exit 2;; \
 			esac; \
 		done; \
 	else \
 		gates="lint,format,pyrefly,mypy,pyright,security,markdown,smells"; \
 	fi; \
-	gates=$$(echo "$$gates" | tr ',' ' ' | sed 's/\btype\b/pyrefly/g' | tr ' ' ','); \
+	gates=$$(echo "$$gates" | tr ',' ' ' | tr ' ' ','); \
 	_files=""; \
 	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
 	if [ -n "$(FILE)" ]; then \
@@ -338,19 +426,19 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 		echo "Fast-path check: $$_files"; \
 		status=0; \
 		case ",$$gates," in \
-			*,lint,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff check $$_files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$?;; \
+			*,lint,*) env -u PYTHONPATH -u MYPYPATH $(UV) run ruff check $$_files $(RUFF_ARGS) $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),,--fix),) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,format,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run ruff format $$_files $(if $(filter 1,$(CHECK_ONLY)),--check,--quiet) || status=$$?;; \
+			*,format,*) env -u PYTHONPATH -u MYPYPATH $(UV) run ruff format $$_files $(if $(filter 1,$(FIX)),$(if $(filter 1,$(CHECK_ONLY)),--check,--quiet),--check) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,pyright,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyright $$_files $(PYRIGHT_ARGS) || status=$$?;; \
+			*,pyright,*) env -u PYTHONPATH -u MYPYPATH $(UV) run pyright $$_files $(PYRIGHT_ARGS) || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run pyrefly check $$_files || status=$$?;; \
+			*,pyrefly,*) env -u PYTHONPATH -u MYPYPATH $(UV) run pyrefly check $$_files || status=$$?;; \
 		esac; \
 		case ",$$gates," in \
-			*,mypy,*) env -u PYTHONPATH -u MYPYPATH $(POETRY) run mypy $$_files || status=$$?;; \
+			*,mypy,*) $(VALIDATE_MYPY_LIMITS); $(MYPY_BOUNDED) env -u PYTHONPATH -u MYPYPATH $(UV) run mypy $$_files || { $(REPORT_MYPY_FAILURE); status=$$code; };; \
 		esac; \
 		exit $$status; \
 	fi; \
@@ -362,6 +450,11 @@ check: ## Run lint gates (CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,
 	exit $$?
 
 fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, PROJECTS=..., RULES=...)
+	$(call _run_verb_hooks,pre,fix-enforcement,$(WHAT))
+	$(call _run_verb_body,fix-enforcement,_fix_enforcement_impl)
+	$(call _run_verb_hooks,post,fix-enforcement,$(WHAT))
+
+_fix_enforcement_impl:
 	$(Q)apply_flag=""; \
 	if [ "$(APPLY)" = "1" ]; then apply_flag="--apply"; fi; \
 	projects_arg=""; \
@@ -372,6 +465,11 @@ fix-enforcement: ## Auto-fix enforcement-catalog violations (APPLY=1 to apply, P
 	exit $$?
 
 scan: ## Run all security checks
+	$(call _run_verb_hooks,pre,scan,$(WHAT))
+	$(call _run_verb_body,scan,_scan_impl)
+	$(call _run_verb_hooks,post,scan,$(WHAT))
+
+_scan_impl:
 	$(Q)project_key="$(PROJECT_NAME)"; \
 	if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ]; then \
 		project_key="."; \
@@ -383,7 +481,12 @@ scan: ## Run all security checks
 		--projects "$$project_key"; \
 	exit $$?
 
-fmt: ## Run code formatting (ruff + markdownlint on tracked files)
+fmt: ## Run code formatting (ruff + rumdl on tracked files)
+	$(call _run_verb_hooks,pre,fmt,$(WHAT))
+	$(call _run_verb_body,fmt,_fmt_impl)
+	$(call _run_verb_hooks,post,fmt,$(WHAT))
+
+_fmt_impl:
 	$(Q)_fmt_target="."; \
 	_fmt_files=""; \
 	if [ -n "$(FILES)" ]; then _fmt_files="$(FILES)"; fi; \
@@ -393,9 +496,9 @@ fmt: ## Run code formatting (ruff + markdownlint on tracked files)
 	fi; \
 	if [ -n "$$_fmt_files" ]; then _fmt_target="$$_fmt_files"; fi; \
 	if [ "$(CHECK_ONLY)" = "1" ]; then \
-		$(POETRY) run ruff format $$_fmt_target --check; \
+		$(UV) run ruff format $$_fmt_target --check; \
 	else \
-		$(POETRY) run ruff format $$_fmt_target --quiet; \
+		$(UV) run ruff format $$_fmt_target --quiet; \
 	fi
 	$(Q)if [ "$(CURDIR)" = "$(WORKSPACE_ROOT)" ] && [ -n "$(ALL_PROJECTS)" ]; then \
 		md_roots=". $(ALL_PROJECTS)"; \
@@ -421,11 +524,16 @@ fmt: ## Run code formatting (ruff + markdownlint on tracked files)
 		elif [ -f ".markdownlint.json" ]; then \
 			md_config="--config .markdownlint.json"; \
 		fi; \
-		echo "$$md_files" | xargs -r markdownlint --fix $$md_config; \
+		echo "$$md_files" | xargs -r "$(dir $(VENV_PYTHON))rumdl" check --fix --no-cache --deny-config-warnings --color never $$md_config; \
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
 docs: ## Build docs
+	$(call _run_verb_hooks,pre,docs,$(WHAT))
+	$(call _run_verb_body,docs,_docs_impl)
+	$(call _run_verb_hooks,post,docs,$(WHAT))
+
+_docs_impl:
 	$(Q)if python3 -c "import flext_infra.docs" >/dev/null 2>&1; then \
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=OK REASON=docs-module-available"; \
 	else \
@@ -454,15 +562,36 @@ docs: ## Build docs
 		eval $$cmd || exit $$?; \
 	done
 
+# kimi-docs mro-3o9s: docs-serve padrão no template — motor único flext-infra docs
+docs-serve: ## Serve documentation via the flext-infra docs engine
+	$(call _run_verb_hooks,pre,docs-serve,$(WHAT))
+	$(call _run_verb_body,docs-serve,_docs_serve_impl)
+	$(call _run_verb_hooks,post,docs-serve,$(WHAT))
+
+_docs_serve_impl:
+	$(Q)$(PROJECT_INFRA_DOCS) serve --workspace .
+
 test: ## Run pytest only
-	$(Q)_files=""; \
-	if [ -n "$(FILES)" ]; then _files="$(FILES)"; fi; \
+	$(call _run_verb_hooks,pre,test,$(WHAT))
+	$(call _run_verb_body,test,_test_impl)
+	$(call _run_verb_hooks,post,test,$(WHAT))
+
+_test_impl:
+
+	$(Q)_files="$(strip $(FILES))"; \
 	if [ -n "$(FILE)" ]; then \
-		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; \
-		else _files="$(FILE)"; fi; \
+		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
+			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
+		esac; \
+		if [ -n "$$_files" ]; then _files="$$_files $(FILE)"; else _files="$(FILE)"; fi; \
 	fi; \
-	_pytest_run="$(TESTS_DIR)"; \
+	_pytest_run="$(PYTEST_TARGETS)"; \
 	if [ -n "$$_files" ]; then _pytest_run="$$_files"; fi; \
+	for target in $$_pytest_run; do \
+		if [ ! -e "$$target" ]; then \
+			printf 'ERROR: test target does not exist: %s\n' "$$target" >&2; exit 2; \
+		fi; \
+	done; \
 	_all_pytest_args="$(PYTEST_ARGS)"; \
 	if [ -n "$(MATCH)" ]; then _all_pytest_args="$$_all_pytest_args -k $(MATCH)"; fi; \
 	if [ "$(FAIL_FAST)" = "1" ]; then _all_pytest_args="$$_all_pytest_args -x"; fi; \
@@ -480,70 +609,101 @@ test: ## Run pytest only
 	slowest_file="$$report_dir/slowest-tests.txt"; \
 	skips_file="$$report_dir/skipped-tests.txt"; \
 	command_file="$$report_dir/command.txt"; \
-	interrupted=0; \
 	_coverage_args="--cov --cov-report=xml:$$coverage_file"; \
-	if [ -n "$$_files" ] || [ -n "$(MATCH)" ]; then _coverage_args="--no-cov"; fi; \
-	echo "$(VENV_PYTHON) -m pytest $$_pytest_run $(PYTEST_REPORT_ARGS) $(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) -p no:metadata --junitxml=$$junit_file $$_coverage_args $(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args" > "$$command_file"; \
-	trap 'interrupted=1; trap "" INT TERM' INT TERM; \
+	_coverage_required=1; \
+	_coverage_value="$$coverage_file"; \
+	if [ -n "$$_files" ] || [ -n "$(MATCH)" ] || \
+		[ "$$_pytest_run" != "$(TESTS_DIR)" ]; then \
+		_coverage_args="--no-cov"; \
+		_coverage_required=0; \
+		_coverage_value="not-generated"; \
+	fi; \
+	printf '%s\n' '$(VENV_PYTHON) -m pytest' \
+		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
+		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
 	$(VENV_PYTHON) -m pytest $$_pytest_run \
 		$(PYTEST_REPORT_ARGS) \
 		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
 		-p no:metadata \
 		--junitxml="$$junit_file" \
 		$$_coverage_args \
-		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args 2>&1 | tee "$$log_file"; \
-	rc=$${PIPESTATUS[0]}; \
-	if [ "$$interrupted" = "1" ]; then rc=130; fi; \
+		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
+	rc=$$?; \
+	cat "$$log_file"; \
+	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
+		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
+			"$$coverage_file" >&2; \
+		if [ "$$rc" -eq 0 ]; then rc=2; fi; \
+	fi; \
 	if [ -f "$$junit_file" ]; then \
 		tests=$$(grep -Eo 'tests="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		failures=$$(grep -Eo 'failures="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		errors=$$(grep -Eo 'errors="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		skipped=$$(grep -Eo 'skipped="[0-9]+"' "$$junit_file" | head -n 1 | tr -dc '0-9'); \
 		duration=$$(grep -Eo 'time="[0-9.]+"' "$$junit_file" | head -n 1 | sed -E 's/time="([0-9.]+)"/\1/'); \
-		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; skipped=$${skipped:-0}; duration=$${duration:-0}; \
+		tests=$${tests:-0}; failures=$${failures:-0}; errors=$${errors:-0}; \
+		skipped=$${skipped:-0}; duration=$${duration:-0}; \
 		passed=$$((tests - failures - errors - skipped)); \
-		if [ $$passed -lt 0 ]; then passed=0; fi; \
+		if [ "$$passed" -lt 0 ]; then passed=0; fi; \
 		printf 'junit=%s\ncoverage=%s\ntotal=%s\npassed=%s\nfailed=%s\nerrors=%s\nskipped=%s\nduration_seconds=%s\n' \
-			"$$junit_file" "$$coverage_file" "$$tests" "$$passed" "$$failures" "$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
+			"$$junit_file" "$$_coverage_value" "$$tests" "$$passed" "$$failures" \
+			"$$errors" "$$skipped" "$$duration" > "$$summary_file"; \
 	else \
-		echo "junit=not-generated" > "$$summary_file"; \
-		echo "coverage=$$coverage_file" >> "$$summary_file"; \
-		echo "total=0" >> "$$summary_file"; \
-		echo "passed=0" >> "$$summary_file"; \
-		echo "failed=0" >> "$$summary_file"; \
-		echo "errors=0" >> "$$summary_file"; \
-		echo "skipped=0" >> "$$summary_file"; \
-		echo "duration_seconds=0" >> "$$summary_file"; \
+		printf 'junit=not-generated\ncoverage=%s\ntotal=0\npassed=0\nfailed=0\nerrors=0\nskipped=0\nduration_seconds=0\n' \
+			"$$_coverage_value" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	$(PROJECT_INFRA_VALIDATE) pytest-diag \
+	if $(PROJECT_INFRA_VALIDATE) pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
-		--skips "$$skips_file" 2>&1 | grep -v '^\[TYPER-DEBUG\]' > "$$counts_file"; \
+		--skips "$$skips_file" > "$$counts_file"; then \
+		:; \
+	else \
+		counts_status=$$?; \
+		printf 'ERROR: pytest diagnostic extraction failed (exit=%s)\n' \
+			"$$counts_status" >&2; \
+		cat "$$counts_file" >&2; \
+		exit "$$counts_status"; \
+	fi; \
+	if ! awk ' \
+		BEGIN { required["failed_count"]; required["error_count"]; required["warning_count"]; required["skipped_count"] } \
+		$$0 !~ /^(failed_count|error_count|warning_count|skipped_count)=[0-9]+$$/ { invalid=1; next } \
+		{ split($$0, fields, "="); if (seen[fields[1]]++) invalid=1 } \
+		END { if (NR != 4) invalid=1; for (key in required) if (seen[key] != 1) invalid=1; exit invalid } \
+	' "$$counts_file"; then \
+		echo "ERROR: invalid pytest diagnostic counts contract" >&2; \
+		cat "$$counts_file" >&2; \
+		exit 2; \
+	fi; \
 	. "$$counts_file"; \
-	if [ "$$rc" -eq 130 ] || [ "$$interrupted" = "1" ]; then run_state="INTERRUPTED"; else run_state="COMPLETED"; fi; \
-	echo "================================================" >&2; \
-	echo "DIAG $$run_state | failed=$$failed_count errors=$$error_count warnings=$$warning_count skipped=$$skipped_count" >&2; \
-	echo "================================================" >&2; \
-	echo "Top test durations (from $$slowest_file):" >&2; \
-	if [ -s "$$slowest_file" ]; then awk 'NR<=10 {print}' "$$slowest_file" >&2; \
-	else echo "(none)" >&2; fi; \
-	echo "Error trace excerpt (from $$errors_file):" >&2; \
-	if [ -s "$$errors_file" ]; then awk 'NR<=40 {print}' "$$errors_file" >&2; \
-	else echo "(none)" >&2; fi; \
-	rm -f "$(PYTEST_REPORTS_DIR)/latest"; \
-	ln -s "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
-	echo "Reports: $$report_dir (latest: $(PYTEST_REPORTS_DIR)/latest)" >&2; \
-	echo "Details: $$summary_file | $$failed_file | $$errors_file | $$warnings_file | $$slowest_file | $$skips_file | $$log_file" >&2; \
-	exit $$rc
+	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
+		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
+		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
+	fi; \
+	if [ "$(DIAG)" = "1" ]; then \
+		run_state=COMPLETED; \
+		if [ "$$rc" -eq 130 ]; then run_state=INTERRUPTED; fi; \
+		printf 'DIAG %s | failed=%s errors=%s warnings=%s skipped=%s\n' \
+			"$$run_state" "$$failed_count" "$$error_count" \
+			"$$warning_count" "$$skipped_count" >&2; \
+	fi; \
+	ln -sfn "$$run_id" "$(PYTEST_REPORTS_DIR)/latest"; \
+	printf 'Reports: %s (latest: %s/latest)\n' \
+		"$$report_dir" "$(PYTEST_REPORTS_DIR)" >&2; \
+	exit "$$rc"
 
 val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1)
+	$(call _run_verb_hooks,pre,val,$(WHAT))
+	$(call _run_verb_body,val,_val_impl)
+	$(call _run_verb_hooks,post,val,$(WHAT))
+
+_val_impl:
 	$(Q)if [ -n "$(FIX)" ] && [ "$(FIX)" != "1" ]; then \
 		echo "ERROR: FIX must be empty or 1, got '$(FIX)'"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(FIX)" = "1" ]; then $(POETRY) run ruff check --fix . --quiet; fi
+	$(Q)if [ "$(FIX)" = "1" ]; then $(UV) run ruff check --fix . --quiet; fi
 	$(Q)gates="$(VALIDATE_GATES)"; \
 	if [ -n "$$gates" ]; then \
 		for g in $$(echo "$$gates" | tr ',' ' '); do \
@@ -556,31 +716,36 @@ val: ## Run validate gates (VALIDATE_GATES=complexity,docstring to select, FIX=1
 		gates="complexity,docstring"; \
 	fi; \
 	if echo "$$gates" | grep -qw complexity; then \
-		$(POETRY) run radon cc $(SRC_DIR) -n E -a --total-average; \
-		$(POETRY) run radon mi $(SRC_DIR) -n C -s --sort; \
+		$(UV) run radon cc $(SRC_DIR) -n E -a --total-average; \
+		$(UV) run radon mi $(SRC_DIR) -n C -s --sort; \
 	fi; \
 	if echo "$$gates" | grep -qw docstring; then \
-		$(POETRY) run interrogate $(SRC_DIR) --fail-under=$(DOCSTRING_MIN) --ignore-init-method --ignore-magic -q; \
+		$(PROJECT_INFRA_DOCS) audit --workspace . --checks docstrings --docstring-min $(DOCSTRING_MIN) --output-dir .reports/docs; \
 	fi
+
+run: ## Run a project-specific action (WHAT=<action> -> _custom_run_<action> in custom.mk)
+	$(call _run_verb_hooks,pre,run,$(WHAT))
+	$(call _run_custom_what,run,$(WHAT))
+	$(call _run_verb_hooks,post,run,$(WHAT))
 
 daemon-start-mypy: ## Start dmypy daemon for this project
 	$(Q)mkdir -p .dmypy
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status >/dev/null 2>&1; then \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status >/dev/null 2>&1; then \
 		echo "dmypy already running for $(PROJECT_NAME) at $(DMPY_SOCKET)"; \
 	else \
-		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start -- --config-file "$(WORKSPACE_ROOT)/pyproject.toml"; \
+		$(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" start --timeout "$(MYPY_TIMEOUT_SECONDS)" -- --config-file "$(WORKSPACE_ROOT)/pyproject.toml" || { $(REPORT_MYPY_FAILURE); exit $$code; }; \
 	fi
 
 daemon-stop-mypy: ## Stop dmypy daemon for this project
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
-		$(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop; \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
+		$(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" stop || { $(REPORT_MYPY_FAILURE); exit $$code; }; \
 	else \
 		echo "dmypy daemon is not running"; \
 	fi
 	$(Q)rm -f "$(DMPY_SOCKET)"
 
 daemon-status-mypy: ## Show dmypy daemon status for this project
-	$(Q)if $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
+	$(Q)$(VALIDATE_MYPY_LIMITS); if $(MYPY_BOUNDED) $(VENV_PYTHON) -m mypy.dmypy --status-file "$(DMPY_SOCKET)" status; then \
 		: ; \
 	else \
 		echo "dmypy daemon is not running"; \
@@ -644,17 +809,11 @@ pr: ## Manage pull requests for this repository
 	$(Q)$(PROJECT_INFRA_GITHUB) pr \
 		--repo-root "$(CURDIR)" \
 		--action "$(PR_ACTION)" \
-		--base "$(PR_BASE)" \
+		$(if $(PR_BASE),--base "$(PR_BASE)",) \
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
-		$(if $(PR_NUMBER),--number "$(PR_NUMBER)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)" \
-		--merge-method "$(PR_MERGE_METHOD)" \
-		--auto "$(PR_AUTO)" \
-		--delete-branch "$(PR_DELETE_BRANCH)" \
-		--checks-strict "$(PR_CHECKS_STRICT)" \
-		--release-on-merge "$(PR_RELEASE_ON_MERGE)"
+		--draft "$(PR_DRAFT)"
 
 clean: ## Clean artifacts
 	$(Q)rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage* \

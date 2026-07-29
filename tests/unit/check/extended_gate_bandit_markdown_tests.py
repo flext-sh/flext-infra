@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import m, p, r, t
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
-from tests.utilities import TestsFlextInfraUtilities as u
+from flext_tests import tm
+from tests import TestsFlextInfraUtilities as u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestBanditAndMarkdownGates:
@@ -21,9 +24,7 @@ class TestBanditAndMarkdownGates:
         return m.Infra.GateContext(workspace=root, reports_dir=root)
 
     @staticmethod
-    def make_runner(
-        *results: p.Result[m.Cli.CommandOutput],
-    ) -> u.Tests.SequenceRunner:
+    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
         return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
@@ -47,12 +48,13 @@ class TestBanditAndMarkdownGates:
                 True,
                 (r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),),
                 False,
-                0,
+                1,
             ),
         ],
     )
     def test_bandit_check(
         self,
+        *,
         tmp_path: Path,
         with_src: bool,
         runner_results: tuple[r[m.Cli.CommandOutput], ...],
@@ -89,31 +91,26 @@ class TestBanditAndMarkdownGates:
                 None,
                 r.ok(
                     u.Tests.stub_run(
-                        stdout="README.md:1:1 error MD001 Heading level",
-                        returncode=1,
+                        stdout="README.md:1:1: [MD001] Heading level", returncode=1
                     )
                 ),
                 False,
                 1,
-                "",
+                "README.md:1:1: [MD001] Heading level",
             ),
             (
                 "# Test\n",
                 None,
-                r.ok(
-                    u.Tests.stub_run(
-                        stderr="markdownlint failed",
-                        returncode=1,
-                    )
-                ),
+                r.ok(u.Tests.stub_run(stderr="rumdl failed", returncode=1)),
                 False,
-                0,
-                "markdownlint failed",
+                1,
+                "rumdl failed",
             ),
         ],
     )
     def test_markdown_check(
         self,
+        *,
         tmp_path: Path,
         markdown_text: str,
         config_text: str | None,
@@ -127,8 +124,7 @@ class TestBanditAndMarkdownGates:
             (project_dir / "README.md").write_text(markdown_text, encoding="utf-8")
         if config_text is not None:
             (project_dir / ".markdownlint.json").write_text(
-                config_text,
-                encoding="utf-8",
+                config_text, encoding="utf-8"
             )
 
         gate = FlextInfraMarkdownGate(
@@ -145,8 +141,7 @@ class TestBanditAndMarkdownGates:
             tm.that(result.raw_output, contains=raw_output)
 
     def test_markdown_prefers_local_config_when_root_is_missing(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
@@ -157,6 +152,85 @@ class TestBanditAndMarkdownGates:
         _ = gate.check(project_dir, self.make_ctx(tmp_path))
 
         tm.that(runner.commands[0], has="--config")
+
+    def test_markdown_uses_uv_managed_tool_with_sanitized_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Prove the real gate cannot bind a host or mise-provided executable."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-managed-tool")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        monkeypatch.setenv("PATH", "/usr/bin:/bin")
+
+        result = FlextInfraMarkdownGate(tmp_path).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
+
+    def test_markdown_accepts_existing_nested_relative_link(
+        self, tmp_path: Path
+    ) -> None:
+        """Exercise the real linter's path resolution at the project boundary."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-relative-link")
+        docs_dir = project_dir / "docs"
+        target_dir = docs_dir / "generated"
+        target_dir.mkdir(parents=True)
+        (docs_dir / "README.md").write_text(
+            "# Documentation\n\n[Overview](generated/overview.md)\n", encoding="utf-8"
+        )
+        (target_dir / "overview.md").write_text("# Overview\n", encoding="utf-8")
+
+        result = FlextInfraMarkdownGate(tmp_path).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
+
+    def test_markdown_resolves_same_link_per_source_directory(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not let one missing target poison an equal valid relative link."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-link-scope")
+        valid_docs = project_dir / "valid"
+        invalid_docs = project_dir / "invalid"
+        (valid_docs / "generated").mkdir(parents=True)
+        invalid_docs.mkdir()
+        body = "# Documentation\n\n[Overview](generated/overview.md)\n"
+        (valid_docs / "README.md").write_text(body, encoding="utf-8")
+        (invalid_docs / "README.md").write_text(body, encoding="utf-8")
+        (valid_docs / "generated" / "overview.md").write_text(
+            "# Overview\n", encoding="utf-8"
+        )
+
+        result = FlextInfraMarkdownGate(tmp_path).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(result.result.passed, eq=False)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].file, eq="invalid/README.md")
+
+    def test_markdown_rechecks_link_target_state_without_cache(
+        self, tmp_path: Path
+    ) -> None:
+        """A cached source hash must not hide a removed relative-link target."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-cache-state")
+        target = project_dir / "target.md"
+        (project_dir / "README.md").write_text(
+            "# Documentation\n\n[Target](target.md)\n", encoding="utf-8"
+        )
+        target.write_text("# Target\n", encoding="utf-8")
+        gate = FlextInfraMarkdownGate(tmp_path)
+
+        first = gate.check(project_dir, self.make_ctx(tmp_path))
+        target.unlink()
+        second = gate.check(project_dir, self.make_ctx(tmp_path))
+
+        tm.that(first.result.passed, eq=True)
+        tm.that(second.result.passed, eq=False)
+        tm.that(second.issues[0].code, eq="MD057")
 
 
 __all__: t.StrSequence = []

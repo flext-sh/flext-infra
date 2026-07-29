@@ -10,12 +10,13 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
@@ -61,13 +62,13 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
             kept_lines.append(line)
 
         updated = "".join(kept_lines)
-        updated = u.Infra.apply_token_replacements(
-            source=updated,
-            alias_map=alias_map,
+        rewritten: str = u.Infra.apply_token_replacements(
+            source=updated, alias_map=alias_map
         )
+        updated = rewritten
         for alias_name in sorted(removed):
             self._record_change(
-                f"Removed compatibility alias: {alias_name} = {alias_map[alias_name]}",
+                f"Removed compatibility alias: {alias_name} = {alias_map[alias_name]}"
             )
         return updated
 
@@ -103,14 +104,11 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
         if not alias_map:
             return source
 
-        updated = u.Infra.apply_token_replacements(
-            source=source,
-            alias_map=alias_map,
-        )
+        updated = u.Infra.apply_token_replacements(source=source, alias_map=alias_map)
         updated = self._deduplicate_import_names(updated)
         for long_name in sorted(alias_map):
             self._record_change(
-                f"Rewrote compatibility import: {long_name} -> {alias_map[long_name]}",
+                f"Rewrote compatibility import: {long_name} -> {alias_map[long_name]}"
             )
         return updated
 
@@ -122,8 +120,7 @@ class FlextInfraRefactorCompatibilityAlias(FlextInfraRopeTransformer):
             if isinstance(node, ast.Name):
                 names.add(node.id)
             elif isinstance(
-                node,
-                ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef,
+                node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
             ):
                 names.add(node.name)
         return names

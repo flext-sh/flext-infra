@@ -9,10 +9,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesLogParser:
@@ -22,9 +26,7 @@ class FlextInfraUtilitiesLogParser:
 
     @staticmethod
     def extract_errors(
-        log_path: Path,
-        *,
-        max_lines: int = 5,
+        log_path: Path, *, max_lines: int = 5
     ) -> t.Pair[int, t.StrSequence]:
         """Read log tail and extract error lines.
 
@@ -51,6 +53,22 @@ class FlextInfraUtilitiesLogParser:
                 error_lines.append(stripped)
         total = len(error_lines)
         return (total, error_lines[:max_lines])
+
+    @staticmethod
+    def extract_make_child_exit_code(log_path: Path) -> int | None:
+        """Return the recipe exit code GNU make reported, when present.
+
+        GNU make always exits 2 on a failed recipe, so the child's real exit
+        code survives only in make's own error line. Returns None when the log
+        is unreadable or carries no such line.
+        """
+        if not log_path.is_file():
+            return None
+        content = log_path.read_text(encoding="utf-8", errors="replace")
+        matches = tuple(c.Infra.LOG_MAKE_CHILD_EXIT_PATTERN.finditer(content))
+        if not matches:
+            return None
+        return int(matches[-1].group("code"))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesLogParser"]

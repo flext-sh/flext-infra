@@ -6,12 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from rope.refactor.importutils.importinfo import FromImport
+import sys
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraCompatibilityAliasDetector:
@@ -19,10 +23,7 @@ class FlextInfraCompatibilityAliasDetector:
 
     @classmethod
     def fix_action_for(
-        cls,
-        violation: m.Infra.CompatibilityAliasViolation,
-        *,
-        current_project: str,
+        cls, violation: m.Infra.CompatibilityAliasViolation, *, current_project: str
     ) -> str:
         """Return the catalog fix action for a compatibility-alias violation.
 
@@ -37,9 +38,9 @@ class FlextInfraCompatibilityAliasDetector:
             return "rewrite_foreign_canonical_alias"
         return "rewrite_compatibility_alias"
 
-    @staticmethod
+    @classmethod
     def detect_file(
-        ctx: m.Infra.DetectorContext,
+        cls, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
         """Detect compatibility aliases in a single file.
 
@@ -76,14 +77,13 @@ class FlextInfraCompatibilityAliasDetector:
         if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
             return violations
         alias_renames = c.ENFORCEMENT_COMPATIBILITY_ALIAS_RENAMES
-        local_alias_targets = _local_alias_targets(source)
+        local_alias_targets = cls._local_alias_targets(source)
         imported_long_names: set[str] = set()
         canonical_aliases_by_module: dict[str, set[str]] = {}
         current_module = u.Infra.package_name(file_path)
-        for from_import in _all_from_imports(ctx.rope_project, resource):
-            module_name = _resolve_imported_module(
-                current_module=current_module,
-                from_import=from_import,
+        for from_import in cls._all_from_imports(ctx.rope_project, resource):
+            module_name = cls._resolve_imported_module(
+                current_module=current_module, from_import=from_import
             )
             for name, alias in from_import.names_and_aliases:
                 bound_name = alias if alias is not None else name
@@ -91,10 +91,9 @@ class FlextInfraCompatibilityAliasDetector:
                     canonical_aliases_by_module.setdefault(module_name, set()).add(
                         bound_name
                     )
-        for from_import in _all_from_imports(ctx.rope_project, resource):
-            module_name = _resolve_imported_module(
-                current_module=current_module,
-                from_import=from_import,
+        for from_import in cls._all_from_imports(ctx.rope_project, resource):
+            module_name = cls._resolve_imported_module(
+                current_module=current_module, from_import=from_import
             )
             for name, alias in from_import.names_and_aliases:
                 canonical_alias = alias_renames.get(name)
@@ -115,7 +114,7 @@ class FlextInfraCompatibilityAliasDetector:
                     # compatibility-alias violation.
                     continue
                 imported_long_names.add(name)
-                line_number = _find_import_line(
+                line_number = cls._find_import_line(
                     lines=lines,
                     module_name=module_name,
                     imported_name=name,
@@ -131,36 +130,69 @@ class FlextInfraCompatibilityAliasDetector:
                     )
                 )
 
-        # ENFORCE-080: canonical alias imported from flext_core when the
-        # current project re-exports the same slot locally.
-        project_alias_owners = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        current_package = current_module.split(".")[0]
-        local_aliases = project_alias_owners.get(current_package)
-        if local_aliases and not u.Infra.looks_like_facade_file(
-            file_path=file_path,
-            source=source,
+        violations.extend(
+            cls._detect_foreign_canonical_aliases(
+                ctx=ctx, source=source, file_path=file_path
+            )
+        )
+        return violations
+
+    @classmethod
+    def _detect_foreign_canonical_aliases(
+        cls, *, ctx: m.Infra.DetectorContext, source: str, file_path: Path
+    ) -> t.SequenceOf[m.Infra.CompatibilityAliasViolation]:
+        """Detect runtime canonical aliases imported from ``flext_core``."""
+        current_module = u.Infra.package_name(file_path)
+        current_package = current_module.split(".", maxsplit=1)[0]
+        local_aliases = (
+            FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
+                current_package
+            )
+        )
+        if not local_aliases:
+            return ()
+        if FlextInfraCompatibilityAliasDetector._is_private_facade_implementation(
+            file_path
         ):
-            for from_import in _all_from_imports(ctx.rope_project, resource):
-                module_name = _resolve_imported_module(
-                    current_module=current_module,
-                    from_import=from_import,
-                )
-                if module_name != c.Infra.PKG_CORE_UNDERSCORE:
+            return ()
+        if u.Infra.looks_like_facade_file(file_path=file_path, source=source):
+            return ()
+
+        local_aliases_set = frozenset(local_aliases)
+        violations: list[m.Infra.CompatibilityAliasViolation] = []
+        # mro-j47u (codex): parse each Rope-owned runtime statement in place;
+        # the module-wide table intentionally excludes conditional imports.
+        for statement in u.Infra.logical_statements(source):
+            if (
+                statement.category != c.Infra.StatementCategory.FROM_IMPORT
+                or statement.type_checking_guarded
+            ):
+                continue
+            pymodule = u.Infra.get_string_module(
+                ctx.rope_project, statement.text.strip()
+            )
+            module_imports = u.Infra.module_imports_for_pymodule(
+                ctx.rope_project, pymodule
+            )
+            for import_statement in u.Infra.import_statements(module_imports):
+                from_import = import_statement.import_info
+                if not u.Infra.is_from_import(from_import):
                     continue
-                for name, alias in from_import.names_and_aliases:
-                    bound_name = alias if alias is not None else name
-                    if bound_name not in local_aliases:
+                module = cls._resolve_imported_module(
+                    current_module=current_module, from_import=from_import
+                )
+                if module != c.Infra.PKG_CORE_UNDERSCORE and not module.startswith(
+                    f"{c.Infra.PKG_CORE_UNDERSCORE}."
+                ):
+                    continue
+                for imported_name, alias_name in from_import.names_and_aliases:
+                    bound_name = alias_name or imported_name
+                    if bound_name not in local_aliases_set:
                         continue
-                    line_number = _find_import_line(
-                        lines=lines,
-                        module_name=module_name,
-                        imported_name=name,
-                        alias_name=alias,
-                    )
                     violations.append(
                         m.Infra.CompatibilityAliasViolation(
                             file=str(file_path),
-                            line=line_number,
+                            line=statement.line,
                             alias_name=bound_name,
                             target_name=bound_name,
                             module_name=current_package,
@@ -168,68 +200,86 @@ class FlextInfraCompatibilityAliasDetector:
                     )
         return violations
 
+    @staticmethod
+    def _project_alias_owners() -> t.StrSequenceMapping:
+        """Return live alias owners after test/runtime facade reloads."""
+        constants_module = sys.modules.get("flext_infra.constants")
+        if constants_module is None:
+            return c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        live_c = constants_module.c
+        owners = live_c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        if not isinstance(owners, Mapping):
+            msg = "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS is invalid"
+            raise TypeError(msg)
+        return owners
 
-def _all_from_imports(
-    rope_project: t.Infra.RopeProject,
-    resource: t.Infra.RopeResource,
-) -> t.SequenceOf[FromImport]:
-    """Return all ``from ... import ...`` descriptors in a module (absolute + relative)."""
-    module_imports = u.Infra.get_module_imports(rope_project, resource)
-    if module_imports is None:
-        return ()
-    import_statements = u.Infra.import_statements(module_imports)
-    return tuple(
-        import_stmt.import_info
-        for import_stmt in import_statements
-        if isinstance(import_stmt.import_info, FromImport)
-    )
+    @staticmethod
+    def _is_private_facade_implementation(file_path: Path) -> bool:
+        """Return whether ``file_path`` implements a project facade namespace."""
+        family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
+        return bool(family_dirs.intersection(file_path.parts))
 
+    @staticmethod
+    def _all_from_imports(
+        rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
+    ) -> t.SequenceOf[t.Infra.RopeFromImport]:
+        """Return all ``from ... import ...`` descriptors in a module."""
+        module_imports = u.Infra.get_module_imports(rope_project, resource)
+        if module_imports is None:
+            return ()
+        import_statements = u.Infra.import_statements(module_imports)
+        return tuple(
+            import_stmt.import_info
+            for import_stmt in import_statements
+            if u.Infra.is_from_import(import_stmt.import_info)
+        )
 
-def _resolve_imported_module(
-    *,
-    current_module: str,
-    from_import: FromImport,
-) -> str:
-    """Return the absolute module name for a possibly-relative ``FromImport``."""
-    module_name = from_import.module_name
-    if from_import.level == 0:
-        return module_name
-    if not current_module:
-        return module_name
-    current_parts = current_module.split(".")
-    if from_import.level > len(current_parts):
-        return module_name
-    package_parts = current_parts[: -from_import.level]
-    if module_name:
-        return ".".join(package_parts + [module_name])
-    return ".".join(package_parts)
+    @staticmethod
+    def _resolve_imported_module(
+        *, current_module: str, from_import: t.Infra.RopeFromImport
+    ) -> str:
+        """Return the absolute module name for a possibly-relative ``FromImport``."""
+        module_name: str = from_import.module_name
+        if from_import.level == 0:
+            return module_name
+        if not current_module:
+            return module_name
+        current_parts = current_module.split(".")
+        if from_import.level > len(current_parts):
+            return module_name
+        package_parts = current_parts[: -from_import.level]
+        if module_name:
+            return ".".join([*package_parts, module_name])
+        return ".".join(package_parts)
 
+    @staticmethod
+    def _find_import_line(
+        *,
+        lines: t.StrSequence,
+        module_name: str,
+        imported_name: str,
+        alias_name: str | None,
+    ) -> int:
+        """Return the 1-based line number of the relevant ``from`` import."""
+        for index, line in enumerate(lines, start=1):
+            stripped = line.strip()
+            if not stripped.startswith("from "):
+                continue
+            if imported_name in stripped and (
+                alias_name is None or alias_name in stripped
+            ):
+                return index
+        return u.Infra.find_import_line(lines=lines, module_name=module_name) or 1
 
-def _find_import_line(
-    *,
-    lines: t.StrSequence,
-    module_name: str,
-    imported_name: str,
-    alias_name: str | None,
-) -> int:
-    """Return the 1-based line number of the relevant ``from`` import."""
-    for index, line in enumerate(lines, start=1):
-        stripped = line.strip()
-        if not stripped.startswith("from "):
-            continue
-        if imported_name in stripped and (alias_name is None or alias_name in stripped):
-            return index
-    return u.Infra.find_import_line(lines=lines, module_name=module_name) or 1
-
-
-def _local_alias_targets(source: str) -> t.StrMapping:
-    """Collect ``canonical_alias = LongFacadeName`` assignments in source."""
-    targets: dict[str, str] = {}
-    for match in c.Infra.FACADE_ALIAS_RE.finditer(source):
-        alias = match.group(1)
-        target = match.group(2)
-        targets[alias] = target
-    return targets
+    @staticmethod
+    def _local_alias_targets(source: str) -> t.StrMapping:
+        """Collect ``canonical_alias = LongFacadeName`` assignments in source."""
+        targets: dict[str, str] = {}
+        for match in c.Infra.FACADE_ALIAS_RE.finditer(source):
+            alias = match.group(1)
+            target = match.group(2)
+            targets[alias] = target
+        return targets
 
 
 __all__: list[str] = ["FlextInfraCompatibilityAliasDetector"]

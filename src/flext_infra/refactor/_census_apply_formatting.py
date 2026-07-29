@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.utilities import u
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
 
 
 class FlextInfraRefactorCensusApplyFormattingMixin:
@@ -29,8 +31,7 @@ class FlextInfraRefactorCensusApplyFormattingMixin:
             )
             raise RuntimeError(msg)
         format_result = u.Cli.run_raw(
-            ["ruff", "format", *existing],
-            timeout=c.Infra.TIMEOUT_SHORT,
+            ["ruff", "format", *existing], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
             msg = (

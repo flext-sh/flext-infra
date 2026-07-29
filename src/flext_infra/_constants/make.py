@@ -37,13 +37,53 @@ class FlextInfraConstantsMake:
     CLI_GROUP_VALIDATE: Final[str] = "validate"
     CLI_ROUTE_MAINTENANCE: Final[str] = "maintenance run"
     CLI_GROUP_WORKSPACE: Final[str] = "workspace"
-    PROJECT_CHECK_GATES_ALLOWED: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells,type"
+    MYPY_MEMORY_LIMIT_MB_ENV: Final[str] = "MYPY_MEMORY_LIMIT_MB"
+    MYPY_MEMORY_LIMIT_MB_DEFAULT: Final[int] = 6144
+    MYPY_TIMEOUT_SECONDS_ENV: Final[str] = "MYPY_TIMEOUT_SECONDS"
+    MYPY_TIMEOUT_SECONDS_DEFAULT: Final[int] = 600
+    MYPY_TIMEOUT_GRACE_SECONDS: Final[int] = 10
+    PRLIMIT_COMMAND: Final[str] = "prlimit"
+    PRLIMIT_ADDRESS_SPACE_OPTION: Final[str] = "--as"
+    TIMEOUT_COMMAND: Final[str] = "timeout"
+    TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
+    CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
+    "Make variable carrying the gate selection."
+    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
     )
-    PROJECT_CHECK_GATES_DEFAULT: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,security,markdown,smells"
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "security",
+        "markdown",
+        "smells",
     )
-    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = "lint,format,pyrefly,mypy,pyright"
+    PROJECT_FAST_PATH_CHECK_GATE_VALUES: Final[tuple[str, ...]] = (
+        "lint",
+        "format",
+        "pyrefly",
+        "mypy",
+        "pyright",
+    )
+    PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_ALLOWED_VALUES
+    )
+    PROJECT_CHECK_GATES_DEFAULT: Final[str] = ",".join(
+        PROJECT_CHECK_GATES_DEFAULT_VALUES
+    )
+    PROJECT_FAST_PATH_CHECK_GATES: Final[str] = ",".join(
+        PROJECT_FAST_PATH_CHECK_GATE_VALUES
+    )
     PROJECT_VALIDATE_GATES_ALLOWED: Final[str] = "complexity,docstring"
     DOCS_PHASES_ALLOWED: Final[str] = "all|generate|fix|audit|build|validate"
     ORCHESTRATED_PROJECT_VERBS: Final[t.StrSequence] = (
@@ -70,18 +110,24 @@ class FlextInfraConstantsMake:
         "MFLAGS",
         "MYPYPATH",
         "PYTHONPATH",
+        "UV_PROJECT",
+        "UV_PROJECT_ENVIRONMENT",
+        "VIRTUAL_ENV",
         "WORKSPACE_MISE_SHIMS",
     )
     "Environment keys removed before project-level make orchestration."
     ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"
     ORCHESTRATOR_ENV_PATH: Final[str] = "PATH"
+    ORCHESTRATOR_ENV_PYTHONPATH: Final[str] = "PYTHONPATH"
+    ORCHESTRATOR_ENV_PYTHONDONTWRITEBYTECODE: Final[str] = "PYTHONDONTWRITEBYTECODE"
     ORCHESTRATOR_ENV_PATH_SEPARATOR: Final[str] = ":"
     ORCHESTRATOR_ENV_MISE_SHIMS: Final[str] = "MISE_SHIMS"
     ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS: Final[str] = "WORKSPACE_MISE_SHIMS"
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
+        ("PYTEST_TARGETS", "tests"),
         ("DIAG", "0"),
-        ("CHECK_GATES", ""),
+        (CHECK_GATES_VARIABLE, ""),
         ("VALIDATE_GATES", ""),
         ("SCOPE", "project"),
         ("NAMESPACE", ""),
@@ -90,17 +136,11 @@ class FlextInfraConstantsMake:
         ("DOCS_PHASE", "all"),
         ("FIX", ""),
         ("PR_ACTION", "status"),
-        ("PR_BASE", "main"),
+        ("PR_BASE", ""),
         ("PR_HEAD", ""),
-        ("PR_NUMBER", ""),
         ("PR_TITLE", ""),
         ("PR_BODY", ""),
         ("PR_DRAFT", "0"),
-        ("PR_MERGE_METHOD", "squash"),
-        ("PR_AUTO", "0"),
-        ("PR_DELETE_BRANCH", "0"),
-        ("PR_CHECKS_STRICT", "0"),
-        ("PR_RELEASE_ON_MERGE", "1"),
         ("FILE", ""),
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
@@ -116,11 +156,14 @@ class FlextInfraConstantsMake:
         ("PROJECTS", ""),
         ("WHAT", ""),
         ("PYTEST_ARGS", ""),
-        ("VALIDATE_SCOPE", "project"),
+        ("PYTEST_TARGETS", "tests"),
+        ("VALIDATE_SCOPE", "all"),
         ("DOCS_PHASE", "all"),
         ("FAIL_FAST", ""),
         ("JOBS", ""),
-        ("CHECK_GATES", ""),
+        (CHECK_GATES_VARIABLE, ""),
+        ("MYPY_MEMORY_LIMIT_MB", str(MYPY_MEMORY_LIMIT_MB_DEFAULT)),
+        ("MYPY_TIMEOUT_SECONDS", str(MYPY_TIMEOUT_SECONDS_DEFAULT)),
         ("VALIDATE_GATES", ""),
         ("SCOPE", "project"),
         ("NAMESPACE", ""),
@@ -147,17 +190,11 @@ class FlextInfraConstantsMake:
         ("RELEASE_NEXT_BUMP", "minor"),
         ("CREATE_BRANCHES", "1"),
         ("PR_ACTION", "status"),
-        ("PR_BASE", "main"),
+        ("PR_BASE", ""),
         ("PR_HEAD", ""),
-        ("PR_NUMBER", ""),
         ("PR_TITLE", ""),
         ("PR_BODY", ""),
         ("PR_DRAFT", "0"),
-        ("PR_MERGE_METHOD", "squash"),
-        ("PR_AUTO", "0"),
-        ("PR_DELETE_BRANCH", "0"),
-        ("PR_CHECKS_STRICT", "0"),
-        ("PR_RELEASE_ON_MERGE", "1"),
         ("PR_INCLUDE_ROOT", "1"),
         ("PR_CHECKPOINT", "1"),
         ("DEPS_REPORT", "1"),
@@ -186,6 +223,8 @@ class FlextInfraConstantsMake:
     )
     PROJECT_OPTION_LINES: Final[t.StrSequence] = (
         f"CHECK_GATES={PROJECT_CHECK_GATES_ALLOWED}",
+        f"MYPY_MEMORY_LIMIT_MB={MYPY_MEMORY_LIMIT_MB_DEFAULT}  Mypy address-space cap",
+        f"MYPY_TIMEOUT_SECONDS={MYPY_TIMEOUT_SECONDS_DEFAULT}  Mypy wall-time cap",
         f"VALIDATE_GATES={PROJECT_VALIDATE_GATES_ALLOWED}",
         "FILE=src/foo.py             Single file for check/fmt/test",
         'FILES="a.py b.py"          Multiple files for check/fmt/test',
@@ -194,6 +233,7 @@ class FlextInfraConstantsMake:
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
         'PYTEST_ARGS="-k expr"       Extra pytest args',
+        'PYTEST_TARGETS="tests/unit" Pytest collection targets',
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",
@@ -205,12 +245,9 @@ class FlextInfraConstantsMake:
         "VERBOSE=1                   Show executed commands",
     )
     PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create|view|checks|merge|close",
-        "PR_BASE=main  PR_HEAD=<branch>  PR_NUMBER=<id>",
+        "PR_ACTION=status|create",
+        "PR_BASE=<branch>  PR_HEAD=<branch>",
         "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-        "PR_MERGE_METHOD=squash|merge|rebase  PR_AUTO=0|1",
-        "PR_DELETE_BRANCH=0|1  PR_CHECKS_STRICT=0|1",
-        "PR_RELEASE_ON_MERGE=0|1",
     )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.

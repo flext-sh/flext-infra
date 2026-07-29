@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
+from typing import TYPE_CHECKING
 
+from flext_infra import m, u
 from flext_infra.detectors.facade_scanner import FlextInfraScanner
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraNamespaceEnforcerPhasesMixin:
@@ -20,9 +21,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     _rope_project: t.Infra.RopeProject
 
     def _resolve_project_roots(
-        self,
-        *,
-        project_names: t.StrSequence | None = None,
+        self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[Path]:
         """Resolve project roots."""
         msg = "_resolve_project_roots must be provided by the concrete enforcer"
@@ -64,8 +63,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
         """Scan facades and optionally create missing ones."""
         project_root, project_name = project
         facade_statuses = FlextInfraScanner.scan_project(
-            project_root=project_root,
-            rope_project=rope_project,
+            project_root=project_root, rope_project=rope_project
         )
         if not apply:
             return facade_statuses
@@ -76,18 +74,14 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
             workspace_root=workspace_root,
         )
         return FlextInfraScanner.scan_project(
-            project_root=project_root,
-            rope_project=rope_project,
+            project_root=project_root, rope_project=rope_project
         )
 
     @staticmethod
     def _collect_py_files(*, project_root: Path) -> t.SequenceOf[Path]:
         """Collect Python files for scanning."""
         py_files_result = u.Infra.iter_python_files(
-            workspace_root=project_root,
-            project_roots=[project_root],
-            include_dynamic_dirs=u.Infra.namespace_include_dynamic_dirs(project_root),
-            src_dirs=u.Infra.namespace_scan_dirs(project_root),
+            m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if py_files_result.failure:
             msg = py_files_result.error or (

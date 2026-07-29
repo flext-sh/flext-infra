@@ -3,29 +3,77 @@
 from __future__ import annotations
 
 import fnmatch
+import textwrap
+from pathlib import Path
 from typing import ClassVar
 
-from flext_infra.codegen.codegen_generation import FlextInfraCodegenGeneration
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_cli import u
+from flext_infra import c, m, t
 
 
 class FlextInfraUtilitiesDocsRender:
     """Rendering helpers for generated docs content."""
 
+    _MARKDOWN_LINE_LENGTH: ClassVar[int] = 80
+
     @staticmethod
-    def _is_object_list(
-        value: t.Infra.InfraValue | None,
-    ) -> bool:
+    def _wrap_markdown_line(line: str) -> t.SequenceOf[str]:
+        """Wrap one generated prose line without changing Markdown structure."""
+        if len(line) <= FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH:
+            return (line,)
+        stripped = line.lstrip()
+        if (
+            not stripped
+            or stripped != line
+            or stripped.startswith(("#", "|", ":::", "```", "<"))
+        ):
+            return (line,)
+        prefix = ""
+        body = line
+        subsequent_indent = ""
+        if line.startswith(("- ", "* ", "+ ")):
+            prefix, body = line[:2], line[2:]
+            subsequent_indent = "  "
+        elif line.startswith("> "):
+            prefix, body = line[:2], line[2:]
+            subsequent_indent = prefix
+        else:
+            marker, separator, remainder = line.partition(" ")
+            if separator and marker.endswith(".") and marker[:-1].isdigit():
+                prefix, body = f"{marker} ", remainder
+                subsequent_indent = " " * len(prefix)
+        wrapper = textwrap.TextWrapper(
+            width=FlextInfraUtilitiesDocsRender._MARKDOWN_LINE_LENGTH,
+            initial_indent=prefix,
+            subsequent_indent=subsequent_indent,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        return tuple(wrapper.wrap(body)) or (line,)
+
+    @staticmethod
+    def _render_markdown(lines: t.SequenceOf[str]) -> str:
+        """Render generated Markdown with bounded prose and verbatim code blocks."""
+        rendered: t.MutableSequenceOf[str] = []
+        in_fence = False
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                rendered.append(line)
+            elif in_fence:
+                rendered.append(line)
+            else:
+                rendered.extend(FlextInfraUtilitiesDocsRender._wrap_markdown_line(line))
+        return "\n".join(rendered)
+
+    @staticmethod
+    def _is_object_list(value: t.Infra.InfraValue | None) -> bool:
         """Type guard: narrow one infra value to a mutable sequence."""
         return isinstance(value, list)
 
     @staticmethod
-    def as_string_sequence(
-        data: t.Infra.ContainerDict,
-        key: str,
-    ) -> t.SequenceOf[str]:
+    def as_string_sequence(data: t.JsonMapping, key: str) -> t.SequenceOf[str]:
         """Return one contract field as a normalized string sequence."""
         value = data.get(key)
         if not isinstance(value, list):
@@ -48,20 +96,14 @@ class FlextInfraUtilitiesDocsRender:
         return value.replace("|", "\\|").strip()
 
     @staticmethod
-    def _module_relative_doc_path(
-        package_name: str,
-        module_name: str,
-    ) -> str:
+    def _module_relative_doc_path(package_name: str, module_name: str) -> str:
         """Return the generated relative path for one module page."""
         relative = module_name.removeprefix(f"{package_name}.").replace(".", "/")
         return f"{relative}.md"
 
     @staticmethod
     def _resolve_governance_link(
-        prefix: str,
-        path: str,
-        *,
-        is_dir: bool = False,
+        prefix: str, path: str, *, is_dir: bool = False
     ) -> str:
         """Return a resolvable governance link for README or project docs.
 
@@ -75,7 +117,7 @@ class FlextInfraUtilitiesDocsRender:
         return f"{prefix}/{path}"
 
     @staticmethod
-    def _exclude_plugin_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
+    def _exclude_plugin_lines(data: t.JsonMapping) -> t.SequenceOf[str]:
         """Render optional ``mkdocs-exclude`` plugin lines."""
         patterns = FlextInfraUtilitiesDocsRender.as_string_sequence(
             data, "exclude_docs"
@@ -89,19 +131,23 @@ class FlextInfraUtilitiesDocsRender:
         ]
 
     @staticmethod
-    def _exclude_docs_lines(data: t.Infra.ContainerDict) -> t.SequenceOf[str]:
-        """Render native ``exclude_docs`` lines for early MkDocs filtering."""
+    def _exclude_docs_lines(data: t.JsonMapping) -> t.SequenceOf[str]:
+        """Render native ``exclude_docs`` lines for early MkDocs filtering.
+
+        ``exclude_docs`` is gitignore-style (``pathspec.GitIgnoreSpec``): a bare
+        ``README.md`` matches at every depth and silently drops legitimate
+        ``docs/<section>/README.md`` pages that generated index pages link to
+        (producing nav 404s). The rooted ``/README.md`` excludes only the
+        docs-dir root README (the project README mirror), preserving nested
+        section READMEs. [mro-3o9s nav404 fix]
+        """
         patterns = list(
             dict.fromkeys([
                 *FlextInfraUtilitiesDocsRender.as_string_sequence(data, "exclude_docs"),
-                "README.md",
+                "/README.md",
             ])
         )
-        return [
-            "exclude_docs: |",
-            *[f"  {pattern}" for pattern in patterns],
-            "",
-        ]
+        return ["exclude_docs: |", *[f"  {pattern}" for pattern in patterns], ""]
 
     @staticmethod
     def docs_directive_page(title: str, dotted_path: str) -> str:
@@ -125,8 +171,8 @@ class FlextInfraUtilitiesDocsRender:
     project docs tree with relative paths.
     """
 
-    _LINK_PREFIX_README: ClassVar[str] = ".."
-    """Relative path from ``<project>/README.md`` to workspace root."""
+    _LINK_PREFIX_README: ClassVar[str] = c.Infra.GITHUB_REPO_URL
+    """Canonical governance URL shared by workspace and standalone READMEs."""
 
     @staticmethod
     def _public_surface_lines(scope: m.Infra.DocScope) -> t.SequenceOf[str]:
@@ -149,9 +195,7 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def _collection_rules_lines(
-        scope: m.Infra.DocScope,
-        *,
-        link_prefix: str,
+        scope: m.Infra.DocScope, *, link_prefix: str
     ) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Collection Rules.
 
@@ -169,20 +213,20 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).",
+            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,",
+            "slot registry verification).",
         ]
 
     @staticmethod
     def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface."""
         skill_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix,
-            ".agents/skills/flext-quality-gates/SKILL.md",
+            link_prefix, ".agents/skills/flext-quality-gates/SKILL.md"
         )
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
+            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
         ]
 
     @staticmethod
@@ -197,19 +241,20 @@ class FlextInfraUtilitiesDocsRender:
         onboarding_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
             link_prefix, "docs/guides/onboarding.md"
         )
+        governance_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, "docs/GOVERNANCE.md"
+        )
         return [
             "## Governance Pointer",
             "",
             f"- Engineering law: [`/flext/AGENTS.md`]({agents_link})",
+            f"- Governance + ADRs: [`/flext/docs/GOVERNANCE.md`]({governance_link})",
             f"- Skills index: [`/flext/.agents/skills/`]({skills_link})",
             f"- Onboarding: [`/flext/docs/guides/onboarding.md`]({onboarding_link})",
         ]
 
     @staticmethod
-    def docs_project_index(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-    ) -> str:
+    def docs_project_index(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the standard ``<project>/docs/index.md`` landing page."""
         data = contract
         version = str(data.get("version", "")).strip() or "unknown"
@@ -251,10 +296,7 @@ class FlextInfraUtilitiesDocsRender:
         )
 
     @staticmethod
-    def docs_project_readme(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-    ) -> str:
+    def docs_project_readme(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the canonical ``<project>/README.md`` (8-section structure).
 
         Auto-generated from ``pyproject.toml`` + package exports + the canonical
@@ -268,12 +310,19 @@ class FlextInfraUtilitiesDocsRender:
         description = str(data.get("description", "")).strip() or "_not declared_"
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name}",
             "",
             f"**Version**: `{version}` | **Python**: 3.13+ | **Project class**: `{scope.project_class}`",
+            "",
+            (
+                "> **Alpha (0.12.0).** This package is alpha quality. Every "
+                "package in the workspace must be re-checked and re-validated "
+                "at 0.12.0 before any promotion beyond alpha; treat interfaces "
+                "as unstable."
+            ),
             "",
             "## Purpose",
             "",
@@ -313,7 +362,7 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} Guides",
@@ -326,15 +375,12 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_api_readme(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-    ) -> str:
+    def docs_api_readme(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the standard API readme for a project."""
         data = contract
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {scope.name} API Reference",
@@ -359,7 +405,7 @@ class FlextInfraUtilitiesDocsRender:
             f"- Primary facades: {FlextInfraUtilitiesDocsRender._preview(facades)}",
             f"- Generated module pages: `{len(modules)}`",
             "",
-            "- [Back to project docs](../index.md)",
+            "Back to [project docs](../index.md).",
             "",
         ])
 
@@ -369,9 +415,10 @@ class FlextInfraUtilitiesDocsRender:
 
         SSOT for the ``[GENERATED_HEADER, "", "# title", "", ...body, ""]``
         layout shared by every ``docs_*_page``/``docs_*_index``/``docs_*_readme``
-        renderer. Body lines are passed verbatim — no further escaping.
+        renderer. Structural lines remain verbatim while prose is wrapped by
+        the canonical renderer.
         """
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {title}",
@@ -400,59 +447,58 @@ class FlextInfraUtilitiesDocsRender:
 
     @staticmethod
     def docs_project_mkdocs(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-        modules: t.SequenceOf[str],
+        scope: m.Infra.DocScope, contract: t.JsonMapping, modules: t.SequenceOf[str]
     ) -> str:
         """Return the managed mkdocs.yml for a project scope.
 
-        Renders the canonical ``mkdocs_project.yml.j2`` template via
-        ``FlextInfraCodegenGeneration.get_template`` — single SSOT j2 path
-        shared with the workspace-root variant; theme + plugins + validation
-        macros live in the template, not Python.
+        Renders the canonical ``mkdocs_project.yml.j2`` template through the
+        flext-cli facade shared with the workspace-root variant; theme, plugins,
+        and validation macros live in the template, not Python.
         """
         _ = modules
         data = contract
 
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_MKDOCS_PROJECT,
-        )
-        rendered_template: str = template.render(
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # typed context across the sole public template-rendering boundary.
+        context = m.Infra.MkdocsProjectRenderContext(
             site_title=str(data.get("site_title", "")).strip() or scope.name,
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=c.Infra.GITHUB_REPO_NAME,
             scope_name=scope.name,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
             ),
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data)
             ),
-            mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
-                ("src",),
-            ),
+            mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block((
+                "src",
+            )),
         )
-        return rendered_template
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MKDOCS_PROJECT
+        )
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
+        return rendered
 
     @staticmethod
-    def docs_overview_page(
-        scope: m.Infra.DocScope,
-        contract: t.Infra.ContainerDict,
-    ) -> str:
+    def docs_overview_page(scope: m.Infra.DocScope, contract: t.JsonMapping) -> str:
         """Return the generated overview page for a project API."""
         data = contract
         aliases = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "aliases"),
-            limit=11,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "aliases"), limit=11
         )
         exports = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "public_symbols"),
             limit=10,
         )
         facades = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades"),
-            limit=8,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades"), limit=8
         )
         module_exports = FlextInfraUtilitiesDocsRender._preview(
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "module_exports"),
@@ -460,10 +506,9 @@ class FlextInfraUtilitiesDocsRender:
         )
         modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
         keywords = FlextInfraUtilitiesDocsRender._preview(
-            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"),
-            limit=8,
+            FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
@@ -471,6 +516,8 @@ class FlextInfraUtilitiesDocsRender:
             f"- Package: `{scope.package_name}`",
             f"- Version: `{data.get('version', '')}`",
             f"- Description: {data.get('description', '') or '_not declared_'}",
+            f"- Doc summary: {str(data.get('doc_summary', '')).strip() or '_not declared_'}",
+            f"- Classifiers: {FlextInfraUtilitiesDocsRender._preview(FlextInfraUtilitiesDocsRender.as_string_sequence(data, 'classifiers'), limit=6)}",
             f"- Project class: `{scope.project_class}`",
             f"- Keywords: {keywords}",
             f"- Main facades: {facades}",
@@ -487,10 +534,7 @@ class FlextInfraUtilitiesDocsRender:
         ])
 
     @staticmethod
-    def docs_modules_index(
-        scope: m.Infra.DocScope,
-        modules: t.SequenceOf[str],
-    ) -> str:
+    def docs_modules_index(scope: m.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
         """Return the generated module index page for one project."""
         lines: t.MutableSequenceOf[str] = [
             c.Infra.GENERATED_HEADER,
@@ -502,49 +546,56 @@ class FlextInfraUtilitiesDocsRender:
         ]
         if not modules:
             lines.extend(["_No public modules discovered._", ""])
-            return "\n".join(lines)
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
         for module_name in modules:
             relative_path = FlextInfraUtilitiesDocsRender._module_relative_doc_path(
-                scope.package_name,
-                module_name,
+                scope.package_name, module_name
             )
             lines.append(f"- [{module_name}]({relative_path})")
         lines.append("")
-        return "\n".join(lines)
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
-    def docs_root_mkdocs(contract: t.Infra.ContainerDict) -> str:
+    def docs_root_mkdocs(
+        contract: t.JsonMapping, src_paths: t.SequenceOf[str] = ()
+    ) -> str:
         """Return the managed mkdocs.yml for the workspace root.
 
-        Renders the canonical ``mkdocs_root.yml.j2`` template via
-        ``FlextInfraCodegenGeneration.get_template`` — single SSOT j2 path
-        shared with the per-project variant.
+        Renders the canonical ``mkdocs_root.yml.j2`` template through the
+        flext-cli facade shared with the per-project variant.
         """
         data = contract
 
-        template = FlextInfraCodegenGeneration.get_template(
-            c.Infra.TEMPLATE_MKDOCS_ROOT,
-        )
-        rendered_template: str = template.render(
-            site_title=(str(data.get("site_title", "")).strip() or "FLEXT Workspace"),
+        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # typed context across the sole public template-rendering boundary.
+        context = m.Infra.MkdocsRenderContext(
+            site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",
             site_url=str(data.get("site_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_url=str(data.get("repo_url", "")).strip() or c.Infra.GITHUB_REPO_URL,
             repo_name=c.Infra.GITHUB_REPO_NAME,
             exclude_docs_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_docs_lines(data)
             ),
             exclude_plugin_block=FlextInfraUtilitiesDocsRender._render_block(
-                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data),
+                FlextInfraUtilitiesDocsRender._exclude_plugin_lines(data)
             ),
             mkdocstrings_paths_block=FlextInfraUtilitiesDocsRender._mkdocstrings_paths_block(
-                (),
+                src_paths
             ),
         )
-        return rendered_template
+        template_path = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / c.Infra.TEMPLATE_MKDOCS_ROOT
+        )
+        rendered: str = t.Infra.STR_ADAPTER.validate_python(
+            u.Cli.template_render(template_path, context).unwrap()
+        )
+        return rendered
 
     @staticmethod
     def docs_root_overview_page(
-        contract: t.Infra.ContainerDict,
+        contract: t.JsonMapping,
         *,
         project_count: int,
         class_counts: t.MappingKV[str, int],
@@ -557,7 +608,7 @@ class FlextInfraUtilitiesDocsRender:
             )
             or "_none_"
         )
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
@@ -569,7 +620,34 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "Generated from workspace discovery, `pyproject.toml`, public exports, and docstrings.",
             "",
+            "## Next Pages",
+            "",
+            "- [Workspace Module Pages](projects/index.md)",
+            "- [Project Catalog](../../projects/generated/catalog.md)",
+            "",
         ])
+
+    @staticmethod
+    def docs_root_projects_index(entries: t.SequenceOf[t.StrMapping]) -> str:
+        """Return the generated root index of per-project module pages."""
+        lines: t.MutableSequenceOf[str] = [
+            c.Infra.GENERATED_HEADER,
+            "",
+            "# Workspace Module Pages",
+            "",
+            "Each project renders one page per public module, driven by docstrings.",
+            "",
+        ]
+        if not entries:
+            lines.extend(["_No projects discovered._", ""])
+            return FlextInfraUtilitiesDocsRender._render_markdown(lines)
+        for entry in entries:
+            lines.append(
+                f"- [{entry['name']}]({entry['name']}/modules/index.md)"
+                f" — `{entry['module_count']}` modules"
+            )
+        lines.append("")
+        return FlextInfraUtilitiesDocsRender._render_markdown(lines)
 
     @staticmethod
     def docs_project_catalog_page(
@@ -595,13 +673,12 @@ class FlextInfraUtilitiesDocsRender:
             for entry in entries
             if not any(
                 fnmatch.fnmatch(
-                    entry.get("api_page", "").removeprefix("../../"),
-                    pattern,
+                    entry.get("api_page", "").removeprefix("../../"), pattern
                 )
                 for pattern in exclude_patterns
             )
         ]
-        return "\n".join([
+        return FlextInfraUtilitiesDocsRender._render_markdown([
             c.Infra.GENERATED_HEADER,
             "",
             "# FLEXT Project Catalog",

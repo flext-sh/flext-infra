@@ -1,7 +1,7 @@
 """Utilities facade for flext-infra.
 
 Re-exports flext_core utilities and adds infrastructure-specific
-utility namespaces. All methods exposed directly via u.Infra.[method](...)
+utility namespaces. All methods are exposed directly as ``u.Infra.<method>()``.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -14,7 +14,6 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.deps_path_sync import FlextInfraUtilitiesDependencyPathSync
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
@@ -46,14 +45,17 @@ from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
     FlextInfraUtilitiesRopeAnalysisIntrospection,
@@ -69,12 +71,20 @@ from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModu
 from flext_infra._utilities.rope_mro_transform import (
     FlextInfraUtilitiesRopeMroTransform,
 )
-from flext_infra._utilities.rope_pep695_patch import (
+from flext_infra._utilities.rope_patch.pep695_patch import (
     FlextInfraUtilitiesRopePep695Patch,
 )
+from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
+from flext_infra._utilities.worktree_transaction import (
+    FlextInfraUtilitiesWorktreeTransaction,
+)
+from flext_infra._utilities.workspace_fingerprint import (
+    FlextInfraUtilitiesWorkspaceFingerprint,
+)
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
@@ -93,9 +103,11 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesProcess,
+        FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,
-        FlextInfraUtilitiesDependencyPathSync,
+        FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
         FlextInfraUtilitiesRopeAnalysis,
@@ -105,7 +117,9 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeInventory,
         FlextInfraUtilitiesRopeImports,
         FlextInfraUtilitiesRopeModulePatch,
+        FlextInfraUtilitiesRopeRuntime,
         FlextInfraUtilitiesRopeSource,
+        FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesRopePep695Patch,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
@@ -140,6 +154,10 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
+        FlextInfraUtilitiesWorkspaceFingerprint,
+        # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing
+        # u.Infra Git owner and expose one central execution/report surface.
+        FlextInfraUtilitiesWorktreeTransaction,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

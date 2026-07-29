@@ -5,11 +5,12 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraSkillRuleRunnerMixin:
@@ -39,11 +40,7 @@ class FlextInfraSkillRuleRunnerMixin:
         match rule_type:
             case "ast-grep":
                 count = self._run_ast_grep_count(
-                    rule_obj,
-                    skill_dir,
-                    root,
-                    include_globs,
-                    exclude_globs,
+                    rule_obj, skill_dir, root, include_globs, exclude_globs
                 )
             case "custom":
                 count = self._run_custom_count(rule_obj, skill_dir, root, mode)
@@ -67,19 +64,15 @@ class FlextInfraSkillRuleRunnerMixin:
         """Run an ast-grep rule and return match count."""
         rule_file_raw = u.Cli.json_get_str_key(rule, c.Infra.RK_FILE)
         if not rule_file_raw:
-            return 0
+            msg = "ast-grep rule must declare a non-empty file"
+            raise RuntimeError(msg)
         rule_file = Path(rule_file_raw)
         if not rule_file.is_absolute():
             rule_file = (skill_dir / rule_file_raw).resolve()
         if not rule_file.exists():
-            return 0
-        cmd = [
-            c.Infra.SG,
-            c.Infra.SCAN,
-            "--rule",
-            str(rule_file),
-            "--json=stream",
-        ]
+            msg = f"ast-grep rule file does not exist: {rule_file}"
+            raise RuntimeError(msg)
+        cmd = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_file), "--json=stream"]
         for pat in include_globs:
             cmd.extend(["--globs", pat])
         for pat in exclude_globs:
@@ -89,10 +82,13 @@ class FlextInfraSkillRuleRunnerMixin:
             cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
         if result_wrapper.failure:
-            return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+            msg = result_wrapper.error or "ast-grep execution failed"
+            raise RuntimeError(msg)
+        result: p.Cli.CommandOutput = result_wrapper.value
         if result.exit_code not in {0, 1}:
-            return 0
+            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+            msg = f"ast-grep exited with code {result.exit_code}: {detail}"
+            raise RuntimeError(msg)
         count = 0
         for raw_line in (result.stdout or "").splitlines():
             line = raw_line.strip()
@@ -129,12 +125,14 @@ class FlextInfraSkillRuleRunnerMixin:
         """Run a custom rule script and return violation count."""
         script_raw = u.Cli.json_get_str_key(rule, "script")
         if not script_raw:
-            return 0
+            msg = "custom rule must declare a non-empty script"
+            raise RuntimeError(msg)
         script = Path(script_raw)
         if not script.is_absolute():
             script = (skill_dir / script_raw).resolve()
         if not script.exists():
-            return 0
+            msg = f"custom rule script does not exist: {script}"
+            raise RuntimeError(msg)
         cmd: t.MutableSequenceOf[str] = (
             [sys.executable, str(script)]
             if script.suffix == c.Infra.EXT_PYTHON
@@ -147,8 +145,13 @@ class FlextInfraSkillRuleRunnerMixin:
             cmd, cwd=project_path, timeout=c.Infra.TIMEOUT_DEFAULT
         )
         if result_wrapper.failure:
-            return 0
-        result: m.Cli.CommandOutput = result_wrapper.value
+            msg = result_wrapper.error or "custom rule execution failed"
+            raise RuntimeError(msg)
+        result: p.Cli.CommandOutput = result_wrapper.value
+        if result.exit_code not in {0, 1}:
+            detail = (result.stderr or result.stdout).strip() or "no diagnostics"
+            msg = f"custom rule exited with code {result.exit_code}: {detail}"
+            raise RuntimeError(msg)
         count = self._parse_violation_count(result.stdout or "")
         if result.exit_code == 1:
             count = max(count, 1)

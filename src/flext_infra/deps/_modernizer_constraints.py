@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from typing import TYPE_CHECKING
+
+from flext_infra import c, u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraPyprojectModernizerConstraintsMixin:
@@ -20,7 +23,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
         location: str,
     ) -> tuple[t.JsonValueList | None, t.StrSequence]:
         """Rewrite one sequence of PEP 621 requirement strings in place."""
@@ -34,7 +36,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 requirement,
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
             )
             updated_requirements.append(rewritten or requirement)
             if rewritten is not None and rewritten != requirement:
@@ -49,7 +50,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
         location: str,
     ) -> t.StrSequence:
         """Rewrite one Poetry dependency table using the locked version policy."""
@@ -61,7 +61,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 current_value,
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
             )
             if rewritten_value is None:
                 continue
@@ -77,7 +76,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
     ) -> t.StrSequence:
         """Rewrite supported dependency tables from the current ``uv.lock`` state."""
         changes: t.MutableSequenceOf[str] = []
@@ -88,27 +86,23 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 project.get(c.Infra.DEPENDENCIES),
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
                 location="project.dependencies",
             )
             if project_deps is not None:
                 project[c.Infra.DEPENDENCIES] = project_deps
                 changes.extend(project_changes)
             optional_dependencies = u.Cli.toml_mapping_child(
-                project,
-                c.Infra.OPTIONAL_DEPENDENCIES,
+                project, c.Infra.OPTIONAL_DEPENDENCIES
             )
             if optional_dependencies is not None:
                 optional_dependencies = u.Cli.toml_mapping_ensure_table(
-                    project,
-                    c.Infra.OPTIONAL_DEPENDENCIES,
+                    project, c.Infra.OPTIONAL_DEPENDENCIES
                 )
                 for group_name in list(optional_dependencies):
                     group_deps, group_changes = self._rewrite_requirement_group(
                         optional_dependencies.get(group_name),
                         locked_versions=locked_versions,
                         internal_names=internal_names,
-                        policy=policy,
                         location=f"project.optional-dependencies.{group_name}",
                     )
                     if group_deps is None:
@@ -116,20 +110,17 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     optional_dependencies[group_name] = group_deps
                     changes.extend(group_changes)
         dependency_groups_view = u.Cli.toml_mapping_child(
-            payload,
-            c.Infra.DEPENDENCY_GROUPS,
+            payload, c.Infra.DEPENDENCY_GROUPS
         )
         if dependency_groups_view is not None:
             dependency_groups = u.Cli.toml_mapping_ensure_table(
-                payload,
-                c.Infra.DEPENDENCY_GROUPS,
+                payload, c.Infra.DEPENDENCY_GROUPS
             )
             for group_name in list(dependency_groups):
                 group_deps, group_changes = self._rewrite_requirement_group(
                     dependency_groups.get(group_name),
                     locked_versions=locked_versions,
                     internal_names=internal_names,
-                    policy=policy,
                     location=f"dependency-groups.{group_name}",
                 )
                 if group_deps is None:
@@ -137,8 +128,7 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 dependency_groups[group_name] = group_deps
                 changes.extend(group_changes)
         poetry_dependencies = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES),
+            payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.DEPENDENCIES)
         )
         if poetry_dependencies is not None:
             changes.extend(
@@ -146,13 +136,11 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     poetry_dependencies,
                     locked_versions=locked_versions,
                     internal_names=internal_names,
-                    policy=policy,
                     location="tool.poetry.dependencies",
                 )
             )
         poetry_groups = u.Cli.toml_mapping_path(
-            payload,
-            (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP),
+            payload, (c.Infra.TOOL, c.Infra.POETRY, c.Infra.GROUP)
         )
         if poetry_groups is not None:
             for group_name in list(poetry_groups):
@@ -173,7 +161,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                         group_dependencies,
                         locked_versions=locked_versions,
                         internal_names=internal_names,
-                        policy=policy,
                         location=(f"tool.poetry.group.{group_name}.dependencies"),
                     )
                 )

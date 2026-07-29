@@ -7,13 +7,16 @@ concrete ``FlextCli<X>`` imports are flagged outside src extension files.
 
 from __future__ import annotations
 
-from pathlib import Path
-
-from flext_tests import tm
+from typing import TYPE_CHECKING
 
 from flext_infra.gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
-from tests.typings import t
-from tests.utilities import u
+from flext_tests import tm
+from tests import u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 
 def _project(tmp_path: Path, *, name: str, filename: str, src: str) -> Path:

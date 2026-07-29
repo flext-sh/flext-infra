@@ -7,13 +7,7 @@ class FlextInfraUtilitiesRopeModulePatch:
     """String-level patch helpers driven by Rope-discovered module rules."""
 
     @classmethod
-    def ensure_runtime_alias(
-        cls,
-        source: str,
-        *,
-        alias: str,
-        target_name: str,
-    ) -> str:
+    def ensure_runtime_alias(cls, source: str, *, alias: str, target_name: str) -> str:
         """Return source with one canonical runtime alias guaranteed."""
         updated = cls._ensure_alias_line(source, alias=alias, target_name=target_name)
         return cls._ensure_all_entry(updated, name=alias)
@@ -49,9 +43,7 @@ class FlextInfraUtilitiesRopeModulePatch:
                 continue
             if "[" in line and "]" in line:
                 return cls._update_single_line_all(
-                    source,
-                    line_index=index,
-                    entry=quoted_name,
+                    source, line_index=index, entry=quoted_name
                 )
             return cls._update_block_all(lines, start=index, entry=quoted_name)
         return source

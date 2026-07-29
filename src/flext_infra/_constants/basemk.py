@@ -11,10 +11,12 @@ if TYPE_CHECKING:
 class FlextInfraConstantsBasemk:
     """Basemk infrastructure constants."""
 
+    MAKEFILE_BOOTSTRAP_TEMPLATE: Final[str] = "makefile_bootstrap.mk.j2"
     TEMPLATE_ORDER: Final[t.StrSequence] = (
         "base_header.mk.j2",
         "base_detection.mk.j2",
         "base_venv.mk.j2",
+        "project/base/base_mypy_limit.mk.j2",
         "base_preflight.mk.j2",
         "base_verbs.mk.j2",
         "base_daemons.mk.j2",

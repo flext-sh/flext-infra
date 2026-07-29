@@ -6,10 +6,13 @@ an unknown phase is a usage failure.
 
 from __future__ import annotations
 
-from flext_tests import tm
+from typing import TYPE_CHECKING
 
 from flext_infra import u
-from tests.typings import t
+from flext_tests import tm
+
+if TYPE_CHECKING:
+    from tests import t
 
 
 class TestResolveWhat:

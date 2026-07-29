@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import c, m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraRefactorViolationHelperClassifierMixin:
@@ -22,10 +24,7 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
 
     @classmethod
     def _analyze_file_helpers(
-        cls,
-        *,
-        file_path: Path,
-        content: str,
+        cls, *, file_path: Path, content: str
     ) -> m.Infra.HelperFileAnalysis:
         """Analyze file helpers."""
         suggestions: t.MutableSequenceOf[m.Infra.HelperClassification] = []
@@ -43,12 +42,10 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
                     dependencies.add(imported)
             has_decorators = bool(c.Infra.DECORATOR_RE.search(func_body))
             matched_categories = cls._match_categories(
-                dependencies=dependencies,
-                has_decorators=has_decorators,
+                dependencies=dependencies, has_decorators=has_decorators
             )
             classification_category, manual, reason = cls._resolve_category(
-                dependencies=dependencies,
-                matched_categories=matched_categories,
+                dependencies=dependencies, matched_categories=matched_categories
             )
             namespace_root = c.Infra.NAMESPACE_PREFIXES[classification_category]
             classification = m.Infra.HelperClassification(
@@ -73,10 +70,7 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
 
     @classmethod
     def _match_categories(
-        cls,
-        *,
-        dependencies: t.Infra.StrSet,
-        has_decorators: bool,
+        cls, *, dependencies: t.Infra.StrSet, has_decorators: bool
     ) -> t.Infra.StrSet:
         """Match categories."""
         matched: t.Infra.StrSet = set()
@@ -94,10 +88,7 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
 
     @classmethod
     def _resolve_category(
-        cls,
-        *,
-        dependencies: t.Infra.StrSet,
-        matched_categories: t.Infra.StrSet,
+        cls, *, dependencies: t.Infra.StrSet, matched_categories: t.Infra.StrSet
     ) -> t.Triple[str, bool, str]:
         """Resolve category."""
         if len(matched_categories) > 1:

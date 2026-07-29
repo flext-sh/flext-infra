@@ -2,23 +2,18 @@
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from typing import TYPE_CHECKING
+
+from flext_infra import c
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraCodegenGenerationPathsMixin:
     """Path and root-publication helper methods."""
 
-    @staticmethod
-    def _uses_direct_bootstrap(current_pkg: str) -> bool:
-        """Return whether a package bootstraps the lazy runtime itself."""
-        return current_pkg in {"flext_core._lazy_parts", "flext_core._typings"}
-
-    @staticmethod
-    def _uses_static_child_map(current_pkg: str) -> bool:
-        """Return whether child exports are already fully enumerated statically."""
-        return current_pkg == "flext_core" or current_pkg.startswith("flext_core.")
-
+    # mro-i6nq.10: Only canonical path/publication decisions remain here.
     @staticmethod
     def _is_module_or_package_export(attr_name: str) -> bool:
         """Return whether an entry exports a module or package name."""
@@ -36,8 +31,7 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _should_publish_root_export(
-        export_name: str,
-        lazy_filtered: t.LazyAliasMap,
+        export_name: str, lazy_filtered: t.LazyAliasMap
     ) -> bool:
         """Return whether a root export belongs in the frozen ``__all__`` ABI."""
         if export_name in c.Infra.INFRA_ONLY_EXPORTS | c.Infra.PUBLISHED_ALL_EXCLUDE:
@@ -67,12 +61,12 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _is_public_api_root_namespace(current_pkg: str) -> bool:
-        """Return whether ``current_pkg`` is a generated public package ABI root."""
-        return (
-            FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
-                current_pkg
-            )
-            and current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        """Return whether ``current_pkg`` owns a generated facade-root contract."""
+        return FlextInfraCodegenGenerationPathsMixin._is_root_namespace_package(
+            current_pkg
+        ) and (
+            current_pkg not in c.Infra.NON_PUBLIC_LAZY_ROOTS
+            or current_pkg == c.Infra.DIR_TESTS
         )
 
     @staticmethod
@@ -113,17 +107,20 @@ class FlextInfraCodegenGenerationPathsMixin:
 
     @staticmethod
     def _normalize_type_checking_module_path(
-        mod: str,
-        local_package_root: str | None,
+        mod: str, local_package_root: str | None
     ) -> str:
-        """Normalize a TYPE_CHECKING module path to its canonical absolute form."""
+        """Normalize local TYPE_CHECKING owners to package-relative imports."""
         if not local_package_root:
             return mod
+        if mod.startswith("."):
+            return mod
+        if mod == local_package_root:
+            return "."
+        if mod.startswith(f"{local_package_root}."):
+            return f".{mod.removeprefix(f'{local_package_root}.')}"
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
         internal_segments = frozenset(local_package_root.split(".")[1:])
-        if first_segment == root_pkg:
-            return mod
         if (
             mod.startswith("_")
             or first_segment in internal_segments
@@ -133,36 +130,31 @@ class FlextInfraCodegenGenerationPathsMixin:
                 and first_segment in c.Infra.LOCAL_INFERRED_SEGMENTS
             )
         ):
-            return f"{root_pkg}.{mod}"
+            return f".{mod}"
         return mod
 
     @staticmethod
-    def _reject_non_absolute_import(
-        mod: str,
-        local_package_root: str | None,
-        items: t.StrPairSequence,
+    def _reject_noncanonical_type_checking_import(
+        mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
-        """Reject generated TYPE_CHECKING imports that are not absolute."""
-        if mod.startswith("."):
+        """Reject relative imports without a package and unnormalized local owners."""
+        if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (
-                f"relative import {mod!r} in TYPE_CHECKING block "
-                f"(package {local_package_root!r}, exports: {exports}). "
-                "FLEXT forbids relative imports in source."
+                f"relative TYPE_CHECKING import {mod!r} has no local package "
+                f"(exports: {exports})"
             )
             raise ValueError(msg)
-        if not local_package_root:
+        if not local_package_root or mod.startswith("."):
             return
         root_pkg = local_package_root.split(".", maxsplit=1)[0]
         first_segment = mod.split(".", maxsplit=1)[0]
-        internal_segments = frozenset(local_package_root.split(".")[1:])
-        if first_segment not in internal_segments or first_segment == root_pkg:
+        if first_segment != root_pkg:
             return
         exports = ", ".join(name for name, _ in items)
         msg = (
-            f"non-absolute import {mod!r} in TYPE_CHECKING block "
-            f"(package {local_package_root!r}, root {root_pkg!r}, "
-            f"exports: {exports}). Expected: {root_pkg}.{mod!s}"
+            f"absolute local TYPE_CHECKING import {mod!r} in package "
+            f"{local_package_root!r} (exports: {exports}); expected a relative owner"
         )
         raise ValueError(msg)
 

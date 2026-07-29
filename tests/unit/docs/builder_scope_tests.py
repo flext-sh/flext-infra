@@ -2,51 +2,52 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.docs.builder import FlextInfraDocBuilder
-from tests.constants import c
-from tests.utilities import u
+from flext_tests import tm
+from tests import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_build_returns_root_and_selected_project_reports(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a", "flext-b"),
+        tmp_path, project_names=("flext-a", "flext-b")
     )
 
     result = FlextInfraDocBuilder().build(
-        workspace,
-        projects=["flext-a"],
-        output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
+        workspace, projects=["flext-a"], output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR
     )
 
-    assert result.success
-    assert [report.scope for report in result.value] == ["root", "flext-a"]
-    assert all(report.result == "SKIP" for report in result.value)
+    tm.ok(result)
+    tm.that([report.scope for report in result.value], eq=["root", "flext-a"])
+    tm.that(
+        all(report.result == c.Infra.ResultStatus.FAIL for report in result.value),
+        eq=True,
+    )
+    tm.that(all(not report.passed for report in result.value), eq=True)
 
 
 def test_build_uses_custom_output_dir(tmp_path: Path) -> None:
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path,
-        project_names=("flext-a",),
-    )
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     result = FlextInfraDocBuilder().build(
-        workspace,
-        projects=["flext-a"],
-        output_dir=".custom-docs",
+        workspace, projects=["flext-a"], output_dir=".custom-docs"
     )
 
-    assert result.success
-    assert (workspace / ".custom-docs/build-report.md").exists()
-    assert (workspace / "flext-a/.custom-docs/build-report.md").exists()
+    tm.ok(result)
+    tm.that((workspace / ".custom-docs/build-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.custom-docs/build-report.md").exists(), eq=True)
 
 
-def test_build_skip_report_has_empty_site_dir(tmp_path: Path) -> None:
+def test_build_missing_settings_failure_has_empty_site_dir(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder().build(workspace)
 
-    assert result.success
-    assert result.value[0].site_dir == ""
+    tm.ok(result)
+    tm.that(result.value[0].result, eq=c.Infra.ResultStatus.FAIL)
+    tm.that(result.value[0].passed, eq=False)
+    tm.that(result.value[0].site_dir, eq="")

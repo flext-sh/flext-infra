@@ -9,15 +9,21 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_tests import tm
+import pytest
 
 from flext_infra import infra, t
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
+from flext_tests import tm
+
+pytestmark = pytest.mark.timeout(180)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _SRC_MODULES = (
     "constants.py",
@@ -37,8 +43,7 @@ def _write_complete_modules(pkg_dir: Path, package_name: str) -> None:
     for module_name in _SRC_MODULES:
         suffix = module_name.split(".")[0].title()
         _ = (pkg_dir / module_name).write_text(
-            f"class {prefix}{suffix}:\n    pass\n",
-            encoding="utf-8",
+            f"class {prefix}{suffix}:\n    pass\n", encoding="utf-8"
         )
 
 
@@ -86,8 +91,7 @@ def _make_project(
         tests_dir = project / "tests"
         tests_dir.mkdir()
         _ = (tests_dir / "__init__.py").write_text(
-            '"""Tests init for pipeline test."""\n\n__all__ = []\n',
-            encoding="utf-8",
+            '"""Tests init for pipeline test."""\n\n__all__ = []\n', encoding="utf-8"
         )
     return project
 
@@ -95,23 +99,12 @@ def _make_project(
 def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     """Pipeline flow remains isolated, idempotent, and syntactically valid."""
     _ = _make_project(
-        tmp_path,
-        "project-a",
-        with_all_modules=True,
-        with_tests_dir=False,
+        tmp_path, "project-a", with_all_modules=True, with_tests_dir=False
     )
     project_b = _make_project(
-        tmp_path,
-        "project-b",
-        with_all_modules=True,
-        with_tests_dir=False,
+        tmp_path, "project-b", with_all_modules=True, with_tests_dir=False
     )
-    _ = _make_project(
-        tmp_path,
-        "project-c",
-        with_all_modules=True,
-        with_tests_dir=True,
-    )
+    _ = _make_project(tmp_path, "project-c", with_all_modules=True, with_tests_dir=True)
     external_project = _make_project(
         tmp_path,
         "external-project",
@@ -129,11 +122,11 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     external_package = external_project / "src" / "external_project"
     tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
     payload = infra.model_copy(
-        update={"workspace_root": tmp_path, "apply_changes": True},
+        update={"workspace_root": tmp_path, "apply_changes": True}
     ).command_payload()
     census_before = FlextInfraCodegenCensus.model_validate(payload).run()
     scaffold_results_first = FlextInfraCodegenScaffolder.model_validate(payload).run(
-        dry_run=False,
+        dry_run=False
     )
     scaffold_by_project_first = {
         result.project: result for result in scaffold_results_first
@@ -142,7 +135,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     tm.that(scaffold_by_project_first, has="project-b")
     tm.that(scaffold_by_project_first, has="project-c")
     scaffold_results_second = FlextInfraCodegenScaffolder.model_validate(payload).run(
-        dry_run=False,
+        dry_run=False
     )
     scaffold_by_project_second = {
         result.project: result for result in scaffold_results_second
@@ -159,10 +152,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     all_violations = list(project_b_fixed.violations_fixed) + list(
         project_b_fixed.violations_skipped
     )
-    tm.that(
-        any(v.rule.startswith("NS-002") for v in all_violations),
-        eq=True,
-    )
+    tm.that(any(v.rule.startswith("NS-002") for v in all_violations), eq=True)
     unmapped_count = FlextInfraCodegenLazyInit.model_validate(payload).generate_inits()
     tm.that(unmapped_count, gte=0)
     census_after = FlextInfraCodegenCensus.model_validate(payload).run()
@@ -172,7 +162,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     for py_file in tmp_path.rglob("*.py"):
         source = py_file.read_text(encoding="utf-8")
         compiled = compile(source, str(py_file), "exec")
-        assert compiled is not None
+        tm.that(compiled, none=False)
     tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
 
 

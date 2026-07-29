@@ -11,7 +11,8 @@ from flext_infra.transformers.signature_propagator import (
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
-from tests.models import m
+from flext_tests import tm
+from tests import m
 
 
 class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
@@ -23,10 +24,10 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             order_config=[
                 {"category": "magic", "patterns": ["^__.+__$"]},
                 {"category": "public", "visibility": "public"},
-            ],
+            ]
         ).apply_to_source(source)
-        assert updated.index("def __init__") < updated.index("def a")
-        assert updated.index("def a") < updated.index("def b")
+        tm.that(updated.index("def __init__") < updated.index("def a"), eq=True)
+        tm.that(updated.index("def a") < updated.index("def b"), eq=True)
 
     def test_class_reconstructor_skips_interleaved_non_method_members(self) -> None:
         source = "class C:\n    def b(self) -> None:\n        return None\n\n    alias = b\n\n    def a(self) -> None:\n        return None\n"
@@ -34,18 +35,18 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             order_config=[
                 {"category": "magic", "patterns": ["^__.+__$"]},
                 {"category": "public", "visibility": "public"},
-            ],
+            ]
         ).apply_to_source(source)
-        assert updated == source
+        tm.that(updated, eq=source)
 
     def test_class_reconstructor_reorders_each_contiguous_method_block(self) -> None:
         source = "class C:\n    def b(self) -> None:\n        return None\n\n    def a(self) -> None:\n        return None\n\n    alias = a\n\n    def d(self) -> None:\n        return None\n\n    def c(self) -> None:\n        return None\n"
         updated, _ = FlextInfraRefactorClassReconstructor(
-            order_config=[{"category": "public", "visibility": "public"}],
+            order_config=[{"category": "public", "visibility": "public"}]
         ).apply_to_source(source)
-        assert updated.index("def a") < updated.index("def b")
-        assert updated.index("def c") < updated.index("def d")
-        assert "alias = a" in updated
+        tm.that(updated.index("def a") < updated.index("def b"), eq=True)
+        tm.that(updated.index("def c") < updated.index("def d"), eq=True)
+        tm.that(updated, has="alias = a")
 
     def test_symbol_propagation_renames_import_and_local_references(self) -> None:
         source = "from flext_infra import LegacyRemovalRule\n\nrule_cls = LegacyRemovalRule\n"
@@ -53,11 +54,13 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             target_modules={"flext_infra"},
             module_renames={},
             import_symbol_renames={
-                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
+                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule"
             },
         ).apply_to_source(source)
-        assert "from flext_infra import FlextInfraRefactorLegacyRemovalRule" in updated
-        assert "rule_cls = FlextInfraRefactorLegacyRemovalRule" in updated
+        tm.that(
+            updated, has="from flext_infra import FlextInfraRefactorLegacyRemovalRule"
+        )
+        tm.that(updated, has="rule_cls = FlextInfraRefactorLegacyRemovalRule")
 
     def test_symbol_propagation_keeps_alias_reference_when_asname_used(self) -> None:
         source = (
@@ -67,14 +70,17 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             target_modules={"flext_infra"},
             module_renames={},
             import_symbol_renames={
-                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
+                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule"
             },
         ).apply_to_source(source)
-        assert (
-            "from flext_infra import FlextInfraRefactorLegacyRemovalRule as Legacy"
-            in updated
+        tm.that(
+            (
+                "from flext_infra import FlextInfraRefactorLegacyRemovalRule as Legacy"
+                in updated
+            ),
+            eq=True,
         )
-        assert "rule_cls = Legacy" in updated
+        tm.that(updated, has="rule_cls = Legacy")
 
     def test_symbol_propagation_updates_mro_base_references(self) -> None:
         source = "from flext_infra import LegacyRemovalRule\n\nclass RuleV2(LegacyRemovalRule):\n    pass\n"
@@ -82,10 +88,10 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             target_modules={"flext_infra"},
             module_renames={},
             import_symbol_renames={
-                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule",
+                "LegacyRemovalRule": "FlextInfraRefactorLegacyRemovalRule"
             },
         ).apply_to_source(source)
-        assert "class RuleV2(FlextInfraRefactorLegacyRemovalRule):" in updated
+        tm.that(updated, has="class RuleV2(FlextInfraRefactorLegacyRemovalRule):")
 
     def test_signature_propagation_renames_call_keyword(self) -> None:
         source = "result = migrate(project_root=root, dry_run=True)\n"
@@ -96,9 +102,9 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             "keyword_renames": {"project_root": "workspace_root"},
         })
         updated = FlextInfraRefactorSignaturePropagator(
-            migrations=[migration],
+            migrations=[migration]
         ).apply_to_source(source)
-        assert "migrate(workspace_root=root, dry_run=True)" in updated
+        tm.that(updated, has="migrate(workspace_root=root, dry_run=True)")
 
     def test_signature_propagation_removes_and_adds_keywords(self) -> None:
         source = "run(legacy=True)\n"
@@ -110,7 +116,7 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             "add_keywords": {"mode": '"modern"'},
         })
         updated = FlextInfraRefactorSignaturePropagator(
-            migrations=[migration],
+            migrations=[migration]
         ).apply_to_source(source)
-        assert "run(mode" in updated
-        assert "modern" in updated
+        tm.that(updated, has="run(mode")
+        tm.that(updated, has="modern")

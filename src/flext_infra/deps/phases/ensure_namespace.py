@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.constants import c
+from flext_infra import c, config, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraEnsureNamespaceToolingPhase:
@@ -26,31 +23,28 @@ class FlextInfraEnsureNamespaceToolingPhase:
 
     def apply(self, doc: t.Cli.TomlDocument, *, path: Path) -> t.StrSequence:
         """Apply detected first-party namespaces to dependency tooling tables."""
-        detected = sorted(
-            {
-                *u.Infra.discover_first_party_namespaces(path.parent),
-                *u.Infra.workspace_dep_namespaces(doc),
-            },
-        )
+        detected = sorted({
+            *config.Infra.tooling.tools.deptry.known_first_party,
+            *u.Infra.discover_first_party_namespaces(path.parent),
+            # mro-j47u (codex): declared FLEXT dependencies are first-party.
+            *u.Infra.flext_dependency_namespaces(doc),
+        })
         if not detected:
-            return []
+            return ()
         return FlextInfraTomlPhaseService.apply_phases(doc, self._phase(detected))
 
     def apply_payload(
-        self,
-        payload: t.MutableJsonMapping,
-        *,
-        path: Path,
+        self, payload: t.MutableJsonMapping, *, path: Path
     ) -> t.StrSequence:
         """Apply detected first-party namespaces to one normalized payload."""
-        detected = sorted(
-            {
-                *u.Infra.discover_first_party_namespaces(path.parent),
-                *u.Infra.workspace_dep_namespaces_from_payload(payload),
-            },
-        )
+        detected = sorted({
+            *config.Infra.tooling.tools.deptry.known_first_party,
+            *u.Infra.discover_first_party_namespaces(path.parent),
+            *u.Infra.flext_dependency_namespaces_from_payload(payload),
+            u.Infra.project_name_from_payload(path, payload).replace("-", "_"),
+        })
         if not detected:
-            return []
+            return ()
         return FlextInfraTomlPhaseService.apply_payload_phases(
             payload, self._phase(detected)
         )

@@ -6,11 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
-from tests.constants import c
-from tests.typings import t
+from flext_tests import tm
+from tests import c
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from tests import t
 
 _WORKSPACE_PYPROJECT = """\
 [project]
@@ -44,8 +49,7 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
     proj.mkdir()
     (proj / "pyproject.toml").write_text(
         _PROJECT_PYPROJECT.format(
-            project_name=project_name,
-            project_version=c.Tests.RELEASE_VERSION_BASE,
+            project_name=project_name, project_version=c.Tests.RELEASE_VERSION_BASE
         ),
         encoding="utf-8",
     )
@@ -63,9 +67,9 @@ class TestsFlextInfraCodegenVersionFile:
 
         result = svc.execute()
 
-        assert result.success
+        tm.ok(result)
         version_file = pkg / "__version__.py"
-        assert version_file.exists()
+        tm.that(version_file.exists(), eq=True)
 
     def test_generated_file_contains_class_name(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -75,7 +79,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         version_file = pkg / "__version__.py"
         content = version_file.read_text(encoding="utf-8")
-        assert "DemoProjectVersion" in content
+        tm.that(content, has="DemoProjectVersion")
 
     def test_generated_file_inherits_flext_version(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -84,7 +88,7 @@ class TestsFlextInfraCodegenVersionFile:
         svc.execute()
 
         content = (pkg / "__version__.py").read_text(encoding="utf-8")
-        assert "FlextVersion" in content
+        tm.that(content, has="FlextVersion")
 
     def test_check_only_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -95,7 +99,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that(not (pkg / "__version__.py").exists(), eq=True)
 
     def test_dry_run_does_not_write_file(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -106,7 +110,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert not (pkg / "__version__.py").exists()
+        tm.that(not (pkg / "__version__.py").exists(), eq=True)
 
     def test_idempotent_when_file_already_correct(self, tmp_path: Path) -> None:
         ws, _proj, pkg = _create_workspace(tmp_path, c.Tests.DEMO_PROJECT_NAME)
@@ -117,7 +121,7 @@ class TestsFlextInfraCodegenVersionFile:
         svc.execute()
         second_content = (pkg / "__version__.py").read_text(encoding="utf-8")
 
-        assert first_content == second_content
+        tm.that(first_content, eq=second_content)
 
     def test_project_filter_only_generates_for_matching_project(
         self, tmp_path: Path
@@ -141,8 +145,7 @@ class TestsFlextInfraCodegenVersionFile:
             proj.mkdir()
             (proj / "pyproject.toml").write_text(
                 _PROJECT_PYPROJECT.format(
-                    project_name=name,
-                    project_version=c.Tests.RELEASE_VERSION_BASE,
+                    project_name=name, project_version=c.Tests.RELEASE_VERSION_BASE
                 ),
                 encoding="utf-8",
             )
@@ -156,20 +159,26 @@ class TestsFlextInfraCodegenVersionFile:
 
         svc.execute()
 
-        assert (
-            ws
-            / c.Tests.PROJECT_A_NAME
-            / "src"
-            / c.Tests.PROJECT_A_NAME.replace("-", "_")
-            / "__version__.py"
-        ).exists()
-        assert not (
-            ws
-            / c.Tests.PROJECT_B_NAME
-            / "src"
-            / c.Tests.PROJECT_B_NAME.replace("-", "_")
-            / "__version__.py"
-        ).exists()
+        tm.that(
+            (
+                ws
+                / c.Tests.PROJECT_A_NAME
+                / "src"
+                / c.Tests.PROJECT_A_NAME.replace("-", "_")
+                / "__version__.py"
+            ).exists(),
+            eq=True,
+        )
+        tm.that(
+            not (
+                ws
+                / c.Tests.PROJECT_B_NAME
+                / "src"
+                / c.Tests.PROJECT_B_NAME.replace("-", "_")
+                / "__version__.py"
+            ).exists(),
+            eq=True,
+        )
 
     def test_skips_project_without_src_pkg_dir(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspace"
@@ -200,7 +209,7 @@ class TestsFlextInfraCodegenVersionFile:
 
         result = svc.execute()
 
-        assert result.success
+        tm.ok(result)
 
 
 __all__: t.StrSequence = []

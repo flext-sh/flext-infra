@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import (
-    c,
-    m,
-    p,
-    r,
-    t,
-    u,
-)
+from flext_infra import c, m, p, r, t, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FlextInfraCodegenConsolidatorStepsMixin:
@@ -29,8 +24,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
 
     @classmethod
     def _build_value_map_from_constants_file(
-        cls,
-        constants_file: Path,
+        cls, constants_file: Path
     ) -> p.Result[t.StrMapping]:
         """Build value map from a constants file.
 
@@ -42,11 +36,11 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         read = u.Cli.files_read_text(constants_file)
         if read.failure:
             return r[t.StrMapping].fail(
-                read.error or f"unreadable constants file: {constants_file}",
+                read.error or f"unreadable constants file: {constants_file}"
             )
         value_map: t.MutableStrMapping = {}
         for name, _, raw, class_path, _ in u.Infra.parse_final_constant_definitions(
-            read.value.splitlines(),
+            read.value.splitlines()
         ):
             if not raw:
                 continue
@@ -69,9 +63,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         value_map: t.StrMapping,
     ) -> (
         tuple[
-            t.Infra.RopeResource,
-            str,
-            t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]],
+            t.Infra.RopeResource, str, t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]
         ]
         | None
     ):
@@ -84,11 +76,7 @@ class FlextInfraCodegenConsolidatorStepsMixin:
         if not assignments:
             return None
         source = resource.read()
-        matches = self._match_assignments(
-            assignments,
-            source.splitlines(),
-            value_map,
-        )
+        matches = self._match_assignments(assignments, source.splitlines(), value_map)
         if not matches:
             return None
         return (resource, source, matches)
@@ -96,13 +84,15 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     @staticmethod
     def _match_assignments(
         symbols: t.SequenceOf[m.Infra.SymbolInfo],
+        # mro-j47u (codex): use the canonical scalar sequence alias directly.
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
     ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
         """Match assignments."""
         matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
-            line_number = symbol.line
+            # mro-j47u (codex): widen the validated constrained int for indexing.
+            line_number: int = symbol.line
             if line_number < 1 or line_number > len(source_lines):
                 continue
             line: str = source_lines[line_number - 1]
@@ -162,17 +152,10 @@ class FlextInfraCodegenConsolidatorStepsMixin:
                 before_source=backup,
                 edit_fn=lambda: (
                     u.Infra.rewrite_source_at_offsets(
-                        rope_project,
-                        resource,
-                        edits,
-                        apply=True,
+                        rope_project, resource, edits, apply=True
                     ),
                     u.Infra.add_import(
-                        rope_project,
-                        resource,
-                        pkg_name,
-                        ["c"],
-                        apply=True,
+                        rope_project, resource, pkg_name, ["c"], apply=True
                     ),
                     None,
                 )[-1],

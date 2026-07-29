@@ -6,19 +6,15 @@ Make routing is owned by the registry discovered from ``scripts/cmd``.
 
 from __future__ import annotations
 
-from flext_tests import tm
+from typing import TYPE_CHECKING
 
 from flext_infra import c
-from tests.typings import t
+from flext_tests import tm
 
-_PHASED_VERBS = frozenset({
-    "boot",
-    "build",
-    "check",
-    "test",
-    "val",
-    "ship",
-})
+if TYPE_CHECKING:
+    from tests import t
+
+_PHASED_VERBS = frozenset({"boot", "build", "check", "test", "val", "ship"})
 _RETIRED_VERBS = frozenset({
     "scan",
     "fmt",

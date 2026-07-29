@@ -6,15 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    Iterator,
-)
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+# NOTE (multi-agent, mro-wkii.17.9.2.1): declaration-only protocol types stay
+# behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
-    from flext_core import p
-    from flext_infra import m, t
+    from collections.abc import Iterator
+    from pathlib import Path
+
+    from flext_cli import p
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -62,18 +63,196 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def name(self) -> str:
-            """Return the project name."""
+            """Project name."""
             ...
 
         @property
         def path(self) -> Path:
-            """Return the project path."""
+            """Project path."""
             ...
 
         @property
         def package_name(self) -> str:
-            """Return the primary Python package name."""
+            """Primary Python package name."""
             ...
+
+    # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
+    # contracts preserve config-model field types across the public p/u facades.
+    @runtime_checkable
+    class RepositoryRef(Protocol):
+        """Repository fields consumed by codegen path and profile selection."""
+
+        @property
+        def name(self) -> str:
+            """Repository catalog name."""
+            ...
+
+        @property
+        def distribution(self) -> str:
+            """Python distribution name."""
+            ...
+
+        @property
+        def url(self) -> str:
+            """Canonical Git URL."""
+            ...
+
+        @property
+        def branch(self) -> str:
+            """Canonical Git branch."""
+            ...
+
+        @property
+        def path(self) -> Path:
+            """Repository path relative to its workspace root."""
+            ...
+
+        @property
+        def profile(self) -> str | None:
+            """Generated Make profile when the repository is active."""
+            ...
+
+        @property
+        def checkout(self) -> str:
+            """Physical checkout topology."""
+            ...
+
+        @property
+        def codegen(self) -> str:
+            """Repository code-generation policy."""
+            ...
+
+        @property
+        def package(self) -> bool:
+            """Whether the repository publishes a Python package."""
+            ...
+
+        @property
+        def editable(self) -> bool:
+            """Whether the repository is overlaid as editable."""
+            ...
+
+        @property
+        def read_only(self) -> bool:
+            """Whether generated mutations are forbidden."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceSpec(Protocol):
+        """Workspace topology fields consumed by repository selection."""
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
+            """Workspace root repository."""
+            ...
+
+        @property
+        def members(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+            """Attached workspace member repositories."""
+            ...
+
+        @property
+        def content_only(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+            """Declared content-only repositories."""
+            ...
+
+    @runtime_checkable
+    class GithubPullRequestFields(Protocol):
+        """Shared PR execution fields accepted at the transport boundary."""
+
+        @property
+        def action(self) -> c.Infra.PullRequestAction:
+            """Requested PR operation."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Target branch when explicitly selected."""
+            ...
+
+        @property
+        def head(self) -> str | None:
+            """Source branch when explicitly selected."""
+            ...
+
+        @property
+        def title(self) -> str | None:
+            """PR title used for creation."""
+            ...
+
+        @property
+        def body(self) -> str | None:
+            """PR body used for creation."""
+            ...
+
+        @property
+        def draft(self) -> bool:
+            """Whether creation requests a draft PR."""
+            ...
+
+    @runtime_checkable
+    class WorkspaceEnvironmentRequest(Protocol):
+        """Read-only workspace environment validation request."""
+
+        @property
+        def workspace_root(self) -> Path:
+            """Workspace whose active interpreter provenance must be validated."""
+            ...
+
+    @runtime_checkable
+    class ToolchainSpec(Protocol):
+        """Toolchain fields consumed by pyproject conformance."""
+
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
+        # complete with the validated config model used by codegen consumers.
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement for the compatible Python line."""
+            ...
+
+        @property
+        def python_version(self) -> str:
+            """Compatible Python major.minor line."""
+            ...
+
+        @property
+        def uv_link_mode(self) -> str:
+            """Portable uv installation link mode."""
+            ...
+
+    @runtime_checkable
+    class TemplateEntrySpec(Protocol):
+        """Template-entry fields consumed by scaffold root selection."""
+
+        @property
+        def destination(self) -> str:
+            """Tokenized repository-relative destination."""
+            ...
+
+        @property
+        def profiles(self) -> t.StrSequence:
+            """Make profiles that consume the template."""
+            ...
+
+        @property
+        def delegate(self) -> str:
+            """Canonical template rendering delegate."""
+            ...
+
+    @classmethod
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether a file belongs to the governed root namespace."""
+        ...
+
+    @staticmethod
+    def runtime_singleton_export(file_name: str) -> str | None:
+        """Return the public singleton exported by a runtime module."""
+        ...
+
+    @classmethod
+    def matches_project_namespace_package(cls, package_name: str) -> bool:
+        """Return whether a package is a governed project namespace root."""
+        ...
 
     @runtime_checkable
     class Validator(Protocol):
@@ -88,9 +267,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project and workspace quality checking services."""
 
         def run(
-            self,
-            project: str,
-            gates: t.StrSequence,
+            self, project: str, gates: t.StrSequence
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
             ...
@@ -116,8 +293,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for artifact and documentation generation services."""
 
         def generate(
-            self,
-            request: m.Infra.DocsGenerateRequest,
+            self, request: m.Infra.DocsGenerateRequest
         ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
             """Generate project-scoped artifacts for the workspace."""
             ...
@@ -127,8 +303,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self,
-            workspace_root: Path,
+            self, workspace_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
             """Discover projects in a workspace root."""
             ...
@@ -137,7 +312,7 @@ class FlextInfraProtocolsBase(Protocol):
     class TomlReader(Protocol):
         """Contract for TOML file readers used by dependency services."""
 
-        def read_plain(self, path: Path) -> p.Result[t.Infra.ContainerDict]:
+        def read_plain(self, path: Path) -> p.Result[t.JsonMapping]:
             """Read and parse a TOML file as a plain dict with r error handling."""
             ...
 
@@ -187,9 +362,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for JSON serialization and persistence."""
 
         def write_json(
-            self,
-            path: Path,
-            payload: t.MappingKV[str, t.Infra.InfraValue],
+            self, path: Path, payload: t.MappingKV[str, t.Infra.InfraValue]
         ) -> p.Result[bool]:
             """Write payload to JSON file."""
             ...
@@ -207,26 +380,19 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self,
-            workspace_root: Path,
-            *,
-            projects_filter: t.StrSequence | None = None,
+            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
 
         def run_deptry(
-            self,
-            project_path: Path,
-            venv_bin: Path,
-        ) -> p.Result[t.Pair[t.SequenceOf[t.Infra.ContainerDict], int]]:
+            self, project_path: Path, venv_bin: Path
+        ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
-            self,
-            project_name: str,
-            deptry_issues: t.SequenceOf[t.Infra.ContainerDict],
+            self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
         ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
@@ -236,8 +402,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for typing-related dependency detection."""
 
         def load_dependency_limits(
-            self,
-            limits_path: Path | None = None,
+            self, limits_path: Path | None = None
         ) -> t.MappingKV[str, t.Infra.InfraValue]:
             """Load dependency limits from TOML file."""
             ...
@@ -257,9 +422,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self,
-            workspace_root: Path,
-            venv_bin: Path,
+            self, workspace_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -274,7 +437,7 @@ class FlextInfraProtocolsBase(Protocol):
             cwd: Path | None = None,
             timeout: int | None = None,
             env: t.StrMapping | None = None,
-        ) -> p.Result[m.Cli.CommandOutput]:
+        ) -> p.Result[p.Cli.CommandOutput]:
             """Run command and return raw output."""
             ...
 
@@ -293,8 +456,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for template renderers."""
 
         def render_all(
-            self,
-            settings: m.Infra.BaseMkConfig | None = None,
+            self, settings: m.Infra.BaseMkConfig | None = None
         ) -> p.Result[str]:
             """Render all templates with given configuration."""
             ...
@@ -318,7 +480,7 @@ class FlextInfraProtocolsBase(Protocol):
             *,
             fail_fast: bool = False,
             make_args: t.StrSequence = (),
-        ) -> p.Result[t.SequenceOf[m.Cli.CommandOutput]]:
+        ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...
 
@@ -389,9 +551,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for post-transform quality gate validators."""
 
         def validate(
-            self,
-            files: t.SequenceOf[Path],
-            project_dir: Path,
+            self, files: t.SequenceOf[Path], project_dir: Path
         ) -> p.Result[m.Infra.GateResult]:
             """Validate files pass quality gates after transformation."""
             ...
@@ -437,29 +597,25 @@ class FlextInfraProtocolsBase(Protocol):
         """Protocol for GitHub CLI handler mixins."""
 
         def sync_github_workflows(
-            self,
-            params: m.Infra.GithubWorkflowSyncRequest,
+            self, params: m.Infra.GithubWorkflowSyncRequest
         ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
             """Sync GitHub workflow files."""
             ...
 
         def lint_github_workflows(
-            self,
-            params: m.Infra.GithubWorkflowLintRequest,
+            self, params: m.Infra.GithubWorkflowLintRequest
         ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
             """Lint GitHub workflow files."""
             ...
 
         def run_github_pull_request(
-            self,
-            params: m.Infra.GithubPullRequestRequest,
+            self, params: m.Infra.GithubPullRequestRequest
         ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
             """Manage pull request for a single project."""
             ...
 
         def run_github_workspace_pull_requests(
-            self,
-            params: m.Infra.GithubPullRequestWorkspaceRequest,
+            self, params: m.Infra.GithubPullRequestWorkspaceRequest
         ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
             """Manage pull requests across the workspace."""
             ...

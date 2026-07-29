@@ -16,16 +16,17 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
 )
 from flext_infra.transformers.base import FlextInfraRopeTransformer
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
@@ -81,9 +82,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
     def _ensure_u_import(cls, source: str) -> str:
         """Ensure ``from flext_core import u`` is present."""
         pkg_match = re.search(
-            r"^from\s+flext_core\s+import\s+([^\n]+)",
-            source,
-            re.MULTILINE,
+            r"^from\s+flext_core\s+import\s+([^\n]+)", source, re.MULTILINE
         )
         if pkg_match:
             names = pkg_match.group(1).strip()
@@ -98,9 +97,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
         return "".join(lines)
 
     @staticmethod
-    def _rewrite_from_import_node(
-        node: ast.ImportFrom,
-    ) -> tuple[str | None, str]:
+    def _rewrite_from_import_node(node: ast.ImportFrom) -> tuple[str | None, str]:
         """Drop ``getLogger`` from a ``from logging import ...`` statement."""
         names_to_keep: list[str] = []
         removed_get_logger = False
@@ -148,7 +145,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
                 for alias in node.names:
                     if alias.name == "getLogger":
                         self._logging_function_names.add(
-                            alias.asname if alias.asname is not None else alias.name,
+                            alias.asname if alias.asname is not None else alias.name
                         )
             self.generic_visit(node)
 
@@ -193,9 +190,7 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
                     count=1,
                 )
                 self.append_rewrite(
-                    node,
-                    new_call,
-                    "Replaced getLogger(...) with u.fetch_logger(...)",
+                    node, new_call, "Replaced getLogger(...) with u.fetch_logger(...)"
                 )
                 self.needs_u_import = True
                 return

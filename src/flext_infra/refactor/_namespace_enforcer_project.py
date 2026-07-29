@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import config, m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -33,16 +32,16 @@ from flext_infra.detectors.mro_completeness_detector import (
 from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
 )
-from flext_infra.detectors.pattern_smell_detector import (
-    FlextInfraPatternSmellDetector,
-)
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraNamespaceEnforcerProjectMixin:
@@ -142,7 +141,8 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_name=project_name,
-                ),
+                    project_root=project_root,
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_loose_object_violations(
                 project_root=project_root,
@@ -159,12 +159,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                    project_root=project_root,
-                ),
+                )
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_import_violations(
-                py_files=py_files,
-                project_package=package_name,
+                py_files=py_files, project_package=package_name
             ),
             apply=apply,
         )
@@ -177,12 +175,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     parse_failures=parse_failures,
                     project_name=project_name,
                     project_root=project_root,
-                ),
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_namespace_source_violations(
-                violations=vs,
-                parse_failures=parse_failures,
-                gates=gates,
+                violations=vs, parse_failures=parse_failures, gates=gates
             ),
             apply=apply,
         )
@@ -199,7 +195,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_root=project_root,
-                ),
+                )
             ),
             rewrite_fn=None,
             apply=apply,
@@ -212,7 +208,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     rope_project=rope_project,
                     parse_failures=parse_failures,
                     project_root=project_root,
-                ),
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_private_import_bypass_violations(
                 rope_project=rope_project,
@@ -230,11 +226,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     parse_failures=parse_failures,
                     project_name=project_name,
                     project_root=project_root,
-                ),
+                )
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_runtime_alias_violations(
-                py_files=py_files,
-                gates=gates,
+                py_files=py_files, gates=gates
             ),
             apply=apply,
         )
@@ -245,10 +240,11 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                    project_root=project_root,
+                )
             ),
             rewrite_fn=lambda _vs: u.Infra.rewrite_missing_future_annotations(
-                py_files=py_files,
+                py_files=py_files
             ),
             apply=apply,
         )
@@ -259,13 +255,10 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_protocol_violations(
-                project_root=project_root,
-                py_files=py_files,
-                violations=vs,
-                gates=gates,
+                project_root=project_root, py_files=py_files, violations=vs, gates=gates
             ),
             apply=apply,
         )
@@ -276,7 +269,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_manual_typing_alias_violations(
                 project_root=project_root,
@@ -293,14 +286,17 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_compatibility_alias_violations(
-                violations=vs,
-                parse_failures=parse_failures,
-                gates=gates,
+                violations=vs, parse_failures=parse_failures, gates=gates
             ),
             apply=apply,
+        )
+        (compatibility_alias_violations, foreign_canonical_alias_violations) = (
+            self._split_compatibility_alias_violations(
+                compatibility_alias_violations, package_name=package_name
+            )
         )
         class_placement_violations = self._detect_and_apply(
             py_files=py_files,
@@ -309,7 +305,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                )
             ),
             rewrite_fn=None,
             apply=apply,
@@ -321,23 +317,26 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
-                ),
+                    project_root=project_root,
+                )
             ),
             rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(
-                violations=vs,
-                parse_failures=parse_failures,
+                violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
         )
         pattern_smells = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraPatternSmellDetector.detect_file(
+            # mro-j47u (codex): config data + u.Infra are the only static-policy path.
+            detect_fn=lambda f: u.Infra.detect_static_rules(
                 self._detector_context(
                     file_path=f,
                     rope_project=rope_project,
                     parse_failures=parse_failures,
+                    project_name=project_name,
                     project_root=project_root,
                 ),
+                config.Infra.enforcement.rules,
             ),
             rewrite_fn=None,
             apply=apply,
@@ -373,6 +372,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             future_violations=list(future_violations),
             manual_typing_violations=list(manual_typing_violations),
             compatibility_alias_violations=list(compatibility_alias_violations),
+            foreign_canonical_alias_violations=list(foreign_canonical_alias_violations),
             class_placement_violations=list(class_placement_violations),
             mro_completeness_violations=list(mro_completeness_violations),
             bare_except_violations=smell_buckets["bare_except"],
@@ -388,6 +388,28 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             parse_failures=list(parse_failures),
             files_scanned=len(py_files),
         )
+
+    @staticmethod
+    def _split_compatibility_alias_violations(
+        violations: t.SequenceOf[m.Infra.CompatibilityAliasViolation],
+        *,
+        package_name: str,
+    ) -> tuple[
+        list[m.Infra.CompatibilityAliasViolation],
+        list[m.Infra.CompatibilityAliasViolation],
+    ]:
+        """Split legacy compatibility aliases from foreign canonical imports."""
+        compatibility_aliases: list[m.Infra.CompatibilityAliasViolation] = []
+        foreign_canonical_aliases: list[m.Infra.CompatibilityAliasViolation] = []
+        for violation in violations:
+            action = FlextInfraCompatibilityAliasDetector.fix_action_for(
+                violation, current_project=package_name
+            )
+            if action == "rewrite_foreign_canonical_alias":
+                foreign_canonical_aliases.append(violation)
+                continue
+            compatibility_aliases.append(violation)
+        return compatibility_aliases, foreign_canonical_aliases
 
 
 __all__: list[str] = ["FlextInfraNamespaceEnforcerProjectMixin"]

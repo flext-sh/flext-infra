@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class FlextInfraCyclicImportDetector:
@@ -43,8 +44,8 @@ class FlextInfraCyclicImportDetector:
             try:
                 module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
             except (
-                *FlextInfraConstantsRope.RUNTIME_ERRORS,
-                *FlextInfraConstantsRope.SYNTAX_ERRORS,
+                *u.Infra.rope_runtime_errors(),
+                *u.Infra.rope_syntax_errors(),
                 TypeError,
             ):
                 continue
@@ -57,8 +58,7 @@ class FlextInfraCyclicImportDetector:
         graph: dict[str, t.Infra.StrSet] = {module: set() for module in file_map}
         for module_name, _, resource in module_resources:
             for semantic_target in u.Infra.get_semantic_module_imports(
-                rope_project,
-                resource,
+                rope_project, resource
             ).values():
                 target_module = semantic_target
                 while target_module not in file_map and "." in target_module:
@@ -77,7 +77,7 @@ class FlextInfraCyclicImportDetector:
                     m.Infra.CyclicImportViolation(
                         cycle=normalized,
                         files=tuple(file_map.get(n, n) for n in normalized),
-                    ),
+                    )
                 )
         return violations
 

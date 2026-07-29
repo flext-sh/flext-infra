@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
+from flext_infra import c, m
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraCodegenLazyInitPlannerCacheMixin:
@@ -23,10 +22,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
         _module_file_by_name: dict[str, Path]
 
         def build_plan(
-            self,
-            pkg_dir: Path,
-            *,
-            dir_exports: t.MappingKV[str, t.LazyAliasMap],
+            self, pkg_dir: Path, *, dir_exports: t.MappingKV[str, t.LazyAliasMap]
         ) -> m.Infra.LazyInitPlan: ...
 
     def _export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -53,11 +49,8 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             return frozenset()
         return frozenset(
             self.rope_workspace.exports(
-                init_path,
-                export_options=m.Infra.ExportOptions.model_validate({
-                    "allow_assignments": True
-                }),
-            ),
+                init_path, export_options=m.Infra.ExportOptions(allow_assignments=True)
+            )
         )
 
     def _source_export_names_for_package(self, package_name: str) -> frozenset[str]:
@@ -94,16 +87,12 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             return ""
         project_pkg: str = (
             self.rope_workspace.workspace_index.project_package_by_root.get(
-                str(package_entry.project_root),
-                "",
+                str(package_entry.project_root), ""
             )
         )
         return project_pkg
 
-    def _package_entry(
-        self,
-        pkg_dir: Path,
-    ) -> m.Infra.RopePackageIndexEntry | None:
+    def _package_entry(self, pkg_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
         """Return the workspace index entry for a package directory."""
         return self.rope_workspace.package(pkg_dir)
 

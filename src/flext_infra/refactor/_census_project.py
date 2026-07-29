@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 _log = u.fetch_logger(__name__)
 
@@ -33,8 +35,6 @@ class FlextInfraRefactorCensusProjectMixin:
         @staticmethod
         def _is_unused(item: m.Infra.Census.Object) -> bool: ...
         @staticmethod
-        def _is_test_only(item: m.Infra.Census.Object) -> bool: ...
-        @staticmethod
         def _object_key(item: m.Infra.Census.Object) -> str: ...
         @staticmethod
         def _violation(
@@ -47,19 +47,11 @@ class FlextInfraRefactorCensusProjectMixin:
         ) -> m.Infra.Census.Violation: ...
         @classmethod
         def _removal_candidate(
-            cls,
-            item: m.Infra.Census.Object,
-            *,
-            include_unused: bool,
-            include_test_only: bool,
+            cls, item: m.Infra.Census.Object, *, include_unused: bool
         ) -> m.Infra.Census.RemovalCandidate | None: ...
 
     def _handle_rope_stage_failure(
-        self,
-        *,
-        file_path: Path,
-        stage: str,
-        exc: BaseException,
+        self, *, file_path: Path, stage: str, exc: BaseException
     ) -> None:
         """Handle rope stage failure."""
         error = f"{type(exc).__name__}: {exc}"
@@ -91,9 +83,6 @@ class FlextInfraRefactorCensusProjectMixin:
         include_unused = self._include_rule(
             "unused", rule_names=rule_names, selected_rules=selected_rules
         )
-        include_test_only = self._include_rule(
-            "test_only", rule_names=rule_names, selected_rules=selected_rules
-        )
         include_duplicate = self._include_rule(
             "duplicate", rule_names=rule_names, selected_rules=selected_rules
         )
@@ -101,11 +90,9 @@ class FlextInfraRefactorCensusProjectMixin:
             "wrong_tier", rule_names=rule_names, selected_rules=selected_rules
         )
         unused_count = 0
-        test_only_count = 0
         removal_candidates: list[m.Infra.Census.RemovalCandidate] = []
         for item in objects:
             is_unused = self._is_unused(item)
-            is_test_only = self._is_test_only(item)
             if include_duplicate and self._object_key(item) in duplicate_keys:
                 violations.append(
                     self._violation(
@@ -123,15 +110,6 @@ class FlextInfraRefactorCensusProjectMixin:
                         description="Object has no non-definition references",
                     )
                 )
-            if is_test_only and include_test_only:
-                test_only_count += 1
-                violations.append(
-                    self._violation(
-                        item,
-                        kind="test_only",
-                        description="Object is referenced only from tests/",
-                    )
-                )
             if (
                 include_wrong_tier
                 and item.expected_tier
@@ -145,11 +123,7 @@ class FlextInfraRefactorCensusProjectMixin:
                         description=f"Expected tier '{item.expected_tier}' but found '{item.actual_tier}'",
                     )
                 )
-            candidate = self._removal_candidate(
-                item,
-                include_unused=include_unused,
-                include_test_only=include_test_only,
-            )
+            candidate = self._removal_candidate(item, include_unused=include_unused)
             if candidate is not None:
                 removal_candidates.append(candidate)
         return m.Infra.Census.ProjectReport(
@@ -162,7 +136,6 @@ class FlextInfraRefactorCensusProjectMixin:
             violations_total=len(violations),
             fixes_applied=sum(1 for fix in fixes if fix.applied),
             unused_count=unused_count,
-            test_only_count=test_only_count,
             removal_candidate_count=len(removal_candidates),
             removal_candidates=tuple(removal_candidates),
         )

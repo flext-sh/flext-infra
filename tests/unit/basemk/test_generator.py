@@ -3,53 +3,89 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_infra import m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_tests import tm
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraBasemkGenerator:
     """Behavior contract for test_generator."""
 
     def test_generator_initializes_with_default_renderer(self) -> None:
-        assert FlextInfraBaseMkGenerator() is not None
+        tm.that(FlextInfraBaseMkGenerator(), none=False)
 
     def test_generator_execute_returns_generated_content(self) -> None:
         result = FlextInfraBaseMkGenerator(project_name="demo-project").execute()
 
-        assert result.success, result.error
-        assert "PROJECT_NAME ?= demo-project" in result.value
+        tm.ok(result)
+        tm.that(result.value, has="PROJECT_NAME ?= demo-project")
 
     def test_generator_generate_with_none_config_uses_default(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
 
-        assert result.success, result.error
-        assert "PROJECT_NAME ?=" in result.value
+        tm.ok(result)
+        tm.that(result.value, has="PROJECT_NAME ?=")
+
+    def test_generator_pr_booleans_do_not_render_as_positional_values(self) -> None:
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        for variable in (
+            "PR_DRAFT",
+            "PR_AUTO",
+            "PR_DELETE_BRANCH",
+            "PR_CHECKS_STRICT",
+            "PR_RELEASE_ON_MERGE",
+        ):
+            tm.that(
+                f'--{variable[3:].lower().replace("_", "-")} "$({variable})"'
+                not in result.value,
+                eq=True,
+            )
+
+    def test_generator_pr_booleans_render_click_dual_flags(self) -> None:
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        expected_flags = {
+            "PR_DRAFT": ("--draft", "--no-draft"),
+            "PR_AUTO": ("--auto", "--no-auto"),
+            "PR_DELETE_BRANCH": ("--delete-branch", "--no-delete-branch"),
+            "PR_CHECKS_STRICT": ("--checks-strict", "--no-checks-strict"),
+            "PR_RELEASE_ON_MERGE": ("--release-on-merge", "--no-release-on-merge"),
+        }
+        for variable, (enabled_flag, disabled_flag) in expected_flags.items():
+            tm.that(
+                result.value,
+                has=f"$(if $(filter 1,$({variable})),{enabled_flag},{disabled_flag})",
+            )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
             python_version="3.13",
-            package_manager="poetry",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["mypy"],
-            test_command="pytest",
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)
 
-        assert result.success, result.error
-        assert "PROJECT_NAME ?= test-proj" in result.value
+        tm.ok(result)
+        tm.that(result.value, has="PROJECT_NAME ?= test-proj")
 
     def test_generator_generate_with_invalid_mapping_fails(self) -> None:
         result = FlextInfraBaseMkGenerator().generate_basemk(
             settings={"invalid_key": "x"}
         )
 
-        assert result.failure
-        assert "validation failed" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="validation failed")
 
     def test_generator_write_to_file(self, tmp_path: Path) -> None:
         output_path = tmp_path / "test.mk"
@@ -57,9 +93,9 @@ class TestsFlextInfraBasemkGenerator:
 
         result = FlextInfraBaseMkGenerator().write(content, output=output_path)
 
-        assert result.success, result.error
-        assert output_path.exists()
-        assert output_path.read_text(encoding="utf-8") == content
+        tm.ok(result)
+        tm.that(output_path.exists(), eq=True)
+        tm.that(output_path.read_text(encoding="utf-8"), eq=content)
 
     def test_generator_write_creates_parent_directories(self, tmp_path: Path) -> None:
         output_path = tmp_path / "nested" / "dir" / "test.mk"
@@ -68,8 +104,8 @@ class TestsFlextInfraBasemkGenerator:
             "all:\n\t@true\n", output=output_path
         )
 
-        assert result.success, result.error
-        assert output_path.exists()
+        tm.ok(result)
+        tm.that(output_path.exists(), eq=True)
 
     def test_generator_write_to_stream(self) -> None:
         stream = io.StringIO()
@@ -77,11 +113,11 @@ class TestsFlextInfraBasemkGenerator:
 
         result = FlextInfraBaseMkGenerator().write(content, stream=stream)
 
-        assert result.success, result.error
-        assert stream.getvalue() == content
+        tm.ok(result)
+        tm.that(stream.getvalue(), eq=content)
 
     def test_generator_write_fails_without_output_or_stream(self) -> None:
         result = FlextInfraBaseMkGenerator().write("all:\n\t@echo 'test'\n")
 
-        assert result.failure
-        assert "stdout stream is required" in (result.error or "")
+        tm.fail(result)
+        tm.that((result.error or ""), has="stdout stream is required")

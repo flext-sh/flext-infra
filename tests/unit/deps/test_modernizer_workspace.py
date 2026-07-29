@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main
-from tests.constants import c
-from tests.utilities import u
+from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
+from flext_tests import tm
+from tests import c, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestsFlextInfraDepsModernizerWorkspace:
@@ -24,37 +27,92 @@ class TestsFlextInfraDepsModernizerWorkspace:
         ],
     )
     def test_toml_read_handles_public_file_cases(
-        self,
-        tmp_path: Path,
-        content: str,
-        exists: bool,
-        expected: bool,
+        self, tmp_path: Path, content: str, *, exists: bool, expected: bool
     ) -> None:
+        """Verify toml read handles public file cases."""
         toml_file = tmp_path / "test.toml"
         if exists:
             toml_file.write_text(content, encoding="utf-8")
-        result = u.Cli.toml_read(toml_file)
+        with u.structlog().testing.capture_logs() as log_entries:
+            result = u.Cli.toml_read(toml_file)
         tm.that(result is not None, eq=expected)
+        if exists and not expected:
+            tm.that(log_entries, len=1)
+            tm.that(log_entries[0].get("log_level"), eq="warning")
+        else:
+            tm.that(log_entries, empty=True)
 
     def test_workspace_root_returns_explicit_path(self, tmp_path: Path) -> None:
+        """Verify workspace root returns explicit path."""
         explicit = tmp_path / "explicit"
         explicit.mkdir()
         result = u.Infra.resolve_workspace_root_or_cwd(explicit)
         tm.that(str(result), eq=str(explicit.resolve()))
 
     def test_workspace_root_fallback_returns_non_empty_path(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
+        """Verify workspace root fallback returns non empty path."""
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
-        assert str(result) != ""
+        tm.that(str(result), ne="")
+
+    def test_modernizer_uses_git_topology_for_child_detection(
+        self, tmp_path: Path
+    ) -> None:
+        source_repository = tmp_path / "source-repository"
+        source_repository.mkdir()
+        pyproject = source_repository / c.Infra.PYPROJECT_FILENAME
+        source = '[project]\nname = "flext-demo"\nversion = "0.1.0"\n'
+        pyproject.write_text(source, encoding="utf-8")
+        package_init = source_repository / "src" / "flext_demo" / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        (source_repository / "Makefile").write_text(
+            "MAKE_PROFILE := workspace-member\nWORKSPACE_ROOT_REL := ..\n",
+            encoding="utf-8",
+        )
+        u.Tests.initialize_git_repo(source_repository)
+        standalone = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=source_repository, skip_check=True, skip_comments=True
+            ).conform_source(source, path=pyproject)
+        )
+
+        superproject = tmp_path / "superproject"
+        superproject.mkdir()
+        (superproject / "README.md").write_text("workspace\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(superproject)
+        tm.ok(
+            u.Infra.git_capture(
+                superproject,
+                (
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    str(source_repository),
+                    "member",
+                ),
+            )
+        )
+        member = superproject / "member"
+        attached = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=member, skip_check=True, skip_comments=True
+            ).conform_source(
+                (member / c.Infra.PYPROJECT_FILENAME).read_text(encoding="utf-8"),
+                path=member / c.Infra.PYPROJECT_FILENAME,
+            )
+        )
+
+        tm.that(attached, ne=standalone)
 
     def test_main_applies_only_selected_projects(
-        self,
-        modernizer_workspace_with_projects: Path,
+        self, modernizer_workspace_with_projects: Path
     ) -> None:
+        """Verify main applies only selected projects."""
         selected_pyproject = (
             modernizer_workspace_with_projects / "selected" / c.Infra.PYPROJECT_FILENAME
         )
@@ -62,25 +120,167 @@ class TestsFlextInfraDepsModernizerWorkspace:
             modernizer_workspace_with_projects / "ignored" / c.Infra.PYPROJECT_FILENAME
         )
         tm.that(
-            main(
-                [
-                    "deps",
-                    "modernize",
-                    "--workspace",
-                    str(modernizer_workspace_with_projects),
-                    "--apply",
-                    "--skip-check",
-                    "--projects",
-                    "selected",
-                ],
-            ),
+            main([
+                "deps",
+                "modernize",
+                "--workspace",
+                str(modernizer_workspace_with_projects),
+                "--apply",
+                "--skip-check",
+                "--projects",
+                "selected",
+            ]),
             eq=0,
         )
         tm.that(
             selected_pyproject.read_text(encoding="utf-8"),
             has='build-backend = "hatchling.build"',
         )
-        tm.that(
-            ignored_pyproject.read_text(encoding="utf-8"),
-            has='name = "ignored"',
+        tm.that(ignored_pyproject.read_text(encoding="utf-8"), has='name = "ignored"')
+
+    def test_modernizer_selects_configured_member_by_declared_name(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolve a configured member through its canonical project name."""
+        workspace = tmp_path / "workspace"
+        member = workspace / "member-dir"
+        member.mkdir(parents=True)
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            '\n[tool.uv.workspace]\nmembers = ["member-dir"]\n',
+            encoding="utf-8",
         )
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "declared-name"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            selected_projects=["declared-name"],
+            apply_changes=False,
+            skip_check=True,
+            skip_comments=True,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+
+    def test_modernizer_accepts_workspace_only_root_without_constraint_rewrite(
+        self, tmp_path: Path
+    ) -> None:
+        """Do not require root project metadata for member-only modernization."""
+        workspace = tmp_path / "workspace"
+        member = workspace / "member"
+        member.mkdir(parents=True)
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[tool.uv.workspace]\nmembers = ["member"]\n', encoding="utf-8"
+        )
+        (member / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "member"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            selected_projects=["member"],
+            apply_changes=False,
+            skip_check=True,
+            skip_comments=True,
+            rewrite_constraints=False,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+
+    def test_modernizer_rejects_ambiguous_configured_member_alias(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail loud when one canonical project name selects multiple members."""
+        workspace = tmp_path / "workspace"
+        (workspace / "first-dir").mkdir(parents=True)
+        (workspace / "second-dir").mkdir()
+        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            '\n[tool.uv.workspace]\nmembers = ["first-dir", "second-dir"]\n',
+            encoding="utf-8",
+        )
+        for member_name in ("first-dir", "second-dir"):
+            (workspace / member_name / c.Infra.PYPROJECT_FILENAME).write_text(
+                '[project]\nname = "shared-name"\nversion = "0.1.0"\n', encoding="utf-8"
+            )
+
+        ambiguous = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            selected_projects=["shared-name"],
+            apply_changes=False,
+            skip_check=True,
+            skip_comments=True,
+        )
+        exact = FlextInfraPyprojectModernizer(
+            workspace_root=workspace,
+            selected_projects=["first-dir"],
+            apply_changes=False,
+            skip_check=True,
+            skip_comments=True,
+        )
+
+        tm.that(ambiguous.run(), eq=2)
+        tm.that(exact.run(), eq=0)
+
+    @pytest.mark.parametrize("member_kind", ["absolute", "parent-relative", "symlink"])
+    def test_modernizer_rejects_configured_members_outside_workspace(
+        self, modernizer_workspace: Path, member_kind: str
+    ) -> None:
+        """Reject configured members resolving outside root without mutation."""
+        external_project = modernizer_workspace.parent / "external"
+        external_project.mkdir()
+        external_pyproject = external_project / c.Infra.PYPROJECT_FILENAME
+        original = '[project]\nname = "external"\nversion = "0.1.0"\n'
+        external_pyproject.write_text(original, encoding="utf-8")
+        if member_kind == "absolute":
+            selector = str(external_project)
+        elif member_kind == "parent-relative":
+            selector = "../external"
+        else:
+            selector = "linked-external"
+            (modernizer_workspace / selector).symlink_to(
+                external_project, target_is_directory=True
+            )
+        (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "workspace"\nversion = "0.1.0"\n'
+            f'\n[tool.uv.workspace]\nmembers = ["{selector}"]\n',
+            encoding="utf-8",
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            selected_projects=[selector],
+            apply_changes=True,
+            skip_check=True,
+            skip_comments=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+        tm.that(external_pyproject.read_text(encoding="utf-8"), eq=original)
+
+    @pytest.mark.parametrize("selector_kind", ["absolute", "parent-relative"])
+    def test_modernizer_rejects_undeclared_project_paths(
+        self, modernizer_workspace: Path, selector_kind: str
+    ) -> None:
+        """Reject selectors outside declared workspace members without mutation."""
+        external_project = modernizer_workspace.parent / "external"
+        external_project.mkdir()
+        external_pyproject = external_project / c.Infra.PYPROJECT_FILENAME
+        original = '[project]\nname = "external"\nversion = "0.1.0"\n'
+        external_pyproject.write_text(original, encoding="utf-8")
+        selector = (
+            str(external_project) if selector_kind == "absolute" else "../external"
+        )
+
+        modernizer = FlextInfraPyprojectModernizer(
+            workspace_root=modernizer_workspace,
+            selected_projects=[selector],
+            apply_changes=True,
+            skip_check=True,
+            skip_comments=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+        tm.that(external_pyproject.read_text(encoding="utf-8"), eq=original)

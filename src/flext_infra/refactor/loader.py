@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_cli.utilities import u
-from flext_infra.constants import c
-from flext_infra.protocols import p
-from flext_infra.typings import t
+from flext_cli import u
+from flext_infra import c, t
+
+if TYPE_CHECKING:
+    from flext_infra import p
 
 
 class FlextInfraRefactorRuleLoader:
@@ -16,6 +18,10 @@ class FlextInfraRefactorRuleLoader:
     def __init__(self, config_path: Path) -> None:
         """Initialize loader state with one config path."""
         self.config_path = config_path
+        # NOTE (multi-agent): orchestrator dispatch/scope mixins pass this
+        # mapping to u.Infra.collect_refactor_*_files; it is populated by
+        # load_config() and must stay on the loader (commit 0d1e1b7d dropped
+        # it and broke those call sites).
         self.settings: t.MappingKV[str, t.Infra.InfraValue] = {}
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
@@ -43,15 +49,13 @@ class FlextInfraRefactorRuleLoader:
         self,
     ) -> p.Result[
         t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind,
-            c.Infra.RefactorFileRuleKind,
+            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
         ]
     ]:
         """Load enabled text/file rule selections from declarative YAML assets."""
         result: p.Result[
             t.Infra.LoadedRuleSelections[
-                c.Infra.RefactorRuleKind,
-                c.Infra.RefactorFileRuleKind,
+                c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
             ]
         ] = u.Cli.rules_load_local_definitions(
             self.config_path,
@@ -87,8 +91,7 @@ class FlextInfraRefactorRuleLoader:
                 ),
                 c.NAME: str(
                     settings.get(
-                        c.NAME,
-                        settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN),
+                        c.NAME, settings.get(c.Infra.RK_ID, c.Infra.DEFAULT_UNKNOWN)
                     )
                 ),
                 c.Infra.RK_DESCRIPTION: str(settings.get(c.Infra.RK_DESCRIPTION, "")),
@@ -108,7 +111,7 @@ class FlextInfraRefactorRuleLoader:
             u.Cli.error(data_result.error or "failed to normalize rules table")
             return
         settings_result = u.Cli.tables_resolve_config(
-            headers=list(c.Infra.RULE_TABLE_HEADERS),
+            headers=list(c.Infra.RULE_TABLE_HEADERS)
         )
         if settings_result.failure:
             u.Cli.error(settings_result.error or "failed to resolve table settings")

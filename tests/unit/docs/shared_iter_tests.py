@@ -1,4 +1,4 @@
-"""Tests for u.Infra — iter_markdown_files and _selected_project_names.
+"""Tests for u.Infra.iter_markdown_files.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -6,11 +6,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from flext_tests import tm
+from tests import u
 
-from tests.utilities import u
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestIterMarkdownFiles:
@@ -27,7 +29,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "README.md").write_text("# Test\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_hidden(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes hidden directories."""
@@ -45,7 +47,7 @@ class TestIterMarkdownFiles:
         nested_dir.mkdir(parents=True, exist_ok=True)
         (nested_dir / "guide.md").write_text("# Guide\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_returns_sorted_list(self, tmp_path: Path) -> None:
         """Test iter_markdown_files returns sorted list."""
@@ -69,7 +71,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_node_modules(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes node_modules."""
@@ -80,57 +82,3 @@ class TestIterMarkdownFiles:
         (nm_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
         tm.that(not any("node_modules" in str(f) for f in files), eq=True)
-
-
-class TestSelectedProjectNames:
-    """Tests for u.Infra._selected_project_names."""
-
-    def test_with_project(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with single project."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["test-proj"],
-        )
-        tm.that(names, eq=["test-proj"])
-
-    def test_with_multiple_projects(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with multiple projects."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", "proj2", "proj3"],
-        )
-        tm.that(names, has="proj1")
-        tm.that(names, has="proj2")
-
-    def test_with_blank_project_names(self, tmp_path: Path) -> None:
-        """Test _selected_project_names strips blank project names."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", "", "proj2", "   ", "proj3"],
-        )
-        tm.that(names, has="proj1")
-        tm.that(names, has="proj2")
-
-    def test_no_filter(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with no filter discovers projects."""
-        names = u.Infra._selected_project_names(tmp_path, None)
-        tm.that(len(names), gte=0)
-
-    def test_empty_list(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with empty list."""
-        names = u.Infra._selected_project_names(tmp_path, [])
-        tm.that(len(names), gte=0)
-
-    def test_whitespace_only(self, tmp_path: Path) -> None:
-        """Test _selected_project_names with whitespace-only entries."""
-        names = u.Infra._selected_project_names(tmp_path, ["   "])
-        tm.that(len(names), gte=0)
-
-    def test_mixed_entries(self, tmp_path: Path) -> None:
-        """Test _selected_project_names keeps valid entries only."""
-        names = u.Infra._selected_project_names(
-            tmp_path,
-            ["proj1", " proj2 ", "proj3"],
-        )
-        tm.that(names, has="proj1")
-        tm.that(names, has="proj2")

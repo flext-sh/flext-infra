@@ -19,7 +19,9 @@ This section is generated from public exports and real docstrings.
 
 ## Surface Summary
 
-- Primary facades: `FlextInfraUtilitiesRefactorEngine`, `FlextInfraRefactorMigrateToClassMRO`, `FlextInfraReleaseOrchestrator`, `FlextInfraSilentFailureGate`, `FlextInfraRefactorImportModernizer`, `FlextInfraStubSupplyChain` (+243 more)
-- Generated module pages: `149`
+- Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
+  `FlextInfraModels`, `FlextInfraProjectSelectionServiceBase`,
+  `FlextInfraProtocols` (+5 more)
+- Generated module pages: `12`
 
-- [Back to project docs](../index.md)
+Back to [project docs](../index.md).

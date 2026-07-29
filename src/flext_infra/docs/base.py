@@ -9,25 +9,25 @@ the same five-line ``execute()`` skeleton.
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from flext_core import e, r
+from flext_infra import c, m
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from flext_infra import p, t
 
 
 class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC):
     """Shared abstract base for ``audit``, ``build``, ``fix``, ``generate``, ``validate``."""
 
-    output_dir: Annotated[
-        Path | None,
-        m.Field(description="Docs output dir"),
-    ] = Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
+    output_dir: Annotated[Path | None, m.Field(description="Docs output dir")] = Path(
+        c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+    )
 
     @staticmethod
     def _propagate_phase_outcome(
@@ -38,10 +38,10 @@ class FlextInfraDocServiceBase(FlextInfraProjectSelectionServiceBase[bool], ABC)
     ) -> p.Result[bool]:
         """Convert a verb result into a boolean execute() outcome.
 
-        ``failure_predicate=None`` skips per-report aggregation entirely
-        (used by ``fix`` and ``generate`` whose phase semantics treat WARN
-        and OK as success). When provided, reports matching the predicate
-        are counted and surfaced as a single ``e.fail_operation`` failure.
+        When provided, reports matching ``failure_predicate`` are counted and
+        surfaced as one ``e.fail_operation`` failure. Phases whose reports carry
+        a ``passed`` contract must provide a predicate so drift cannot be
+        accepted as successful execution.
         """
         if result.failure:
             return e.fail_operation(label, result.error)

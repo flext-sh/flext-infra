@@ -2,29 +2,27 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    Callable,
-)
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
 from flext_core import r
-from flext_infra.models import m
-from flext_infra.protocols import p
+from flext_infra import m, u
 from flext_infra.refactor._namespace_enforcer_project import (
     FlextInfraNamespaceEnforcerProjectMixin,
 )
 from flext_infra.refactor.namespace_enforcer_phases import (
     FlextInfraNamespaceEnforcerPhasesMixin,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraNamespaceEnforcer(
-    FlextInfraNamespaceEnforcerPhasesMixin,
-    FlextInfraNamespaceEnforcerProjectMixin,
+    FlextInfraNamespaceEnforcerPhasesMixin, FlextInfraNamespaceEnforcerProjectMixin
 ):
     """Orchestrate namespace enforcement across a workspace."""
 
@@ -33,7 +31,7 @@ class FlextInfraNamespaceEnforcer(
         super().__init__()
         self._workspace_root = workspace_root.resolve()
         self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
-            self._workspace_root,
+            self._workspace_root
         )
 
     @override
@@ -49,6 +47,7 @@ class FlextInfraNamespaceEnforcer(
         Args:
             apply: If True, auto-fix detected violations.
             project_names: If provided, only enforce these projects.
+            gates: If provided, only run these enforcement gates.
 
         """
         project_roots = self._resolve_project_roots(project_names=project_names)
@@ -62,19 +61,16 @@ class FlextInfraNamespaceEnforcer(
             )
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
-            workspace=str(self._workspace_root),
-            projects=project_reports,
+            workspace=str(self._workspace_root), projects=project_reports
         )
 
     @override
     def _resolve_project_roots(
-        self,
-        *,
-        project_names: t.StrSequence | None = None,
+        self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[Path]:
         """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
-            workspace_root=self._workspace_root,
+            workspace_root=self._workspace_root
         )
         project_roots = [
             project_root
@@ -112,9 +108,7 @@ class FlextInfraNamespaceEnforcer(
         return post_violations
 
     @staticmethod
-    def render_text(
-        report: m.Infra.WorkspaceEnforcementReport,
-    ) -> str:
+    def render_text(report: m.Infra.WorkspaceEnforcementReport) -> str:
         """Render a workspace enforcement report as plain text."""
         lines = [
             "Namespace Enforcement Report",
@@ -133,6 +127,7 @@ class FlextInfraNamespaceEnforcer(
             f"Future violations: {report.total_future_violations}",
             f"Manual typing violations: {report.total_manual_typing_violations}",
             f"Compatibility alias violations: {report.total_compatibility_alias_violations}",
+            f"Foreign canonical alias violations: {report.total_foreign_canonical_alias_violations}",
             f"Class placement violations: {report.total_class_placement_violations}",
             f"MRO completeness violations: {report.total_mro_completeness_violations}",
             f"Bare except violations: {report.total_bare_except_violations}",
@@ -150,15 +145,12 @@ class FlextInfraNamespaceEnforcer(
 
     @classmethod
     def execute_command(
-        cls,
-        params: m.Infra.RefactorNamespaceEnforceInput,
+        cls, params: m.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
         enforcer = cls(workspace_root=params.workspace_path)
         report = enforcer.enforce(
-            apply=params.apply,
-            project_names=params.project_names,
-            gates=params.gates,
+            apply=params.apply, project_names=params.project_names, gates=params.gates
         )
         cli.display_text(cls.render_text(report))
         if report.has_violations:

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from flext_infra.constants import c
+from flext_infra import c, m, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from flext_infra import p, t
 
 
 class FlextInfraDocFixer(FlextInfraDocServiceBase):
@@ -43,21 +42,16 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                 output_dir=self.output_dir,
                 apply=self.apply_changes,
             ),
+            failure_predicate=lambda report: not report.passed,
         )
 
     def _fix_scope(
-        self,
-        scope: m.Infra.DocScope,
-        *,
-        apply: bool,
+        self, scope: m.Infra.DocScope, *, apply: bool
     ) -> m.Infra.DocsPhaseReport:
         """Run TOC, link and python-codeblock fixes on one scope."""
         collected: list[m.Infra.DocsPhaseItemModel] = []
         for md_file in u.Infra.iter_scope_markdown_files(scope):
-            item = u.Infra.docs_process_markdown_file(
-                md_file,
-                apply=apply,
-            )
+            item = u.Infra.docs_process_markdown_file(md_file, apply=apply)
             if item.links or item.toc:
                 collected.append(
                     m.Infra.DocsPhaseItemModel(
@@ -65,12 +59,9 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
                         file=md_file.relative_to(scope.path).as_posix(),
                         links=item.links,
                         toc=item.toc,
-                    ),
+                    )
                 )
-        codeblock_changes = u.Infra.docs_fix_python_codeblocks(
-            scope,
-            apply=apply,
-        )
+        codeblock_changes = u.Infra.docs_fix_python_codeblocks(scope, apply=apply)
         collected.extend(
             m.Infra.DocsPhaseItemModel(
                 phase="fix",
@@ -80,11 +71,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             for generated in codeblock_changes
         )
         items = tuple(collected)
-        u.Infra.docs_write_fix_reports(
-            scope,
-            items=items,
-            apply=apply,
-        )
+        u.Infra.docs_write_fix_reports(scope, items=items, apply=apply)
         report = m.Infra.DocsPhaseReport(
             phase="fix",
             scope=scope.name,
@@ -94,7 +81,7 @@ class FlextInfraDocFixer(FlextInfraDocServiceBase):
             result=(
                 c.Infra.ResultStatus.OK
                 if apply or not items
-                else c.Infra.ResultStatus.WARN
+                else c.Infra.ResultStatus.FAIL
             ),
             reason=f"changes:{len(items)}",
             passed=apply or not items,

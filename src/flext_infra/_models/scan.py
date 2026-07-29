@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Annotated
 
 from flext_cli import m
+from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
 )
-from flext_infra.typings import t
 
 
 class FlextInfraModelsScan:
@@ -26,10 +26,10 @@ class FlextInfraModelsScan:
         """Bundles common parameters passed to every detect_file classmethod."""
 
         file_path: Path = m.Field(
-            description="Filesystem path of the file being scanned.",
+            description="Filesystem path of the file being scanned."
         )
         rope_project: t.Infra.RopeProject = m.Field(
-            description="Initialized Rope project for semantic metadata.",
+            description="Initialized Rope project for semantic metadata."
         )
         parse_failures: Annotated[
             (
@@ -38,32 +38,24 @@ class FlextInfraModelsScan:
                 ]
                 | None
             ),
+            m.SkipValidation,
             m.Field(
-                description="Shared parse-failure collector across detector passes.",
+                description="Shared parse-failure collector across detector passes."
             ),
         ] = None
         project_name: Annotated[
-            str,
-            m.Field(
-                description="Optional project name for the scanned file.",
-            ),
+            str, m.Field(description="Optional project name for the scanned file.")
         ] = ""
         project_root: Annotated[
             Path | None,
-            m.Field(
-                description="Optional project root containing the scanned file.",
-            ),
+            m.Field(description="Optional project root containing the scanned file."),
         ] = None
 
-    class ScanViolation(
-        mm.PositiveLineMixin,
-        m.ContractModel,
-    ):
+    class ScanViolation(mm.PositiveLineMixin, m.ContractModel):
         """A single violation found during file scanning."""
 
         message: Annotated[
-            str,
-            m.Field(description="Human-readable violation description"),
+            str, m.Field(description="Human-readable violation description")
         ]
         severity: Annotated[str, m.Field(description="Violation severity level")]
         rule_id: Annotated[
@@ -87,8 +79,7 @@ class FlextInfraModelsScan:
             ),
         ]
         detector_name: Annotated[
-            str,
-            m.Field(description="Name of the detector that produced this result"),
+            str, m.Field(description="Name of the detector that produced this result")
         ]
 
 

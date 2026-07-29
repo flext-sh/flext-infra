@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import difflib
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra.models import m
-from flext_infra.typings import t
-from flext_infra.utilities import u
+from flext_infra import m, u
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraAccessorMigrationReportMixin:
@@ -31,8 +33,7 @@ class FlextInfraAccessorMigrationReportMixin:
 
     @staticmethod
     def _accumulate_lint_totals(
-        totals: dict[str, int],
-        snapshot: t.Infra.LintSnapshot,
+        totals: dict[str, int], snapshot: t.Infra.LintSnapshot
     ) -> None:
         """Accumulate lint totals."""
         for tool, lines in snapshot.items():
@@ -65,9 +66,7 @@ class FlextInfraAccessorMigrationReportMixin:
             elif not self.dry_run:
                 before = (
                     u.Infra.lint_snapshot(
-                        py_file,
-                        self.workspace_root,
-                        gates=self.gate_names,
+                        py_file, self.workspace_root, gates=self.gate_names
                     )
                     if include_preview
                     else {}
@@ -93,9 +92,7 @@ class FlextInfraAccessorMigrationReportMixin:
                     )
                 after = (
                     u.Infra.lint_snapshot(
-                        py_file,
-                        self.workspace_root,
-                        gates=self.gate_names,
+                        py_file, self.workspace_root, gates=self.gate_names
                     )
                     if include_preview
                     else {}
@@ -164,7 +161,7 @@ class FlextInfraAccessorMigrationReportMixin:
             lines.append(f"\n{file_report.file}")
             for change in file_report.automated_changes:
                 lines.append(
-                    f"  auto:{change.line} {change.original_name} -> {change.replacement_name}",
+                    f"  auto:{change.line} {change.original_name} -> {change.replacement_name}"
                 )
             for warning in file_report.warnings:
                 target = (

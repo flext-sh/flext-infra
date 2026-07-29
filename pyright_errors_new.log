@@ -1,0 +1,881 @@
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py:42:9 - error: Type of "violations" is partially unknown
+    Type of "violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py:69:9 - error: Type of "violations_fixed" is partially unknown
+    Type of "violations_fixed" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py:73:9 - error: Type of "violations_skipped" is partially unknown
+    Type of "violations_skipped" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py:214:9 - error: Type of "violations_fixed" is partially unknown
+    Type of "violations_fixed" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/codegen.py:220:9 - error: Type of "violations_skipped" is partially unknown
+    Type of "violations_skipped" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/deps_tool_config_linters.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/deps_tool_config_linters.py:164:5 - error: Type of "overrides" is partially unknown
+    Type of "overrides" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/docs.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/docs.py:164:9 - error: Type of "items" is partially unknown
+    Type of "items" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor.py:256:9 - error: Type of "apply_class_moves" is partially unknown
+    Type of "apply_class_moves" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor.py:259:9 - error: Type of "apply_alias_moves" is partially unknown
+    Type of "apply_alias_moves" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:125:9 - error: Type of "facade_statuses" is partially unknown
+    Type of "facade_statuses" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:128:9 - error: Type of "loose_objects" is partially unknown
+    Type of "loose_objects" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:131:9 - error: Type of "import_violations" is partially unknown
+    Type of "import_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:134:9 - error: Type of "namespace_source_violations" is partially unknown
+    Type of "namespace_source_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:137:9 - error: Type of "internal_import_violations" is partially unknown
+    Type of "internal_import_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:140:9 - error: Type of "manual_protocol_violations" is partially unknown
+    Type of "manual_protocol_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:143:9 - error: Type of "cyclic_imports" is partially unknown
+    Type of "cyclic_imports" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:146:9 - error: Type of "runtime_alias_violations" is partially unknown
+    Type of "runtime_alias_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:149:9 - error: Type of "future_violations" is partially unknown
+    Type of "future_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:152:9 - error: Type of "manual_typing_violations" is partially unknown
+    Type of "manual_typing_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:155:9 - error: Type of "compatibility_alias_violations" is partially unknown
+    Type of "compatibility_alias_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:158:9 - error: Type of "class_placement_violations" is partially unknown
+    Type of "class_placement_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:161:9 - error: Type of "mro_completeness_violations" is partially unknown
+    Type of "mro_completeness_violations" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:164:9 - error: Type of "parse_failures" is partially unknown
+    Type of "parse_failures" is "list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/refactor_namespace_enforcer.py:195:9 - error: Type of "projects" is partially unknown
+    Type of "projects" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/release.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/release.py:51:9 - error: Type of "records" is partially unknown
+    Type of "records" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_models/scan.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_models/scan.py:41:9 - error: Type of "violations" is partially unknown
+    Type of "violations" is "list[Unknown]" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis.py:8:6 - warning: Stub file not found for "rope.base.exceptions" (reportMissingTypeStubs)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis_introspection.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis_introspection.py:8:6 - warning: Stub file not found for "rope.base.exceptions" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis_introspection.py:119:33 - error: "_method_kind_label" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_analysis_introspection.py:155:29 - error: "_method_kind_label" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:9:6 - warning: Stub file not found for "rope.base.change" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:10:6 - warning: Stub file not found for "rope.base.exceptions" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:15:6 - warning: Stub file not found for "rope.base.project" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:16:6 - warning: Stub file not found for "rope.base.resources" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:17:6 - warning: Stub file not found for "rope.refactor.importutils" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:17:39 - error: Type of "get_module_imports" is partially unknown
+    Type of "get_module_imports" is "(project: Unknown, pymodule: Unknown) -> ModuleImports" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:135:16 - warning: Unnecessary isinstance call; "RopePyCoreLike" is always an instance of "RopePyCoreLike" (reportUnnecessaryIsInstance)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_core.py:220:9 - error: Type of "add_change" is partially unknown
+    Type of "add_change" is "(change: Unknown) -> None" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_helpers.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_helpers.py:9:6 - warning: Stub file not found for "rope.refactor.importutils" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_helpers.py:9:61 - error: Type of "rope_get_module_imports" is partially unknown
+    Type of "rope_get_module_imports" is "(project: Unknown, pymodule: Unknown) -> ModuleImports" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:8:6 - warning: Stub file not found for "rope.base.exceptions" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:9:6 - warning: Stub file not found for "rope.contrib.findit" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:9:33 - error: Type of "find_occurrences" is partially unknown
+    Type of "find_occurrences" is "(project: Unknown, resource: Unknown, offset: Unknown, unsure: bool = False, resources: Unknown | None = None, in_hierarchy: bool = False, task_handle: NullTaskHandle = taskhandle.DEFAULT_TASK_HANDLE) -> list[Unknown]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:10:6 - warning: Stub file not found for "rope.refactor.importutils" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:11:6 - warning: Stub file not found for "rope.refactor.importutils.importinfo" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:12:6 - warning: Stub file not found for "rope.refactor.rename" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:32:23 - error: Type of "get_changes" is partially unknown
+    Type of "get_changes" is "(new_name: Unknown, in_file: Unknown | None = None, in_hierarchy: bool = False, unsure: Unknown | None = None, docs: bool = False, resources: Unknown | None = None, task_handle: NullTaskHandle = taskhandle.DEFAULT_TASK_HANDLE) -> ChangeSet" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:35:13 - error: Type of "change" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:35:23 - error: Type of "changes" is partially unknown
+    Type of "changes" is "list[Unknown]" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:36:27 - error: Type of "resource" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:36:27 - error: Type of "path" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:52:17 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/_utilities/rope_imports.py:73:23 - error: Type of "organize_imports" is partially unknown
+    Type of "organize_imports" is "(resource: Unknown, offset: Unknown | None = None) -> (ChangeSet | None)" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/basemk/generator.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/basemk/generator.py:91:9 - error: Method "execute_command" overrides class "FlextInfraServiceBase" in an incompatible manner
+    Base method is declared as a classmethod but override is not
+    Parameter 2 type mismatch: base parameter is type "FlextInfraServiceBase[str]", override parameter is type "BaseMkGenerateInput"
+      "FlextInfraServiceBase[str]" is not assignable to "BaseMkGenerateInput" (reportIncompatibleMethodOverride)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/basemk/generator.py:170:28 - error: Type of "render" is partially unknown
+    Type of "render" is "(...) -> str" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check.py:129:9 - error: Method "run" overrides class "FlextUtilitiesEnforcement" in an incompatible manner
+    Base method is declared as a staticmethod but override is not
+    Positional parameter count mismatch; base method has 1, but override has 3
+    Return type mismatch: base method returns type "None", override returns type "FlextResult[Sequence[ProjectResult]]"
+      "FlextResult[Sequence[ProjectResult]]" is not assignable to "None" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:116:13 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:117:13 - error: Type of "fix_result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:117:44 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:122:16 - error: Type of "failure" is partially unknown
+    Type of "failure" is "Unknown | bool" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:123:31 - error: Type of "error" is partially unknown
+    Type of "error" is "Unknown | str | None" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/check/workspace_check_cli.py:123:31 - error: Argument type is partially unknown
+    Argument corresponds to parameter "msg" in function "error"
+    Argument type is "Unknown | str" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/codegen/census.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/census.py:98:9 - error: Method "run" overrides class "FlextUtilitiesEnforcement" in an incompatible manner
+    Base method is declared as a staticmethod but override is not
+    Return type mismatch: base method returns type "None", override returns type "Sequence[CensusReport]"
+      "Sequence[CensusReport]" is not assignable to "None" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/codegen/cli.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/cli.py:27:13 - error: Argument type is partially unknown
+    Argument corresponds to parameter "routes" in function "register_result_routes"
+    Argument type is "list[ResultCommandRouteModel[Unknown, Unknown]]" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/codegen/fixer.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/fixer.py:202:9 - error: Type of "update" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/fixer.py:202:28 - error: Cannot access attribute "update" for class "MutableSet[str]"
+    Attribute "update" is unknown (reportAttributeAccessIssue)
+/home/marlonsc/flext/flext-infra/src/flext_infra/codegen/py_typed.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/py_typed.py:35:9 - error: Method "run" overrides class "FlextUtilitiesEnforcement" in an incompatible manner
+    Base method is declared as a staticmethod but override is not
+    Return type mismatch: base method returns type "None", override returns type "int"
+      "int" is not assignable to "None" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/codegen/scaffolder.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/codegen/scaffolder.py:54:9 - error: Method "run" overrides class "FlextUtilitiesEnforcement" in an incompatible manner
+    Base method is declared as a staticmethod but override is not
+    Return type mismatch: base method returns type "None", override returns type "Sequence[ScaffoldResult]"
+      "Sequence[ScaffoldResult]" is not assignable to "None" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/_detector_runtime.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_detector_runtime.py:72:16 - warning: Condition will always evaluate to False since the types "<subclass of DepsService and TypingsDepsService>" and "None" have no overlap (reportUnnecessaryComparison)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/consolidate_groups.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/consolidate_groups.py:92:20 - warning: Condition will always evaluate to False since the types "Table" and "None" have no overlap (reportUnnecessaryComparison)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_formatting.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_formatting.py:39:21 - error: Type of "current_values" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_formatting.py:44:31 - error: Argument type is partially unknown
+    Argument corresponds to parameter "object" in function "__new__"
+    Argument type is "Unknown | str" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_formatting.py:44:38 - error: Type of "i" is partially unknown
+    Type of "i" is "Unknown | str" (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_mypy.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_mypy.py:98:17 - error: Type of "item" is partially unknown
+    Type of "item" is "str | int | float | bool | Mapping[str, str | int | float | bool | ... | Sequence[InfraValue] | None] | Sequence[str | int | float | bool | Mapping[str, InfraValue] | ... | None] | Unknown | None" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_mypy.py:99:79 - error: Argument type is partially unknown
+    Argument corresponds to parameter "value" in function "unwrap_item"
+    Argument type is "str | int | float | bool | Mapping[str, str | int | float | bool | ... | Sequence[InfraValue] | None] | Sequence[str | int | float | bool | Mapping[str, InfraValue] | ... | None] | Unknown | None" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/_phases/ensure_mypy.py:118:13 - error: Type of "append" is partially unknown
+    Type of "append" is "(object: Unknown, /) -> None" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:16:21 - error: "_tool_config" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:48:22 - error: "_pyrefly_path_rules" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:49:28 - error: "_source_root" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:57:30 - error: "_existing_relative_paths" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:60:31 - error: "_existing_relative_paths" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:84:29 - error: "_existing_relative_paths" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/extra_paths_pyrefly.py:99:22 - error: "_pyrefly_path_rules" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+/home/marlonsc/flext/flext-infra/src/flext_infra/deps/fix_pyrefly_config.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/deps/fix_pyrefly_config.py:123:9 - error: Method "run" overrides class "FlextUtilitiesEnforcement" in an incompatible manner
+    Base method is declared as a staticmethod but override is not
+    Positional parameter count mismatch; base method has 1, but override has 4
+    Return type mismatch: base method returns type "None", override returns type "FlextResult[StrSequence]"
+      "FlextResult[StrSequence]" is not assignable to "None" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_base_rule.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_base_rule.py:69:13 - error: Type of "new_source" is partially unknown
+    Type of "new_source" is "Unknown | Any" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_base_rule.py:70:20 - error: Return type, "tuple[Unknown | str, list[str]]", is partially unknown (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_cli.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_cli.py:65:16 - warning: Condition will always evaluate to True since the types "Result" and "None" have no overlap (reportUnnecessaryComparison)
+/home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_mro_scan.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_mro_scan.py:14:6 - warning: Stub file not found for "rope.base.pyobjects" (reportMissingTypeStubs)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_mro_scan.py:311:17 - error: Type of "raw_bases" is partially unknown
+    Type of "raw_bases" is "Sequence[Unknown] | tuple[()]" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/_utilities_mro_scan.py:316:24 - warning: Unnecessary isinstance call; "Sequence[object] | tuple[()]" is always an instance of "Sequence[Unknown]" (reportUnnecessaryIsInstance)
+/home/marlonsc/flext/flext-infra/src/flext_infra/refactor/census.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/refactor/census.py:43:12 - warning: Condition will always evaluate to False since the types "MROFamilyTarget" and "None" have no overlap (reportUnnecessaryComparison)
+/home/marlonsc/flext/flext-infra/src/flext_infra/release/orchestrator.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/release/orchestrator.py:77:9 - error: Method "execute_command" overrides class "FlextInfraServiceBase" in an incompatible manner
+    Base method is declared as a classmethod but override is not
+    Parameter 2 type mismatch: base parameter is type "FlextInfraServiceBase[bool]", override parameter is type "ReleaseRunInput"
+      "FlextInfraServiceBase[bool]" is not assignable to "ReleaseRunInput" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:108:54 - error: Type of parameter "element" is unknown (reportUnknownParameterType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:108:63 - error: Type of "Element" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:108:73 - error: "Element" is not a known attribute of module "defusedxml.ElementTree" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:110:9 - error: Type of "msg" is partially unknown
+    Type of "msg" is "LiteralString | Unknown" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:110:15 - error: Type of "strip" is partially unknown
+    Type of "strip" is "Unknown | Overload[(chars: LiteralString | None = None, /) -> LiteralString, (chars: str | None = None, /) -> str]" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:110:16 - error: Type of "attrib" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:110:16 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:111:9 - error: Type of "trace" is partially unknown
+    Type of "trace" is "LiteralString | Unknown" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:111:17 - error: Type of "strip" is partially unknown
+    Type of "strip" is "Unknown | Overload[(chars: LiteralString | None = None, /) -> LiteralString, (chars: str | None = None, /) -> str]" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:111:18 - error: Type of "text" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:114:26 - error: Argument type is partially unknown
+    Argument corresponds to parameter "object" in function "append"
+    Argument type is "LiteralString | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:116:26 - error: Argument type is partially unknown
+    Argument corresponds to parameter "object" in function "append"
+    Argument type is "LiteralString | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:121:9 - error: Type of parameter "case" is unknown (reportUnknownParameterType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:121:15 - error: Type of "Element" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:121:25 - error: "Element" is not a known attribute of module "defusedxml.ElementTree" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:125:9 - error: Type of "classname" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:125:21 - error: Type of "attrib" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:125:21 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:126:9 - error: Type of "name" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:126:16 - error: Type of "attrib" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:126:16 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:127:9 - error: Type of "label" is partially unknown
+    Type of "label" is "str | Unknown" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:129:26 - error: Type of "attrib" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:129:26 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:129:26 - error: Argument type is partially unknown
+    Argument corresponds to parameter "x" in function "__new__"
+    Argument type is "Unknown | float" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:132:9 - error: Type of "failure" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:132:19 - error: Type of "find" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:133:9 - error: Type of "error" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:133:17 - error: Type of "find" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:134:9 - error: Type of "skipped" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:134:19 - error: Type of "find" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:136:38 - error: Argument type is partially unknown
+    Argument corresponds to parameter "value" in function "append"
+    Argument type is "str | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:138:17 - error: Type of "_build_trace_chunk" is partially unknown
+    Type of "_build_trace_chunk" is "(heading: str, label: str, element: Unknown) -> str" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:139:32 - error: Argument type is partially unknown
+    Argument corresponds to parameter "label" in function "_build_trace_chunk"
+    Argument type is "str | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:139:39 - error: Argument type is unknown
+    Argument corresponds to parameter "element" in function "_build_trace_chunk" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:144:17 - error: Type of "_build_trace_chunk" is partially unknown
+    Type of "_build_trace_chunk" is "(heading: str, label: str, element: Unknown) -> str" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:144:75 - error: Argument type is partially unknown
+    Argument corresponds to parameter "label" in function "_build_trace_chunk"
+    Argument type is "str | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:144:82 - error: Argument type is unknown
+    Argument corresponds to parameter "element" in function "_build_trace_chunk" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:147:13 - error: Type of "reason" is partially unknown
+    Type of "reason" is "LiteralString | Unknown" (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:147:22 - error: Type of "strip" is partially unknown
+    Type of "strip" is "Unknown | Overload[(chars: LiteralString | None = None, /) -> LiteralString, (chars: str | None = None, /) -> str]" (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:148:17 - error: Type of "attrib" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:148:17 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:148:67 - error: Type of "text" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:150:36 - error: Argument type is partially unknown
+    Argument corresponds to parameter "value" in function "append"
+    Argument type is "str | Unknown" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:151:16 - error: Return type, "tuple[float, str | Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/src/flext_infra/validate/pytest_diag.py:167:17 - error: Type of "_process_testcase" is partially unknown
+    Type of "_process_testcase" is "(case: Unknown, diag: _DiagResult) -> tuple[float, str]" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/src/flext_infra/workspace/maintenance/python_version.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/workspace/maintenance/python_version.py:104:9 - error: Method "execute_command" overrides class "FlextInfraServiceBase" in an incompatible manner
+    Base method is declared as a classmethod but override is not
+    Parameter 2 type mismatch: base parameter is type "FlextInfraServiceBase[int]", override parameter is type "MaintenanceRunInput"
+      "FlextInfraServiceBase[int]" is not assignable to "MaintenanceRunInput" (reportIncompatibleMethodOverride)
+/home/marlonsc/flext/flext-infra/src/flext_infra/workspace/workspace_makefile.py
+  /home/marlonsc/flext/flext-infra/src/flext_infra/workspace/workspace_makefile.py:173:29 - error: Type of "render" is partially unknown
+    Type of "render" is "(...) -> str" (reportUnknownMemberType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/_shared_fixtures.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/_shared_fixtures.py:57:12 - error: Module cannot be used as a type (reportInvalidTypeForm)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/_shared_fixtures.py:63:5 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/_shared_fixtures.py:67:12 - error: Return type, "tuple[Unknown, Path]", is partially unknown (reportUnknownVariableType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:22:5 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:22:14 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:22:41 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:23:11 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:24:12 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/cli_tests.py:125:16 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:21:9 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:42:17 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:48:17 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:58:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:59:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:59:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:60:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:61:20 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:61:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:72:17 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:79:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:80:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:80:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:91:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:101:17 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:101:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:104:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:107:17 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:107:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:110:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:113:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:113:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:114:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:115:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:115:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:122:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:127:17 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:143:17 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:143:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:150:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:153:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:153:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:154:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:155:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:155:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:158:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:159:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:159:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:160:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:161:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:161:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:168:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:173:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:173:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:176:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:179:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:179:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:180:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:181:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:181:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:184:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:189:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_errors_tests.py:189:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:21:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:22:17 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:22:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:25:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:28:17 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:28:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:31:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:34:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:34:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:35:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:36:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:36:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:39:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:43:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:43:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:44:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:52:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:53:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:53:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:54:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:55:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:55:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:58:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:59:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:59:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:62:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:63:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:63:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:66:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:67:15 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:67:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:74:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:75:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:75:18 - error: Type of "find_pyproject_files" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:76:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:77:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:77:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:80:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:81:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:81:18 - error: Type of "find_pyproject_files" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:82:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:83:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:83:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:86:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:93:15 - error: Type of "find_pyproject_files" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:93:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:100:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:101:17 - error: Type of "execute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:101:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:108:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:112:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:112:17 - error: Type of "_fix_search_paths_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:113:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:116:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:119:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:119:17 - error: Type of "_fix_search_paths_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:120:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:123:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:126:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:126:17 - error: Type of "_fix_search_paths_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:127:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:134:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:140:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:140:17 - error: Type of "_remove_ignore_sub_config_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:141:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:146:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:149:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:149:17 - error: Type of "_remove_ignore_sub_config_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:150:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:157:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:160:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:160:17 - error: Type of "_ensure_project_excludes_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:161:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:166:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:169:9 - error: Type of "fixes" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:169:17 - error: Type of "_ensure_project_excludes_tk" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:171:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:178:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:180:9 - error: Type of "arr" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:180:15 - error: Type of "_to_array" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:181:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_config_fixer_tests.py:182:28 - error: Argument type is unknown
+    Argument corresponds to parameter "iterable" in function "__init__" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:40:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:47:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:53:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:53:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:54:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:55:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:55:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:56:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:56:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:56:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:63:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:71:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:77:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:77:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:78:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:79:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:79:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:80:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:80:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:80:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:81:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:81:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:81:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:92:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:102:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:107:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:107:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_error_reporting_tests.py:112:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:27:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:52:29 - error: Type of "_registry" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:52:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:53:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:53:18 - error: Type of "_check_project_with_ctx" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:61:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:61:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:62:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:62:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:63:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:63:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:72:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:96:29 - error: Type of "_registry" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:96:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:97:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:97:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:98:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:105:18 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:117:9 - error: Type of "run_public" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:117:22 - error: Type of "lint" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:117:30 - error: "lint" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:117:63 - error: Type of "format" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:117:71 - error: "format" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:118:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:119:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:120:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:120:17 - error: Type of "gate" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:120:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:127:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:130:21 - error: Argument type is unknown
+    Argument corresponds to parameter "checker" in function "_assert_gate_public_method" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:141:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_project_runners_tests.py:144:21 - error: Argument type is unknown
+    Argument corresponds to parameter "checker" in function "_assert_gate_public_method" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:24:18 - error: Module cannot be used as a type (reportGeneralTypeIssues)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:37:9 - error: Type of "run_public" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:37:22 - error: Type of "lint" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:37:30 - error: "lint" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:37:63 - error: Type of "format" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:37:71 - error: "format" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:38:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:39:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:40:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:40:17 - error: Type of "gate" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:40:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:47:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:50:21 - error: Argument type is unknown
+    Argument corresponds to parameter "checker" in function "_assert_gate_public_method" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:61:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:64:21 - error: Argument type is unknown
+    Argument corresponds to parameter "checker" in function "_assert_gate_public_method" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:77:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:103:29 - error: Type of "_registry" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:103:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:104:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:104:18 - error: Type of "_check_project_with_ctx" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:112:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:112:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:113:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:113:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:114:17 - error: Type of "gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_projects_tests.py:114:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:18:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:18:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:18:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:19:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:20:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:20:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:23:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:23:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:23:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:24:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:25:27 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:28:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:28:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:28:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:34:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:35:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:35:17 - error: Type of "count" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:35:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:38:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:38:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:38:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:39:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:52:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:52:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:52:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:53:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:54:20 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:54:20 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:61:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:61:18 - error: Type of "parse_gate_csv" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:61:45 - error: "parse_gate_csv" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:62:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:65:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:65:18 - error: Type of "parse_gate_csv" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:65:45 - error: "parse_gate_csv" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:66:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:69:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:69:18 - error: Type of "parse_gate_csv" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_resolve_gates_tests.py:69:45 - error: "parse_gate_csv" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:84:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:85:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:85:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:90:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:93:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:94:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:94:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:99:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:100:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:100:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:111:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:118:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:121:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:121:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:122:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:130:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:137:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:140:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:140:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:141:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:153:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:169:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:172:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:172:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:178:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:186:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:198:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:201:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:201:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:206:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:207:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:207:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:208:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:208:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:208:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:215:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:229:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:235:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:235:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:240:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:241:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:241:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:242:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:242:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:242:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:243:17 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:243:17 - error: Type of "total_errors" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:243:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:254:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:261:13 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:263:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:263:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:264:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:265:21 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:265:21 - error: Argument type is unknown
+    Argument corresponds to parameter "obj" in function "len" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:308:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:318:29 - error: Type of "_registry" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:318:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:321:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:321:18 - error: Type of "_check_project_with_ctx" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:331:17 - error: Type of "passed" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:331:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:339:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:349:29 - error: Type of "_registry" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:349:29 - error: Argument type is unknown
+    Argument corresponds to parameter "target" in function "setattr" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:352:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:352:18 - error: Type of "_check_project_with_ctx" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:363:17 - error: Type of "passed" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_run_projects_tests.py:363:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:25:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:26:17 - error: Type of "_default_reports_dir" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:26:17 - error: Type of "exists" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:26:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:33:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:34:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:34:18 - error: Type of "execute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:35:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:92:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:93:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:93:18 - error: Type of "_resolve_workspace_root" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:94:17 - error: Type of "is_absolute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:94:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:110:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:111:17 - error: Type of "_default_reports_dir" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:111:17 - error: Type of "is_absolute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/extended_workspace_init_tests.py:111:17 - error: Argument type is unknown
+    Argument corresponds to parameter "value" in function "that" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:21:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:26:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:31:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:32:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:32:18 - error: Type of "execute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:33:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:34:27 - error: Type of "error" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:40:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:41:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:41:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:42:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:43:27 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:47:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:48:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:48:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:49:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:53:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:54:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:54:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:55:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:59:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:60:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:60:18 - error: Type of "run" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:61:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:65:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:66:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:66:18 - error: Type of "find_pyproject_files" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:67:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:68:27 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:72:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:73:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:73:18 - error: Type of "find_pyproject_files" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:74:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:75:27 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:79:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:81:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:81:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:82:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:83:27 - error: Type of "error" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:88:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:91:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:91:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:92:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:93:16 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:97:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:100:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:100:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:101:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:102:27 - error: Type of "error" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:107:9 - error: Type of "fixer" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:111:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:111:18 - error: Type of "process_file" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/pyrefly_tests.py:112:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:22:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:27:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:32:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:33:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:33:18 - error: Type of "execute" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:34:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:35:27 - error: Type of "error" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:41:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:41:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:41:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:42:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:43:26 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:44:29 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:48:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:48:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:48:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:49:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:50:16 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:50:16 - error: Type of "count" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:54:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:54:18 - error: Type of "resolve_gates" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:54:45 - error: "resolve_gates" is not a known attribute of module "flext_infra" (reportAttributeAccessIssue)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:55:17 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "fail" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:59:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:60:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:60:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:65:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:66:20 - error: Type of "value" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:70:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:72:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:72:18 - error: Type of "run_projects" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:73:15 - error: Argument type is unknown
+    Argument corresponds to parameter "result" in function "ok" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:78:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:79:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:79:18 - error: Type of "lint" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:81:15 - error: Argument type is partially unknown
+    Argument corresponds to parameter "result" in function "ok"
+    Argument type is "FlextResult[Unknown]" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:85:9 - error: Type of "checker" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:86:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:86:18 - error: Type of "format" is unknown (reportUnknownMemberType)
+  /home/marlonsc/flext/flext-infra/tests/unit/check/workspace_tests.py:88:15 - error: Argument type is partially unknown
+    Argument corresponds to parameter "result" in function "ok"
+    Argument type is "FlextResult[Unknown]" (reportUnknownArgumentType)
+/home/marlonsc/flext/flext-infra/tests/unit/codegen/main_tests.py
+  /home/marlonsc/flext/flext-infra/tests/unit/codegen/main_tests.py:58:13 - error: Argument type is partially unknown
+    Argument corresponds to parameter "value" in function "setattr"
+    Argument type is "staticmethod[(_params: Unknown), FlextResult[bool]]" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/codegen/main_tests.py:58:26 - error: Argument type is partially unknown
+    Argument corresponds to parameter "f" in function "__init__"
+    Argument type is "(_params: Unknown) -> FlextResult[bool]" (reportUnknownArgumentType)
+  /home/marlonsc/flext/flext-infra/tests/unit/codegen/main_tests.py:58:33 - error: Type of parameter "_params" is unknown (reportUnknownLambdaType)
+/home/marlonsc/flext/flext-infra/tests/unit/refactor/test_infra_refactor_legacy_and_annotations.py
+  /home/marlonsc/flext/flext-infra/tests/unit/refactor/test_infra_refactor_legacy_and_annotations.py:21:12 - error: Unnecessary "cast" call; type is already "RopeResourceLike" (reportUnnecessaryCast)
+572 errors, 20 warnings, 0 informations

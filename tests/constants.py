@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import re
 from types import MappingProxyType
-from typing import ClassVar, Final
+from typing import TYPE_CHECKING, ClassVar, Final
 
+from flext_infra import c
 from flext_tests import FlextTestsConstants
 
-from flext_infra import c, t
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class TestsFlextInfraConstants(FlextTestsConstants, c):
@@ -29,6 +31,32 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
 
     class Tests(FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
+
+        MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+            "BASH_ENV",
+            "CHANGED_ONLY",
+            "CHECK_GATES",
+            "CHECK_ONLY",
+            "FAIL_FAST",
+            "FILE",
+            "FILES",
+            "FIX",
+            "FLEXT_INFRA_PYTHON",
+            "FLEXT_ROOT",
+            "FLEXT_STANDALONE",
+            "FLEXT_WORKSPACE_ROOT",
+            "MATCH",
+            "PROJECT",
+            "PROJECTS",
+            "PYRIGHT_ARGS",
+            "PYTEST_ARGS",
+            "RUFF_ARGS",
+            "UV",
+            "VALIDATE_GATES",
+            "WORKSPACE_ROOT",
+            *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+        )
+        """Environment inherited from an outer Make invocation to discard in tests."""
 
         RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
         RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION
@@ -65,7 +93,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ("Success: 5 passed", 0),
         )
         LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = re.compile(
-            r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)",
+            r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)"
         )
         LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
             "make[1]: running",
@@ -75,11 +103,10 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "Total: 2 failed",
         )
         SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = re.compile(
-            r"hello",
-            re.MULTILINE,
+            r"hello", re.MULTILINE
         )
         LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = re.compile(
-            r'["\']([^"\']+)["\']',
+            r'["\']([^"\']+)["\']'
         )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
             "FlextInfra",
@@ -154,15 +181,19 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             ".venv",
         })
 
+        REFACTOR_SCAN_FILE_COUNT: Final[int] = 1000
+        REFACTOR_SCAN_MAX_SECONDS: Final[float] = 30.0
+        REFACTOR_MEMORY_FILE_COUNT: Final[int] = 500
+        REFACTOR_MEMORY_MAX_MB: Final[float] = 500.0
+        REFACTOR_RULE_ITERATIONS: Final[int] = 100
+        REFACTOR_RULE_MAX_SECONDS: Final[float] = 0.1
+
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
         RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
         RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
-        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0-dev"
+        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0.dev0"
         RELEASE_BUMP_MINOR: Final[str] = "minor"
-        RELEASE_PROJECTS: Final[tuple[str, str]] = (
-            "flext-a",
-            "flext-b",
-        )
+        RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
         RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
         RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
         RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"

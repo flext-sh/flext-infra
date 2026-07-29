@@ -2,12 +2,14 @@
 
 # flext-infra Documentation
 
-- Version: `0.12.0-dev`
+- Version: `0.12.0rc0`
 - Project class: `infra`
 - Package: `flext_infra`
-- Description: FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management
+- Description: FLEXT Infrastructure Tooling - Build automation, code generation,
+  and workspace management
 
-This project portal is generated from `pyproject.toml`, package exports, and real docstrings.
+This project portal is generated from `pyproject.toml`, package exports, and
+real docstrings.
 
 ## Start Here
 
@@ -27,14 +29,25 @@ This project portal is generated from `pyproject.toml`, package exports, and rea
 
 ## Collection Rules
 
-Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline, slot registry verification).
+Read [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+§9 — Agent Execution Pre-requisites — for the canonical pre-change checklist
+(parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,
+slot registry verification).
 
 ## Quality Gates
 
-Canonical `make` verbs (`check`, `test`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md) skill for selectors and thresholds.
+Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
+`docs`) — see `AGENTS.md` §5 (Make Contract) and the
+[`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md)
+skill for selectors and thresholds.
 
 ## Governance Pointer
 
-- Engineering law: [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
-- Skills index: [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/main/.agents/skills/)
-- Onboarding: [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/main/docs/guides/onboarding.md)
+- Engineering law:
+  [`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+- Governance + ADRs:
+  [`/flext/docs/GOVERNANCE.md`](https://github.com/flext-sh/flext/blob/main/docs/GOVERNANCE.md)
+- Skills index:
+  [`/flext/.agents/skills/`](https://github.com/flext-sh/flext/tree/main/.agents/skills/)
+- Onboarding:
+  [`/flext/docs/guides/onboarding.md`](https://github.com/flext-sh/flext/blob/main/docs/guides/onboarding.md)

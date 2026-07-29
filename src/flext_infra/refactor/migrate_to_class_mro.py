@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from time import perf_counter
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli
 from flext_core import r
-from flext_core.utilities import u
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import c, m, u
 from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
 from flext_infra.refactor._migrate_mro_report import (
     FlextInfraRefactorMigrateMroReportMixin,
 )
@@ -22,7 +17,11 @@ from flext_infra.refactor.mro_migration_validator import (
     FlextInfraRefactorMROMigrationValidator,
 )
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixin):
@@ -59,12 +58,11 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         if apply:
             safety_manager = FlextInfraRefactorSafetyManager()
             checkpoint_outcome = safety_manager.create_pre_transformation_checkpoint(
-                self._workspace_root,
-                label="flext-infra-refactor-migrate-to-class-mro",
+                self._workspace_root, label="flext-infra-refactor-migrate-to-class-mro"
             )
             if checkpoint_outcome.failure:
                 warnings.append(
-                    f"Pre-transformation checkpoint failed: {checkpoint_outcome.error}",
+                    f"Pre-transformation checkpoint failed: {checkpoint_outcome.error}"
                 )
             else:
                 checkpoint_ref = checkpoint_outcome.value
@@ -89,25 +87,22 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
                 )
             )
             validation_mode = "post-apply-rescan"
-            if safety_manager is not None and (errors or mro_failures):
-                rollback_outcome = safety_manager.rollback(
-                    self._workspace_root,
-                    checkpoint_ref=checkpoint_ref,
-                )
-                if rollback_outcome.failure:
+            # Never roll back the whole workspace on a partial failure: each
+            # file write is already lint-gated per file (green files committed,
+            # failing files skipped). A global rollback would discard every
+            # converged file whenever a single unrelated file failed lint,
+            # leaving the census unchanged and the run non-idempotent. Keep the
+            # green writes and only surface the failures as warnings/errors.
+            if safety_manager is not None:
+                if errors or mro_failures:
                     warnings.append(
-                        f"Safety rollback failed: {rollback_outcome.error}",
+                        "Partial failures left in place (fix-forward): "
+                        f"{len(errors)} error(s), {mro_failures} mro failure(s); "
+                        "converged files were kept, not rolled back."
                     )
-                else:
-                    warnings.append(
-                        "Safety rollback applied — verb left workspace at pre-run state.",
-                    )
-            elif safety_manager is not None:
                 clear_outcome = safety_manager.clear_checkpoint()
                 if clear_outcome.failure:
-                    warnings.append(
-                        f"Checkpoint cleanup failed: {clear_outcome.error}",
-                    )
+                    warnings.append(f"Checkpoint cleanup failed: {clear_outcome.error}")
         else:
             remaining_violations = sum(
                 len(scan_result.candidates) for scan_result in scan_results
@@ -115,7 +110,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
             mro_failures = 0
             validation_mode = "dry-run-estimate"
             warnings.append(
-                "Dry-run skips post-apply rescan; remaining violations reflect the current candidate snapshot.",
+                "Dry-run skips post-apply rescan; remaining violations reflect the current candidate snapshot."
             )
         validation_duration = perf_counter() - validation_start
         total_duration = perf_counter() - start_time
@@ -142,8 +137,7 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
 
     @classmethod
     def execute_command(
-        cls,
-        params: m.Infra.RefactorMigrateMroInput,
+        cls, params: m.Infra.RefactorMigrateMroInput
     ) -> p.Result[m.Infra.MROMigrationReport]:
         """Execute MRO migration directly from the canonical refactor payload."""
         report = cls(workspace_root=params.workspace_path).run(
@@ -157,17 +151,12 @@ class FlextInfraRefactorMigrateToClassMRO(FlextInfraRefactorMigrateMroReportMixi
         return r[m.Infra.MROMigrationReport].ok(report)
 
     @classmethod
-    def run_as_hook(
-        cls,
-        path: Path,
-        *,
-        dry_run: bool,
-    ) -> t.SequenceOf[m.Infra.Result]:
+    def run_as_hook(cls, path: Path, *, dry_run: bool) -> t.SequenceOf[m.Infra.Result]:
         """Execute MRO migration as a rope post-hook (implements p.Infra.RopePostHook)."""
         try:
             report = cls(workspace_root=path).run(target="all", apply=not dry_run)
         except (
-            *FlextInfraConstantsRope.SYNTAX_ERRORS,
+            *u.Infra.rope_syntax_errors(),
             OSError,
             ValueError,
             KeyError,

@@ -19,20 +19,17 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
 from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra._constants.rope import FlextInfraConstantsRope
+from flext_infra import c, m, u
 from flext_infra.base import s
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.protocols import p
-from flext_infra.typings import t
-from flext_infra.utilities import u
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
+
+    from flext_infra import p, t
 
 
 class FlextInfraValidateImportCycles(s[bool]):
@@ -46,47 +43,69 @@ class FlextInfraValidateImportCycles(s[bool]):
 
     _MIN_CYCLE_SIZE: ClassVar[int] = 2
 
-    def build_report(
-        self,
-        workspace_root: Path,
-    ) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Scan ``workspace_root`` for runtime import cycles via rope.
 
+        Detection is scoped per project root: each governed project is an
+        independent import unit with its own ``sys.path`` at test/runtime, so
+        same-named top-level packages (for example ``tests``) from different
+        projects are never merged into a single graph. When no governed project
+        roots are discoverable (for example a bare synthetic tree), the whole
+        root is scanned as one unit.
+
         Args:
-            workspace_root: Path under which to open a rope Project.
+            workspace_root: Path under which to discover and scan projects.
 
         Returns:
             r with ValidationReport listing each cyclic SCC as a violation.
 
         """
         try:
-            graph = self._build_graph(workspace_root)
+            graphs = self._build_graphs(workspace_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("import-cycles scan", exc)
-        cycles = tuple(
-            scc for scc in self._tarjan(graph) if len(scc) >= self._MIN_CYCLE_SIZE
-        )
+        total_modules = 0
+        cycles: list[tuple[str, t.StrSequence]] = []
+        for label, graph in graphs:
+            total_modules += len(graph)
+            cycles.extend(
+                (label, tuple(sorted(scc)))
+                for scc in self._tarjan(graph)
+                if len(scc) >= self._MIN_CYCLE_SIZE
+            )
         violations: t.MutableSequenceOf[str] = [
-            "cycle: " + " -> ".join(sorted(scc)) for scc in cycles
+            (f"[{label}] cycle: " + " -> ".join(scc))
+            if label
+            else "cycle: " + " -> ".join(scc)
+            for label, scc in cycles
         ]
         passed = not violations
         summary = (
-            f"no runtime import cycles (scanned {len(graph)} modules)"
+            f"no runtime import cycles (scanned {total_modules} modules)"
             if passed
-            else f"found {len(cycles)} runtime import cycle(s) across {len(graph)} modules"
+            else f"found {len(cycles)} runtime import cycle(s) across {total_modules} modules"
         )
         return r[m.Infra.ValidationReport].ok(
             m.Infra.ValidationReport(
-                passed=passed,
-                violations=violations,
-                summary=summary,
-            ),
+                passed=passed, violations=violations, summary=summary
+            )
         )
 
-    def _build_graph(
-        self,
-        workspace_root: Path,
-    ) -> MutableMapping[str, set[str]]:
+    def _build_graphs(
+        self, workspace_root: Path
+    ) -> list[tuple[str, MutableMapping[str, set[str]]]]:
+        """Build one import graph per governed project root (one import unit).
+
+        Falls back to a single graph over ``workspace_root`` when no governed
+        project roots are discoverable, preserving behaviour for bare synthetic
+        trees used by unit tests.
+        """
+        roots = u.Infra.discover_project_roots(workspace_root)
+        if not roots:
+            return [("", self._build_graph(workspace_root))]
+        return [(root.name, self._build_graph(root)) for root in roots]
+
+    def _build_graph(self, workspace_root: Path) -> MutableMapping[str, set[str]]:
         """Build ``{module_name: {imported_modules}}`` via rope."""
         graph: MutableMapping[str, set[str]] = {}
         with u.Infra.open_project(workspace_root) as project:
@@ -96,10 +115,7 @@ class FlextInfraValidateImportCycles(s[bool]):
                     continue
                 module_name = module_name_result.value
                 graph.setdefault(module_name, set())
-                module_imports = u.Infra.get_module_imports(
-                    project,
-                    resource,
-                )
+                module_imports = u.Infra.get_module_imports(project, resource)
                 if module_imports is None:
                     continue
                 for imported_name in self._iter_imported_modules(module_imports):
@@ -107,9 +123,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return graph
 
     def _module_name_for(
-        self,
-        project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
+        self, project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> p.Result[str]:
         """Resolve a rope resource to its fully-qualified module name.
 
@@ -119,7 +133,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         """
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
-        except FlextInfraConstantsRope.RUNTIME_ERRORS as exc:
+        except u.Infra.rope_runtime_errors() as exc:
             return r[str].fail(f"get_pymodule rope error: {exc!s}")
         except TypeError as exc:
             return r[str].fail(f"get_pymodule type error: {exc!s}")
@@ -138,8 +152,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return r[str].ok(".".join(parts))
 
     def _iter_imported_modules(
-        self,
-        module_imports: t.Infra.RopeModuleImports,
+        self, module_imports: t.Infra.RopeModuleImports
     ) -> t.StrSequence:
         """Extract imported module names from the boundary import-info collection.
 
@@ -149,8 +162,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         return u.Infra.imported_module_paths(module_imports)
 
     def _tarjan(
-        self,
-        graph: MutableMapping[str, set[str]],
+        self, graph: MutableMapping[str, set[str]]
     ) -> t.SequenceOf[t.StrSequence]:
         """Tarjan's SCC over ``graph``; returns each SCC as a list of module names."""
         index_counter = [0]
@@ -194,7 +206,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         report_result = self.build_report(self.workspace_root)
         if report_result.failure:
             return r[bool].fail(
-                report_result.error or "import-cycles validation failed",
+                report_result.error or "import-cycles validation failed"
             )
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)

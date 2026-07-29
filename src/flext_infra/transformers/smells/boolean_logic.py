@@ -9,14 +9,17 @@ chain itself (``any``/``all`` short-circuit on iterables).
 from __future__ import annotations
 
 import ast
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.models import m
 from flext_infra.transformers.smells.base import (
     FlextInfraSmellFixer,
     register_smell_fixer,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import m
 
 
 class _BooleanSimplifier(ast.NodeTransformer):
@@ -35,9 +38,7 @@ class _BooleanSimplifier(ast.NodeTransformer):
         func_name = "any" if isinstance(node.op, ast.Or) else "all"
         tuple_node = ast.Tuple(elts=operands, ctx=ast.Load())
         call = ast.Call(
-            func=ast.Name(id=func_name, ctx=ast.Load()),
-            args=[tuple_node],
-            keywords=[],
+            func=ast.Name(id=func_name, ctx=ast.Load()), args=[tuple_node], keywords=[]
         )
         ast.copy_location(call, node)
         return call
@@ -67,11 +68,7 @@ class FlextInfraBooleanLogicFixer(FlextInfraSmellFixer):
     tag: ClassVar[str] = "smell_boolean_logic"
 
     @override
-    def fix(
-        self,
-        project_dir: Path,
-        issue: m.Infra.Issue,
-    ) -> tuple[bool, list[str]]:
+    def fix(self, project_dir: Path, issue: m.Infra.Issue) -> tuple[bool, list[str]]:
         """Rewrite eligible boolean chains in the issue's file."""
         source_path = project_dir / issue.file
         try:

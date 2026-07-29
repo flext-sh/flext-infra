@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.constants import c
+from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
-from flext_infra.models import m
-from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from flext_infra import p, t
 
 
 class FlextInfraRuffFormatGate(FlextInfraGate):
@@ -22,9 +24,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _get_check_dirs(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Get check dirs."""
         _ = ctx
@@ -32,27 +32,17 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
 
     @override
     def _build_check_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        check_dirs: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
         """Build check command."""
         _ = project_dir, ctx
-        return [
-            c.Infra.RUFF,
-            c.Infra.FORMAT,
-            "--check",
-            *check_dirs,
-            "--quiet",
-        ]
+        return self._python_module_command(
+            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"
+        )
 
     @override
     def _parse_check_output(
-        self,
-        result: m.Cli.CommandOutput,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
@@ -78,20 +68,17 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             column=0,
                             code=c.Infra.FORMAT,
                             message="Would be reformatted",
-                        ),
+                        )
                     )
         return result.exit_code == 0, issues
 
     @override
     def _build_fix_command(
-        self,
-        project_dir: Path,
-        ctx: m.Infra.GateContext,
-        targets: t.StrSequence,
+        self, project_dir: Path, ctx: m.Infra.GateContext, targets: t.StrSequence
     ) -> t.StrSequence:
         """Build fix command."""
         _ = project_dir, ctx, targets
-        return [c.Infra.RUFF, c.Infra.FORMAT, "."]
+        return self._python_module_command(c.Infra.RUFF, c.Infra.FORMAT, ".")
 
 
 __all__: list[str] = ["FlextInfraRuffFormatGate"]

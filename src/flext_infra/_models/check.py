@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli.models import FlextCliModels as m
-from flext_cli.utilities import u
+from flext_cli import FlextCliModels as m, u
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra.constants import c
-from flext_infra.typings import t
 
 
 class FlextInfraModelsCheck:
@@ -29,13 +25,11 @@ class FlextInfraModelsCheck:
         reports_dir: Annotated[
             str,
             m.Field(
-                alias="reports-dir",
-                description="Directory used to write check reports",
+                alias="reports-dir", description="Directory used to write check reports"
             ),
         ] = f"{c.Infra.REPORTS_DIR_NAME}/check"
         fix: Annotated[
-            bool,
-            m.Field(False, description="Apply supported gate fixes before run"),
+            bool, m.Field(False, description="Apply supported gate fixes before run")
         ] = False
         check_only: Annotated[
             bool,
@@ -46,22 +40,18 @@ class FlextInfraModelsCheck:
         ] = False
         ruff_args: Annotated[
             str | None,
-            m.Field(
-                alias="ruff-args",
-                description="Extra arguments forwarded to Ruff",
-            ),
+            m.Field(alias="ruff-args", description="Extra arguments forwarded to Ruff"),
         ] = None
         pyright_args: Annotated[
             str | None,
             m.Field(
-                alias="pyright-args",
-                description="Extra arguments forwarded to Pyright",
+                alias="pyright-args", description="Extra arguments forwarded to Pyright"
             ),
         ] = None
 
         @property
         def reports_dir_path(self) -> Path:
-            """Return the resolved reports directory path."""
+            """Resolved reports directory path."""
             reports_dir = Path(self.reports_dir).expanduser()
             if reports_dir.is_absolute():
                 return reports_dir.resolve()
@@ -71,8 +61,7 @@ class FlextInfraModelsCheck:
         """Resolved project target for workspace gate execution."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True,
-            validate_default=False,
+            frozen=True, validate_default=False
         )
 
         name: Annotated[str, m.Field(description="Display/project name")]
@@ -80,32 +69,49 @@ class FlextInfraModelsCheck:
 
         @classmethod
         def from_workspace_name(
-            cls,
-            workspace_root: Path,
-            project_name: str,
+            cls, workspace_root: Path, project_name: str
         ) -> FlextInfraModelsCheck.CheckProjectTarget:
             """Build a target from the public run_projects name contract."""
             return cls(name=project_name, path=workspace_root / project_name)
 
-    class FixPyreflyConfigCommand(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
+    class MypyResourceLimit(m.ContractModel):
+        """Validated memory and wall-time limits for every Mypy process."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        memory_limit_mb: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                le=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
+                description="Positive Mypy address-space limit in MiB",
+            ),
+        ] = c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                le=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
+                description="Positive Mypy wall-time limit in seconds",
+            ),
+        ] = c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT
+
+        @m.computed_field()
+        @property
+        def memory_limit_bytes(self) -> int:
+            """Validated limit converted to bytes for prlimit."""
+            return self.memory_limit_mb * 1024 * 1024
+
+    class FixPyreflyConfigCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check fix-pyrefly-settings``."""
 
-    class FixEnforcementCommand(
-        mm.WriteMixin,
-        m.ContractModel,
-    ):
+    class FixEnforcementCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra check fix-enforcement``."""
 
         rules: Annotated[
             t.StrSequence,
-            m.Field(
-                default_factory=tuple,
-                description="Comma-separated enforcement rule IDs to fix",
-            ),
-        ]
+            m.Field(description="Comma-separated enforcement rule IDs to fix"),
+        ] = ()
         safe_only: Annotated[
             bool,
             m.Field(
@@ -123,10 +129,7 @@ class FlextInfraModelsCheck:
 
         @m.field_validator("rules", mode="before")
         @classmethod
-        def _parse_rules(
-            cls,
-            value: str | t.SequenceOf[str] | None,
-        ) -> t.StrSequence:
+        def _parse_rules(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
             if value is None:
                 return ()
@@ -144,8 +147,7 @@ class FlextInfraModelsCheck:
         @m.field_validator("projects", mode="before")
         @classmethod
         def _parse_projects(
-            cls,
-            value: str | t.SequenceOf[str] | None,
+            cls, value: str | t.SequenceOf[str] | None
         ) -> t.StrSequence | None:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
             if value is None:
@@ -169,12 +171,9 @@ class FlextInfraModelsCheck:
         column: Annotated[int, m.Field(description="Column number")]
         code: Annotated[str, m.Field(description="Rule or error code")]
         message: Annotated[str, m.Field(description="Human-readable issue description")]
-        severity: Annotated[
-            str,
-            m.Field(
-                description="Issue severity level",
-            ),
-        ] = c.Infra.ERROR
+        severity: Annotated[str, m.Field(description="Issue severity level")] = (
+            c.Infra.ERROR
+        )
 
         @m.computed_field()
         @property
@@ -185,37 +184,29 @@ class FlextInfraModelsCheck:
                 f"{self.file}:{self.line}:{self.column} {code_part}{self.message}"
             ).strip()
 
-    class GateResult(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class GateResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Result summary for a single quality gate execution."""
 
         gate: Annotated[str, m.Field(description="Gate name")]
         passed: Annotated[bool, m.Field(description="Gate execution status")]
         errors: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Gate error messages",
+            default_factory=tuple, description="Gate error messages"
         )
         duration: float = m.Field(
-            0.0,
-            description="Duration in seconds",
-            validate_default=True,
+            0.0, description="Duration in seconds", validate_default=True
         )
 
     class GateExecution(m.ArbitraryTypesModel):
         """Execution result for a single quality gate."""
 
         result: FlextInfraModelsCheck.GateResult = m.Field(
-            description="Gate result model",
+            description="Gate result model"
         )
         issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
         raw_output: str = m.Field(
-            "",
-            description="Raw tool output",
-            validate_default=True,
+            "", description="Raw tool output", validate_default=True
         )
 
         @m.computed_field()
@@ -226,10 +217,7 @@ class FlextInfraModelsCheck:
                 1 for issue in self.issues if issue.severity.lower() == c.Infra.ERROR
             )
 
-    class ProjectResult(
-        mm.ProjectNameMixin,
-        m.ArbitraryTypesModel,
-    ):
+    class ProjectResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
         """Aggregated gate results for a single project.
 
         Enforcement exemption: ``gates`` is a ``MutableMapping`` populated
@@ -238,8 +226,7 @@ class FlextInfraModelsCheck:
         """
 
         gates: MutableMapping[str, FlextInfraModelsCheck.GateExecution] = m.Field(
-            default_factory=dict,
-            description="Gate name to execution mapping",
+            default_factory=dict, description="Gate name to execution mapping"
         )
 
         @m.computed_field()
@@ -260,18 +247,12 @@ class FlextInfraModelsCheck:
         """Compact SARIF rule descriptor."""
 
         id: Annotated[str, m.Field(description="Rule identifier")]
-        short_description: Annotated[
-            str,
-            m.Field(description="Rule short description"),
-        ]
+        short_description: Annotated[str, m.Field(description="Rule short description")]
 
         @u.model_serializer(mode="plain")
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
-            return {
-                "id": self.id,
-                "shortDescription": {"text": self.short_description},
-            }
+            return {"id": self.id, "shortDescription": {"text": self.short_description}}
 
     class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""
@@ -280,9 +261,7 @@ class FlextInfraModelsCheck:
         start_line: Annotated[int, m.Field(description="Start line (1-based)")]
         start_column: Annotated[int, m.Field(description="Start column (1-based)")]
         uri_base_id: str = m.Field(
-            "%SRCROOT%",
-            description="URI base identifier",
-            validate_default=True,
+            "%SRCROOT%", description="URI base identifier", validate_default=True
         )
 
         @u.model_serializer(mode="plain")
@@ -298,7 +277,7 @@ class FlextInfraModelsCheck:
                         "startLine": self.start_line,
                         "startColumn": self.start_column,
                     },
-                },
+                }
             }
 
     class SarifResult(m.ContractModel):
@@ -308,7 +287,7 @@ class FlextInfraModelsCheck:
         level: Annotated[str, m.Field(description="Result level (error/warning)")]
         message: Annotated[str, m.Field(description="Result message")]
         locations: list[FlextInfraModelsCheck.SarifLocation] = m.Field(
-            description="Result locations",
+            description="Result locations"
         )
 
         @u.model_serializer(mode="plain")
@@ -328,9 +307,7 @@ class FlextInfraModelsCheck:
 
         tool_name: Annotated[str, m.Field(description="Tool name")]
         information_uri: str = m.Field(
-            "",
-            description="Tool documentation URL",
-            validate_default=True,
+            "", description="Tool documentation URL", validate_default=True
         )
         rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
             default_factory=tuple, description="Rule descriptors"
@@ -350,7 +327,7 @@ class FlextInfraModelsCheck:
                         "rules": [
                             rule.model_dump(by_alias=True) for rule in self.rules
                         ],
-                    },
+                    }
                 },
                 "results": [
                     result.model_dump(by_alias=True) for result in self.results
@@ -369,9 +346,7 @@ class FlextInfraModelsCheck:
             validate_default=True,
         )
         version: str = m.Field(
-            "2.1.0",
-            description="SARIF version",
-            validate_default=True,
+            "2.1.0", description="SARIF version", validate_default=True
         )
         runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple, description="SARIF runs"

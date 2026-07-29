@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from flext_cli.models import FlextCliModels as m
-from flext_infra.typings import t
+from flext_cli import FlextCliModels as m
+from flext_infra import t
 
 
 class FlextInfraFixersResult:
@@ -48,24 +48,19 @@ class FlextInfraFixersResult:
 
         project: Annotated[str, m.Field(description="Project name")]
         fixed: t.SequenceOf[FlextInfraFixersResult.FixedViolation] = m.Field(
-            default_factory=tuple,
-            description="Fixed violations",
+            default_factory=tuple, description="Fixed violations"
         )
         previewed: t.SequenceOf[FlextInfraFixersResult.PreviewedViolation] = m.Field(
-            default_factory=tuple,
-            description="Dry-run previews",
+            default_factory=tuple, description="Dry-run previews"
         )
         skipped: t.SequenceOf[FlextInfraFixersResult.SkippedViolation] = m.Field(
-            default_factory=tuple,
-            description="Skipped violations",
+            default_factory=tuple, description="Skipped violations"
         )
         failed: t.SequenceOf[FlextInfraFixersResult.FailedFix] = m.Field(
-            default_factory=tuple,
-            description="Failed fix attempts",
+            default_factory=tuple, description="Failed fix attempts"
         )
         files_modified: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Modified file paths",
+            default_factory=tuple, description="Modified file paths"
         )
 
 

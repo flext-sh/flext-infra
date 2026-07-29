@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 import flext_infra.deps as deps_mod
+from flext_tests import tm
 
 
 class TestsFlextInfraDepsInit:
@@ -21,4 +22,4 @@ class TestsFlextInfraDepsInit:
     def test_dir_returns_all_exports(self) -> None:
         """Test dir() returns all exported symbols."""
         exports = dir(deps_mod)
-        assert len(exports) > 0
+        tm.that(len(exports) > 0, eq=True)

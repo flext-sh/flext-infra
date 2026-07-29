@@ -7,10 +7,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import pytest
-from flext_tests import tm
 
 import flext_infra.codegen as codegen_module
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_tests import tm
 
 
 def test_codegen_getattr_raises_attribute_error() -> None:
@@ -19,10 +19,11 @@ def test_codegen_getattr_raises_attribute_error() -> None:
         _ = getattr(codegen_module, "nonexistent_xyz_attribute")
 
 
-def test_codegen_dir_returns_all_exports() -> None:
-    """Test that dir() returns all exported attributes."""
+def test_codegen_package_does_not_reexport_leaf_implementations() -> None:
+    """Keep implementation classes available only from their leaf owners."""
     exports = dir(codegen_module)
-    tm.that(exports, has="FlextInfraCodegenLazyInit")
+    tm.that(codegen_module.__all__, eq=())
+    tm.that(exports, lacks="FlextInfraCodegenLazyInit")
 
 
 def test_codegen_lazy_imports_work() -> None:

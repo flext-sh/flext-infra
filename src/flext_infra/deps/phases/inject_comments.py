@@ -2,12 +2,60 @@
 
 from __future__ import annotations
 
-from flext_infra.constants import c
-from flext_infra.typings import t
+from flext_infra import c, config, t
 
 
 class FlextInfraInjectCommentsPhase:
     """Inject managed/custom markers into pyproject.toml."""
+
+    _MYPY_RATIONALE_HEADER = (
+        "# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):"
+    )
+    _RUFF_RATIONALE_HEADER = (
+        "# FLEXT Ruff suppression rationale (validated against semantic facet order):"
+    )
+    _PYRIGHT_RATIONALE_HEADER = (
+        "# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):"
+    )
+
+    @classmethod
+    def _mypy_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Mypy exclusions from the tooling SSOT."""
+        return (
+            cls._MYPY_RATIONALE_HEADER,
+            *(
+                f"# FLEXT mypy[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.mypy.disabled_error_codes.items()
+                )
+            ),
+        )
+
+    @classmethod
+    def _ruff_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Ruff exclusions from the tooling SSOT."""
+        return (
+            cls._RUFF_RATIONALE_HEADER,
+            *(
+                f"# FLEXT ruff[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.ruff.lint.ignored_rule_rationales.items()
+                )
+            ),
+        )
+
+    @classmethod
+    def _pyright_rationale_lines(cls) -> t.StrSequence:
+        """Render evidence-backed Pyright exclusions from the tooling SSOT."""
+        return (
+            cls._PYRIGHT_RATIONALE_HEADER,
+            *(
+                f"# FLEXT pyright[{code}]: {rationale}"
+                for code, rationale in sorted(
+                    config.Infra.tooling.tools.pyright.global_suppression_rationales.items()
+                )
+            ),
+        )
 
     @staticmethod
     def _is_section_header(line: str) -> bool:
@@ -15,14 +63,17 @@ class FlextInfraInjectCommentsPhase:
         stripped = line.strip()
         return stripped.startswith("[") and stripped.endswith("]")
 
-    @staticmethod
-    def _managed_marker_lines() -> t.Infra.StrSet:
-        """Managed marker lines."""
+    @classmethod
+    def _managed_marker_lines(cls) -> t.Infra.StrSet:
+        """Return the managed marker lines."""
         markers = {marker for _section_prefix, marker in c.Infra.COMMENT_MARKERS}
         markers.add(c.Infra.DEV_OPTIONAL_DEPS_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_MARKER)
         markers.add(c.Infra.LEGACY_AUTO_BANNER_LINE)
         markers.update(c.Infra.BANNER.splitlines())
+        markers.update(cls._mypy_rationale_lines())
+        markers.update(cls._ruff_rationale_lines())
+        markers.update(cls._pyright_rationale_lines())
         return markers
 
     @staticmethod
@@ -36,8 +87,7 @@ class FlextInfraInjectCommentsPhase:
 
     @classmethod
     def _strip_managed_lines(
-        cls,
-        lines: t.StrSequence,
+        cls, lines: t.StrSequence
     ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Strip managed lines."""
         changes: t.MutableSequenceOf[str] = []
@@ -56,6 +106,12 @@ class FlextInfraInjectCommentsPhase:
             if stripped.startswith("# Sections with [MANAGED] are enforced"):
                 continue
             if stripped == c.Infra.LEGACY_AUTO_BANNER_LINE:
+                continue
+            if stripped.startswith("# FLEXT mypy["):
+                continue
+            if stripped.startswith("# FLEXT ruff["):
+                continue
+            if stripped.startswith("# FLEXT pyright["):
                 continue
             if stripped == "[group.dev.dependencies]":
                 skip_broken_group_section = True
@@ -101,11 +157,18 @@ class FlextInfraInjectCommentsPhase:
         cleaned_lines, cleanup_changes = self._strip_managed_lines(lines)
         changes.extend(cleanup_changes)
         banner_lines = c.Infra.BANNER.splitlines()
-        out: t.MutableSequenceOf[str] = [*banner_lines]
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): banner injection owns the
+        # leading separator so parse/render trivia cannot require a second pass.
+        first_content = next(
+            (index for index, line in enumerate(cleaned_lines) if line.strip()),
+            len(cleaned_lines),
+        )
+        content_lines = cleaned_lines[first_content:]
+        out: t.MutableSequenceOf[str] = [*banner_lines, ""]
         if lines[: len(banner_lines)] != banner_lines:
             changes.append("managed banner injected")
         emitted_markers: set[str] = set()
-        for line in cleaned_lines:
+        for line in content_lines:
             stripped = line.strip()
             marker = self._marker_for_section(stripped)
             if marker and marker not in emitted_markers:
@@ -113,10 +176,19 @@ class FlextInfraInjectCommentsPhase:
                 changes.append(f"marker injected for {stripped}")
                 emitted_markers.add(marker)
             if stripped == "[project.optional-dependencies]" or stripped.startswith(
-                "optional-dependencies.dev",
+                "optional-dependencies.dev"
             ):
                 self._inject_dev_markers(out, changes, emitted_markers)
             out.append(line)
+            if stripped == "[tool.mypy]":
+                out.extend(self._mypy_rationale_lines())
+                changes.append("Mypy suppression rationales injected")
+            elif stripped == "[tool.ruff.lint]":
+                out.extend(self._ruff_rationale_lines())
+                changes.append("Ruff suppression rationales injected")
+            elif stripped == "[tool.pyright]":
+                out.extend(self._pyright_rationale_lines())
+                changes.append("Pyright suppression rationales injected")
         updated = "\n".join(self._collapse_blank_lines(out)).rstrip() + "\n"
         original = rendered.rstrip() + "\n"
         if updated == original:

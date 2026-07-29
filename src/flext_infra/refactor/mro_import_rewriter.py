@@ -2,25 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import (
-    MutableMapping,
-)
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import ClassVar
 
-from flext_infra.models import m
+from flext_infra import m, t, u
 from flext_infra.refactor._mro_import_collect import (
     FlextInfraRefactorMROImportRewriterFileOpsMixin,
 )
 from flext_infra.transformers.mro_symbol_propagator import (
     FlextInfraRefactorMROSymbolPropagator,
 )
-from flext_infra.typings import t
-from flext_infra.utilities import u
 
 
 class FlextInfraRefactorMROImportRewriter(
-    FlextInfraRefactorMROImportRewriterFileOpsMixin,
+    FlextInfraRefactorMROImportRewriterFileOpsMixin
 ):
     """Rewrite imports/references after MRO symbol absorption into facade classes."""
 
@@ -60,7 +56,7 @@ class FlextInfraRefactorMROImportRewriter(
         for scan_result in scan_results:
             try:
                 updated_source, migration, symbol_map = u.Infra.migrate_file(
-                    scan_result=scan_result,
+                    scan_result=scan_result
                 )
             except Exception as exc:
                 errors.append(f"{scan_result.file}: {exc}")
@@ -115,10 +111,7 @@ class FlextInfraRefactorMROImportRewriter(
         apply: bool,
         project_names: t.StrSequence | None = None,
         gates: t.StrSequence | None = None,
-    ) -> tuple[
-        t.SequenceOf[m.Infra.MRORewriteResult],
-        t.StrSequence,
-    ]:
+    ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite consumer imports/usages using rope occurrence discovery + source transforms."""
         if not module_moves:
             return ((), ())
@@ -134,18 +127,13 @@ class FlextInfraRefactorMROImportRewriter(
                 pending_sources=pending_sources,
                 apply=apply,
                 gates=gates,
-            ),
+            )
         )
 
     @classmethod
     def _rewrite_files(
-        cls,
-        *,
-        request: RewriteFilesInput,
-    ) -> tuple[
-        t.SequenceOf[m.Infra.MRORewriteResult],
-        t.StrSequence,
-    ]:
+        cls, *, request: RewriteFilesInput
+    ) -> tuple[t.SequenceOf[m.Infra.MRORewriteResult], t.StrSequence]:
         """Rewrite files."""
         rewrites: list[m.Infra.MRORewriteResult] = []
         errors: list[str] = []
@@ -158,7 +146,7 @@ class FlextInfraRefactorMROImportRewriter(
                     continue
                 source = read.value
             transformer = FlextInfraRefactorMROSymbolPropagator(
-                module_moves=request.file_moves[file_path],
+                module_moves=request.file_moves[file_path]
             )
             updated_source, changes = transformer.rewrite_source(source)
             if updated_source == source:
@@ -176,10 +164,7 @@ class FlextInfraRefactorMROImportRewriter(
                     )
                     continue
             rewrites.append(
-                m.Infra.MRORewriteResult(
-                    file=str(file_path),
-                    replacements=len(changes),
-                ),
+                m.Infra.MRORewriteResult(file=str(file_path), replacements=len(changes))
             )
         return (tuple(rewrites), tuple(errors))
 
