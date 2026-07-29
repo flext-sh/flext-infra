@@ -106,7 +106,7 @@ class TestsCodegenGitignoreProfileAware:
         )
         beads_config = u.Cli.yaml_load_mapping(beads_path)
         tm.that(beads_config["issue-prefix"], eq=repository.name)
-        dolt = beads_config["dolt"]
+        dolt = u.Cli.json_as_mapping(beads_config["dolt"])
         tm.that(dolt["database"], eq=repository.name.replace("-", "_"))
         tm.that(
             by_path[".mise.toml"],
