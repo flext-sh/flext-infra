@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import os
-import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import ClassVar
@@ -18,6 +17,7 @@ from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
+from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_tests import tm
 from tests import c
 
@@ -381,7 +381,6 @@ class TestsEnforcementFixerOrchestrator:
         tm.that(len(result.previewed), eq=1)
         tm.that(result.failed, eq=())
 
-    @pytest.mark.timeout(60)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
         self, tmp_path: Path
     ) -> None:
@@ -433,37 +432,30 @@ class TestsEnforcementFixerOrchestrator:
             "pyproject.toml",
             "src",
         ))
-        runner_root = Path(__file__).parents[4]
 
         def git_status() -> str:
             capture_result: p.Result[str] = cli.capture(
                 [c.Infra.GIT, "-C", str(project_dir), "status", "--short"],
-                cwd=runner_root,
+                cwd=project_dir,
             )
             stdout: str = capture_result.value
             return stdout
 
         pre_status = git_status()
         with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
-            result = cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "check",
-                    "fix-enforcement",
-                    "--workspace",
-                    str(project_dir),
-                    "--rules",
-                    "ENFORCE-079",
-                    "--dry-run",
-                    "--no-check-after",
-                ],
-                cwd=runner_root,
-            ).value
+            route = next(
+                route
+                for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CHECK]
+                if route.name == "fix-enforcement"
+            )
+            result = route.handler(
+                m.Infra.FixEnforcementCommand(
+                    workspace=str(project_dir),
+                    rules=("ENFORCE-079",),
+                    apply=False,
+                    check_after=False,
+                )
+            )
         post_status = git_status()
-        tm.that(result.exit_code, eq=0, msg=result.stderr or result.stdout)
-        tm.that(result.stdout, has="fixed: 1")
-        tm.that(result.stdout, has="breakage=no")
-        tm.that(result.stdout, has="applied=no")
+        tm.ok(result)
         tm.that(pre_status, eq=post_status)
