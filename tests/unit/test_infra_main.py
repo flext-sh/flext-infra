@@ -62,6 +62,7 @@ class TestsFlextInfraInfraMain:
     def test_all_group_help_avoids_heavy_command_implementations(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
+        """Probe representative heavy modules without owning the route catalog."""
         loaded_before = frozenset(sys.modules)
         for group in c.Infra.CLI_GROUP_DESCRIPTIONS:
             commands = CliRouteService.command_descriptions(group)

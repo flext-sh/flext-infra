@@ -17,7 +17,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     """Execute governed route mutations through one worktree transaction."""
 
     app_name: ClassVar[str] = "flext-infra"
-    help_flags: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
+    help_flags: ClassVar[frozenset[str]] = FlextInfraConstantsCli.HELP_FLAGS
     shared_bool_flags: ClassVar[frozenset[str]] = (
         FlextInfraConstantsCli.SHARED_BOOL_FLAGS
     )

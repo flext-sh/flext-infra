@@ -11,7 +11,7 @@ from flext_infra._constants.cli import FlextInfraConstantsCli
 class FlextInfraCli:
     """Select one exact command before importing its runtime dependencies."""
 
-    help_flags = frozenset({"-h", "--help"})
+    help_flags = FlextInfraConstantsCli.HELP_FLAGS
 
     @staticmethod
     def _write_line(message: str) -> None:

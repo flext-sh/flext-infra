@@ -22,6 +22,8 @@ class FlextInfraConstantsCli:
     "POSIX shell offset used to encode a terminating signal."
     PROCESS_EXIT_ERROR_CODE: Final[str] = "EXTERNAL_PROCESS_EXIT"
     "Stable result error code for non-zero external process exits."
+    HELP_FLAGS: Final[frozenset[str]] = frozenset({"-h", "--help"})
+    "Public help flags shared by structural selection and runtime dispatch."
 
     _SHARED_BOOL_FLAG_VALUES: Final[tuple[str, ...]] = (
         "--apply",
