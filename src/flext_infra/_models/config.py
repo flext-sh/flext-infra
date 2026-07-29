@@ -1154,10 +1154,7 @@ class FlextInfraConfigModels:
         ] = ()
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
-            m.Field(
-                min_length=1,
-                description="Ordered FLEXT-owned Git providers",
-            ),
+            m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
         ]
         profiles: Annotated[
             tuple[FlextInfraConfigModels.ProfileSpec, ...],
