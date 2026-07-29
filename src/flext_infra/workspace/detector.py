@@ -396,20 +396,42 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 origin.error or f"workspace member origin is missing: {member_path}"
             )
-        branch = u.Cli.capture(
-            [c.Infra.GIT, "branch", "--show-current"], cwd=member_root
+        gitlink = u.Cli.capture(
+            [c.Infra.GIT, "ls-files", "--stage", "--", member_path],
+            cwd=superproject_root,
         )
-        if branch.failure or not branch.value:
+        if gitlink.failure or not gitlink.value:
             return r[c.Infra.WorkspaceMode].fail(
-                branch.error or f"workspace member branch is missing: {member_path}"
+                gitlink.error or f"workspace member gitlink is missing: {member_path}"
+            )
+        match gitlink.value.split():
+            case ["160000", gitlink_head, "0", indexed_path] if (
+                indexed_path == member_path
+            ):
+                pass
+            case _:
+                return r[c.Infra.WorkspaceMode].fail(
+                    f"workspace member gitlink is malformed: {member_path}"
+                )
+        member_head = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--verify", "HEAD^{commit}"], cwd=member_root
+        )
+        if member_head.failure or not member_head.value:
+            return r[c.Infra.WorkspaceMode].fail(
+                member_head.error or f"workspace member HEAD is missing: {member_path}"
             )
         if gitmodule_url != declared.url or origin.value != declared.url:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )
-        if gitmodule_branch != declared.branch or branch.value != declared.branch:
+        if gitmodule_branch != declared.branch:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
+            )
+        if member_head.value != gitlink_head:
+            return r[c.Infra.WorkspaceMode].fail(
+                "workspace member gitlink mismatch: "
+                f"{member_path} expected {gitlink_head} got {member_head.value}"
             )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE)
 

@@ -229,6 +229,50 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
+    def test_feature_branch_at_gitlink_is_workspace(self, tmp_path: Path) -> None:
+        member_root = self._attached_member(tmp_path)
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "switch", "-q", "-c", "feature/gitlink-validation"],
+                cwd=member_root,
+            )
+        )
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(member_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+    def test_detached_head_at_gitlink_is_workspace(self, tmp_path: Path) -> None:
+        member_root = self._attached_member(tmp_path)
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "switch", "-q", "--detach", "HEAD"], cwd=member_root
+            )
+        )
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(member_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+    def test_member_head_different_from_gitlink_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        member_root = self._attached_member(tmp_path)
+        (member_root / "member-change.txt").write_text("changed\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "member-change.txt"], cwd=member_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Member change"], cwd=member_root
+            )
+        )
+
+        tm.fail(
+            FlextInfraWorkspaceDetector().detect(member_root),
+            has="workspace member gitlink mismatch",
+        )
+
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
         """Reject an attached submodule absent from the parent manifest."""
         member_root = self._attached_member(tmp_path, declare_member=False)
