@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 
@@ -14,6 +15,27 @@ if TYPE_CHECKING:
 
 class WorkspaceRoutes(CliRouteBase):
     """Load only the selected refactor, release, or workspace implementation."""
+
+    descriptions: ClassVar[Mapping[str, Mapping[str, str]]] = MappingProxyType({
+        "refactor": RefactorRoutes.descriptions,
+        "release": MappingProxyType({"run": "Run release orchestration CLI flow"}),
+        "workspace": MappingProxyType({
+            "verify-environment": "Verify live workspace editable provenance",
+            "detect": "Detect workspace or standalone mode",
+            "sync": "Sync base.mk to project root",
+            "orchestrate": "Run make verb across projects",
+            "serialize-make": (
+                "Run one state-sensitive Make verb under its checkout lock"
+            ),
+            "migrate": "Migrate workspace projects to flext_infra tooling",
+            "worktree": "Manage repository-local development worktrees",
+        }),
+    })
+
+    @classmethod
+    def command_descriptions(cls, group: str) -> Mapping[str, str]:
+        """Return this route family's declarative command descriptors."""
+        return cls.descriptions[group]
 
     @classmethod
     def routes_for(
@@ -26,14 +48,12 @@ class WorkspaceRoutes(CliRouteBase):
         from flext_infra import m
 
         if (group, command) == ("release", "run"):
-            from flext_infra.release.orchestrator import (
-                FlextInfraReleaseOrchestrator,
-            )
+            from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=FlextInfraReleaseOrchestrator,
                     handler=lambda params: (
                         FlextInfraReleaseOrchestrator.execute_command(params).map(
@@ -54,7 +74,7 @@ class WorkspaceRoutes(CliRouteBase):
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=m.Infra.WorkspaceEnvironmentRequest,
                     handler=lambda params: (
                         FlextInfraWorkspaceEnvironmentProvenance.execute_request(
@@ -73,9 +93,7 @@ class WorkspaceRoutes(CliRouteBase):
 
             implementation = FlextInfraSyncService
         elif command == "orchestrate":
-            from flext_infra.workspace.orchestrator import (
-                FlextInfraOrchestratorService,
-            )
+            from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
             implementation = FlextInfraOrchestratorService
         elif command == "serialize-make":
@@ -98,7 +116,7 @@ class WorkspaceRoutes(CliRouteBase):
         return (
             m.Cli.ResultCommandRoute(
                 name=command,
-                help_text=CliCatalog.description(group, command),
+                help_text=cls.descriptions[group][command],
                 model_cls=implementation,
                 handler=lambda params, mc=implementation: mc.execute_command(params),
             ),

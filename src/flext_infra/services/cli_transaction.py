@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
-from flext_infra.cli_catalog import CliCatalog
+from flext_infra._constants.cli import FlextInfraConstantsCli
 from flext_infra.services.cli_routes import CliRouteService
 
 if TYPE_CHECKING:
@@ -17,23 +17,28 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     """Execute governed route mutations through one worktree transaction."""
 
     app_name: ClassVar[str] = "flext-infra"
-    help_flags: ClassVar[frozenset[str]] = CliCatalog.help_flags
-    shared_bool_flags: ClassVar[frozenset[str]] = CliCatalog.shared_bool_flags
-    shared_value_flags: ClassVar[frozenset[str]] = CliCatalog.shared_value_flags
+    help_flags: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
+    shared_bool_flags: ClassVar[frozenset[str]] = (
+        FlextInfraConstantsCli.SHARED_BOOL_FLAGS
+    )
+    shared_value_flags: ClassVar[frozenset[str]] = (
+        FlextInfraConstantsCli.SHARED_VALUE_FLAGS
+    )
 
     @classmethod
     def transaction_route_key(cls, group: str, command: str) -> str | None:
         """Resolve one governed write route from the structural command selection."""
         route_key = f"{group}:{command}"
         governed_routes = (
-            CliCatalog.transaction_apply_routes | CliCatalog.transaction_mode_routes
+            FlextInfraConstantsCli.WORKTREE_TRANSACTION_APPLY_ROUTES
+            | FlextInfraConstantsCli.WORKTREE_TRANSACTION_MODE_ROUTES
         )
         return route_key if route_key in governed_routes else None
 
     @staticmethod
     def transaction_apply_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requested source application."""
-        if route_key in CliCatalog.transaction_apply_routes:
+        if route_key in FlextInfraConstantsCli.WORKTREE_TRANSACTION_APPLY_ROUTES:
             return "--apply" in args
         return any(
             argument == "--mode=apply"
@@ -48,7 +53,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     @staticmethod
     def transaction_check_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requires a zero-delta check."""
-        if route_key in CliCatalog.transaction_apply_routes:
+        if route_key in FlextInfraConstantsCli.WORKTREE_TRANSACTION_APPLY_ROUTES:
             return any(argument in {"--check", "--check-only"} for argument in args)
         return any(
             argument == "--mode=check"
@@ -69,7 +74,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if skip_next:
                 skip_next = False
                 continue
-            if route_key in CliCatalog.transaction_mode_routes:
+            if route_key in FlextInfraConstantsCli.WORKTREE_TRANSACTION_MODE_ROUTES:
                 if argument == "--mode":
                     skip_next = True
                     continue
@@ -78,7 +83,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             elif argument in {"--apply", "--check", "--check-only", "--dry-run"}:
                 continue
             normalized.append(argument)
-        if route_key in CliCatalog.transaction_mode_routes:
+        if route_key in FlextInfraConstantsCli.WORKTREE_TRANSACTION_MODE_ROUTES:
             normalized.extend(("--mode", "apply"))
         else:
             normalized.append("--apply")

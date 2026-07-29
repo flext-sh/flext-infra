@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 class CliDispatchService(CliTransactionService):
     """Dispatch public command groups through their typed route models."""
 
-    def execute_selection(
-        self, group: str, command: str, args: t.StrSequence
-    ) -> int:
+    def execute_selection(self, group: str, command: str, args: t.StrSequence) -> int:
         """Execute the exact command selected by the lightweight entrypoint."""
         transaction_result = self.run_worktree_transaction(group, command, args)
         if transaction_result is not None:

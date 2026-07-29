@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 
 if TYPE_CHECKING:
@@ -17,9 +17,24 @@ class CliRouteService:
     codegen_groups = frozenset({"basemk", "check", "codegen", "deps"})
 
     @classmethod
+    def command_descriptions(cls, group: str) -> Mapping[str, str]:
+        """Load only the selected group's declarative route descriptors."""
+        if group in cls.codegen_groups:
+            return CodegenRoutes.command_descriptions(group)
+        if group in {"docs", "github", "maintenance", "validate"}:
+            from flext_infra.services.cli_routes_validate import ValidationRoutes
+
+            return ValidationRoutes.command_descriptions(group)
+        if group in {"refactor", "release", "workspace"}:
+            from flext_infra.services.cli_routes_workspace import WorkspaceRoutes
+
+            return WorkspaceRoutes.command_descriptions(group)
+        return {}
+
+    @classmethod
     def route_names(cls, group: str) -> frozenset[str]:
-        """Return public command names without loading unrelated implementations."""
-        return frozenset(CliCatalog.command_descriptions[group])
+        """Return public names from the selected group's sole descriptors."""
+        return frozenset(cls.command_descriptions(group))
 
     @staticmethod
     def _selected_route(
@@ -44,7 +59,9 @@ class CliRouteService:
         if command is None:
             return ()
         if group in cls.codegen_groups:
-            return CodegenRoutes.routes_for(group, command) if command is not None else ()
+            return (
+                CodegenRoutes.routes_for(group, command) if command is not None else ()
+            )
         return cls._selected_route(group, command)
 
 

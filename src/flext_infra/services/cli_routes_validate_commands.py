@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_route_base import CliRouteBase
 
 if TYPE_CHECKING:
@@ -14,13 +15,31 @@ if TYPE_CHECKING:
 class ValidationCommandRoutes(CliRouteBase):
     """Load only the selected validate-command implementation."""
 
+    descriptions: ClassVar[Mapping[str, str]] = MappingProxyType({
+        "basemk-validate": "Validate base.mk sync",
+        "inventory": "Generate scripts inventory",
+        "runtime-census": (
+            "Post-import Beartype enforcement census for flext_* modules"
+        ),
+        "pytest-diag": "Extract pytest diagnostics",
+        "scan": "Scan text files for patterns",
+        "skill-validate": "Validate a skill",
+        "silent-failure": "Validate silent failure sentinel returns",
+        "stub-validate": "Validate stub supply chain",
+        "fresh-import": "Guard 7: fresh-process import smoke test",
+        "import-cycles": "Guard 1: ROPE-backed import cycle detector",
+        "lazy-map-freshness": "Guard 2/3: lazy-map freshness validator",
+        "namespace": "Guard: static namespace rules (NS-000..003) via rope",
+        "tier-whitelist": "Guard 5: tier-whitelist/abstraction-boundary enforcer",
+        "metadata-discipline": "Guard 8: centralized metadata parser discipline",
+        "manual-cmd": "Manual-command blocker (§5): pre-commit config drift gate",
+    })
+
     @classmethod
     def routes_for(cls, command: str) -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Build the route selected at the lightweight dispatch boundary."""
         if command == "basemk-validate":
-            from flext_infra.validate.basemk_validator import (
-                FlextInfraBaseMkValidator,
-            )
+            from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 
             implementation = FlextInfraBaseMkValidator
         elif command == "inventory":
@@ -103,7 +122,7 @@ class ValidationCommandRoutes(CliRouteBase):
         return (
             m.Cli.ResultCommandRoute(
                 name=command,
-                help_text=CliCatalog.description("validate", command),
+                help_text=cls.descriptions[command],
                 model_cls=implementation,
                 handler=lambda params, mc=implementation: mc.execute_command(params),
             ),

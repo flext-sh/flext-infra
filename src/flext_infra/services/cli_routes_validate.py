@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
 
@@ -14,6 +15,30 @@ if TYPE_CHECKING:
 
 class ValidationRoutes(CliRouteBase):
     """Load only the selected documentation or validation implementation."""
+
+    descriptions: ClassVar[Mapping[str, Mapping[str, str]]] = MappingProxyType({
+        "docs": MappingProxyType({
+            "audit": "Audit documentation for broken links and forbidden terms",
+            "fix": "Fix documentation issues",
+            "build": "Build MkDocs sites",
+            "generate": "Generate project docs",
+            "serve": "Serve one MkDocs site in dev mode (blocking preview)",
+            "validate": "Validate documentation",
+        }),
+        "github": MappingProxyType({
+            "workflows": "Sync GitHub workflow files across workspace",
+            "lint": "Lint GitHub workflow files",
+            "pr": "Manage pull requests for a single project",
+            "pr-workspace": "Manage pull requests across workspace projects",
+        }),
+        "maintenance": MappingProxyType({"run": "Enforce Python version constraints"}),
+        "validate": ValidationCommandRoutes.descriptions,
+    })
+
+    @classmethod
+    def command_descriptions(cls, group: str) -> Mapping[str, str]:
+        """Return this route family's declarative command descriptors."""
+        return cls.descriptions[group]
 
     @staticmethod
     def _require_successful_pull_request_workspace(
@@ -72,7 +97,7 @@ class ValidationRoutes(CliRouteBase):
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=implementation,
                     handler=lambda params, mc=implementation: mc.execute_command(
                         params
@@ -88,29 +113,29 @@ class ValidationRoutes(CliRouteBase):
                 return (
                     m.Cli.ResultCommandRoute(
                         name=command,
-                        help_text=CliCatalog.description(group, command),
+                        help_text=cls.descriptions[group][command],
                         model_cls=m.Infra.GithubWorkflowSyncRequest,
-                        handler=lambda params: u.Infra.sync_github_workflows(params).map(
-                            CliRouteBase.as_route_value
-                        ),
+                        handler=lambda params: u.Infra.sync_github_workflows(
+                            params
+                        ).map(CliRouteBase.as_route_value),
                     ),
                 )
             if command == "lint":
                 return (
                     m.Cli.ResultCommandRoute(
                         name=command,
-                        help_text=CliCatalog.description(group, command),
+                        help_text=cls.descriptions[group][command],
                         model_cls=m.Infra.GithubWorkflowLintRequest,
-                        handler=lambda params: u.Infra.lint_github_workflows(params).map(
-                            CliRouteBase.as_route_value
-                        ),
+                        handler=lambda params: u.Infra.lint_github_workflows(
+                            params
+                        ).map(CliRouteBase.as_route_value),
                     ),
                 )
             if command == "pr":
                 return (
                     m.Cli.ResultCommandRoute(
                         name=command,
-                        help_text=CliCatalog.description(group, command),
+                        help_text=cls.descriptions[group][command],
                         model_cls=m.Infra.GithubPullRequestRequest,
                         handler=lambda params: u.Infra.run_github_pull_request(
                             params
@@ -121,7 +146,7 @@ class ValidationRoutes(CliRouteBase):
                 return (
                     m.Cli.ResultCommandRoute(
                         name=command,
-                        help_text=CliCatalog.description(group, command),
+                        help_text=cls.descriptions[group][command],
                         model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
                         handler=lambda params: (
                             u.Infra.run_github_workspace_pull_requests(params).flat_map(
@@ -140,7 +165,7 @@ class ValidationRoutes(CliRouteBase):
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=FlextInfraPythonVersionEnforcer,
                     handler=FlextInfraPythonVersionEnforcer.execute_command,
                     success_message="Maintenance completed",

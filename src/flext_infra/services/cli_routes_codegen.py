@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.cli_catalog import CliCatalog
+from flext_infra.services.cli_routes_codegen_descriptors import CodegenRouteDescriptors
 
 if TYPE_CHECKING:
     from flext_infra import m
 
 
-class CodegenRoutes:
+class CodegenRoutes(CodegenRouteDescriptors):
     """Load only the implementation selected by the public group and command."""
 
     @classmethod
@@ -26,7 +26,7 @@ class CodegenRoutes:
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=FlextInfraBaseMkGenerator,
                     handler=lambda params: params.execute().map(
                         lambda content: True if params.output is not None else content
@@ -41,7 +41,7 @@ class CodegenRoutes:
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=m.Infra.RunCommand,
                     handler=lambda params: FlextInfraWorkspaceChecker.execute_payload(
                         params
@@ -55,7 +55,7 @@ class CodegenRoutes:
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=m.Infra.FixPyreflyConfigCommand,
                     handler=lambda params: FlextInfraConfigFixer.execute_payload(
                         params
@@ -71,7 +71,7 @@ class CodegenRoutes:
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=m.Infra.FixEnforcementCommand,
                     handler=lambda params: (
                         FlextInfraEnforcementFixerOrchestrator.execute_payload(
@@ -86,7 +86,7 @@ class CodegenRoutes:
             return (
                 m.Cli.ResultCommandRoute(
                     name=command,
-                    help_text=CliCatalog.description(group, command),
+                    help_text=cls.descriptions[group][command],
                     model_cls=m.Infra.CodegenConformRequest,
                     handler=FlextInfraCodegenConform.execute_request,
                     success_message="project conformance complete",
@@ -176,7 +176,7 @@ class CodegenRoutes:
         return (
             m.Cli.ResultCommandRoute(
                 name=command,
-                help_text=CliCatalog.description(group, command),
+                help_text=cls.descriptions[group][command],
                 model_cls=implementation,
                 handler=lambda params, mc=implementation: mc.execute_command(params),
                 success_message=success_message,

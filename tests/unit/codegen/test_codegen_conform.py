@@ -451,11 +451,7 @@ class TestCodegenConform:
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        route = next(
-            route
-            for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
-            if route.name == "conform"
-        )
+        route = CodegenRoutes.routes_for(c.Infra.CLI_GROUP_CODEGEN, "conform")[0]
         for mode in c.Infra.CodegenConformMode:
             request = m.Infra.CodegenConformRequest(
                 root=root,

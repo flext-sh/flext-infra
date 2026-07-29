@@ -9,8 +9,9 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from flext_infra import main
-from flext_infra.cli_catalog import CliCatalog
+from flext_infra import c, main
+from flext_infra.cli import FlextInfraCli
+from flext_infra.services.cli_routes import CliRouteService
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -42,9 +43,9 @@ class TestsFlextInfraInfraMain:
     ) -> None:
         tm.that(main(["codegen", "--help"]), eq=0)
         out = capsys.readouterr().out
-        for name, description in CliCatalog.command_descriptions[
+        for name, description in CliRouteService.command_descriptions(
             "codegen"
-        ].items():
+        ).items():
             tm.that(out, has=name)
             tm.that(out, has=description)
 
@@ -54,39 +55,35 @@ class TestsFlextInfraInfraMain:
         tm.that(main(["codegen", "missing-command"]), eq=2)
         tm.that(capsys.readouterr().out, has="unknown command 'missing-command'")
 
-    def test_catalog_factory_keys_match_public_descriptors(self) -> None:
-        tm.that(
-            {
-                group: tuple(commands)
-                for group, commands in CliCatalog.factory_modules.items()
-            },
-            eq={
-                group: tuple(commands)
-                for group, commands in CliCatalog.command_descriptions.items()
-            },
-        )
+    def test_every_public_group_has_selected_route_descriptors(self) -> None:
+        for group in c.Infra.CLI_GROUP_DESCRIPTIONS:
+            tm.that(CliRouteService.command_descriptions(group), where=bool)
 
-    def test_all_group_help_avoids_every_implementation_factory(
+    def test_all_group_help_avoids_heavy_command_implementations(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         loaded_before = frozenset(sys.modules)
-        for group, commands in CliCatalog.command_descriptions.items():
+        for group in c.Infra.CLI_GROUP_DESCRIPTIONS:
+            commands = CliRouteService.command_descriptions(group)
             tm.that(main([group, "--help"]), eq=0)
             output = capsys.readouterr().out
             for name, description in commands.items():
                 tm.that(output, has=name)
                 tm.that(output, has=description)
         newly_loaded = frozenset(sys.modules) - loaded_before
-        implementation_modules = {
-            module
-            for commands in CliCatalog.factory_modules.values()
-            for module in commands.values()
-        }
-        tm.that(newly_loaded.isdisjoint(implementation_modules), eq=True)
+        tm.that(
+            newly_loaded.isdisjoint({
+                "flext_infra.codegen.pipeline",
+                "flext_infra.release.orchestrator",
+                "flext_infra.refactor.namespace_enforcer",
+                "flext_infra.workspace.orchestrator",
+            }),
+            eq=True,
+        )
 
     def test_structural_selection_never_uses_an_option_value_as_command(self) -> None:
         tm.that(
-            CliCatalog.selected_command(
+            FlextInfraCli.selected_command(
                 "codegen",
                 ["--projects", "pipeline", "conform", "--what", "dependencies"],
             ),
