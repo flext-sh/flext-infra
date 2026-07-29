@@ -114,6 +114,27 @@ class TestsWorkspaceRootMakeContract:
         tm.that(make_entries, len=1)
         tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
+    def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
+        """Route the sole public conform verb to the preserved internal CLI."""
+        workspace_root, _ = _write_workspace(tmp_path)
+
+        conform: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "conform", "WHAT=check"],
+                cwd=workspace_root,
+            )
+        )
+        retired: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "codegen"], cwd=workspace_root
+            )
+        )
+        output = conform.stdout + conform.stderr
+
+        tm.that(conform.exit_code, eq=0, msg=output)
+        tm.that(output, has='--verb "conform"')
+        tm.that(retired.exit_code, ne=0)
+
     def test_generated_make_selects_manifest_projects_and_forwards_gates(
         self, tmp_path: Path
     ) -> None:
@@ -138,6 +159,35 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has=f"--projects {project_names[0]}")
         tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
+
+    def test_generated_make_routes_fmt_apply_to_selected_project(
+        self, tmp_path: Path
+    ) -> None:
+        """Apply formatting only in the selected workspace member."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_fmt_apply",
+                    f"PROJECT={project_names[0]}",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--verb fmt")
+        tm.that(output, has=f"--projects {project_names[0]}")
+        tm.that(output, has='--make-arg "WHAT=apply"')
+        tm.that(output, has='--make-arg "APPLY=Y"')
+        tm.that(output, lacks=f"--projects {project_names[1]}")
+        tm.that(output, lacks="ruff check --fix")
 
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path

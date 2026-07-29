@@ -135,6 +135,7 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
     "Heading of the trailing .gitignore section that re-allows managed files."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
+    MANAGED_FILE_POLICY_FULL: Final[str] = "full"
     "Managed-file policy whose artifact is generated per checkout, not committed."
     INIT_PY: Final[str] = "__init__.py"
     API_PY: Final[str] = "api.py"
