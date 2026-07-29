@@ -268,6 +268,14 @@ class FlextInfraConfigModels:
         lock_path: Annotated[
             Path, m.Field(description="Repository-relative native process-lock path")
         ]
+        single_flight_lock_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative lock around one complete Make operation"
+                )
+            ),
+        ]
         mutation_fixed_points: Annotated[
             Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
             m.Field(
@@ -301,12 +309,12 @@ class FlextInfraConfigModels:
             ),
         ]
 
-        @m.field_validator("lock_path")
+        @m.field_validator("lock_path", "single_flight_lock_path")
         @classmethod
         def _validate_lock_path(cls, value: Path) -> Path:
             """Keep every validation lock within its owning checkout."""
             if value.is_absolute() or not value.parts or ".." in value.parts:
-                msg = "make serialization lock_path must be repository-relative"
+                msg = "make serialization lock paths must be repository-relative"
                 raise ValueError(msg)
             return value
 
@@ -328,8 +336,16 @@ class FlextInfraConfigModels:
         @u.model_validator(mode="after")
         def _validate_lock_excluded_from_snapshot(self) -> Self:
             """Require the native lock artifact to remain outside fingerprints."""
-            if self.lock_path not in self.snapshot_excludes:
-                msg = "make serialization lock_path must be snapshot-excluded"
+            lock_paths = (self.single_flight_lock_path, self.lock_path)
+            if len(set(lock_paths)) != len(lock_paths):
+                msg = "make serialization lock paths must be distinct"
+                raise ValueError(msg)
+            missing_excludes = set(lock_paths) - set(self.snapshot_excludes)
+            if missing_excludes:
+                msg = (
+                    "make serialization lock paths must be snapshot-excluded: "
+                    f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
+                )
                 raise ValueError(msg)
             invalid = set(self.mutation_fixed_points) - set(self.verbs)
             if invalid:
