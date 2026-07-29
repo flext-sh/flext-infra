@@ -6,4 +6,8 @@ pr: ## Manage pull requests for this repository
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)"
+		$(if $(filter 1,$(PR_DRAFT)),--draft,--no-draft) \
+		$(if $(filter 1,$(PR_AUTO)),--auto,--no-auto) \
+		$(if $(filter 1,$(PR_DELETE_BRANCH)),--delete-branch,--no-delete-branch) \
+		$(if $(filter 1,$(PR_CHECKS_STRICT)),--checks-strict,--no-checks-strict) \
+		$(if $(filter 1,$(PR_RELEASE_ON_MERGE)),--release-on-merge,--no-release-on-merge)
