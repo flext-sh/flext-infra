@@ -412,6 +412,16 @@ class TestsFlextInfraWorktreeService:
         tm.that(
             tm.ok(u.Infra.git_primary_worktree_root(attached)), eq=attached.resolve()
         )
+        linked = tmp_path / "attached-linked"
+        tm.ok(
+            u.Infra.git_capture(
+                attached, ("worktree", "add", "--detach", str(linked), "HEAD")
+            )
+        )
+        tm.that(tm.ok(u.Infra.git_primary_worktree_root(linked)), eq=linked.resolve())
+        tm.ok(
+            u.Infra.git_capture(linked, ("worktree", "remove", "--force", str(linked)))
+        )
         branch = "feature/attached"
         primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
         expected_lane = self._lane(primary, superproject, branch)
