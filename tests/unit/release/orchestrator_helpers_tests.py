@@ -28,6 +28,7 @@ class TestsFlextInfraReleaseHelpers:
         ) -> None:
             """Order selected foundation artifacts by the validated release SSOT."""
             bootstrap_order = tuple(config.Infra.release.bootstrap_order)
+            nodes = tuple(config.Infra.release.dependency_dag)
             targets = tuple(
                 (distribution, tmp_path / distribution)
                 for distribution in reversed(bootstrap_order)
@@ -40,6 +41,15 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(
                 tuple(distribution for distribution, _ in ordered),
                 eq=bootstrap_order,
+            )
+            tm.that(nodes[0].resolution_context, eq="workspace-bootstrap")
+            tm.that(
+                tuple(node.resolution_context for node in nodes[1:]),
+                eq=tuple("public-predecessors" for _ in nodes[1:]),
+            )
+            tm.that(
+                config.Infra.release.verification_context,
+                eq="standalone-verification",
             )
 
         @staticmethod

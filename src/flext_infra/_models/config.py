@@ -1410,6 +1410,10 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(pattern=r"^flext-[a-z0-9-]+$", description="Distribution name"),
         ]
+        resolution_context: Annotated[
+            Literal["workspace-bootstrap", "public-predecessors"],
+            m.Field(description="Dependency resolution boundary used by this node"),
+        ]
         dependencies: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Earlier bootstrap nodes required by this project"),
@@ -1435,12 +1439,16 @@ class FlextInfraConfigModels:
                 description="Topologically ordered public bootstrap dependencies",
             ),
         ]
+        verification_context: Annotated[
+            Literal["standalone-verification"],
+            m.Field(description="Final no-local-source verification boundary"),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_dependency_dag(self) -> Self:
-            """Require unique nodes whose dependencies occur earlier."""
+            """Require a workspace seed followed only by public predecessors."""
             available: t.Infra.StrSet = set()
-            for node in self.dependency_dag:
+            for index, node in enumerate(self.dependency_dag):
                 if node.distribution in available:
                     msg = (
                         "release dependency DAG contains duplicate distribution: "
@@ -1452,6 +1460,24 @@ class FlextInfraConfigModels:
                     msg = (
                         "release dependency DAG is not topologically ordered for "
                         f"{node.distribution}: {', '.join(sorted(missing))}"
+                    )
+                    raise ValueError(msg)
+                expected_context = (
+                    "workspace-bootstrap" if index == 0 else "public-predecessors"
+                )
+                if node.resolution_context != expected_context:
+                    msg = (
+                        "release dependency DAG has invalid resolution context for "
+                        f"{node.distribution}: {node.resolution_context}"
+                    )
+                    raise ValueError(msg)
+                if index == 0 and node.dependencies:
+                    msg = "workspace bootstrap release node cannot have predecessors"
+                    raise ValueError(msg)
+                if index > 0 and not node.dependencies:
+                    msg = (
+                        "public-predecessor release node requires an earlier dependency: "
+                        f"{node.distribution}"
                     )
                     raise ValueError(msg)
                 available.add(node.distribution)
