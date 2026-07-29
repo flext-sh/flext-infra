@@ -1147,7 +1147,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             )
-        if destination in {".mise.toml", ".python-version"}:
+        if destination == ".mise.toml":
+            profile = c.Infra.MakeProfile(repository.profile)
+            overlay = codegen.project_overlays.get(repository.name)
+            return r[p.Model].ok(
+                m.Infra.MiseRenderSpec.model_validate({
+                    **codegen.toolchain.model_dump(exclude_computed_fields=True),
+                    "beads_enabled": (
+                        profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                        or (overlay is not None and overlay.beads_namespace is not None)
+                    ),
+                })
+            )
+        if destination == ".python-version":
             return r[p.Model].ok(codegen.toolchain)
         if destination in {
             ".github/workflows/ci.yml",
