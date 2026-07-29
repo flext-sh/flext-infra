@@ -82,11 +82,13 @@ Infra:
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
+        single_flight_lock_path: .state/flext-infra/make-single-flight.lock
         mutation_fixed_points:
           codegen:
             apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
+          - .state/flext-infra/make-single-flight.lock
           - .reports
           - .pytest_cache
           - .coverage
