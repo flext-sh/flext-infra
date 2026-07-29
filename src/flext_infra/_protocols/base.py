@@ -157,6 +157,45 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class RepositoryTopology(Protocol):
+        """Atomic repository-local runtime topology inspection."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Current Git repository root."""
+            ...
+
+        @property
+        def mode(self) -> c.Infra.WorkspaceMode:
+            """Effective workspace execution mode."""
+            ...
+
+        @property
+        def attached(self) -> bool:
+            """Whether this checkout is a parent-owned gitlink."""
+            ...
+
+        @property
+        def managed_gitlinks(self) -> t.StrSequence:
+            """Manifest-owned mutable repository gitlinks."""
+            ...
+
+        @property
+        def external_gitlinks(self) -> t.StrSequence:
+            """Manifest-declared read-only content gitlinks."""
+            ...
+
+        @property
+        def beads_enabled(self) -> bool:
+            """Whether canonical Beads provisioning is enabled."""
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef | None:
+            """Effective repository identity when a declaration was supplied."""
+            ...
+
+    @runtime_checkable
     class GithubPullRequestFields(Protocol):
         """Shared PR execution fields accepted at the transport boundary."""
 

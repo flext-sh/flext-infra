@@ -188,8 +188,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = FlextInfraWorkspaceDetector.resolve_workspace_root(
-                root
+            workspace_root_result = (
+                FlextInfraWorkspaceDetector.resolve_repository_root(root)
             )
             if workspace_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -222,23 +222,36 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"repository is not one declared workspace member: {current_path}"
                 )
             current_repository = current_matches[0]
+        current_topology: m.Infra.RepositoryTopology | None = None
         if self.initial_workspace is None and root.is_dir():
-            effective_repository = FlextInfraWorkspaceDetector.effective_repository(
-                root, current_repository
-            )
-            if effective_repository.failure:
+            inspected = FlextInfraWorkspaceDetector.inspect(root, current_repository)
+            if inspected.failure:
                 return r[m.Infra.CodegenPlan].fail(
-                    effective_repository.error
-                    or "effective repository topology resolution failed"
+                    inspected.error or "repository topology inspection failed"
                 )
-            current_repository = effective_repository.value
+            current_topology = inspected.value
+            if current_topology.repository is None:
+                return r[m.Infra.CodegenPlan].fail(
+                    "repository topology has no effective repository"
+                )
+            current_repository = current_topology.repository
             if current_repository.name == workspace.repository.name:
                 workspace = m.Infra.WorkspaceSpec.model_validate({
                     **workspace.model_dump(),
                     "repository": current_repository,
                 })
+        managed_gitlinks = (
+            current_topology.managed_gitlinks
+            if current_topology is not None
+            else tuple(
+                repository.path.as_posix()
+                for repository in workspace.members
+                if repository.codegen is not c.Infra.CodegenKind.NONE
+                and not repository.read_only
+            )
+        )
         selected_result = self._select_repositories(
-            request, workspace, current_repository
+            request, workspace, current_repository, managed_gitlinks
         )
         if selected_result.failure:
             return r[m.Infra.CodegenPlan].fail(
@@ -248,9 +261,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
-        for repository in selected:
+        effective_repositories: list[m.Infra.RepositoryRef] = []
+        for declared_repository in selected:
             repository_root = self._repository_root(
-                workspace_root, workspace, repository
+                workspace_root, workspace, declared_repository
             )
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
@@ -260,6 +274,43 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository checkout is missing: {repository_root}"
                 )
+            repository = declared_repository
+            if self.initial_workspace is None:
+                topology = (
+                    current_topology
+                    if current_topology is not None
+                    and repository_root == root
+                    and declared_repository.name == current_repository.name
+                    else None
+                )
+                if topology is None:
+                    inspected = FlextInfraWorkspaceDetector.inspect(
+                        repository_root, declared_repository
+                    )
+                    if inspected.failure:
+                        return r[m.Infra.CodegenPlan].fail(
+                            inspected.error or "repository topology inspection failed"
+                        )
+                    topology = inspected.value
+                if topology.repository is None:
+                    return r[m.Infra.CodegenPlan].fail(
+                        "repository topology has no effective repository"
+                    )
+                repository = topology.repository
+                beads_enabled = topology.beads_enabled
+            else:
+                profile = c.Infra.MakeProfile(repository.profile)
+                if (
+                    profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
+                    and repository.beads
+                ):
+                    return r[m.Infra.CodegenPlan].fail(
+                        "Beads overlay is forbidden for a workspace member"
+                    )
+                beads_enabled = (
+                    profile is c.Infra.MakeProfile.WORKSPACE_ROOT or repository.beads
+                )
+            effective_repositories.append(repository)
             # NOTE (multi-agent, mro-45r9): attached members consume the parent
             # topology SSOT; a duplicate member-local manifest is never required.
             # mro-j47u (codex): existing repositories cannot reach the scaffold
@@ -274,6 +325,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace=workspace,
                     codegen=config_spec,
                     contract=contract,
+                    beads_enabled=beads_enabled,
                 )
             else:
                 repository_plan = self._plan_existing_repository(
@@ -283,6 +335,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace=workspace,
                     codegen=config_spec,
                     contract=contract,
+                    beads_enabled=beads_enabled,
                 )
             if repository_plan.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -295,6 +348,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 config_spec,
                 contract,
                 profile=c.Infra.MakeProfile(repository.profile),
+                beads_enabled=beads_enabled,
             )
             if governed.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -314,7 +368,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
-                repositories=selected,
+                repositories=tuple(effective_repositories),
                 workspace=workspace,
                 make_spec=config_spec.make,
                 uv_environments=tuple(environments),
@@ -330,6 +384,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         contract: SurfaceContract,
         *,
         profile: c.Infra.MakeProfile,
+        beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Attach ownership metadata and represent every governed root artifact.
 
@@ -402,7 +457,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
                 rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen, profile=profile
+                    codegen, profile=profile, beads_enabled=beads_enabled
                 )
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -443,7 +498,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _render_gitignore(
-        codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: c.Infra.MakeProfile,
+        beads_enabled: bool,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
@@ -474,6 +532,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 section
                 for section in codegen.gitignore_sections
                 if not section.profiles or profile in section.profiles
+                if section.beads_enabled is None
+                or section.beads_enabled is beads_enabled
             )
         )
         return u.Cli.template_render(templates_root / entry.source, context)
@@ -483,19 +543,38 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request: m.Infra.CodegenConformRequest,
         workspace: m.Infra.WorkspaceSpec,
         current_repository: m.Infra.RepositoryRef,
+        managed_gitlinks: t.StrSequence,
     ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
         """Resolve self/members/all from the governing topology manifest."""
         scope = c.Infra.CodegenConformScope(request.scope)
-        if scope is c.Infra.CodegenConformScope.SELF:
+        profile = c.Infra.MakeProfile(current_repository.profile)
+        if profile is c.Infra.MakeProfile.STANDALONE:
+            if scope is c.Infra.CodegenConformScope.MEMBERS:
+                return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                    "members scope requires indexed Git submodules"
+                )
+            selected = (current_repository,)
+        elif scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
         elif scope is c.Infra.CodegenConformScope.MEMBERS:
-            if not workspace.members:
+            if not managed_gitlinks:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                    "members scope requires a workspace-root manifest"
+                    "members scope requires managed workspace gitlinks"
                 )
-            selected = tuple(workspace.members)
+            selected = tuple(
+                repository
+                for repository in workspace.members
+                if repository.path.as_posix() in managed_gitlinks
+            )
         else:
-            selected = (workspace.repository, *workspace.members)
+            selected = (
+                workspace.repository,
+                *(
+                    repository
+                    for repository in workspace.members
+                    if repository.path.as_posix() in managed_gitlinks
+                ),
+            )
         mutable = tuple(
             repository
             for repository in selected
@@ -546,6 +625,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: SurfaceContract,
+        beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
         if repository.profile is None:
@@ -583,7 +663,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_result.error or f"tooling render failed: {pyproject}"
             )
         context_result = self._project_render_context(
-            repository, workspace, codegen, tooling_runtime=tooling_result.value
+            repository,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_result.value,
+            beads_enabled=beads_enabled,
         )
         if context_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -602,6 +686,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         seen_destinations: set[str] = set()
         for entry in codegen.templates.entries:
             if profile not in entry.profiles:
+                continue
+            if entry.destination == ".beads/config.yaml" and not beads_enabled:
                 continue
             if (
                 contract.destinations is not None
@@ -692,6 +778,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                beads_enabled=beads_enabled,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -787,6 +874,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: SurfaceContract,
+        beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
         pyproject = root / c.Infra.PYPROJECT_FILENAME
@@ -865,6 +953,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 codegen=codegen,
                 tooling_runtime=tooling_context.value,
                 contract=contract,
+                beads_enabled=beads_enabled,
             )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
@@ -908,6 +997,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             codegen=codegen,
             tooling_runtime=tooling_context.value,
             contract=contract,
+            beads_enabled=beads_enabled,
         )
         if managed_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -934,6 +1024,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         contract: SurfaceContract,
+        beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render configured overwrite-owned templates for an existing tree."""
         if repository.profile is None:
@@ -972,6 +1063,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             entry = entries[0]
             if profile not in entry.profiles:
                 continue
+            if entry.destination == ".beads/config.yaml" and not beads_enabled:
+                if (root / entry.destination).exists():
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                        "Beads config is forbidden by runtime topology policy"
+                    )
+                continue
             path = root / entry.destination
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
@@ -1001,6 +1098,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                beads_enabled=beads_enabled,
             )
             if artifact_context.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1046,6 +1144,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        beads_enabled: bool,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
@@ -1056,11 +1155,31 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         section
                         for section in codegen.gitignore_sections
                         if not section.profiles or profile in section.profiles
+                        if section.beads_enabled is None
+                        or section.beads_enabled is beads_enabled
                     )
                 )
             )
-        if destination in {".mise.toml", ".python-version"}:
+        if destination == ".mise.toml":
+            return r[p.Model].ok(
+                m.Infra.MiseRenderSpec.model_validate({
+                    **codegen.toolchain.model_dump(exclude_computed_fields=True),
+                    "beads_enabled": beads_enabled,
+                })
+            )
+        if destination == ".python-version":
             return r[p.Model].ok(codegen.toolchain)
+        if destination == ".beads/config.yaml":
+            if not beads_enabled:
+                return r[p.Model].fail(
+                    "Beads config requested for an ineligible repository"
+                )
+            return r[p.Model].ok(
+                m.Infra.BeadsConfigRenderSpec(
+                    issue_prefix=repository.name,
+                    database=repository.name.replace("-", "_"),
+                )
+            )
         if destination in {
             ".github/workflows/ci.yml",
             ".github/workflows/ci-matrix.yml",
@@ -1127,7 +1246,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if project_context is not None:
             return r[p.Model].ok(project_context)
         context_result = self._project_render_context(
-            repository, workspace, codegen, tooling_runtime=tooling_runtime
+            repository,
+            workspace,
+            codegen,
+            tooling_runtime=tooling_runtime,
+            beads_enabled=beads_enabled,
         )
         if context_result.failure:
             return r[p.Model].fail(
@@ -1193,6 +1316,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         codegen: m.Infra.CodegenConfigSpec,
         *,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
+        beads_enabled: bool,
     ) -> p.Result[m.Infra.ProjectRenderContext]:
         """Build the complete typed context consumed by project templates."""
         if workspace.project is None:
@@ -1247,6 +1371,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             section
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
+            if section.beads_enabled is None
+            or section.beads_enabled is beads_enabled
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(

@@ -20,6 +20,7 @@ Infra:
       ast_grep_version: "0.45.0"
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
+      beads_version: "1.1.2"
 
     github_actions:
       checkout:
@@ -344,6 +345,9 @@ Infra:
       - path: .envrc
         owner: environment
         policy: create-only
+      - path: .beads/config.yaml
+        owner: beads
+        policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
@@ -490,11 +494,17 @@ Infra:
             - "!scripts/dispatch.py"
             - "!scripts/__init__.py"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
-          profiles: [workspace-root]
+          profiles: [workspace-root, standalone]
+          beads_enabled: true
           patterns:
             - "!.beads/"
             - ".beads/*"
             - "!.beads/config.yaml"
+        - name: "IGNORE: Beads is disabled by runtime topology policy."
+          profiles: [workspace-member, standalone]
+          beads_enabled: false
+          patterns:
+            - ".beads/"
         - name: "Python configuration"
           profiles: [workspace-root]
           patterns:
@@ -760,13 +770,8 @@ Infra:
         - name: "--- workspace-migrate: required ignores (auto-managed) ---"
           patterns:
             - "!base.mk"
-        - name: "FINAL BEADS TRACKING POLICY"
+        - name: "FINAL LOCAL STATE POLICY"
           patterns:
-            - "!.beads/"
-            - ".beads/*"
-            - ".beads/.*"
-            - "!.beads/config.yaml"
-            - ".beads/proxieddb/"
             - ".dolt/"
             - "*.db"
             - ".beads-credential-key"
@@ -821,6 +826,11 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
+        - source: base/beads-config.yaml.j2
+          destination: .beads/config.yaml
+          profiles: [workspace-root, standalone]
+          delegate: render
+          overwrite: true
         # Multi-environment CI base: reusable ci-matrix workflow + per-distro
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2

@@ -92,6 +92,10 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        beads_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Compatible official gastownhall/beads version"),
+        ]
 
         @m.computed_field()
         @property
@@ -596,12 +600,21 @@ class FlextInfraConfigModels:
                     "Make profiles this section applies to; empty means every "
                     "profile (universal). Sections that only make sense at the "
                     "superproject root (member-directory allowlists, workspace "
-                    "manifest, submodule/Beads coordination) declare "
+                    "manifest, and submodule coordination) declare "
                     "[workspace-root] so members and standalone projects never "
                     "receive the phantom entries."
                 )
             ),
         ] = ()
+        beads_enabled: Annotated[
+            bool | None,
+            m.Field(
+                description=(
+                    "Optional Beads eligibility filter; None applies regardless "
+                    "of the runtime topology policy"
+                )
+            ),
+        ] = None
 
     class ScaffoldSpec(_ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
@@ -629,6 +642,23 @@ class FlextInfraConfigModels:
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
             m.Field(min_length=1, description="Applicable Git ignore sections"),
+        ]
+
+    class MiseRenderSpec(ToolchainSpec):
+        """Typed mise projection with runtime-topology tool selection."""
+
+        beads_enabled: Annotated[
+            bool, m.Field(description="Provision the canonical Beads executable")
+        ]
+
+    class BeadsConfigRenderSpec(_ConfigContract):
+        """Canonical project-local Beads identity projection."""
+
+        issue_prefix: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical project issue prefix")
+        ]
+        database: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical project Dolt database name")
         ]
 
     class RepositoryRef(_ConfigContract):
@@ -681,6 +711,15 @@ class FlextInfraConfigModels:
         read_only: Annotated[
             bool, m.Field(description="Repository rejects generated mutations")
         ]
+        beads: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Opt an independent standalone repository into the canonical "
+                    "Beads project overlay"
+                )
+            ),
+        ] = False
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
