@@ -22,11 +22,12 @@ class FlextInfraCodegenGenerationRenderersMixin(
     """Render codegen models through the canonical CLI template facade."""
 
     @staticmethod
-    def _render_model(
+    def render_python_template(
         template_name: str, context: p.Model, *, target_filename: str
     ) -> str:
         """Render and deterministically format a typed Python artifact."""
         template_root = Path(__file__).resolve().parent.parent / "templates"
+        toolchain_root = Path(__file__).resolve().parents[3]
         rendered = u.Cli.template_render(
             template_root / template_name, context
         ).unwrap()
@@ -40,7 +41,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
                 target_filename,
                 "-",
             ],
-            cwd=template_root,
+            cwd=toolchain_root,
             input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
         )
         if organize_result.failure:
@@ -52,7 +53,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
             raise ValueError(msg)
         format_result = u.Cli.run_raw(
             [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", target_filename, "-"],
-            cwd=template_root,
+            cwd=toolchain_root,
             input_data=organized.stdout.encode(c.Cli.ENCODING_DEFAULT),
         )
         if format_result.failure:

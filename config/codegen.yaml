@@ -76,6 +76,14 @@ Infra:
       apply_variable: APPLY
       apply_value: Y
       docs_phases: [generate, fix, audit, build, validate]
+      cprofile:
+        target: flext_infra
+        default_args: [codegen, pipeline, --help]
+        sort_by: cumulative
+        max_rows: 50
+        timeout_seconds: 58
+        profile_path: .reports/cprofile/flext-infra.prof
+        report_path: .reports/cprofile/flext-infra.txt
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
@@ -142,6 +150,295 @@ Infra:
         workspace-root:
           allow_public_targets: true
           allow_toolchain_declarations: true
+
+    cli_registry:
+      repository: flext-infra
+      output_path: src/flext_infra/cli_registry.py
+      options:
+        - { name: -h, arity: 0 }
+        - { name: --help, arity: 0 }
+        - { name: --apply, arity: 0 }
+        - { name: --check, arity: 0 }
+        - { name: --check-only, arity: 0 }
+        - { name: --dry-run, arity: 0 }
+        - { name: --fail-fast, arity: 0 }
+        - { name: --verbose, arity: 0 }
+        - { name: --quiet, arity: 0 }
+        - { name: --no-fail, arity: 0 }
+        - { name: --typings, arity: 0 }
+        - { name: --apply-typings, arity: 0 }
+        - { name: --no-pip-check, arity: 0 }
+        - { name: --skip-check, arity: 0 }
+        - { name: --skip-comments, arity: 0 }
+        - { name: --audit, arity: 0 }
+        - { name: --rewrite-constraints, arity: 0 }
+        - { name: --checks, arity: 1 }
+        - { name: --docstring-min, arity: 1 }
+        - { name: --workspace, arity: 1 }
+        - { name: --projects, arity: 1 }
+        - { name: --project, arity: 1 }
+        - { name: --module, arity: 1 }
+        - { name: --namespace, arity: 1 }
+        - { name: --gates, arity: 1 }
+        - { name: --what, arity: 1 }
+        - { name: --format, arity: 1 }
+        - { name: --output, arity: 1 }
+        - { name: --report, arity: 1 }
+        - { name: --output-dir, arity: 1 }
+        - { name: --json-output, arity: 1 }
+        - { name: --reports-dir, arity: 1 }
+        - { name: --root, arity: 1 }
+        - { name: --ruff-args, arity: 1 }
+        - { name: --pyright-args, arity: 1 }
+        - { name: --operation, arity: 1 }
+        - { name: --branch, arity: 1 }
+        - { name: --base, arity: 1 }
+        - { name: --profile-module, arity: 1 }
+        - { name: --arguments, arity: 1 }
+        - { name: --profile, arity: 1 }
+        - { name: --sort, arity: 1 }
+        - { name: --limit, arity: 1 }
+        - { name: --timeout-seconds, arity: 1 }
+      groups:
+        - name: basemk
+          help_text: Base.mk template generation
+          what_strategy: none
+          commands:
+            - name: generate
+              help_text: Generate base.mk content from the canonical template
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_generate
+        - name: check
+          help_text: Lint gates and pyrefly settings management
+          what_strategy: check-run
+          commands:
+            - name: run
+              help_text: Run workspace quality gates
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_run
+            - name: fix-pyrefly-settings
+              help_text: Repair [tool.pyrefly] blocks
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_fix_pyrefly_settings
+            - name: fix-enforcement
+              help_text: Auto-fix enforcement-catalog violations
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_fix_enforcement
+        - name: codegen
+          help_text: Code generation and workspace standardization
+          what_strategy: none
+          commands:
+            - name: conform
+              help_text: Conform generated project and workspace files
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_conform
+            - name: new
+              help_text: Create a new FLEXT project from the canonical templates
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_new
+            - name: init
+              help_text: Generate/refresh PEP 562 lazy-import __init__.py files
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_init
+            - name: census
+              help_text: Count namespace violations across workspace projects
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_census
+            - name: scaffold
+              help_text: Generate missing base modules in src/ and tests/
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_scaffold
+            - name: auto-fix
+              help_text: Auto-fix namespace violations (move Finals/TypeVars)
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_auto_fix
+            - name: py-typed
+              help_text: Create/remove PEP 561 py.typed markers
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_py_typed
+            - name: pipeline
+              help_text: Run full codegen pipeline
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_pipeline
+            - name: constants-quality-gate
+              help_text: Run constants migration quality gate
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_constants_quality_gate
+            - name: consolidate
+              help_text: Consolidate inline constants into c.Infra.* references
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_consolidate
+            - name: version-file
+              help_text: Generate __version__.py from project-metadata SSOT
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_version_file
+        - name: deps
+          help_text: Dependency detection and modernization
+          what_strategy: none
+          commands:
+            - name: detect
+              help_text: Detect runtime vs dev dependencies
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_detect
+            - name: extra-paths
+              help_text: Synchronize pyright/mypy extraPaths
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_extra_paths
+            - name: modernize
+              help_text: Modernize workspace pyproject files
+              loader_ref: flext_infra.services.cli_routes_codegen:CodegenRoutes.load_modernize
+        - name: docs
+          help_text: Documentation audit, fix, build, generate, validate
+          what_strategy: none
+          commands:
+            - name: audit
+              help_text: Audit documentation for broken links and forbidden terms
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_audit
+            - name: fix
+              help_text: Fix documentation issues
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_fix
+            - name: build
+              help_text: Build MkDocs sites
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_build
+            - name: generate
+              help_text: Generate project docs
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_generate
+            - name: serve
+              help_text: Serve one MkDocs site in dev mode (blocking preview)
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_serve
+            - name: validate
+              help_text: Validate documentation
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_validate
+        - name: github
+          help_text: GitHub workflows, linting, and PR automation
+          what_strategy: none
+          commands:
+            - name: workflows
+              help_text: Sync GitHub workflow files across workspace
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_workflows
+            - name: lint
+              help_text: Lint GitHub workflow files
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_lint
+            - name: pr
+              help_text: Manage pull requests for a single project
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_pr
+            - name: pr-workspace
+              help_text: Manage pull requests across workspace projects
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_pr_workspace
+        - name: maintenance
+          help_text: Python version enforcement
+          what_strategy: none
+          commands:
+            - name: run
+              help_text: Enforce Python version constraints
+              loader_ref: flext_infra.services.cli_routes_validate:ValidationRoutes.load_run
+        - name: validate
+          help_text: Infrastructure validators and diagnostics
+          what_strategy: validate-command
+          commands:
+            - name: basemk-validate
+              help_text: Validate base.mk sync
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_basemk_validate
+            - name: inventory
+              help_text: Generate scripts inventory
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_inventory
+            - name: runtime-census
+              help_text: Post-import Beartype enforcement census for flext_* modules
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_runtime_census
+            - name: pytest-diag
+              help_text: Extract pytest diagnostics
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_pytest_diag
+            - name: cprofile-report
+              help_text: Render a bounded report from a cProfile artifact
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_cprofile_report
+            - name: cprofile-run
+              help_text: Run a module under portable cProfile supervision
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_cprofile_run
+            - name: scan
+              help_text: Scan text files for patterns
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_scan
+            - name: skill-validate
+              help_text: Validate a skill
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_skill_validate
+            - name: silent-failure
+              help_text: Validate silent failure sentinel returns
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_silent_failure
+            - name: stub-validate
+              help_text: Validate stub supply chain
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_stub_validate
+            - name: fresh-import
+              help_text: "Guard 7: fresh-process import smoke test"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_fresh_import
+            - name: import-cycles
+              help_text: "Guard 1: ROPE-backed import cycle detector"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_import_cycles
+            - name: lazy-map-freshness
+              help_text: "Guard 2/3: lazy-map freshness validator"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_lazy_map_freshness
+            - name: namespace
+              help_text: "Guard: static namespace rules (NS-000..003) via rope"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_namespace
+            - name: tier-whitelist
+              help_text: "Guard 5: tier-whitelist/abstraction-boundary enforcer"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_tier_whitelist
+            - name: metadata-discipline
+              help_text: "Guard 8: centralized metadata parser discipline"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_metadata_discipline
+            - name: manual-cmd
+              help_text: "Manual-command blocker (§5): pre-commit config drift gate"
+              loader_ref: flext_infra.services.cli_routes_validate_commands:ValidationCommandRoutes.load_manual_cmd
+        - name: refactor
+          help_text: Declarative refactoring and modernization
+          what_strategy: none
+          commands:
+            - name: apply-renames
+              help_text: Check or apply an old,new CSV rename list
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_apply_renames
+            - name: migrate-mro
+              help_text: Migrate loose declarations into MRO facade classes
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_migrate_mro
+            - name: namespace-enforce
+              help_text: Scan workspace for namespace governance violations
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_namespace_enforce
+            - name: census
+              help_text: Run a Rope-only workspace census for Python objects
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_census
+            - name: accessor-migrate
+              help_text: Preview or apply automated get_/set_/is_ migration
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_accessor_migrate
+            - name: wrapper-root-namespace
+              help_text: Normalize wrapper alias imports to wrapper root and flatten *.Core.Tests paths
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_wrapper_root_namespace
+            - name: modernize-patterns
+              help_text: "Fix u.Cli.print(), pdb, bare except and open() encoding in library code"
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_modernize_patterns
+            - name: modernize-pydantic
+              help_text: Migrate Pydantic v1/legacy patterns to Pydantic v2
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_modernize_pydantic
+            - name: modernize-logging
+              help_text: Migrate logging usage to u.fetch_logger
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_modernize_logging
+            - name: modernize-result-di
+              help_text: Migrate result-flow and dependency-injector patterns to FLEXT canonical forms
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_modernize_result_di
+            - name: modernize-cli
+              help_text: Remove banned CLI helper imports and route u.Cli.print() to cli.display_text()
+              loader_ref: flext_infra.services.cli_routes_refactor:RefactorRoutes.load_modernize_cli
+        - name: release
+          help_text: Release orchestration
+          what_strategy: none
+          commands:
+            - name: run
+              help_text: Run release orchestration CLI flow
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_run
+        - name: workspace
+          help_text: Workspace detection, sync, orchestration, migration
+          what_strategy: none
+          commands:
+            - name: verify-environment
+              help_text: Verify live workspace editable provenance
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_verify_environment
+            - name: detect
+              help_text: Detect workspace or standalone mode
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_detect
+            - name: sync
+              help_text: Sync base.mk to project root
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_sync
+            - name: orchestrate
+              help_text: Run make verb across projects
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_orchestrate
+            - name: serialize-make
+              help_text: Run one state-sensitive Make verb under its checkout lock
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_serialize_make
+            - name: migrate
+              help_text: Migrate workspace projects to flext_infra tooling
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_migrate
+            - name: worktree
+              help_text: Manage repository-local development worktrees
+              loader_ref: flext_infra.services.cli_routes_workspace:WorkspaceRoutes.load_worktree
 
     # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),

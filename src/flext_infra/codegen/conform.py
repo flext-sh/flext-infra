@@ -289,9 +289,34 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_plan.error
                     or f"repository planning failed: {repository_root}"
                 )
+            repository_files = list(repository_plan.value)
+            cli_registry = config_spec.cli_registry
+            if (
+                contract.complete_governed
+                and repository.distribution == cli_registry.repository
+            ):
+                from flext_infra.codegen.cli_registry import (
+                    FlextInfraCodegenCliRegistry,
+                )
+
+                registry_render = FlextInfraCodegenCliRegistry.render(cli_registry)
+                if registry_render.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        registry_render.error or "CLI registry rendering failed"
+                    )
+                registry_plan = self._file_plan(
+                    repository_root,
+                    cli_registry.output_path.as_posix(),
+                    registry_render.value,
+                )
+                if registry_plan.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        registry_plan.error or "CLI registry planning failed"
+                    )
+                repository_files.append(registry_plan.value)
             governed = self._complete_governed_plans(
                 repository_root,
-                repository_plan.value,
+                tuple(repository_files),
                 config_spec,
                 contract,
                 profile=c.Infra.MakeProfile(repository.profile),

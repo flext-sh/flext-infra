@@ -18,7 +18,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.services.cli_routes_codegen import CodegenRoutes
+from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
@@ -451,7 +451,7 @@ class TestCodegenConform:
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        route = CodegenRoutes.routes_for(c.Infra.CLI_GROUP_CODEGEN, "conform")[0]
+        route = CliRouteService.routes_for(c.Infra.CLI_GROUP_CODEGEN, "conform")[0]
         for mode in c.Infra.CodegenConformMode:
             request = m.Infra.CodegenConformRequest(
                 root=root,

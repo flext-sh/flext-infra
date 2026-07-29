@@ -34,6 +34,14 @@ PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+CPROFILE_MODULE ?= flext_infra
+CPROFILE_DEFAULT_ARGS := codegen pipeline --help
+CPROFILE_ARGS ?= $(CPROFILE_DEFAULT_ARGS)
+CPROFILE_SORT ?= cumulative
+CPROFILE_MAX_ROWS ?= 50
+CPROFILE_TIMEOUT_SECONDS := 58
+CPROFILE_PROFILE_PATH ?= $(PROJECT_ROOT)/.reports/cprofile/flext-infra.prof
+CPROFILE_REPORT_PATH ?= $(PROJECT_ROOT)/.reports/cprofile/flext-infra.txt
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -188,6 +196,7 @@ _BUILTIN_HANDLERS := \
 	_builtin_fmt_check \
 	_builtin_fmt_apply \
 	_builtin_run_default \
+	_builtin_run_cprofile \
 	_builtin_status_diagnostics \
 	_builtin_docs_check \
 	_builtin_docs_all \
@@ -574,6 +583,17 @@ _builtin_fmt_apply: _builtin_require_environment
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
+
+_builtin_run_cprofile: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) validate cprofile-run \
+		--workspace "$(PROJECT_ROOT)" \
+		--profile-module "$(CPROFILE_MODULE)" \
+		$(foreach arg,$(CPROFILE_ARGS),--arguments="$(arg)") \
+		--profile "$(CPROFILE_PROFILE_PATH)" \
+		--output "$(CPROFILE_REPORT_PATH)" \
+		--sort "$(CPROFILE_SORT)" \
+		--limit "$(CPROFILE_MAX_ROWS)" \
+		--timeout-seconds "$(CPROFILE_TIMEOUT_SECONDS)"
 
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \

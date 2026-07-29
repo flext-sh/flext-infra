@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_infra._constants.cli import FlextInfraConstantsCli
+from flext_infra.cli_registry import CLI_OPTION_ARITIES
 from flext_infra.services.cli_routes import CliRouteService
 
 if TYPE_CHECKING:
@@ -17,12 +18,18 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     """Execute governed route mutations through one worktree transaction."""
 
     app_name: ClassVar[str] = "flext-infra"
-    help_flags: ClassVar[frozenset[str]] = FlextInfraConstantsCli.HELP_FLAGS
-    shared_bool_flags: ClassVar[frozenset[str]] = (
-        FlextInfraConstantsCli.SHARED_BOOL_FLAGS
+    help_flags: ClassVar[frozenset[str]] = frozenset(
+        name
+        for name, arity in CLI_OPTION_ARITIES.items()
+        if arity == 0 and name in {"-h", "--help"}
     )
-    shared_value_flags: ClassVar[frozenset[str]] = (
-        FlextInfraConstantsCli.SHARED_VALUE_FLAGS
+    shared_bool_flags: ClassVar[frozenset[str]] = frozenset(
+        name
+        for name, arity in CLI_OPTION_ARITIES.items()
+        if arity == 0 and name not in {"-h", "--help"}
+    )
+    shared_value_flags: ClassVar[frozenset[str]] = frozenset(
+        name for name, arity in CLI_OPTION_ARITIES.items() if arity == 1
     )
 
     @classmethod

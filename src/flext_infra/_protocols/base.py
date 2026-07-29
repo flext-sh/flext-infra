@@ -239,6 +239,114 @@ class FlextInfraProtocolsBase(Protocol):
             """Canonical template rendering delegate."""
             ...
 
+    @runtime_checkable
+    class CliOptionSpec(Protocol):
+        """Structural option metadata consumed by the CLI registry generator."""
+
+        @property
+        def name(self) -> str:
+            """Public option name."""
+            ...
+
+        @property
+        def arity(self) -> int:
+            """Number of following values consumed by the option."""
+            ...
+
+    @runtime_checkable
+    class CliCommandSpec(Protocol):
+        """Structural command metadata consumed by the CLI registry generator."""
+
+        @property
+        def name(self) -> str:
+            """Public command name."""
+            ...
+
+        @property
+        def help_text(self) -> str:
+            """Public command help text."""
+            ...
+
+        @property
+        def loader_ref(self) -> str:
+            """Exact lazy route loader as module:class.method."""
+            ...
+
+    @runtime_checkable
+    class CliGroupSpec(Protocol):
+        """Structural group metadata consumed by the CLI registry generator."""
+
+        @property
+        def name(self) -> str:
+            """Public group name."""
+            ...
+
+        @property
+        def help_text(self) -> str:
+            """Public group help text."""
+            ...
+
+        @property
+        def what_strategy(self) -> str:
+            """Config-owned translation from --what to a selected command."""
+            ...
+
+        @property
+        def commands(self) -> t.SequenceOf[FlextInfraProtocolsBase.CliCommandSpec]:
+            """Ordered public commands."""
+            ...
+
+    @runtime_checkable
+    class CliRegistrySpec(Protocol):
+        """Structural catalog consumed by the CLI registry generator."""
+
+        def model_dump(
+            self,
+            *,
+            mode: str = "python",
+            by_alias: bool | None = None,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+        ) -> t.JsonDict:
+            """Dump the typed catalog for deterministic template rendering."""
+            ...
+
+        def model_copy(
+            self, *, deep: bool = False
+        ) -> FlextInfraProtocolsBase.CliRegistrySpec:
+            """Copy the catalog through its Pydantic-compatible boundary."""
+            ...
+
+        @property
+        def repository(self) -> str:
+            """Distribution that owns the generated registry."""
+            ...
+
+        @property
+        def output_path(self) -> Path:
+            """Repository-relative generated registry path."""
+            ...
+
+        @property
+        def options(self) -> t.SequenceOf[FlextInfraProtocolsBase.CliOptionSpec]:
+            """Structural option arities."""
+            ...
+
+        @property
+        def groups(self) -> t.SequenceOf[FlextInfraProtocolsBase.CliGroupSpec]:
+            """Ordered public groups."""
+            ...
+
+    @runtime_checkable
+    class CliRouteLoader(Protocol):
+        """Exact callable contract resolved from one generated loader reference."""
+
+        def __call__(
+            self, name: str, help_text: str
+        ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+            """Build the selected route without repeating descriptor literals."""
+            ...
+
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:
         """Return whether a file belongs to the governed root namespace."""

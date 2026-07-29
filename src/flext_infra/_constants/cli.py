@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -22,64 +21,6 @@ class FlextInfraConstantsCli:
     "POSIX shell offset used to encode a terminating signal."
     PROCESS_EXIT_ERROR_CODE: Final[str] = "EXTERNAL_PROCESS_EXIT"
     "Stable result error code for non-zero external process exits."
-    HELP_FLAGS: Final[frozenset[str]] = frozenset({"-h", "--help"})
-    "Public help flags shared by structural selection and runtime dispatch."
-
-    _SHARED_BOOL_FLAG_VALUES: Final[tuple[str, ...]] = (
-        "--apply",
-        "--check",
-        "--check-only",
-        "--dry-run",
-        "--fail-fast",
-        "--verbose",
-        "--quiet",
-        "--no-fail",
-        "--typings",
-        "--apply-typings",
-        "--no-pip-check",
-        "--skip-check",
-        "--skip-comments",
-        "--audit",
-        "--rewrite-constraints",
-    )
-    _SHARED_VALUE_FLAG_VALUES: Final[tuple[str, ...]] = (
-        "--checks",
-        "--docstring-min",
-        "--workspace",
-        "--projects",
-        "--project",
-        "--module",
-        "--namespace",
-        "--gates",
-        "--what",
-        "--format",
-        "--output",
-        "--report",
-        "--output-dir",
-        "--json-output",
-        "--reports-dir",
-        "--root",
-        "--ruff-args",
-        "--pyright-args",
-        "--operation",
-        "--branch",
-        "--base",
-    )
-    SHARED_BOOL_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_BOOL_FLAG_VALUES)
-    SHARED_VALUE_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_VALUE_FLAG_VALUES)
-    CLI_GROUP_DESCRIPTIONS: Final[t.StrMapping] = MappingProxyType({
-        "basemk": "Base.mk template generation",
-        "check": "Lint gates and pyrefly settings management",
-        "codegen": "Code generation and workspace standardization",
-        "validate": "Infrastructure validators and diagnostics",
-        "deps": "Dependency detection and modernization",
-        "docs": "Documentation audit, fix, build, generate, validate",
-        "github": "GitHub workflows, linting, and PR automation",
-        "maintenance": "Python version enforcement",
-        "refactor": "Declarative refactoring and modernization",
-        "release": "Release orchestration",
-        "workspace": "Workspace detection, sync, orchestration, migration",
-    })
     # mro-wkii.17.26 (codex): write routes share one isolated transaction seam.
     WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
     WORKTREE_TRANSACTION_NAME_TEMPLATE: Final[str] = (

@@ -1,0 +1,48 @@
+"""Generated public lightweight CLI registry. Do not edit."""
+
+from __future__ import annotations
+
+from types import MappingProxyType
+from typing import Final
+
+CLI_OPTION_ARITIES: Final = MappingProxyType({
+{% for option in options -%}
+    {{ option.name | tojson }}: {{ option.arity }},
+{% endfor -%}
+})
+CLI_GROUP_DESCRIPTIONS: Final = MappingProxyType({
+{% for group in groups -%}
+    {{ group.name | tojson }}: {{ group.help_text | tojson }},
+{% endfor -%}
+})
+CLI_GROUP_WHAT_STRATEGIES: Final = MappingProxyType({
+{% for group in groups -%}
+    {{ group.name | tojson }}: {{ group.what_strategy | tojson }},
+{% endfor -%}
+})
+CLI_COMMAND_DESCRIPTIONS: Final = MappingProxyType({
+{% for group in groups -%}
+    {{ group.name | tojson }}: MappingProxyType({
+{% for command in group.commands -%}
+        {{ command.name | tojson }}: {{ command.help_text | tojson }},
+{% endfor -%}
+    }),
+{% endfor -%}
+})
+CLI_COMMAND_LOADERS: Final = MappingProxyType({
+{% for group in groups -%}
+    {{ group.name | tojson }}: MappingProxyType({
+{% for command in group.commands -%}
+        {{ command.name | tojson }}: {{ command.loader_ref | tojson }},
+{% endfor -%}
+    }),
+{% endfor -%}
+})
+
+__all__: tuple[str, ...] = (
+    "CLI_COMMAND_DESCRIPTIONS",
+    "CLI_COMMAND_LOADERS",
+    "CLI_GROUP_DESCRIPTIONS",
+    "CLI_GROUP_WHAT_STRATEGIES",
+    "CLI_OPTION_ARITIES",
+)

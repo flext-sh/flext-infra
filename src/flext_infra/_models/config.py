@@ -209,6 +209,140 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
 
+    class CProfileMakeSpec(_ConfigContract):
+        """Typed defaults for the generated Make cProfile surface."""
+
+        target: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Make expression executed under cProfile"),
+        ]
+        default_args: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Default public CLI arguments profiled by Make"),
+        ]
+        sort_by: Annotated[
+            t.NonEmptyStr, m.Field(description="Default pstats sort key")
+        ]
+        max_rows: Annotated[
+            int, m.Field(gt=0, description="Maximum rendered pstats rows")
+        ]
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, le=58, description="Hard profile wall-clock timeout in seconds"
+            ),
+        ]
+        profile_path: Annotated[
+            Path, m.Field(description="Repository-relative binary cProfile artifact")
+        ]
+        report_path: Annotated[
+            Path, m.Field(description="Repository-relative text cProfile report")
+        ]
+
+        @m.field_validator("profile_path", "report_path")
+        @classmethod
+        def _validate_report_path(cls, value: Path) -> Path:
+            """Keep generated profile artifacts within their repository."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "make cProfile paths must be repository-relative"
+                raise ValueError(msg)
+            return value
+
+    class CliOptionSpec(_ConfigContract):
+        """One structural CLI option and the number of following values it owns."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^--?[a-z][a-z0-9-]*$", description="Public CLI option"),
+        ]
+        arity: Literal[0, 1] = m.Field(description="Number of following option values")
+
+    class CliCommandSpec(_ConfigContract):
+        """One lightweight public command descriptor."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^[a-z0-9][a-z0-9-]*$", description="Command name"),
+        ]
+        help_text: Annotated[
+            t.NonEmptyStr, m.Field(description="Public command help text")
+        ]
+        loader_ref: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=(
+                    r"^flext_infra\.services\.[a-z][a-z0-9_]*:"
+                    r"[A-Z][A-Za-z0-9]*Routes\.load_[a-z][a-z0-9_]*$"
+                ),
+                description="Exact lazy route loader as module:class.method",
+            ),
+        ]
+
+    class CliGroupSpec(_ConfigContract):
+        """One public CLI group and config-owned WHAT translation strategy."""
+
+        name: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^[a-z][a-z0-9-]*$", description="CLI group name"),
+        ]
+        help_text: Annotated[
+            t.NonEmptyStr, m.Field(description="Public group help text")
+        ]
+        what_strategy: Literal["none", "check-run", "validate-command"] = m.Field(
+            description="Structural mapping from --what to a selected command"
+        )
+        commands: Annotated[
+            tuple[FlextInfraConfigModels.CliCommandSpec, ...],
+            m.Field(min_length=1, description="Ordered public commands"),
+        ]
+
+    class CliRegistrySpec(_ConfigContract):
+        """Complete config-owned lightweight CLI dispatch catalog."""
+
+        repository: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Distribution that owns the generated registry"),
+        ]
+        output_path: Annotated[
+            Path, m.Field(description="Repository-relative generated registry path")
+        ]
+        options: Annotated[
+            tuple[FlextInfraConfigModels.CliOptionSpec, ...],
+            m.Field(min_length=1, description="Structural CLI option arities"),
+        ]
+        groups: Annotated[
+            tuple[FlextInfraConfigModels.CliGroupSpec, ...],
+            m.Field(min_length=1, description="Ordered public CLI groups"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_catalog(self) -> Self:
+            """Reject ambiguous generated option, group, or command selectors."""
+            if self.output_path.is_absolute() or ".." in self.output_path.parts:
+                msg = "CLI registry output path must be repository-relative"
+                raise ValueError(msg)
+            option_names = tuple(option.name for option in self.options)
+            if len(option_names) != len(set(option_names)):
+                msg = "CLI registry option names must be unique"
+                raise ValueError(msg)
+            group_names = tuple(group.name for group in self.groups)
+            if len(group_names) != len(set(group_names)):
+                msg = "CLI registry group names must be unique"
+                raise ValueError(msg)
+            duplicate_commands = tuple(
+                group.name
+                for group in self.groups
+                if len(group.commands)
+                != len({command.name for command in group.commands})
+            )
+            if duplicate_commands:
+                msg = (
+                    "CLI registry command names must be unique within groups: "
+                    f"{', '.join(duplicate_commands)}"
+                )
+                raise ValueError(msg)
+            return self
+
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -378,6 +512,10 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        cprofile: Annotated[
+            FlextInfraConfigModels.CProfileMakeSpec,
+            m.Field(description="Generated Make cProfile defaults"),
         ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
@@ -1179,6 +1317,10 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make contract"),
+        ]
+        cli_registry: Annotated[
+            FlextInfraConfigModels.CliRegistrySpec,
+            m.Field(description="Generated lightweight CLI dispatch registry"),
         ]
         vscode: Annotated[
             FlextInfraConfigModels.CodegenVscodeSpec,

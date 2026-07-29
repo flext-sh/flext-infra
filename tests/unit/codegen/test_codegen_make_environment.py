@@ -372,3 +372,30 @@ class TestsCodegenMakeEnvironment:
         tm.that(makefile, has="deps modernize")
         tm.that(makefile, has="--rewrite-constraints")
         tm.that(makefile, lacks="--constraint-policy")
+
+    def test_generated_cprofile_surface_is_config_derived(self, tmp_path: Path) -> None:
+        """Render every cProfile default from the typed Make policy."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        rendered = (project_root / c.Infra.MAKEFILE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        policy = config.Infra.codegen.make.cprofile
+
+        tm.that(rendered, has=f"CPROFILE_MODULE ?= {policy.target}")
+        tm.that(
+            rendered, has=f"CPROFILE_DEFAULT_ARGS := {' '.join(policy.default_args)}"
+        )
+        tm.that(rendered, has=f"CPROFILE_SORT ?= {policy.sort_by}")
+        tm.that(rendered, has=f"CPROFILE_MAX_ROWS ?= {policy.max_rows}")
+        tm.that(rendered, has=f"CPROFILE_TIMEOUT_SECONDS := {policy.timeout_seconds}")
+        tm.that(rendered, has=policy.profile_path.as_posix())
+        tm.that(rendered, has=policy.report_path.as_posix())
+        tm.that(rendered, has="_builtin_run_cprofile")
+        cprofile_recipe = rendered.partition("_builtin_run_cprofile:")[2].partition(
+            "_builtin_status_diagnostics:"
+        )[0]
+        tm.that(cprofile_recipe, has="validate cprofile-run")
+        tm.that(cprofile_recipe, has='--timeout-seconds "$(CPROFILE_TIMEOUT_SECONDS)"')
+        tm.that(cprofile_recipe, lacks="timeout --")

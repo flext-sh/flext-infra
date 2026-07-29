@@ -1,125 +1,135 @@
-"""Workspace and release CLI route ownership."""
+"""Workspace and release loaders selected by the generated CLI registry."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from types import MappingProxyType
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.services.cli_routes_refactor import RefactorRoutes
 
 if TYPE_CHECKING:
-    from flext_infra import m
+    from flext_infra import p, t
 
 
 class WorkspaceRoutes(CliRouteBase):
-    """Load only the selected refactor, release, or workspace implementation."""
+    """Load exactly one workspace or release implementation."""
 
-    descriptions: ClassVar[Mapping[str, Mapping[str, str]]] = MappingProxyType({
-        "refactor": RefactorRoutes.descriptions,
-        "release": MappingProxyType({"run": "Run release orchestration CLI flow"}),
-        "workspace": MappingProxyType({
-            "verify-environment": "Verify live workspace editable provenance",
-            "detect": "Detect workspace or standalone mode",
-            "sync": "Sync base.mk to project root",
-            "orchestrate": "Run make verb across projects",
-            "serialize-make": (
-                "Run one state-sensitive Make verb under its checkout lock"
+    @staticmethod
+    def load_run(name: str, help_text: str) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected release route."""
+        from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraReleaseOrchestrator,
+            lambda params: FlextInfraReleaseOrchestrator.execute_command(params).map(
+                CliRouteBase.as_route_value
             ),
-            "migrate": "Migrate workspace projects to flext_infra tooling",
-            "worktree": "Manage repository-local development worktrees",
-        }),
-    })
+            success_message="Release completed successfully",
+        )
 
-    @classmethod
-    def command_descriptions(cls, group: str) -> Mapping[str, str]:
-        """Return this route family's declarative command descriptors."""
-        return cls.descriptions[group]
-
-    @classmethod
-    def routes_for(
-        cls, group: str, command: str
-    ) -> tuple[m.Cli.ResultCommandRoute, ...]:
-        """Build the route selected at the lightweight dispatch boundary."""
-        if group == "refactor":
-            return RefactorRoutes.routes_for(command)
-
+    @staticmethod
+    def load_verify_environment(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected environment-provenance route."""
         from flext_infra import m
+        from flext_infra.workspace.environment_provenance import (
+            FlextInfraWorkspaceEnvironmentProvenance,
+        )
 
-        if (group, command) == ("release", "run"):
-            from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            m.Infra.WorkspaceEnvironmentRequest,
+            lambda params: FlextInfraWorkspaceEnvironmentProvenance.execute_request(
+                params
+            ).map(CliRouteBase.as_route_value),
+            success_message="workspace editable provenance verified",
+        )
 
-            return (
-                m.Cli.ResultCommandRoute(
-                    name=command,
-                    help_text=cls.descriptions[group][command],
-                    model_cls=FlextInfraReleaseOrchestrator,
-                    handler=lambda params: (
-                        FlextInfraReleaseOrchestrator.execute_command(params).map(
-                            CliRouteBase.as_route_value
-                        )
-                    ),
-                    success_message="Release completed successfully",
-                ),
-            )
+    @staticmethod
+    def load_detect(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected workspace detector."""
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        if group != "workspace":
-            return ()
-        if command == "verify-environment":
-            from flext_infra.workspace.environment_provenance import (
-                FlextInfraWorkspaceEnvironmentProvenance,
-            )
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraWorkspaceDetector,
+            FlextInfraWorkspaceDetector.execute_command,
+        )
 
-            return (
-                m.Cli.ResultCommandRoute(
-                    name=command,
-                    help_text=cls.descriptions[group][command],
-                    model_cls=m.Infra.WorkspaceEnvironmentRequest,
-                    handler=lambda params: (
-                        FlextInfraWorkspaceEnvironmentProvenance.execute_request(
-                            params
-                        ).map(CliRouteBase.as_route_value)
-                    ),
-                    success_message="workspace editable provenance verified",
-                ),
-            )
-        if command == "detect":
-            from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+    @staticmethod
+    def load_sync(name: str, help_text: str) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected workspace sync route."""
+        from flext_infra.workspace.sync import FlextInfraSyncService
 
-            implementation = FlextInfraWorkspaceDetector
-        elif command == "sync":
-            from flext_infra.workspace.sync import FlextInfraSyncService
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraSyncService,
+            FlextInfraSyncService.execute_command,
+        )
 
-            implementation = FlextInfraSyncService
-        elif command == "orchestrate":
-            from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
+    @staticmethod
+    def load_orchestrate(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected workspace orchestration route."""
+        from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
-            implementation = FlextInfraOrchestratorService
-        elif command == "serialize-make":
-            from flext_infra.workspace.make_serialization import (
-                FlextInfraMakeSerializationService,
-            )
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraOrchestratorService,
+            FlextInfraOrchestratorService.execute_command,
+        )
 
-            implementation = FlextInfraMakeSerializationService
-        elif command == "migrate":
-            from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+    @staticmethod
+    def load_serialize_make(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected serialized Make route."""
+        from flext_infra.workspace.make_serialization import (
+            FlextInfraMakeSerializationService,
+        )
 
-            implementation = FlextInfraProjectMigrator
-        elif command == "worktree":
-            from flext_infra import FlextInfraWorktreeService
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraMakeSerializationService,
+            FlextInfraMakeSerializationService.execute_command,
+        )
 
-            implementation = FlextInfraWorktreeService
-        else:
-            return ()
+    @staticmethod
+    def load_migrate(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected workspace migration route."""
+        from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 
-        return (
-            m.Cli.ResultCommandRoute(
-                name=command,
-                help_text=cls.descriptions[group][command],
-                model_cls=implementation,
-                handler=lambda params, mc=implementation: mc.execute_command(params),
-            ),
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraProjectMigrator,
+            FlextInfraProjectMigrator.execute_command,
+        )
+
+    @staticmethod
+    def load_worktree(
+        name: str, help_text: str
+    ) -> t.SequenceOf[p.Cli.ResultCommandRoute]:
+        """Load the selected worktree route."""
+        from flext_infra import FlextInfraWorktreeService
+
+        return CliRouteBase.command_route(
+            name,
+            help_text,
+            FlextInfraWorktreeService,
+            FlextInfraWorktreeService.execute_command,
         )
 
 

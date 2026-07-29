@@ -135,7 +135,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _render_root(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render one inline lazy public-root initializer."""
-        return cls._render_model(
+        return cls.render_python_template(
             c.Infra.TEMPLATE_ROOT_INIT,
             cls._root_context(plan),
             target_filename=str(plan.context.init_path),
@@ -144,7 +144,7 @@ class FlextInfraCodegenGenerationStandardMixin(
     @classmethod
     def _render_static(cls, plan: m.Infra.LazyInitPlan) -> str:
         """Render one explicit static or empty subpackage initializer."""
-        return cls._render_model(
+        return cls.render_python_template(
             c.Infra.TEMPLATE_STATIC_INIT,
             cls._static_context(plan),
             target_filename=str(plan.context.init_path),

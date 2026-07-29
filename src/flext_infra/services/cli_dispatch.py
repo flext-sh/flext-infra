@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra.cli_registry import CLI_GROUP_DESCRIPTIONS
 from flext_infra.services.cli_transaction import CliTransactionService
 
 if TYPE_CHECKING:
@@ -69,9 +70,11 @@ class CliDispatchService(CliTransactionService):
         if what is None:
             return r[list[str]].ok(list(args))
 
-        from flext_infra import c
-
-        if group == c.Infra.CLI_GROUP_CHECK:
+        strategy = self.what_strategy(group)
+        if strategy == "none":
+            return r[list[str]].ok(list(args))
+        if strategy == "check-run":
+            from flext_infra import c
             from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 
             gate_check = FlextInfraWorkspaceChecker.resolve_gates([what])
@@ -83,19 +86,18 @@ class CliDispatchService(CliTransactionService):
                 list(remaining) if has_subcommand else [c.Infra.VERB_RUN, *remaining]
             )
             return r[list[str]].ok([*prefix, "--gates", what])
-        if group == c.Infra.CLI_GROUP_VALIDATE:
+        if strategy == "validate-command":
             valid_names = self.route_names(group)
             if what not in valid_names:
                 return r[list[str]].fail(f"unknown validator '{what}'")
             return r[list[str]].ok([what, *remaining])
-        if group == c.Infra.CLI_GROUP_CODEGEN and remaining[:1] == ["conform"]:
-            return r[list[str]].ok([*remaining, "--what", what])
         return r[list[str]].fail(f"--what is not supported for group '{group}'")
 
     def run_group(self, group: str, command: str, args: t.StrSequence) -> int:
         """Execute one registered flext-cli command group."""
         from flext_cli import u
-        from flext_infra import c, m
+        from flext_infra.constants import c
+        from flext_infra.models import m
 
         what_result = self.translate_what(group, args)
         if what_result.failure:
@@ -105,8 +107,7 @@ class CliDispatchService(CliTransactionService):
             return int(c.Infra.ScriptExitCode.USAGE)
         normalized_args = self.normalize_group_args(what_result.value)
         app = self.create_app_with_common_params(
-            name=f"{self.app_name} {group}",
-            help_text=c.Infra.CLI_GROUP_DESCRIPTIONS[group],
+            name=f"{self.app_name} {group}", help_text=CLI_GROUP_DESCRIPTIONS[group]
         )
         self.register_group_commands(group, command, app)
         result = self.execute_app(
