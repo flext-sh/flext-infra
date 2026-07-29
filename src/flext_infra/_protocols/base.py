@@ -221,7 +221,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class ReleaseSpec(Protocol):
+    class ReleaseConfigSpec(Protocol):
         """Public prerelease fields consumed by conform and release ordering."""
 
         @property

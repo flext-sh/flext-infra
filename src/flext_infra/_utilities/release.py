@@ -18,7 +18,7 @@ class FlextInfraUtilitiesRelease:
     @staticmethod
     def order_release_targets(
         targets: t.SequenceOf[t.Pair[str, Path]],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
     ) -> t.SequenceOf[t.Pair[str, Path]]:
         """Order configured bootstrap nodes first and preserve all other input order."""
         priority = {

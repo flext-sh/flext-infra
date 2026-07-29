@@ -1415,7 +1415,7 @@ class FlextInfraConfigModels:
             m.Field(description="Earlier bootstrap nodes required by this project"),
         ] = ()
 
-    class ReleaseSpec(_ConfigContract):
+    class ReleaseConfigSpec(_ConfigContract):
         """Public prerelease provenance and its ordered bootstrap DAG."""
 
         version: Annotated[
@@ -1460,7 +1460,7 @@ class FlextInfraConfigModels:
         @m.computed_field()
         @property
         def bootstrap_order(self) -> tuple[str, ...]:
-            """Return the validated topological project order."""
+            """Validated topological project order."""
             return tuple(node.distribution for node in self.dependency_dag)
 
     class StaticRule(_ConfigContract):
@@ -1556,7 +1556,7 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
         release: Annotated[
-            FlextInfraConfigModels.ReleaseSpec,
+            FlextInfraConfigModels.ReleaseConfigSpec,
             m.Field(description="Public prerelease and bootstrap dependency DAG"),
         ]
         codegen: Annotated[

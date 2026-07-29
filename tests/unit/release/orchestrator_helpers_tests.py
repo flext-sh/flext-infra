@@ -48,7 +48,7 @@ class TestsFlextInfraReleaseHelpers:
             nodes = tuple(config.Infra.release.dependency_dag)
 
             with pytest.raises(c.ValidationError):
-                m.Infra.ReleaseSpec(
+                m.Infra.ReleaseConfigSpec(
                     version=config.Infra.release.version,
                     dependency_dag=tuple(reversed(nodes)),
                 )

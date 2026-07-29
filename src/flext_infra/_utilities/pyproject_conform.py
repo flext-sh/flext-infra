@@ -26,7 +26,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[str]:
@@ -182,7 +182,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         canonicalize_all: bool,
@@ -245,7 +245,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         canonicalize_all: bool,
         attached: frozenset[str],
     ) -> p.Result[bool]:
@@ -291,7 +291,7 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from topology and public release SSOTs."""
@@ -669,7 +669,7 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        release: p.Infra.ReleaseSpec,
+        release: p.Infra.ReleaseConfigSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[bool]:
