@@ -81,22 +81,30 @@ class TestsFlextInfraInfraWorkspaceDetector:
                 ["git", "init", "-q", "-b", baseline], cwd=repository_root
             )
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "infra@example.com"],
-                cwd=repository_root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"], cwd=repository_root
-            )
+        TestsFlextInfraInfraWorkspaceDetector._configure_repository_identity(
+            repository_root
         )
         (repository_root / "README.md").write_text("# Repository\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repository_root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "commit", "-q", "-m", "Initial commit"], cwd=repository_root
+            )
+        )
+
+    @staticmethod
+    def _configure_repository_identity(repository_root: Path) -> None:
+        """Set deterministic repository-local identity for real Git fixtures."""
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "user.email", "infra@example.com"],
+                cwd=repository_root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "user.name", "Infra Tests"],
+                cwd=repository_root,
             )
         )
 
@@ -126,16 +134,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         member_root = workspace_root / member_path
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "infra@example.com"], cwd=member_root
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"], cwd=member_root
-            )
-        )
+        cls._configure_repository_identity(member_root)
         provider = config.Infra.codegen.providers[0]
         canonical_url = f"{provider.base_url}/flext-member.git"
         section = "submodule.members/flext-member"
