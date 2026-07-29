@@ -252,3 +252,20 @@ skill-create-output/
 .debug-journal.md
 .mcp.json
 CLAUDE.local.md
+
+# Tracked managed artifacts
+!ci/
+!ci/docker/
+!ci/docker/alpine.Dockerfile
+!ci/docker/arch.Dockerfile
+!ci/docker/debian.Dockerfile
+!ci/docker/fedora.Dockerfile
+!ci/docker/ubuntu.Dockerfile
+!.github/workflows/
+!.github/workflows/ci-matrix.yml
+!.github/workflows/ci.yml
+!.vscode/settings.json
+!LICENSE
+!config/
+!config/workspace.yaml
+!custom.mk
