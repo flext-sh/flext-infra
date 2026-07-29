@@ -1,8 +1,8 @@
-"""Tests for canonical dependency source selection by topology role.
+"""Tests for canonical dependency provenance selection by topology role.
 
 The attached root owns the local ``workspace = true`` overlay. Publishable
-members retain their catalog Git provenance so the same package metadata works
-outside the workspace; uv applies the root overlay when resolving them locally.
+members use the exact public prerelease outside that overlay, so editable
+workspace ownership never competes with a second direct source.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -104,6 +104,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -116,7 +117,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(group, eq=["flext-core"])
         tm.that(runtime, eq=["flext-core"])
 
-    def test_external_consumer_keeps_remote_branch_source(self) -> None:
+    def test_external_consumer_uses_public_prerelease(self) -> None:
         workspace = _workspace()
         external = (
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
@@ -126,21 +127,20 @@ class TestsFlextInfraPyprojectConformTopologySources:
         result = u.Infra.pyproject_dependencies_conform(
             external,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
 
         document = tomllib.loads(tm.ok(result))
 
-        # The expected specifier is derived from the same declared repository
-        # contract the generator reads - never a hardcoded URL or branch.
         member = workspace.members[0]
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
+            eq=[f"{member.distribution}=={config.Infra.release.version}"],
         )
 
-    def test_publishable_member_keeps_catalog_git_provenance(self) -> None:
+    def test_publishable_member_uses_public_prerelease(self) -> None:
         workspace = _workspace_with_consumer()
         provider = workspace.members[0]
         publishable_member = (
@@ -152,6 +152,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         result = u.Infra.pyproject_dependencies_conform(
             publishable_member,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -159,7 +160,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
         document = tomllib.loads(tm.ok(result))
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{provider.distribution} @ git+{provider.url}@{provider.branch}"],
+            eq=[
+                f"{provider.distribution}=={config.Infra.release.version}"
+            ],
         )
 
     def test_attached_root_rejects_explicit_member_source(self) -> None:
@@ -177,6 +180,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         result = u.Infra.pyproject_dependencies_conform(
             attached_root,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -193,6 +197,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 "file:///home/marlonsc/flext/flext-core",
             ),
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -215,6 +220,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 'git+https://github.com/flext-sh/flext-unmapped.git@main"]\n'
             ),
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -253,6 +259,7 @@ workspace = true
             u.Infra.pyproject_dependencies_conform(
                 root_source,
                 repositories=(workspace.repository, *workspace.members),
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -265,6 +272,7 @@ workspace = true
                     f'dependencies = ["{provider.distribution}"]\n'
                 ),
                 repositories=(workspace.repository, *workspace.members),
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -308,12 +316,13 @@ workspace = true
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
 
-    def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
+    def test_standalone_replaces_workspace_source_with_public_prerelease(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
@@ -322,7 +331,7 @@ workspace = true
         document = tomllib.loads(tm.ok(result))
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
+            eq=[f"{member.distribution}=={config.Infra.release.version}"],
         )
         uv_config = document.get("tool", {}).get("uv", {})
         tm.that("sources" in uv_config, eq=False)

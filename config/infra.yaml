@@ -1,6 +1,15 @@
 Infra:
   name: flext-infra
-  version: "0.12.0-dev"
+  release:
+    version: "0.12.0rc1"
+    dependency_dag:
+      - distribution: flext-core
+      - distribution: flext-cli
+        dependencies: [flext-core]
+      - distribution: flext-tests
+        dependencies: [flext-cli]
+      - distribution: flext-infra
+        dependencies: [flext-tests]
   source_scan:
     roots:
       - src

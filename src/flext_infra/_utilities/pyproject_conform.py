@@ -26,6 +26,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        release: p.Infra.ReleaseSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
@@ -55,6 +56,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
+            release=release,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=True,
@@ -80,6 +82,7 @@ class FlextInfraUtilitiesPyprojectConform:
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
+            release=release,
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
@@ -99,6 +102,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        release: p.Infra.ReleaseSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[str]:
@@ -120,7 +124,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
-                source, repositories=repositories, workspace=workspace
+                source, workspace=workspace
             )
             if sources_result.failure:
                 return r[str].fail(
@@ -130,6 +134,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
+            release=release,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=False,
@@ -157,6 +162,7 @@ class FlextInfraUtilitiesPyprojectConform:
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
+            release=release,
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
@@ -176,6 +182,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        release: p.Infra.ReleaseSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         canonicalize_all: bool,
@@ -188,8 +195,8 @@ class FlextInfraUtilitiesPyprojectConform:
             *workspace.content_only,
         )
         # Only the root expresses the active workspace overlay in its own
-        # requirements. A publishable member keeps its configured Git source so
-        # the same pyproject remains resolvable in a standalone checkout; uv
+        # requirements. A publishable member keeps its exact public prerelease
+        # so the same pyproject remains resolvable in a standalone checkout; uv
         # replaces it with workspace=true from the attached root.
         attached = (
             frozenset(member.distribution for member in workspace.members)
@@ -205,6 +212,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
+            release=release,
             canonicalize_all=canonicalize_all,
             attached=attached,
         )
@@ -222,6 +230,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     section,
                     group_name,
                     repositories=available,
+                    release=release,
                     canonicalize_all=canonicalize_all,
                     attached=attached,
                 )
@@ -236,6 +245,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        release: p.Infra.ReleaseSpec,
         canonicalize_all: bool,
         attached: frozenset[str],
     ) -> p.Result[bool]:
@@ -251,7 +261,10 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, attached=attached
+                item,
+                repositories=repositories,
+                release=release,
+                attached=attached,
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -278,9 +291,10 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        release: p.Infra.ReleaseSpec,
         attached: frozenset[str],
     ) -> p.Result[str]:
-        """Render one internal requirement from its manifest repository reference."""
+        """Render one internal requirement from topology and public release SSOTs."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
@@ -299,55 +313,16 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].ok(
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
-        reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories
-        )
-        if reference_result.failure:
+        if not any(
+            repository.distribution == dependency_name for repository in repositories
+        ):
             return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
+                f"repository catalog lacks required distribution: {dependency_name}"
             )
-        reference = reference_result.value
-        git_url = cls._git_requirement_url(reference.url)
-        if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{reference.branch}"
+        canonical = f"{head}=={release.version}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
-
-    @staticmethod
-    def _repository_reference(
-        distribution: str, *, repositories: t.SequenceOf[p.Infra.RepositoryRef]
-    ) -> p.Result[p.Infra.RepositoryRef]:
-        """Return one unambiguous manifest reference for a distribution."""
-        matches = tuple(
-            repository
-            for repository in repositories
-            if repository.distribution == distribution
-        )
-        if not matches:
-            return r.fail(
-                f"repository catalog lacks required distribution: {distribution}"
-            )
-        reference = matches[0]
-        if any(
-            item.url != reference.url or item.branch != reference.branch
-            for item in matches[1:]
-        ):
-            return r.fail(
-                f"repository catalog conflicts for distribution: {distribution}"
-            )
-        return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
-        if not url.startswith("https://"):
-            return r[str].fail(
-                f"repository URL must use the configured HTTPS transport: {url}"
-            )
-        return r[str].ok(f"git+{url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -627,35 +602,19 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)
 
-    @classmethod
+    @staticmethod
     def _resolved_root_sources(
-        cls,
-        *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
-    ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
-        """Resolve the workspace source overlay from typed metadata."""
-        candidates = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
-        for distribution in dict.fromkeys(item.distribution for item in candidates):
-            reference_result = cls._repository_reference(
-                distribution, repositories=candidates
-            )
-            if reference_result.failure:
-                return r.fail(reference_result.error or "repository resolution failed")
-        return r.ok({
+    ) -> t.MappingKV[str, t.JsonMapping]:
+        """Resolve the workspace source overlay only from its topology SSOT."""
+        return {
             member.distribution: {"workspace": True} for member in workspace.members
-        })
+        }
 
     @staticmethod
     def _validate_root_uv_sources(
         document: t.Cli.TomlDocument,
         *,
-        repositories: t.SequenceOf[p.Infra.RepositoryRef],
         workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[bool]:
         """Validate the root overlay without rewriting out-of-order TOML tables."""
@@ -687,12 +646,9 @@ class FlextInfraUtilitiesPyprojectConform:
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
-        resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            repositories=repositories, workspace=workspace
+        expected_sources = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
+            workspace
         )
-        if resolved_result.failure:
-            return r[bool].fail(resolved_result.error or "repository resolution failed")
-        expected_sources = resolved_result.value
         if tuple(str(name) for name in sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")
         for source_name, expected_source in expected_sources.items():
@@ -713,6 +669,7 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
+        release: p.Infra.ReleaseSpec,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[bool]:
@@ -743,17 +700,32 @@ class FlextInfraUtilitiesPyprojectConform:
                 raw_values.extend(u.Cli.toml_as_string_list(group))
         for requirement in raw_values:
             dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-            if dependency_name not in member_names:
+            if dependency_name is None or not dependency_name.startswith("flext-"):
                 continue
             has_direct_source = "@" in requirement.partition(";")[0]
-            if attached_workspace_root and has_direct_source:
+            is_attached = attached_workspace_root and dependency_name in member_names
+            if is_attached and has_direct_source:
                 return r[bool].fail(
                     "attached workspace dependency declares direct source: "
                     f"{dependency_name}"
                 )
-            if not attached_workspace_root and not has_direct_source:
+            if is_attached:
+                continue
+            if has_direct_source:
                 return r[bool].fail(
-                    "publishable dependency lacks configured Git source: "
+                    "standalone dependency declares forbidden direct source: "
+                    f"{dependency_name}"
+                )
+            requirement_part = requirement.partition(";")[0].strip()
+            head_match = c.Infra.PEP621_REQUIREMENT_HEAD_RE.match(requirement_part)
+            if head_match is None:
+                return r[bool].fail(
+                    f"invalid internal requirement: {dependency_name}"
+                )
+            expected = f"{head_match.group('head').strip()}=={release.version}"
+            if requirement_part != expected:
+                return r[bool].fail(
+                    "standalone dependency lacks exact public prerelease: "
                     f"{dependency_name}"
                 )
         return r[bool].ok(True)

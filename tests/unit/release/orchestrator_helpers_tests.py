@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_tests import tm
 from tests import c, m, u
 
@@ -20,6 +21,37 @@ class TestsFlextInfraReleaseHelpers:
 
     class TestsPhaseResolution:
         """Release phase alias behavior."""
+
+        @staticmethod
+        def test_public_bootstrap_targets_follow_typed_dependency_dag(
+            tmp_path: Path,
+        ) -> None:
+            """Order selected foundation artifacts by the validated release SSOT."""
+            bootstrap_order = tuple(config.Infra.release.bootstrap_order)
+            targets = tuple(
+                (distribution, tmp_path / distribution)
+                for distribution in reversed(bootstrap_order)
+            )
+
+            ordered = u.Infra.order_release_targets(
+                targets, config.Infra.release
+            )
+
+            tm.that(
+                tuple(distribution for distribution, _ in ordered),
+                eq=bootstrap_order,
+            )
+
+        @staticmethod
+        def test_dependency_dag_rejects_forward_references() -> None:
+            """Reject a node until every declared bootstrap dependency is available."""
+            nodes = tuple(config.Infra.release.dependency_dag)
+
+            with pytest.raises(c.ValidationError):
+                m.Infra.ReleaseSpec(
+                    version=config.Infra.release.version,
+                    dependency_dag=tuple(reversed(nodes)),
+                )
 
         @staticmethod
         @pytest.mark.parametrize(

@@ -58,8 +58,10 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     # already-validated version value consumed directly by project generation.
     version: Annotated[
         str,
-        m.Field(description="Initial project version (default: config.Infra.version)."),
-    ] = config.Infra.version
+        m.Field(
+            description="Initial project version (default: config.Infra.release.version)."
+        ),
+    ] = config.Infra.release.version
     provider: Annotated[
         str, m.Field(min_length=1, description="Configured Git provider key.")
     ]

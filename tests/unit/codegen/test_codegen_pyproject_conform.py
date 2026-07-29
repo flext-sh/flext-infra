@@ -70,6 +70,7 @@ members = ["flext-core"]
 workspace = true
 """,
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -77,19 +78,20 @@ workspace = true
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
         tm.that(document["dependency-groups"]["workspace"], eq=["flext-core"])
 
-    def test_standalone_uses_catalog_git_provenance(self) -> None:
+    def test_standalone_uses_exact_public_prerelease(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{member.branch}"],
+            eq=[f"{member.distribution}=={config.Infra.release.version}"],
         )
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
@@ -105,6 +107,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
             u.Infra.pyproject_dependencies_conform(
                 source,
                 repositories=(workspace.repository, *workspace.members),
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -113,6 +116,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
             u.Infra.pyproject_dependencies_conform(
                 first,
                 repositories=(workspace.repository, *workspace.members),
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -136,6 +140,7 @@ constraint-dependencies = ["uv>=0"]
             u.Infra.pyproject_dependencies_conform(
                 source,
                 repositories=(workspace.repository, *workspace.members),
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -145,7 +150,7 @@ constraint-dependencies = ["uv>=0"]
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
-    def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
+    def test_standalone_ignores_obsolete_repository_transport(self) -> None:
         workspace = _workspace()
         member = workspace.members[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
@@ -154,10 +159,15 @@ constraint-dependencies = ["uv>=0"]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             repositories=(invalid_workspace.repository, member),
+            release=config.Infra.release,
             workspace=invalid_workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
-        tm.that(result.failure, eq=True)
+        document = tomllib.loads(tm.ok(result))
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[f"{member.distribution}=={config.Infra.release.version}"],
+        )
 
     def test_attached_root_rejects_direct_source(self) -> None:
         workspace = _workspace()
@@ -172,6 +182,7 @@ constraint-dependencies = ["uv>=0"]
                 "workspace = true\n"
             ),
             repositories=(workspace.repository, *workspace.members),
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -205,6 +216,7 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 source,
                 repositories=repositories,
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -215,6 +227,7 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 first,
                 repositories=repositories,
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -230,7 +243,7 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
-                f"{workspace.members[0].distribution} @ "
-                f"git+{workspace.members[0].url}@{workspace.members[0].branch}"
+                f"{workspace.members[0].distribution}"
+                f"=={config.Infra.release.version}"
             ),
         )
