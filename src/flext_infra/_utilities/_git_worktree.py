@@ -243,6 +243,10 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         head_result = cls.git_repository_head(source_root)
         if head_result.failure:
             return head_result
+        # An isolated transaction is a generator-validation boundary, not a user
+        # checkout. Host post-checkout hooks may depend on a toolchain which the
+        # generated project is about to declare, so they cannot be its prerequisite.
+        # Transaction validators still exercise the generated artifact explicitly.
         add_result = cls.git_capture(
             source_root,
             (

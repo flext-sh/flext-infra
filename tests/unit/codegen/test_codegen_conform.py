@@ -248,6 +248,8 @@ class TestCodegenConform:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.that((root / "Makefile").is_file(), eq=True)
         tm.that((root / ".mise.toml").is_file(), eq=True)
+        mise = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))
+        tm.that("github:gastownhall/beads" in mise["tools"], eq=False)
         tm.that((root / ".python-version").is_file(), eq=True)
         tm.that((root / ".gitignore").is_file(), eq=True)
         tm.that((root / ".env.example").exists(), eq=False)
@@ -472,6 +474,49 @@ class TestCodegenConform:
             rendered.infra_source_root_rel,
             eq=(Path("..") / infra_repository.path).as_posix(),
         )
+
+    def test_make_context_resolves_standalone_infra_from_itself(
+        self, tmp_path: Path
+    ) -> None:
+        """A standalone infrastructure checkout bootstraps from its own source."""
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        ).model_copy(
+            update={
+                "path": Path(),
+                "role": c.Infra.RepositoryRole.STANDALONE,
+                "profile": c.Infra.MakeProfile.STANDALONE,
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+            }
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=infra_repository.name,
+            repository=infra_repository,
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=infra_repository.distribution,
+                package_name=infra_repository.distribution.replace("-", "_"),
+                path=tmp_path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                infra_repository,
+                workspace,
+                config.Infra.codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+
+        tm.that(rendered.infra_source_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path

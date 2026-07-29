@@ -136,6 +136,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -186,6 +187,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                analysis_exclusions=analysis_exclusions,
             )
         )
         changes.extend(
@@ -215,7 +217,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
-                payload, path=path
+                payload, path=path, analysis_exclusions=analysis_exclusions
             )
         )
         changes.extend(

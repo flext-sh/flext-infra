@@ -328,13 +328,14 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools from the canonical process environment before mutation."""
+        """Bind lint tools from the active runtime PATH before cwd mutation."""
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
             executable = shutil.which(command[0])
             if executable is None:
                 return r[t.StrSequencePairTuple].fail(
-                    f"required transaction lint executable not found: {command[0]}"
+                    "required transaction lint executable not found on runtime PATH: "
+                    f"{command[0]}"
                 )
             bound_command: t.StrSequence = (executable, *command[1:])
             if tool == c.Infra.PYREFLY:

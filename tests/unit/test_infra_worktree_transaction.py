@@ -284,6 +284,31 @@ class TestsFlextInfraWorktreeTransaction:
         head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
 
         tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+    def test_isolated_worktree_does_not_run_host_checkout_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Transaction setup remains independent of host hook toolchains."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        (source_root / "README.md").write_text("fixture\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(source_root)
+        marker = tmp_path / "host-hook-ran"
+        hooks_root = tmp_path / "hooks"
+        hooks_root.mkdir()
+        hook = hooks_root / "post-checkout"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 77\n", encoding="utf-8")
+        hook.chmod(0o755)
+        tm.ok(
+            u.Infra.git_capture(
+                source_root, ("config", "core.hooksPath", str(hooks_root))
+            )
+        )
+
+        isolated_root = tmp_path / "isolated"
+
+        tm.ok(u.Infra.git_add_detached_worktree(source_root, isolated_root))
+        tm.that(marker.exists(), eq=False)
+        tm.that(isolated_root.is_dir(), eq=True)
 
     def test_preview_validates_isolated_target_without_touching_source(
         self, tmp_path: Path
@@ -593,6 +618,26 @@ class TestsFlextInfraWorktreeTransaction:
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
+
+    def test_transaction_lint_binds_uv_overlay_tools_from_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Resolve tools from uv's overlay PATH, not the interpreter directory."""
+        overlay_bin = tmp_path / "overlay" / "bin"
+        overlay_bin.mkdir(parents=True)
+        for executable_name in {
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }:
+            executable = overlay_bin / executable_name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
+        monkeypatch.setenv("PATH", str(overlay_bin))
+
+        commands = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
+
+        tm.that(
+            {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}
+        )
 
     def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
         """Keep aggregate regression guards and file-level repair evidence."""

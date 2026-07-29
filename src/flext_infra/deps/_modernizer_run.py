@@ -49,6 +49,8 @@ class FlextInfraPyprojectModernizerRunMixin:
             rewrite_constraints: bool = False,
             locked_versions: t.MappingKV[str, str] | None = None,
             internal_names: t.StrSequence = (),
+            declared_python_dirs: t.StrSequence = (),
+            analysis_exclusions: t.StrSequence = (),
         ) -> t.StrSequence: ...
 
     def process_file(
