@@ -154,6 +154,55 @@ class TestsCodegenSetupSubmodules:
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
 
+    def test_content_only_submodule_is_never_initialized(self, tmp_path: Path) -> None:
+        """A checkout without the config-owned marker remains untouched."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(
+            project, source, "vendor/upstream", "upstream", managed=False
+        )
+        self._git(project, "submodule", "deinit", "-q", "-f", "--all")
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that((project / "vendor/upstream/marker.txt").exists(), eq=False)
+
+    def test_content_only_submodule_config_and_wip_are_never_mutated(
+        self, tmp_path: Path
+    ) -> None:
+        """Setup neither synchronizes nor validates an immutable checkout."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(
+            project, source, "vendor/upstream", "upstream", managed=False
+        )
+        checkout = project / "vendor/upstream"
+        marker = checkout / "marker.txt"
+        marker.write_text("foreign wip", encoding="utf-8")
+        configured_url = self._git(
+            project, "config", "--get", "submodule.vendor/upstream.url"
+        )
+        self._git(
+            project,
+            "config",
+            "-f",
+            ".gitmodules",
+            "submodule.vendor/upstream.url",
+            "https://example.test/foreign.git",
+        )
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that(marker.read_text(encoding="utf-8"), eq="foreign wip")
+        tm.that(
+            self._git(project, "config", "--get", "submodule.vendor/upstream.url"),
+            eq=configured_url,
+        )
+
     def test_conflicting_branch_fails_before_environment(self, tmp_path: Path) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
