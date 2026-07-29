@@ -78,22 +78,30 @@ class TestsFlextInfraInfraWorkspaceDetector:
         tm.ok(
             u.Cli.run_checked(["git", "init", "-q", "-b", "main"], cwd=repository_root)
         )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.email", "infra@example.com"],
-                cwd=repository_root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "config", "user.name", "Infra Tests"], cwd=repository_root
-            )
+        TestsFlextInfraInfraWorkspaceDetector._configure_repository_identity(
+            repository_root
         )
         (repository_root / "README.md").write_text("# Repository\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repository_root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "commit", "-q", "-m", "Initial commit"], cwd=repository_root
+            )
+        )
+
+    @staticmethod
+    def _configure_repository_identity(repository_root: Path) -> None:
+        """Set deterministic repository-local identity for real Git fixtures."""
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "user.email", "infra@example.com"],
+                cwd=repository_root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "--local", "user.name", "Infra Tests"],
+                cwd=repository_root,
             )
         )
 
@@ -129,6 +137,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         member_root = workspace_root / member_path
+        cls._configure_repository_identity(member_root)
         canonical_url = "https://github.com/flext-sh/flext-member.git"
         section = "submodule.members/flext-member"
         tm.ok(
