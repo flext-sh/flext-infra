@@ -438,6 +438,13 @@ class TestsFlextInfraWorktreeTransaction:
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
 
+    def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
+        """Keep aggregate regression guards and file-level repair evidence."""
+        commands = dict(c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS)
+
+        tm.that(commands["ruff"], has="--statistics")
+        tm.that(commands["ruff-details"], has="concise")
+
     def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
         """Installed artifacts carry every executable required by transactions."""
         runtime_requirements = metadata.requires("flext-infra") or ()
