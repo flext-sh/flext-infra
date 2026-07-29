@@ -113,6 +113,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def classification(self) -> str:
+            """Repository governance ownership classification."""
+            ...
+
+        @property
         def checkout(self) -> str:
             """Physical checkout topology."""
             ...

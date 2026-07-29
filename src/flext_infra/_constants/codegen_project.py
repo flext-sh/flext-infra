@@ -42,6 +42,7 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
+        GITMODULES = "gitmodules"
         MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
@@ -93,6 +94,14 @@ class FlextInfraConstantsCodegenProject:
         CONFORM = "conform"
         PYTHON = "python"
         NONE = "none"
+
+    @unique
+    class RepositoryClassification(StrEnum):
+        """Governance ownership classification for one repository."""
+
+        MANAGED = "managed"
+        EXTERNAL_FORK = "external-fork"
+        EXTERNAL_VENDOR_REFERENCE = "external-vendor-reference"
 
     @unique
     class ProjectKind(StrEnum):

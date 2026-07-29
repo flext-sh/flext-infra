@@ -664,6 +664,10 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile | None,
             m.Field(description="Makefile generation profile"),
         ] = None
+        classification: Annotated[
+            FlextInfraConstantsCodegenProject.RepositoryClassification,
+            m.Field(description="Repository governance ownership classification"),
+        ] = FlextInfraConstantsCodegenProject.RepositoryClassification.MANAGED
         checkout: Annotated[
             FlextInfraConstantsCodegenProject.CheckoutKind,
             m.Field(description="Physical checkout topology"),
