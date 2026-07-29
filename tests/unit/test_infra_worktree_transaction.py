@@ -129,6 +129,32 @@ def _workspace(tmp_path: Path) -> Path:
 class TestsFlextInfraWorktreeTransaction:
     """Exercise transaction invariants through real Git state."""
 
+    def test_isolated_worktree_does_not_run_host_checkout_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Transaction setup remains independent of host hook toolchains."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        (source_root / "README.md").write_text("fixture\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(source_root)
+        marker = tmp_path / "host-hook-ran"
+        hooks_root = tmp_path / "hooks"
+        hooks_root.mkdir()
+        hook = hooks_root / "post-checkout"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 77\n", encoding="utf-8")
+        hook.chmod(0o755)
+        tm.ok(
+            u.Infra.git_capture(
+                source_root, ("config", "core.hooksPath", str(hooks_root))
+            )
+        )
+
+        isolated_root = tmp_path / "isolated"
+
+        tm.ok(u.Infra.git_add_detached_worktree(source_root, isolated_root))
+        tm.that(marker.exists(), eq=False)
+        tm.that(isolated_root.is_dir(), eq=True)
+
     def test_preview_validates_isolated_target_without_touching_source(
         self, tmp_path: Path
     ) -> None:
