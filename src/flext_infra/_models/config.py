@@ -1316,27 +1316,6 @@ class FlextInfraConfigModels:
             for pattern in self.gitignore_artifact_patterns:
                 if pattern not in governed and pattern not in derived:
                     derived.append(pattern)
-            managed_allowed: t.MutableSequenceOf[str] = []
-            declared_patterns = {
-                pattern for section in scaffold_sections for pattern in section.patterns
-            }
-            for managed in self.managed_files:
-                if (
-                    managed.policy
-                    == FlextInfraConstantsSharedInfra.MANAGED_FILE_POLICY_DELEGATED
-                ):
-                    continue
-                parts = managed.path.parts
-                candidates = [
-                    *(f"!{'/'.join(parts[:depth])}/" for depth in range(1, len(parts))),
-                    f"!{managed.path.as_posix()}",
-                ]
-                managed_allowed.extend(
-                    candidate
-                    for candidate in candidates
-                    if candidate not in declared_patterns
-                    and candidate not in managed_allowed
-                )
             sections: t.MutableSequenceOf[
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
             ] = []
