@@ -1182,6 +1182,18 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
+    class ProjectConformOverlay(_ConfigContract):
+        """Explicit exception to automatic project topology and Beads naming."""
+
+        profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile | None,
+            m.Field(description="Legacy Make profile override"),
+        ] = None
+        beads_namespace: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Legacy Beads issue-prefix override"),
+        ] = None
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -1205,6 +1217,16 @@ class FlextInfraConfigModels:
         profiles: Annotated[
             tuple[FlextInfraConfigModels.ProfileSpec, ...],
             m.Field(description="Ordered Make profiles"),
+        ]
+        project_overlays: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.ProjectConformOverlay],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Legacy exceptions to automatic Git topology and project-named "
+                    "Beads namespaces"
+                ),
+            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,

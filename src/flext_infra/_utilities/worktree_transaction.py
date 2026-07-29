@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -257,16 +258,16 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools to the transaction interpreter before cwd mutation."""
-        executable_root = Path(sys.executable).parent
+        """Bind lint tools from the active runtime PATH before cwd mutation."""
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable = executable_root / command[0]
-            if not executable.is_file():
+            executable = shutil.which(command[0])
+            if executable is None:
                 return r[t.StrSequencePairTuple].fail(
-                    f"required transaction lint executable not found: {executable}"
+                    "required transaction lint executable not found on runtime PATH: "
+                    f"{command[0]}"
                 )
-            bound_command: t.StrSequence = (str(executable), *command[1:])
+            bound_command: t.StrSequence = (executable, *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,

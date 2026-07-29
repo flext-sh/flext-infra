@@ -224,7 +224,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current_repository = current_matches[0]
         if self.initial_workspace is None and root.is_dir():
             effective_repository = FlextInfraWorkspaceDetector.effective_repository(
-                root, current_repository
+                root,
+                current_repository,
+                config_spec.project_overlays.get(current_repository.name),
             )
             if effective_repository.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -245,6 +247,31 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 selected_result.error or "repository selection failed"
             )
         selected = selected_result.value
+        if self.initial_workspace is None:
+            effective_selected: list[m.Infra.RepositoryRef] = []
+            for repository in selected:
+                repository_root = self._repository_root(
+                    workspace_root, workspace, repository
+                )
+                overlay = config_spec.project_overlays.get(repository.name)
+                beads_result = FlextInfraWorkspaceDetector.validate_beads_namespace(
+                    repository_root, repository, overlay
+                )
+                if beads_result.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        beads_result.error
+                        or f"Beads namespace validation failed for {repository.name}"
+                    )
+                effective_result = FlextInfraWorkspaceDetector.effective_repository(
+                    repository_root, repository, overlay
+                )
+                if effective_result.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        effective_result.error
+                        or f"effective topology failed for {repository.name}"
+                    )
+                effective_selected.append(effective_result.value)
+            selected = tuple(effective_selected)
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
@@ -572,11 +599,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
+        analysis_exclusions = tuple(
+            path.as_posix()
+            for path in FlextInfraWorkspaceDetector.workspace_analysis_exclusion_paths(
+                workspace
+            )
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -741,6 +775,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_render.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            analysis_exclusions=analysis_exclusions,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -763,6 +798,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             prepared_result.value,
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
+            analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1059,6 +1095,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         infra_repository: m.Infra.RepositoryRef,
     ) -> str | None:
         """Return a local engine source path only when the workspace declares it."""
+        if (
+            repository.profile is not c.Infra.MakeProfile.WORKSPACE_MEMBER
+            and repository.distribution == infra_repository.distribution
+            and repository.url == infra_repository.url
+            and repository.branch == infra_repository.branch
+        ):
+            return "."
         workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
             workspace.repository,
             *workspace.members,

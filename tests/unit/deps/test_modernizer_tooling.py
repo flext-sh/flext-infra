@@ -378,7 +378,7 @@ select = ["E501"]
             encoding="utf-8",
         )
         _ = workspace_root.joinpath("pyproject.toml").write_text(
-            "[project]\nname = 'workspace'\n\n"
+            "[project]\nname = 'workspace'\nversion = '0.1.0'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core']\n",
             encoding="utf-8",
