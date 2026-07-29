@@ -45,6 +45,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         @property
         def root(self) -> Path: ...
 
+        @property
+        def tool_config(self) -> m.Infra.ToolConfigDocument: ...
+
         def _ensure_build_system_payload(
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
@@ -53,7 +56,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
+        def _reorder_document_inplace(
+            self, doc: t.Cli.TomlDocument, *, preferred_first: t.StrSequence
+        ) -> None: ...
 
     def _classify_project(
         self, project_dir: Path, *, payload: t.JsonMapping | None = None
@@ -167,14 +172,12 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
         changes.extend(
-            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
+            FlextInfraEnsurePytestConfigPhase(self.tool_config).apply_payload(payload)
         )
         # mro-j47u (codex): Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
-            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePyrightConfigPhase(self.tool_config).apply_payload(
                 payload,
                 is_root=is_root,
                 workspace_root=self.root,
@@ -185,7 +188,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePyreflyConfigPhase(self.tool_config).apply_payload(
                 payload,
                 is_root=is_root,
                 project_dir=path.parent,
@@ -194,15 +197,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         changes.extend(
-            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(payload)
+            FlextInfraEnsureMypyConfigPhase(self.tool_config).apply_payload(payload)
         )
         changes.extend(
-            FlextInfraEnsurePydanticMypyConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePydanticMypyConfigPhase(self.tool_config).apply_payload(
                 payload
             )
         )
         changes.extend(
-            FlextInfraEnsureFormattingToolingPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsureFormattingToolingPhase(self.tool_config).apply_payload(
                 payload
             )
         )
@@ -210,23 +213,21 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
         )
         changes.extend(
-            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsureRuffConfigPhase(self.tool_config).apply_payload(
                 payload, path=path
             )
         )
         changes.extend(
-            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsurePackagingPhase(self.tool_config).apply_payload(
                 payload, path=path, is_root=is_root
             )
         )
         # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
-            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
-                payload
-            )
+            FlextInfraEnsureVultureConfigPhase(self.tool_config).apply_payload(payload)
         )
         changes.extend(
-            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
+            FlextInfraEnsureCoverageConfigPhase(self.tool_config).apply_payload(
                 payload, project_kind=resolved_project_kind
             )
         )
@@ -236,7 +237,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
-        self._reorder_document_inplace(doc)
+        self._reorder_document_inplace(
+            doc, preferred_first=self.tool_config.tools.tomlsort.sort_first
+        )
         state.payload = payload
         rendered = doc.as_string()
         if not skip_comments:
