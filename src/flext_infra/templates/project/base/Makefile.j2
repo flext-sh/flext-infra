@@ -48,6 +48,7 @@ PYTEST_ARGS ?=
 PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
 PYTEST_REPORTS_DIR ?= .reports/tests
 WHAT ?=
 # End SECTION: user overrides
@@ -449,6 +450,8 @@ _builtin_test_all: _builtin_require_environment
     "$(PROJECT_FLEXT_INFRA) validate",
     "$(PYTEST_TARGETS)",
     "$(PROJECT_ROOT)/tests",
+    make.TIMEOUT_COMMAND,
+    make.TIMEOUT_KILL_AFTER_SECONDS,
 ) }}
 {% endif %}
 

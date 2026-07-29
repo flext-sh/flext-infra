@@ -18,4 +18,5 @@ COMPLEXITY_MAX ?= 10
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
 PYTEST_REPORTS_DIR ?= .reports/tests

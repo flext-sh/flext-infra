@@ -41,6 +41,7 @@ VERBOSE ?=
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 60
 PYTEST_REPORTS_DIR ?= .reports/tests
 
 # === WORKSPACE/STANDALONE DETECTION ===
@@ -621,7 +622,7 @@ _test_impl:
 	printf '%s\n' '$(VENV_PYTHON) -m pytest' \
 		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
 		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	$(VENV_PYTHON) -m pytest $$_pytest_run \
+	timeout --kill-after=5s $(PYTEST_PROCESS_TIMEOUT_SECONDS)s $(VENV_PYTHON) -m pytest $$_pytest_run \
 		$(PYTEST_REPORT_ARGS) \
 		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
 		-p no:metadata \
@@ -630,6 +631,11 @@ _test_impl:
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
+	if [ "$$rc" -eq 124 ]; then \
+		printf 'ERROR: pytest process exceeded %ss wall-clock deadline\n' \
+			"$(PYTEST_PROCESS_TIMEOUT_SECONDS)" >&2; \
+		exit "$$rc"; \
+	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \

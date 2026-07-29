@@ -533,6 +533,10 @@ Infra:
           - --session-timeout=300
         profile-sort: cumulative
         profile-limit: 50
+        # mro-99ae: hard process boundary independent of pytest hook progress.
+        # The pytest timeouts above bound a hanging TEST; this bounds a hanging
+        # PROCESS, which no in-process hook can observe.
+        process-timeout-seconds: 60
       tomlsort:
         all: true
         in_place: true
