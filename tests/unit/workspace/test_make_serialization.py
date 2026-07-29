@@ -27,7 +27,7 @@ _MUTATION_CASES = tuple(
 class TestsFlextInfraMakeSerialization:
     """Prove configured Make verbs share one native checkout lock."""
 
-    _process_start_timeout_seconds = 30
+    _process_start_timeout_seconds = 8
 
     def test_config_owns_relative_checkout_lock_and_serialized_verbs(self) -> None:
         """The typed SSOT owns path, timeout, and the exact protected verbs."""
@@ -179,7 +179,7 @@ class TestsFlextInfraMakeSerialization:
                 "    active.write_text('incumbent', encoding='utf-8')\n"
                 "    started.write_text('', encoding='utf-8')\n"
                 "    release = state / 'incumbent-release'\n"
-                "    deadline = time.monotonic() + 30\n"
+                f"    deadline = time.monotonic() + {self._process_start_timeout_seconds}\n"
                 "    while time.monotonic() < deadline and not release.exists():\n"
                 "        time.sleep(0.01)\n"
                 "    if not release.exists():\n"
@@ -220,13 +220,13 @@ class TestsFlextInfraMakeSerialization:
             "--verb",
         ]
 
-        executor = ThreadPoolExecutor(max_workers=2)
-        try:
+        release = tmp_path / ".reports" / "serialization-test" / "incumbent-release"
+        release.parent.mkdir(parents=True, exist_ok=True)
+        with ThreadPoolExecutor(max_workers=2) as executor:
             incumbent_future = executor.submit(
                 u.Cli.run_raw, [*command, validation_verb], tmp_path
             )
             contender_future = None
-            release = tmp_path / ".reports" / "serialization-test" / "incumbent-release"
             try:
                 deadline = time.monotonic() + self._process_start_timeout_seconds
                 while (
@@ -264,8 +264,6 @@ class TestsFlextInfraMakeSerialization:
                 incumbent_future.cancel()
                 if contender_future is not None:
                     contender_future.cancel()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(incumbent_process.exit_code, eq=0)
         tm.that(contender_process.exit_code, eq=0)
@@ -301,7 +299,7 @@ class TestsFlextInfraMakeSerialization:
                 "if not started.exists():\n"
                 "    active.write_text('incumbent', encoding='utf-8')\n"
                 "    started.write_text('', encoding='utf-8')\n"
-                "    deadline = time.monotonic() + 30\n"
+                f"    deadline = time.monotonic() + {self._process_start_timeout_seconds}\n"
                 "    while time.monotonic() < deadline and not release.exists():\n"
                 "        time.sleep(0.01)\n"
                 "    if not release.exists():\n"
@@ -350,11 +348,11 @@ class TestsFlextInfraMakeSerialization:
                 cwd=caller,
             )
 
-        executor = ThreadPoolExecutor(max_workers=2)
-        try:
+        state.mkdir(parents=True, exist_ok=True)
+        release = state / "release"
+        with ThreadPoolExecutor(max_workers=2) as executor:
             incumbent_future = executor.submit(command, callers[0])
             contender_future = None
-            release = state / "release"
             try:
                 deadline = time.monotonic() + self._process_start_timeout_seconds
                 while (
@@ -377,8 +375,6 @@ class TestsFlextInfraMakeSerialization:
                 incumbent_future.cancel()
                 if contender_future is not None:
                     contender_future.cancel()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(incumbent.exit_code, eq=0)
         tm.that(contender.exit_code, eq=0)
@@ -601,7 +597,7 @@ class TestsFlextInfraMakeSerialization:
                 "    stream.write(f'{phase}-start\\n')\n"
                 "(state / f'{phase}-started').write_text('', encoding='utf-8')\n"
                 "release = state / f'{phase}-release'\n"
-                "deadline = time.monotonic() + 30\n"
+                f"deadline = time.monotonic() + {self._process_start_timeout_seconds}\n"
                 "while not release.exists() and time.monotonic() < deadline:\n"
                 "    time.sleep(0.01)\n"
                 "if not release.exists():\n"
@@ -641,9 +637,8 @@ class TestsFlextInfraMakeSerialization:
         ]
 
         lock_path = tmp_path / make_config.serialization.lock_path
-        executor = ThreadPoolExecutor(max_workers=1)
-        try:
-            state.mkdir(parents=True, exist_ok=True)
+        state.mkdir(parents=True, exist_ok=True)
+        with ThreadPoolExecutor(max_workers=1) as executor:
             mutation_future = executor.submit(
                 u.Cli.run_raw,
                 [*command, mutation_verb],
@@ -694,8 +689,6 @@ class TestsFlextInfraMakeSerialization:
                 (state / "mutation-release").touch()
                 (state / "fixed-point-release").touch()
                 mutation_future.cancel()
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
 
         tm.that(mutation.exit_code, eq=0, msg=mutation.stdout + mutation.stderr)
         with FileLock(lock_path, timeout=0):
@@ -767,8 +760,9 @@ class TestsFlextInfraMakeSerialization:
         incumbent_lock.acquire()
         try:
             with ThreadPoolExecutor(max_workers=1) as executor:
-                execution_future = executor.submit(service.execute)
+                execution_future = None
                 try:
+                    execution_future = executor.submit(service.execute)
                     tm.that(post_transaction_captured.wait(timeout=8), where=bool)
                     (tmp_path / "concurrent.txt").write_text(
                         "drift\n", encoding="utf-8"
@@ -777,7 +771,8 @@ class TestsFlextInfraMakeSerialization:
                     result = execution_future.result(timeout=8)
                 finally:
                     incumbent_lock.release()
-                    execution_future.cancel()
+                    if execution_future is not None:
+                        execution_future.cancel()
         finally:
             incumbent_lock.release()
 
