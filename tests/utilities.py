@@ -177,8 +177,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,

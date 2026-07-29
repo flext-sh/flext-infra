@@ -220,13 +220,13 @@ class FlextInfraUtilitiesDocsRender:
     @staticmethod
     def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface."""
-        skill_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
-            link_prefix, ".agents/skills/flext-quality-gates/SKILL.md"
+        agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
+            link_prefix, "AGENTS.md"
         )
         return [
             "## Quality Gates",
             "",
-            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see `AGENTS.md` §5 (Make Contract) and the [`flext-quality-gates`]({skill_link}) skill for selectors and thresholds.",
+            f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` and `Required Python quality gates`; selector routing is owned universally by `~/.agents/skills/make-check/SKILL.md`.",
         ]
 
     @staticmethod
