@@ -21,6 +21,8 @@ Infra:
           - .pytest_cache
           - .ruff_cache
           - .venv
+          # Historical evidence is never a live lint surface.
+          - .archive
           - __pycache__
           - "**/__pyrefly_virtual__/**"
           - archive
@@ -134,18 +136,20 @@ Infra:
             # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
             # justified per rule, never a blanket mask).
             "scripts/cmd/**/*.py": [invalid-module-name]
-            # Test suites: pytest idioms that are correct-by-design in test code
+            # Test suites: pytest idioms that are correct-by-design
             # are exempted GLOBALLY at the codegen SSOT (operator P0, per-rule
             # justified per UNIVERSAL_CORE r19 — never a blanket mask):
-            #  - assert: bare asserts are the pytest assertion mechanism.
+            #  - assert: bare assertions are pytest's executable assertion
+            #    mechanism. Projects may adopt flext-tests matchers, but codegen
+            #    must remain valid for every generated and external consumer.
             #  - undocumented-public-method/-function/-class: test methods,
             #    helper functions, and TestsXxx container classes are structural,
             #    not public API, so docstrings add no value.
-            #  - magic-value-comparison (PLR2004): tests assert against literal
-            #    expected values (assert x == 3); extracting every literal to a
+            #  - magic-value-comparison (PLR2004): tests compare literal
+            #    expected values; extracting every literal to a
             #    named constant harms readability and is not real code debt.
-            #  - compare-to-empty-string (PLC1901): `assert x == ""` asserts an
-            #    exact empty-string result and is clearer than `assert not x`.
+            #  - compare-to-empty-string (PLC1901): matcher calls can validate
+            #    an exact empty-string result directly.
             # NOT exempted (real defects, fixed in test code): import-private-name
             # (PLC2701) and private-member-access (SLF001) — tests must exercise the
             # PUBLIC facade only (flext test public-only law).
@@ -343,10 +347,11 @@ Infra:
           project-venv-path: ..
           venv-name: .venv
       coverage:
+        source: [src]
         fail-under:
           core: 45
           domain: 30
-          platform: 25
+          platform: 45
           integration: 20
           app: 15
         show-missing: true
@@ -503,12 +508,18 @@ Infra:
           - "stress: stress tests"
           - "resilience: resilience tests"
         standard-addopts:
+          - --benchmark-disable
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          # operator law 2026-07-20: any test over 10s is a grave test defect,
-          # surfaced as an explicit TIMEOUT failure (never accommodated).
-          - --timeout=10
+          - -n=4
+          - --dist=worksteal
+          # mro-wkii.17.37.1: one typed suite budget replaces test-local
+          # timeout overrides and retains measured coverage-run slack.
+          - --timeout=30
+          - --session-timeout=300
+        profile-sort: cumulative
+        profile-limit: 50
       tomlsort:
         all: true
         in_place: true
@@ -557,6 +568,7 @@ Infra:
         - docker.py
         - domains.py
         - exceptions.py
+        - environment.py
         - files.py
         - handlers.py
         - helpers.py
@@ -579,6 +591,7 @@ Infra:
         - typings.py
         - utilities.py
         - validator.py
+        - worktree.py
       public-file-aliases:
         base.py: s
         constants.py: c

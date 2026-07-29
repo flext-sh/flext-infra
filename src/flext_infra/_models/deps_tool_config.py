@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
@@ -111,6 +111,29 @@ class FlextInfraModelsDepsToolSettings(
                 description="Standard pytest addopts enforced by modernizer.",
             ),
         ]
+        profile_sort: Annotated[
+            Literal[
+                "calls",
+                "cumulative",
+                "filename",
+                "line",
+                "name",
+                "nfl",
+                "pcalls",
+                "stdname",
+                "time",
+            ],
+            m.Field(alias="profile-sort", description="Sort key for cProfile reports."),
+        ]
+        profile_limit: Annotated[
+            int,
+            m.Field(
+                alias="profile-limit",
+                gt=0,
+                le=1000,
+                description="Maximum cProfile rows rendered.",
+            ),
+        ]
 
     class TomlsortConfig(m.ArbitraryTypesModel):
         """tomlsort baseline settings loaded from YAML."""
@@ -160,6 +183,10 @@ class FlextInfraModelsDepsToolSettings(
     class CoverageConfig(m.ArbitraryTypesModel):
         """Coverage baseline settings loaded from YAML."""
 
+        source: Annotated[
+            t.StrSequence,
+            m.Field(description="Production roots measured by full coverage runs."),
+        ]
         fail_under: FlextInfraModelsDepsToolSettings.CoverageFailUnderConfig = m.Field(
             alias="fail-under", description="Coverage fail-under thresholds by layer."
         )
@@ -394,9 +421,6 @@ class FlextInfraModelsDepsToolSettings(
         mypy_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Mypy search paths")
         ]
-        pyrefly_interpreter_path: Annotated[
-            t.NonEmptyStr, m.Field(description="Resolved Pyrefly interpreter")
-        ]
         pyrefly_search_path: Annotated[
             t.StrTuple, m.Field(description="Resolved Pyrefly search paths")
         ]
@@ -415,14 +439,6 @@ class FlextInfraModelsDepsToolSettings(
         pyright_extra_paths: Annotated[
             t.StrTuple, m.Field(description="Resolved Pyright import paths")
         ]
-        pyright_venv: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Resolved Pyright virtual environment name"),
-        ]
-        pyright_venv_path: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Resolved Pyright virtual environment base"),
-        ]
         pyright_settings: Annotated[
             tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
             m.Field(description="Resolved Pyright scalar settings"),
@@ -433,6 +449,9 @@ class FlextInfraModelsDepsToolSettings(
         ]
         ruff_src: Annotated[
             t.StrTuple, m.Field(description="Resolved Ruff source roots")
+        ]
+        ruff_exclude: Annotated[
+            t.StrTuple, m.Field(description="Resolved Ruff exclusions")
         ]
         ruff_ignore: Annotated[
             t.StrTuple,

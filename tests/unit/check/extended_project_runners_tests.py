@@ -10,9 +10,9 @@ import os
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ class TestsExtendedProjectRunners:
                 os.environ.pop("PYTHONPATH", None)
 
         tm.ok(result)
-        assert {"lint", "format", "pyrefly"} <= set(result.value[0].gates)
+        tm.that({"lint", "format", "pyrefly"} <= set(result.value[0].gates), eq=True)
 
     @pytest.mark.parametrize("gate_method", ["lint", "format"])
     def test_public_method_returns_gate_result(

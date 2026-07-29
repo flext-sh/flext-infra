@@ -40,7 +40,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/silent-failure",
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
-        "markdown": ("MarkdownLint", "https://github.com/DavidAnson/markdownlint"),
+        "markdown": ("rumdl", "https://rumdl.dev/"),
         "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
@@ -67,10 +67,12 @@ class FlextInfraConstantsCheck:
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
     MARKDOWN_RE: Final[t.RegexPattern] = re.compile(
-        r"^(?P<file>.*?):(?P<line>\d+)(?::(?P<col>\d+))?\s+error\s+(?P<code>MD\d+)(?:/[^\s]+)?\s+(?P<msg>.*)$"
+        r"^(?P<file>.*?):(?P<line>\d+):(?P<col>\d+):\s+\[(?P<code>MD\d+)\]\s+(?P<msg>.*)$"
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
+    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
+    "Maximum parsed gate diagnostics emitted inline before the canonical report."
 
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
@@ -202,7 +204,7 @@ class FlextInfraConstantsCheck:
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
-    # --- Manual-command blocker (§5 Make Contract) SSOT ---
+    # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
         "ruff",
         "pytest",
@@ -216,7 +218,7 @@ class FlextInfraConstantsCheck:
         "push",
         "tag",
     })
-    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep", "sg"})
+    MANUAL_CMD_REWRITE_TOOLS: Final[frozenset[str]] = frozenset({"ast-grep"})
     MANUAL_CMD_RUNNERS: Final[frozenset[str]] = frozenset({"python", "python3"})
     MANUAL_CMD_UV_RUN_VALUE_OPTIONS: Final[frozenset[str]] = frozenset({
         "--default-index",
@@ -279,7 +281,7 @@ class FlextInfraConstantsCheck:
 #
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
-# (AGENTS.md §5 Make Contract).
+# (AGENTS.md `Build & Test`).
 # Enable locally with `pre-commit install` from the workspace root.
 repos:
   - repo: local

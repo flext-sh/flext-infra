@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import c, m, u
 
 if TYPE_CHECKING:
@@ -86,11 +85,17 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         )
 
         tm.that(result, eq=(True, []))
-        assert (
-            left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 2"
+        tm.that(
+            (
+                left_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                == "VALUE = 2"
+            ),
+            eq=True,
         )
-        assert (
-            right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
-            == "VALUE = 20"
+        tm.that(
+            (
+                right_file.read_text(encoding=c.Cli.ENCODING_DEFAULT).rstrip("\n")
+                == "VALUE = 20"
+            ),
+            eq=True,
         )

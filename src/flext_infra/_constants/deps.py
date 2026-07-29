@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -38,7 +37,13 @@ class FlextInfraConstantsDeps:
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"
     )
     BANNER: Final[str] = (
-        "# [MANAGED] FLEXT pyproject standardization\n# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n# Run `make mod` to regenerate all managed pyproject sections.\n# Sections with [CUSTOM] are project-specific extension points.\n"
+        "# @flext-managed: continuous\n"
+        "# @flext-regenerate: make deps WHAT=upgrade APPLY=Y\n"
+        "# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py\n"
+        "# @flext-maintenance: do not edit managed sections; edit the SSOT\n"
+        "# [MANAGED] FLEXT pyproject standardization\n"
+        "# Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.\n"
+        "# Sections with [CUSTOM] are project-specific extension points.\n"
     )
     DEV_OPTIONAL_DEPS_MARKER: Final[str] = (
         "# [MANAGED] consolidated development dependencies"
@@ -65,24 +70,8 @@ class FlextInfraConstantsDeps:
         ("[tool.pyrefly]", "# [MANAGED] pyrefly"),
         ("[tool.pyright]", "# [MANAGED] pyright"),
     )
-    DEFAULT_MODULE_TO_TYPES_PACKAGE: Final[t.StrMapping] = MappingProxyType({
-        "yaml": "types-pyyaml",
-        "ldap3": "types-ldap3",
-        "redis": "types-redis",
-        "requests": "types-requests",
-        "setuptools": "types-setuptools",
-        "toml": "types-toml",
-        "dateutil": "types-python-dateutil",
-        "psutil": "types-psutil",
-        "psycopg2": "types-psycopg2",
-        "protobuf": "types-protobuf",
-        "pyyaml": "types-pyyaml",
-        "decorator": "types-decorator",
-        "jsonschema": "types-jsonschema",
-        "openpyxl": "types-openpyxl",
-        "xlrd": "types-xlrd",
-    })
-    """Default mapping from module name to ``types-*`` stub package."""
+    DEPENDENCY_LIMITS_FILENAME: Final[str] = "limits.toml"
+    """Packaged dependency-limit configuration resource."""
 
 
 __all__: list[str] = ["FlextInfraConstantsDeps"]

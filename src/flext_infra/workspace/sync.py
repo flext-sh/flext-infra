@@ -122,6 +122,8 @@ class FlextInfraSyncService(
                 vscode_result.error or "VS Code settings sync failed"
             )
         changed += 1 if vscode_result.value else 0
+        # Why: conform is the sole Makefile owner, so sync must not reintroduce
+        # the removed legacy standalone bootstrap projection.
         if is_workspace_root:
             pre_commit_result = self._sync_pre_commit_config(resolved, apply=apply)
             if pre_commit_result.failure:
@@ -129,14 +131,6 @@ class FlextInfraSyncService(
                     pre_commit_result.error or ".pre-commit-config.yaml sync failed"
                 )
             changed += 1 if pre_commit_result.value else 0
-        makefile_result = self._sync_makefile_if_needed(
-            resolved, effective_root, apply=apply
-        )
-        if makefile_result.failure:
-            return r[m.Infra.SyncResult].fail(
-                makefile_result.error or "Makefile sync failed"
-            )
-        changed += makefile_result.value
         if is_workspace_root:
             child_sync_result = self._sync_workspace_children(
                 resolved, canonical_root=effective_root or resolved

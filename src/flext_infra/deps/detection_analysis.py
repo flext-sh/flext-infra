@@ -163,14 +163,14 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         self, limits_path: Path | None = None
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Load dependency limits configuration from TOML file."""
-        path = limits_path or Path(__file__).resolve().parent / "dependency_limits.toml"
+        path = (
+            limits_path
+            or Path(__file__).resolve().parent / c.Infra.DEPENDENCY_LIMITS_FILENAME
+        )
         result = self._read_plain(path)
         if result.failure:
             return {}
-        config: t.MappingKV[str, t.Infra.InfraValue] = self._to_toml_config(
-            result.value
-        )
-        return config
+        return result.value
 
     def module_to_types_package(
         self, module_name: str, limits: t.MappingKV[str, t.Infra.InfraValue]
@@ -185,10 +185,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             if isinstance(module_to_package, Mapping) and root in module_to_package:
                 value = module_to_package.get(root)
                 return str(value) if value is not None else None
-        default_package: str | None = c.Infra.DEFAULT_MODULE_TO_TYPES_PACKAGE.get(root)
-        if default_package is not None:
-            return default_package
-        return f"types-{root.lower()}"
+        return None
 
 
 __all__: list[str] = ["FlextInfraDependencyDetectionAnalysis"]

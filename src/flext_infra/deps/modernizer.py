@@ -50,23 +50,20 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
-    constraint_policy: Annotated[
-        c.Infra.DependencyConstraintPolicy,
-        m.Field(
-            alias="constraint-policy",
-            description="Policy used when rewriting dependency constraints",
-        ),
-        m.BeforeValidator(
-            lambda v: (
-                c.Infra.DependencyConstraintPolicy(v.strip().lower())
-                if isinstance(v, str)
-                else v
-            )
-        ),
-    ] = c.Infra.DependencyConstraintPolicy.FLOOR
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def conform_source(
-        self, source: str, *, path: Path, declared_python_dirs: t.StrSequence = ()
+        self,
+        source: str,
+        *,
+        path: Path,
+        declared_python_dirs: t.StrSequence = (),
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply."""
         payload_source = u.Cli.toml_mapping_from_text(source)
@@ -86,15 +83,19 @@ class FlextInfraPyprojectModernizer(
         )
         # mro-j47u (codex): atomic scaffolds provide validated future roots;
         # existing repositories keep filesystem discovery through the empty default.
-        self._process_document_state(
+        changes = self._process_document_state(
             state,
             canonical_dev=canonical_dev,
             dry_run=True,
             skip_comments=False,
             declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if not state.rendered:
-            return r[str].fail(f"pyproject tooling render failed: {path}")
+            return r[str].fail(
+                changes[0] if changes else f"pyproject tooling render failed: {path}"
+            )
         return r[str].ok(state.rendered)
 
     def resolve_tooling_context(
@@ -104,6 +105,8 @@ class FlextInfraPyprojectModernizer(
         package_name: t.NonEmptyStr,
         path: Path,
         declared_python_dirs: t.StrSequence = (),
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # mro-j47u (codex): resolve values only; template retains the full structure.
@@ -121,7 +124,11 @@ class FlextInfraPyprojectModernizer(
         # NOTE(mro-p68a.5, agent codex): resolve from the declared future roots
         # so first generation and post-write conformance are the same fixed point.
         conformed = self.conform_source(
-            u.Cli.toml_dumps(seed), path=path, declared_python_dirs=declared_python_dirs
+            u.Cli.toml_dumps(seed),
+            path=path,
+            declared_python_dirs=declared_python_dirs,
+            project_kind=project_kind,
+            analysis_exclusions=analysis_exclusions,
         )
         if conformed.failure:
             return r[m.Infra.ToolingRuntimeContext].fail(
@@ -204,24 +211,29 @@ class FlextInfraPyprojectModernizer(
             if declared_python_dirs
             else ()
         )
-        project_kind = "core"
-        if path.parent.resolve() != self.root.resolve() or self._project_is_flext_child(
-            path.parent
+        resolved_project_kind = project_kind or "core"
+        child_result = self._project_is_flext_child(path.parent)
+        if child_result.failure:
+            return r[m.Infra.ToolingRuntimeContext].fail(
+                child_result.error or f"failed to resolve Git topology: {path.parent}"
+            )
+        is_child = child_result.value
+        if project_kind is None and (
+            path.parent.resolve() != self.root.resolve() or is_child
         ):
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
                 return r[m.Infra.ToolingRuntimeContext].fail(
                     classified.error or f"project classification failed: {path}"
                 )
-            project_kind = classified.value
+            resolved_project_kind = classified.value
         try:
             environments = self._tooling_pyright_environments(raw_environments)
             runtime = m.Infra.ToolingRuntimeContext.model_validate({
-                "project_kind": project_kind,
+                "project_kind": resolved_project_kind,
                 "coverage_fail_under": coverage.get("fail_under"),
                 "first_party": ruff_isort.get("known-first-party"),
                 "mypy_path": mypy.get("mypy_path"),
-                "pyrefly_interpreter_path": pyrefly.get("python-interpreter-path"),
                 "pyrefly_search_path": pyrefly.get(c.Infra.SEARCH_PATH),
                 "pyrefly_project_includes": (
                     declared_pyrefly_includes or pyrefly.get(c.Infra.PROJECT_INCLUDES)
@@ -232,8 +244,6 @@ class FlextInfraPyprojectModernizer(
                     declared_python_dirs or pyright.get(c.Infra.INCLUDE)
                 ),
                 "pyright_extra_paths": pyright.get(c.Infra.EXTRA_PATHS),
-                "pyright_venv": pyright.get("venv"),
-                "pyright_venv_path": pyright.get("venvPath"),
                 "pyright_settings": [
                     {"name": key, "value": value}
                     for key, value in sorted(pyright.items())
@@ -241,6 +251,7 @@ class FlextInfraPyprojectModernizer(
                 ],
                 "pyright_execution_environments": environments,
                 "ruff_src": ruff.get("src"),
+                "ruff_exclude": ruff.get(c.Infra.EXCLUDE),
                 "ruff_ignore": ruff_lint.get(c.Infra.IGNORE),
             })
         except c.ValidationError as exc:

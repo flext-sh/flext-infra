@@ -129,6 +129,14 @@
             null
           ]
         },
+        "classification": {
+          "enum": [
+            "managed",
+            "external-fork",
+            "external-vendor-reference"
+          ],
+          "default": "managed"
+        },
         "checkout": {
           "enum": [
             "root",

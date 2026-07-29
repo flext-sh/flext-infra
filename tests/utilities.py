@@ -7,10 +7,8 @@ from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from flext_tests import FlextTestsUtilities, r, tm
-
 from flext_cli import cli as cli_facade
-from flext_infra import config, main, u
+from flext_infra import config, main, r, u
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -19,6 +17,7 @@ from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
+from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
 if TYPE_CHECKING:
@@ -32,6 +31,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
+
+        @staticmethod
+        def make_read_only(path: Path) -> None:
+            """Make one fixture path read-only."""
+            path.chmod(0o444)
 
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
@@ -173,8 +177,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-            ) -> p.Result[int]:
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
+) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                # Why: match the full CommandRunner.run_to_file parent contract
+                # (pyright reportIncompatibleMethodOverride); canned double ignores them.
+                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -564,7 +575,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 _write(
                     project / f"src/{pkg_name}/__init__.py",
-                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n__all__ = ["hello"]\n',
+                    '"""Documentation fixture package."""\n\n'
+                    'def hello() -> str:\n    """Return a greeting."""\n    return "hello"\n\n'
+                    '__all__ = ["hello"]\n',
                 )
                 _write(project / "README.md", f"# {name}\n")
                 _write(project / "docs/README.md", "# Project Docs\n")
@@ -580,7 +593,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             project_names: t.StrSequence = (),
             source_workflow: str = "name: CI\n",
-            pr_exit_codes: t.StrMapping | None = None,
         ) -> Path:
             """Create a GitHub workflow workspace fixture."""
             workspace = root / "workspace"
@@ -588,7 +600,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workflow_dir = workspace / ".github/workflows"
             workflow_dir.mkdir(parents=True, exist_ok=True)
             (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
-            exit_codes = dict(pr_exit_codes or {})
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
@@ -604,11 +615,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
-                exit_code = exit_codes.get(name, "0")
-                (project / "Makefile").write_text(
-                    f"pr:\n\t@exit {exit_code}\n", encoding="utf-8"
-                )
             return workspace
+
+        @staticmethod
+        def release_policy_root() -> Path:
+            """Return the repository-owned isolated release policy fixture."""
+            return Path(__file__).resolve().parent / "fixtures" / "release"
 
         @staticmethod
         def create_release_workspace(
@@ -640,7 +652,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             )
             for policy_path in policy_paths:
-                policy_source = Path(__file__).resolve().parents[2] / policy_path
+                policy_source = (
+                    TestsFlextInfraUtilities.Tests.release_policy_root() / policy_path
+                )
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(policy_source, policy_target)
@@ -754,9 +768,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def git_ref_exists(repo_root: Path, ref_name: str) -> bool:
             """Return whether a real Git fixture contains the exact ref."""
-            return cli_facade.capture(
-                [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
-            ).success
+            exists: bool = t.Infra.BOOL_ADAPTER.validate_python(
+                cli_facade.capture(
+                    [c.Infra.GIT, "show-ref", "--verify", ref_name], cwd=repo_root
+                ).success
+            )
+            return exists
 
         @staticmethod
         def configure_local_origin(repo_root: Path, remote_root: Path) -> Path:
@@ -786,6 +803,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 cli_facade.run_checked(
                     [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "main"],
                     cwd=repo_root,
+                )
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "symbolic-ref", "HEAD", "refs/heads/main"],
+                    cwd=bare_remote,
                 )
             )
             return bare_remote
@@ -959,6 +982,24 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def write_executable(path: Path, body: str) -> None:
+            """Write one executable fixture with deterministic permissions."""
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body, encoding=c.Cli.ENCODING_DEFAULT)
+            path.chmod(0o755)
+
+        @staticmethod
+        def run_isolated_make(
+            args: t.StrSequence, *, cwd: Path
+        ) -> p.Result[p.Cli.CommandOutput]:
+            """Run Make without selectors or recursion state inherited from pytest."""
+            return cli_facade.run_raw(
+                [c.Infra.MAKE, *args],
+                cwd=cwd,
+                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+            )
+
+        @staticmethod
         def create_migrator_dir_layout(
             tmp_path: Path,
             *,
@@ -1119,14 +1160,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
-            """Provide the typed test helper `extract_lazy_init_exports`."""
-            for name, value_str in u.Infra.get_module_level_assignments(source):
-                if name == c.Infra.DUNDER_ALL:
-                    return (
-                        True,
-                        tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(value_str)),
-                    )
-            return (False, ())
+            """Read the published lazy export contract from generated source."""
+            assignments = dict(u.Infra.get_module_level_assignments(source))
+            all_value = assignments.get(c.Infra.DUNDER_ALL)
+            if all_value is None:
+                return (False, ())
+            literal_exports = tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(all_value))
+            if literal_exports:
+                return (True, literal_exports)
+            public_value = assignments.get("_PUBLIC_EXPORTS", "")
+            return (
+                "_PUBLIC_EXPORTS" in all_value,
+                tuple(c.Tests.LAZY_INIT_EXPORT_NAME_RE.findall(public_value)),
+            )
 
         @staticmethod
         def consolidate_codegen(
@@ -1263,10 +1309,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
-            return m.Infra.DetectCommand.model_validate({
+            validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
                 "workspace": str(workspace_root),
                 **overrides,
             })
+            return validated
 
         @staticmethod
         def create_detector_deps_stub(

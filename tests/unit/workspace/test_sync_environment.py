@@ -4,13 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
+from flext_infra import FlextInfraWorkspaceEnvironment, c, config
 from flext_tests import tm
-
-from flext_infra import c
-from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironment
-
-pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -30,7 +25,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
                 f'name = "{name}"\n'
                 'version = "0.1.0"\n'
                 'description = "Demo project"\n'
-                'requires-python = ">=3.13"\n'
+                f'requires-python = "{config.Infra.codegen.toolchain.python_required_version}"\n'
             ),
             encoding="utf-8",
         )
@@ -46,8 +41,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
 
         tm.ok(result)
-        assert (project_root / ".envrc").is_file()
-        assert (project_root / ".mise.toml").is_file()
+        tm.that((project_root / ".envrc").is_file(), eq=True)
+        tm.that((project_root / ".mise.toml").is_file(), eq=True)
 
     def test_sync_preserves_custom_environment_file(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
@@ -60,7 +55,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         tm.that(custom_envrc_path.read_text(encoding="utf-8"), eq=custom_envrc)
-        assert (project_root / ".mise.toml").is_file()
+        tm.that((project_root / ".mise.toml").is_file(), eq=True)
 
     def test_sync_updates_previously_generated_environment_file(
         self, tmp_path: Path
@@ -98,8 +93,15 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
-        tm.that(mise_text, has='python = "3.13"')
-        tm.that(mise_text, has='uv = "0.11.29"')
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
+        for field in type(toolchain).model_fields:
+            if field == "python_version" or not field.endswith("_version"):
+                continue
+            version = getattr(toolchain, field)
+            tool_name = field.removesuffix("_version").replace("_", "-")
+            tm.that(mise_text, has=f'{tool_name} = "{version}"', msg=field)
+        tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")
         tm.that(mise_text, lacks="pyrefly =")
@@ -126,9 +128,10 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         mise_text = mise_path.read_text(encoding="utf-8")
+        toolchain = config.Infra.codegen.toolchain
         tm.that(mise_text, has='node = "22"')
-        tm.that(mise_text, has='python = "3.13"')
-        tm.that(mise_text, has='uv = "0.11.29"')
+        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
+        tm.that(mise_text, lacks="uv =")
         tm.that(mise_text, lacks="mypy =")
         tm.that(mise_text, lacks="pyright =")
         tm.that(mise_text, lacks="pyrefly =")
@@ -161,8 +164,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         tm.that(result.value, eq=0)
-        assert not (project_root / ".envrc").exists()
-        assert not (project_root / ".mise.toml").exists()
+        tm.that((project_root / ".envrc").exists(), eq=False)
+        tm.that((project_root / ".mise.toml").exists(), eq=False)
 
     def test_environment_sync_removes_generated_files_without_pyproject(
         self, tmp_path: Path
@@ -180,8 +183,8 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         tm.that(result.value, eq=2)
-        assert not (project_root / ".envrc").exists()
-        assert not (project_root / ".mise.toml").exists()
+        tm.that((project_root / ".envrc").exists(), eq=False)
+        tm.that((project_root / ".mise.toml").exists(), eq=False)
 
     def test_environment_sync_preserves_custom_env_without_pyproject(
         self, tmp_path: Path
@@ -196,4 +199,4 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         tm.ok(result)
         tm.that(result.value, eq=0)
         tm.that(envrc_path.read_text(encoding="utf-8"), eq="PATH_add bin\n")
-        assert not (project_root / ".mise.toml").exists()
+        tm.that((project_root / ".mise.toml").exists(), eq=False)

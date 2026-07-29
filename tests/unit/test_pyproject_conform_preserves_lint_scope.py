@@ -20,14 +20,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import config
+from flext_tests import tm
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _live_per_file_ignores() -> frozenset[str]:
@@ -46,6 +45,12 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
+    def test_ssot_preserves_pytest_assertion_semantics(self) -> None:
+        """Keep generated and external pytest suites valid without migration."""
+        rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/tests/**"]
+
+        tm.that(rules, has="assert")
+
     def test_ssot_declares_every_governed_per_file_ignore(self) -> None:
         """No governed lint exemption is missing from the tooling SSOT."""
         missing = _live_per_file_ignores() - _ssot_per_file_ignores()

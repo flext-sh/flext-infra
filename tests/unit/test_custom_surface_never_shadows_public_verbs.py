@@ -1,6 +1,6 @@
 """Tests that a custom Make surface never redefines a public verb.
 
-The generated ``Makefile`` owns every verb in ``c.Infra.PUBLIC_MAKE_VERBS`` and
+The generated ``Makefile`` owns every verb in the typed Make configuration and
 dispatches it through ``$(PUBLIC_VERBS)``. ``custom.mk`` is ``-include``d after
 that block, so a recipe there for the same target silently *replaces* the
 generated one — GNU Make reports ``overriding recipe for target`` and keeps the
@@ -19,16 +19,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config
+from flext_tests import tm
 
 _TARGET_LINE = re.compile(r"^(?P<names>[a-z][a-z0-9 _-]*):(?!=)")
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _custom_surfaces() -> tuple[Path, ...]:
@@ -44,7 +43,7 @@ def _custom_surfaces() -> tuple[Path, ...]:
 
 def _shadowed_verbs(surface: Path) -> tuple[str, ...]:
     """Return public verbs this custom surface declares as targets."""
-    public = frozenset(c.Infra.PUBLIC_MAKE_VERBS)
+    public = frozenset(verb.name for verb in config.Infra.codegen.make.verbs)
     found: list[str] = []
     for line in surface.read_text(encoding="utf-8").splitlines():
         match = _TARGET_LINE.match(line)
@@ -71,3 +70,26 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         }
 
         tm.that(offenders, eq={})
+
+    def test_basemk_generation_has_a_declared_make_selector(self) -> None:
+        """The infra-only base.mk owner remains callable through Make."""
+        repository = next(
+            repository
+            for repository in config.Infra.codegen.repositories
+            if repository.distribution == "flext-infra"
+        )
+        verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
+        custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(verbs.get("basemk"), eq="generate")
+        tm.that(custom, has="_custom_basemk_generate:")
+        tm.that(
+            custom,
+            has=(
+                "basemk generate \\\n"
+                '\t\t--project-name "$(PROJECT_NAME)" --output "$$output"'
+            ),
+            lacks="basemk generate --output",
+        )

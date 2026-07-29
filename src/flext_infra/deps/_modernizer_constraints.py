@@ -23,7 +23,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
         location: str,
     ) -> tuple[t.JsonValueList | None, t.StrSequence]:
         """Rewrite one sequence of PEP 621 requirement strings in place."""
@@ -37,7 +36,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 requirement,
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
             )
             updated_requirements.append(rewritten or requirement)
             if rewritten is not None and rewritten != requirement:
@@ -52,7 +50,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
         location: str,
     ) -> t.StrSequence:
         """Rewrite one Poetry dependency table using the locked version policy."""
@@ -64,7 +61,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 current_value,
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
             )
             if rewritten_value is None:
                 continue
@@ -80,7 +76,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
         *,
         locked_versions: t.MappingKV[str, str],
         internal_names: t.StrSequence,
-        policy: c.Infra.DependencyConstraintPolicy,
     ) -> t.StrSequence:
         """Rewrite supported dependency tables from the current ``uv.lock`` state."""
         changes: t.MutableSequenceOf[str] = []
@@ -91,7 +86,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                 project.get(c.Infra.DEPENDENCIES),
                 locked_versions=locked_versions,
                 internal_names=internal_names,
-                policy=policy,
                 location="project.dependencies",
             )
             if project_deps is not None:
@@ -109,7 +103,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                         optional_dependencies.get(group_name),
                         locked_versions=locked_versions,
                         internal_names=internal_names,
-                        policy=policy,
                         location=f"project.optional-dependencies.{group_name}",
                     )
                     if group_deps is None:
@@ -128,7 +121,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     dependency_groups.get(group_name),
                     locked_versions=locked_versions,
                     internal_names=internal_names,
-                    policy=policy,
                     location=f"dependency-groups.{group_name}",
                 )
                 if group_deps is None:
@@ -144,7 +136,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                     poetry_dependencies,
                     locked_versions=locked_versions,
                     internal_names=internal_names,
-                    policy=policy,
                     location="tool.poetry.dependencies",
                 )
             )
@@ -170,7 +161,6 @@ class FlextInfraPyprojectModernizerConstraintsMixin:
                         group_dependencies,
                         locked_versions=locked_versions,
                         internal_names=internal_names,
-                        policy=policy,
                         location=(f"tool.poetry.group.{group_name}.dependencies"),
                     )
                 )

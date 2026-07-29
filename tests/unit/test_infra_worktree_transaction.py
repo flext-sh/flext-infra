@@ -2,42 +2,55 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
+from importlib import metadata
+from pathlib import Path
+from threading import Event
 
 import pytest
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
+
+from flext_core import r
+from flext_infra import c, config, p, t
+from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
-
-from flext_infra.services.cli_transaction import CliTransactionService
 from tests import m, u
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def _git_status(repository_root: Path) -> bytes:
     result = u.Infra.git_capture_bytes(
         repository_root, ("status", "--porcelain=v1", "-z")
     )
-    tm.ok(result)
-    return result.value
+    status: bytes = tm.ok(result)
+    return status
 
 
 def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelta]:
     source_root = tmp_path / "source"
-    source_root.mkdir()
+    source_root.mkdir(parents=True)
+    transaction_lock = config.Infra.codegen.make.serialization.lock_path
+    (source_root / ".gitignore").write_text(
+        f"{transaction_lock.parts[0]}/\n", encoding="utf-8"
+    )
     artifact = source_root / "artifact.txt"
     artifact.write_bytes(b"before\n")
     u.Tests.initialize_git_repo(source_root)
     worktree_root = tmp_path / "isolated"
     add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
     tm.ok(add_result)
+    checkpoint = tm.ok(
+        u.Infra.git_checkpoint_worktree(
+            worktree_root, message="test isolated transaction checkpoint"
+        )
+    )
     (worktree_root / artifact.name).write_bytes(b"after\n")
     delta_result = u.Infra.git_repository_delta(
         m.Infra.RepositoryWorktree(
             relative_path=".",
             source_root=source_root,
             worktree_root=worktree_root,
-            checkpoint_sha=add_result.value,
+            checkpoint_sha=checkpoint,
         )
     )
     tm.ok(delta_result)
@@ -48,9 +61,19 @@ def _workspace(tmp_path: Path) -> Path:
     workspace_root = tmp_path / "workspace"
     package_root = workspace_root / "src" / "transaction_fixture"
     package_root.mkdir(parents=True)
-    (package_root / "__init__.py").write_text("", encoding="utf-8")
+    (package_root / "__init__.py").write_text(
+        '"""Transaction fixture package."""\n', encoding="utf-8"
+    )
     (workspace_root / "pyproject.toml").write_text(
-        ("[project]\nname = 'transaction-fixture'\nversion = '0.1.0'\n"),
+        (
+            "[project]\n"
+            "name = 'transaction-fixture'\n"
+            "version = '0.1.0'\n"
+            "\n"
+            "[tool.pyrefly]\n"
+            "project-includes = ['src/**/*.py*']\n"
+            "python-version = '3.13'\n"
+        ),
         encoding="utf-8",
     )
     (workspace_root / ".taplo.toml").write_text("", encoding="utf-8")
@@ -106,6 +129,187 @@ def _workspace(tmp_path: Path) -> Path:
 class TestsFlextInfraWorktreeTransaction:
     """Exercise transaction invariants through real Git state."""
 
+    def test_complete_worktree_includes_declared_existing_nested_repository(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = _workspace(tmp_path)
+        nested_root = workspace_root / "nested-repository"
+        nested_root.mkdir()
+        marker = nested_root / "marker.txt"
+        marker.write_text("nested state\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(nested_root)
+        marker.write_text("nested WIP\n", encoding="utf-8")
+        manifest = workspace_root / "config" / "workspace.yaml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "members: []\n",
+                "members:\n"
+                "  - name: nested-repository\n"
+                "    distribution: nested-repository\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/nested-repository.git\n"
+                "    branch: main\n"
+                "    path: nested-repository\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    classification: managed\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false\n",
+            ),
+            encoding="utf-8",
+        )
+        worktree_root = tmp_path / "isolated"
+
+        repositories = tm.ok(
+            u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
+                workspace_root, worktree_root, "transaction-test"
+            )
+        )
+
+        tm.that(
+            tuple(repository.relative_path for repository in repositories),
+            has="nested-repository",
+        )
+        tm.that(
+            (worktree_root / "nested-repository" / "marker.txt").read_text(
+                encoding="utf-8"
+            ),
+            eq="nested WIP\n",
+        )
+        tm.that(marker.read_text(encoding="utf-8"), eq="nested WIP\n")
+        tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
+
+    def test_nested_checkpoint_transport_preserves_source_head_gitlink(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root = _workspace(tmp_path)
+        nested_root = workspace_root / "nested-repository"
+        nested_root.mkdir()
+        (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(nested_root)
+        source_head = tm.ok(u.Infra.git_repository_head(nested_root))
+        manifest = workspace_root / "config" / "workspace.yaml"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8").replace(
+                "members: []\n",
+                "members:\n"
+                "  - name: nested-repository\n"
+                "    distribution: nested-repository\n"
+                "    provider: flext-sh\n"
+                "    url: https://github.com/flext-sh/nested-repository.git\n"
+                "    branch: main\n"
+                "    path: nested-repository\n"
+                "    role: workspace-member\n"
+                "    state: active\n"
+                "    profile: workspace-member\n"
+                "    classification: managed\n"
+                "    checkout: submodule\n"
+                "    codegen: conform\n"
+                "    package: true\n"
+                "    editable: true\n"
+                "    read_only: false\n",
+            ),
+            encoding="utf-8",
+        )
+        worktree_root = tmp_path / "isolated"
+        repositories = tm.ok(
+            u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
+                workspace_root, worktree_root, "gitlink-identity-test"
+            )
+        )
+        nested = next(
+            repository
+            for repository in repositories
+            if repository.relative_path == "nested-repository"
+        )
+        tm.ok(
+            u.Infra.git_capture(
+                worktree_root,
+                (
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    "160000",
+                    nested.checkpoint_sha,
+                    nested.relative_path,
+                ),
+            )
+        )
+
+        deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
+        root_delta = next(delta for delta in deltas if delta.relative_path == ".")
+
+        tm.that(root_delta.patch.decode(), has=f"Subproject commit {source_head}")
+        tm.that(root_delta.patch.decode(), hasnt=nested.checkpoint_sha)
+        tm.ok(u.Infra.git_apply_patch(root_delta))
+        staged = tm.ok(
+            u.Infra.git_capture(
+                workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
+            )
+        )
+        tm.that(staged, eq=f"160000 {source_head} 0\t{nested.relative_path}")
+        tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
+
+    def test_transaction_apply_removes_source_and_sandbox_lock_state(
+        self, tmp_path: Path
+    ) -> None:
+        source_root, worktree_root, delta = _operation_delta(tmp_path)
+        lock_path = config.Infra.codegen.make.serialization.lock_path
+
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
+
+        tm.that((source_root / lock_path).exists(), eq=False)
+        tm.that((worktree_root / lock_path).exists(), eq=False)
+        tm.that((source_root / lock_path.parts[0]).exists(), eq=False)
+        tm.that((worktree_root / lock_path.parts[0]).exists(), eq=False)
+
+    def test_detached_transaction_worktree_does_not_run_repository_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep synthetic validation worktrees independent of operator hooks."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        u.Tests.initialize_git_repo(source_root)
+        hooks_root = source_root / ".git" / "hooks"
+        hooks_root.mkdir(exist_ok=True)
+        post_checkout = hooks_root / "post-checkout"
+        post_checkout.write_text("#!/bin/sh\nexit 70\n", encoding="utf-8")
+        post_checkout.chmod(0o755)
+        worktree_root = tmp_path / "isolated"
+
+        head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
+
+        tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+    def test_isolated_worktree_does_not_run_host_checkout_hooks(
+        self, tmp_path: Path
+    ) -> None:
+        """Transaction setup remains independent of host hook toolchains."""
+        source_root = tmp_path / "source"
+        source_root.mkdir()
+        (source_root / "README.md").write_text("fixture\n", encoding="utf-8")
+        u.Tests.initialize_git_repo(source_root)
+        marker = tmp_path / "host-hook-ran"
+        hooks_root = tmp_path / "hooks"
+        hooks_root.mkdir()
+        hook = hooks_root / "post-checkout"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 77\n", encoding="utf-8")
+        hook.chmod(0o755)
+        tm.ok(
+            u.Infra.git_capture(
+                source_root, ("config", "core.hooksPath", str(hooks_root))
+            )
+        )
+
+        isolated_root = tmp_path / "isolated"
+
+        tm.ok(u.Infra.git_add_detached_worktree(source_root, isolated_root))
+        tm.that(marker.exists(), eq=False)
+        tm.that(isolated_root.is_dir(), eq=True)
+
     def test_preview_validates_isolated_target_without_touching_source(
         self, tmp_path: Path
     ) -> None:
@@ -129,7 +333,7 @@ class TestsFlextInfraWorktreeTransaction:
         artifact.write_bytes(b"after\n")
         converged_status = _git_status(source_root)
 
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
 
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=converged_status)
@@ -138,13 +342,174 @@ class TestsFlextInfraWorktreeTransaction:
         """Apply the same real patch twice without a second mutation or failure."""
         source_root, _worktree_root, delta = _operation_delta(tmp_path)
         artifact = source_root / "artifact.txt"
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
         applied_status = _git_status(source_root)
 
-        tm.ok(u.Infra.git_apply_patch(delta))
+        tm.ok(u.Infra.git_apply_transaction_patches((delta,)))
 
         tm.that(artifact.read_bytes(), eq=b"after\n")
         tm.that(_git_status(source_root), eq=applied_status)
+
+    def test_transaction_apply_preflights_all_heads_before_any_patch(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject one advanced source before applying any repository delta."""
+        first_source, first_worktree, first_delta = _operation_delta(tmp_path / "first")
+        second_source, second_worktree, second_delta = _operation_delta(
+            tmp_path / "second"
+        )
+        first_artifact = first_source / "artifact.txt"
+        second_artifact = second_source / "artifact.txt"
+        concurrent = second_source / "concurrent.txt"
+        concurrent.write_text("new head\n", encoding="utf-8")
+        tm.ok(u.Infra.git_capture(second_source, ("add", concurrent.name)))
+        tm.ok(
+            u.Infra.git_capture(
+                second_source, ("commit", "-m", "advance source during transaction")
+            )
+        )
+        first_status = _git_status(first_source)
+        second_status = _git_status(second_source)
+        first_bytes = first_artifact.read_bytes()
+        second_bytes = second_artifact.read_bytes()
+
+        result = u.Infra.git_apply_transaction_patches((first_delta, second_delta))
+
+        tm.fail(result, has="source HEAD changed during isolated transaction")
+        tm.that(first_artifact.read_bytes(), eq=first_bytes)
+        tm.that(second_artifact.read_bytes(), eq=second_bytes)
+        tm.that(_git_status(first_source), eq=first_status)
+        tm.that(_git_status(second_source), eq=second_status)
+        serialization = config.Infra.codegen.make.serialization
+
+        def available() -> p.Result[bool]:
+            return r[bool].ok(True)
+
+        def timeout_failure(lock_path: Path, timeout_seconds: int) -> p.Result[bool]:
+            return r[bool].fail(f"{lock_path} remained locked for {timeout_seconds}s")
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            return r[bool].fail(error)
+
+        for repository_root in (
+            first_source,
+            first_worktree,
+            second_source,
+            second_worktree,
+        ):
+            tm.ok(
+                FlextInfraSerializationLockOwner.execute(
+                    (repository_root / serialization.lock_path,),
+                    0,
+                    available,
+                    timeout_failure=timeout_failure,
+                    acquisition_failure=acquisition_failure,
+                )
+            )
+
+    def test_transaction_lock_blocks_head_movement_after_preflight(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Apply every delta before a contending writer can advance source HEAD."""
+        first_source, _first_worktree, first_delta = _operation_delta(
+            tmp_path / "first"
+        )
+        second_source, _second_worktree, second_delta = _operation_delta(
+            tmp_path / "second"
+        )
+        first_artifact = first_source / "artifact.txt"
+        second_artifact = second_source / "artifact.txt"
+        lock_path = (
+            second_source / config.Infra.codegen.make.serialization.lock_path
+        ).resolve()
+        preflight_complete = Event()
+        contention_observed = Event()
+        original_run_raw = u.Cli.run_raw
+
+        def observed_run_raw(
+            cmd: t.StrSequence,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            capture: bool = True,
+        ) -> p.Result[p.Cli.CommandOutput]:
+            result = original_run_raw(
+                cmd,
+                cwd=cwd,
+                timeout=timeout,
+                env=env,
+                remove_env_keys=remove_env_keys,
+                input_data=input_data,
+                capture=capture,
+            )
+            if (
+                tuple(cmd) == (c.Infra.GIT, "rev-parse", "HEAD")
+                and cwd is not None
+                and Path(cwd).resolve() == second_source.resolve()
+            ):
+                preflight_complete.set()
+                tm.that(contention_observed.wait(timeout=10), where=bool)
+            return result
+
+        monkeypatch.setattr(u.Cli, "run_raw", observed_run_raw)
+
+        def advance_source_head() -> p.Result[bool]:
+            concurrent = second_source / "concurrent.txt"
+            concurrent.write_text("new head\n", encoding="utf-8")
+            add_result = u.Infra.git_capture(second_source, ("add", concurrent.name))
+            if add_result.failure:
+                return r[bool].fail(add_result.error or "failed to stage writer change")
+            commit_result = u.Infra.git_capture(
+                second_source,
+                ("commit", "-m", "advance source after transaction apply"),
+            )
+            if commit_result.failure:
+                return r[bool].fail(
+                    commit_result.error or "failed to commit writer change"
+                )
+            return r[bool].ok(True)
+
+        def timeout_failure(_lock_path: Path, _timeout_seconds: int) -> p.Result[bool]:
+            return r[bool].fail("canonical transaction lock contended")
+
+        def acquisition_failure(error: str) -> p.Result[bool]:
+            return r[bool].fail(error)
+
+        def attempt_head_advance() -> bool:
+            tm.that(preflight_complete.wait(timeout=10), where=bool)
+            immediate = FlextInfraSerializationLockOwner.execute(
+                (lock_path,),
+                0,
+                advance_source_head,
+                timeout_failure=timeout_failure,
+                acquisition_failure=acquisition_failure,
+            )
+            lock_contended = immediate.failure
+            contention_observed.set()
+            if lock_contended:
+                tm.ok(
+                    FlextInfraSerializationLockOwner.execute(
+                        (lock_path,),
+                        10,
+                        advance_source_head,
+                        timeout_failure=timeout_failure,
+                        acquisition_failure=acquisition_failure,
+                    )
+                )
+            return lock_contended
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            advance_future = executor.submit(attempt_head_advance)
+            tm.ok(u.Infra.git_apply_transaction_patches((first_delta, second_delta)))
+            lock_contended = advance_future.result(timeout=15)
+
+        tm.that(lock_contended, where=bool)
+        tm.that(first_artifact.read_bytes(), eq=b"after\n")
+        tm.that(second_artifact.read_bytes(), eq=b"after\n")
+        tm.that((second_source / "concurrent.txt").read_bytes(), eq=b"new head\n")
 
     def test_apply_replaces_existing_ignored_canonical_addition(
         self, tmp_path: Path
@@ -217,7 +582,6 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": false}\n')
         tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
 
-    @pytest.mark.timeout(60)
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
         self, tmp_path: Path
     ) -> None:
@@ -237,15 +601,14 @@ class TestsFlextInfraWorktreeTransaction:
                     "--apply",
                 ),
                 apply_patch=False,
-                allow_lint_regression=True,
-                timeout_seconds=120,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             )
         )
         report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
         lint_output = "\n".join(item.output for item in report.lint_after)
 
-        tm.that(report.breakage_detected, eq=False, msg=lint_output)
+        tm.that(report.breakage_detected, eq=False, msg=f"{output}\n{lint_output}")
         tm.that(output, has="diff -- repository .")
         tm.that(output, has="applied=no")
         tm.that((workspace_root / "pyproject.toml").read_bytes(), eq=before_pyproject)
@@ -253,48 +616,60 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that((workspace_root / "Makefile").exists(), eq=False)
 
 
-class TestsFlextInfraWorktreeTransactionLintRegression:
-    """Contract for the explicit lint-regression allowance."""
+class TestsFlextInfraWorktreeTransactionLint:
+    """Contract for fail-closed differential transaction lint evidence."""
 
-    def test_lint_regressed_detects_diagnostic_increase(self) -> None:
-        """Flag diagnostic growth as regression; stable diagnostics are safe."""
-        before = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=10),)
-        after = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=11),)
-
-        regressed = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
-            before, after
-        )
-        stable = u.Infra._lint_regressed(  # ruff:ignore[private-member-access]
-            before, before
-        )
-
-        tm.that(regressed, eq=True)
-        tm.that(stable, eq=False)
-
-    def test_request_defaults_to_rejecting_lint_regression(
-        self, tmp_path: Path
+    def test_transaction_lint_binds_uv_overlay_tools_from_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Default transactions keep rejecting lint regressions."""
-        request = m.Infra.WorktreeTransactionRequest(
-            workspace_root=tmp_path, command=("deps", "modernize"), timeout_seconds=60
+        """Resolve tools from uv's overlay PATH, not the interpreter directory."""
+        overlay_bin = tmp_path / "overlay" / "bin"
+        overlay_bin.mkdir(parents=True)
+        for executable_name in {
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }:
+            executable = overlay_bin / executable_name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
+        monkeypatch.setenv("PATH", str(overlay_bin))
+
+        commands = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
+
+        tm.that(
+            {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}
         )
 
-        tm.that(request.allow_lint_regression, eq=False)
+    def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
+        """Keep aggregate regression guards and file-level repair evidence."""
+        commands = dict(c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS)
 
-    def test_inner_args_strip_allow_lint_regression_flag(self) -> None:
-        """Strip the outer allowance flag before the isolated invocation."""
-        args = (
-            "modernize",
-            "--apply",
-            "--allow-lint-regression",
-            "--projects",
-            "flext-infra",
-        )
+        tm.that(commands["ruff"], has="--statistics")
+        tm.that(commands["ruff-details"], has="concise")
 
-        normalized = CliTransactionService.transaction_inner_args(
-            "deps:modernize", args
-        )
+    def test_runtime_metadata_declares_transaction_lint_tools(self) -> None:
+        """Installed artifacts carry every executable required by transactions."""
+        runtime_requirements = metadata.requires("flext-infra") or ()
+        runtime_names = {
+            canonicalize_name(Requirement(requirement).name)
+            for requirement in runtime_requirements
+        }
+        required_names = {
+            canonicalize_name(command[0])
+            for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }
 
-        tm.that("--allow-lint-regression" in normalized, eq=False)
-        tm.that("--apply" in normalized, eq=True)
-        tm.that("--projects" in normalized, eq=True)
+        tm.that(required_names <= runtime_names, eq=True)
+
+    def test_lint_regressed_rejects_new_errors_warnings_and_failures(self) -> None:
+        """Stable debt is reported; every introduced diagnostic is rejected."""
+        clean = (m.Infra.LintSnapshot(tool="ruff", exit_code=0),)
+        errors = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, errors=1),)
+        warnings = (m.Infra.LintSnapshot(tool="ruff", exit_code=0, warnings=1),)
+        nonzero = (m.Infra.LintSnapshot(tool="ruff", exit_code=1, errors=1),)
+
+        lint_regressed = u.Infra._lint_regressed  # ruff:ignore[private-member-access]
+
+        tm.that(lint_regressed(clean, errors), eq=True)
+        tm.that(lint_regressed(clean, warnings), eq=True)
+        tm.that(lint_regressed(clean, nonzero), eq=True)
+        tm.that(lint_regressed(errors, errors), eq=False)

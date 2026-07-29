@@ -73,10 +73,11 @@ class FlextInfraEnforcementSelection:
     def rule_requires_stub_file(cls, rule: m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` needs explicit ``.pyi`` file discovery."""
         source = rule.source
-        return (
+        required: bool = t.Infra.BOOL_ADAPTER.validate_python(
             source.kind == "flext_infra_detector"
             and source.violation_field == cls._STUB_VIOLATION_FIELD
         )
+        return required
 
     @staticmethod
     def _validate_requested_rules(

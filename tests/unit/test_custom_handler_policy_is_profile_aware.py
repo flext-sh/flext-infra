@@ -9,8 +9,8 @@ the profiles have genuinely different contracts:
   owns public orchestration targets and the variables they read.
 
 Applying the member rule to the root made ``codegen conform`` reject the root's
-own surface on every run, emitting a ``custom.mk.rej`` artifact and blocking the
-whole transaction -- which is why no other generated artifact could be landed.
+own surface on every run and block the whole transaction -- which is why no
+other generated artifact could be landed.
 
 The policy is therefore keyed by profile, and the engine selects the entry for
 the profile it is conforming instead of assuming one shape fits every project.
@@ -21,17 +21,22 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import c, config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_tests import tm
 
 
 class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
     def test_every_declared_profile_has_a_custom_handler_policy(self) -> None:
         """Each Make profile declares the contract for its own custom surface."""
-        declared = frozenset(profile.name for profile in config.Infra.codegen.profiles)
-        covered = frozenset(config.Infra.codegen.make.custom_handler_policies)
+        declared = frozenset(
+            c.Infra.MakeProfile(profile.name)
+            for profile in config.Infra.codegen.profiles
+        )
+        covered = frozenset(
+            c.Infra.MakeProfile(profile)
+            for profile in config.Infra.codegen.make.custom_handler_policies
+        )
 
         tm.that(declared - covered, eq=frozenset())
 

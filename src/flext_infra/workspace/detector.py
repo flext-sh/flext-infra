@@ -27,16 +27,22 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     @staticmethod
     def _manifest_path(repository_root: Path) -> Path:
         """Return the repository-local topology manifest path."""
-        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        config_dir: Path = t.Infra.PATH_ADAPTER.validate_python(c.CONFIG_DIR_NAME)
+        manifest_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+        return repository_root / config_dir / manifest_name
 
     @staticmethod
     def _schema_path() -> Path:
         """Return the packaged schema consumed by the public config facade."""
-        return (
-            Path(__file__).resolve().parents[1]
-            / c.CONFIG_SCHEMAS_DIR_NAME
-            / c.Infra.WORKSPACE_SCHEMA_FILENAME
+        schemas_dir: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.CONFIG_SCHEMAS_DIR_NAME
         )
+        schema_name: Path = t.Infra.PATH_ADAPTER.validate_python(
+            c.Infra.WORKSPACE_SCHEMA_FILENAME
+        )
+        return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @classmethod
     def load_workspace_spec(
@@ -177,6 +183,156 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         ):
             return c.Infra.WorkspaceMode.WORKSPACE
         return c.Infra.WorkspaceMode.STANDALONE
+
+    @classmethod
+    def effective_repository(
+        cls,
+        repository_root: Path,
+        declared: m.Infra.RepositoryRef,
+        overlay: m.Infra.ProjectConformOverlay | None = None,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive conform topology from owned submodules, with explicit exceptions."""
+        if overlay is not None and overlay.profile is not None:
+            profile = overlay.profile
+        else:
+            owned_result = cls.owned_submodules(repository_root)
+            if owned_result.failure:
+                return r[m.Infra.RepositoryRef].fail(
+                    owned_result.error or "unable to resolve owned submodules"
+                )
+            profile = (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if owned_result.value
+                else c.Infra.MakeProfile.STANDALONE
+            )
+        role = {
+            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            c.Infra.MakeProfile.STANDALONE: c.Infra.RepositoryRole.STANDALONE,
+        }[profile]
+        checkout = {
+            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
+            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
+            c.Infra.MakeProfile.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
+        }[profile]
+        return r[m.Infra.RepositoryRef].ok(
+            m.Infra.RepositoryRef.model_validate({
+                **declared.model_dump(),
+                "role": role,
+                "profile": profile,
+                "checkout": checkout,
+            })
+        )
+
+    @staticmethod
+    def validate_beads_namespace(
+        repository_root: Path,
+        declared: m.Infra.RepositoryRef,
+        overlay: m.Infra.ProjectConformOverlay | None = None,
+    ) -> p.Result[bool]:
+        """Require tracker namespaces to match the project or one legacy overlay."""
+        beads_config = repository_root / ".beads" / "config.yaml"
+        if not beads_config.is_file():
+            return r[bool].ok(True)
+        owned_result = FlextInfraWorkspaceDetector.owned_submodules(repository_root)
+        if owned_result.failure:
+            return r[bool].fail(
+                owned_result.error or "unable to resolve Beads workspace ownership"
+            )
+        if not owned_result.value and (
+            overlay is None or overlay.beads_namespace is None
+        ):
+            return r[bool].fail(
+                f"standalone project must not own Beads state: {declared.name}"
+            )
+        loaded = u.Cli.yaml_safe_load(beads_config)
+        if loaded.failure:
+            return r[bool].fail(loaded.error or f"invalid Beads config: {beads_config}")
+        actual = loaded.value.get("issue-prefix")
+        expected = (
+            overlay.beads_namespace
+            if overlay is not None and overlay.beads_namespace is not None
+            else declared.name
+        )
+        if actual != expected:
+            return r[bool].fail(
+                f"Beads namespace mismatch for {declared.name}: "
+                f"expected {expected}, found {actual!r}"
+            )
+        return r[bool].ok(True)
+
+    @classmethod
+    def owned_submodules(
+        cls, repository_root: Path
+    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
+        """Return only mutable submodules owned by the repository manifest."""
+        workspace_result = cls.load_workspace_spec(repository_root)
+        if workspace_result.failure:
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                workspace_result.error or "workspace ownership is unavailable"
+            )
+        workspace = workspace_result.value
+        invalid = tuple(
+            member
+            for member in workspace.members
+            if (
+                member.role is not c.Infra.RepositoryRole.WORKSPACE_MEMBER
+                or member.state is not c.Infra.RepositoryState.ACTIVE
+                or member.checkout is not c.Infra.CheckoutKind.SUBMODULE
+                or member.codegen is c.Infra.CodegenKind.NONE
+                or member.read_only
+            )
+        )
+        if invalid:
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                "workspace members must be active, mutable, conform-managed "
+                f"submodules: {', '.join(item.name for item in invalid)}"
+            )
+        invalid_content = tuple(
+            repository
+            for repository in workspace.content_only
+            if (
+                repository.role is not c.Infra.RepositoryRole.CONTENT_ONLY
+                or repository.state is not c.Infra.RepositoryState.CONTENT_ONLY
+                or repository.codegen is not c.Infra.CodegenKind.NONE
+                or repository.editable
+                or not repository.read_only
+            )
+        )
+        if invalid_content:
+            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
+                "content-only repositories must be immutable and excluded from "
+                f"FLEXT management: {', '.join(item.name for item in invalid_content)}"
+            )
+        return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(workspace.members))
+
+    @classmethod
+    def analysis_exclusion_paths(
+        cls, repository_root: Path
+    ) -> p.Result[tuple[Path, ...]]:
+        """Derive analyzer exclusions from immutable repositories and path overlays."""
+        if not cls._manifest_path(repository_root).is_file():
+            # Without the config owner there is no declared external tree.
+            return r[tuple[Path, ...]].ok(())
+        workspace_result = cls.load_workspace_spec(repository_root)
+        if workspace_result.failure:
+            return r[tuple[Path, ...]].fail(
+                workspace_result.error or "workspace analysis scope is unavailable"
+            )
+        return r[tuple[Path, ...]].ok(
+            cls.workspace_analysis_exclusion_paths(workspace_result.value)
+        )
+
+    @staticmethod
+    def workspace_analysis_exclusion_paths(
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> tuple[Path, ...]:
+        """Project one analysis scope from a validated workspace contract."""
+        paths = dict.fromkeys((
+            *(repository.path for repository in workspace.content_only),
+            *(exclusion.path for exclusion in workspace.exclusions),
+        ))
+        return tuple(paths)
 
     @staticmethod
     def _gitmodule_contract(
@@ -365,20 +521,42 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[c.Infra.WorkspaceMode].fail(
                 origin.error or f"workspace member origin is missing: {member_path}"
             )
-        branch = u.Cli.capture(
-            [c.Infra.GIT, "branch", "--show-current"], cwd=member_root
+        gitlink = u.Cli.capture(
+            [c.Infra.GIT, "ls-files", "--stage", "--", member_path],
+            cwd=superproject_root,
         )
-        if branch.failure or not branch.value:
+        if gitlink.failure or not gitlink.value:
             return r[c.Infra.WorkspaceMode].fail(
-                branch.error or f"workspace member branch is missing: {member_path}"
+                gitlink.error or f"workspace member gitlink is missing: {member_path}"
+            )
+        match gitlink.value.split():
+            case ["160000", gitlink_head, "0", indexed_path] if (
+                indexed_path == member_path
+            ):
+                pass
+            case _:
+                return r[c.Infra.WorkspaceMode].fail(
+                    f"workspace member gitlink is malformed: {member_path}"
+                )
+        member_head = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--verify", "HEAD^{commit}"], cwd=member_root
+        )
+        if member_head.failure or not member_head.value:
+            return r[c.Infra.WorkspaceMode].fail(
+                member_head.error or f"workspace member HEAD is missing: {member_path}"
             )
         if gitmodule_url != declared.url or origin.value != declared.url:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member URL mismatch: {member_path}"
             )
-        if gitmodule_branch != declared.branch or branch.value != declared.branch:
+        if gitmodule_branch != declared.branch:
             return r[c.Infra.WorkspaceMode].fail(
                 f"workspace member branch mismatch: {member_path}"
+            )
+        if member_head.value != gitlink_head:
+            return r[c.Infra.WorkspaceMode].fail(
+                "workspace member gitlink mismatch: "
+                f"{member_path} expected {gitlink_head} got {member_head.value}"
             )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE)
 

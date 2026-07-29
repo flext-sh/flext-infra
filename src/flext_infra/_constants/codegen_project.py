@@ -42,6 +42,7 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
+        GITMODULES = "gitmodules"
         MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
@@ -95,6 +96,14 @@ class FlextInfraConstantsCodegenProject:
         NONE = "none"
 
     @unique
+    class RepositoryClassification(StrEnum):
+        """Governance ownership classification for one repository."""
+
+        MANAGED = "managed"
+        EXTERNAL_FORK = "external-fork"
+        EXTERNAL_VENDOR_REFERENCE = "external-vendor-reference"
+
+    @unique
     class ProjectKind(StrEnum):
         """New-project kind; drives deps, Makefile mode, and registration."""
 
@@ -107,22 +116,6 @@ class FlextInfraConstantsCodegenProject:
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
-    PUBLIC_MAKE_VERBS: Final[tuple[str, ...]] = (
-        "help",
-        "setup",
-        "deps",
-        "build",
-        "check",
-        "test",
-        "format",
-        "run",
-        "status",
-        "docs",
-        "clean",
-        "release",
-        "codegen",
-    )
-
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 

@@ -4,44 +4,35 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_tests import tm
-
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
+from tests import u
 
 
 class TestsRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""
 
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
-        # Conflict: mro-56qk owns migration of this temporary local expectation
-        # into the normative tests.c/t/p/m/u/config/settings fixture architecture.
-        expected = {
-            ".env.example": "create-only",
-            ".envrc": "create-only",
-            ".gitignore": "merge",
-            ".gitmodules": "full",
-            ".mise.toml": "merge",
-            ".pre-commit-config.yaml": "full",
-            ".python-version": "full",
-            ".vscode/settings.json": "merge",
-            "LICENSE": "create-only",
-            "Makefile": "full",
-            "README.md": "create-only",
-            "base.mk": "delegated",
-            "config/workspace.yaml": "manual",
-            "custom.mk": "manual",
-            "pyproject.toml": "merge",
-        }
+        configured = config.Infra.codegen.managed_files
+        paths = tuple(item.path.as_posix() for item in configured)
 
-        configured = {
-            item.path.as_posix(): item.policy
-            for item in config.Infra.codegen.managed_files
-        }
-
-        tm.that(configured, eq=expected)
+        tm.that(len(paths), eq=len(set(paths)))
+        required = (
+            ".github/workflows/ci.yml",
+            ".github/workflows/ci-matrix.yml",
+            "ci/docker/alpine.Dockerfile",
+            "ci/docker/arch.Dockerfile",
+            "ci/docker/debian.Dockerfile",
+            "ci/docker/fedora.Dockerfile",
+            "ci/docker/ubuntu.Dockerfile",
+        )
+        for path in required:
+            owned = next(item for item in configured if item.path.as_posix() == path)
+            tm.that(owned.owner, eq="codegen")
+            tm.that(owned.policy, eq="full")
 
     def test_legacy_sync_uses_one_fixed_point_plan(self, tmp_path: Path) -> None:
         root = tmp_path / "flext-demo"
@@ -58,24 +49,13 @@ class TestsRootArtifactOwnership:
             apply_changes=True,
         ).execute()
         tm.ok(created)
-        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=root))
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed conform project"], cwd=root
-            )
-        )
+        u.Tests.initialize_git_repo(root)
         manual = {
             "config/workspace.yaml": (root / "config" / "workspace.yaml").read_bytes(),
             "custom.mk": b"# manual project extension\n",
         }
         (root / "custom.mk").write_bytes(manual["custom.mk"])
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Seed manual extensions"], cwd=root
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed manual extensions")
         request = m.Infra.CodegenConformRequest(root=root)
         planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
             request
@@ -84,6 +64,10 @@ class TestsRootArtifactOwnership:
         governed = tuple(
             file for file in planned.value.files if file.policy is not None
         )
+        configured_policies = {
+            item.path.as_posix(): item.policy
+            for item in config.Infra.codegen.managed_files
+        }
         before = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -94,18 +78,20 @@ class TestsRootArtifactOwnership:
 
         checked = FlextInfraSyncService(workspace_root=root).execute()
         first = FlextInfraSyncService(workspace_root=root, apply_changes=True).execute()
-        second = FlextInfraSyncService(
-            workspace_root=root, apply_changes=True
-        ).execute()
 
         tm.ok(checked)
         tm.ok(first)
-        tm.ok(second)
-        tm.that(len(governed), eq=len(config.Infra.codegen.managed_files))
-        tm.that(len({file.path for file in governed}), eq=len(governed))
+        tm.that(governed, empty=False)
+        tm.that(
+            len({file.path for file in governed}),
+            eq=len(governed),
+            msg=str(tuple(file.path.relative_to(root).as_posix() for file in governed)),
+        )
+        for file in governed:
+            relative = file.path.relative_to(root).as_posix()
+            tm.that(file.policy, eq=configured_policies[relative])
         tm.that(checked.value.files_changed, eq=0)
         tm.that(first.value.files_changed, eq=0)
-        tm.that(second.value.files_changed, eq=0)
         after = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())

@@ -285,7 +285,8 @@ def _target_resource_for_module(
     if target_resource is None:
         msg = f"constants module {constants_module} is outside the Rope project"
         raise TypeError(msg)
-    return target_resource
+    resource: t.Infra.RopeResource = target_resource
+    return resource
 
 
 def _extract_declaration_line(

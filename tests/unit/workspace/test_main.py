@@ -5,15 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
+from flext_tests import tm
 from tests import c, u
-
-pytestmark = pytest.mark.timeout(60)
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -263,7 +261,6 @@ class TestsFlextInfraWorkspaceMain:
     def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
-        u.Tests.initialize_git_repo(project_root)
 
         exit_code = workspace_main([
             "sync",
@@ -275,19 +272,22 @@ class TestsFlextInfraWorkspaceMain:
         ])
 
         tm.that(exit_code, eq=0)
-        assert (project_root / "Makefile").exists()
-        assert not (project_root / "base.mk").exists()
+        tm.that((project_root / "Makefile").exists(), eq=True)
+        tm.that(not (project_root / "base.mk").exists(), eq=True)
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
-        assert (
-            workspace_main([
-                "orchestrate",
-                "--verb",
-                "legacy-check",
-                "--projects",
-                "p-a",
-            ])
-            == 1
+        tm.that(
+            (
+                workspace_main([
+                    "orchestrate",
+                    "--verb",
+                    "legacy-check",
+                    "--projects",
+                    "p-a",
+                ])
+                == 1
+            ),
+            eq=True,
         )
 
     def test_workspace_main_without_command_returns_failure(self) -> None:

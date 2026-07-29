@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -39,6 +38,15 @@ def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
     tm.that(content, has="<!-- TOC START -->")
 
 
+def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
+    """The command boundary rejects fixable docs left unapplied."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
+
+    result = FlextInfraDocFixer(workspace_root=workspace).execute()
+
+    tm.fail(result)
+
+
 def test_generator_execute_writes_reports_for_root_and_selected_project(
     tmp_path: Path,
 ) -> None:
@@ -51,9 +59,11 @@ def test_generator_execute_writes_reports_for_root_and_selected_project(
     ).execute()
 
     tm.ok(result)
-    assert (workspace / ".reports/docs/generate-report.md").exists()
-    assert (workspace / "flext-a/.reports/docs/generate-report.md").exists()
-    assert not (workspace / "flext-b/.reports/docs/generate-report.md").exists()
+    tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
+    tm.that(
+        not (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=True
+    )
 
 
 def test_validator_execute_fails_before_generation_and_succeeds_after(
@@ -73,16 +83,16 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
         workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
     ).execute()
     tm.ok(after)
-    assert (workspace / "flext-a/TODOS.md").exists()
+    tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
 
 
-def test_builder_execute_skips_when_mkdocs_is_missing(tmp_path: Path) -> None:
+def test_builder_execute_fails_when_mkdocs_is_missing(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
-    tm.ok(result)
-    assert (workspace / ".reports/docs/build-report.md").exists()
+    tm.fail(result)
+    tm.that((workspace / ".reports/docs/build-report.md").exists(), eq=True)
 
 
 def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> None:
@@ -92,3 +102,23 @@ def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> Non
     result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     tm.fail(result)
+
+
+def test_generate_fix_cycle_is_byte_identical_on_second_run(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path)
+    generator = FlextInfraDocGenerator(workspace_root=workspace, apply_changes=True)
+    fixer = FlextInfraDocFixer(workspace_root=workspace, apply_changes=True)
+
+    tm.ok(generator.execute())
+    tm.ok(fixer.execute())
+    first_cycle = {
+        path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
+    }
+
+    tm.ok(generator.execute())
+    tm.ok(fixer.execute())
+    second_cycle = {
+        path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
+    }
+
+    tm.that(second_cycle, eq=first_cycle)

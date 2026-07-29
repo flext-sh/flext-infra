@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import tomlkit
-from flext_tests import tm
 
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
@@ -14,6 +13,7 @@ from flext_infra.deps.phases.ensure_namespace import (
     FlextInfraEnsureNamespaceToolingPhase,
 )
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -378,7 +378,7 @@ select = ["E501"]
             encoding="utf-8",
         )
         _ = workspace_root.joinpath("pyproject.toml").write_text(
-            "[project]\nname = 'workspace'\n\n"
+            "[project]\nname = 'workspace'\nversion = '0.1.0'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core']\n",
             encoding="utf-8",

@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_tests import tm
 
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -62,6 +62,32 @@ class TestsFlextInfraInfraSelection:
                 f'[project]\nname = "{project_name}"\ndependencies = ["flext-core"]\n'
             )
             (package_dir / "__init__.py").write_text("")
+        return tmp_path
+
+    @pytest.fixture
+    def workspace_with_nested_members(self, tmp_path: Path) -> Path:
+        (tmp_path / ".git").mkdir()
+        (tmp_path / "Makefile").touch()
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "workspace-root"\n'
+            'dependencies = ["flext-core"]\n'
+            "[tool.uv.workspace]\n"
+            'members = ["apps/member-one", "apps/member-two"]\n'
+        )
+        root_package = tmp_path / "src" / "workspace_root"
+        root_package.mkdir(parents=True)
+        (root_package / "__init__.py").touch()
+        for name in ("member-one", "member-two"):
+            project = tmp_path / "apps" / name
+            project.mkdir(parents=True)
+            (project / "Makefile").touch()
+            (project / "pyproject.toml").write_text(
+                f'[project]\nname = "{name}"\ndependencies = ["flext-core"]\n'
+            )
+            package = project / "src" / name.replace("-", "_")
+            package.mkdir(parents=True)
+            (package / "__init__.py").touch()
         return tmp_path
 
     def test_resolve_projects_all_projects(
@@ -167,3 +193,37 @@ class TestsFlextInfraInfraSelection:
         result = selector.resolve_projects(tmp_path, [])
         projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
         tm.that(projects, empty=True)
+
+    def test_resolve_projects_includes_root_and_nested_members(
+        self, selector: type[u.Infra], workspace_with_nested_members: Path
+    ) -> None:
+        result = selector.resolve_projects(
+            workspace_with_nested_members, (), include_attached=True
+        )
+
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that(
+            [project.name for project in projects],
+            eq=["member-one", "member-two", "workspace-root"],
+        )
+
+    @pytest.mark.parametrize("name", [".", "workspace-root"])
+    def test_resolve_projects_accepts_root_aliases(
+        self, selector: type[u.Infra], workspace_with_nested_members: Path, name: str
+    ) -> None:
+        result = selector.resolve_projects(
+            workspace_with_nested_members, (name,), include_attached=True
+        )
+
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that([project.name for project in projects], eq=["workspace-root"])
+
+    def test_resolve_projects_accepts_nested_member_path(
+        self, selector: type[u.Infra], workspace_with_nested_members: Path
+    ) -> None:
+        result = selector.resolve_projects(
+            workspace_with_nested_members, ("apps/member-one",), include_attached=True
+        )
+
+        projects: t.SequenceOf[m.Infra.ProjectInfo] = tm.ok(result)
+        tm.that([project.name for project in projects], eq=["member-one"])

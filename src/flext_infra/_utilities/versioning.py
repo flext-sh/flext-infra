@@ -12,8 +12,10 @@ from pathlib import Path
 
 from packaging.version import InvalidVersion, Version
 
-from flext_cli import u
-from flext_infra import c, p, r, t
+from flext_cli import r, u
+from flext_infra.constants import c
+from flext_infra.protocols import p
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesVersioning:

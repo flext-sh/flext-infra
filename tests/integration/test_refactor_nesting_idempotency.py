@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_tests import tm
-
 from flext_infra import c
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -93,8 +92,8 @@ class TestsFlextInfraIntegrationRefactorNestingIdempotency:
             "    confidence: high\n"
         )
         result1 = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        assert result1.refactored_code is not None
-        test_file.write_text(result1.refactored_code)
+        refactored_code = tm.not_none(result1.refactored_code)
+        test_file.write_text(refactored_code)
         result2 = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
         tm.that(result2.success, eq=True)
 

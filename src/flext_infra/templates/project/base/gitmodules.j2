@@ -1,9 +1,11 @@
 {# NOTE (multi-agent): ordered workspace topology is the sole .gitmodules owner.
-   Members are FLEXT-governed submodules; content-only submodules are non-FLEXT
-   checkouts kept in-tree (codegen: none) — both are real git submodules and MUST
-   appear here so `git submodule status` stays consistent with the index. #}
+   Members are FLEXT-governed submodules only when config opts them into conform
+   mutation. Content-only/read-only repositories remain real Git submodules but
+   are explicitly non-managed so FLEXT tooling never mutates their checkouts. #}
 {%- set submodules = workspace_repositories | list + (workspace_content_only | selectattr("checkout", "equalto", "submodule") | list) -%}
 {% for repository in submodules %}[submodule "{{ repository.name }}"]
 	path = {{ repository.path }}
 	url = {{ repository.url }}
-	branch = {{ repository.branch }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}
+	branch = {{ repository.branch }}
+	flext-classification = {{ repository.classification }}
+	flext-managed = {{ (repository.classification == "managed" and repository in workspace_repositories and not repository.read_only and repository.codegen == "conform") | lower }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}

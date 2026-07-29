@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -123,8 +122,8 @@ class TestAuditorBrokenLinks:
             name="test", path=tmp_path, report_dir=tmp_path / "reports"
         )
         issues = u.Infra.docs_broken_link_issues(scope)
-        assert len(issues) > 0
-        assert any("missing.md" in issue.message for issue in issues)
+        tm.that(len(issues) > 0, eq=True)
+        tm.that(any("missing.md" in issue.message for issue in issues), eq=True)
 
     def test_broken_link_issues_skips_some_text(self, tmp_path: Path) -> None:
         """Test docs_broken_link_issues skips plain text brackets."""

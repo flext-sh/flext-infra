@@ -12,15 +12,10 @@ import http.client
 import socket
 import threading
 import time
-
-import pytest
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.docs.server import FlextInfraDocServer
-
-pytestmark = pytest.mark.timeout(60)
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path

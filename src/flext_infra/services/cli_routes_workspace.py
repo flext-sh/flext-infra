@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_infra import c, m
+from flext_infra import FlextInfraWorktreeService, c, m
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
@@ -12,6 +12,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
+from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_infra.workspace.sync import FlextInfraSyncService
@@ -65,9 +66,19 @@ class WorkspaceRoutes(RefactorRoutes):
                         FlextInfraOrchestratorService,
                     ),
                     (
+                        "serialize-make",
+                        "Run one state-sensitive Make verb under its checkout lock",
+                        FlextInfraMakeSerializationService,
+                    ),
+                    (
                         "migrate",
                         "Migrate workspace projects to flext_infra tooling",
                         FlextInfraProjectMigrator,
+                    ),
+                    (
+                        "worktree",
+                        "Manage repository-local development worktrees",
+                        FlextInfraWorktreeService,
                     ),
                 )
             ),

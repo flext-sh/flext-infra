@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_tests import tm
-
 from tests import c
 
 
@@ -48,9 +47,6 @@ class TestsFlextInfraInfraConstantsCore:
         tm.that(c.Infra.PYRIGHT, eq="pyright")
         tm.that(c.Infra.SECURITY, eq="security")
         tm.that(c.Infra.MARKDOWN, eq="markdown")
-
-    def test_type_alias_gate(self) -> None:
-        tm.that(c.Infra.TYPE_ALIAS, eq="type")
 
     def test_default_csv_contains_gates(self) -> None:
         csv = c.Infra.DEFAULT_CSV

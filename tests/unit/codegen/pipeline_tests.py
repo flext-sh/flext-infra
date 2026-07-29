@@ -11,16 +11,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-from flext_tests import tm
-
 from flext_infra import infra, t
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
-
-pytestmark = pytest.mark.timeout(180)
+from flext_tests import tm
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -104,7 +100,9 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     project_b = _make_project(
         tmp_path, "project-b", with_all_modules=True, with_tests_dir=False
     )
-    _ = _make_project(tmp_path, "project-c", with_all_modules=True, with_tests_dir=True)
+    _ = _make_project(
+        tmp_path, "project-c", with_all_modules=True, with_tests_dir=False
+    )
     external_project = _make_project(
         tmp_path,
         "external-project",

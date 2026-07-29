@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
 from flext_tests import tm
-
 from tests import TestsFlextInfraUtilities as u, c
 
 if TYPE_CHECKING:
@@ -105,7 +103,6 @@ class TestsFlextInfraReleaseOrchestration:
     class TestsNextDevelopment:
         """Next-development version behavior."""
 
-        @pytest.mark.timeout(60)
         @staticmethod
         def test_next_dev_updates_workspace_after_release(tmp_path: Path) -> None:
             """Apply the configured next development version after release."""

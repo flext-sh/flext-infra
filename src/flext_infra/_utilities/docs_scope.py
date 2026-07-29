@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 
 from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
-from flext_infra import FlextInfraConstants as c, FlextInfraTypes as t
+from flext_infra.constants import FlextInfraConstants as c
+from flext_infra.typings import FlextInfraTypes as t
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
@@ -95,7 +96,19 @@ class FlextInfraUtilitiesDocsScope:
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 discover_result.error or "discovery failed"
             )
-        projects = discover_result.value
+        projects = list(discover_result.value)
+        resolved_workspace_root = workspace_root.resolve()
+        if all(
+            project.path.resolve() != resolved_workspace_root for project in projects
+        ):
+            root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
+                resolved_workspace_root,
+                workspace_members=FlextInfraUtilitiesDocsScope._workspace_member_name_set(
+                    resolved_workspace_root
+                ),
+            )
+            if root_project is not None:
+                projects.append(root_project)
         if not names:
             return r[t.SequenceOf[mw.ProjectInfo]].ok(
                 sorted(projects, key=lambda proj: proj.name)
@@ -104,6 +117,14 @@ class FlextInfraUtilitiesDocsScope:
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)
+            project_path = project.path.resolve()
+            if project_path == resolved_workspace_root:
+                by_name.setdefault(".", project)
+            elif project_path.is_relative_to(resolved_workspace_root):
+                by_name.setdefault(
+                    project_path.relative_to(resolved_workspace_root).as_posix(),
+                    project,
+                )
         missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))

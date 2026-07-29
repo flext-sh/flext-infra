@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import tomlkit
-from flext_tests import tm
 from tomlkit import TOMLDocument
 
 from flext_infra import config
 from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPhase
+from flext_tests import tm
 from tests import t, u
 
 
@@ -29,6 +29,14 @@ def _strings(value: t.JsonValue) -> t.StrSequence:
 class TestsFlextInfraDepsModernizerPytest:
     """Tests pytest settings phase behavior."""
 
+    def test_tooling_policy_declares_case_and_session_timeout_flags(self) -> None:
+        addopts = set(config.Infra.tooling.tools.pytest.standard_addopts)
+
+        tm.that(any(option.startswith("--timeout=") for option in addopts), eq=True)
+        tm.that(
+            any(option.startswith("--session-timeout=") for option in addopts), eq=True
+        )
+
     def test_apply_sets_expected_ini_options(self) -> None:
         """Populate every canonical pytest option in an empty document."""
         tool_config = config.Infra.tooling
@@ -39,12 +47,12 @@ class TestsFlextInfraDepsModernizerPytest:
         ini = _mapping(
             _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        tm.that(ini["minversion"], eq="8.0")
-        tm.that(list(_strings(ini["python_classes"])), eq=["Test*"])
+        pytest_policy = tool_config.tools.pytest
+        tm.that(ini["minversion"], eq=pytest_policy.min_version)
         tm.that(
-            set(_strings(ini["python_files"])),
-            eq={"*_test.py", "*_tests.py", "test_*.py"},
+            set(_strings(ini["python_classes"])), eq=set(pytest_policy.python_classes)
         )
+        tm.that(set(_strings(ini["python_files"])), eq=set(pytest_policy.python_files))
         tm.that(
             set(_strings(ini["addopts"])),
             eq=set(tool_config.tools.pytest.standard_addopts),
@@ -73,11 +81,15 @@ markers = ["custom: custom marker"]
         ini = _mapping(
             _mapping(_mapping(_doc_mapping(doc)["tool"])["pytest"])["ini_options"]
         )
-        tm.that(ini["minversion"], eq="8.0")
-        tm.that(set(_strings(ini["python_classes"])), eq={"Spec*", "Test*"})
+        pytest_policy = tool_config.tools.pytest
+        tm.that(ini["minversion"], eq=pytest_policy.min_version)
+        tm.that(
+            set(_strings(ini["python_classes"])),
+            eq={"Spec*", *pytest_policy.python_classes},
+        )
         tm.that(
             set(_strings(ini["python_files"])),
-            eq={"spec_*.py", "*_test.py", "*_tests.py", "test_*.py"},
+            eq={"spec_*.py", *pytest_policy.python_files},
         )
         tm.that(
             set(_strings(ini["addopts"])),

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -113,6 +113,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def classification(self) -> str:
+            """Repository governance ownership classification."""
+            ...
+
+        @property
         def checkout(self) -> str:
             """Physical checkout topology."""
             ...
@@ -157,6 +162,40 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class GithubPullRequestFields(Protocol):
+        """Shared PR execution fields accepted at the transport boundary."""
+
+        @property
+        def action(self) -> c.Infra.PullRequestAction:
+            """Requested PR operation."""
+            ...
+
+        @property
+        def base(self) -> str | None:
+            """Target branch when explicitly selected."""
+            ...
+
+        @property
+        def head(self) -> str | None:
+            """Source branch when explicitly selected."""
+            ...
+
+        @property
+        def title(self) -> str | None:
+            """PR title used for creation."""
+            ...
+
+        @property
+        def body(self) -> str | None:
+            """PR body used for creation."""
+            ...
+
+        @property
+        def draft(self) -> bool:
+            """Whether creation requests a draft PR."""
+            ...
+
+    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
@@ -172,13 +211,18 @@ class FlextInfraProtocolsBase(Protocol):
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
         @property
-        def uv_link_mode(self) -> str:
-            """Portable uv installation link mode."""
+        def python_required_version(self) -> str:
+            """PEP 440 requirement for the compatible Python line."""
             ...
 
         @property
-        def uv_required_version(self) -> str:
-            """Required uv version expression."""
+        def python_version(self) -> str:
+            """Compatible Python major.minor line."""
+            ...
+
+        @property
+        def uv_link_mode(self) -> str:
+            """Portable uv installation link mode."""
             ...
 
     @runtime_checkable

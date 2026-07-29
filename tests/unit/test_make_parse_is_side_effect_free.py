@@ -19,9 +19,8 @@ import re
 from pathlib import Path
 
 import flext_infra
-from flext_tests import tm
-
 from flext_infra import c
+from flext_tests import tm
 
 # `NAME := $(shell ...)` -- immediate assignment, expanded at parse time.
 _IMMEDIATE_SHELL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*:=.*\$\(shell\b")
@@ -35,7 +34,7 @@ _INTERPRETER_RUN = re.compile(
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
-    return Path(__file__).resolve().parents[3]
+    return Path(__file__).resolve().parents[2]
 
 
 def _make_surfaces() -> tuple[Path, ...]:

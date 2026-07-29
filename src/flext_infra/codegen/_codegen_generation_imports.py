@@ -43,12 +43,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
     def _format_type_checking_module_alias_import(
         indent: str, mod: str, export_name: str
     ) -> t.StrSequence:
-        """Format one TYPE_CHECKING module alias import."""
-        parent_mod, separator, module_name = mod.rpartition(".")
-        if separator and module_name == export_name:
-            # mro-pulj (codex): typing declarations are not runtime reexports;
-            # preserve aliases only when the public and owned names differ.
-            return (f"{indent}from {parent_mod or '.'} import {module_name}",)
+        """Format one explicit static reexport."""
         return (
             FlextInfraCodegenGenerationImportsMixin._format_module_alias_import(
                 indent, mod, export_name

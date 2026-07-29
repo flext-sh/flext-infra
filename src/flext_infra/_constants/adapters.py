@@ -54,5 +54,14 @@ class FlextInfraConstantsAdapters:
     )
     "Validates t.SequenceOf[StrMapping]."
 
+    STR_ADAPTER: Final[m.TypeAdapter[str]] = m.TypeAdapter(str)
+    "Validates one string at boundaries whose upstream stubs expose Any."
+
+    BOOL_ADAPTER: Final[m.TypeAdapter[bool]] = m.TypeAdapter(bool)
+    "Validates one boolean at boundaries whose upstream stubs expose Any."
+
+    PATH_ADAPTER: Final[m.TypeAdapter[Path]] = m.TypeAdapter(Path)
+    "Validates one filesystem path at boundaries whose upstream stubs expose Any."
+
 
 __all__: list[str] = ["FlextInfraConstantsAdapters"]

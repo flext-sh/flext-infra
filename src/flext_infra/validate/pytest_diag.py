@@ -72,13 +72,14 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         for line in lines:
             if c.Infra.PYTEST_WARNINGS_HEADER_RE.match(line):
                 capture_warn = True
-            if capture_warn:
+                continue
+            if capture_warn and c.Infra.PYTEST_DOCS_FOOTER_RE.match(line):
+                break
+            if capture_warn and c.Infra.PYTEST_WARNING_LINE_RE.search(line):
                 diag.warning_lines.append(line)
-                if c.Infra.PYTEST_DOCS_FOOTER_RE.match(line):
-                    break
         if not diag.warning_lines:
             diag.warning_lines = [
-                line for line in lines if c.Infra.PYTEST_KNOWN_WARNINGS_RE.search(line)
+                line for line in lines if c.Infra.PYTEST_WARNING_LINE_RE.search(line)
             ]
 
     @staticmethod
@@ -86,6 +87,9 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         """Parse pytest log output for failures/skips when XML unavailable."""
         diag.failed_cases = [
             line for line in lines if c.Infra.PYTEST_FAILED_LINE_RE.search(line)
+        ]
+        diag.error_cases = [
+            line for line in lines if c.Infra.PYTEST_ERROR_LINE_RE.search(line)
         ]
         diag.skip_cases = [
             line for line in lines if c.Infra.PYTEST_SKIPPED_LINE_RE.search(line)
@@ -138,7 +142,7 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         """Convert mutable extraction state to the canonical diagnostics model."""
         return m.Infra.PytestDiagnostics(
             failed_count=len(diag.failed_cases),
-            error_count=len(diag.error_traces),
+            error_count=len(diag.error_cases),
             warning_count=len(diag.warning_lines),
             skipped_count=len(diag.skip_cases),
             failed_cases=diag.failed_cases,

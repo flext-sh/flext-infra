@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import config, u
+from flext_tests import tm
 from tests import m
 
 if TYPE_CHECKING:
@@ -109,7 +108,9 @@ class TestsFlextInfraPatternSmellDetector:
             ),
             config.Infra.enforcement.rules,
         )
-        assert not any(v.kind == "direct_pydantic_import" for v in violations)
+        tm.that(
+            not any(v.kind == "direct_pydantic_import" for v in violations), eq=True
+        )
 
     def test_detects_owned_library_in_consumer_project(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
@@ -127,4 +128,4 @@ class TestsFlextInfraPatternSmellDetector:
             ),
             config.Infra.enforcement.rules,
         )
-        assert any(v.kind == "direct_pydantic_import" for v in violations)
+        tm.that(any(v.kind == "direct_pydantic_import" for v in violations), eq=True)

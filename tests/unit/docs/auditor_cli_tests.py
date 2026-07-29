@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra import main
+from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:
@@ -22,13 +21,23 @@ def test_auditor_main_writes_reports_for_selected_project(tmp_path: Path) -> Non
         tmp_path, project_names=("flext-a", "flext-b")
     )
 
-    assert (
-        main(["docs", "audit", "--workspace", str(workspace), "--projects", "flext-a"])
-        == 0
+    tm.that(
+        (
+            main([
+                "docs",
+                "audit",
+                "--workspace",
+                str(workspace),
+                "--projects",
+                "flext-a",
+            ])
+            == 0
+        ),
+        eq=True,
     )
-    assert (workspace / ".reports/docs/audit-report.md").exists()
-    assert (workspace / "flext-a/.reports/docs/audit-report.md").exists()
-    assert not (workspace / "flext-b/.reports/docs/audit-report.md").exists()
+    tm.that((workspace / ".reports/docs/audit-report.md").exists(), eq=True)
+    tm.that((workspace / "flext-a/.reports/docs/audit-report.md").exists(), eq=True)
+    tm.that(not (workspace / "flext-b/.reports/docs/audit-report.md").exists(), eq=True)
 
 
 def test_auditor_main_strict_failure_returns_one(tmp_path: Path) -> None:

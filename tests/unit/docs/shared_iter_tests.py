@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-
 from tests import u
 
 if TYPE_CHECKING:
@@ -30,7 +29,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "README.md").write_text("# Test\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_hidden(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes hidden directories."""
@@ -48,7 +47,7 @@ class TestIterMarkdownFiles:
         nested_dir.mkdir(parents=True, exist_ok=True)
         (nested_dir / "guide.md").write_text("# Guide\n")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_returns_sorted_list(self, tmp_path: Path) -> None:
         """Test iter_markdown_files returns sorted list."""
@@ -72,7 +71,7 @@ class TestIterMarkdownFiles:
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
-        assert len(files) > 0
+        tm.that(len(files) > 0, eq=True)
 
     def test_excludes_node_modules(self, tmp_path: Path) -> None:
         """Test iter_markdown_files excludes node_modules."""
@@ -83,3 +82,19 @@ class TestIterMarkdownFiles:
         (nm_dir / "test.md").write_text("# Test")
         files = u.Infra.iter_markdown_files(tmp_path)
         tm.that(not any("node_modules" in str(f) for f in files), eq=True)
+
+    def test_excludes_archived_markdown(self, tmp_path: Path) -> None:
+        """Test historical backup files and legado roots remain evidence-only."""
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        backup = docs_dir / "guide.bak-legacy.md"
+        backup.write_text("# Archived backup\n")
+        legado = docs_dir / "legado"
+        legado.mkdir()
+        archived = legado / "guide.md"
+        archived.write_text("# Archived tree\n")
+
+        files = u.Infra.iter_markdown_files(tmp_path)
+
+        tm.that(backup in files, eq=False)
+        tm.that(archived in files, eq=False)

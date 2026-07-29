@@ -2,7 +2,7 @@
 
 Proves the atomic v1->v2 evolution:
   S1  schema version const == 2 (a version:1 document is rejected)
-  S2  RepositoryRef carries checkout/codegen/package/editable/read_only;
+  S2  RepositoryRef carries classification/checkout/codegen/package/editable/read_only;
       WorkspaceSpec.version rejects 1 (hard cutover, no v1 acceptance)
   S3  a fully-specified v2 workspace document validates
 
@@ -15,10 +15,10 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_tests import tm
 
 import flext_infra
 from flext_infra import c, m
+from flext_tests import tm
 
 
 class TestsWorkspaceManifestV2Contract:
@@ -55,6 +55,7 @@ class TestsWorkspaceManifestV2Contract:
             "role": role,
             "state": state,
             "profile": profile,
+            "classification": "managed",
             "checkout": checkout,
             "codegen": codegen,
             "package": package,
@@ -119,6 +120,11 @@ class TestsWorkspaceManifestV2Contract:
             frozenset(member.value for member in c.Infra.CodegenKind),
             eq=frozenset({"conform", "python", "none"}),
         )
+        tm.that(
+            frozenset(member.value for member in c.Infra.RepositoryClassification),
+            eq=frozenset({"managed", "external-fork", "external-vendor-reference"}),
+        )
+        tm.that(c.Infra.CodegenConformSurface.GITMODULES.value, eq="gitmodules")
 
     def test_repository_ref_accepts_v2_fields(self) -> None:
         """Validate all five v2 fields into their canonical typed contract."""
@@ -134,6 +140,7 @@ class TestsWorkspaceManifestV2Contract:
             )
         )
         tm.that(ref.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
+        tm.that(ref.classification, eq=c.Infra.RepositoryClassification.MANAGED)
         tm.that(ref.codegen, eq=c.Infra.CodegenKind.PYTHON)
         tm.that(ref.package, eq=True)
         tm.that(ref.editable, eq=True)

@@ -286,6 +286,19 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 passed=execution.result.passed,
                 elapsed=execution.result.duration,
             )
+            if not execution.result.passed:
+                inline_errors = execution.result.errors[
+                    : c.Infra.GATE_ERROR_OUTPUT_LIMIT
+                ]
+                for error in inline_errors:
+                    u.Cli.error(error)
+                remaining = len(execution.result.errors) - len(inline_errors)
+                if remaining > 0:
+                    u.Cli.error(
+                        f"... {remaining} additional diagnostics in the check report"
+                    )
+                if not inline_errors and execution.raw_output.strip():
+                    u.Cli.error(execution.raw_output.strip())
             status: t.Cli.PipelineStageStatus = (
                 c.Cli.PipelineStageStatus.OK
                 if execution.result.passed

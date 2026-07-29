@@ -7,14 +7,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
-from flext_infra import c, t
+from flext_infra.constants import c
+from flext_infra.typings import t
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDiscovery:
@@ -173,22 +174,17 @@ class FlextInfraUtilitiesDiscovery:
     def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
         """Return first segments of manifest-excluded workspace-relative paths.
 
-        Paths declared under ``exclusions`` in the repository-local
-        ``config/workspace.yaml`` are vendored, non-source trees (e.g. document
-        submodules). They must never be discovered as Python source roots,
-        regardless of any Python files they happen to contain. A repository
-        without a manifest (or a derivation fallback) contributes nothing.
+        Immutable ``content_only`` repositories and explicit ``exclusions`` in
+        ``config/workspace.yaml`` must never be discovered as Python source,
+        regardless of any Python files they happen to contain.
         """
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        spec = FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
-        if spec.failure:
-            return frozenset()
-        return frozenset(
-            exclusion.path.parts[0]
-            for exclusion in spec.value.exclusions
-            if exclusion.path.parts
-        )
+        excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
+        if excluded.failure:
+            msg = excluded.error or "workspace analysis scope is unavailable"
+            raise ValueError(msg)
+        return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:

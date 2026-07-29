@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_tests import tm
-
 from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_tests import tm
 from tests import m, u
 
 if TYPE_CHECKING:
@@ -35,6 +34,28 @@ def test_update_toc_replaces_existing_block() -> None:
     tm.that(changed, eq=1)
     tm.that(updated, lacks="stale")
     tm.that(updated, has="Section")
+
+
+def test_generated_markdown_is_toc_normalized_before_write(tmp_path: Path) -> None:
+    generated = tmp_path / "generated.md"
+
+    result = u.Infra.docs_write_if_needed(
+        generated, "# Generated\n\n## Section\n", apply=True
+    )
+
+    tm.that(result.changed, eq=True)
+    tm.that(generated.read_text(), has="<!-- TOC START -->")
+    tm.that(generated.read_text(), has="[Section](#section)")
+
+
+def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
+    generated = tmp_path / "mkdocs.yml"
+    content = "site_name: Generated\n"
+
+    result = u.Infra.docs_write_if_needed(generated, content, apply=True)
+
+    tm.that(result.changed, eq=True)
+    tm.that(generated.read_text(), eq=content)
 
 
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
