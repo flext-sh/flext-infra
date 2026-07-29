@@ -333,6 +333,8 @@ _test_impl:
     "$(PROJECT_INFRA_VALIDATE)",
     "$(PYTEST_TARGETS)",
     "$(TESTS_DIR)",
+    make.TIMEOUT_COMMAND,
+    make.TIMEOUT_KILL_AFTER_SECONDS,
     "$(Q)",
 ) }}
 

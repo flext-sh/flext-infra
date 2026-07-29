@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
@@ -64,6 +64,21 @@ class TestsFlextInfraBasemkGenerator:
                 result.value,
                 has=f"$(if $(filter 1,$({variable})),{enabled_flag},{disabled_flag})",
             )
+
+    def test_generator_enforces_pytest_process_timeout(self) -> None:
+        policy = config.Infra.tooling.tools.pytest
+
+        result = FlextInfraBaseMkGenerator().generate_basemk(settings=None)
+
+        tm.ok(result)
+        tm.that(
+            result.value,
+            has=(f"PYTEST_PROCESS_TIMEOUT_SECONDS ?= {policy.process_timeout_seconds}"),
+        )
+        tm.that(
+            result.value,
+            has="$(PYTEST_PROCESS_TIMEOUT_SECONDS)s $(VENV_PYTHON) -m pytest",
+        )
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
         settings = m.Infra.BaseMkConfig(

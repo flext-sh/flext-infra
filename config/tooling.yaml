@@ -509,7 +509,9 @@ Infra:
           - --durations=10
           # operator law 2026-07-20: any test over 10s is a grave test defect,
           # surfaced as an explicit TIMEOUT failure (never accommodated).
-          - --timeout=60
+          - --timeout=10
+        # mro-99ae: hard process boundary independent of pytest hook progress.
+        process-timeout-seconds: 60
       tomlsort:
         all: true
         in_place: true
