@@ -6,7 +6,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Event
+from threading import Event, Lock
 
 import pytest
 from filelock import FileLock, Timeout
@@ -33,8 +33,9 @@ class TestsFlextInfraMakeSerialization:
         """The typed SSOT owns path, timeout, and the exact protected verbs."""
         serialization = config.Infra.codegen.make.serialization
         declared_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
+        lock_paths = (serialization.single_flight_lock_path, serialization.lock_path)
 
-        tm.that(not serialization.lock_path.is_absolute(), where=bool)
+        tm.that(len(set(lock_paths)), eq=len(lock_paths))
         tm.that(serialization.timeout_seconds, gt=0)
         tm.that(serialization.verbs, empty=False)
         tm.that(set(serialization.verbs).issubset(declared_verbs), where=bool)
@@ -44,9 +45,184 @@ class TestsFlextInfraMakeSerialization:
             for mutation_what, fixed_point_what in fixed_points.items():
                 tm.that(mutation_what, empty=False)
                 tm.that(fixed_point_what, empty=False)
-        tm.that(serialization.lock_path in serialization.snapshot_excludes, where=bool)
+        for lock_path in lock_paths:
+            tm.that(not lock_path.is_absolute(), where=bool)
+            tm.that(lock_path in serialization.snapshot_excludes, where=bool)
         for excluded_path in serialization.snapshot_excludes:
             tm.that(not excluded_path.is_absolute(), where=bool)
+
+    def test_single_flight_and_mutation_locks_must_be_distinct(self) -> None:
+        """The child transaction lock cannot recursively equal the outer lock."""
+        serialization = config.Infra.codegen.make.serialization
+        payload = serialization.model_dump(mode="python")
+        payload["single_flight_lock_path"] = serialization.lock_path
+
+        with pytest.raises(ValueError, match="lock paths must be distinct"):
+            m.Infra.MakeSerializationSpec.model_validate(payload)
+
+    def test_every_serialization_lock_must_be_snapshot_excluded(self) -> None:
+        """Lock artifacts never invalidate the operation they protect."""
+        serialization = config.Infra.codegen.make.serialization
+        payload = serialization.model_dump(mode="python")
+        payload["snapshot_excludes"] = tuple(
+            path
+            for path in serialization.snapshot_excludes
+            if path != serialization.single_flight_lock_path
+        )
+
+        with pytest.raises(ValueError, match="lock paths must be snapshot-excluded"):
+            m.Infra.MakeSerializationSpec.model_validate(payload)
+
+    def test_every_serialization_lock_must_be_repository_relative(self) -> None:
+        """Every configured lock remains owned by the selected Make engine."""
+        serialization = config.Infra.codegen.make.serialization
+        payload = serialization.model_dump(mode="python")
+        payload["single_flight_lock_path"] = (
+            serialization.single_flight_lock_path.resolve()
+        )
+
+        with pytest.raises(ValueError, match="lock paths must be repository-relative"):
+            m.Infra.MakeSerializationSpec.model_validate(payload)
+
+    @pytest.mark.parametrize(
+        "contender_is_mutation", [False, True], ids=("check", "mutation")
+    )
+    def test_complete_operation_single_flight(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        contender_is_mutation: bool,
+    ) -> None:
+        """Checks and mutations wait through both mutation phases."""
+        make_config = config.Infra.codegen.make
+        serialization = make_config.serialization
+        mutation_verb, fixed_points = next(
+            iter(serialization.mutation_fixed_points.items())
+        )
+        mutation_what, fixed_point_what = next(iter(fixed_points.items()))
+        check_verb = next(verb for verb in serialization.verbs if verb != mutation_verb)
+        contender_verb = mutation_verb if contender_is_mutation else check_verb
+        makefile = tmp_path / c.Infra.MAKEFILE_FILENAME
+        makefile.write_text(
+            f".PHONY: _serialized_{mutation_verb} _serialized_{check_verb}\n",
+            encoding="utf-8",
+        )
+        test_u.Tests.initialize_git_repo(tmp_path)
+        mutation_entered = Event()
+        mutation_release = Event()
+        fixed_point_entered = Event()
+        fixed_point_release = Event()
+        contender_started = Event()
+        contender_entered = Event()
+        child_lock_acquired = Event()
+        primary_order_lock = Lock()
+        primary_count = 0
+        event_timeout_seconds = 2
+        mutation_lock_path = (tmp_path / serialization.lock_path).resolve()
+
+        def controlled_run_make(
+            _service_type: type[FlextInfraMakeSerializationService],
+            _checkout: Path,
+            command: t.StrSequence,
+            *,
+            failure_context: str,
+        ) -> p.Result[m.Infra.ProcessExit]:
+            nonlocal primary_count
+            tm.that(failure_context, empty=False)
+            if (
+                f"_serialized_{mutation_verb}" in command
+                and f"{make_config.selector}={fixed_point_what}" not in command
+            ):
+                with primary_order_lock:
+                    primary_count += 1
+                    primary_index = primary_count
+                if primary_index == 1:
+
+                    def acquire_child_lock() -> p.Result[bool]:
+                        child_lock_acquired.set()
+                        return r[bool].ok(True)
+
+                    tm.ok(
+                        FlextInfraSerializationLockOwner.execute(
+                            (mutation_lock_path,),
+                            0,
+                            acquire_child_lock,
+                            timeout_failure=lambda _path, _timeout: r[bool].fail(
+                                "child mutation lock remained held by its parent"
+                            ),
+                            acquisition_failure=lambda error: r[bool].fail(error),
+                        )
+                    )
+                    mutation_entered.set()
+                    tm.that(
+                        mutation_release.wait(timeout=event_timeout_seconds), where=bool
+                    )
+                else:
+                    contender_entered.set()
+            elif (
+                f"_serialized_{mutation_verb}" in command
+                and f"{make_config.selector}={fixed_point_what}" in command
+            ):
+                fixed_point_entered.set()
+                tm.that(
+                    fixed_point_release.wait(timeout=event_timeout_seconds), where=bool
+                )
+            elif f"_serialized_{check_verb}" in command:
+                contender_entered.set()
+            return r[m.Infra.ProcessExit].ok(
+                m.Infra.ProcessExit(
+                    exit_code=int(c.Infra.ScriptExitCode.PASS),
+                    raw_exit_code=int(c.Infra.ScriptExitCode.PASS),
+                    classification="success",
+                )
+            )
+
+        monkeypatch.setattr(
+            FlextInfraMakeSerializationService,
+            "_run_make",
+            classmethod(controlled_run_make),
+        )
+        monkeypatch.setenv(make_config.selector, mutation_what)
+        monkeypatch.setenv(make_config.apply_variable, make_config.apply_value)
+        mutation_service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": tmp_path,
+            "verb": mutation_verb,
+            "makefile": makefile,
+        })
+        contender_service = FlextInfraMakeSerializationService.model_validate({
+            "workspace_root": tmp_path,
+            "verb": contender_verb,
+            "makefile": makefile,
+        })
+
+        def execute_contender() -> p.Result[m.Infra.ProcessExit]:
+            contender_started.set()
+            result: p.Result[m.Infra.ProcessExit] = contender_service.execute()
+            return result
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            mutation_future = executor.submit(mutation_service.execute)
+            tm.that(mutation_entered.wait(timeout=event_timeout_seconds), where=bool)
+            tm.that(child_lock_acquired.wait(timeout=event_timeout_seconds), where=bool)
+            contender_future = executor.submit(execute_contender)
+            tm.that(contender_started.wait(timeout=event_timeout_seconds), where=bool)
+            try:
+                tm.that(contender_entered.wait(timeout=0.5), eq=False)
+                mutation_release.set()
+                tm.that(
+                    fixed_point_entered.wait(timeout=event_timeout_seconds), where=bool
+                )
+                tm.that(contender_entered.wait(timeout=0.5), eq=False)
+            finally:
+                mutation_release.set()
+                fixed_point_release.set()
+            mutation_result = mutation_future.result(timeout=event_timeout_seconds)
+            contender_result = contender_future.result(timeout=event_timeout_seconds)
+
+        tm.ok(mutation_result)
+        tm.ok(contender_result)
+        tm.that(contender_entered.is_set(), where=bool)
 
     def test_operation_oserror_is_not_classified_as_lock_acquisition(
         self, tmp_path: Path

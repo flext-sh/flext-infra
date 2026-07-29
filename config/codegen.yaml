@@ -54,10 +54,6 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
-      - name: datacosmos-br
-        organization: datacosmos-br
-        base_url: https://github.com/datacosmos-br
-        branch: main
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -82,11 +78,13 @@ Infra:
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
+        single_flight_lock_path: .state/flext-infra/make-single-flight.lock
         mutation_fixed_points:
           codegen:
             apply: check
         snapshot_excludes:
           - .state/flext-infra/make-validation.lock
+          - .state/flext-infra/make-single-flight.lock
           - .reports
           - .pytest_cache
           - .coverage
@@ -1491,7 +1489,3 @@ Infra:
         package: true
         editable: true
         read_only: false
-    workspaces:
-      - name: flext
-        repository: flext
-        manifest: config/workspace.yaml

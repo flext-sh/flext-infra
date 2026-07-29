@@ -119,7 +119,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_external_consumer_keeps_remote_branch_source(self) -> None:
         workspace = _workspace()
         external = (
-            '[project]\nname = "cosmos-main"\nversion = "0.1.0"\n'
+            '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
 

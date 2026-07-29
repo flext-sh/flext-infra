@@ -102,3 +102,23 @@ def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> Non
     result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     tm.fail(result)
+
+
+def test_generate_fix_cycle_is_byte_identical_on_second_run(tmp_path: Path) -> None:
+    workspace = u.Tests.create_docs_workspace(tmp_path)
+    generator = FlextInfraDocGenerator(workspace_root=workspace, apply_changes=True)
+    fixer = FlextInfraDocFixer(workspace_root=workspace, apply_changes=True)
+
+    tm.ok(generator.execute())
+    tm.ok(fixer.execute())
+    first_cycle = {
+        path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
+    }
+
+    tm.ok(generator.execute())
+    tm.ok(fixer.execute())
+    second_cycle = {
+        path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
+    }
+
+    tm.that(second_cycle, eq=first_cycle)
