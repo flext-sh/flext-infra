@@ -13,6 +13,7 @@ from flext_infra._utilities._docs_scope_selection import (
 )
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -54,8 +55,21 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         resolved_root = workspace_root.resolve()
         project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
         enabled = project_state.docs_meta.get("enabled", True)
-        if project_state.project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN) and (
-            enabled if isinstance(enabled, bool) else True
+        is_enabled = enabled if isinstance(enabled, bool) else True
+        discovered = FlextInfraUtilitiesDocsScopeBuildMixin._discover_projects(
+            resolved_root
+        )
+        has_declared_members = bool(
+            FlextInfraUtilitiesPyproject.workspace_member_names(resolved_root)
+        )
+        has_child_projects = any(
+            project.path.resolve() != resolved_root for project in discovered
+        )
+        if (
+            (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            and not has_declared_members
+            and not has_child_projects
+            and is_enabled
         ):
             return (
                 FlextInfraUtilitiesDocsScopeBuildMixin._governed_scope(
@@ -63,12 +77,15 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
                 ),
             )
         return FlextInfraUtilitiesDocsScopeBuildMixin._workspace_scopes(
-            resolved_root, projects, output_dir
+            resolved_root, projects, output_dir, discovered
         )
 
     @staticmethod
     def _workspace_scopes(
-        workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
+        workspace_root: Path,
+        projects: t.StrSequence | None,
+        output_dir: Path | str,
+        discovered: t.SequenceOf[m.Infra.ProjectInfo],
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes for a workspace root plus child projects."""
         scopes: list[m.Infra.DocScope] = [
@@ -80,9 +97,6 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
                 package_name="",
             )
         ]
-        discovered = FlextInfraUtilitiesDocsScopeBuildMixin._discover_projects(
-            workspace_root
-        )
         selected_names = FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_names(
             workspace_root, projects
         )
