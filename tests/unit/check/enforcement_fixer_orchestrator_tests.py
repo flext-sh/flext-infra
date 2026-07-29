@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import os
-import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import ClassVar
@@ -14,6 +13,7 @@ import pytest
 from flext_cli import cli
 from flext_core import r
 from flext_infra import m, p, t, u
+from flext_infra import main as infra_main
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
@@ -381,9 +381,11 @@ class TestsEnforcementFixerOrchestrator:
         tm.that(len(result.previewed), eq=1)
         tm.that(result.failed, eq=())
 
-    @pytest.mark.timeout(60)
     def test_fix_enforcement_dry_run_leaves_worktree_unchanged(
-        self, tmp_path: Path
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """A real CLI dry-run leaves its owned committed repository unchanged."""
         project_dir = tmp_path / "demo-project"
@@ -444,26 +446,22 @@ class TestsEnforcementFixerOrchestrator:
             return stdout
 
         pre_status = git_status()
+        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV, raising=False)
         with tm.scope(env={"GIT_CONFIG_GLOBAL": os.devnull}):
-            result = cli.run_raw(
-                [
-                    sys.executable,
-                    "-m",
-                    "flext_infra",
-                    "check",
-                    "fix-enforcement",
-                    "--workspace",
-                    str(project_dir),
-                    "--rules",
-                    "ENFORCE-079",
-                    "--dry-run",
-                    "--no-check-after",
-                ],
-                cwd=runner_root,
-            ).value
+            exit_code = infra_main([
+                "check",
+                "fix-enforcement",
+                "--workspace",
+                str(project_dir),
+                "--rules",
+                "ENFORCE-079",
+                "--dry-run",
+                "--no-check-after",
+            ])
+        output = capsys.readouterr()
         post_status = git_status()
-        tm.that(result.exit_code, eq=0, msg=result.stderr or result.stdout)
-        tm.that(result.stdout, has="fixed: 1")
-        tm.that(result.stdout, has="breakage=no")
-        tm.that(result.stdout, has="applied=no")
+        tm.that(exit_code, eq=0, msg=output.err or output.out)
+        tm.that(output.out, has="fixed: 1")
+        tm.that(output.out, has="breakage=no")
+        tm.that(output.out, has="applied=no")
         tm.that(pre_status, eq=post_status)

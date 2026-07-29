@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_cli import m as cli_m
 from flext_infra import c
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
@@ -137,7 +135,6 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     tm.that(updated_source, has="from flext_demo import c")
 
 
-@pytest.mark.timeout(60)
 def test_execute_apply_mode_scans_wrapper_surfaces(tmp_path: Path) -> None:
     workspace_root = _build_consolidator_workspace(tmp_path)
     package_consumer_path = (
