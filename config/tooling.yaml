@@ -21,6 +21,8 @@ Infra:
           - .pytest_cache
           - .ruff_cache
           - .venv
+          # Historical evidence is never a live lint surface.
+          - .archive
           - __pycache__
           - "**/__pyrefly_virtual__/**"
           - archive

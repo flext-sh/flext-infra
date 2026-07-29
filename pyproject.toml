@@ -527,6 +527,7 @@ mi_min = "B"
 [tool.ruff]
 exclude = [
   "**/__pyrefly_virtual__/**",
+  ".archive",
   ".git",
   ".mypy_cache",
   ".pytest_cache",
