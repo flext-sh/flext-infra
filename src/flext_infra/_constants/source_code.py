@@ -483,46 +483,6 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: from-import line with optional trailing comment (no anchor)."
 
-    # --- Pytest log parsing patterns ---
-    PYTEST_SLOWEST_HEADER_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ slowest durations =+"
-    )
-    "Regex: pytest 'slowest durations' section header."
-    PYTEST_SECTION_DIVIDER_RE: Final[t.RegexPattern] = re.compile(r"^=+")
-    "Regex: pytest section divider line (``===...``)."
-    PYTEST_WARNINGS_HEADER_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ warnings summary =+"
-    )
-    "Regex: pytest 'warnings summary' section header."
-    PYTEST_DOCS_FOOTER_RE: Final[t.RegexPattern] = re.compile(
-        r"^-- Docs: https://docs.pytest.org/"
-    )
-    "Regex: pytest warnings-section docs footer."
-    PYTEST_FAILED_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"(^FAILED |::.* FAILED( |$))"
-    )
-    "Regex: pytest FAILED status line."
-    PYTEST_ERROR_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"(^ERROR |::.* ERROR( |$))"
-    )
-    "Regex: pytest ERROR status line."
-    PYTEST_SKIPPED_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"(^SKIPPED |::.* SKIPPED( |$))"
-    )
-    "Regex: pytest SKIPPED status line."
-    PYTEST_WARNING_LINE_RE: Final[t.RegexPattern] = re.compile(
-        r"\b[A-Za-z_][A-Za-z0-9_]*Warning\b"
-    )
-    "Regex: concrete Python warning class in pytest output."
-    PYTEST_FAILURES_OR_ERRORS_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ (FAILURES|ERRORS) =+"
-    )
-    "Regex: pytest FAILURES/ERRORS section header."
-    PYTEST_BLOCK_END_RE: Final[t.RegexPattern] = re.compile(
-        r"^=+ (short test summary info|warnings summary|.+ in [0-9.]+s) =+"
-    )
-    "Regex: pytest block-end markers (summary/warnings/timing)."
-
     # mro-r3r8: analyzers cover production; pytest owns executable test validation.
     CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src",)
     "Productive Python root passed positionally to subproject analyzers."

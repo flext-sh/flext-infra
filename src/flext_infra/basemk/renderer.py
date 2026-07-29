@@ -11,7 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -41,6 +41,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def default_config() -> m.Infra.BaseMkConfig:
         """Return default base.mk generation configuration."""
+        make_spec = config.Infra.codegen.make
         return m.Infra.BaseMkConfig(
             project_name=c.Infra.DEFAULT_UNNAMED,
             python_version="3.13",
@@ -53,6 +54,8 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                 c.Infra.MYPY,
                 c.Infra.PYRIGHT,
             ],
+            test_item_timeout_seconds=make_spec.test_item_timeout_seconds,
+            test_session_timeout_seconds=make_spec.test_session_timeout_seconds,
         )
 
     @staticmethod
@@ -118,6 +121,10 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                     timeout_command=c.Infra.TIMEOUT_COMMAND,
                     timeout_kill_after_seconds=c.Infra.TIMEOUT_KILL_AFTER_SECONDS,
+                    test_item_timeout_seconds=active_config.test_item_timeout_seconds,
+                    test_session_timeout_seconds=(
+                        active_config.test_session_timeout_seconds
+                    ),
                 )
                 sections.append(rendered.rstrip("\n"))
             content = "\n\n".join(sections).rstrip("\n") + "\n"

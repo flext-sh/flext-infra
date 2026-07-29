@@ -6,6 +6,7 @@ import os
 import stat
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 from tests import m, p, u
@@ -30,6 +31,8 @@ _MAKE_TEST_ENV_KEYS = (
     "VALIDATE_GATES",
     "PYTEST_ARGS",
     "PYTEST_TARGETS",
+    "TEST_ITEM_TIMEOUT_SECONDS",
+    "TEST_SESSION_TIMEOUT_SECONDS",
     "MATCH",
     "FAIL_FAST",
     "RUFF_ARGS",
@@ -111,7 +114,12 @@ def _write_managed_python_stub(path: Path, log_path: Path) -> None:
 
 
 def _write_pytest_diag_python_stub(
-    project_root: Path, *, payload: str, exit_code: int
+    project_root: Path,
+    *,
+    payload: str,
+    exit_code: int,
+    pytest_exit_code: int = 0,
+    pytest_output: str = "",
 ) -> None:
     venv_bin = project_root / ".venv" / "bin"
     venv_bin.mkdir(parents=True, exist_ok=True)
@@ -123,7 +131,8 @@ def _write_pytest_diag_python_stub(
         "done\n"
         'if [[ "$*" == *"-m pytest"* ]]; then\n'
         '  printf \'<testsuite tests="1" failures="0" errors="0" skipped="0" time="0.1"/>\\n\' > "$junit_file"\n'
-        "  exit 0\n"
+        f"  printf '%s\\n' {pytest_output!r}\n"
+        f"  exit {pytest_exit_code}\n"
         "fi\n"
         'if [[ "$*" == *"-m flext_infra validate pytest-diag"* ]]; then\n'
         "  cat <<'FLEXT_PYTEST_DIAG_COUNTS'\n"
@@ -581,6 +590,108 @@ class TestsFlextInfraBasemkMakeContract:
                 "git diff --name-only --diff-filter=ACMRTUXB HEAD -- '*.py'",
                 "git ls-files --others --exclude-standard -- '*.py'",
             ],
+        )
+
+    def test_rendered_pr_uses_typer_boolean_flags_without_positional_values(
+        self,
+    ) -> None:
+        """Render the external Typer boolean protocol as a flag pair."""
+        rendered = _render_base_mk()
+
+        tm.that(rendered, has="$(if $(filter 1,$(PR_DRAFT)),--draft,--no-draft)")
+        tm.that(rendered, lacks='--draft "$(PR_DRAFT)"')
+
+    def test_rendered_test_watchdogs_derive_from_typed_config(self) -> None:
+        """Bind pytest item and complete-session limits to the generated SSOT."""
+        rendered = _render_base_mk()
+        make_spec = config.Infra.codegen.make
+
+        tm.that(
+            rendered,
+            has=(f"TEST_ITEM_TIMEOUT_SECONDS ?= {make_spec.test_item_timeout_seconds}"),
+        )
+        tm.that(
+            rendered,
+            has=(
+                "TEST_SESSION_TIMEOUT_SECONDS ?= "
+                f"{make_spec.test_session_timeout_seconds}"
+            ),
+        )
+        tm.that(rendered, has='--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)"')
+        tm.that(rendered, has='"$(TEST_SESSION_TIMEOUT_SECONDS)s"')
+
+    def test_make_rejects_item_budget_above_configured_critical_limit(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a requested item budget above the canonical critical limit."""
+        _write_project(tmp_path)
+        make_spec = config.Infra.codegen.make
+
+        result = _run_make(
+            tmp_path,
+            "test",
+            f"TEST_ITEM_TIMEOUT_SECONDS={make_spec.test_item_timeout_seconds + 1}",
+        )
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has=(
+                "TEST_ITEM_TIMEOUT_SECONDS must be between 1 and "
+                f"{make_spec.test_item_timeout_seconds}"
+            ),
+        )
+
+    def test_make_propagates_controlled_item_timeout_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """Propagate the pytest-timeout failure representing an over-budget item."""
+        _write_project(tmp_path)
+        make_spec = config.Infra.codegen.make
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=1\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+            pytest_exit_code=1,
+            pytest_output=(
+                "FAILED controlled::test_slow - Failed: Timeout "
+                f"(>{make_spec.test_item_timeout_seconds}s)"
+            ),
+        )
+
+        result = _run_make(tmp_path, "test", "MATCH=controlled")
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has=f"Timeout (>{make_spec.test_item_timeout_seconds}s)",
+        )
+
+    def test_make_propagates_controlled_session_watchdog_timeout(
+        self, tmp_path: Path
+    ) -> None:
+        """Propagate the watchdog status representing a session over its budget."""
+        _write_project(tmp_path)
+        make_spec = config.Infra.codegen.make
+        _write_pytest_diag_python_stub(
+            tmp_path,
+            payload=("failed_count=0\nerror_count=0\nwarning_count=0\nskipped_count=0"),
+            exit_code=0,
+        )
+        bin_dir = tmp_path / "bin"
+        _write_executable(bin_dir / "timeout", "#!/usr/bin/env bash\nexit 124\n")
+
+        result = _run_make(
+            tmp_path,
+            "test",
+            "MATCH=controlled",
+            env={"PATH": f"{bin_dir}:{os.environ['PATH']}"},
+        )
+
+        tm.that(result.exit_code, ne=0)
+        tm.that(
+            result.stdout + result.stderr,
+            has=f"pytest session exceeded {make_spec.test_session_timeout_seconds}s",
         )
 
     def test_make_check_file_scope_runs_mypy(self, tmp_path: Path) -> None:

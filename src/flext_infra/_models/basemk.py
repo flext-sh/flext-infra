@@ -27,6 +27,12 @@ class FlextInfraModelsBasemk:
         lint_gates: Annotated[
             t.StrSequence, m.Field(description="Enabled quality gates")
         ] = m.Field(default_factory=tuple)
+        test_item_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Maximum wall time for one pytest item")
+        ]
+        test_session_timeout_seconds: Annotated[
+            int, m.Field(gt=0, description="Maximum wall time for one test session")
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsBasemk"]

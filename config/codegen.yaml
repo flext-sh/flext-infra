@@ -79,6 +79,8 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      test_item_timeout_seconds: 10
+      test_session_timeout_seconds: 60
       docs_phases: [generate, fix, audit, build, validate]
       serialization:
         lock_path: .state/flext-infra/make-validation.lock

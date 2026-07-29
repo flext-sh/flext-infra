@@ -6,4 +6,4 @@ pr: ## Manage pull requests for this repository
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)"
+		$(if $(filter 1,$(PR_DRAFT)),--draft,--no-draft)

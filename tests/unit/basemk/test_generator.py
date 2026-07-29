@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra import config, m
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_tests import tm
 
@@ -32,12 +32,15 @@ class TestsFlextInfraBasemkGenerator:
         tm.that(result.value, has="PROJECT_NAME ?=")
 
     def test_generator_generate_with_basemk_config_object(self) -> None:
+        make_spec = config.Infra.codegen.make
         settings = m.Infra.BaseMkConfig(
             project_name="test-proj",
             python_version="3.13",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["mypy"],
+            test_item_timeout_seconds=make_spec.test_item_timeout_seconds,
+            test_session_timeout_seconds=make_spec.test_session_timeout_seconds,
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings=settings)

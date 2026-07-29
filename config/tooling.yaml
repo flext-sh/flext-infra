@@ -507,9 +507,6 @@ Infra:
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          # operator law 2026-07-20: any test over 10s is a grave test defect,
-          # surfaced as an explicit TIMEOUT failure (never accommodated).
-          - --timeout=60
       tomlsort:
         all: true
         in_place: true

@@ -35,6 +35,8 @@ PYTEST_TARGETS ?= $(PROJECT_ROOT)/tests
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_REPORTS_DIR ?= .reports/tests
+TEST_ITEM_TIMEOUT_SECONDS ?= {{ make.test_item_timeout_seconds }}
+TEST_SESSION_TIMEOUT_SECONDS ?= {{ make.test_session_timeout_seconds }}
 WHAT ?=
 
 PROJECT_ROOT := $(shell pwd -P)
@@ -408,6 +410,10 @@ _builtin_test_all: _builtin_require_environment
     "$(PROJECT_FLEXT_INFRA) validate",
     "$(PYTEST_TARGETS)",
     "$(PROJECT_ROOT)/tests",
+    make.test_item_timeout_seconds,
+    make.test_session_timeout_seconds,
+    timeout_command,
+    timeout_kill_after_seconds,
 ) }}
 {% endif %}
 

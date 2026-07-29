@@ -363,6 +363,18 @@ class FlextInfraConfigModels:
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
         ]
+        test_item_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, description="Maximum wall time for one pytest item in seconds"
+            ),
+        ]
+        test_session_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0, description="Maximum wall time for one complete test session"
+            ),
+        ]
         serialization: Annotated[
             FlextInfraConfigModels.MakeSerializationSpec,
             m.Field(description="Per-checkout Make validation serialization"),
@@ -389,6 +401,17 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_test_timeouts(self) -> Self:
+            """Keep the per-item watchdog strictly within the session budget."""
+            if self.test_item_timeout_seconds >= self.test_session_timeout_seconds:
+                msg = (
+                    "make test_item_timeout_seconds must be less than "
+                    "test_session_timeout_seconds"
+                )
+                raise ValueError(msg)
+            return self
 
         @u.model_validator(mode="after")
         def _validate_serialized_verbs(self) -> Self:

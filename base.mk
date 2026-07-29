@@ -43,6 +43,8 @@ VERBOSE ?=
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORTS_DIR ?= .reports/tests
+TEST_ITEM_TIMEOUT_SECONDS ?= 10
+TEST_SESSION_TIMEOUT_SECONDS ?= 60
 
 # === WORKSPACE/STANDALONE DETECTION ===
 BASE_MK_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
@@ -579,6 +581,27 @@ test: ## Run pytest only
 _test_impl:
 
 	$(Q)_files="$(strip $(FILES))"; \
+	case "$(TEST_ITEM_TIMEOUT_SECONDS)" in ""|*[!0-9]*) \
+		printf 'ERROR: TEST_ITEM_TIMEOUT_SECONDS must be a positive integer\n' >&2; exit 2 ;; \
+	esac; \
+	case "$(TEST_SESSION_TIMEOUT_SECONDS)" in ""|*[!0-9]*) \
+		printf 'ERROR: TEST_SESSION_TIMEOUT_SECONDS must be a positive integer\n' >&2; exit 2 ;; \
+	esac; \
+	if [ "$(TEST_ITEM_TIMEOUT_SECONDS)" -le 0 ] || \
+		[ "$(TEST_ITEM_TIMEOUT_SECONDS)" -gt 10 ]; then \
+		printf 'ERROR: TEST_ITEM_TIMEOUT_SECONDS must be between 1 and 10\n' >&2; exit 2; \
+	fi; \
+	if [ "$(TEST_SESSION_TIMEOUT_SECONDS)" -le 0 ] || \
+		[ "$(TEST_SESSION_TIMEOUT_SECONDS)" -gt 60 ]; then \
+		printf 'ERROR: TEST_SESSION_TIMEOUT_SECONDS must be between 1 and 60\n' >&2; exit 2; \
+	fi; \
+	if [ "$(TEST_ITEM_TIMEOUT_SECONDS)" -ge "$(TEST_SESSION_TIMEOUT_SECONDS)" ]; then \
+		printf 'ERROR: TEST_ITEM_TIMEOUT_SECONDS must be less than TEST_SESSION_TIMEOUT_SECONDS\n' >&2; exit 2; \
+	fi; \
+	command -v timeout >/dev/null 2>&1 || { \
+		printf 'ERROR: required executable not found: timeout\n' >&2; exit 2; \
+	}; \
+	session_started_epoch=$$(date +%s); \
 	if [ -n "$(FILE)" ]; then \
 		case "$(FILE)" in /*|..|../*|*/../*|*/..) \
 			printf 'ERROR: FILE must be a repository-relative path\n' >&2; exit 2 ;; \
@@ -620,16 +643,26 @@ _test_impl:
 	fi; \
 	printf '%s\n' '$(VENV_PYTHON) -m pytest' \
 		"$$_pytest_run $(PYTEST_REPORT_ARGS) -p no:metadata --junitxml=$$junit_file" \
+		"--timeout=$(TEST_ITEM_TIMEOUT_SECONDS) --timeout-method=signal" \
 		"$$_coverage_args $$_all_pytest_args" > "$$command_file"; \
-	$(VENV_PYTHON) -m pytest $$_pytest_run \
+	timeout --signal=TERM \
+		--kill-after=5s \
+		"$(TEST_SESSION_TIMEOUT_SECONDS)s" \
+		$(VENV_PYTHON) -m pytest $$_pytest_run \
 		$(PYTEST_REPORT_ARGS) \
 		$(if $(filter 1,$(DIAG)),$(PYTEST_DIAG_ARGS),) \
 		-p no:metadata \
 		--junitxml="$$junit_file" \
+		--timeout="$(TEST_ITEM_TIMEOUT_SECONDS)" \
+		--timeout-method=signal \
 		$$_coverage_args \
 		$(if $(filter 1,$(DIAG)),-vv,-q) $$_all_pytest_args > "$$log_file" 2>&1; \
 	rc=$$?; \
 	cat "$$log_file"; \
+	if [ "$$rc" -eq 124 ]; then \
+		printf 'ERROR: pytest session exceeded %ss\n' \
+			"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+	fi; \
 	if [ "$$_coverage_required" -eq 1 ] && [ ! -s "$$coverage_file" ]; then \
 		printf 'ERROR: coverage report was not generated or is empty: %s\n' \
 			"$$coverage_file" >&2; \
@@ -653,7 +686,16 @@ _test_impl:
 			"$$_coverage_value" > "$$summary_file"; \
 	fi; \
 	counts_file="$$report_dir/counts.env"; \
-	if $(PROJECT_INFRA_VALIDATE) pytest-diag \
+	elapsed_seconds=$$(( $$(date +%s) - session_started_epoch )); \
+	remaining_seconds=$$(( $(TEST_SESSION_TIMEOUT_SECONDS) - elapsed_seconds )); \
+	if [ "$$remaining_seconds" -le 0 ]; then \
+		printf 'ERROR: test session exhausted %ss before diagnostic extraction\n' \
+			"$(TEST_SESSION_TIMEOUT_SECONDS)" >&2; \
+		exit 124; \
+	fi; \
+	if timeout --signal=TERM \
+		--kill-after=5s "$${remaining_seconds}s" \
+		$(PROJECT_INFRA_VALIDATE) pytest-diag \
 		--junit "$$junit_file" --log "$$log_file" \
 		--failed "$$failed_file" --errors "$$errors_file" \
 		--warnings "$$warnings_file" --slowest "$$slowest_file" \
@@ -813,7 +855,7 @@ pr: ## Manage pull requests for this repository
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)"
+		$(if $(filter 1,$(PR_DRAFT)),--draft,--no-draft)
 
 clean: ## Clean artifacts
 	$(Q)rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage* \

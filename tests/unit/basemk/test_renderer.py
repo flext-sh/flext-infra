@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, main as infra_main
+from flext_infra import config, m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_tests import tm
@@ -82,12 +82,15 @@ class TestsFlextInfraBasemkRenderer:
 
     def test_render_all_with_config_override(self) -> None:
         """Render validated project-specific settings."""
+        make_spec = config.Infra.codegen.make
         settings = m.Infra.BaseMkConfig(
             project_name="sample-project",
             python_version="3.13",
             source_dir="src",
             tests_dir="tests",
             lint_gates=["lint", "mypy"],
+            test_item_timeout_seconds=make_spec.test_item_timeout_seconds,
+            test_session_timeout_seconds=make_spec.test_session_timeout_seconds,
         )
 
         result = FlextInfraBaseMkGenerator().generate_basemk(settings)

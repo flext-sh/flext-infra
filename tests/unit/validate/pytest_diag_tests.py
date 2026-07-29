@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import sys
+import time
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
 from flext_tests import tm
-from tests import m
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,6 +39,38 @@ def _extractor(
 
 
 class TestPytestDiagExtractorBehavior:
+    def test_fresh_process_fast_path_stays_within_item_budget(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep generated Make diagnostics below the critical item threshold."""
+        junit = tmp_path / "junit.xml"
+        log = tmp_path / "pytest.log"
+        junit.write_text(
+            '<testsuite tests="1"><testcase classname="T" name="ok"/></testsuite>',
+            encoding="utf-8",
+        )
+        log.write_text("", encoding="utf-8")
+
+        started = time.perf_counter()
+        result = tm.ok(
+            u.Cli.run_raw([
+                sys.executable,
+                "-m",
+                "flext_infra",
+                "validate",
+                "pytest-diag",
+                "--junit",
+                str(junit),
+                "--log",
+                str(log),
+            ])
+        )
+        elapsed = time.perf_counter() - started
+
+        tm.that(result.exit_code, eq=0)
+        tm.that(result.stdout, has="failed_count=0")
+        tm.that(elapsed < config.Infra.codegen.make.test_item_timeout_seconds, eq=True)
+
     def test_extract_valid_junit_xml(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
         junit.write_text(
