@@ -82,6 +82,28 @@ class TestRealGateRunners:
 
         tm.that(not result.result.passed, eq=True)
 
+    def test_ruff_format_fix_stays_within_owned_source_dirs(
+        self, tmp_path: Path
+    ) -> None:
+        project_dir = u.Tests.mk_project(tmp_path, "format-scope", with_src=True)
+        source = project_dir / "src" / "demo.py"
+        source.write_text("value=[1,2,3]\n", encoding="utf-8")
+        agents = project_dir / ".agents"
+        agents.mkdir()
+        (agents / "INSTRUCTION_SURFACE.md").symlink_to(
+            tmp_path / "external-owner" / "INSTRUCTION_SURFACE.md"
+        )
+
+        result = FlextInfraRuffFormatGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            ),
+        )
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
+
     def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "pyright-project", with_src=True)
         (project_dir / "src" / "demo.py").write_text(

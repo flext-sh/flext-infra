@@ -508,11 +508,18 @@ Infra:
           - "stress: stress tests"
           - "resilience: resilience tests"
         standard-addopts:
+          - --benchmark-disable
           - --strict-markers
           - --markdown-docs
           - --durations=10
-          - --timeout=10
-          - --session-timeout=60
+          - -n=4
+          - --dist=worksteal
+          # mro-wkii.17.37.1: one typed suite budget replaces test-local
+          # timeout overrides and retains measured coverage-run slack.
+          - --timeout=30
+          - --session-timeout=300
+        profile-sort: cumulative
+        profile-limit: 50
       tomlsort:
         all: true
         in_place: true

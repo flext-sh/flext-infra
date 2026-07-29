@@ -45,6 +45,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         @property
         def root(self) -> Path: ...
 
+        tomlsort_sort_first: t.StrSequence
+
         def _ensure_build_system_payload(
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
@@ -53,7 +55,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             self, payload: t.MutableJsonMapping
         ) -> t.StrSequence: ...
 
-        def _reorder_document_inplace(self, doc: t.Cli.TomlDocument) -> None: ...
+        def _reorder_document_inplace(
+            self, doc: t.Cli.TomlDocument, *, preferred_first: t.StrSequence
+        ) -> None: ...
 
     def _classify_project(
         self, project_dir: Path, *, payload: t.JsonMapping | None = None
@@ -132,6 +136,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -182,6 +187,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                analysis_exclusions=analysis_exclusions,
             )
         )
         changes.extend(
@@ -211,7 +217,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
-                payload, path=path
+                payload, path=path, analysis_exclusions=analysis_exclusions
             )
         )
         changes.extend(
@@ -236,7 +242,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
-        self._reorder_document_inplace(doc)
+        self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
         if not skip_comments:

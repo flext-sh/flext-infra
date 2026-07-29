@@ -20,6 +20,7 @@ Infra:
       ast_grep_version: "0.45.0"
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
+      beads_version: latest
 
     github_actions:
       checkout:
@@ -70,6 +71,16 @@ Infra:
         setup_scope: self
         execution_scope: self
         discovery_scope: none
+
+    # Automatic default: repositories declaring mutable `members` in their typed
+    # workspace manifest are workspace roots; every member/leaf is standalone
+    # when conformed directly. `content_only` repositories remain immutable and
+    # excluded from FLEXT analysis/mutation even when physically stored as Git
+    # submodules. Add entries only for legacy exceptions.
+    project_overlays:
+      # Legacy tracker predates the repository-name namespace rule.
+      flext:
+        beads_namespace: mro
 
     make:
       selector: WHAT

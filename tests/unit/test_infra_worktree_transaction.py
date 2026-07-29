@@ -401,7 +401,6 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": false}\n')
         tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
 
-    @pytest.mark.timeout(60)
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
         self, tmp_path: Path
     ) -> None:
@@ -421,7 +420,7 @@ class TestsFlextInfraWorktreeTransaction:
                     "--apply",
                 ),
                 apply_patch=False,
-                timeout_seconds=120,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             )
         )
         report = tm.ok(transaction_result)
@@ -438,6 +437,26 @@ class TestsFlextInfraWorktreeTransaction:
 
 class TestsFlextInfraWorktreeTransactionLint:
     """Contract for fail-closed differential transaction lint evidence."""
+
+    def test_transaction_lint_binds_uv_overlay_tools_from_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Resolve tools from uv's overlay PATH, not the interpreter directory."""
+        overlay_bin = tmp_path / "overlay" / "bin"
+        overlay_bin.mkdir(parents=True)
+        for executable_name in {
+            command[0] for _tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS
+        }:
+            executable = overlay_bin / executable_name
+            executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            executable.chmod(0o755)
+        monkeypatch.setenv("PATH", str(overlay_bin))
+
+        commands = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
+
+        tm.that(
+            {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}
+        )
 
     def test_transaction_lint_reports_counts_and_actionable_locations(self) -> None:
         """Keep aggregate regression guards and file-level repair evidence."""

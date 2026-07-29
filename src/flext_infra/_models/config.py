@@ -92,6 +92,10 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        beads_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="mise selector for the canonical Beads CLI"),
+        ]
 
         @m.computed_field()
         @property
@@ -151,6 +155,13 @@ class FlextInfraConfigModels:
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
+        ]
+
+    class MiseRenderSpec(ToolchainSpec):
+        """Typed toolchain projection with repository-scoped Beads ownership."""
+
+        beads_enabled: Annotated[
+            bool, m.Field(description="Provision Beads for the selected repository")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -849,6 +860,21 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -988,6 +1014,21 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1290,6 +1331,18 @@ class FlextInfraConfigModels:
             m.Field(description="VS Code map keys union-merged over project settings"),
         ]
 
+    class ProjectConformOverlay(_ConfigContract):
+        """Explicit exception to automatic project topology and Beads naming."""
+
+        profile: Annotated[
+            FlextInfraConstantsCodegenProject.MakeProfile | None,
+            m.Field(description="Legacy Make profile override"),
+        ] = None
+        beads_namespace: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Legacy Beads issue-prefix override"),
+        ] = None
+
     class CodegenConfigSpec(_ConfigContract):
         """Fully modeled content of ``config/codegen.yaml``."""
 
@@ -1313,6 +1366,16 @@ class FlextInfraConfigModels:
         profiles: Annotated[
             tuple[FlextInfraConfigModels.ProfileSpec, ...],
             m.Field(description="Ordered Make profiles"),
+        ]
+        project_overlays: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.ProjectConformOverlay],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Legacy exceptions to automatic Git topology and project-named "
+                    "Beads namespaces"
+                ),
+            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -1403,10 +1466,6 @@ class FlextInfraConfigModels:
                 for section in scaffold_sections
                 for pattern in section.patterns
             }
-            derived: t.MutableSequenceOf[str] = []
-            for pattern in self.gitignore_artifact_patterns:
-                if pattern not in governed and pattern not in derived:
-                    derived.append(pattern)
             managed_allowed: t.MutableSequenceOf[str] = []
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
@@ -1428,6 +1487,10 @@ class FlextInfraConfigModels:
                     if candidate not in declared_patterns
                     and candidate not in managed_allowed
                 )
+            derived: t.MutableSequenceOf[str] = []
+            for pattern in self.gitignore_artifact_patterns:
+                if pattern not in governed and pattern not in derived:
+                    derived.append(pattern)
             sections: t.MutableSequenceOf[
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
             ] = []
