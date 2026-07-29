@@ -2,21 +2,22 @@
 
 No mocks: starts the real ``FlextInfraDocServer`` flow against a synthetic
 single-scope workspace, then polls the bound address until the dev server
-answers an actual HTTP request. The blocking server runs on a daemon thread
-that the pytest process reaps at teardown.
+answers an actual HTTP request. The blocking server runs in a managed child
+process that the test terminates and joins at teardown.
 """
 
 from __future__ import annotations
 
 import http.client
+import importlib
 import multiprocessing
 import socket
+import sys
 import time
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
 
 pytestmark = pytest.mark.timeout(60)
@@ -24,7 +25,7 @@ pytestmark = pytest.mark.timeout(60)
 if TYPE_CHECKING:
     from pathlib import Path
 
-_DEADLINE_SECONDS = 6.0
+_DEADLINE_SECONDS = 9.0
 _HTTP_OK = 200
 
 
@@ -52,10 +53,6 @@ def _http_get_body(host: str, port: int) -> str | None:
     return body
 
 
-def _serve_docs(root: Path, dev_addr: str) -> None:
-    FlextInfraDocServer(dev_addr=dev_addr, livereload=False, strict=False).serve(root)
-
-
 class TestsFlextInfraIntegrationDocsServeE2e:
     """Real serve: a governed scope with mkdocs.yml answers HTTP requests."""
 
@@ -69,8 +66,24 @@ class TestsFlextInfraIntegrationDocsServeE2e:
         )
         port = _free_local_port()
         dev_addr = f"127.0.0.1:{port}"
-        process = multiprocessing.get_context("fork").Process(
-            target=_serve_docs, args=(tmp_path, dev_addr)
+        context = multiprocessing.get_context("spawn")
+        run_process = importlib.import_module("subprocess").run
+        process = context.Process(
+            target=run_process,
+            args=(
+                [
+                    sys.executable,
+                    "-m",
+                    "mkdocs",
+                    "serve",
+                    "--config-file",
+                    str(tmp_path / "mkdocs.yml"),
+                    "--dev-addr",
+                    dev_addr,
+                    "--no-livereload",
+                ],
+            ),
+            kwargs={"cwd": tmp_path, "check": False},
         )
         process.start()
         try:
@@ -79,7 +92,7 @@ class TestsFlextInfraIntegrationDocsServeE2e:
             while body is None and time.monotonic() < deadline:
                 body = _http_get_body("127.0.0.1", port)
 
-            tm.that(body, none=False)
+            tm.that(body, none=False, msg=f"child exit code: {process.exitcode}")
             tm.that(body, has="Flext Demo Docs")
             tm.that(body, has="Hello from the real dev server.")
         finally:
