@@ -199,12 +199,20 @@ Infra:
       - { name: .turbo }
       - { name: .venv, source_scan_ignore: true }
       - { name: .venv.* }
+      # mro-pd8f absorption: nested agent worktrees are duplicate repositories,
+      # never production scan input (same law as the .claude entry above).
+      - { name: .worktrees, source_scan_ignore: true }
       - { name: "*.egg-info", vscode_exclude: false }
       - { name: build, source_scan_ignore: true }
+      # mro-pd8f absorption: tracked probe fixtures already declared skip-dirs in
+      # _constants/source_code.py PYPROJECT_SKIP_DIRS; never production scan input.
+      - { name: context_test, source_scan_ignore: true }
       - { name: dist, source_scan_ignore: true }
       - { name: node_modules, source_scan_ignore: true }
+      - { name: rope_ws, source_scan_ignore: true }
       - { name: site, watch_exclude: false }
       - { name: target }
+      - { name: tmp_flow_test, source_scan_ignore: true }
       - {
           name: .pyrefly_cache,
           vscode_exclude: false,
