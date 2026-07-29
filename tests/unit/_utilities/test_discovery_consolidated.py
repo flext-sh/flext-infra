@@ -389,8 +389,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
 
     def test_discover_projects_returns_project_info(self, tmp_path: Path) -> None:
         (tmp_path / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='workspace'\n"
-            "[tool.flext.workspace]\nmembers=['alpha']\n",
+            "[project]\nname='workspace'\n[tool.flext.workspace]\nmembers=['alpha']\n",
             encoding="utf-8",
         )
         project = tmp_path / "alpha"
