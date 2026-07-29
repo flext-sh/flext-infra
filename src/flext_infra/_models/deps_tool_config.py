@@ -108,7 +108,25 @@ class FlextInfraModelsDepsToolSettings(
             t.StrSequence,
             m.Field(
                 alias="standard-addopts",
-                description="Standard pytest addopts enforced by modernizer.",
+                description="Non-budget pytest addopts enforced by modernizer.",
+            ),
+        ]
+        test_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="test-timeout-seconds",
+                gt=0,
+                le=10,
+                description="Maximum permitted duration for one pytest test item.",
+            ),
+        ]
+        session_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="session-timeout-seconds",
+                gt=0,
+                le=60,
+                description="Maximum permitted duration for one pytest session.",
             ),
         ]
         profile_sort: Annotated[

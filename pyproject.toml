@@ -409,9 +409,9 @@ addopts = [
   "--dist=worksteal",
   "--durations=10",
   "--markdown-docs",
-  "--session-timeout=300",
+  "--session-timeout=60",
   "--strict-markers",
-  "--timeout=30",
+  "--timeout=10",
   "-n=4",
 ]
 enable_assertion_pass_hook = true

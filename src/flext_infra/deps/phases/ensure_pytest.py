@@ -38,7 +38,11 @@ class FlextInfraEnsurePytestConfigPhase:
             )
             .list(
                 c.Infra.ADDOPTS,
-                pytest.standard_addopts,
+                (
+                    *pytest.standard_addopts,
+                    f"--timeout={pytest.test_timeout_seconds}",
+                    f"--session-timeout={pytest.session_timeout_seconds}",
+                ),
                 # mro-pulj (codex): replace stale coverage, collection, and bypass flags.
                 strategy=c.Infra.TomlMergeMode.REPLACE,
             )

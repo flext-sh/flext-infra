@@ -436,4 +436,5 @@ class TestsCodegenMakeEnvironment:
         )[0]
         tm.that(cprofile_recipe, has="validate cprofile-run")
         tm.that(cprofile_recipe, has='--timeout-seconds "$(CPROFILE_TIMEOUT_SECONDS)"')
+        tm.that(cprofile_recipe, has='cat "$(CPROFILE_REPORT_PATH)"')
         tm.that(cprofile_recipe, lacks="timeout --")

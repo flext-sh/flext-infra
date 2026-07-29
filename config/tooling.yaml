@@ -514,10 +514,11 @@ Infra:
           - --durations=10
           - -n=4
           - --dist=worksteal
-          # mro-wkii.17.37.1: one typed suite budget replaces test-local
-          # timeout overrides and retains measured coverage-run slack.
-          - --timeout=30
-          - --session-timeout=300
+        # Test budgets are typed policy, not opaque pytest flag strings. Every
+        # case is interrupted at ten seconds and the whole session at one
+        # minute; consumers derive the plugin flags from these values.
+        test-timeout-seconds: 10
+        session-timeout-seconds: 60
         profile-sort: cumulative
         profile-limit: 50
       tomlsort:

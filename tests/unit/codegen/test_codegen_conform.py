@@ -385,9 +385,15 @@ class TestCodegenConform:
         rendered_tooling = tomllib.loads(first_pyproject.rendered)["tool"]
         report = rendered_tooling["coverage"]["report"]
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
+        pytest_policy = config.Infra.tooling.tools.pytest
+        expected_addopts = {
+            *pytest_policy.standard_addopts,
+            f"--timeout={pytest_policy.test_timeout_seconds}",
+            f"--session-timeout={pytest_policy.session_timeout_seconds}",
+        }
 
         tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
-        tm.that(addopts, eq=set(config.Infra.tooling.tools.pytest.standard_addopts))
+        tm.that(addopts, eq=expected_addopts)
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,

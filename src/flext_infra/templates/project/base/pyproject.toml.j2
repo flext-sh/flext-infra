@@ -269,6 +269,8 @@ addopts = [
 {% for item in tooling.tools.pytest.standard_addopts %}
   {{ item | tojson }},
 {% endfor %}
+  {{ ("--timeout=" ~ tooling.tools.pytest.test_timeout_seconds) | tojson }},
+  {{ ("--session-timeout=" ~ tooling.tools.pytest.session_timeout_seconds) | tojson }},
 ]
 {# mro-wkii.17 (codex): deterministic tracked-root collection, warning fail-closed. #}
 filterwarnings = [

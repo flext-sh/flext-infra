@@ -437,6 +437,7 @@ _builtin_run_cprofile: _builtin_require_environment
 		--sort "$(CPROFILE_SORT)" \
 		--limit "$(CPROFILE_MAX_ROWS)" \
 		--timeout-seconds "$(CPROFILE_TIMEOUT_SECONDS)"
+	@cat "$(CPROFILE_REPORT_PATH)"
 
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
