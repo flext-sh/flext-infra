@@ -274,8 +274,13 @@ class TestsCodegenArtifactSsot:
         derived = [section.name for section in codegen.gitignore_sections]
 
         tm.that(derived[: len(declared)], eq=declared)
+        trailing = derived[len(declared) :]
+        tm.that(len(trailing), eq=len(set(trailing)))
         tm.that(
-            derived[len(declared) :] in ([], [c.Infra.GITIGNORE_DERIVED_SECTION_NAME]),
+            all(
+                section.patterns
+                for section in codegen.gitignore_sections[len(declared) :]
+            ),
             eq=True,
         )
 
