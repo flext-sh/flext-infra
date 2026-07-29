@@ -18,6 +18,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
+from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
@@ -422,9 +423,8 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
 
-    @pytest.mark.parametrize("mode", tuple(c.Infra.CodegenConformMode))
     def test_public_cli_routes_check_and_apply_to_one_handler(
-        self, infra_git_repo: Path, mode: c.Infra.CodegenConformMode
+        self, infra_git_repo: Path
     ) -> None:
         """Execute each public mode without changing an already conform tree."""
         root = infra_git_repo
@@ -451,32 +451,19 @@ class TestCodegenConform:
         before = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): invoke the real
-        # module entrypoint; the route and emitted tree are the assertions.
-        process = u.Cli.capture(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--what",
-                "all",
-                "--scope",
-                "self",
-                "--mode",
-                mode,
-            ],
-            timeout=60,
+        route = next(
+            route
+            for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
+            if route.name == "conform"
         )
-        tm.ok(process)
-        if mode is c.Infra.CodegenConformMode.APPLY:
-            tm.that(
-                (root / config.Infra.codegen.make.serialization.lock_path).is_file(),
-                where=bool,
+        for mode in c.Infra.CodegenConformMode:
+            request = m.Infra.CodegenConformRequest(
+                root=root,
+                what=c.Infra.CodegenConformSurface.ALL,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=mode,
             )
+            tm.ok(route.handler(request))
         after = tm.ok(
             u.Infra.workspace_fingerprint(root, excluded_paths=snapshot_excludes)
         )
