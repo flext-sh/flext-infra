@@ -6,7 +6,8 @@ from pathlib import Path
 
 from flext_tests import tm
 
-from flext_infra import config, u
+from flext_infra import c, config, u
+from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from tests import u as test_u
 
 
@@ -227,6 +228,76 @@ class TestsMakeTestSelector:
         tm.that(arguments, has=selected)
         tm.that(str(tmp_path / "tests") not in arguments, where=bool)
 
+    def test_legitimate_skips_remain_reported_without_failing_make(
+        self, tmp_path: Path
+    ) -> None:
+        """A platform skip is diagnostic evidence, not a failed test run."""
+        project_root = tmp_path / "skip-project"
+        tm.ok(
+            FlextInfraCodegenProjectNew(
+                name="skip-project",
+                kind=c.Infra.ProjectKind.EXTERNAL,
+                output_root=project_root,
+                provider="flext-sh",
+                license="MIT",
+                author_name="FLEXT Team",
+                author_email="team@flext.dev",
+                upstream="flext_cli",
+                year=2026,
+                apply_changes=True,
+            ).execute()
+        )
+        test_u.Tests.write_executable(
+            project_root / ".venv" / "bin" / "python",
+            (
+                "#!/bin/sh\n"
+                "verb=''\n"
+                "mode=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  if [ "$argument" = "validate" ]; then mode="validate"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then\n'
+                '  exec make --no-print-directory "_serialized_${verb}"\n'
+                "fi\n"
+                'if [ "$mode" = "validate" ]; then\n'
+                "  printf '%s\\n' failed_count=0 error_count=0 "
+                "warning_count=0 skipped_count=1\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 2\n"
+            ),
+        )
+        uv = project_root / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+        selected = project_root / "tests" / "unit" / "platform_test.py"
+        selected.parent.mkdir(parents=True)
+        selected.write_text("", encoding="utf-8")
+
+        executed = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "test",
+                    f"PYTEST_TARGETS={selected.relative_to(project_root)}",
+                    f"UV={uv}",
+                ],
+                cwd=project_root,
+            )
+        )
+
+        tm.that(
+            executed.exit_code,
+            eq=0,
+            msg=f"stdout:\n{executed.stdout}\nstderr:\n{executed.stderr}",
+        )
+        latest = project_root / ".reports" / "tests" / "latest"
+        tm.that(
+            (latest / "counts.env").read_text(encoding="utf-8"), has="skipped_count=1"
+        )
+
     def test_generated_test_recipe_forwards_pytest_args(self) -> None:
         """Forward both supported pytest selectors through the local recipe.
 
@@ -248,7 +319,7 @@ class TestsMakeTestSelector:
         tm.that(template, has='"$(PYTEST_TARGETS)"')
 
     def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Codegen and base.mk generation remain explicit canonical operations."""
+        """Conform and base.mk generation remain explicit canonical operations."""
         template = _makefile_template().read_text(encoding="utf-8")
         repository = next(
             repository
@@ -257,6 +328,10 @@ class TestsMakeTestSelector:
         )
         extra_verbs = {verb.name: verb.default_what for verb in repository.extra_verbs}
 
-        tm.that(template, has="_builtin_codegen_apply")
+        public_verbs = {verb.name for verb in config.Infra.codegen.make.verbs}
+        tm.that("conform" in public_verbs, where=bool)
+        tm.that("codegen" not in public_verbs, where=bool)
+        tm.that(template, has="_builtin_conform_apply")
+        tm.that(template, lacks="_builtin_codegen_apply")
         tm.that(extra_verbs, eq={"basemk": "generate"})
         tm.that(template, lacks="_builtin_build_gen")

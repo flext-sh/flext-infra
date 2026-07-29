@@ -105,7 +105,7 @@
 	fi; \
 	. "$$counts_file"; \
 	if [ "$${failed_count:-0}" -gt 0 ] || [ "$${error_count:-0}" -gt 0 ] || \
-		[ "$${warning_count:-0}" -gt 0 ] || [ "$${skipped_count:-0}" -gt 0 ]; then \
+		[ "$${warning_count:-0}" -gt 0 ]; then \
 		if [ "$$rc" -eq 0 ]; then rc=1; fi; \
 	fi; \
 	if [ "$(DIAG)" = "1" ]; then \
