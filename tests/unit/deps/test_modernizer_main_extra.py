@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config, m
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_tests import tm
 from tests import c, u
@@ -16,6 +17,58 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
+
+    @pytest.mark.parametrize(
+        "exclusion",
+        config.Infra.codegen.uv_exclude_dependencies,
+        ids=tuple(
+            exclusion.project
+            for exclusion in config.Infra.codegen.uv_exclude_dependencies
+        ),
+    )
+    def test_apply_restores_config_owned_uv_dependency_exclusions(
+        self,
+        tmp_path: Path,
+        exclusion: m.Infra.UvScopedDependencyExclusionSpec,
+    ) -> None:
+        """Restore every typed uv exclusion and converge in one modernizer pass."""
+        pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
+        pyproject.write_text(
+            (
+                "[project]\n"
+                f'name = "{exclusion.project}"\n'
+                'version = "0.12.0-dev"\n'
+            ),
+            encoding="utf-8",
+        )
+        expected = exclusion.model_dump(mode="json", exclude_none=True)
+        apply_exit = FlextInfraPyprojectModernizer(
+            workspace_root=tmp_path,
+            apply_changes=True,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+        rendered = u.Cli.toml_mapping_from_text(
+            pyproject.read_text(encoding="utf-8")
+        )
+        tm.that(rendered, none=False)
+        if rendered is None:
+            pytest.fail("modernized pyproject must remain valid TOML")
+        uv = u.Cli.toml_mapping_path(rendered, (c.Infra.TOOL, "uv"))
+        tm.that(uv, none=False)
+        if uv is None:
+            pytest.fail("typed exclusion policy must create [tool.uv]")
+        actual = u.Cli.json_as_sequence(uv.get("exclude-dependencies"))
+        audit_exit = FlextInfraPyprojectModernizer(
+            workspace_root=tmp_path,
+            audit=True,
+            skip_comments=True,
+            skip_check=True,
+        ).run()
+
+        tm.that(apply_exit, eq=0)
+        tm.that(actual, eq=[expected])
+        tm.that(audit_exit, eq=0)
 
     @pytest.mark.parametrize(
         ("content", "expected"),

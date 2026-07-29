@@ -580,16 +580,11 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
-        exclude_payload = list(
-            t.Cli.JSON_LIST_ADAPTER.validate_python([
-                item.model_dump(mode="json", exclude_none=True)
-                for item in exclude_dependencies
-            ])
+        cls.sync_uv_dependency_exclusions(
+            uv,
+            exclude_dependencies=exclude_dependencies,
+            enabled=owns_uv_root_policy,
         )
-        if owns_uv_root_policy and exclude_payload:
-            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         if workspace_root:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
@@ -626,6 +621,30 @@ class FlextInfraUtilitiesPyprojectConform:
         if not workspace_root and not tuple(uv):
             u.Cli.toml_remove_key_if_present(tool, "uv")
         return r[bool].ok(True)
+
+    @staticmethod
+    def sync_uv_dependency_exclusions(
+        uv: t.Cli.TomlTable,
+        *,
+        exclude_dependencies: t.SequenceOf[p.Model] = (),
+        enabled: bool = True,
+    ) -> bool:
+        """Synchronize uv's scoped dependency exclusions from typed policy."""
+        exclude_payload = list(
+            t.Cli.JSON_LIST_ADAPTER.validate_python([
+                item.model_dump(mode="json", exclude_none=True)
+                for item in exclude_dependencies
+            ])
+        )
+        existing = u.Cli.toml_value(uv, "exclude-dependencies")
+        expected: t.JsonValue = exclude_payload if enabled and exclude_payload else None
+        if existing == expected:
+            return False
+        if expected is None:
+            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+        else:
+            u.Cli.toml_sync_value(uv, "exclude-dependencies", expected)
+        return True
 
     @classmethod
     def _resolved_root_sources(

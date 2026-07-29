@@ -203,19 +203,17 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        ("profile", "local_infra"),
+        "profile",
         [
-            (c.Infra.MakeProfile.STANDALONE, False),
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, True),
+            c.Infra.MakeProfile.STANDALONE,
+            c.Infra.MakeProfile.WORKSPACE_ROOT,
         ],
     )
-    def test_setup_bootstraps_configured_engine_before_project_environment(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool
+    def test_setup_syncs_lock_before_conform_and_reconciles_afterward(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Setup conforms stale metadata before project-owned uv reads it."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, profile, local_infra=local_infra
-        )
+        """Provision transaction tools before conform, then sync generated metadata."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -224,14 +222,16 @@ class TestsCodegenMakeEnvironment:
         hostile_uv.chmod(0o755)
         provisioned_bin = tmp_path / "provisioned" / "bin"
         provisioned_bin.mkdir(parents=True)
-        uv_log = tmp_path / "uv.log"
+        setup_log = tmp_path / "setup.log"
         provisioned_uv = provisioned_bin / "uv"
         provisioned_uv.write_text(
             "#!/bin/sh\n"
-            f"printf '%s\\n' \"$*\" >> '{uv_log}'\n"
+            f"printf 'uv %s\\n' \"$*\" >> '{setup_log}'\n"
             'if [ "$1" = "venv" ]; then\n'
             '  mkdir -p "$3/bin"\n'
-            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
+            "  printf '#!/bin/sh\\n"
+            f'printf "python %s\\\\n" "$*" >> "{setup_log}"\\n'
+            "exit 0\\n' > \"$3/bin/python\"\n"
             '  chmod +x "$3/bin/python"\n'
             "fi\n"
             "exit 0\n",
@@ -257,25 +257,18 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has=["run --no-project", "codegen conform"])
-        if local_infra:
-            tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
-            tm.that(commands[0], lacks="git+")
-        else:
-            infra_repository = next(
-                item
-                for item in config.Infra.codegen.repositories
-                if item.distribution == config.Infra.name
-            )
-            tm.that(
-                commands[0],
-                has=(
-                    f"--with {infra_repository.distribution} @ "
-                    f"git+{infra_repository.url}@{infra_repository.branch}"
-                ),
-            )
-        tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
+        commands = setup_log.read_text(encoding="utf-8").splitlines()
+        tm.that(commands, length=4)
+        tm.that(commands[0], has="uv venv --clear")
+        tm.that(commands[1], has="uv sync --project")
+        tm.that(
+            commands[2],
+            has=(
+                "python -m flext_infra "
+                f"{c.Infra.CLI_GROUP_CODEGEN} conform --root"
+            ),
+        )
+        tm.that(commands[3], has="uv sync --project")
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path

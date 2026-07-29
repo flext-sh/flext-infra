@@ -240,6 +240,33 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             )
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
+        project = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
+        project_name_raw = (
+            project.get(c.Infra.NAME) if project is not None else None
+        )
+        project_name = (
+            project_name_raw.strip()
+            if isinstance(project_name_raw, str) and project_name_raw.strip()
+            else ""
+        )
+        uv_exclude_dependencies = tuple(
+            item
+            for item in config.Infra.codegen.uv_exclude_dependencies
+            if item.project == project_name
+        )
+        tool = u.Cli.toml_table_child(doc, c.Infra.TOOL)
+        uv = u.Cli.toml_table_child(tool, "uv") if tool is not None else None
+        if uv is None and uv_exclude_dependencies:
+            tool = u.Cli.toml_ensure_table(doc, c.Infra.TOOL)
+            uv = u.Cli.toml_ensure_table(tool, "uv")
+        if uv is not None and u.Infra.sync_uv_dependency_exclusions(
+            uv, exclude_dependencies=uv_exclude_dependencies
+        ):
+            changes.append("synchronized tool.uv.exclude-dependencies")
+            if not tuple(uv) and tool is not None:
+                u.Cli.toml_remove_key_if_present(tool, "uv")
+                if not tuple(tool):
+                    u.Cli.toml_remove_key_if_present(doc, c.Infra.TOOL)
         self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
         state.payload = payload
         rendered = doc.as_string()
