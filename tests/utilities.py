@@ -177,8 +177,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-            ) -> p.Result[int]:
+                input_data: str | bytes | None = None,
+                *,
+                live: bool = False,
+                deadline: p.Cli.ProcessDeadline | None = None,
+) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                # Why: match the full CommandRunner.run_to_file parent contract
+                # (pyright reportIncompatibleMethodOverride); canned double ignores them.
+                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
