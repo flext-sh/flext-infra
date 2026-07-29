@@ -1,9 +1,10 @@
-"""Tests for public, manifest-backed workspace mode detection."""
+"""Behavioral tests for automatic Git topology and typed policy overlays."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
@@ -11,70 +12,17 @@ from tests import c, m, u
 
 
 class TestsFlextInfraInfraWorkspaceDetector:
-    """Exercise detection through real manifests and Git repositories."""
-
-    # NOTE (multi-agent, mro-wkii.17.10 / agent: implement_topology_detector):
-    # scenarios build real Git topology and assert only the detector's public result.
+    """Exercise physical Git, conform, Make, and Beads as separate decisions."""
 
     @staticmethod
-    def _repository(
-        *,
-        name: str,
-        path: str,
-        role: c.Infra.RepositoryRole,
-        profile: c.Infra.MakeProfile,
-        url: str | None = None,
-        branch: str = "main",
-    ) -> m.Infra.RepositoryRef:
-        """Build one typed manifest repository contract."""
-        return m.Infra.RepositoryRef(
-            name=name,
-            distribution=name,
-            provider="flext",
-            url=url or f"https://github.com/flext-sh/{name}.git",
-            branch=branch,
-            path=Path(path),
-            role=role,
-            state=c.Infra.RepositoryState.ACTIVE,
-            profile=profile,
-            checkout=(
-                c.Infra.CheckoutKind.ROOT
-                if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-                else c.Infra.CheckoutKind.SUBMODULE
-            ),
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=role is not c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            read_only=False,
-        )
-
-    @staticmethod
-    def _write_manifest(
+    def _initialize_repository(
         repository_root: Path,
-        repository: m.Infra.RepositoryRef,
         *,
-        members: tuple[m.Infra.RepositoryRef, ...] = (),
+        origin: str | None = None,
+        project_name: str | None = None,
     ) -> None:
-        """Write one schema-shaped manifest through the public YAML facade."""
-        spec = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=repository.name,
-            repository=repository,
-            members=members,
-            content_only=(),
-            exclusions=(),
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                repository_root / "config" / "workspace.yaml",
-                spec.model_dump(mode="json", exclude_none=True),
-            )
-        )
-
-    @staticmethod
-    def _initialize_repository(repository_root: Path) -> None:
-        """Create a real main-branch Git repository with one commit."""
-        repository_root.mkdir(parents=True)
+        """Create one real Git repository with optional PEP 621 metadata."""
+        repository_root.mkdir(parents=True, exist_ok=True)
         tm.ok(
             u.Cli.run_checked(["git", "init", "-q", "-b", "main"], cwd=repository_root)
         )
@@ -90,27 +38,37 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         (repository_root / "README.md").write_text("# Repository\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["git", "add", "README.md"], cwd=repository_root))
+        if project_name is not None:
+            (repository_root / c.PYPROJECT_FILENAME).write_text(
+                f'[project]\nname = "{project_name}"\nversion = "0.0.0"\n',
+                encoding="utf-8",
+            )
+        tm.ok(u.Cli.run_checked(["git", "add", "."], cwd=repository_root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "commit", "-q", "-m", "Initial commit"], cwd=repository_root
             )
         )
+        if origin is not None:
+            tm.ok(
+                u.Cli.run_checked(
+                    ["git", "remote", "add", "origin", origin], cwd=repository_root
+                )
+            )
 
     @classmethod
-    def _attached_member(
+    def _add_submodule(
         cls,
-        tmp_path: Path,
+        workspace_root: Path,
         *,
-        declare_member: bool = True,
-        member_profile: c.Infra.MakeProfile = c.Infra.MakeProfile.WORKSPACE_MEMBER,
+        path: str,
+        canonical_url: str,
+        branch: str | None = "main",
+        malformed_pyproject: bool = False,
     ) -> Path:
-        """Create a real Git superproject and checked-out submodule."""
-        workspace_root = tmp_path / "workspace"
-        source_root = tmp_path / "member-source"
-        cls._initialize_repository(workspace_root)
+        """Add one real Gitlink while retaining its declared canonical URL."""
+        source_root = workspace_root.parent / f"{Path(path).name}-source"
         cls._initialize_repository(source_root)
-        member_path = "members/flext-member"
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -120,17 +78,14 @@ class TestsFlextInfraInfraWorkspaceDetector:
                     "submodule",
                     "add",
                     "-q",
-                    "-b",
-                    "main",
                     str(source_root),
-                    member_path,
+                    path,
                 ],
                 cwd=workspace_root,
             )
         )
-        member_root = workspace_root / member_path
-        canonical_url = "https://github.com/flext-sh/flext-member.git"
-        section = "submodule.members/flext-member"
+        member_root = workspace_root / path
+        section = f"submodule.{Path(path).name}"
         tm.ok(
             u.Cli.run_checked(
                 ["git", "remote", "set-url", "origin", canonical_url], cwd=member_root
@@ -149,214 +104,337 @@ class TestsFlextInfraInfraWorkspaceDetector:
                 cwd=workspace_root,
             )
         )
-        root_repository = cls._repository(
-            name="workspace-root",
-            path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-        )
-        declared_repository = cls._repository(
-            name="flext-member",
-            path=member_path,
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            profile=member_profile,
-            url=canonical_url,
-        )
-        local_repository = cls._repository(
-            name="flext-member",
-            path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            url=canonical_url,
-        )
-        cls._write_manifest(
-            workspace_root,
-            root_repository,
-            members=(declared_repository,) if declare_member else (),
-        )
-        cls._write_manifest(member_root, local_repository)
+        if branch is not None:
+            tm.ok(
+                u.Cli.run_checked(
+                    [
+                        "git",
+                        "config",
+                        "--file",
+                        ".gitmodules",
+                        f"{section}.branch",
+                        branch,
+                    ],
+                    cwd=workspace_root,
+                )
+            )
+        if malformed_pyproject:
+            (member_root / c.PYPROJECT_FILENAME).write_text(
+                "[project\n", encoding="utf-8"
+            )
         return member_root
 
-    def test_root_manifest_declares_workspace(self, tmp_path: Path) -> None:
-        """Classify a repository with a root manifest as a workspace."""
-        root_repository = self._repository(
-            name="workspace-root",
-            path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+    @classmethod
+    def _managed_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+        """Create one same-provider root and managed child."""
+        workspace_root = tmp_path / "workspace"
+        cls._initialize_repository(
+            workspace_root, origin="https://github.com/example/workspace.git"
         )
-        self._write_manifest(tmp_path, root_repository)
+        member_root = cls._add_submodule(
+            workspace_root,
+            path="packages/member",
+            canonical_url="https://github.com/example/member.git",
+        )
+        return workspace_root, member_root
+
+    @staticmethod
+    def _external_overlay() -> m.Infra.RepositoryTopologyOverlaySpec:
+        """Read the configured external-reference exception from the typed SSOT."""
+        return next(
+            overlay
+            for overlay in config.Infra.topology.overlays
+            if overlay.external_refs
+        )
+
+    def test_overlay_config_validates_against_its_public_schema(self) -> None:
+        """Prove the authored overlay and JSON schema stay in one round trip."""
+        project_root = Path(__file__).resolve().parents[2]
 
         tm.ok(
-            FlextInfraWorkspaceDetector().detect(tmp_path),
-            eq=c.Infra.WorkspaceMode.WORKSPACE,
+            u.Cli.config_load(
+                project_root / "config" / "topology.yaml",
+                schema_path=(
+                    project_root
+                    / "src"
+                    / "flext_infra"
+                    / "schemas"
+                    / "topology-overlay.schema.json"
+                ),
+                expand_env=False,
+            )
         )
 
-    def test_ancestor_gitmodules_does_not_attach_project(self, tmp_path: Path) -> None:
-        """Ignore an ancestor .gitmodules file without real Git attachment."""
-        project_root = tmp_path / "nested" / "project"
-        project_root.mkdir(parents=True)
-        (tmp_path / ".gitmodules").write_text("", encoding="utf-8")
+    def test_generic_manifestless_repository_is_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Derive any repository from Git and metadata without a hardcoded catalog."""
+        project_root = tmp_path / "consumer"
+        self._initialize_repository(
+            project_root,
+            origin="https://github.com/consumer-org/consumer-repository.git",
+            project_name="consumer-distribution",
+        )
+
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_root))
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(project_root))
+
+        tm.that(spec.name, eq="consumer-repository")
+        tm.that(spec.repository.distribution, eq="consumer-distribution")
+        tm.that(spec.repository.role, eq=c.Infra.RepositoryRole.STANDALONE)
+        tm.that(topology.physical, eq="independent")
+        tm.that(topology.mode, eq=c.Infra.WorkspaceMode.STANDALONE)
+        tm.that(topology.conform, eq="managed")
+        tm.that(topology.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(topology.beads_enabled, eq=False)
+
+    def test_repository_without_git_is_generic_standalone(self, tmp_path: Path) -> None:
+        """Support pre-init standalone projects from their physical local identity."""
+        (tmp_path / c.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "local-project"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(tmp_path))
+
+        tm.that(topology.physical, eq="independent")
+        tm.that(topology.conform, eq="managed")
+        tm.that(topology.repository.distribution, eq="local-project")
+
+    def test_generated_manifest_is_not_topology_authority(self, tmp_path: Path) -> None:
+        """Ignore a stale projection and derive behavior from Git plus overlays."""
+        project_root = tmp_path / "consumer"
+        self._initialize_repository(
+            project_root, origin="https://github.com/example/consumer.git"
+        )
+        manifest = project_root / "config" / "workspace.yaml"
+        manifest.parent.mkdir()
+        manifest.write_text("not: valid: yaml\n", encoding="utf-8")
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(project_root),
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-    def test_independent_member_clone_is_standalone(self, tmp_path: Path) -> None:
-        """Classify an independently cloned member as standalone."""
-        project_root = tmp_path / "flext-member"
-        self._initialize_repository(project_root)
-        member_repository = self._repository(
-            name="flext-member",
-            path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
+    def test_gitlinks_automatically_make_workspace_root(self, tmp_path: Path) -> None:
+        """Classify a root from real Gitlinks without per-project configuration."""
+        workspace_root, _ = self._managed_workspace(tmp_path)
+
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(workspace_root))
+
+        tm.that(topology.physical, eq="workspace-root")
+        tm.that(topology.mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
+        tm.that(topology.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(topology.managed_gitlinks, eq=("packages/member",))
+        tm.that(topology.external_gitlinks, eq=())
+        tm.that(topology.beads_enabled, eq=True)
+        tm.that(topology.beads_namespace, eq=topology.repository.name)
+
+    def test_attached_managed_child_conforms_as_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Separate physical attachment from the child's generated Make profile."""
+        workspace_root, member_root = self._managed_workspace(tmp_path)
+
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(member_root))
+
+        tm.that(topology.workspace_root, eq=workspace_root)
+        tm.that(topology.physical, eq="attached")
+        tm.that(topology.mode, eq=c.Infra.WorkspaceMode.STANDALONE)
+        tm.that(topology.conform, eq="managed")
+        tm.that(topology.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(topology.repository.role, eq=c.Infra.RepositoryRole.STANDALONE)
+        tm.that(topology.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
+        tm.that(topology.beads_enabled, eq=False)
+
+    def test_different_provider_gitlink_is_external_by_construction(
+        self, tmp_path: Path
+    ) -> None:
+        """Never manage a third-party Gitlink even without an explicit overlay."""
+        workspace_root = tmp_path / "workspace"
+        self._initialize_repository(
+            workspace_root, origin="https://github.com/example/workspace.git"
         )
-        self._write_manifest(project_root, member_repository)
-
-        tm.ok(
-            FlextInfraWorkspaceDetector().detect(project_root),
-            eq=c.Infra.WorkspaceMode.STANDALONE,
+        member_root = self._add_submodule(
+            workspace_root,
+            path="vendor/upstream",
+            canonical_url="https://github.com/upstream/upstream.git",
+            malformed_pyproject=True,
         )
 
-    def test_declared_real_submodule_is_workspace(self, tmp_path: Path) -> None:
-        """Classify a declared and attached Git submodule as a workspace member."""
-        member_root = self._attached_member(tmp_path)
+        root_topology = tm.ok(FlextInfraWorkspaceDetector.inspect(workspace_root))
+        child_topology = tm.ok(FlextInfraWorkspaceDetector.inspect(member_root))
 
-        tm.ok(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        tm.that(root_topology.managed_gitlinks, eq=())
+        tm.that(root_topology.external_gitlinks, eq=("vendor/upstream",))
+        tm.that(child_topology.physical, eq="attached")
+        tm.that(child_topology.conform, eq="external")
+        tm.that(child_topology.make_profile, eq=None)
+        tm.that(child_topology.repository.role, eq=c.Infra.RepositoryRole.CONTENT_ONLY)
+        tm.that(child_topology.repository.codegen, eq=c.Infra.CodegenKind.NONE)
+        tm.that(child_topology.repository.package, eq=False)
+        tm.that(child_topology.repository.editable, eq=False)
+        tm.that(child_topology.repository.read_only, eq=True)
+
+    def test_same_provider_fork_is_external_only_by_typed_overlay(
+        self, tmp_path: Path
+    ) -> None:
+        """Apply the configured fork exception without scanning its source tree."""
+        overlay = self._external_overlay()
+        external = overlay.external_refs[0]
+        workspace_root = tmp_path / overlay.match
+        self._initialize_repository(
+            workspace_root, origin=f"https://github.com/example/{overlay.match}.git"
+        )
+        member_root = self._add_submodule(
+            workspace_root,
+            path=external.path.as_posix(),
+            canonical_url=f"https://github.com/example/{external.path.name}.git",
+            malformed_pyproject=True,
         )
 
-    def test_feature_branch_at_gitlink_is_workspace(self, tmp_path: Path) -> None:
-        member_root = self._attached_member(tmp_path)
+        root_topology = tm.ok(FlextInfraWorkspaceDetector.inspect(workspace_root))
+        child_topology = tm.ok(FlextInfraWorkspaceDetector.inspect(member_root))
+
+        tm.that(root_topology.external_gitlinks, eq=(external.path.as_posix(),))
+        tm.that(root_topology.external_uses, eq=overlay.external_refs)
+        tm.that(child_topology.conform, eq="external")
+        tm.that(child_topology.external_uses, eq=(external,))
+
+    def test_external_use_vocabulary_rejects_every_gate_category(self) -> None:
+        """Keep external references structurally impossible to lint or typecheck."""
+        for forbidden in ("lint", "type", "check", "conform", "mutation"):
+            with pytest.raises(c.ValidationError):
+                m.Infra.ExternalReferenceSpec.model_validate({
+                    "path": "vendor/upstream",
+                    "uses": [forbidden],
+                })
+
+    def test_independent_beads_opt_in_comes_from_typed_overlay(
+        self, tmp_path: Path
+    ) -> None:
+        """Enable Beads only for an explicitly configured independent repository."""
+        overlay = next(
+            item
+            for item in config.Infra.topology.overlays
+            if item.beads.enabled and item.identity is None
+        )
+        project_root = tmp_path / overlay.match
+        self._initialize_repository(
+            project_root, origin=f"https://github.com/example/{overlay.match}.git"
+        )
+
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(project_root))
+
+        tm.that(topology.beads_enabled, eq=True)
+        tm.that(topology.beads_namespace, eq=topology.repository.name)
+
+    def test_identity_overlay_owns_exceptional_beads_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        """Derive an exceptional identity once and reuse it for Beads."""
+        overlay = next(
+            item for item in config.Infra.topology.overlays if item.identity is not None
+        )
+        project_root = tmp_path / overlay.match
+        self._initialize_repository(
+            project_root, origin=f"https://github.com/example/{overlay.match}.git"
+        )
+
+        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(project_root))
+
+        tm.that(topology.repository.name, eq=overlay.identity)
+        tm.that(topology.beads_namespace, eq=overlay.identity)
+
+    def test_independent_beads_overlay_is_rejected_after_becoming_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        """Force config cleanup when an independent exception gains Gitlinks."""
+        overlay = next(
+            item for item in config.Infra.topology.overlays if item.beads.enabled
+        )
+        workspace_root = tmp_path / overlay.match
+        self._initialize_repository(
+            workspace_root, origin=f"https://github.com/example/{overlay.match}.git"
+        )
+        self._add_submodule(
+            workspace_root,
+            path="member",
+            canonical_url="https://github.com/example/member.git",
+        )
+
+        tm.fail(
+            FlextInfraWorkspaceDetector.inspect(workspace_root),
+            has="only valid for independent repositories",
+        )
+
+    def test_external_overlay_must_name_an_indexed_gitlink(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject stale external policy instead of silently scanning a new shape."""
+        overlay = self._external_overlay()
+        project_root = tmp_path / overlay.match
+        self._initialize_repository(
+            project_root, origin=f"https://github.com/example/{overlay.match}.git"
+        )
+
+        tm.fail(
+            FlextInfraWorkspaceDetector.inspect(project_root),
+            has="not indexed gitlinks",
+        )
+
+    def test_gitmodules_and_index_must_match(self, tmp_path: Path) -> None:
+        """Fail closed when .gitmodules is not the exact indexed topology."""
+        workspace_root, _ = self._managed_workspace(tmp_path)
         tm.ok(
             u.Cli.run_checked(
-                ["git", "switch", "-q", "-c", "feature/gitlink-validation"],
+                ["git", "rm", "--cached", "-q", "-f", "packages/member"],
+                cwd=workspace_root,
+            )
+        )
+
+        tm.fail(
+            FlextInfraWorkspaceDetector.inspect(workspace_root),
+            has="declared Git submodules and indexed gitlinks differ",
+        )
+
+    def test_missing_submodule_branch_uses_git_head_contract(
+        self, tmp_path: Path
+    ) -> None:
+        """Honor Git's default remote HEAD when .gitmodules omits branch."""
+        workspace_root = tmp_path / "workspace"
+        self._initialize_repository(
+            workspace_root, origin="https://github.com/example/workspace.git"
+        )
+        self._add_submodule(
+            workspace_root,
+            path="member",
+            canonical_url="https://github.com/example/member.git",
+            branch=None,
+        )
+
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root))
+
+        tm.that(spec.members[0].branch, eq="HEAD")
+
+    def test_managed_attached_origin_mismatch_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject an attached managed checkout whose origin changed ownership."""
+        _, member_root = self._managed_workspace(tmp_path)
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "remote",
+                    "set-url",
+                    "origin",
+                    "https://github.com/example/other.git",
+                ],
                 cwd=member_root,
             )
         )
 
-        tm.ok(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-    def test_detached_head_at_gitlink_is_workspace(self, tmp_path: Path) -> None:
-        member_root = self._attached_member(tmp_path)
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "switch", "-q", "--detach", "HEAD"], cwd=member_root
-            )
-        )
-
-        tm.ok(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-    def test_member_head_different_from_gitlink_fails_closed(
-        self, tmp_path: Path
-    ) -> None:
-        member_root = self._attached_member(tmp_path)
-        (member_root / "member-change.txt").write_text("changed\n", encoding="utf-8")
-        tm.ok(u.Cli.run_checked(["git", "add", "member-change.txt"], cwd=member_root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "Member change"], cwd=member_root
-            )
-        )
-
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="workspace member gitlink mismatch",
-        )
-
-    def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
-        """Reject an attached submodule absent from the parent manifest."""
-        member_root = self._attached_member(tmp_path, declare_member=False)
-
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="not one active workspace member",
-        )
-
-    def test_member_profile_mismatch_fails_closed(self, tmp_path: Path) -> None:
-        """Reject a member whose declared profile conflicts with its role."""
-        member_root = self._attached_member(
-            tmp_path, member_profile=c.Infra.MakeProfile.STANDALONE
-        )
-
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root),
-            has="role/state/profile/checkout mismatch",
-        )
-
-    def test_gitmodule_url_mismatch_fails_closed(self, tmp_path: Path) -> None:
-        """Reject a Git submodule whose configured URL differs from the manifest."""
-        member_root = self._attached_member(tmp_path)
-        workspace_root = member_root.parents[1]
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "config",
-                    "--file",
-                    ".gitmodules",
-                    "submodule.members/flext-member.url",
-                    "https://github.com/other-org/flext-member.git",
-                ],
-                cwd=workspace_root,
-            )
-        )
-
-        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="URL mismatch")
-
-    def test_gitmodule_branch_mismatch_fails_closed(self, tmp_path: Path) -> None:
-        """Reject a Git submodule whose configured branch differs from the manifest."""
-        member_root = self._attached_member(tmp_path)
-        workspace_root = member_root.parents[1]
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "config",
-                    "--file",
-                    ".gitmodules",
-                    "submodule.members/flext-member.branch",
-                    "release",
-                ],
-                cwd=workspace_root,
-            )
-        )
-
-        tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root), has="branch mismatch"
-        )
-
-    def test_malformed_parent_manifest_fails(self, tmp_path: Path) -> None:
-        """Reject an attached member when the parent manifest is malformed."""
-        member_root = self._attached_member(tmp_path)
-        parent_manifest = member_root.parents[1] / "config" / "workspace.yaml"
-        parent_manifest.write_text("version: malformed\n", encoding="utf-8")
-
-        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="workspace")
-
-    def test_malformed_local_manifest_fails(self, tmp_path: Path) -> None:
-        """Reject a malformed repository-local manifest."""
-        manifest = tmp_path / "config" / "workspace.yaml"
-        manifest.parent.mkdir()
-        manifest.write_text("version: malformed\n", encoding="utf-8")
-
-        tm.fail(FlextInfraWorkspaceDetector().detect(tmp_path), has="workspace")
-
-    def test_execute_uses_workspace_root(self, tmp_path: Path) -> None:
-        """Execute detection against the detector's configured workspace root."""
-        tm.ok(
-            FlextInfraWorkspaceDetector(workspace_root=tmp_path).execute(),
-            eq=c.Infra.WorkspaceMode.STANDALONE,
-        )
+        tm.fail(FlextInfraWorkspaceDetector.inspect(member_root), has="origin mismatch")
 
     def test_invalid_path_returns_failure(self) -> None:
         """Return a typed failure for an invalid filesystem path."""
@@ -364,47 +442,3 @@ class TestsFlextInfraInfraWorkspaceDetector:
             FlextInfraWorkspaceDetector().detect(Path("\0")),
             has="Workspace detection failed",
         )
-
-    def test_manifestless_repo_derives_spec_from_catalog(self, tmp_path: Path) -> None:
-        """Derive a generic minimal spec from the catalog when no manifest exists."""
-        # mro-4gbp: the engine catalog declares only repositories it owns, so the
-        # fixture is derived from whatever this engine publishes - never a
-        # hardcoded name and never a downstream consumer.
-        declared = config.Infra.codegen.repositories[0]
-        (tmp_path / "pyproject.toml").write_text(
-            f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
-            encoding="utf-8",
-        )
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
-        tm.that(spec.name, eq=declared.name)
-        tm.that(spec.repository.role, eq=declared.role)
-        tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
-
-    def test_manifestless_repo_absent_from_catalog_fails_closed(
-        self, tmp_path: Path
-    ) -> None:
-        """Fail closed for a manifest-less project absent from the catalog."""
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "not-a-declared-flext-project"\nversion = "0.0.0"\n',
-            encoding="utf-8",
-        )
-        tm.fail(
-            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path),
-            has="absent from the codegen catalog",
-        )
-
-    def test_manifested_repo_absent_from_catalog_loads_spec(
-        self, tmp_path: Path
-    ) -> None:
-        """Load a valid manifest even when the project is absent from the catalog."""
-        repository = self._repository(
-            name="consumer-project",
-            path=".",
-            role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
-        )
-        self._write_manifest(tmp_path, repository)
-
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
-        tm.that(spec.name, eq="consumer-project")
-        tm.that(spec.repository.name, eq="consumer-project")

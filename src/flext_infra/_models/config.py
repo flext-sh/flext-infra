@@ -631,6 +631,82 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Applicable Git ignore sections"),
         ]
 
+    class BeadsOverlaySpec(_ConfigContract):
+        """Exceptional Beads policy for one independent repository."""
+
+        enabled: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Opt an independent repository into Beads; workspace roots "
+                    "are enabled automatically and attached repositories cannot opt in"
+                )
+            ),
+        ] = False
+        namespace: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Exceptional Beads namespace override; None derives the canonical "
+                    "repository identity"
+                )
+            ),
+        ] = None
+
+    class ExternalReferenceSpec(_ConfigContract):
+        """One immutable Git reference available only for explicit safe consumption."""
+
+        path: Annotated[
+            Path, m.Field(description="Workspace-relative external Git reference path")
+        ]
+        uses: Annotated[
+            tuple[Literal["docs", "resource", "stub"], ...],
+            m.Field(
+                description=(
+                    "Explicit safe consumers; lint, type, check, conform, and mutation "
+                    "are intentionally absent from this closed vocabulary"
+                )
+            ),
+        ] = ()
+
+    class RepositoryTopologyOverlaySpec(_ConfigContract):
+        """Project-specific exceptions layered over automatic Git topology."""
+
+        match: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Observed repository slug selecting this overlay"),
+        ]
+        identity: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Exceptional canonical identity override; None retains the "
+                    "normalized repository slug"
+                )
+            ),
+        ] = None
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsOverlaySpec,
+            m.Field(description="Independent-only Beads exception"),
+        ] = m.Field(default_factory=lambda: FlextInfraConfigModels.BeadsOverlaySpec())
+        external_refs: Annotated[
+            tuple[FlextInfraConfigModels.ExternalReferenceSpec, ...],
+            m.Field(
+                description=(
+                    "Gitlinks that are immutable external content and excluded from "
+                    "all FLEXT scans, gates, conform plans, and mutations"
+                )
+            ),
+        ] = ()
+
+    class TopologyOverlayConfigSpec(_ConfigContract):
+        """All exceptional policy layered over runtime-observed Git topology."""
+
+        overlays: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryTopologyOverlaySpec, ...],
+            m.Field(description="Repository overlays keyed by observed Git slug"),
+        ] = ()
+
     class RepositoryRef(_ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
@@ -1483,6 +1559,15 @@ class FlextInfraConfigModels:
         enforcement: Annotated[
             FlextInfraConfigModels.StaticEnforcementSpec,
             m.Field(description="Rope-only static enforcement policy"),
+        ]
+        topology: Annotated[
+            FlextInfraConfigModels.TopologyOverlayConfigSpec,
+            m.Field(
+                description=(
+                    "Exceptional identity, Beads, and external-reference overlays; "
+                    "physical Git topology remains runtime-derived"
+                )
+            ),
         ]
 
     class Root(_ConfigContract):

@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, ClassVar
+from typing import Annotated, ClassVar, Literal
 
 from flext_cli import m, u
 from flext_infra import c, t
+from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -27,6 +28,61 @@ class FlextInfraModelsWorkspace:
 
         workspace_root: Annotated[
             Path, m.Field(alias="workspace", description="Workspace root path")
+        ]
+
+    class RepositoryTopology(m.ContractModel):
+        """Atomic separation of physical Git, conform, Make, and Beads policy."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Current repository root without parent crossing")
+        ]
+        workspace_root: Annotated[
+            Path, m.Field(description="Physical workspace owner or current repository")
+        ]
+        physical: Annotated[
+            Literal["workspace-root", "attached", "independent"],
+            m.Field(description="Observed physical Git relationship"),
+        ]
+        mode: Annotated[
+            c.Infra.WorkspaceMode,
+            m.Field(description="Effective workspace orchestration mode"),
+        ]
+        conform: Annotated[
+            Literal["managed", "external"],
+            m.Field(description="Participation in FLEXT conform and mutation"),
+        ]
+        make_profile: Annotated[
+            c.Infra.MakeProfile | None,
+            m.Field(description="Generated Make profile; external refs have none"),
+        ]
+        managed_gitlinks: Annotated[
+            t.StrSequence,
+            m.Field(description="FLEXT-managed mutable repository gitlinks"),
+        ] = ()
+        external_gitlinks: Annotated[
+            t.StrSequence,
+            m.Field(
+                description=(
+                    "Immutable gitlinks excluded from conform, scans, gates, and mutation"
+                )
+            ),
+        ] = ()
+        external_uses: Annotated[
+            tuple[FlextInfraConfigModels.ExternalReferenceSpec, ...],
+            m.Field(description="Explicit safe consumption of immutable references"),
+        ] = ()
+        beads_enabled: Annotated[
+            bool, m.Field(description="This repository owns a canonical Beads ledger")
+        ]
+        beads_namespace: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Canonical ledger namespace when Beads is enabled"),
+        ] = None
+        repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Effective repository identity and generation contract"
+            ),
         ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):

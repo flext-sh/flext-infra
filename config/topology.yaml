@@ -1,0 +1,30 @@
+Infra:
+  topology:
+    overlays:
+      - match: ai-hub
+        beads:
+          enabled: true
+      - match: invest
+        beads:
+          enabled: true
+      - match: mcb
+        beads:
+          enabled: true
+      - match: algar-oud-mig
+        beads:
+          enabled: true
+      - match: gruponos-meltano-native
+        beads:
+          enabled: true
+      - match: openclaw
+        beads:
+          enabled: true
+      - match: data-organization-pipeline
+        identity: dataop
+        beads:
+          enabled: true
+      - match: odoo-workspace
+        external_refs:
+          - path: odoo-app
+            uses:
+              - resource

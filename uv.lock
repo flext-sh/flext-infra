@@ -7,9 +7,6 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[manifest]
-excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
-
 [[package]]
 name = "actionlint-py"
 version = "1.7.12.24"
@@ -925,6 +922,7 @@ dependencies = [
     { name = "faker" },
     { name = "flext-cli" },
     { name = "flext-core" },
+    { name = "flext-infra" },
     { name = "hypothesis" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
