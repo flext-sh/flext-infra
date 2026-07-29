@@ -1381,6 +1381,66 @@ class FlextInfraConfigModels:
             m.Field(description="Ordered production source directory names"),
         ]
 
+    class ReleaseDependencySpec(_ConfigContract):
+        """One project node in the public prerelease bootstrap DAG."""
+
+        distribution: Annotated[
+            t.NonEmptyStr,
+            m.Field(pattern=r"^flext-[a-z0-9-]+$", description="Distribution name"),
+        ]
+        dependencies: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Earlier bootstrap nodes required by this project"),
+        ] = ()
+
+    class ReleaseSpec(_ConfigContract):
+        """Public prerelease provenance and its ordered bootstrap DAG."""
+
+        version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=(
+                    r"^[0-9]+\.[0-9]+\.[0-9]+"
+                    r"(?:(?:a|b|rc)[0-9]+|\.dev[0-9]+)$"
+                ),
+                description="Exact normalized PEP 440 public release version",
+            ),
+        ]
+        dependency_dag: Annotated[
+            tuple[FlextInfraConfigModels.ReleaseDependencySpec, ...],
+            m.Field(
+                min_length=1,
+                description="Topologically ordered public bootstrap dependencies",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_dag(self) -> Self:
+            """Require unique nodes whose dependencies occur earlier."""
+            available: t.Infra.StrSet = set()
+            for node in self.dependency_dag:
+                if node.distribution in available:
+                    msg = (
+                        "release dependency DAG contains duplicate distribution: "
+                        f"{node.distribution}"
+                    )
+                    raise ValueError(msg)
+                missing = set(node.dependencies) - available
+                if missing:
+                    msg = (
+                        "release dependency DAG is not topologically ordered for "
+                        f"{node.distribution}: {', '.join(sorted(missing))}"
+                    )
+                    raise ValueError(msg)
+                available.add(node.distribution)
+            return self
+
+        @m.computed_field()
+        @property
+        def bootstrap_order(self) -> tuple[str, ...]:
+            """Return the validated topological project order."""
+            return tuple(node.distribution for node in self.dependency_dag)
+
     class StaticRule(_ConfigContract):
         """Shared immutable metadata for one Rope static-analysis rule."""
 
@@ -1473,8 +1533,9 @@ class FlextInfraConfigModels:
         """Complete flext-infra configuration namespace."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        version: Annotated[
-            t.NonEmptyStr, m.Field(description="Project release version")
+        release: Annotated[
+            FlextInfraConfigModels.ReleaseSpec,
+            m.Field(description="Public prerelease and bootstrap dependency DAG"),
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
@@ -1493,6 +1554,23 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.StaticEnforcementSpec,
             m.Field(description="Rope-only static enforcement policy"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_release_projects(self) -> Self:
+            """Require every bootstrap node to be a publishable catalog project."""
+            publishable = {
+                repository.distribution
+                for repository in self.codegen.repositories
+                if repository.package
+            }
+            missing = set(self.release.bootstrap_order) - publishable
+            if missing:
+                msg = (
+                    "release dependency DAG references non-publishable projects: "
+                    f"{', '.join(sorted(missing))}"
+                )
+                raise ValueError(msg)
+            return self
 
     class Root(_ConfigContract):
         """Root payload deep-merged from flext-infra config files."""

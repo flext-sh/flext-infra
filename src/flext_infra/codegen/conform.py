@@ -749,6 +749,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
             repositories=codegen.repositories,
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
@@ -825,6 +826,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
                 repositories=codegen.repositories,
+                release=config.Infra.release,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
             )
@@ -869,6 +871,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             repositories=codegen.repositories,
+            release=config.Infra.release,
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,

@@ -221,6 +221,20 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class ReleaseSpec(Protocol):
+        """Public prerelease fields consumed by conform and release ordering."""
+
+        @property
+        def version(self) -> str:
+            """Exact normalized PEP 440 prerelease used outside workspaces."""
+            ...
+
+        @property
+        def bootstrap_order(self) -> t.StrSequence:
+            """Validated topological public project order."""
+            ...
+
+    @runtime_checkable
     class TemplateEntrySpec(Protocol):
         """Template-entry fields consumed by scaffold root selection."""
 

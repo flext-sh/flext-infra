@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.release._orchestrator_dispatch import (
     FlextInfraReleaseOrchestratorDispatchMixin,
@@ -62,7 +62,9 @@ class FlextInfraReleaseOrchestrator(
                 continue
             seen.add(name)
             unique.append((name, path))
-        return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
+        return r[t.SequenceOf[t.Pair[str, Path]]].ok(
+            u.Infra.order_release_targets(unique, config.Infra.release)
+        )
 
     @override
     def _version_files(

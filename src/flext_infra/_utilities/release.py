@@ -16,6 +16,28 @@ class FlextInfraUtilitiesRelease:
     """Release notes and changelog utility methods exposed via u.Infra."""
 
     @staticmethod
+    def order_release_targets(
+        targets: t.SequenceOf[t.Pair[str, Path]],
+        release: p.Infra.ReleaseSpec,
+    ) -> t.SequenceOf[t.Pair[str, Path]]:
+        """Order configured bootstrap nodes first and preserve all other input order."""
+        priority = {
+            distribution: index
+            for index, distribution in enumerate(release.bootstrap_order)
+        }
+        indexed = tuple(enumerate(targets))
+        return tuple(
+            target
+            for _, target in sorted(
+                indexed,
+                key=lambda item: (
+                    priority.get(item[1][0], len(priority)),
+                    item[0],
+                ),
+            )
+        )
+
+    @staticmethod
     def resolve_phase_names(phase: str) -> t.StrSequence:
         """Expand release phase selectors to the canonical ordered phase list."""
         if phase == c.Infra.RELEASE_PHASE_ALL:
