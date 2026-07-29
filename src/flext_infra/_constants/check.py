@@ -204,7 +204,7 @@ class FlextInfraConstantsCheck:
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
-    # --- Manual-command blocker (§5 Make Contract) SSOT ---
+    # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
         "ruff",
         "pytest",
@@ -281,7 +281,7 @@ class FlextInfraConstantsCheck:
 #
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
-# (AGENTS.md §5 Make Contract).
+# (AGENTS.md `Build & Test`).
 # Enable locally with `pre-commit install` from the workspace root.
 repos:
   - repo: local

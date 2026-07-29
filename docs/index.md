@@ -1,3 +1,11 @@
+<!-- TOC START -->
+- [Start Here](#start-here)
+- [Public Surface Summary](#public-surface-summary)
+- [Collection Rules](#collection-rules)
+- [Quality Gates](#quality-gates)
+- [Governance Pointer](#governance-pointer)
+<!-- TOC END -->
+
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
 # flext-infra Documentation
@@ -37,9 +45,10 @@ slot registry verification).
 ## Quality Gates
 
 Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, `val`,
-`docs`) — see `AGENTS.md` §5 (Make Contract) and the
-[`flext-quality-gates`](https://github.com/flext-sh/flext/blob/main/.agents/skills/flext-quality-gates/SKILL.md)
-skill for selectors and thresholds.
+`docs`) — see
+[`/flext/AGENTS.md`](https://github.com/flext-sh/flext/blob/main/AGENTS.md)
+`Build & Test` and `Required Python quality gates`; selector routing is owned
+universally by `~/.agents/skills/make-check/SKILL.md`.
 
 ## Governance Pointer
 
