@@ -581,9 +581,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         cls.sync_uv_dependency_exclusions(
-            uv,
-            exclude_dependencies=exclude_dependencies,
-            enabled=owns_uv_root_policy,
+            uv, exclude_dependencies=exclude_dependencies, enabled=owns_uv_root_policy
         )
         if workspace_root:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")

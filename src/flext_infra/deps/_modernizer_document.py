@@ -243,9 +243,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
         project = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
-        project_name_raw = (
-            project.get(c.Infra.NAME) if project is not None else None
-        )
+        project_name_raw = project.get(c.Infra.NAME) if project is not None else None
         project_name = (
             project_name_raw.strip()
             if isinstance(project_name_raw, str) and project_name_raw.strip()

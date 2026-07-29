@@ -203,11 +203,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        "profile",
-        [
-            c.Infra.MakeProfile.STANDALONE,
-            c.Infra.MakeProfile.WORKSPACE_ROOT,
-        ],
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
     )
     def test_setup_syncs_lock_before_conform_and_reconciles_afterward(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -230,8 +226,8 @@ class TestsCodegenMakeEnvironment:
             'if [ "$1" = "venv" ]; then\n'
             '  mkdir -p "$3/bin"\n'
             "  printf '#!/bin/sh\\n"
-            f'printf "python %s\\\\n" "$*" >> "{setup_log}"\\n'
-            "exit 0\\n' > \"$3/bin/python\"\n"
+            f'printf "python %%s\\\\n" "$*" >> "{setup_log}"\\n'
+            'exit 0\\n\' > "$3/bin/python"\n'
             '  chmod +x "$3/bin/python"\n'
             "fi\n"
             "exit 0\n",
@@ -263,10 +259,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(commands[1], has="uv sync --project")
         tm.that(
             commands[2],
-            has=(
-                "python -m flext_infra "
-                f"{c.Infra.CLI_GROUP_CODEGEN} conform --root"
-            ),
+            has=(f"python -m flext_infra {c.Infra.CLI_GROUP_CODEGEN} conform --root"),
         )
         tm.that(commands[3], has="uv sync --project")
 

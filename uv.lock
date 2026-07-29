@@ -7,6 +7,9 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
+
 [[package]]
 name = "actionlint-py"
 version = "1.7.12.24"
@@ -656,7 +659,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#cbe851dcf23408489e1e1c0301245bf3dba68b4f" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#644e197758974aa88b03782e6f18e9d689907d44" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -683,7 +686,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#4cf57b608a0d4d56bd4a820336c7ef0433cf9105" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#0f0c90c182ae78724797a3696cbd98a501b01b0d" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -915,14 +918,13 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#2de7a0204ef587716e076370d079c60e48da7945" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#ce0d2f3b033ec014181bdc81a24d9726b9c353e0" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },
     { name = "faker" },
     { name = "flext-cli" },
     { name = "flext-core" },
-    { name = "flext-infra" },
     { name = "hypothesis" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
