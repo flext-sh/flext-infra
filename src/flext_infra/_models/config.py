@@ -711,6 +711,21 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -850,6 +865,21 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
