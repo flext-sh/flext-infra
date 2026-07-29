@@ -17,6 +17,20 @@ class TestsFlextInfraWorktreeService:
     """The typed service owns the complete safe lane lifecycle."""
 
     @staticmethod
+    def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:
+        """Derive the configured collision-safe test contract."""
+        digest = u.Cli.sha256_content(str(primary_root.resolve()))[
+            : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
+        ]
+        namespace = f"{primary_root.resolve().name}-{digest}"
+        return (
+            outermost_project.resolve().parent
+            / c.Infra.WORKTREES_DIRNAME
+            / namespace
+            / branch
+        )
+
+    @staticmethod
     def _repository(tmp_path: Path) -> Path:
         repository = tmp_path / "repository"
         repository.mkdir()
@@ -55,13 +69,11 @@ class TestsFlextInfraWorktreeService:
 
         tm.that(listed, has=f"worktree {repository}")
 
-    def test_add_and_remove_use_the_repository_local_lane_path(
-        self, tmp_path: Path
-    ) -> None:
+    def test_add_and_remove_use_the_isolated_lane_path(self, tmp_path: Path) -> None:
         """A valid PEP 621 string survives typed setup in the isolated lane."""
         repository = self._repository(tmp_path)
         branch = "feature/example"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
 
         added = tm.ok(
             FlextInfraWorktreeService(
@@ -75,7 +87,7 @@ class TestsFlextInfraWorktreeService:
 
         tm.that(added, eq=str(lane))
         tm.that(lane.is_dir(), where=bool)
-        tm.that(lane.is_relative_to(repository), where=bool)
+        tm.that(not lane.is_relative_to(repository), where=bool)
         tm.that(
             tm.ok(u.Infra.git_capture(repository, ("worktree", "list", "--porcelain"))),
             has=f"worktree {lane}",
@@ -99,7 +111,7 @@ class TestsFlextInfraWorktreeService:
         """Setup never inherits the primary checkout as its workspace owner."""
         repository = self._repository(tmp_path)
         branch = "feature/isolated-metadata"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
         (repository / "pyproject.toml").write_text(
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )
@@ -124,13 +136,91 @@ class TestsFlextInfraWorktreeService:
             has='description = "A standard PEP 621 description string"',
         )
 
+    def test_add_escapes_a_dirty_outer_project_ancestor(self, tmp_path: Path) -> None:
+        """The lane container sits outside every project uv could discover."""
+        outer_project = tmp_path / "outer"
+        outer_project.mkdir()
+        (outer_project / "pyproject.toml").write_text(
+            '[dependency-groups]\ndescription = "dirty outer WIP"\n', encoding="utf-8"
+        )
+        nested = outer_project / "nested"
+        nested.mkdir()
+        repository = self._repository(nested)
+        branch = "feature/outer-isolation"
+        lane = self._lane(repository, outer_project, branch)
+
+        added = tm.ok(
+            FlextInfraWorktreeService(
+                workspace_root=repository,
+                operation=c.Infra.WorktreeOperation.ADD,
+                branch=branch,
+                base="HEAD",
+                apply_changes=True,
+            ).execute()
+        )
+
+        tm.that(added, eq=str(lane))
+        tm.that(not lane.is_relative_to(outer_project), where=bool)
+        tm.that(
+            (outer_project / "pyproject.toml").read_text(encoding="utf-8"),
+            eq='[dependency-groups]\ndescription = "dirty outer WIP"\n',
+        )
+
+    def test_same_named_repositories_use_distinct_lane_namespaces(
+        self, tmp_path: Path
+    ) -> None:
+        """Repository names never collide inside one outer lane container."""
+        outer_project = tmp_path / "outer"
+        outer_project.mkdir()
+        (outer_project / "pyproject.toml").write_text(
+            '[project]\nname = "outer"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        first_parent = outer_project / "first"
+        second_parent = outer_project / "second"
+        first_parent.mkdir()
+        second_parent.mkdir()
+        first = self._repository(first_parent)
+        second = self._repository(second_parent)
+        branch = "feature/same-name"
+
+        first_lane = self._lane(first, outer_project, branch)
+        tm.that(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=first,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch=branch,
+                    base="HEAD",
+                    apply_changes=True,
+                ).execute()
+            ),
+            eq=str(first_lane),
+        )
+        second_lane = self._lane(second, outer_project, branch)
+        tm.that(
+            tm.ok(
+                FlextInfraWorktreeService(
+                    workspace_root=second,
+                    operation=c.Infra.WorktreeOperation.ADD,
+                    branch=branch,
+                    base="HEAD",
+                    apply_changes=True,
+                ).execute()
+            ),
+            eq=str(second_lane),
+        )
+
+        tm.that(first.name, eq=second.name)
+        tm.that(first_lane != second_lane, where=bool)
+        tm.that(first_lane.parent.parent != second_lane.parent.parent, where=bool)
+
     def test_invalid_lane_metadata_fails_precisely_and_rolls_back(
         self, tmp_path: Path
     ) -> None:
         """The typed lane ingress rejects a non-string PEP 621 description."""
         repository = self._repository(tmp_path)
         branch = "feature/invalid-metadata"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
         (repository / "pyproject.toml").write_text(
             '[project]\nname = "fixture"\nversion = "0.1.0"\n'
             'description = ["not", "a", "string"]\n',
@@ -165,7 +255,7 @@ class TestsFlextInfraWorktreeService:
         """A clean failed setup removes its new lane and exact created branch."""
         repository = self._repository(tmp_path)
         branch = "feature/clean-setup-failure"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
         (repository / "Makefile").write_text(
             ".PHONY: setup\nsetup:\n\t@printf 'visible setup progress\\n'\n\t@exit 17\n",
             encoding="utf-8",
@@ -188,7 +278,7 @@ class TestsFlextInfraWorktreeService:
         """A failed setup never destroys work it created before returning."""
         repository = self._repository(tmp_path)
         branch = "feature/dirty-setup-failure"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
         (repository / "Makefile").write_text(
             ".PHONY: setup\n"
             "setup:\n"
@@ -219,7 +309,7 @@ class TestsFlextInfraWorktreeService:
         """Update advances an existing lane only through a fast-forward."""
         repository = self._repository(tmp_path)
         branch = "feature/update"
-        lane = repository / c.Infra.WORKTREES_DIRNAME / branch
+        lane = self._lane(repository, repository, branch)
         tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
@@ -324,7 +414,7 @@ class TestsFlextInfraWorktreeService:
         )
         branch = "feature/attached"
         primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
-        expected_lane = primary / c.Infra.WORKTREES_DIRNAME / branch
+        expected_lane = self._lane(primary, superproject, branch)
 
         lane = tm.ok(
             FlextInfraWorktreeService(

@@ -45,8 +45,19 @@ class FlextInfraWorktreeService(s[str]):
 
     @staticmethod
     def _lanes_root(primary_root: Path) -> p.Result[Path]:
-        """Keep every lane under the Git registry's primary repository root."""
-        return r.ok((primary_root.resolve() / c.Infra.WORKTREES_DIRNAME).resolve())
+        """Place new lanes outside every ancestor project discovery boundary."""
+        resolved_primary = primary_root.resolve()
+        outermost_project = resolved_primary
+        for candidate in resolved_primary.parents:
+            if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
+                outermost_project = candidate
+        namespace_digest = u.Cli.sha256_content(str(resolved_primary))[
+            : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
+        ]
+        namespace = f"{resolved_primary.name}-{namespace_digest}"
+        return r.ok(
+            (outermost_project.parent / c.Infra.WORKTREES_DIRNAME / namespace).resolve()
+        )
 
     @classmethod
     def _lane_path(cls, primary_root: Path, branch: str) -> p.Result[Path]:
