@@ -50,10 +50,10 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
-    tool_config: m.Infra.ToolConfigDocument = m.Field(
-        default_factory=lambda: config.Infra.tooling,
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
         exclude=True,
-        description="Validated tooling policy consumed by modernization phases",
+        description="Config-owned top-level TOML section order",
     )
 
     def conform_source(
@@ -200,7 +200,7 @@ class FlextInfraPyprojectModernizer(
         raw_environments = u.Cli.json_as_sequence(pyright.get("executionEnvironments"))
         if declared_python_dirs:
             raw_environments = FlextInfraEnsurePyrightConfigPhase(
-                self.tool_config
+                config.Infra.tooling
             ).environment_payloads_for_dirs(declared_python_dirs)
         declared_pyrefly_includes = (
             FlextInfraExtraPathsManager.pyrefly_include_globs(declared_python_dirs)
