@@ -176,6 +176,27 @@ class TestsCodegenSetupSubmodules:
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
         tm.that((project / "uv.log").exists(), eq=False)
 
+    def test_declared_branch_ahead_of_gitlink_is_preserved(
+        self, tmp_path: Path
+    ) -> None:
+        source = tmp_path / "source"
+        self._commit_repository(source, "declared-dev", "source")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(project, source, "vendor/source", "declared-dev")
+        checkout = project / "vendor/source"
+        advanced_marker = checkout / "advanced.txt"
+        advanced_marker.write_text("fix forward", encoding="utf-8")
+        self._git(checkout, "add", "advanced.txt")
+        self._git(checkout, "commit", "-q", "-m", "Advance declared branch")
+        advanced_head = self._git(checkout, "rev-parse", "HEAD")
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
+        tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=advanced_head)
+        tm.that(advanced_marker.read_text(encoding="utf-8"), eq="fix forward")
+
     def test_same_branch_declaration_uses_superproject_branch(
         self, tmp_path: Path
     ) -> None:

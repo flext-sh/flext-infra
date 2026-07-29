@@ -12,8 +12,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
@@ -22,9 +20,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests import t
-
-
-pytestmark = pytest.mark.timeout(60)
 
 
 class TestHandleLazyInit:

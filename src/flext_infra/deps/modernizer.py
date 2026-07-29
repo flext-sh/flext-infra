@@ -50,6 +50,11 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+    tomlsort_sort_first: t.StrSequence = m.Field(
+        default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
+        exclude=True,
+        description="Config-owned top-level TOML section order",
+    )
 
     def conform_source(
         self,

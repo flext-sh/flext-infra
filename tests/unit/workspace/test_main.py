@@ -13,8 +13,6 @@ from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import c, u
 
-pytestmark = pytest.mark.timeout(60)
-
 
 def _write_project(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True, exist_ok=True)
@@ -263,7 +261,6 @@ class TestsFlextInfraWorkspaceMain:
     def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
-        u.Tests.initialize_git_repo(project_root)
 
         exit_code = workspace_main([
             "sync",

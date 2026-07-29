@@ -750,6 +750,21 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -889,6 +904,21 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(
+                description="Canonical bootstrap source for the infrastructure CLI"
+            ),
+        ]
+        infra_source_root_rel: Annotated[
+            str | None,
+            m.Field(
+                description=(
+                    "Repository-relative local infrastructure source, or None "
+                    "when bootstrap must use the configured Git source"
+                )
+            ),
+        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1300,10 +1330,6 @@ class FlextInfraConfigModels:
                 for section in scaffold_sections
                 for pattern in section.patterns
             }
-            derived: t.MutableSequenceOf[str] = []
-            for pattern in self.gitignore_artifact_patterns:
-                if pattern not in governed and pattern not in derived:
-                    derived.append(pattern)
             managed_allowed: t.MutableSequenceOf[str] = []
             declared_patterns = {
                 pattern for section in scaffold_sections for pattern in section.patterns
@@ -1325,6 +1351,10 @@ class FlextInfraConfigModels:
                     if candidate not in declared_patterns
                     and candidate not in managed_allowed
                 )
+            derived: t.MutableSequenceOf[str] = []
+            for pattern in self.gitignore_artifact_patterns:
+                if pattern not in governed and pattern not in derived:
+                    derived.append(pattern)
             sections: t.MutableSequenceOf[
                 FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
             ] = []

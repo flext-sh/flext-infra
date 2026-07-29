@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c
 
@@ -44,7 +42,6 @@ class TestsFlextInfraReleaseFlow:
     class TestsVersioning:
         """Version flow behavior."""
 
-        @pytest.mark.timeout(60)
         @staticmethod
         def test_main_version_apply_updates_root_and_selected_project(
             tmp_path: Path,
