@@ -60,9 +60,13 @@ class FlextInfraConstantsCli:
     "CLI routes that express application through ``--mode apply``."
     WORKTREE_TRANSACTION_LINT_COMMANDS: Final[t.StrSequencePairTuple] = (
         ("ruff", ("ruff", "check", ".", "--preview", "--statistics")),
+        (
+            "ruff-details",
+            ("ruff", "check", ".", "--preview", "--output-format", "concise"),
+        ),
         ("pyrefly", ("pyrefly", "check")),
     )
-    "Lint commands captured before and after each isolated mutation."
+    "Lint counts and actionable locations captured around isolated mutation."
 
 
 __all__: tuple[str, ...] = ("FlextInfraConstantsCli",)

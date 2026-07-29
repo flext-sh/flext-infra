@@ -9,9 +9,9 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
+MAKE_PROFILE := workspace-member
 WORKSPACE_ROOT_REL := .
-WORKSPACE_MEMBERS :=
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 
@@ -48,7 +48,7 @@ PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_PHASES := generate fix audit build validate
@@ -84,7 +84,6 @@ _DEFAULT_clean := generated
 _DEFAULT_release := status
 _DEFAULT_codegen := check
 _DEFAULT_worktree := list
-_DEFAULT_basemk := generate
 
 
 ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
@@ -258,7 +257,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS)
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS) $(_BUILTIN_HANDLERS) _builtin_setup_submodules
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
@@ -291,7 +290,7 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' '';
+	@printf '%s\n' 'flext-infra [workspace-member]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -349,8 +348,6 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s\n' 'worktree' 'list';
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
-
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BASE' 'required for worktree add/update';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
@@ -376,17 +373,66 @@ _builtin_setup_submodules:
 	@set -eu; \
 	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
 	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
+	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
+		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
+		current=$$(git branch --show-current); \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$branch" ]; then \
+			if [ -n "$$current" ]; then \
+				printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
+				exit 1; \
+			fi; \
+			exit 0; \
+		fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$toplevel" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
+			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
+		if [ -n "$$current" ] && [ "$$(git rev-parse HEAD)" != "$$sha1" ]; then \
+			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short "$$sha1")" >&2; \
+			exit 1; \
+		fi'; \
 	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
 		branch=$$(git config -f "$$toplevel/.gitmodules" --get --default "" "submodule.$$name.branch"); \
 		if [ -z "$$branch" ]; then exit 0; fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$toplevel" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf "ERROR: %s: branch = . requires its superproject on a named branch\n" "$$displaypath" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf "ERROR: %s: invalid declared branch %s\n" "$$displaypath" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		current=$$(git branch --show-current); \
+		if [ "$$current" = "$$branch" ]; then exit 0; fi; \
+		if [ -n "$$current" ]; then \
+			printf "ERROR: %s: conflicting branch %s; expected %s\n" "$$displaypath" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
 		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
 			git checkout --quiet -b "$$branch"; \
 		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
 			git checkout --quiet "$$branch"; \
 		else \
-			printf "ERROR: %s: branch %s is at %s but the superproject records %s\n" "$$name" "$$branch" "$$(git rev-parse --short "refs/heads/$$branch")" "$$(git rev-parse --short HEAD)" >&2; \
-			printf "Reconcile that branch with the recorded gitlink, then re-run setup\n" >&2; \
+			printf "ERROR: %s: branch %s diverges from recorded gitlink %s\n" "$$displaypath" "$$branch" "$$(git rev-parse --short HEAD)" >&2; \
 			exit 1; \
 		fi'
 
