@@ -3,42 +3,37 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
-from flext_infra import c, m, t, u
+from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_routes import CliRouteService
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+if TYPE_CHECKING:
+    from flext_infra import t
 
 
 class CliTransactionService(CliRouteService, type(cli_facade)):
     """Execute governed route mutations through one worktree transaction."""
 
     app_name: ClassVar[str] = "flext-infra"
-    help_flags: ClassVar[frozenset[str]] = frozenset({"-h", "--help"})
-    shared_bool_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_BOOL_FLAGS
-    shared_value_flags: ClassVar[frozenset[str]] = c.Infra.SHARED_VALUE_FLAGS
+    help_flags: ClassVar[frozenset[str]] = CliCatalog.help_flags
+    shared_bool_flags: ClassVar[frozenset[str]] = CliCatalog.shared_bool_flags
+    shared_value_flags: ClassVar[frozenset[str]] = CliCatalog.shared_value_flags
 
     @classmethod
-    def transaction_route_key(cls, group: str, args: t.StrSequence) -> str | None:
-        """Resolve one governed write route from unnormalized CLI arguments."""
-        route_names = {route.name for route in cls.group_commands[group]}
-        command_name = next(
-            (argument for argument in args if argument in route_names), None
-        )
-        if command_name is None:
-            return None
-        route_key = f"{group}:{command_name}"
+    def transaction_route_key(cls, group: str, command: str) -> str | None:
+        """Resolve one governed write route from the structural command selection."""
+        route_key = f"{group}:{command}"
         governed_routes = (
-            c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES
-            | c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES
+            CliCatalog.transaction_apply_routes | CliCatalog.transaction_mode_routes
         )
         return route_key if route_key in governed_routes else None
 
     @staticmethod
     def transaction_apply_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requested source application."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
+        if route_key in CliCatalog.transaction_apply_routes:
             return "--apply" in args
         return any(
             argument == "--mode=apply"
@@ -53,7 +48,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
     @staticmethod
     def transaction_check_requested(route_key: str, args: t.StrSequence) -> bool:
         """Return whether the outer invocation requires a zero-delta check."""
-        if route_key in c.Infra.WORKTREE_TRANSACTION_APPLY_ROUTES:
+        if route_key in CliCatalog.transaction_apply_routes:
             return any(argument in {"--check", "--check-only"} for argument in args)
         return any(
             argument == "--mode=check"
@@ -74,7 +69,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             if skip_next:
                 skip_next = False
                 continue
-            if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
+            if route_key in CliCatalog.transaction_mode_routes:
                 if argument == "--mode":
                     skip_next = True
                     continue
@@ -83,7 +78,7 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             elif argument in {"--apply", "--check", "--check-only", "--dry-run"}:
                 continue
             normalized.append(argument)
-        if route_key in c.Infra.WORKTREE_TRANSACTION_MODE_ROUTES:
+        if route_key in CliCatalog.transaction_mode_routes:
             normalized.extend(("--mode", "apply"))
         else:
             normalized.append("--apply")
@@ -112,6 +107,8 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
         load/parse failure returns an empty tuple so the caller falls back to
         full-workspace isolation (safe default).
         """
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
         spec = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
         if spec.failure:
             return ()
@@ -161,15 +158,20 @@ class CliTransactionService(CliRouteService, type(cli_facade)):
             return tuple(scoped)
         return cls._manifest_member_scope(workspace_root)
 
-    def run_worktree_transaction(self, group: str, args: t.StrSequence) -> int | None:
+    def run_worktree_transaction(
+        self, group: str, command: str, args: t.StrSequence
+    ) -> int | None:
         """Execute a governed mutation through the central worktree transaction."""
         if any(argument in self.help_flags for argument in args):
             return None
+        route_key = self.transaction_route_key(group, command)
+        if route_key is None:
+            return None
+
+        from flext_infra import c, m, u
+
         process_environment = u.Cli.process_env()
         if process_environment.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
-            return None
-        route_key = self.transaction_route_key(group, args)
-        if route_key is None:
             return None
         candidate_root = self.transaction_workspace_argument(args)
         workspace_result = u.Infra.git_workspace_root(candidate_root)

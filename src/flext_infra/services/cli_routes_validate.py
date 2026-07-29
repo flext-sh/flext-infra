@@ -2,126 +2,151 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c, m, p, t, u
-from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.docs.builder import FlextInfraDocBuilder
-from flext_infra.docs.fixer import FlextInfraDocFixer
-from flext_infra.docs.generator import FlextInfraDocGenerator
-from flext_infra.docs.server import FlextInfraDocServer
-from flext_infra.docs.validator import FlextInfraDocValidator
-from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
+from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
 
+if TYPE_CHECKING:
+    from flext_infra import m, p, t
 
-class ValidationRoutes(ValidationCommandRoutes):
-    """Own documentation, GitHub, maintenance, and validation routes."""
+
+class ValidationRoutes(CliRouteBase):
+    """Load only the selected documentation or validation implementation."""
 
     @staticmethod
     def _require_successful_pull_request_workspace(
         report: m.Infra.GithubPullRequestWorkspaceReport,
     ) -> p.Result[t.Cli.ResultValue]:
         """Fail the CLI boundary when any repository operation failed."""
+        from flext_core import r
+
         if report.fail:
             return r.fail(report.message)
         return r.ok(report)
 
-    validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
-        c.Infra.CLI_GROUP_DOCS: tuple(
-            m.Cli.ResultCommandRoute(
-                name=route_name,
-                help_text=help_text,
-                model_cls=model_cls,
-                handler=lambda params, mc=model_cls: mc.execute_command(params),
-                success_message=success_message,
+    @classmethod
+    def routes_for(
+        cls, group: str, command: str
+    ) -> tuple[m.Cli.ResultCommandRoute, ...]:
+        """Build the route selected at the lightweight dispatch boundary."""
+        if group == "validate":
+            return ValidationCommandRoutes.routes_for(command)
+
+        from flext_infra import m
+
+        if group == "docs":
+            if command == "audit":
+                from flext_infra.docs.auditor import FlextInfraDocAuditor
+
+                implementation = FlextInfraDocAuditor
+                success_message = "Audit completed successfully"
+            elif command == "fix":
+                from flext_infra.docs.fixer import FlextInfraDocFixer
+
+                implementation = FlextInfraDocFixer
+                success_message = "Fix completed successfully"
+            elif command == "build":
+                from flext_infra.docs.builder import FlextInfraDocBuilder
+
+                implementation = FlextInfraDocBuilder
+                success_message = "Build completed successfully"
+            elif command == "generate":
+                from flext_infra.docs.generator import FlextInfraDocGenerator
+
+                implementation = FlextInfraDocGenerator
+                success_message = "Generate completed successfully"
+            elif command == "serve":
+                from flext_infra.docs.server import FlextInfraDocServer
+
+                implementation = FlextInfraDocServer
+                success_message = "Serve completed successfully"
+            elif command == "validate":
+                from flext_infra.docs.validator import FlextInfraDocValidator
+
+                implementation = FlextInfraDocValidator
+                success_message = "Validate completed successfully"
+            else:
+                return ()
+            return (
+                m.Cli.ResultCommandRoute(
+                    name=command,
+                    help_text=CliCatalog.description(group, command),
+                    model_cls=implementation,
+                    handler=lambda params, mc=implementation: mc.execute_command(
+                        params
+                    ),
+                    success_message=success_message,
+                ),
             )
-            for route_name, help_text, model_cls, success_message in (
-                (
-                    "audit",
-                    "Audit documentation for broken links and forbidden terms",
-                    FlextInfraDocAuditor,
-                    "Audit completed successfully",
-                ),
-                (
-                    "fix",
-                    "Fix documentation issues",
-                    FlextInfraDocFixer,
-                    "Fix completed successfully",
-                ),
-                (
-                    "build",
-                    "Build MkDocs sites",
-                    FlextInfraDocBuilder,
-                    "Build completed successfully",
-                ),
-                (
-                    "generate",
-                    "Generate project docs",
-                    FlextInfraDocGenerator,
-                    "Generate completed successfully",
-                ),
-                (
-                    "serve",
-                    "Serve one MkDocs site in dev mode (blocking preview)",
-                    FlextInfraDocServer,
-                    "Serve completed successfully",
-                ),
-                (
-                    "validate",
-                    "Validate documentation",
-                    FlextInfraDocValidator,
-                    "Validate completed successfully",
+
+        if group == "github":
+            from flext_infra import u
+
+            if command == "workflows":
+                return (
+                    m.Cli.ResultCommandRoute(
+                        name=command,
+                        help_text=CliCatalog.description(group, command),
+                        model_cls=m.Infra.GithubWorkflowSyncRequest,
+                        handler=lambda params: u.Infra.sync_github_workflows(params).map(
+                            CliRouteBase.as_route_value
+                        ),
+                    ),
+                )
+            if command == "lint":
+                return (
+                    m.Cli.ResultCommandRoute(
+                        name=command,
+                        help_text=CliCatalog.description(group, command),
+                        model_cls=m.Infra.GithubWorkflowLintRequest,
+                        handler=lambda params: u.Infra.lint_github_workflows(params).map(
+                            CliRouteBase.as_route_value
+                        ),
+                    ),
+                )
+            if command == "pr":
+                return (
+                    m.Cli.ResultCommandRoute(
+                        name=command,
+                        help_text=CliCatalog.description(group, command),
+                        model_cls=m.Infra.GithubPullRequestRequest,
+                        handler=lambda params: u.Infra.run_github_pull_request(
+                            params
+                        ).map(CliRouteBase.as_route_value),
+                    ),
+                )
+            if command == "pr-workspace":
+                return (
+                    m.Cli.ResultCommandRoute(
+                        name=command,
+                        help_text=CliCatalog.description(group, command),
+                        model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
+                        handler=lambda params: (
+                            u.Infra.run_github_workspace_pull_requests(params).flat_map(
+                                ValidationRoutes._require_successful_pull_request_workspace
+                            )
+                        ),
+                    ),
+                )
+            return ()
+
+        if (group, command) == ("maintenance", "run"):
+            from flext_infra.maintenance.python_version import (
+                FlextInfraPythonVersionEnforcer,
+            )
+
+            return (
+                m.Cli.ResultCommandRoute(
+                    name=command,
+                    help_text=CliCatalog.description(group, command),
+                    model_cls=FlextInfraPythonVersionEnforcer,
+                    handler=FlextInfraPythonVersionEnforcer.execute_command,
+                    success_message="Maintenance completed",
                 ),
             )
-        ),
-        c.Infra.CLI_GROUP_GITHUB: (
-            m.Cli.ResultCommandRoute(
-                name="workflows",
-                help_text="Sync GitHub workflow files across workspace",
-                model_cls=m.Infra.GithubWorkflowSyncRequest,
-                handler=lambda params: u.Infra.sync_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.LINT_SECTION,
-                help_text="Lint GitHub workflow files",
-                model_cls=m.Infra.GithubWorkflowLintRequest,
-                handler=lambda params: u.Infra.lint_github_workflows(params).map(
-                    CliRouteBase.as_route_value
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.PR,
-                help_text="Manage pull requests for a single project",
-                model_cls=m.Infra.GithubPullRequestRequest,
-                handler=lambda params: u.Infra.run_github_pull_request(params).map(
-                    CliRouteBase.as_route_value
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name="pr-workspace",
-                help_text="Manage pull requests across workspace projects",
-                model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=lambda params: u.Infra.run_github_workspace_pull_requests(
-                    params
-                ).flat_map(ValidationRoutes._require_successful_pull_request_workspace),
-            ),
-        ),
-        c.Infra.CLI_GROUP_MAINTENANCE: (
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.VERB_RUN,
-                help_text="Enforce Python version constraints",
-                model_cls=FlextInfraPythonVersionEnforcer,
-                handler=FlextInfraPythonVersionEnforcer.execute_command,
-                success_message="Maintenance completed",
-            ),
-        ),
-        c.Infra.CLI_GROUP_VALIDATE: ValidationCommandRoutes.validate_command_routes,
-    }
+        return ()
 
 
 __all__: list[str] = ["ValidationRoutes"]

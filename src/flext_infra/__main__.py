@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from flext_cli import cli
-from flext_infra import main
+from flext_infra.cli import main
 
 if __name__ == "__main__":
-    cli.exit(main())
+    raise SystemExit(main())

@@ -2,153 +2,112 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING
 
-from flext_infra import m
+from flext_infra.cli_catalog import CliCatalog
 from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
-from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
-from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
-from flext_infra.validate.inventory import FlextInfraInventoryService
-from flext_infra.validate.lazy_map_freshness import FlextInfraValidateLazyMapFreshness
-from flext_infra.validate.manual_command import FlextInfraManualCommandValidator
-from flext_infra.validate.metadata_discipline import (
-    FlextInfraValidateMetadataDiscipline,
-)
-from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
-from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
-from flext_infra.validate.scanner import FlextInfraTextPatternScanner
-from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
-from flext_infra.validate.skill_validator import FlextInfraSkillValidator
-from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
-from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
+
+if TYPE_CHECKING:
+    from flext_infra import m
 
 
 class ValidationCommandRoutes(CliRouteBase):
-    """Own the complete validate command tuple."""
+    """Load only the selected validate-command implementation."""
 
-    validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = tuple(
-        m.Cli.ResultCommandRoute(
-            name=route_name, help_text=help_text, model_cls=model_cls, handler=handler
-        )
-        for route_name, help_text, model_cls, handler in (
-            (
-                "basemk-validate",
-                "Validate base.mk sync",
+    @classmethod
+    def routes_for(cls, command: str) -> tuple[m.Cli.ResultCommandRoute, ...]:
+        """Build the route selected at the lightweight dispatch boundary."""
+        if command == "basemk-validate":
+            from flext_infra.validate.basemk_validator import (
                 FlextInfraBaseMkValidator,
-                lambda params, mc=FlextInfraBaseMkValidator: mc.execute_command(params),
-            ),
-            (
-                "inventory",
-                "Generate scripts inventory",
-                FlextInfraInventoryService,
-                lambda params, mc=FlextInfraInventoryService: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "runtime-census",
-                "Post-import Beartype enforcement census for flext_* modules",
+            )
+
+            implementation = FlextInfraBaseMkValidator
+        elif command == "inventory":
+            from flext_infra.validate.inventory import FlextInfraInventoryService
+
+            implementation = FlextInfraInventoryService
+        elif command == "runtime-census":
+            from flext_infra.validate.runtime_census import (
                 FlextInfraRuntimeCensusValidator,
-                lambda params, mc=FlextInfraRuntimeCensusValidator: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "pytest-diag",
-                "Extract pytest diagnostics",
-                FlextInfraPytestDiagExtractor,
-                lambda params, mc=FlextInfraPytestDiagExtractor: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "scan",
-                "Scan text files for patterns",
-                FlextInfraTextPatternScanner,
-                lambda params, mc=FlextInfraTextPatternScanner: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "skill-validate",
-                "Validate a skill",
-                FlextInfraSkillValidator,
-                lambda params, mc=FlextInfraSkillValidator: mc.execute_command(params),
-            ),
-            (
-                "silent-failure",
-                "Validate silent failure sentinel returns",
+            )
+
+            implementation = FlextInfraRuntimeCensusValidator
+        elif command == "pytest-diag":
+            from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+
+            implementation = FlextInfraPytestDiagExtractor
+        elif command == "scan":
+            from flext_infra.validate.scanner import FlextInfraTextPatternScanner
+
+            implementation = FlextInfraTextPatternScanner
+        elif command == "skill-validate":
+            from flext_infra.validate.skill_validator import FlextInfraSkillValidator
+
+            implementation = FlextInfraSkillValidator
+        elif command == "silent-failure":
+            from flext_infra.validate.silent_failure import (
                 FlextInfraSilentFailureValidator,
-                lambda params, mc=FlextInfraSilentFailureValidator: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "stub-validate",
-                "Validate stub supply chain",
-                FlextInfraStubSupplyChain,
-                lambda params, mc=FlextInfraStubSupplyChain: mc.execute_command(params),
-            ),
-            (
-                "fresh-import",
-                "Guard 7: fresh-process import smoke test",
-                FlextInfraValidateFreshImport,
-                lambda params, mc=FlextInfraValidateFreshImport: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "import-cycles",
-                "Guard 1: ROPE-backed import cycle detector",
+            )
+
+            implementation = FlextInfraSilentFailureValidator
+        elif command == "stub-validate":
+            from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
+
+            implementation = FlextInfraStubSupplyChain
+        elif command == "fresh-import":
+            from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
+
+            implementation = FlextInfraValidateFreshImport
+        elif command == "import-cycles":
+            from flext_infra.validate.import_cycles import (
                 FlextInfraValidateImportCycles,
-                lambda params, mc=FlextInfraValidateImportCycles: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "lazy-map-freshness",
-                "Guard 2/3: lazy-map freshness validator",
+            )
+
+            implementation = FlextInfraValidateImportCycles
+        elif command == "lazy-map-freshness":
+            from flext_infra.validate.lazy_map_freshness import (
                 FlextInfraValidateLazyMapFreshness,
-                lambda params, mc=FlextInfraValidateLazyMapFreshness: (
-                    mc.execute_command(params)
-                ),
-            ),
-            (
-                "namespace",
-                "Guard: static namespace rules (NS-000..003) via rope",
+            )
+
+            implementation = FlextInfraValidateLazyMapFreshness
+        elif command == "namespace":
+            from flext_infra.validate.namespace_validator import (
                 FlextInfraNamespaceValidator,
-                lambda params, mc=FlextInfraNamespaceValidator: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "tier-whitelist",
-                "Guard 5: tier-whitelist/abstraction-boundary enforcer",
+            )
+
+            implementation = FlextInfraNamespaceValidator
+        elif command == "tier-whitelist":
+            from flext_infra.validate.tier_whitelist import (
                 FlextInfraValidateTierWhitelist,
-                lambda params, mc=FlextInfraValidateTierWhitelist: mc.execute_command(
-                    params
-                ),
-            ),
-            (
-                "metadata-discipline",
-                "Guard 8: centralized metadata parser discipline",
+            )
+
+            implementation = FlextInfraValidateTierWhitelist
+        elif command == "metadata-discipline":
+            from flext_infra.validate.metadata_discipline import (
                 FlextInfraValidateMetadataDiscipline,
-                lambda params, mc=FlextInfraValidateMetadataDiscipline: (
-                    mc.execute_command(params)
-                ),
-            ),
-            (
-                "manual-cmd",
-                "Manual-command blocker (§5): pre-commit config drift gate",
+            )
+
+            implementation = FlextInfraValidateMetadataDiscipline
+        elif command == "manual-cmd":
+            from flext_infra.validate.manual_command import (
                 FlextInfraManualCommandValidator,
-                lambda params, mc=FlextInfraManualCommandValidator: mc.execute_command(
-                    params
-                ),
+            )
+
+            implementation = FlextInfraManualCommandValidator
+        else:
+            return ()
+
+        from flext_infra import m
+
+        return (
+            m.Cli.ResultCommandRoute(
+                name=command,
+                help_text=CliCatalog.description("validate", command),
+                model_cls=implementation,
+                handler=lambda params, mc=implementation: mc.execute_command(params),
             ),
         )
-    )
 
 
 __all__: list[str] = ["ValidationCommandRoutes"]
