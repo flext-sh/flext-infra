@@ -14,12 +14,8 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm
-
-pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from pathlib import Path

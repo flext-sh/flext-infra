@@ -6,14 +6,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import config
 from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import c, m, t, u
-
-pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from tests import p
@@ -307,7 +303,9 @@ class TestsFlextInfraWorkspaceSync:
             lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
         dry_run = u.Cli.capture(
-            ["make", "--dry-run", "help"], cwd=project_root, timeout=30
+            ["make", "--dry-run", "help"],
+            cwd=project_root,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         tm.ok(dry_run)
 

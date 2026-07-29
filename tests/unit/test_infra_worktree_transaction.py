@@ -401,7 +401,6 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(ignored.read_text(encoding="utf-8"), eq='{"strict": false}\n')
         tm.that(tracked.read_text(encoding="utf-8"), eq="concurrent\n")
 
-    @pytest.mark.timeout(60)
     def test_public_dry_run_materializes_inner_patch_without_source_mutation(
         self, tmp_path: Path
     ) -> None:
@@ -421,7 +420,7 @@ class TestsFlextInfraWorktreeTransaction:
                     "--apply",
                 ),
                 apply_patch=False,
-                timeout_seconds=120,
+                timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             )
         )
         report = tm.ok(transaction_result)

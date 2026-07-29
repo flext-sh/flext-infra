@@ -6,13 +6,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main
+from flext_infra import config, main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_tests import tm
 from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from tests import t
 
 
 class TestsFlextInfraDepsModernizerWorkspace:
@@ -57,6 +59,73 @@ class TestsFlextInfraDepsModernizerWorkspace:
         deep_path.mkdir(parents=True, exist_ok=True)
         result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
+
+    @pytest.mark.parametrize(
+        ("description", "sort_first"),
+        [
+            pytest.param("Config-owned metadata", None, id="config-owner"),
+            pytest.param(
+                "Portable process runner",
+                ("project", "dependency-groups"),
+                id="project-first",
+            ),
+            pytest.param(
+                "Typed metadata: punctuation-safe.",
+                ("dependency-groups", "project"),
+                id="groups-first",
+            ),
+        ],
+    )
+    def test_conform_preserves_explicit_project_table_boundary(
+        self, tmp_path: Path, description: str, sort_first: t.StrSequence | None
+    ) -> None:
+        """Keep project scalars explicit for arbitrary valid top-level orders."""
+        pyproject = tmp_path / c.Infra.PYPROJECT_FILENAME
+        package_init = tmp_path / "src" / "flext_example" / "__init__.py"
+        package_init.parent.mkdir(parents=True)
+        package_init.write_text("", encoding="utf-8")
+        expected_order = (
+            config.Infra.tooling.tools.tomlsort.sort_first
+            if sort_first is None
+            else sort_first
+        )
+        source = (
+            "[project]\n"
+            'name = "flext-example"\n'
+            'version = "0.1.0"\n'
+            f'description = "{description}"\n'
+            "\n[dependency-groups]\n"
+            'dev = ["pytest"]\n'
+        )
+        modernizer = (
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True, skip_comments=True
+            )
+            if sort_first is None
+            else FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path,
+                skip_check=True,
+                skip_comments=True,
+                tomlsort_sort_first=sort_first,
+            )
+        )
+        rendered = tm.ok(modernizer.conform_source(source, path=pyproject))
+        tm.that(rendered.count("[project]"), eq=1)
+        payload = u.Cli.toml_mapping_from_text(rendered)
+        tm.that(payload, none=False)
+        if payload is None:
+            pytest.fail("conformed pyproject must remain valid TOML")
+        project = u.Cli.toml_mapping_child(payload, c.Infra.PROJECT)
+        tm.that(project, none=False)
+        if project is None:
+            pytest.fail("conformed pyproject must retain [project]")
+        tm.that(project.get("description"), eq=description)
+        groups = u.Cli.toml_mapping_child(payload, "dependency-groups")
+        tm.that(groups, none=False)
+        if groups is None:
+            pytest.fail("conformed pyproject must retain [dependency-groups]")
+        tm.that(u.Cli.json_as_sequence(groups.get(c.Infra.DEV)), eq=["pytest"])
+        tm.that(list(payload)[: len(expected_order)], eq=list(expected_order))
 
     def test_modernizer_uses_git_topology_for_child_detection(
         self, tmp_path: Path

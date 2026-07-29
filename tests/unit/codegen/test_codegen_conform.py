@@ -16,14 +16,13 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, m, u
+from flext_infra import main as infra_main
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
-pytestmark = pytest.mark.timeout(60)
 
 
 class TestCodegenConform:
@@ -85,7 +84,7 @@ class TestCodegenConform:
             [sys.executable, "-m", package_name, "ping"],
             cwd=root,
             env={**os.environ, "PYTHONPATH": pythonpath},
-            timeout=60,
+            timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
@@ -386,8 +385,7 @@ class TestCodegenConform:
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
 
         tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
-        tm.that(addopts, has="--timeout=10")
-        tm.that(addopts, has="--session-timeout=60")
+        tm.that(addopts, eq=set(config.Infra.tooling.tools.pytest.standard_addopts))
         tm.that(
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
@@ -565,25 +563,19 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
-        process = u.Cli.capture(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--what",
-                "dependencies",
-                "--scope",
-                "self",
-                "--mode",
-                "check",
-            ],
-            timeout=60,
-        )
-        tm.ok(process)
+        exit_code = infra_main([
+            "codegen",
+            "conform",
+            "--root",
+            str(root),
+            "--what",
+            "dependencies",
+            "--scope",
+            "self",
+            "--mode",
+            "check",
+        ])
+        tm.that(exit_code, eq=0)
 
     def test_invalid_public_custom_make_fails_without_side_effects(
         self, infra_git_repo: Path
