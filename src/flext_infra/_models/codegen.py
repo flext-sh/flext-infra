@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import MutableSet
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
 
-from flext_core import m
-from flext_core import u
+from flext_cli import m
+from flext_cli import u
 from flext_infra import c, t
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -539,9 +538,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ctx_start = max(0, violation.line - 2)
             ctx_end = min(len(source_lines), violation.line + 3)
             context = "\n".join(source_lines[ctx_start:ctx_end])
-            content_hash = hashlib.sha256(
-                context.encode(c.Cli.ENCODING_DEFAULT)
-            ).hexdigest()
+            content_hash = u.Cli.sha256_content(context)
             return FlextInfraModelsCodegen.ViolationKey(
                 module=violation.module, rule=violation.rule, content_hash=content_hash
             )

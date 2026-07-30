@@ -13,7 +13,6 @@ from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, p, t
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import m, u
 
@@ -39,7 +38,7 @@ def _operation_delta(tmp_path: Path) -> tuple[Path, Path, m.Infra.RepositoryDelt
     worktree_root = tmp_path / "isolated"
     add_result = u.Infra.git_add_detached_worktree(source_root, worktree_root)
     tm.ok(add_result)
-    checkpoint: str = tm.ok(
+    checkpoint = tm.ok(
         u.Infra.git_checkpoint_worktree(
             worktree_root, message="test isolated transaction checkpoint"
         )
@@ -117,7 +116,6 @@ def _workspace(tmp_path: Path) -> Path:
             "  workspace_root_rel: .\n"
             "  year: 2026\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -164,7 +162,7 @@ class TestsFlextInfraWorktreeTransaction:
         )
         worktree_root = tmp_path / "isolated"
 
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree] = tm.ok(
+        repositories = tm.ok(
             u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
                 workspace_root, worktree_root, "transaction-test"
             )
@@ -183,71 +181,6 @@ class TestsFlextInfraWorktreeTransaction:
         tm.that(marker.read_text(encoding="utf-8"), eq="nested WIP\n")
         tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
 
-    def test_isolated_root_gitlink_tracks_member_checkpoint(
-        self, tmp_path: Path
-    ) -> None:
-        """Seed the isolated root gitlink with the member checkpoint it transports.
-
-        The isolated root must stay self-consistent: every member worktree is
-        checkpointed to a new SHA, so the root gitlink recorded inside the
-        transaction has to point at that checkpoint. Seeding the pre-transaction
-        source HEAD leaves the isolated workspace describing a member commit that
-        the isolated tree does not contain, and any consumer validating topology
-        inside the transaction fails closed on a mismatch it can never satisfy.
-        """
-        workspace_root = _workspace(tmp_path)
-        nested_root = workspace_root / "nested-repository"
-        nested_root.mkdir()
-        (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
-        u.Tests.initialize_git_repo(nested_root)
-        manifest = workspace_root / "config" / "workspace.yaml"
-        manifest.write_text(
-            manifest.read_text(encoding="utf-8").replace(
-                "members: []\n",
-                "members:\n"
-                "  - name: nested-repository\n"
-                "    distribution: nested-repository\n"
-                "    provider: flext-sh\n"
-                "    url: https://github.com/flext-sh/nested-repository.git\n"
-                "    branch: main\n"
-                "    path: nested-repository\n"
-                "    role: workspace-member\n"
-                "    state: active\n"
-                "    profile: workspace-member\n"
-                "    classification: managed\n"
-                "    checkout: submodule\n"
-                "    codegen: conform\n"
-                "    package: true\n"
-                "    editable: true\n"
-                "    read_only: false\n",
-            ),
-            encoding="utf-8",
-        )
-        worktree_root = tmp_path / "isolated"
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree] = tm.ok(
-            u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
-                workspace_root, worktree_root, "gitlink-consistency-test"
-            )
-        )
-        nested = next(
-            repository
-            for repository in repositories
-            if repository.relative_path == "nested-repository"
-        )
-
-        staged: str = tm.ok(
-            u.Infra.git_capture(
-                worktree_root,
-                ("ls-files", "--stage", "--", nested.relative_path),
-            )
-        )
-
-        tm.that(
-            staged.strip(),
-            eq=f"160000 {nested.checkpoint_sha} 0\t{nested.relative_path}",
-        )
-        tm.ok(u.Infra._cleanup_worktrees(repositories, worktree_root))  # ruff:ignore[private-member-access]
-
     def test_nested_checkpoint_transport_preserves_source_head_gitlink(
         self, tmp_path: Path
     ) -> None:
@@ -256,7 +189,7 @@ class TestsFlextInfraWorktreeTransaction:
         nested_root.mkdir()
         (nested_root / "marker.txt").write_text("source\n", encoding="utf-8")
         u.Tests.initialize_git_repo(nested_root)
-        source_head: str = tm.ok(u.Infra.git_repository_head(nested_root))
+        source_head = tm.ok(u.Infra.git_repository_head(nested_root))
         manifest = workspace_root / "config" / "workspace.yaml"
         manifest.write_text(
             manifest.read_text(encoding="utf-8").replace(
@@ -281,7 +214,7 @@ class TestsFlextInfraWorktreeTransaction:
             encoding="utf-8",
         )
         worktree_root = tmp_path / "isolated"
-        repositories: t.SequenceOf[m.Infra.RepositoryWorktree] = tm.ok(
+        repositories = tm.ok(
             u.Infra._create_complete_worktree(  # ruff:ignore[private-member-access]
                 workspace_root, worktree_root, "gitlink-identity-test"
             )
@@ -291,14 +224,27 @@ class TestsFlextInfraWorktreeTransaction:
             for repository in repositories
             if repository.relative_path == "nested-repository"
         )
-        deltas: t.SequenceOf[m.Infra.RepositoryDelta] = tm.ok(
-            u.Infra._repository_deltas(repositories)  # ruff:ignore[private-member-access]
+        tm.ok(
+            u.Infra.git_capture(
+                worktree_root,
+                (
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    "160000",
+                    nested.checkpoint_sha,
+                    nested.relative_path,
+                ),
+            )
         )
+
+        deltas = tm.ok(u.Infra._repository_deltas(repositories))  # ruff:ignore[private-member-access]
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
         tm.that(root_delta.patch.decode(), has=f"Subproject commit {source_head}")
+        tm.that(root_delta.patch.decode(), hasnt=nested.checkpoint_sha)
         tm.ok(u.Infra.git_apply_patch(root_delta))
-        staged: str = tm.ok(
+        staged = tm.ok(
             u.Infra.git_capture(
                 workspace_root, ("ls-files", "--stage", "--", nested.relative_path)
             )
@@ -333,7 +279,7 @@ class TestsFlextInfraWorktreeTransaction:
         post_checkout.chmod(0o755)
         worktree_root = tmp_path / "isolated"
 
-        head: str = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
+        head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
 
         tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
 
@@ -451,7 +397,7 @@ class TestsFlextInfraWorktreeTransaction:
             second_worktree,
         ):
             tm.ok(
-                FlextInfraSerializationLockOwner.execute(
+                u.Infra.serialization_lock_execute(
                     (repository_root / serialization.lock_path,),
                     0,
                     available,
@@ -533,18 +479,18 @@ class TestsFlextInfraWorktreeTransaction:
 
         def attempt_head_advance() -> bool:
             tm.that(preflight_complete.wait(timeout=10), where=bool)
-            immediate: p.Result[bool] = FlextInfraSerializationLockOwner.execute(
+            immediate: p.Result[bool] = u.Infra.serialization_lock_execute(
                 (lock_path,),
                 0,
                 advance_source_head,
                 timeout_failure=timeout_failure,
                 acquisition_failure=acquisition_failure,
             )
-            lock_contended: bool = immediate.failure
+            lock_contended = immediate.failure
             contention_observed.set()
             if lock_contended:
                 tm.ok(
-                    FlextInfraSerializationLockOwner.execute(
+                    u.Infra.serialization_lock_execute(
                         (lock_path,),
                         10,
                         advance_source_head,
@@ -576,13 +522,13 @@ class TestsFlextInfraWorktreeTransaction:
         ignored.parent.mkdir()
         ignored.write_text('{"strict": false}\n', encoding="utf-8")
         worktree_root = tmp_path / "isolated"
-        checkpoint: str = tm.ok(
+        checkpoint = tm.ok(
             u.Infra.git_add_detached_worktree(source_root, worktree_root)
         )
         generated = worktree_root / ".vscode" / "settings.json"
         generated.parent.mkdir()
         generated.write_text('{"strict": true}\n', encoding="utf-8")
-        delta: m.Infra.RepositoryDelta = tm.ok(
+        delta = tm.ok(
             u.Infra.git_repository_delta(
                 m.Infra.RepositoryWorktree(
                     relative_path=".",
@@ -611,14 +557,14 @@ class TestsFlextInfraWorktreeTransaction:
         ignored.parent.mkdir()
         ignored.write_text('{"strict": false}\n', encoding="utf-8")
         worktree_root = tmp_path / "isolated"
-        checkpoint: str = tm.ok(
+        checkpoint = tm.ok(
             u.Infra.git_add_detached_worktree(source_root, worktree_root)
         )
         (worktree_root / "tracked.txt").write_text("after\n", encoding="utf-8")
         generated = worktree_root / ".vscode" / "settings.json"
         generated.parent.mkdir()
         generated.write_text('{"strict": true}\n', encoding="utf-8")
-        delta: m.Infra.RepositoryDelta = tm.ok(
+        delta = tm.ok(
             u.Infra.git_repository_delta(
                 m.Infra.RepositoryWorktree(
                     relative_path=".",
@@ -657,7 +603,7 @@ class TestsFlextInfraWorktreeTransaction:
                 timeout_seconds=c.Infra.WORKTREE_TRANSACTION_TIMEOUT_SECONDS,
             )
         )
-        report: m.Infra.WorktreeTransactionReport = tm.ok(transaction_result)
+        report = tm.ok(transaction_result)
         output = u.Infra.render_worktree_transaction_report(report)
         lint_output = "\n".join(item.output for item in report.lint_after)
 
@@ -686,7 +632,7 @@ class TestsFlextInfraWorktreeTransactionLint:
             executable.chmod(0o755)
         monkeypatch.setenv("PATH", str(overlay_bin))
 
-        commands: t.StrSequencePairTuple = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
+        commands = tm.ok(u.Infra._lint_commands())  # ruff:ignore[private-member-access]
 
         tm.that(
             {Path(command[0]).parent for _tool, command in commands}, eq={overlay_bin}

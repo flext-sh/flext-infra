@@ -24,7 +24,6 @@ SETUP_VENV := $(SETUP_ROOT)/.venv
 SETUP_BIN := $(SETUP_ROOT)/.bin
 MISE_DATA_DIR := $(SETUP_ROOT)/.tools
 SETUP_MISE_VERSION := {{ mise_version }}
-SETUP_UV_VERSION := {{ uv_version }}
 ifeq ($(OS),Windows_NT)
 SETUP_PYTHON := $(SETUP_VENV)/Scripts/python.exe
 SETUP_MISE ?= $(SETUP_BIN)/mise.exe
@@ -42,7 +41,7 @@ FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 
 .PHONY: setup venv
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_BIN)", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)", "$(SETUP_UV_VERSION)") }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_BIN)", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)") }}
 
 .PHONY: _bootstrap_setup_submodules
 
@@ -68,13 +67,13 @@ _bootstrap_setup_submodules:
 	done
 
 venv: ## Create the checkout-local virtual environment from the lock
-	@$(SETUP_UV_ENV) $(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
 setup: _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete local toolchain and environment
 	@test -n "$(SETUP_BRANCH)" && test "$(SETUP_BRANCH)" != HEAD || { \
 		echo "ERROR: setup requires a named git branch"; exit 1; }
 	@MISE_DATA_DIR="$(MISE_DATA_DIR)" $(SETUP_MISE) install --yes
-	@$(SETUP_UV_ENV) $(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
 		--project-name $(PROJECT_NAME) --output base.mk
 	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }

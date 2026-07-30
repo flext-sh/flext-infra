@@ -9,14 +9,12 @@ from typing import TYPE_CHECKING, override
 
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, r, u
-from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
@@ -177,15 +175,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-                input_data: str | bytes | None = None,
-                *,
-                live: bool = False,
-                deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
-                # Why: match the full CommandRunner.run_to_file parent contract
-                # (pyright reportIncompatibleMethodOverride); canned double ignores them.
-                del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -395,45 +386,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
             )
 
-        class MigratorDiscovery:
-            """Typed discovery stub for migrator behavior tests."""
-
-            def __init__(
-                self,
-                projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
-                *,
-                error: str = "",
-            ) -> None:
-                """Store projects and an optional discovery failure."""
-                self._projects = projects or []
-                self._error = error
-
-            def discover_projects(
-                self, workspace_root: Path
-            ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
-                """Provide the typed test helper `discover_projects`."""
-                _ = workspace_root
-                if self._error:
-                    return r[Sequence[m.Infra.ProjectInfo]].fail(self._error)
-                return r[Sequence[m.Infra.ProjectInfo]].ok(self._projects)
-
-        class MigratorGenerator(FlextInfraBaseMkGenerator):
-            """Typed base.mk generator stub for migrator behavior tests."""
-
-            def __init__(self, content: str = "", *, fail: str = "") -> None:
-                """Store generated content and an optional failure."""
-                self._content = content
-                self._fail = fail
-
-            @override
-            def generate_basemk(
-                self, settings: m.Infra.BaseMkConfig | t.ScalarMapping | None = None
-            ) -> p.Result[str]:
-                del settings
-                if self._fail:
-                    return r[str].fail(self._fail)
-                return r[str].ok(self._content)
-
         @staticmethod
         def is_docker_available() -> bool:
             """Return whether Docker is available to integration tests."""
@@ -528,7 +480,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  workspace_root_rel: .\n"
                     "  year: 2026\n"
                     "members: []\n"
-                    "content_only: []\n"
                     "exclusions: []\n"
                 ),
                 encoding="utf-8",
@@ -823,42 +774,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return bare_remote
 
         @staticmethod
-        def create_path_sync_workspace(
-            root: Path,
-            *,
-            root_pyproject: str,
-            projects: t.StrMapping | None = None,
-            gitmodules_members: t.StrSequence = (),
-            extra_dirs: t.StrSequence = (),
-        ) -> Path:
-            """Create a dependency-path synchronization workspace."""
-            workspace = root / "workspace"
-            workspace.mkdir(parents=True, exist_ok=True)
-            (workspace / "pyproject.toml").write_text(root_pyproject, encoding="utf-8")
-            if gitmodules_members:
-                gitmodules_lines: list[str] = []
-                for name in gitmodules_members:
-                    gitmodules_lines.extend((
-                        f'[submodule "{name}"]',
-                        f"\tpath = {name}",
-                        f"\turl = https://example.invalid/{name}.git",
-                        "",
-                    ))
-                (workspace / ".gitmodules").write_text(
-                    "\n".join(gitmodules_lines).rstrip() + "\n", encoding="utf-8"
-                )
-            for directory in extra_dirs:
-                (workspace / directory).mkdir(parents=True, exist_ok=True)
-            for name, pyproject in dict(projects or {}).items():
-                project = workspace / name
-                project.mkdir(parents=True, exist_ok=True)
-                (project / "pyproject.toml").write_text(pyproject, encoding="utf-8")
-                package = project / "src" / name.replace("-", "_")
-                package.mkdir(parents=True, exist_ok=True)
-                (package / "__init__.py").write_text("", encoding="utf-8")
-            return workspace
-
-        @staticmethod
         def create_path_sync_pyproject(
             *,
             name: str,
@@ -979,22 +894,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project
 
         @staticmethod
-        def create_migrator_project(
-            project_root: Path, name: str = "project-a"
-        ) -> m.Infra.ProjectInfo:
-            """Create a typed project fixture for migration tests."""
-            result: m.Infra.ProjectInfo = m.Infra.ProjectInfo.model_validate(
-                obj={
-                    "name": name,
-                    "path": project_root,
-                    "stack": "python/external",
-                    "has_tests": False,
-                    "has_src": True,
-                }
-            )
-            return result
-
-        @staticmethod
         def write_executable(path: Path, body: str) -> None:
             """Write one executable fixture with deterministic permissions."""
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1011,36 +910,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 cwd=cwd,
                 remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
             )
-
-        @staticmethod
-        def create_migrator_dir_layout(
-            tmp_path: Path,
-            *,
-            name: str = "project-a",
-            base_mk: str | None = "base.mk",
-            pyproject: str | None = "[project]\n",
-            gitignore: str | None = "",
-            makefile: str | None = "content",
-        ) -> Path:
-            """Create a temp project directory layout for migrator tests.
-
-            Centralized SSOT replacing the 6-line scaffold previously
-            duplicated across migrator test modules. Pass ``None`` for any
-            file kwarg to skip that file (used by ``*_not_found`` tests).
-            """
-            root = tmp_path / name
-            root.mkdir(parents=True)
-            (root / ".git").mkdir()
-            writes = (
-                ("base.mk", base_mk),
-                ("Makefile", makefile),
-                ("pyproject.toml", pyproject),
-                (".gitignore", gitignore),
-            )
-            for filename, content in writes:
-                if content is not None:
-                    (root / filename).write_text(content, encoding="utf-8")
-            return root
 
         @staticmethod
         def create_project_info(
@@ -1278,46 +1147,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def create_migrator_discovery(
-            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
-            *,
-            error: str = "",
-        ) -> p.Infra.Discovery:
-            """Provide the typed test helper `create_migrator_discovery`."""
-            return TestsFlextInfraUtilities.Tests.MigratorDiscovery(
-                projects, error=error
-            )
-
-        @staticmethod
-        def create_migrator_generator(
-            content: str = "", *, fail: str = ""
-        ) -> FlextInfraBaseMkGenerator:
-            """Provide the typed test helper `create_migrator_generator`."""
-            return TestsFlextInfraUtilities.Tests.MigratorGenerator(content, fail=fail)
-
-        @staticmethod
-        def build_project_migrator(
-            project: m.Infra.ProjectInfo,
-            base_mk: str,
-            *,
-            workspace_root: Path | None = None,
-            dry_run: bool = False,
-        ) -> FlextInfraProjectMigrator:
-            """Compose a project migrator with typed test dependencies."""
-            migrator = FlextInfraProjectMigrator(
-                workspace_root=workspace_root or Path("/dummy"),
-                apply_changes=not dry_run,
-                dry_run=dry_run,
-            )
-            migrator.discovery = (
-                TestsFlextInfraUtilities.Tests.create_migrator_discovery([project])
-            )
-            migrator.generator = (
-                TestsFlextInfraUtilities.Tests.create_migrator_generator(base_mk)
-            )
-            return migrator
-
-        @staticmethod
         def detect_command(
             workspace_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
@@ -1355,21 +1184,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return FlextInfraRuntimeDevDependencyDetector(
                 workspace_root=tmp_path, deps=deps
             )
-
-        @staticmethod
-        def write_migrator_project(project_root: Path) -> None:
-            """Provide the typed test helper `write_migrator_project`."""
-            project_root.mkdir(parents=True, exist_ok=True)
-            (project_root / ".git").mkdir(parents=True, exist_ok=True)
-            (project_root / "base.mk").write_text("OLD_BASE\n", encoding="utf-8")
-            (project_root / "Makefile").write_text(
-                'python "$(WORKSPACE_ROOT)/scripts/check/workspace_check.py"\n',
-                encoding="utf-8",
-            )
-            (project_root / "pyproject.toml").write_text(
-                "[project]\n", encoding="utf-8"
-            )
-            (project_root / ".gitignore").write_text("", encoding="utf-8")
 
         @staticmethod
         def create_gate_execution(

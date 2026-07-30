@@ -42,7 +42,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
     repository = next(
         item
         for item in config.Infra.codegen.repositories
-        if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+        if item.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
     )
     workspace = m.Infra.WorkspaceSpec(
         version=c.Infra.WORKSPACE_MANIFEST_VERSION,

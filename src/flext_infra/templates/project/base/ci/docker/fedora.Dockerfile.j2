@@ -12,6 +12,7 @@ RUN dnf install -y \
 # uv is supplied by the managed environment without a project patch pin.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
+
 WORKDIR /workspace
 COPY . .
 

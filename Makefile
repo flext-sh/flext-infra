@@ -9,12 +9,11 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
-WORKSPACE_ROOT_REL := ..
+MAKE_PROFILE := standalone
+WORKSPACE_ROOT_REL := .
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
-UV_VERSION := 0.11.32
 MISE_VERSION := 2026.7.16
 
 APPLY ?= N
@@ -53,7 +52,7 @@ MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL := ../flext-infra
+FLEXT_INFRA_SOURCE_ROOT_REL := .
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -146,10 +145,10 @@ export FLEXT_INFRA_PYTHON MISE_DATA_DIR UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIR
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)[dev]" python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)[dev]" python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -179,7 +178,7 @@ ORCHESTRATED_VERBS := build check clean docs scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -297,7 +296,7 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -383,7 +382,18 @@ _builtin_setup_tools:
 	mise="$(MISE)"; \
 	mise_data_dir="$(MISE_DATA_DIR)"; \
 	mise_version="$(MISE_VERSION)"; \
-	uv_version="$(UV_VERSION)"; \
+	uv_version=""; \
+	if command -v uv >/dev/null 2>&1; then \
+		uv_version=$$(uv --version 2>/dev/null | sed 's/uv //' | cut -d ' ' -f 1 || true); \
+	fi; \
+	if [ -z "$$uv_version" ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0 in PATH; install from https://github.com/astral-sh/uv\n' >&2; \
+		exit 2; \
+	fi; \
+	if [ "$$(printf '%s\n%s' '0.11.0' "$$uv_version" | sort -V | head -n1)" != '0.11.0' ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0, found %s\n' "$$uv_version" >&2; \
+		exit 2; \
+	fi; \
 	current=""; \
 	if [ -x "$$mise" ]; then \
 		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
@@ -423,32 +433,20 @@ _builtin_setup_tools:
 			exit 2; \
 		}; \
 	fi; \
-	$(MISE) install --yes "uv@$$uv_version"
+	$(MISE) install --yes
 
 .PHONY: _builtin_setup_submodules
 
 _builtin_setup_submodules:
 	@set -eu; \
 	root="$(PROJECT_ROOT)"; \
-	selected=""; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	setup_selected() { \
-		candidate="$$1"; \
-		if [ -z "$$selected" ]; then return 0; fi; \
-		for project in $$selected; do \
-			if [ "$$project" = "." ]; then continue; fi; \
-			case "$$project" in \
-				"$$candidate"|"$$candidate"/*) return 0 ;; \
-			esac; \
-		done; \
-		return 1; \
-	}; \
+	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
-			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -459,6 +457,10 @@ _builtin_setup_submodules:
 			sha1=$$(git -C "$$superproject" rev-parse "HEAD:$$child_path"); \
 			branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$prefix.branch"); \
 			current=$$(git -C "$$checkout" branch --show-current); \
+			if [ -n "$$(git -C "$$checkout" status --porcelain)" ]; then \
+				printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
+				exit 1; \
+			fi; \
 			if [ -z "$$branch" ]; then \
 				if [ -n "$$current" ]; then \
 					printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
@@ -497,7 +499,6 @@ _builtin_setup_submodules:
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
-			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -514,7 +515,6 @@ _builtin_setup_submodules:
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
-			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \

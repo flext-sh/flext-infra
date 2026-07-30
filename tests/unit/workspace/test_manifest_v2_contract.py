@@ -91,7 +91,6 @@ class TestsWorkspaceManifestV2Contract:
             "name": "flext",
             "repository": root,
             "members": [member],
-            "content_only": [],
             "exclusions": [],
         }
 
@@ -140,7 +139,6 @@ class TestsWorkspaceManifestV2Contract:
             )
         )
         tm.that(ref.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
-        tm.that(ref.classification, eq=c.Infra.RepositoryClassification.MANAGED)
         tm.that(ref.codegen, eq=c.Infra.CodegenKind.PYTHON)
         tm.that(ref.package, eq=True)
         tm.that(ref.editable, eq=True)

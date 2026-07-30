@@ -108,7 +108,7 @@ class TestsCodegenGitignoreProfileAware:
             by_path[".mise.toml"],
             has=(
                 '"github:gastownhall/beads" = '
-                f'"{config.Infra.codegen.toolchain.beads_version}"'
+                f'"{config.Infra.codegen.toolchain.beads.version}"'
             ),
         )
         tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
