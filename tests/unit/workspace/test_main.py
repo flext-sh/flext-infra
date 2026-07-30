@@ -162,8 +162,14 @@ def _write_orchestratable_workspace(
     venv_python.write_text('#!/bin/sh\nexec python3 "$@"\n', encoding="utf-8")
     venv_python.chmod(0o755)
 
-    # Point the generated Makefile at the flext_infra source in this test environment
-    # by passing PROJECT_INFRA_PYTHONPATH as a make argument in each test.
+    # Capture the propagated FAIL_FAST value after the generated check runs.
+    # The path is supplied as a make variable so the file lives outside the
+    # workspace and does not trip the "workspace changed during check" guard.
+    if capture_fail_fast:
+        (member_root / "custom.mk").write_text(
+            "post-check:\n\t@echo \"FAIL_FAST=$(FAIL_FAST)\" > $(CAPTURE_PATH)\n",
+            encoding="utf-8",
+        )
 
     return member_root
 
@@ -225,6 +231,7 @@ class TestsFlextInfraWorkspaceMain:
     ) -> None:
         """Fail-fast intent reaches each project's make invocation."""
         workspace_root = tmp_path / "workspace"
+        capture_path = tmp_path / "captured.txt"
         member_root = _write_orchestratable_workspace(
             workspace_root, capture_fail_fast=True
         )
@@ -235,11 +242,14 @@ class TestsFlextInfraWorkspaceMain:
             selected_projects=["demo"],
             workspace_root=workspace_root,
             fail_fast=True,
-            make_arg=[f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}"],
+            make_arg=[
+                f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}",
+                f"CAPTURE_PATH={capture_path}",
+            ],
         ).execute()
 
         tm.ok(result)
-        captured = (member_root / "captured.txt").read_text(encoding="utf-8")
+        captured = capture_path.read_text(encoding="utf-8")
         tm.that(captured, has="FAIL_FAST=1")
 
     def test_workspace_main_detect_accepts_explicit_workspace_root(
