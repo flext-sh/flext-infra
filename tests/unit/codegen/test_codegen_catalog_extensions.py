@@ -59,11 +59,106 @@ class TestsCodegenCatalogExtensions:
 
         # uv is supplied by the caller environment and is deliberately not pinned;
         # only the mise binary and the Beads CLI installed through mise declare
-        # immutable release selectors.
-        for selector in (toolchain.mise_version, toolchain.beads.version):
-            version_parts = selector.split(".")
-            tm.that(len(version_parts), eq=3)
-            tm.that(all(part.isdecimal() for part in version_parts), eq=True)
+        # immutable selectors: a semver release for mise, and either a semver
+        # release or a full commit for the Beads go-module pin.
+        mise_parts = toolchain.mise_version.split(".")
+        tm.that(len(mise_parts), eq=3)
+        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
+        beads_version = toolchain.beads.version
+        beads_parts = beads_version.split(".")
+        beads_is_semver = len(beads_parts) == 3 and all(
+            part.isdecimal() for part in beads_parts
+        )
+        beads_is_commit = len(beads_version) == 40 and all(
+            char in "0123456789abcdef" for char in beads_version
+        )
+        tm.that(beads_is_semver or beads_is_commit, eq=True)
+
+    def test_beads_gate_compares_the_binary_reported_version(self) -> None:
+        """The conform preflight gate uses the binary's self-reported version.
+
+        The pinned Beads build is a go-module commit (schema v61-capable) whose
+        ``bd version`` output does NOT echo the pin. The toolchain therefore
+        declares ``reported_version`` — what the binary actually prints — and
+        the gate consumes it via ``gate_version`` so preflight compares like
+        with like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
+        """
+        beads = config.Infra.codegen.toolchain.beads
+        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
+        is_commit = len(beads.version) == 40 and all(
+            char in "0123456789abcdef" for char in beads.version
+        )
+        tm.that(is_commit, eq=True)
+        tm.that(beads.reported_version, eq="1.1.0")
+        tm.that(beads.gate_version, eq="1.1.0")
+
+    def test_beads_prefix_honours_the_committed_tracker_declaration(
+        self, tmp_path: Path
+    ) -> None:
+        """The declared .beads/config.yaml prefix outranks the derived name.
+
+        mro-o0cc: conform derived the tracker namespace from the repository
+        distribution and rejected (or re-initialized) repositories whose
+        committed ``.beads/config.yaml`` declares a shared ledger prefix
+        (e.g. ``mro`` on the machine-wide Dolt server). The committed tracker
+        config IS the declaration; the derived name is only the fallback for
+        repositories without one.
+        """
+        root = tmp_path / "flext-demo"
+        beads_dir = root / ".beads"
+        beads_dir.mkdir(parents=True)
+        (beads_dir / "config.yaml").write_text(
+            'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
+        )
+        declared = FlextInfraCodegenConform.declared_beads_prefix(
+            root, fallback="flext-demo"
+        )
+        tm.that(declared, eq="mro")
+        bare = tmp_path / "bare-demo"
+        bare.mkdir()
+        tm.that(
+            FlextInfraCodegenConform.declared_beads_prefix(bare, fallback="bare-demo"),
+            eq="bare-demo",
+        )
+
+    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
+        """The gitmodules projection must not grow on every merge pass.
+
+        The template's leading Jinja comment emitted a bare newline, and
+        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
+        non-empty — so each apply added one more blank line and conform never
+        reached its post-apply fixed point on the workspace root.
+        """
+        template = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "gitmodules.j2"
+        )
+        import jinja2
+
+        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
+            workspace_gitlinks=[
+                {
+                    "repository": {
+                        "name": "demo-member",
+                        "path": "demo-member",
+                        "url": "https://github.com/flext-sh/demo-member.git",
+                    },
+                    "branch": "0.12.0-dev",
+                }
+            ]
+        )
+        tm.that(rendered.startswith("\n"), eq=False)
+        tm.that(rendered.startswith("[submodule"), eq=True)
+        managed = frozenset({"demo-member"})
+        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
+        once = merge(rendered, rendered, managed_paths=managed)
+        twice = merge(once, rendered, managed_paths=managed)
+        tm.that(once, eq=twice)
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(

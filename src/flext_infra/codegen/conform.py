@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Annotated, override
 
 from flext_core import r
@@ -273,11 +274,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 for item in config_spec.providers
                 if item.name == current_repository.provider
             )
+            current_repository_role = current_repository.role
+            current_make_profile = (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if current_repository_role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+                else c.Infra.MakeProfile.STANDALONE
+            )
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                make_profile=c.Infra.MakeProfile.STANDALONE,
-                beads_enabled=False,
+                make_profile=current_make_profile,
+                beads_enabled=(
+                    current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                ),
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=provider.branch,
                 ci_enabled=True,
@@ -391,9 +400,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
                     canonical_prefix=(
-                        workspace.ledger_id or target.canonical_project_name
+                        workspace.ledger_id
+                        or self.declared_beads_prefix(
+                            repository_root, fallback=target.canonical_project_name
+                        )
                     ),
-                    expected_version=config_spec.toolchain.beads.version,
+                    expected_version=config_spec.toolchain.beads.gate_version,
                     ledger_root=ledger_root,
                     ledger_id=workspace.ledger_id,
                 )
@@ -1874,6 +1886,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 binary.error or "mise-managed Beads CLI is unavailable"
             )
         return u.Cli.run_raw([str(binary.value), *arguments], cwd=ledger_root)
+
+    @staticmethod
+    def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
+        """Return the committed tracker prefix, falling back to the derived name.
+
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger on the machine-wide Dolt server) is the tracker declaration for
+        that repository. Deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT; the derived name is only
+        the default for repositories without a committed tracker config.
+        """
+        config_path = repository_root / ".beads" / "config.yaml"
+        if not config_path.is_file():
+            return fallback
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        prefix = loaded.get("issue-prefix") if isinstance(loaded, Mapping) else None
+        if isinstance(prefix, str) and prefix.strip():
+            return prefix.strip()
+        return fallback
 
     @classmethod
     def _verify_beads_plan(

@@ -46,6 +46,22 @@ class FlextInfraConfigModels:
         version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact tool version installed by mise")
         ]
+        reported_version: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Version string the pinned binary self-reports when it "
+                    "differs from the mise selector version (e.g. a go-module "
+                    "commit pin whose --version output is the module version)"
+                )
+            ),
+        ] = None
+
+        @m.computed_field()
+        @property
+        def gate_version(self) -> str:
+            """Version string runtime gates must compare against."""
+            return self.reported_version or self.version
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.

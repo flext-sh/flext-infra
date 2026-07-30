@@ -183,6 +183,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         is_root = (
             path.parent.resolve() == self.root.resolve() and not child_result.value
         )
+        # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
+        # root yet. Derive pyright/pyrefly configuration from declared roots only;
+        # disk discovery converges on the first post-write conformance pass.
+        project_root_exists = path.is_file()
+        effective_project_dir = path.parent if project_root_exists else None
+        effective_workspace_root = self.root if project_root_exists else None
+        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
         if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
@@ -191,7 +199,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
-        paths_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
         changes.extend(self._ensure_build_system_payload(payload))
         changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
@@ -216,10 +223,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                workspace_root=self.root,
-                project_dir=path.parent,
+                workspace_root=effective_workspace_root,
+                project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
-                paths_manager=paths_manager,
+                paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
                 analysis_exclusions=analysis_exclusions,
             )
@@ -228,8 +235,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                project_dir=path.parent,
-                paths_manager=paths_manager,
+                project_dir=effective_project_dir,
+                paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
             )
         )
