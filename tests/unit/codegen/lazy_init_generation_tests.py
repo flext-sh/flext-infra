@@ -118,10 +118,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains=(
-                "from ._settings import FlextCliSettings as FlextCliSettings\n"
-                "    from ._settings import settings as settings"
-            ),
+            contains="from ._settings import FlextCliSettings, settings",
         )
         tm.that(content, lacks="from flext_cli._settings import")
         tm.that(content, lacks="    _ = (")
@@ -206,7 +203,7 @@ class TestsFlextInfraCodegenGeneration:
         init_content = FlextInfraCodegenGeneration.render_init(plan)
 
         compile(init_content, "__init__.py", "exec")
-        tm.that(init_content, contains="from flext_tests import tm as tm")
+        tm.that(init_content, contains="from flext_tests import tm")
         tm.that(init_content, contains='".constants": ("TestsDemoConstants", "c"),')
         tm.that(init_content, contains='".utilities": ("TestsDemoUtilities", "u"),')
         type_checking_block = init_content.split("if TYPE_CHECKING:", maxsplit=1)[1]
@@ -223,7 +220,7 @@ class TestsFlextInfraCodegenGeneration:
             )
         )
         tm.that(module_offsets, eq=tuple(sorted(module_offsets)))
-        tm.that(type_checking_block, contains="from flext_tests import tm as tm\n\n")
+        tm.that(type_checking_block, contains="from flext_tests import tm\n\n")
         tm.that(
             init_content,
             contains=(
@@ -252,7 +249,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .protocols import FlextDemoProtocols as FlextDemoProtocols",
+            contains="from .protocols import FlextDemoProtocols, FlextDemoProtocols as p",
         )
         tm.that(content, contains="FlextDemoProtocols as p")
 
@@ -272,7 +269,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(
             content,
-            contains="from .base import FlextDemoServiceBase as FlextDemoServiceBase",
+            contains="from .base import FlextDemoServiceBase, FlextDemoServiceBase as s",
         )
         tm.that(content, contains="FlextDemoServiceBase as s")
 
