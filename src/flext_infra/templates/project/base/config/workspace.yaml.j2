@@ -10,7 +10,7 @@ repository:
   provider: {{ repository_provider }}
   url: {{ repository_git_url }}
   path: .
-  role: {{ make_profile }}
+  role: {{ workspace_repository.role | tojson }}
   state: active
   checkout: {{ workspace_repository.checkout | tojson }}
   codegen: {{ workspace_repository.codegen | tojson }}
