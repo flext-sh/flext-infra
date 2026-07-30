@@ -19,7 +19,7 @@ dev = [
     "django-stubs>=5.2.2",
     "factory-boy>=3.3.1",
     "faker>=37.4",
-    "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+    "flext-tests",
     "hypothesis>=6.125",
     "isort>=6.0.1",
     "matplotlib-stubs>=0.3",
@@ -682,18 +682,9 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
-<<<<<<< HEAD
 exclude-dependencies = ["flext-infra"]
-=======
 required-version = ">=0.11.0"
 
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
-
->>>>>>> shared/mro-z89e-export
 [tool.vulture]
 exclude = ["*/_protocols/*"]
 min_confidence = 100
