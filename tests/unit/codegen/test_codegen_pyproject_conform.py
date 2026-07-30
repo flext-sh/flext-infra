@@ -107,7 +107,7 @@ workspace = true
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=[member.distribution])
 
-    def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
+    def test_full_conformance_splits_uv_bootstrap_floor_from_exact_pin(self) -> None:
         workspace = _workspace()
         toolchain = config.Infra.codegen.toolchain
         source = """[project]
@@ -115,7 +115,15 @@ name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 
 [tool.uv]
+<<<<<<< HEAD
 required-version = "==0.11.28"
+=======
+required-version = "==0.11.31"
+constraint-dependencies = ["uv==0.11.31", "requests<3"]
+
+[tool.pyrefly]
+python-interpreter-path = "../.venv/bin/python"
+>>>>>>> shared/mro-z89e-export
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -138,7 +146,18 @@ required-version = "==0.11.28"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
+<<<<<<< HEAD
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
+=======
+        tm.that(
+            document["tool"]["uv"]["required-version"],
+            eq=toolchain.uv_bootstrap_required_version,
+        )
+        tm.that(document["tool"]["uv"]["constraint-dependencies"], eq=["requests<3"])
+        tm.that(toolchain.uv_version, eq=config.Infra.codegen.toolchain.uv_version)
+        tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
+        tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+>>>>>>> shared/mro-z89e-export
         tm.that(
             document["project"]["dependencies"][0],
             eq=(

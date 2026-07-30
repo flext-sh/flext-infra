@@ -264,6 +264,16 @@ class FlextInfraProtocolsBase(Protocol):
             """Portable uv installation link mode."""
             ...
 
+        @property
+        def uv_bootstrap_required_version(self) -> str:
+            """Minimum uv version allowed to start project bootstrap."""
+            ...
+
+        @property
+        def uv_version(self) -> str:
+            """Exact uv version installed by the project-local toolchain."""
+            ...
+
     @runtime_checkable
     class TemplateEntrySpec(Protocol):
         """Template-entry fields consumed by scaffold root selection."""

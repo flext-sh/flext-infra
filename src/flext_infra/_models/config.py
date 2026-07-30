@@ -59,6 +59,7 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
+
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -80,6 +81,21 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact project-managed uv version")
+        ]
+        uv_bootstrap_required_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Minimum uv version accepted by the bootstrap path; may be a "
+                    "range selector so the local installer can satisfy the floor."
+                )
+            ),
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact bootstrap mise version")
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
         ]
@@ -139,9 +155,6 @@ class FlextInfraConfigModels:
         repository_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Repository integration branch")
         ]
-        python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python major.minor line")
-        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -152,9 +165,6 @@ class FlextInfraConfigModels:
 
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Python import package name")
-        ]
-        python_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -831,6 +841,21 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact project-managed uv version")
+        ]
+        uv_bootstrap_required_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Minimum uv version accepted by the bootstrap path; may be a "
+                    "range selector so the local installer can satisfy the floor."
+                )
+            ),
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact bootstrap mise version")
+        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -1004,6 +1029,21 @@ class FlextInfraConfigModels:
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact project-managed uv version")
+        ]
+        uv_bootstrap_required_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Minimum uv version accepted by the bootstrap path; may be a "
+                    "range selector so the local installer can satisfy the floor."
+                )
+            ),
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact bootstrap mise version")
         ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,

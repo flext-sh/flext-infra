@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorkspaceEnvironment:
-    """Generate and sync canonical direnv/mise workspace files."""
+    """Generate and sync the canonical direnv workspace file."""
 
     @classmethod
     def sync_environment_files(
@@ -25,11 +25,7 @@ class FlextInfraWorkspaceEnvironment:
         envrc_result = cls.sync_envrc(workspace_root, apply=apply, force=force)
         if envrc_result.failure:
             return r[int].fail(envrc_result.error or ".envrc sync failed")
-        mise_result = cls.sync_mise_toml(workspace_root, apply=apply)
-        if mise_result.failure:
-            return r[int].fail(mise_result.error or ".mise.toml sync failed")
-        changed = int(envrc_result.value) + int(mise_result.value)
-        return r[int].ok(changed)
+        return r[int].ok(int(envrc_result.value))
 
     @classmethod
     def sync_envrc(
@@ -46,41 +42,6 @@ class FlextInfraWorkspaceEnvironment:
             target_path, rendered.value, apply=apply, force=force
         )
 
-    @classmethod
-    def sync_mise_toml(
-        cls, workspace_root: Path, *, apply: bool = True
-    ) -> p.Result[bool]:
-        """Render or merge canonical tool selectors into ``.mise.toml``."""
-        target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
-        rendered = cls.render_mise_toml(workspace_root)
-        if rendered.failure:
-            return r[bool].fail(rendered.error or ".mise.toml render failed")
-        if not target_path.is_file():
-            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
-        read = u.Cli.files_read_text(target_path)
-        if read.failure:
-            return r[bool].fail(read.error or ".mise.toml read failed")
-        current = read.value
-        if cls.is_generated_environment_text(current):
-            return cls.write_text_if_different(target_path, rendered.value, apply=apply)
-        return cls.merge_custom_mise_toml(
-            target_path, current, workspace_root, apply=apply
-        )
-
-    @classmethod
-    def render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
-        """Render canonical ``.mise.toml`` content for one workspace."""
-        del workspace_root
-        rendered = cls._render_environment_template(
-            c.Infra.WORKSPACE_MISE_TOML_TEMPLATE_NAME
-        )
-        if rendered.failure:
-            return r[str].fail(rendered.error or ".mise.toml template render failed")
-        doc = u.Cli.toml_parse_text(rendered.value)
-        if doc is None:
-            return r[str].fail("canonical .mise.toml template is invalid")
-        return r[str].ok(u.Cli.toml_dumps(doc))
-
     @staticmethod
     def _render_environment_template(template_name: str) -> p.Result[str]:
         """Render one workspace environment template from validated toolchain data."""
@@ -88,69 +49,6 @@ class FlextInfraWorkspaceEnvironment:
         # content constants; template dir resolved package-relative (0.12 pattern).
         template_path = Path(__file__).resolve().parent / "templates" / template_name
         return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
-
-    @classmethod
-    def merge_custom_mise_toml(
-        cls,
-        target_path: Path,
-        current: str,
-        workspace_root: Path,
-        *,
-        apply: bool = True,
-    ) -> p.Result[bool]:
-        """Merge canonical tool selectors into a custom ``.mise.toml``."""
-        doc = u.Cli.toml_read(target_path)
-        if doc is None:
-            return r[bool].fail(f"{target_path}: invalid TOML")
-        selectors_result = cls.mise_tool_selectors(workspace_root)
-        if selectors_result.failure:
-            return r[bool].fail(selectors_result.error or ".mise.toml selectors failed")
-        tools = u.Cli.toml_ensure_table(doc, "tools")
-        changed = False
-        for name, value in selectors_result.value.items():
-            if u.Cli.toml_value(tools, name) == value:
-                continue
-            tools[name] = value
-            changed = True
-        for name in c.Infra.WORKSPACE_MISE_REMOVED_TOOLS:
-            if name not in tools:
-                continue
-            del tools[name]
-            changed = True
-        if not changed:
-            return r[bool].ok(False)
-        rendered = u.Cli.toml_dumps(doc)
-        if rendered == current:
-            return r[bool].ok(False)
-        if not apply:
-            return r[bool].ok(True)
-        write_result = u.Cli.files_write_text(target_path, rendered)
-        if write_result.failure:
-            return r[bool].fail(write_result.error or f"{target_path}: write failed")
-        return r[bool].ok(True)
-
-    @classmethod
-    def mise_tool_selectors(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
-        """Return canonical mise tool selectors for one workspace."""
-        rendered = cls.render_mise_toml(workspace_root)
-        if rendered.failure:
-            return r[dict[str, str]].fail(
-                rendered.error or "canonical .mise.toml render failed"
-            )
-        mapping = u.Cli.toml_mapping_from_text(rendered.value)
-        if mapping is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template is invalid")
-        tools = u.Cli.toml_mapping_child(mapping, "tools")
-        if tools is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        selectors: dict[str, str] = {}
-        for name, value in tools.items():
-            if not isinstance(value, str):
-                return r[dict[str, str]].fail(
-                    f"canonical .mise.toml [tools].{name} must be a string"
-                )
-            selectors[name] = value
-        return r[dict[str, str]].ok(selectors)
 
     @staticmethod
     def has_pyproject(workspace_root: Path) -> bool:

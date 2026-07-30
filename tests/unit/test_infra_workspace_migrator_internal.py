@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+<<<<<<< HEAD
 from flext_infra import FlextInfraWorkspaceEnvironment, c
+=======
+from flext_tests import tm
+
+from flext_infra import FlextInfraWorkspaceEnvironment
+>>>>>>> shared/mro-z89e-export
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import tm
 from tests import u
@@ -53,10 +59,6 @@ class TestsFlextInfraInfraWorkspaceMigratorInternal:
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
         FlextInfraWorkspaceEnvironment.sync_envrc(project_root)
-        mise_result = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
-        (project_root / c.Infra.MISE_TOML_FILENAME).write_text(
-            mise_result.value, encoding="utf-8"
-        )
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base",

@@ -64,7 +64,13 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             workspace=workspace,
+<<<<<<< HEAD
+=======
+            workspace_mode=workspace_mode,
+            required_version=toolchain.uv_bootstrap_required_version,
+>>>>>>> shared/mro-z89e-export
             link_mode=toolchain.uv_link_mode,
+            constraint_dependencies=(f"uv=={toolchain.uv_version}",),
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -451,6 +457,11 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+<<<<<<< HEAD
+=======
+        workspace_mode: c.Infra.WorkspaceMode,
+        required_version: str | None = None,
+>>>>>>> shared/mro-z89e-export
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
@@ -464,15 +475,49 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and required_version is None
+                and link_mode is None
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if not workspace_root and link_mode is None and not exclude_dependencies:
+            if (
+                not workspace_root
+                and required_version is None
+                and link_mode is None
+                and not exclude_dependencies
+            ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
+<<<<<<< HEAD
         u.Cli.toml_remove_key_if_present(uv, "required-version")
+=======
+        if required_version is not None:
+            u.Cli.toml_sync_value(uv, "required-version", required_version)
+        existing_constraints = u.Cli.toml_as_string_list(
+            u.Cli.toml_value(uv, "constraint-dependencies")
+        )
+        retained_constraints = tuple(
+            requirement
+            for requirement in existing_constraints
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != "uv"
+        )
+        canonical_constraints = (
+            (*retained_constraints, *constraint_dependencies)
+            if workspace_root and constraint_dependencies is not None
+            else retained_constraints
+        )
+        if canonical_constraints:
+            u.Cli.toml_sync_string_list(
+                uv, "constraint-dependencies", canonical_constraints
+            )
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
+>>>>>>> shared/mro-z89e-export
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(

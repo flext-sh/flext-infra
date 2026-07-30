@@ -52,6 +52,33 @@ def _repository(
 
 
 class TestsCodegenCatalogExtensions:
+    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
+        selector = config.Infra.codegen.toolchain.beads_version
+
+        version_parts = selector.split(".")
+        is_semver = len(version_parts) == 3 and all(
+            part.isdecimal() for part in version_parts
+        )
+        is_commit = len(selector) == 40 and all(
+            char in "0123456789abcdef" for char in selector
+        )
+        tm.that(is_semver or is_commit, eq=True)
+
+    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+        toolchain = config.Infra.codegen.toolchain
+
+        for selector in (toolchain.uv_version, toolchain.mise_version):
+            version_parts = selector.split(".")
+            tm.that(len(version_parts), eq=3)
+            tm.that(all(part.isdecimal() for part in version_parts), eq=True)
+
+        uv_floor = toolchain.uv_bootstrap_required_version
+        tm.that(uv_floor, has=">=")
+        floor_version = uv_floor.lstrip(">= ")
+        version_parts = floor_version.split(".")
+        tm.that(len(version_parts), eq=3)
+        tm.that(all(part.isdecimal() for part in version_parts), eq=True)
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
@@ -211,7 +238,7 @@ class TestsCodegenCatalogExtensions:
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
-            mise["tools"]["github:gastownhall/beads"],
+            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
             eq=config.Infra.codegen.toolchain.beads_version,
         )
         pyproject = tomllib.loads(

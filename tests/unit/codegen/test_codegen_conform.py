@@ -235,6 +235,14 @@ class TestCodegenConform:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.that((root / "Makefile").is_file(), eq=True)
         tm.that((root / ".mise.toml").is_file(), eq=True)
+<<<<<<< HEAD
+=======
+        mise = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))
+        tm.that(
+            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            eq=config.Infra.codegen.toolchain.beads_version,
+        )
+>>>>>>> shared/mro-z89e-export
         tm.that((root / ".python-version").is_file(), eq=True)
         tm.that((root / ".gitignore").is_file(), eq=True)
         tm.that((root / ".env.example").exists(), eq=False)
