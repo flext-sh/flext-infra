@@ -59,11 +59,38 @@ class TestsCodegenCatalogExtensions:
 
         # uv is supplied by the caller environment and is deliberately not pinned;
         # only the mise binary and the Beads CLI installed through mise declare
-        # immutable release selectors.
-        for selector in (toolchain.mise_version, toolchain.beads.version):
-            version_parts = selector.split(".")
-            tm.that(len(version_parts), eq=3)
-            tm.that(all(part.isdecimal() for part in version_parts), eq=True)
+        # immutable selectors: a semver release for mise, and either a semver
+        # release or a full commit for the Beads go-module pin.
+        mise_parts = toolchain.mise_version.split(".")
+        tm.that(len(mise_parts), eq=3)
+        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
+        beads_version = toolchain.beads.version
+        beads_parts = beads_version.split(".")
+        beads_is_semver = len(beads_parts) == 3 and all(
+            part.isdecimal() for part in beads_parts
+        )
+        beads_is_commit = len(beads_version) == 40 and all(
+            char in "0123456789abcdef" for char in beads_version
+        )
+        tm.that(beads_is_semver or beads_is_commit, eq=True)
+
+    def test_beads_gate_compares_the_binary_reported_version(self) -> None:
+        """The conform preflight gate uses the binary's self-reported version.
+
+        The pinned Beads build is a go-module commit (schema v61-capable) whose
+        ``bd version`` output does NOT echo the pin. The toolchain therefore
+        declares ``reported_version`` — what the binary actually prints — and
+        the gate consumes it via ``gate_version`` so preflight compares like
+        with like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
+        """
+        beads = config.Infra.codegen.toolchain.beads
+        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
+        is_commit = len(beads.version) == 40 and all(
+            char in "0123456789abcdef" for char in beads.version
+        )
+        tm.that(is_commit, eq=True)
+        tm.that(beads.reported_version, eq="1.1.0")
+        tm.that(beads.gate_version, eq="1.1.0")
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(

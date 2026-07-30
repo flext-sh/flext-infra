@@ -392,7 +392,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
                     canonical_prefix=target.canonical_project_name,
-                    expected_version=config_spec.toolchain.beads.version,
+                    expected_version=config_spec.toolchain.beads.gate_version,
                 )
             )
             if self.initial_workspace is None:
