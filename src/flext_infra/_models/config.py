@@ -1340,6 +1340,15 @@ class FlextInfraConfigModels:
             ),
         ]
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Beads ledger identity declared by the workspace root; None "
+                    "falls back to the standalone canonical project name"
+                )
+            ),
+        ] = None
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Root repository Git contract"),
@@ -1823,6 +1832,24 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Exact official Beads version pinned by mise"),
         ]
+        ledger_root: Annotated[
+            Path | None,
+            m.Field(
+                description=(
+                    "Principal checkout root owning the ledger; None keeps the "
+                    "tracker at repository_root"
+                )
+            ),
+        ] = None
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                description=(
+                    "Ledger identity declared by the workspace manifest SSOT; "
+                    "never derived from the repository name"
+                )
+            ),
+        ] = None
 
     class BranchAncestryRef(_ConfigContract):
         """One exact branch or registered worktree ancestry observation."""

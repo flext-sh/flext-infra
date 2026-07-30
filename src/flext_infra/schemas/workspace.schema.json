@@ -18,6 +18,10 @@
     "name": {
       "$ref": "#/$defs/name"
     },
+    "ledger_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$"
+    },
     "repository": {
       "$ref": "#/$defs/repository"
     },

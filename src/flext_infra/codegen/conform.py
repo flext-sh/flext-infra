@@ -298,6 +298,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         selected = selected_result.value
         contract = self._surface_contract(c.Infra.CodegenConformSurface(request.what))
+        ledger_root_result = self._beads_ledger_root(workspace_root)
+        if ledger_root_result.failure:
+            return r[m.Infra.CodegenPlan].fail(
+                ledger_root_result.error or "Beads ledger root resolution failed"
+            )
+        principal_root = ledger_root_result.value
+        ledger_root = None if principal_root == workspace_root else principal_root
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         beads_plans: list[m.Infra.BeadsPlan] = []
@@ -383,8 +390,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=target.canonical_project_name,
+                    canonical_prefix=(
+                        workspace.ledger_id or target.canonical_project_name
+                    ),
                     expected_version=config_spec.toolchain.beads.version,
+                    ledger_root=ledger_root,
+                    ledger_id=workspace.ledger_id,
                 )
             )
             if self.initial_workspace is None:
@@ -1826,31 +1837,60 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _beads_command(
-        plan: m.Infra.BeadsPlan, *arguments: str
-    ) -> p.Result[p.Cli.CommandOutput]:
-        """Run the configured Beads binary only through the repository mise toolchain."""
-        return u.Cli.run_raw(
-            ["mise", "exec", "--", "bd", *arguments], cwd=plan.repository_root
+    def _beads_ledger_root(workspace_root: Path) -> p.Result[Path]:
+        """Resolve the principal checkout owning the workspace ledger."""
+        probe = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=workspace_root
         )
+        if probe.failure or probe.value.strip() != "true":
+            return r[Path].ok(workspace_root)
+        principal = u.Infra.git_primary_worktree_root(workspace_root)
+        if principal.failure:
+            return r[Path].fail(
+                principal.error or "unable to resolve the principal worktree"
+            )
+        return r[Path].ok(principal.value)
+
+    @staticmethod
+    def _beads_binary(ledger_root: Path) -> p.Result[Path]:
+        """Resolve the mise-managed Beads binary pinned by the ledger root."""
+        resolved = u.Cli.run_raw(["mise", "which", "bd"], cwd=ledger_root)
+        if resolved.failure or resolved.value.exit_code != 0:
+            return r[Path].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
+        binary = Path(resolved.value.stdout.strip())
+        if not binary.is_file():
+            return r[Path].fail(f"mise-resolved Beads CLI is not a file: {binary}")
+        return r[Path].ok(binary)
+
+    @classmethod
+    def _beads_command(
+        cls, plan: m.Infra.BeadsPlan, *arguments: str
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run the ledger-root Beads binary, never an ambient PATH resolution."""
+        ledger_root = plan.ledger_root or plan.repository_root
+        binary = cls._beads_binary(ledger_root)
+        if binary.failure:
+            return r[p.Cli.CommandOutput].fail(
+                binary.error or "mise-managed Beads CLI is unavailable"
+            )
+        return u.Cli.run_raw([str(binary.value), *arguments], cwd=ledger_root)
 
     @classmethod
     def _verify_beads_plan(
         cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
     ) -> p.Result[bool]:
-        """Validate Beads ownership and fail closed on namespace disagreement."""
-        beads_dir = plan.repository_root / ".beads"
+        """Validate the principal ledger route and fail closed on disagreement."""
         if not plan.enabled:
+            beads_dir = plan.repository_root / ".beads"
             if beads_dir.exists():
                 return r[bool].fail(
                     f"Beads is disabled but tracker state exists: {beads_dir}"
                 )
             return r[bool].ok(True)
+        ledger_root = plan.ledger_root or plan.repository_root
         version = cls._beads_command(plan, "version")
         if version.failure or version.value.exit_code != 0:
-            return r[bool].fail(
-                f"mise-managed Beads CLI is unavailable: {plan.repository_root}"
-            )
+            return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
         version_parts = version.value.stdout.strip().split()
         match version_parts:
             case ["bd", "version", actual_version, *_]:
@@ -1862,15 +1902,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "mise-managed Beads CLI version mismatch: "
                 f"{actual_version or '<unparseable>'} != {plan.expected_version}"
             )
+        beads_dir = ledger_root / ".beads"
         if not beads_dir.exists():
             if allow_missing:
                 return r[bool].ok(True)
-            return r[bool].fail(f"Beads tracker is missing: {beads_dir}")
+            return r[bool].fail(f"Beads ledger is missing: {beads_dir}")
         if not beads_dir.is_dir():
-            return r[bool].fail(f"Beads tracker path is not a directory: {beads_dir}")
+            return r[bool].fail(f"Beads ledger path is not a directory: {beads_dir}")
         info = cls._beads_command(plan, "info", "--json")
         if info.failure or info.value.exit_code != 0:
-            return r[bool].fail(f"Beads tracker inspection failed: {beads_dir}")
+            return r[bool].fail(f"Beads ledger inspection failed: {beads_dir}")
         parsed = u.Cli.json_parse(info.value.stdout)
         if parsed.failure:
             return r[bool].fail(f"Beads info returned invalid JSON: {beads_dir}")
@@ -1886,10 +1927,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _apply_beads_plan(cls, plan: m.Infra.BeadsPlan) -> p.Result[bool]:
-        """Initialize only an enabled missing tracker, then verify its namespace."""
+        """Initialize only the principal ledger of an enabled owner, then verify.
+
+        A workspace member is never enabled, so it never initializes and never
+        receives ``.beads`` state; the disabled fail-closed branch of
+        ``_verify_beads_plan`` rejects any pre-existing member tracker state.
+        """
         if not plan.enabled:
             return r[bool].ok(False)
-        beads_dir = plan.repository_root / ".beads"
+        ledger_root = plan.ledger_root or plan.repository_root
+        beads_dir = ledger_root / ".beads"
         changed = not beads_dir.exists()
         if changed:
             initialized = cls._beads_command(
@@ -1903,12 +1950,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if initialized.failure or initialized.value.exit_code != 0:
                 return r[bool].fail(
-                    f"Beads tracker initialization failed: {plan.repository_root}"
+                    f"Beads ledger initialization failed: {ledger_root}"
                 )
         verified = cls._verify_beads_plan(plan, allow_missing=False)
         if verified.failure:
             return r[bool].fail(
-                verified.error or f"Beads tracker verification failed: {beads_dir}"
+                verified.error or f"Beads ledger verification failed: {beads_dir}"
             )
         return r[bool].ok(changed)
 

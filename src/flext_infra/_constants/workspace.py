@@ -28,6 +28,7 @@ class FlextInfraConstantsWorkspace:
         """Workspace execution mode enumeration."""
 
         WORKSPACE = "workspace"
+        WORKSPACE_MEMBER = "workspace-member"
         STANDALONE = "standalone"
 
     @unique
@@ -43,6 +44,14 @@ class FlextInfraConstantsWorkspace:
         "gruponos-*",
     )
     "Sibling directory patterns for FLEXT-managed external workspaces."
+
+    PERSISTENT_STATE_ARTIFACT_NAMES: Final[frozenset[str]] = frozenset({
+        ".beads",
+        ".code-review-graph",
+        ".codegraph",
+        ".serena",
+    })
+    "Persistent-state artifact basenames owned only by the workspace root."
 
     MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
         (
