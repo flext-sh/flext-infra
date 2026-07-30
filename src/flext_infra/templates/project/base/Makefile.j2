@@ -274,7 +274,6 @@ _serialized_{{ verb }}:
 {% endfor %}
 
 setup:
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
