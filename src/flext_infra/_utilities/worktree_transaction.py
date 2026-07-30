@@ -15,7 +15,6 @@ from flext_core import r
 from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
 from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 
 if TYPE_CHECKING:
@@ -58,6 +57,8 @@ class FlextInfraUtilitiesWorktreeTransaction:
         cls, workspace_root: Path
     ) -> p.Result[t.SequenceOf[Path]]:
         """Resolve existing manifest-declared nested Git repositories."""
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
             workspace_root
         )
@@ -161,17 +162,19 @@ class FlextInfraUtilitiesWorktreeTransaction:
             created, key=lambda item: len(Path(item.relative_path).parts), reverse=True
         ):
             if repository.relative_path == ".":
+                checkpoints = {
+                    nested.relative_path: nested.checkpoint_sha
+                    for nested in checkpointed
+                }
                 for nested in created:
                     if nested.relative_path == ".":
                         continue
-                    source_head = FlextInfraUtilitiesGitScope.git_repository_head(
-                        nested.source_root
-                    )
-                    if source_head.failure:
+                    nested_head = checkpoints.get(nested.relative_path)
+                    if nested_head is None:
                         cls._cleanup_worktrees(created, worktree_root)
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
-                            source_head.error
-                            or f"failed to resolve source HEAD for {nested.relative_path}"
+                            "missing isolated checkpoint for "
+                            f"{nested.relative_path}"
                         )
                     update_result = FlextInfraUtilitiesGitScope.git_capture(
                         repository.worktree_root,
@@ -180,7 +183,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                             "--add",
                             "--cacheinfo",
                             "160000",
-                            source_head.value.strip(),
+                            nested_head,
                             nested.relative_path,
                         ),
                     )
@@ -188,7 +191,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                         cls._cleanup_worktrees(created, worktree_root)
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                             update_result.error
-                            or f"failed to seed source gitlink for {nested.relative_path}"
+                            or f"failed to seed isolated gitlink for {nested.relative_path}"
                         )
             checkpoint_result = FlextInfraUtilitiesGitScope.git_checkpoint_worktree(
                 repository.worktree_root,
