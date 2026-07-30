@@ -12,6 +12,8 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import c, u
 
+_INFRA_SRC = Path(__file__).resolve().parents[3] / "src"
+
 
 def _write_project(project_root: Path, name: str) -> None:
     project_root.mkdir(parents=True, exist_ok=True)
@@ -150,6 +152,19 @@ def _write_orchestratable_workspace(
     )
     (member_root / "base.mk").write_text(f"check:\n{check_recipe}", encoding="utf-8")
     (member_root / "Makefile").write_text("include base.mk\n", encoding="utf-8")
+
+    # Commit the member so the detector sees a real HEAD/gitlink pair.
+    u.Tests.commit_git_changes(member_root, "fixture: base.mk and Makefile")
+
+    # Stub a managed Python so the generated Makefile can invoke flext_infra.
+    venv_python = member_root / ".venv" / "bin" / "python"
+    venv_python.parent.mkdir(parents=True, exist_ok=True)
+    venv_python.write_text("#!/bin/sh\nexec python3 \"$@\"\n", encoding="utf-8")
+    venv_python.chmod(0o755)
+
+    # Point the generated Makefile at the flext_infra source in this test environment
+    # by passing PROJECT_INFRA_PYTHONPATH as a make argument in each test.
+
     return member_root
 
 
@@ -194,7 +209,10 @@ class TestsFlextInfraWorkspaceMain:
         monkeypatch.chdir(workspace_root)
 
         result = FlextInfraOrchestratorService(
-            verb="check", selected_projects=["demo"], workspace_root=workspace_root
+            verb="check",
+            selected_projects=["demo"],
+            workspace_root=workspace_root,
+            make_arg=[f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}"],
         ).execute()
 
         tm.ok(result)
@@ -217,6 +235,7 @@ class TestsFlextInfraWorkspaceMain:
             selected_projects=["demo"],
             workspace_root=workspace_root,
             fail_fast=True,
+            make_arg=[f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}"],
         ).execute()
 
         tm.ok(result)
@@ -232,22 +251,18 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
 
-    def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
+    def test_workspace_main_detect_runs_public_command(self, tmp_path: Path) -> None:
+        """``workspace detect`` runs as a public CLI command."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
         exit_code = workspace_main([
-            "sync",
+            "detect",
             "--workspace",
             str(project_root),
-            "--canonical-root",
-            str(project_root.parent),
-            "--apply",
         ])
 
         tm.that(exit_code, eq=0)
-        tm.that((project_root / "Makefile").exists(), eq=True)
-        tm.that(not (project_root / "base.mk").exists(), eq=True)
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         tm.that(

@@ -454,7 +454,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  path: .\n"
                     "  role: standalone\n"
                     "  state: active\n"
-                    "  profile: standalone\n"
                     "  checkout: independent\n"
                     "  codegen: conform\n"
                     "  package: true\n"
