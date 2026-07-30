@@ -272,7 +272,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
 
     @override
     def execute(self) -> p.Result[m.Infra.ProcessExit]:
-        """Acquire the checkout lock, then stream the private Make dispatch."""
+        """Single-flight the complete operation while retaining mutation locks."""
         serialization = config.Infra.codegen.make.serialization
         make_config = config.Infra.codegen.make
         if self.verb not in serialization.verbs:
@@ -301,29 +301,42 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 f"Selected Make owner does not exist: {selected_makefile}"
             )
         engine_root = selected_makefile.parent
-        lock_path = (engine_root / serialization.lock_path).resolve()
-        try:
-            lock_path.relative_to(engine_root)
-        except ValueError:
-            return r[m.Infra.ProcessExit].fail(
-                f"Make serialization lock escapes selected Make owner: {lock_path}"
+        mutation_lock_path = (engine_root / serialization.lock_path).resolve()
+        single_flight_lock_path = (
+            engine_root / serialization.single_flight_lock_path
+        ).resolve()
+        for lock_path in (single_flight_lock_path, mutation_lock_path):
+            try:
+                lock_path.relative_to(engine_root)
+            except ValueError:
+                return r[m.Infra.ProcessExit].fail(
+                    f"Make serialization lock escapes selected Make owner: {lock_path}"
+                )
+
+        def complete_operation() -> p.Result[m.Infra.ProcessExit]:
+            if fixed_point_what is not None:
+                return self._execute_transaction_owned_mutation(
+                    checkout,
+                    make_config,
+                    serialization,
+                    fixed_point_what=fixed_point_what,
+                    makefile=selected_makefile,
+                    lock_path=mutation_lock_path,
+                )
+            return FlextInfraSerializationLockOwner.execute(
+                (mutation_lock_path,),
+                serialization.timeout_seconds,
+                lambda: self._execute_locked(
+                    checkout, serialization, makefile=selected_makefile
+                ),
+                timeout_failure=self._lock_timeout_failure,
+                acquisition_failure=self._lock_acquisition_failure,
             )
 
-        if fixed_point_what is not None:
-            return self._execute_transaction_owned_mutation(
-                checkout,
-                make_config,
-                serialization,
-                fixed_point_what=fixed_point_what,
-                makefile=selected_makefile,
-                lock_path=lock_path,
-            )
         return FlextInfraSerializationLockOwner.execute(
-            (lock_path,),
+            (single_flight_lock_path,),
             serialization.timeout_seconds,
-            lambda: self._execute_locked(
-                checkout, serialization, makefile=selected_makefile
-            ),
+            complete_operation,
             timeout_failure=self._lock_timeout_failure,
             acquisition_failure=self._lock_acquisition_failure,
         )

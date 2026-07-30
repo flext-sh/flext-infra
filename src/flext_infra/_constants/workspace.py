@@ -78,6 +78,7 @@ class FlextInfraConstantsWorkspace:
     ENVRC_FILENAME: Final[str] = ".envrc"
     MISE_TOML_FILENAME: Final[str] = ".mise.toml"
     WORKTREES_DIRNAME: Final[str] = ".worktrees"
+    WORKTREE_NAMESPACE_DIGEST_LENGTH: Final[int] = 12
     # mro-sltx (backport 0.20): config-driven Jinja templates for env root files.
     WORKSPACE_ENVRC_TEMPLATE_NAME: Final[str] = "workspace_envrc.sh.j2"
     WORKSPACE_MISE_TOML_TEMPLATE_NAME: Final[str] = "workspace_mise.toml.j2"
