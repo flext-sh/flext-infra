@@ -331,7 +331,8 @@ class TestsCodegenMakeEnvironment:
             )
         log_text = "\n".join(commands)
         tm.that(log_text, has="mise|install --yes uv@")
-        tm.that(log_text, has="uv|sync --project")
+        tm.that(log_text, has="uv|")
+        tm.that(log_text, has="sync --project")
         tm.that(log_text, lacks="venv --clear")
         tm.that(log_text, lacks="uv|venv")
         uv_install_at = next(
@@ -349,7 +350,7 @@ class TestsCodegenMakeEnvironment:
         sync_at = next(
             index
             for index, line in enumerate(commands)
-            if line.startswith("uv|sync --project")
+            if line.startswith("uv|") and "sync --project" in line
         )
         tm.that(uv_install_at < first_conform_at, eq=True)
         tm.that(last_conform_at < full_install_at < sync_at, eq=True)
@@ -463,12 +464,12 @@ class TestsCodegenMakeEnvironment:
             "UV := $(MISE_SHIMS)/uv",
             "_builtin_setup_tools:",
             "github.com/jdx/mise/releases/download",
-            "_builtin_setup_conform: _builtin_setup_tools _builtin_setup_submodules",
-            '$(MISE) install --yes "uv@$$uv_version"',
+            "_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_tools",
+            '$(MISE) install --yes "uv@$$uv_bootstrap_required_version"',
             "$(MISE) install --yes",
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
+            'submodule update --init --recursive -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)
@@ -500,7 +501,7 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "_builtin_setup_tools:",
             "_builtin_setup_topology: _builtin_setup_tools",
-            "_builtin_setup_conform: _builtin_setup_topology _builtin_setup_submodules",
+            "_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_topology",
             "_builtin_setup_mise: _builtin_setup_conform",
             "_builtin_setup_environment: _builtin_setup_mise",
             'codegen conform --root "$(PROJECT_ROOT)" --scope "self" --mode apply',

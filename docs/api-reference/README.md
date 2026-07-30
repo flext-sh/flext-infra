@@ -1,3 +1,5 @@
+# flext-infra API Reference
+
 <!-- TOC START -->
 - [Source of Truth](#source-of-truth)
 - [Generated Pages](#generated-pages)
@@ -5,8 +7,6 @@
 <!-- TOC END -->
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
-
-# flext-infra API Reference
 
 This section is generated from public exports and real docstrings.
 

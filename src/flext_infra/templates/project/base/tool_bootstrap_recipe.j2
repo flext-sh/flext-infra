@@ -1,4 +1,4 @@
-{% macro tool_bootstrap_recipe(target, tools_bin, mise, mise_data_dir, mise_version, uv_version) -%}
+{% macro tool_bootstrap_recipe(target, tools_bin, mise, mise_data_dir, mise_version, uv_bootstrap_required_version) -%}
 .PHONY: {{ target }}
 
 {{ target }}:
@@ -7,10 +7,10 @@
 	mise="{{ mise }}"; \
 	mise_data_dir="{{ mise_data_dir }}"; \
 	mise_version="{{ mise_version }}"; \
-	uv_version="{{ uv_version }}"; \
+	uv_bootstrap_required_version="{{ uv_bootstrap_required_version }}"; \
 	current=""; \
 	if [ -x "$$mise" ]; then \
-		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1); \
 	fi; \
 	if [ "$$current" != "$$mise_version" ]; then \
 		command -v curl >/dev/null 2>&1 || { \
@@ -47,5 +47,5 @@
 			exit 2; \
 		}; \
 	fi; \
-	$(MISE) install --yes "uv@$$uv_version"
+	$(MISE) install --yes "uv@$$uv_bootstrap_required_version"
 {%- endmacro %}

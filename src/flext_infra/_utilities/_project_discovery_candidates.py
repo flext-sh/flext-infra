@@ -146,6 +146,12 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                 if entry.is_dir()
                 and entry.resolve().is_relative_to(resolved_workspace_root)
             )
+        if not configured_members:
+            configured_entries.update(
+                entry.resolve()
+                for entry in resolved_workspace_root.iterdir()
+                if entry.is_dir() and not entry.name.startswith(".")
+            )
         external_workspace_roots = (
             cls.discover_external_workspace_roots(
                 resolved_workspace_root, scan_dirs=scan_dirs

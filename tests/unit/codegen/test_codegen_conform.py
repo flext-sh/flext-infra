@@ -89,8 +89,10 @@ class TestCodegenConform:
         tm.ok(process)
         tm.that(process.value, eq="✅ pong")
 
-    def test_generated_make_uses_unpinned_environment_uv(self, tmp_path: Path) -> None:
-        """Generated Make delegates uv selection to the caller environment."""
+    def test_generated_make_binds_uv_to_project_shims_and_declares_bootstrap_version(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated Make selects the project shim and declares a bootstrap pin."""
         root = tmp_path / "flext-demo"
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
@@ -115,11 +117,9 @@ class TestCodegenConform:
         tm.that(selected_process.exit_code, eq=0)
         tm.that(selected_output, has="uv --version")
         tm.that(selected_output, lacks="uv@")
-        tm.that(selected_output, lacks="UV_VERSION")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile, has="UV ?= uv")
-        tm.that(makefile, lacks="UV_VERSION")
-        tm.that(makefile, lacks="uv@")
+        tm.that(makefile, has="UV_VERSION :=")
+        tm.that(makefile, has="UV := $(MISE_SHIMS)/uv")
         tm.that(makefile, lacks="mise exec")
 
     def test_existing_manifest_converges_to_identical_tree(

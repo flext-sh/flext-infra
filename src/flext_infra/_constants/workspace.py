@@ -76,6 +76,7 @@ class FlextInfraConstantsWorkspace:
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were
     # removed with the migrator/sync parallel writers.
     ENVRC_FILENAME: Final[str] = ".envrc"
+    MISE_TOML_FILENAME: Final[str] = ".mise.toml"
     WORKTREES_DIRNAME: Final[str] = ".worktrees"
     WORKTREE_NAMESPACE_DIGEST_LENGTH: Final[int] = 12
     # mro-sltx (backport 0.20): config-driven Jinja templates for env root files.

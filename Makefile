@@ -14,7 +14,7 @@ WORKSPACE_ROOT_REL := .
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
-UV_VERSION := >=0.11.0
+UV_VERSION := 0.11.32
 MISE_VERSION := 2026.7.16
 
 APPLY ?= N
@@ -136,7 +136,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-override UV := $(MISE_SHIMS)/uv
+UV := $(MISE_SHIMS)/uv
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -179,7 +179,7 @@ ORCHESTRATED_VERBS := build check clean docs scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -387,7 +387,7 @@ _builtin_setup_tools:
 	uv_version="$(UV_VERSION)"; \
 	current=""; \
 	if [ -x "$$mise" ]; then \
-		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1); \
 	fi; \
 	if [ "$$current" != "$$mise_version" ]; then \
 		command -v curl >/dev/null 2>&1 || { \
@@ -432,7 +432,6 @@ _builtin_setup_submodules:
 	@set -eu; \
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
@@ -557,10 +556,10 @@ ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_topology: _builtin_setup_tools
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "self" --mode apply
 
-_builtin_setup_conform: _builtin_setup_topology _builtin_setup_submodules
+_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_topology
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 else
-_builtin_setup_conform: _builtin_setup_tools _builtin_setup_submodules
+_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_tools
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 endif
 

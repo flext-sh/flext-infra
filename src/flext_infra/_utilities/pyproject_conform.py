@@ -74,7 +74,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             required_version=toolchain.uv_bootstrap_required_version,
             link_mode=toolchain.uv_link_mode,
-            constraint_dependencies=(f"uv=={toolchain.uv_version}",),
+            constraint_dependencies=(f"uv>={toolchain.uv_bootstrap_required_version}",),
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:

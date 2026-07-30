@@ -342,7 +342,7 @@ class TestsWorkspaceRootMakeContract:
         sync_at = next(
             index
             for index, line in enumerate(calls)
-            if line.startswith("uv|sync --project")
+            if line.startswith("uv|") and "sync --project" in line
         )
         tm.that(
             uv_install_at < topology_at < full_conform_at < full_install_at < sync_at,

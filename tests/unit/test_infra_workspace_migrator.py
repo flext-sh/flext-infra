@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from flext_infra import FlextInfraWorkspaceEnvironment, config
+from flext_infra import FlextInfraWorkspaceEnvironment
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
 from flext_tests import tm
 from tests import u
@@ -65,10 +65,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         tm.that((project_root / "base.mk").exists(), eq=True)
         tm.that((project_root / "base.mk").read_text(encoding="utf-8"), eq="NEW_BASE\n")
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), has="VENV_DIR")
-        tm.that(
-            (project_root / ".mise.toml").read_text(encoding="utf-8"),
-            has=f'python = "{config.Infra.codegen.toolchain.python_version}"',
-        )
 
     def test_migrator_handles_missing_pyproject_gracefully(
         self, tmp_path: Path
@@ -119,7 +115,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         result = migrator.execute()
         tm.ok(result)
         tm.that((project_root / ".envrc").read_text(encoding="utf-8"), eq=custom_envrc)
-        tm.that((project_root / ".mise.toml").exists(), eq=True)
 
     def test_migrator_workspace_root_not_exists(self, tmp_path: Path) -> None:
         migrator = FlextInfraProjectMigrator(

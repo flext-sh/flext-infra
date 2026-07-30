@@ -291,7 +291,7 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
-        tm.that(makefile_text, has="UV ?= uv")
+        tm.that(makefile_text, has="UV := $(MISE_SHIMS)/uv")
         tm.that(makefile_text, has="UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run")
         tm.that(makefile_text, has="_builtin_setup_environment:")
         tm.that(makefile_text, has='$(UV) sync --project "$(PROJECT_ROOT)"')

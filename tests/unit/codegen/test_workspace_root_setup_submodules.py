@@ -72,6 +72,51 @@ def _write_executable(path: Path, body: str) -> None:
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
+def _fake_toolchain(bin_dir: Path, probe_log: Path) -> None:
+    uv = bin_dir / "uv"
+    _write_executable(
+        uv,
+        "#!/bin/sh\n"
+        'test -f "$PWD/flext-core/pyproject.toml" || {\n'
+        '  printf "uv-before-member-initialization\\n" >&2\n'
+        "  exit 42\n"
+        "}\n"
+        f'printf "%s\\n" "$*" >> "{probe_log}"\n'
+        "exit 0\n",
+    )
+    mise_version = config.Infra.codegen.toolchain.mise_version
+    mise = bin_dir / "mise"
+    _write_executable(
+        mise,
+        "#!/bin/sh\n"
+        'case "${1:-}" in\n'
+        "  --version)\n"
+        f'    echo "{mise_version} linux-x64 (fake)"\n'
+        "    ;;\n"
+        "  install)\n"
+        f'    mkdir -p "${{MISE_DATA_DIR:?}}/shims"\n'
+        f'    cp "{uv}" "${{MISE_DATA_DIR}}/shims/uv"\n'
+        '    chmod +x "${MISE_DATA_DIR}/shims/uv"\n'
+        "    ;;\n"
+        "esac\n"
+        "exit 0\n",
+    )
+    curl = bin_dir / "curl"
+    _write_executable(
+        curl,
+        "#!/bin/sh\n"
+        "out=''; url=''; prev=''\n"
+        'for arg in "$@"; do\n'
+        '  case "$arg" in http*) url="$arg" ;; esac\n'
+        '  if [ "$prev" = "-o" ]; then out="$arg"; fi\n'
+        '  prev="$arg"\n'
+        "done\n"
+        f'cp "{mise}" "$out"\n'
+        'chmod +x "$out"\n'
+        "exit 0\n",
+    )
+
+
 def _create_member_origin(tmp_path: Path) -> Path:
     member = tmp_path / "member-source"
     member.mkdir()
@@ -157,21 +202,14 @@ class TestsWorkspaceRootSetupSubmodules:
         bin_dir = tmp_path / "bin"
         bin_dir.mkdir()
         probe_log = tmp_path / "uv.log"
-        _write_executable(
-            bin_dir / "uv",
-            "#!/bin/sh\n"
-            'test -f "$PWD/flext-core/pyproject.toml" || {\n'
-            '  printf "uv-before-member-initialization\\n" >&2\n'
-            "  exit 42\n"
-            "}\n"
-            f'printf "%s\\n" "$*" >> "{probe_log}"\n'
-            "exit 0\n",
-        )
+        _fake_toolchain(bin_dir, probe_log)
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
         outcome = u.Cli.run_raw(
-            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
+            ["make", "setup", f"UV={bin_dir / 'uv'}", f"MISE={bin_dir / 'mise'}"],
+            cwd=workspace,
+            env=env,
         )
         process = outcome.value
 

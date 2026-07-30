@@ -30,9 +30,16 @@ class FlextInfraUtilitiesDocsContract:
             insert_at = 1
             while insert_at < len(lines) and (not lines[insert_at].strip()):
                 insert_at += 1
-            lines.insert(insert_at, "")
-            lines.insert(insert_at + 1, toc)
-            lines.insert(insert_at + 2, "")
+            # Avoid consecutive blank lines around the injected TOC.
+            prefix_blank = insert_at > 0 and not lines[insert_at - 1].strip()
+            suffix_blank = insert_at < len(lines) and not lines[insert_at].strip()
+            if not prefix_blank:
+                lines.insert(insert_at, "")
+                insert_at += 1
+            lines.insert(insert_at, toc)
+            insert_at += 1
+            if not suffix_blank:
+                lines.insert(insert_at, "")
             updated = "\n".join(lines) + ("\n" if content.endswith("\n") else "")
             return (updated, 1)
         return (toc + "\n\n" + content, 1)

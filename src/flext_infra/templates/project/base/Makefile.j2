@@ -18,6 +18,7 @@ WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor 
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 UV_VERSION := {{ uv_version }}
+UV_BOOTSTRAP_REQUIRED_VERSION := {{ uv_bootstrap_required_version }}
 MISE_VERSION := {{ mise_version }}
 
 APPLY ?= N
@@ -122,7 +123,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-override UV := $(MISE_SHIMS)/uv
+UV := $(MISE_SHIMS)/uv
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -326,7 +327,7 @@ _builtin_help_usage:
 # reconciler validates every initialized checkout before mutation, initializes
 # only missing modules, and preserves declared branches that fix forward beyond
 # the recorded gitlink.
-{{ tool_bootstrap_recipe("_builtin_setup_tools", "$(TOOLS_BIN)", "$(MISE)", "$(MISE_DATA_DIR)", "$(MISE_VERSION)", "$(UV_VERSION)") }}
+{{ tool_bootstrap_recipe("_builtin_setup_tools", "$(TOOLS_BIN)", "$(MISE)", "$(MISE_DATA_DIR)", "$(MISE_VERSION)", "$(UV_BOOTSTRAP_REQUIRED_VERSION)") }}
 
 {{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
 
@@ -340,10 +341,10 @@ ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_topology: _builtin_setup_tools
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "self" --mode apply
 
-_builtin_setup_conform: _builtin_setup_topology _builtin_setup_submodules
+_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_topology
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 else
-_builtin_setup_conform: _builtin_setup_tools _builtin_setup_submodules
+_builtin_setup_conform: _builtin_setup_submodules _builtin_setup_tools
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 endif
 

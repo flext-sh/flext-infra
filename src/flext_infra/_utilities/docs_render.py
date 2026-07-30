@@ -311,9 +311,9 @@ class FlextInfraUtilitiesDocsRender:
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         link_prefix = FlextInfraUtilitiesDocsRender._LINK_PREFIX_README
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {scope.name}",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             f"**Version**: `{version}` | **Python**: 3.13+ | **Project class**: `{scope.project_class}`",
             "",
@@ -363,9 +363,9 @@ class FlextInfraUtilitiesDocsRender:
     def docs_guides_index(scope: m.Infra.DocScope) -> str:
         """Return a minimal guides index for projects missing one."""
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {scope.name} Guides",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             "Curated operational guides live here. Keep API behavior in generated reference pages sourced from code and docstrings.",
             "",
@@ -381,9 +381,9 @@ class FlextInfraUtilitiesDocsRender:
         facades = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "facades")
         modules = FlextInfraUtilitiesDocsRender.as_string_sequence(data, "modules")
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {scope.name} API Reference",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             "This section is generated from public exports and real docstrings.",
             "",
@@ -419,9 +419,9 @@ class FlextInfraUtilitiesDocsRender:
         the canonical renderer.
         """
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {title}",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             *body,
             "",
@@ -509,9 +509,9 @@ class FlextInfraUtilitiesDocsRender:
             FlextInfraUtilitiesDocsRender.as_string_sequence(data, "keywords"), limit=8
         )
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {(data.get('site_title', '') or scope.name)} API Overview",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             f"- Package: `{scope.package_name}`",
             f"- Version: `{data.get('version', '')}`",
@@ -537,9 +537,9 @@ class FlextInfraUtilitiesDocsRender:
     def docs_modules_index(scope: m.Infra.DocScope, modules: t.SequenceOf[str]) -> str:
         """Return the generated module index page for one project."""
         lines: t.MutableSequenceOf[str] = [
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {scope.name} Module Index",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             "These pages are generated from public modules and their docstrings.",
             "",
@@ -609,9 +609,9 @@ class FlextInfraUtilitiesDocsRender:
             or "_none_"
         )
         return FlextInfraUtilitiesDocsRender._render_markdown([
-            c.Infra.GENERATED_HEADER,
-            "",
             f"# {str(data.get('site_title', '')).strip() or 'FLEXT Workspace'} API Overview",
+            "",
+            c.Infra.GENERATED_HEADER,
             "",
             f"- Version: `{str(data.get('version', '')).strip() or 'unknown'}`",
             f"- Description: {str(data.get('description', '')).strip() or '_not declared_'}",

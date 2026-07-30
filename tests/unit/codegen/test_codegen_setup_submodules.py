@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import c, u
+from flext_infra import c, config, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -46,12 +46,13 @@ class TestsCodegenSetupSubmodules:
         cls._git(root, "config", "user.name", "FLEXT Tests")
 
     @staticmethod
-    def _fake_uv(
+    def _fake_toolchain(
         root: Path, expected_submodule_file: Path | None = None
     ) -> dict[str, str]:
         bin_dir = root / "fixture-bin"
         bin_dir.mkdir()
-        (bin_dir / "uv").write_text(
+        uv_path = bin_dir / "uv"
+        uv_path.write_text(
             "#!/bin/sh\n"
             "set -eu\n"
             'if [ -n "${EXPECTED_SUBMODULE_FILE:-}" ] && '
@@ -62,17 +63,62 @@ class TestsCodegenSetupSubmodules:
             'printf "%s\\n" "$*" >> "$UV_LOG"\n',
             encoding="utf-8",
         )
-        (bin_dir / "uv").chmod(0o755)
+        uv_path.chmod(0o755)
+
+        mise_version = config.Infra.codegen.toolchain.mise_version
+        mise_path = bin_dir / "mise"
+        mise_path.write_text(
+            "#!/bin/sh\n"
+            'case "${1:-}" in\n'
+            "  --version)\n"
+            f'    echo "{mise_version} linux-x64 (fake)"\n'
+            "    ;;\n"
+            "  install)\n"
+            f'    mkdir -p "${{MISE_DATA_DIR:?}}/shims"\n'
+            f'    cp "{uv_path}" "${{MISE_DATA_DIR}}/shims/uv"\n'
+            '    chmod +x "${MISE_DATA_DIR}/shims/uv"\n'
+            "    ;;\n"
+            "esac\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        mise_path.chmod(0o755)
+
+        curl_path = bin_dir / "curl"
+        curl_path.write_text(
+            "#!/bin/sh\n"
+            "out=''; url=''; prev=''\n"
+            'for arg in "$@"; do\n'
+            '  case "$arg" in http*) url="$arg" ;; esac\n'
+            '  if [ "$prev" = "-o" ]; then out="$arg"; fi\n'
+            '  prev="$arg"\n'
+            "done\n"
+            f'cp "{mise_path}" "$out"\n'
+            'chmod +x "$out"\n'
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        curl_path.chmod(0o755)
+
         environment = {
             **os.environ,
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
-            "UV": str(bin_dir / "uv"),
+            "UV": str(uv_path),
             "UV_LOG": str(root / "uv.log"),
             "GIT_ALLOW_PROTOCOL": "file",
         }
         if expected_submodule_file is not None:
             environment["EXPECTED_SUBMODULE_FILE"] = str(expected_submodule_file)
         return environment
+
+    @staticmethod
+    def _fake_uv(
+        root: Path, expected_submodule_file: Path | None = None
+    ) -> dict[str, str]:
+        """Return the environment for a fake toolchain (kept for compatibility)."""
+        return TestsCodegenSetupSubmodules._fake_toolchain(
+            root, expected_submodule_file=expected_submodule_file
+        )
 
     @classmethod
     def _add_submodule(
@@ -108,6 +154,21 @@ class TestsCodegenSetupSubmodules:
         cls._git(superproject, "add", "-f", ".gitmodules", path)
         cls._git(superproject, "commit", "-q", "-m", f"Add {path}")
 
+    @staticmethod
+    def _setup_args(
+        root: Path, expected_submodule_file: Path | None = None
+    ) -> tuple[list[str], dict[str, str]]:
+        env = TestsCodegenSetupSubmodules._fake_toolchain(
+            root, expected_submodule_file=expected_submodule_file
+        )
+        bin_dir = root / "fixture-bin"
+        return [
+            "make",
+            "setup",
+            f"UV={bin_dir / 'uv'}",
+            f"MISE={bin_dir / 'mise'}",
+        ], env
+
     def test_virgin_recursive_submodules_initialize_before_environment(
         self, tmp_path: Path
     ) -> None:
@@ -127,13 +188,8 @@ class TestsCodegenSetupSubmodules:
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
         nested_marker = project / "vendor/source/child/nested/marker.txt"
 
-        tm.ok(
-            u.Cli.capture(
-                ["make", "setup"],
-                cwd=project,
-                env=self._fake_uv(project, nested_marker),
-            )
-        )
+        cmd, env = self._setup_args(project, nested_marker)
+        tm.ok(u.Cli.capture(cmd, cwd=project, env=env))
 
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
@@ -151,8 +207,20 @@ class TestsCodegenSetupSubmodules:
         self._generated_project(project)
         environment = self._fake_uv(project)
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=environment,
+            )
+        )
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=environment,
+            )
+        )
 
     def test_content_only_submodule_is_never_initialized(self, tmp_path: Path) -> None:
         """A checkout without the config-owned marker remains untouched."""
@@ -165,7 +233,13 @@ class TestsCodegenSetupSubmodules:
         )
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=self._fake_uv(project),
+            )
+        )
 
         tm.that((project / "vendor/upstream/marker.txt").exists(), eq=False)
 
@@ -195,7 +269,13 @@ class TestsCodegenSetupSubmodules:
             "https://example.test/foreign.git",
         )
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=self._fake_uv(project),
+            )
+        )
 
         tm.that(marker.read_text(encoding="utf-8"), eq="foreign wip")
         tm.that(
@@ -212,7 +292,13 @@ class TestsCodegenSetupSubmodules:
         self._git(project / "vendor/source", "switch", "-q", "-c", "local-work")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result = tm.ok(
+            u.Cli.run_raw(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=environment,
+            )
+        )
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="conflicting branch")
@@ -232,7 +318,13 @@ class TestsCodegenSetupSubmodules:
         marker.write_text("local change", encoding="utf-8")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result = tm.ok(
+            u.Cli.run_raw(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=environment,
+            )
+        )
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="local changes must be reconciled")
@@ -254,7 +346,13 @@ class TestsCodegenSetupSubmodules:
         self._git(checkout, "commit", "-q", "-m", "Advance declared branch")
         advanced_head = self._git(checkout, "rev-parse", "HEAD")
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=self._fake_uv(project),
+            )
+        )
 
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=advanced_head)
@@ -276,7 +374,13 @@ class TestsCodegenSetupSubmodules:
         marker.write_text("third-party wip", encoding="utf-8")
         head = self._git(checkout, "rev-parse", "HEAD")
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=self._fake_uv(project),
+            )
+        )
 
         tm.that(self._git(checkout, "branch", "--show-current"), eq="fork-local")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
@@ -302,7 +406,13 @@ class TestsCodegenSetupSubmodules:
         self._git(project, "commit", "-q", "-m", "Track superproject branch")
         self._git(project, "submodule", "deinit", "-q", "-f", "--all")
 
-        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+        tm.ok(
+            u.Cli.capture(
+                ["make", "setup", f"UV={project / 'fixture-bin' / 'uv'}"],
+                cwd=project,
+                env=self._fake_uv(project),
+            )
+        )
 
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"), eq="main"
