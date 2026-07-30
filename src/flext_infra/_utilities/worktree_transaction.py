@@ -54,6 +54,34 @@ class FlextInfraUtilitiesWorktreeTransaction:
         )
 
     @classmethod
+    def _declared_nested_repository_paths(
+        cls, workspace_root: Path
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Resolve existing manifest-declared nested Git repositories.
+
+        The typed workspace manifest is the topology SSOT: a declared member
+        may already be an initialized checkout without yet being recorded in
+        ``.gitmodules``, so discovery reads the manifest rather than Git's
+        submodule index alone.
+        """
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root
+        )
+        if workspace_result.failure:
+            return r[t.SequenceOf[Path]].fail(
+                workspace_result.error or "failed to load workspace topology"
+            )
+        paths = tuple(
+            repository.path
+            for repository in workspace_result.value.members
+            if repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+            and (workspace_root / repository.path / c.Infra.GIT_DIR).exists()
+        )
+        return r[t.SequenceOf[Path]].ok(paths)
+
+    @classmethod
     def _create_complete_worktree(
         cls,
         workspace_root: Path,
@@ -75,9 +103,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
             return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
                 submodules_result.error or "failed to discover workspace repositories"
             )
+        declared_result = cls._declared_nested_repository_paths(workspace_root)
+        if declared_result.failure:
+            return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                declared_result.error or "failed to discover declared repositories"
+            )
+        discovered = (*submodules_result.value, *declared_result.value)
         submodule_paths = tuple(
             submodule
-            for submodule in submodules_result.value
+            for submodule in dict.fromkeys(discovered)
             if cls._submodule_in_scope(submodule, scoped_paths)
         )
         repository_paths = (Path(), *submodule_paths)
@@ -123,6 +157,43 @@ class FlextInfraUtilitiesWorktreeTransaction:
         for repository in sorted(
             created, key=lambda item: len(Path(item.relative_path).parts), reverse=True
         ):
+            if repository.relative_path == ".":
+                # The isolated root must describe the member commits this
+                # transaction actually contains: members are checkpointed
+                # first (deepest-first ordering), so seed the root index from
+                # those checkpoints instead of the pre-transaction source HEAD.
+                checkpoints = {
+                    nested.relative_path: nested.checkpoint_sha
+                    for nested in checkpointed
+                }
+                for nested in created:
+                    if nested.relative_path == ".":
+                        continue
+                    nested_head = checkpoints.get(nested.relative_path)
+                    if nested_head is None:
+                        cls._cleanup_worktrees(created, worktree_root)
+                        return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                            "missing isolated checkpoint for "
+                            f"{nested.relative_path}"
+                        )
+                    update_result = FlextInfraUtilitiesGitScope.git_capture(
+                        repository.worktree_root,
+                        (
+                            "update-index",
+                            "--add",
+                            "--cacheinfo",
+                            "160000",
+                            nested_head,
+                            nested.relative_path,
+                        ),
+                    )
+                    if update_result.failure:
+                        cls._cleanup_worktrees(created, worktree_root)
+                        return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
+                            update_result.error
+                            or "failed to seed isolated gitlink for "
+                            f"{nested.relative_path}"
+                        )
             checkpoint_result = FlextInfraUtilitiesGitScope.git_checkpoint_worktree(
                 repository.worktree_root,
                 message=(
