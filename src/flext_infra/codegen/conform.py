@@ -273,11 +273,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 for item in config_spec.providers
                 if item.name == current_repository.provider
             )
+            current_repository_role = current_repository.role
+            current_make_profile = (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if current_repository_role is c.Infra.RepositoryRole.WORKSPACE_ROOT
+                else c.Infra.MakeProfile.STANDALONE
+            )
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                make_profile=c.Infra.MakeProfile.STANDALONE,
-                beads_enabled=False,
+                make_profile=current_make_profile,
+                beads_enabled=(
+                    current_make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+                ),
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=provider.branch,
                 ci_enabled=True,
