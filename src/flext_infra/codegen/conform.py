@@ -293,6 +293,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 technical_branch_patterns=(
                     config_spec.branch_policy.technical_branch_patterns
                 ),
+                governed_branch_patterns=(
+                    config_spec.branch_policy.governed_branch_patterns
+                ),
             )
         selected_result = self._select_repositories(
             request, workspace, current_repository
@@ -2046,8 +2049,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if reference.startswith("worktree:")
                 else reference
             )
+            # mro-e9j0.6: ancestry is a development-line rule. Only refs on the
+            # governed allowlist are gated; parked releases (0.10/0.11), snapshots
+            # and lane branches are inventoried but must never block conform.
             excluded = cls._technical_branch(
                 policy_reference, target.technical_branch_patterns
+            ) or not cls._technical_branch(
+                policy_reference, target.governed_branch_patterns
             )
             # Only enforce ancestry on active checkouts: the current branch and
             # registered worktrees. Shared local/remote branches that are not

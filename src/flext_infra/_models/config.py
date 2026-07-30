@@ -151,6 +151,17 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        governed_branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Development lines whose descent from the baseline is enforced. "
+                    "Refs outside this allowlist are inventoried but never gated: "
+                    "parked releases, snapshots and lane branches must not block."
+                ),
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -856,6 +867,17 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Technical branches excluded from ancestry policy"),
         ] = ()
+        governed_branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Development lines gated by ancestry policy; required because "
+                    "an empty tuple would match no ref and silently disable the "
+                    "gate instead of failing closed"
+                ),
+            ),
+        ]
 
     class ManagedGitlinkSpec(_ConfigContract):
         """One governed submodule with its provider-owned baseline branch."""

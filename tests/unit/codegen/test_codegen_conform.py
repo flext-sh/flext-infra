@@ -43,6 +43,9 @@ def _conform_target(
         technical_branch_patterns=(
             config.Infra.codegen.branch_policy.technical_branch_patterns
         ),
+        governed_branch_patterns=(
+            config.Infra.codegen.branch_policy.governed_branch_patterns
+        ),
     )
 
 
