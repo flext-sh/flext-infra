@@ -41,6 +41,13 @@ PROJECT_ROOT := $(shell pwd -P)
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 WORKSPACE ?= $(PROJECT_ROOT)
+# Workspace root is always derived from the current checkout. An inherited
+# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign
+# checkout) must never redirect verbs to another working tree; explicit
+# command-line overrides (origin "command line"/"override") stay authoritative.
+ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
+WORKSPACE_ROOT := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+endif
 PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells

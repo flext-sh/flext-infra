@@ -496,6 +496,9 @@ Infra:
             - settings.json
           gitignore_additions:
             - settings.json
+        flext-core:
+          archive_names:
+            - config.json
         flext-tap-oracle-wms:
           archive_names:
             - config.json
