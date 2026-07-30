@@ -284,6 +284,7 @@ class TestsFlextInfraWorktreeTransaction:
         head = tm.ok(u.Infra.git_add_detached_worktree(source_root, worktree_root))
 
         tm.that(tm.ok(u.Infra.git_repository_head(worktree_root)), eq=head)
+
     def test_isolated_worktree_does_not_run_host_checkout_hooks(
         self, tmp_path: Path
     ) -> None:

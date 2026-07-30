@@ -181,7 +181,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 *,
                 live: bool = False,
                 deadline: p.Cli.ProcessDeadline | None = None,
-) -> p.Result[int]:
+            ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
                 # Why: match the full CommandRunner.run_to_file parent contract
                 # (pyright reportIncompatibleMethodOverride); canned double ignores them.
