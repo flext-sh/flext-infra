@@ -6,7 +6,6 @@
 	root="{{ project_root }}"; \
 	selected="{{ selected_projects }}"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-<<<<<<< HEAD
 	setup_selected() { \
 		candidate="$$1"; \
 		if [ -z "$$selected" ]; then return 0; fi; \
@@ -18,9 +17,6 @@
 		done; \
 		return 1; \
 	}; \
-=======
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
->>>>>>> shared/mro-z89e-export
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \

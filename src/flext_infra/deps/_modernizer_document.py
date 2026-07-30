@@ -267,7 +267,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
-                payload, project_kind=project_kind
+                payload, project_kind=resolved_project_kind
             )
         )
         changes.extend(

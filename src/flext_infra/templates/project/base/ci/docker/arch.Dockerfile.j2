@@ -8,14 +8,10 @@ RUN pacman -Syu --noconfirm --needed \
       bash ca-certificates curl git make base-devel \
     && pacman -Scc --noconfirm
 
-<<<<<<< HEAD
 # mise installs the supported Python {{ python_version }} family.
 # uv is supplied by the managed environment without a project patch pin.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
-
-=======
->>>>>>> shared/mro-z89e-export
 WORKDIR /workspace
 COPY . .
 

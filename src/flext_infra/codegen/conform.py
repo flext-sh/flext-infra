@@ -188,8 +188,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace_root = root
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_root_result = (
-                FlextInfraWorkspaceDetector.resolve_repository_root(root)
+            workspace_root_result = FlextInfraWorkspaceDetector.resolve_repository_root(
+                root
             )
             if workspace_root_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -229,17 +229,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenPlan].fail(
                     inspected.error or "repository topology inspection failed"
                 )
-            current_topology = inspected.value
-            if current_topology.repository is None:
+            topology = inspected.value
+            if topology.repository is None:
                 return r[m.Infra.CodegenPlan].fail(
                     "repository topology has no effective repository"
                 )
-            current_repository = current_topology.repository
+            current_repository = topology.repository
             if current_repository.name == workspace.repository.name:
                 workspace = m.Infra.WorkspaceSpec.model_validate({
                     **workspace.model_dump(),
                     "repository": current_repository,
                 })
+            current_topology = topology
         managed_gitlinks = (
             current_topology.managed_gitlinks
             if current_topology is not None
@@ -291,6 +292,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository_root = self._repository_root(
                 workspace_root, workspace, declared_repository
             )
+            overlay = config_spec.project_overlays.get(declared_repository.name)
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
                     f"declared repository path is not a directory: {repository_root}"
@@ -325,10 +327,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 beads_enabled = topology.beads_enabled
             else:
                 profile = c.Infra.MakeProfile(repository.profile)
-                if (
-                    profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-                    and repository.beads
-                ):
+                if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER and repository.beads:
                     return r[m.Infra.CodegenPlan].fail(
                         "Beads overlay is forbidden for a workspace member"
                     )
@@ -350,6 +349,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace=workspace,
                     codegen=config_spec,
                     contract=contract,
+                    overlay=overlay,
                     beads_enabled=beads_enabled,
                 )
             else:
@@ -360,6 +360,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace=workspace,
                     codegen=config_spec,
                     contract=contract,
+                    overlay=overlay,
                     beads_enabled=beads_enabled,
                 )
             if repository_plan.failure:
@@ -650,6 +651,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: SurfaceContract,
+        overlay: m.Infra.ProjectConformOverlay | None,
         beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Render the complete scaffold for ``codegen new`` only."""
@@ -810,6 +812,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=destination,
                 tooling_runtime=tooling_result.value,
                 project_context=context,
+                overlay=overlay,
                 beads_enabled=beads_enabled,
             )
             if artifact_context.failure:
@@ -908,6 +911,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
         contract: SurfaceContract,
+        overlay: m.Infra.ProjectConformOverlay | None,
         beads_enabled: bool,
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         """Conform every declared managed surface in an existing repository."""
@@ -985,6 +989,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository=repository,
                 workspace=workspace,
                 codegen=codegen,
+                overlay=overlay,
                 tooling_runtime=tooling_context.value,
                 contract=contract,
                 beads_enabled=beads_enabled,
@@ -1029,6 +1034,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository=repository,
             workspace=workspace,
             codegen=codegen,
+            overlay=overlay,
             tooling_runtime=tooling_context.value,
             contract=contract,
             beads_enabled=beads_enabled,
@@ -1056,6 +1062,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository: m.Infra.RepositoryRef,
         workspace: m.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
+        overlay: m.Infra.ProjectConformOverlay | None,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         contract: SurfaceContract,
         beads_enabled: bool,
@@ -1132,6 +1139,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 destination=entry.destination,
                 tooling_runtime=tooling_runtime,
                 project_context=None,
+                overlay=overlay,
                 beads_enabled=beads_enabled,
             )
             if artifact_context.failure:
@@ -1230,6 +1238,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         destination: str,
         tooling_runtime: m.Infra.ToolingRuntimeContext,
         project_context: m.Infra.ProjectRenderContext | None,
+        overlay: m.Infra.ProjectConformOverlay | None,
         beads_enabled: bool,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
@@ -1260,9 +1269,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     "Beads config requested for an ineligible repository"
                 )
+            issue_prefix = (
+                overlay.beads_namespace
+                if overlay is not None and overlay.beads_namespace is not None
+                else repository.name
+            )
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
-                    issue_prefix=repository.name,
+                    issue_prefix=issue_prefix,
                     database=repository.name.replace("-", "_"),
                 )
             )
@@ -1283,7 +1297,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             and destination_path.suffix == ".Dockerfile"
         ):
             return r[p.Model].ok(
-                m.Infra.DistroDockerRenderSpec(package_name=dist.replace("-", "_"))
+                m.Infra.DistroDockerRenderSpec(
+                    package_name=dist.replace("-", "_"),
+                    python_version=codegen.toolchain.python_version,
+                )
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = c.Infra.MakeProfile(repository.profile)
@@ -1485,8 +1502,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             section
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
-            if section.beads_enabled is None
-            or section.beads_enabled is beads_enabled
+            if section.beads_enabled is None or section.beads_enabled is beads_enabled
         )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(

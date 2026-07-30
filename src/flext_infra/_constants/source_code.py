@@ -49,7 +49,12 @@ class FlextInfraConstantsSourceCode:
         "legado",
     }
     "Directories to skip when scanning pyproject.toml files."
-    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {"reports"}
+    CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".archive",
+        "reports",
+        ".agents",
+        ".beads",
+    }
     "Directories to exclude during quality checks."
     ITERATION_EXCLUDED_PARTS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "dist-packages",
@@ -59,6 +64,7 @@ class FlextInfraConstantsSourceCode:
     }
     "Path parts to skip during file iteration (superset of COMMON_EXCLUDED_DIRS)."
     VALIDATION_CLONE_EXCLUDES: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
+        ".archive",
         ".ropeproject",
         "htmlcov",
     }

@@ -45,6 +45,46 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return Path(__file__).resolve().parents[1] / schemas_dir / schema_name
 
     @classmethod
+    def effective_repository(
+        cls,
+        repository_root: Path,
+        declared: m.Infra.RepositoryRef,
+        overlay: m.Infra.ProjectConformOverlay | None = None,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive conform topology from owned submodules, with explicit exceptions."""
+        if overlay is not None and overlay.profile is not None:
+            profile = overlay.profile
+        else:
+            owned_result = cls.owned_submodules(repository_root)
+            if owned_result.failure:
+                return r[m.Infra.RepositoryRef].fail(
+                    owned_result.error or "unable to resolve owned submodules"
+                )
+            profile = (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if owned_result.value
+                else c.Infra.MakeProfile.STANDALONE
+            )
+        role = {
+            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+            c.Infra.MakeProfile.STANDALONE: c.Infra.RepositoryRole.STANDALONE,
+        }[profile]
+        checkout = {
+            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
+            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
+            c.Infra.MakeProfile.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
+        }[profile]
+        return r[m.Infra.RepositoryRef].ok(
+            m.Infra.RepositoryRef.model_validate({
+                **declared.model_dump(),
+                "role": role,
+                "profile": profile,
+                "checkout": checkout,
+            })
+        )
+
+    @classmethod
     def load_workspace_spec(
         cls, repository_root: Path
     ) -> p.Result[m.Infra.WorkspaceSpec]:
@@ -114,8 +154,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         """Resolve the current repository root without crossing a gitlink."""
         resolved_root = repository_root.expanduser().resolve()
         repository = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-toplevel"],
-            cwd=resolved_root,
+            [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=resolved_root
         )
         if repository.failure:
             inside_work_tree = u.Cli.capture(
@@ -158,10 +197,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         standalone_checkout = (
             repository.role is c.Infra.RepositoryRole.STANDALONE
             and repository.checkout
-            in {
-                c.Infra.CheckoutKind.INDEPENDENT,
-                c.Infra.CheckoutKind.SUBMODULE,
-            }
+            in {c.Infra.CheckoutKind.INDEPENDENT, c.Infra.CheckoutKind.SUBMODULE}
         )
         if repository.checkout is not expected_checkout and not standalone_checkout:
             return r[bool].fail(
@@ -232,8 +268,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
 
     @staticmethod
     def _classify_gitlinks(
-        workspace_spec: m.Infra.WorkspaceSpec | None,
-        indexed_gitlinks: t.StrSequence,
+        workspace_spec: m.Infra.WorkspaceSpec | None, indexed_gitlinks: t.StrSequence
     ) -> p.Result[tuple[t.StrSequence, t.StrSequence]]:
         """Classify Git links through the typed workspace ownership manifest."""
         if not indexed_gitlinks:
@@ -289,9 +324,10 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[tuple[t.StrSequence, t.StrSequence]].fail(
                 "Git submodules and typed workspace ownership differ"
             )
-        return r[tuple[t.StrSequence, t.StrSequence]].ok(
-            (tuple(sorted(managed_paths)), tuple(sorted(external_paths)))
-        )
+        return r[tuple[t.StrSequence, t.StrSequence]].ok((
+            tuple(sorted(managed_paths)),
+            tuple(sorted(external_paths)),
+        ))
 
     @classmethod
     def analysis_exclusion_paths(
@@ -545,17 +581,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
 
     @classmethod
     def inspect(
-        cls,
-        project_root: Path,
-        declared: m.Infra.RepositoryRef | None = None,
+        cls, project_root: Path, declared: m.Infra.RepositoryRef | None = None
     ) -> p.Result[m.Infra.RepositoryTopology]:
         """Inspect Git topology once and derive every runtime policy."""
         try:
             resolved_project_root = project_root.resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[m.Infra.RepositoryTopology].fail_op(
-                "Workspace detection", exc
-            )
+            return r[m.Infra.RepositoryTopology].fail_op("Workspace detection", exc)
         if not resolved_project_root.is_dir():
             return r[m.Infra.RepositoryTopology].fail(
                 f"project root is not a directory: {resolved_project_root}"
@@ -615,9 +647,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 workspace_spec,
             )
             if attached_validation.failure:
-                return r[m.Infra.RepositoryTopology].fail(
-                    attached_validation.error
-                )
+                return r[m.Infra.RepositoryTopology].fail(attached_validation.error)
             return cls._topology_result(
                 repository_root.value,
                 declared=declared,
@@ -800,5 +830,6 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
         """Execute the workspace detection flow."""
         return self.detect(self.workspace_root)
+
 
 __all__: list[str] = ["FlextInfraWorkspaceDetector"]

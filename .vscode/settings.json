@@ -55,7 +55,8 @@
     "**/.direnv": true,
     "**/.hypothesis": true,
     "**/.bin": true,
-    "**/.tools": true
+    "**/.tools": true,
+    "**/.archive": true
   },
   "files.watcherExclude": {
     "**/__pycache__/**": true,
@@ -95,7 +96,8 @@
     "**/.direnv/**": true,
     "**/.hypothesis/**": true,
     "**/.bin/**": true,
-    "**/.tools/**": true
+    "**/.tools/**": true,
+    "**/.archive/**": true
   },
   "search.exclude": {
     "**/__pycache__": true,
@@ -134,7 +136,8 @@
     "**/.direnv": true,
     "**/.hypothesis": true,
     "**/.bin": true,
-    "**/.tools": true
+    "**/.tools": true,
+    "**/.archive": true
   },
   "terminal.integrated.env.linux": {
     "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}",

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, u
+from flext_core import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
@@ -165,6 +165,9 @@ class FlextInfraConfigModels:
 
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Python import package name")
+        ]
+        python_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Python major.minor line, e.g. '3.13'")
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -749,6 +752,13 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile | None,
             m.Field(description="Makefile generation profile"),
         ] = None
+        classification: Annotated[
+            FlextInfraConstantsCodegenProject.RepositoryClassification,
+            m.Field(
+                description="Repository governance ownership classification",
+                default=FlextInfraConstantsCodegenProject.RepositoryClassification.MANAGED,
+            ),
+        ] = FlextInfraConstantsCodegenProject.RepositoryClassification.MANAGED
         checkout: Annotated[
             FlextInfraConstantsCodegenProject.CheckoutKind,
             m.Field(description="Physical checkout topology"),

@@ -28,6 +28,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
+        required_dev_dependencies: t.StrSequence = (),
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace."""
@@ -43,7 +44,10 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name = project_name_raw.strip()
 
         cls._sync_dependency_groups(
-            source, project_name=project_name, workspace=workspace
+            source,
+            project_name=project_name,
+            workspace=workspace,
+            required_dev_dependencies=required_dev_dependencies,
         )
         normalized = cls._normalize_requirements(
             source,
@@ -129,7 +133,10 @@ class FlextInfraUtilitiesPyprojectConform:
             r[bool].ok(True)
             if cls._is_workspace_root(project_name=project_name, workspace=workspace)
             else cls._sync_uv_sources(
-                source, project_name=project_name, workspace=workspace
+                source,
+                project_name=project_name,
+                workspace=workspace,
+                workspace_mode=workspace_mode,
             )
         )
         if sources_result.failure:
@@ -310,6 +317,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
+        required_dev_dependencies: t.StrSequence = (),
     ) -> None:
         """Migrate optional dev dependencies and set canonical generated groups."""
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
@@ -324,6 +332,11 @@ class FlextInfraUtilitiesPyprojectConform:
             *u.Cli.toml_as_string_list(u.Cli.toml_value(groups, str(c.Infra.DEV))),
             *optional_dev,
         ]
+        dev.extend(
+            requirement
+            for requirement in required_dev_dependencies
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+        )
         if project_name != "flext-tests":
             dev.append("flext-tests")
         u.Cli.toml_sync_string_list(
@@ -465,6 +478,8 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
+        if not c.Infra.WorkspaceMode(workspace_mode):
+            return r[bool].fail(f"unexpected workspace mode: {workspace_mode}")
         workspace_root = cls._is_workspace_root(
             project_name=project_name, workspace=workspace
         )

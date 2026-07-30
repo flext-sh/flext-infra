@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_cli import m
-from flext_infra import t
+from flext_core import m
+from flext_infra import p, t
 
 
 class FlextInfraModelsWorktree:
@@ -118,10 +118,10 @@ class FlextInfraModelsWorktree:
             Path, m.Field(description="Temporary root removed after evidence capture")
         ]
         command_output: Annotated[
-            m.Cli.CommandOutput, m.Field(description="Isolated command process output")
+            p.Cli.CommandOutput, m.Field(description="Isolated command process output")
         ]
         import_probe: Annotated[
-            m.Cli.CommandOutput,
+            p.Cli.CommandOutput,
             m.Field(description="Fresh public-package import probe output"),
         ]
         lint_before: Annotated[
@@ -146,5 +146,7 @@ class FlextInfraModelsWorktree:
             t.NonEmptyStr, m.Field(description="Human-readable transaction outcome")
         ]
 
+
+FlextInfraModelsWorktree.WorktreeTransactionReport.model_rebuild()
 
 __all__: list[str] = ["FlextInfraModelsWorktree"]

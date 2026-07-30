@@ -7,5 +7,5 @@
 	path = {{ repository.path }}
 	url = {{ repository.url }}
 	branch = {{ repository.branch }}
-	flext-classification = {{ repository.classification }}
-	flext-managed = {{ (repository.classification == "managed" and repository in workspace_repositories and not repository.read_only and repository.codegen == "conform") | lower }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}
+	flext-classification = {{ repository.state }}
+	flext-managed = {{ (repository.state == "active" and repository in workspace_repositories and not repository.read_only and repository.codegen == "conform") | lower }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}

@@ -123,10 +123,7 @@ class FlextInfraProtocolsDocs(Protocol):
         """Contract for ``mkdocs.config.load_config``."""
 
         def __call__(
-            self,
-            *,
-            config_file_path: str,
-            site_dir: str,
+            self, *, config_file_path: str, site_dir: str
         ) -> MutableMapping[str, cli_p.AttributeProbe]: ...
 
     @runtime_checkable
