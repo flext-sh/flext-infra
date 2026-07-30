@@ -13,7 +13,6 @@ from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, p, t
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import m, u
 
@@ -117,7 +116,6 @@ def _workspace(tmp_path: Path) -> Path:
             "  workspace_root_rel: .\n"
             "  year: 2026\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -399,7 +397,7 @@ class TestsFlextInfraWorktreeTransaction:
             second_worktree,
         ):
             tm.ok(
-                FlextInfraSerializationLockOwner.execute(
+                u.Infra.serialization_lock_execute(
                     (repository_root / serialization.lock_path,),
                     0,
                     available,
@@ -481,7 +479,7 @@ class TestsFlextInfraWorktreeTransaction:
 
         def attempt_head_advance() -> bool:
             tm.that(preflight_complete.wait(timeout=10), where=bool)
-            immediate = FlextInfraSerializationLockOwner.execute(
+            immediate: p.Result[bool] = u.Infra.serialization_lock_execute(
                 (lock_path,),
                 0,
                 advance_source_head,
@@ -492,7 +490,7 @@ class TestsFlextInfraWorktreeTransaction:
             contention_observed.set()
             if lock_contended:
                 tm.ok(
-                    FlextInfraSerializationLockOwner.execute(
+                    u.Infra.serialization_lock_execute(
                         (lock_path,),
                         10,
                         advance_source_head,

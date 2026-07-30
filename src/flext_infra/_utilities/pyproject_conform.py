@@ -9,8 +9,10 @@ from flext_cli import r, u
 from flext_infra.constants import c
 from flext_infra.typings import t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
+    from flext_infra.models import m
     from flext_infra.protocols import p
 
 
@@ -26,6 +28,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         toolchain: p.Infra.ToolchainSpec,
@@ -55,6 +58,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=True,
@@ -72,9 +76,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             workspace=workspace,
             workspace_mode=workspace_mode,
-            required_version=toolchain.uv_bootstrap_required_version,
             link_mode=toolchain.uv_link_mode,
-            constraint_dependencies=(f"uv=={toolchain.uv_version}",),
             exclude_dependencies=uv_exclude_dependencies,
         )
         if sources_result.failure:
@@ -101,6 +103,7 @@ class FlextInfraUtilitiesPyprojectConform:
         pyproject_content: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
     ) -> p.Result[str]:
@@ -132,6 +135,7 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             repositories=repositories,
+            providers=providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             canonicalize_all=False,
@@ -178,17 +182,13 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
-        available = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        available = (*repositories, workspace.repository, *workspace.members)
         # Only the root expresses the active workspace overlay in its own
         # requirements. A publishable member keeps its configured Git source so
         # the same pyproject remains resolvable in a standalone checkout; uv
@@ -207,6 +207,7 @@ class FlextInfraUtilitiesPyprojectConform:
             project,
             c.Infra.DEPENDENCIES,
             repositories=available,
+            providers=providers,
             canonicalize_all=canonicalize_all,
             attached=attached,
         )
@@ -224,6 +225,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     section,
                     group_name,
                     repositories=available,
+                    providers=providers,
                     canonicalize_all=canonicalize_all,
                     attached=attached,
                 )
@@ -238,6 +240,7 @@ class FlextInfraUtilitiesPyprojectConform:
         key: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
         attached: frozenset[str],
     ) -> p.Result[bool]:
@@ -253,7 +256,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, attached=attached
+                item, repositories=repositories, providers=providers, attached=attached
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -280,6 +283,7 @@ class FlextInfraUtilitiesPyprojectConform:
         requirement: str,
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
         attached: frozenset[str],
     ) -> p.Result[str]:
         """Render one internal requirement from its manifest repository reference."""
@@ -310,10 +314,17 @@ class FlextInfraUtilitiesPyprojectConform:
                 or f"repository resolution failed: {dependency_name}"
             )
         reference = reference_result.value
+        provider = FlextInfraUtilitiesRepository.repository_provider(
+            reference, providers
+        )
+        if provider.failure:
+            return r[str].fail(
+                provider.error or "repository provider resolution failed"
+            )
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
             return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{reference.branch}"
+        canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
@@ -334,7 +345,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         reference = matches[0]
         if any(
-            item.url != reference.url or item.branch != reference.branch
+            item.url != reference.url or item.provider != reference.provider
             for item in matches[1:]
         ):
             return r.fail(
@@ -537,7 +548,6 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.WorkspaceMode,
-        required_version: str | None = None,
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
@@ -553,42 +563,31 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and required_version is None
-                and link_mode is None
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and required_version is None
-                and link_mode is None
-                and not exclude_dependencies
-            ):
+            if not workspace_root and link_mode is None and not exclude_dependencies:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
-        if required_version is not None:
-            u.Cli.toml_sync_value(uv, "required-version", required_version)
+        u.Cli.toml_remove_key_if_present(uv, "required-version")
         existing_constraints = u.Cli.toml_as_string_list(
             u.Cli.toml_value(uv, "constraint-dependencies")
         )
+        selected_constraints = (
+            tuple(constraint_dependencies)
+            if workspace_root and constraint_dependencies is not None
+            else existing_constraints
+        )
         retained_constraints = tuple(
             requirement
-            for requirement in existing_constraints
+            for requirement in selected_constraints
             if FlextInfraUtilitiesDependencies.dep_name(requirement) != "uv"
         )
-        canonical_constraints = (
-            (*retained_constraints, *constraint_dependencies)
-            if workspace_root and constraint_dependencies is not None
-            else retained_constraints
-        )
-        if canonical_constraints:
+        if retained_constraints:
             u.Cli.toml_sync_string_list(
-                uv, "constraint-dependencies", canonical_constraints
+                uv, "constraint-dependencies", retained_constraints
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
@@ -649,12 +648,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
-        candidates = (
-            *repositories,
-            workspace.repository,
-            *workspace.members,
-            *workspace.content_only,
-        )
+        candidates = (*repositories, workspace.repository, *workspace.members)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
                 distribution, repositories=candidates

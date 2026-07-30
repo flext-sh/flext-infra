@@ -9,11 +9,9 @@ repository:
   distribution: {{ dist }}
   provider: {{ repository_provider }}
   url: {{ repository_git_url }}
-  branch: {{ repository_branch }}
   path: .
   role: {{ make_profile }}
   state: active
-  profile: {{ make_profile }}
   checkout: {{ workspace_repository.checkout | tojson }}
   codegen: {{ workspace_repository.codegen | tojson }}
   package: {{ workspace_repository.package | tojson }}
@@ -62,11 +60,9 @@ members:
     distribution: {{ repository.distribution | tojson }}
     provider: {{ repository.provider | tojson }}
     url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
     path: {{ repository.path | tojson }}
     role: {{ repository.role | tojson }}
     state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
     checkout: {{ repository.checkout | tojson }}
     codegen: {{ repository.codegen | tojson }}
     package: {{ repository.package | tojson }}
@@ -92,22 +88,11 @@ members:
 {% else %}
   []
 {%- endfor %}
-content_only:
-{% for repository in workspace_content_only %}
-  - name: {{ repository.name | tojson }}
-    distribution: {{ repository.distribution | tojson }}
-    provider: {{ repository.provider | tojson }}
-    url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
-    path: {{ repository.path | tojson }}
-    role: {{ repository.role | tojson }}
-    state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
-    checkout: {{ repository.checkout | tojson }}
-    codegen: {{ repository.codegen | tojson }}
-    package: {{ repository.package | tojson }}
-    editable: {{ repository.editable | tojson }}
-    read_only: {{ repository.read_only | tojson }}
+repository_policy_overlays:
+{% for overlay in workspace_policy_overlays %}
+  - project: {{ overlay.project | tojson }}
+    beads_enabled: {{ overlay.beads_enabled | tojson }}
+    ci_enabled: {{ overlay.ci_enabled | tojson }}
 {% else %}
   []
 {%- endfor %}

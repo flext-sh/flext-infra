@@ -20,40 +20,30 @@ def _repository(
     role: c.Infra.RepositoryRole,
     state: c.Infra.RepositoryState = c.Infra.RepositoryState.ACTIVE,
 ) -> m.Infra.RepositoryRef:
-    profile = (
-        c.Infra.MakeProfile.WORKSPACE_ROOT
-        if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        else c.Infra.MakeProfile.WORKSPACE_MEMBER
-    )
+    provider = config.Infra.codegen.providers[0]
     return m.Infra.RepositoryRef(
         name=name,
         distribution=name,
-        provider="acme-hosting",
-        url=f"https://github.com/acme-hosting/{name}.git",
-        branch="development",
+        provider=provider.name,
+        url=f"{provider.base_url}/{name}.git",
         path=Path(path),
         role=role,
         state=state,
-        profile=profile,
         checkout=(
             c.Infra.CheckoutKind.ROOT
             if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
             else c.Infra.CheckoutKind.SUBMODULE
         ),
-        codegen=(
-            c.Infra.CodegenKind.NONE
-            if role is c.Infra.RepositoryRole.CONTENT_ONLY
-            else c.Infra.CodegenKind.CONFORM
-        ),
+        codegen=c.Infra.CodegenKind.CONFORM,
         package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
         editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        read_only=role is c.Infra.RepositoryRole.CONTENT_ONLY,
+        read_only=False,
     )
 
 
 class TestsCodegenCatalogExtensions:
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        selector = config.Infra.codegen.toolchain.beads_version
+        selector = config.Infra.codegen.toolchain.beads.version
 
         version_parts = selector.split(".")
         is_semver = len(version_parts) == 3 and all(
@@ -67,17 +57,13 @@ class TestsCodegenCatalogExtensions:
     def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
-        for selector in (toolchain.uv_version, toolchain.mise_version):
+        # uv is supplied by the caller environment and is deliberately not pinned;
+        # only the mise binary and the Beads CLI installed through mise declare
+        # immutable release selectors.
+        for selector in (toolchain.mise_version, toolchain.beads.version):
             version_parts = selector.split(".")
             tm.that(len(version_parts), eq=3)
             tm.that(all(part.isdecimal() for part in version_parts), eq=True)
-
-        uv_floor = toolchain.uv_bootstrap_required_version
-        tm.that(uv_floor, has=">=")
-        floor_version = uv_floor.lstrip(">= ")
-        version_parts = floor_version.split(".")
-        tm.that(len(version_parts), eq=3)
-        tm.that(all(part.isdecimal() for part in version_parts), eq=True)
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
@@ -130,14 +116,6 @@ class TestsCodegenCatalogExtensions:
                     role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
                 ),
             ),
-            content_only=(
-                _repository(
-                    "acme-content",
-                    path="acme-content",
-                    role=c.Infra.RepositoryRole.CONTENT_ONLY,
-                    state=c.Infra.RepositoryState.CONTENT_ONLY,
-                ),
-            ),
         )
         member_root = tmp_path / "acme-charts"
         member_root.mkdir()
@@ -147,7 +125,9 @@ class TestsCodegenCatalogExtensions:
             encoding="utf-8",
         )
         tm.ok(
-            u.Cli.run_checked(["git", "init", "-q", "-b", "development"], cwd=member_root)
+            u.Cli.run_checked(
+                ["git", "init", "-q", "-b", "development"], cwd=member_root
+            )
         )
         tm.ok(
             u.Cli.run_checked(
@@ -175,6 +155,7 @@ class TestsCodegenCatalogExtensions:
                 workspace
             )
         )
+
         tooling = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=tmp_path, skip_check=True
@@ -222,9 +203,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
-            file
-            for file in plan.files
-            if ".github/workflows" in file.path.as_posix()
+            file for file in plan.files if ".github/workflows" in file.path.as_posix()
         )
         tm.that(workflows, len=4)
         for workflow in workflows:
@@ -239,7 +218,7 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(
             mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
-            eq=config.Infra.codegen.toolchain.beads_version,
+            eq=config.Infra.codegen.toolchain.beads.version,
         )
         pyproject = tomllib.loads(
             next(

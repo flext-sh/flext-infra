@@ -9,7 +9,6 @@ import pytest
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import c, u
 
@@ -83,7 +82,6 @@ def _write_workspace(workspace_root: Path) -> None:
             "    package: true\n"
             "    editable: true\n"
             "    read_only: false\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -147,7 +145,6 @@ def _write_orchestratable_workspace(
             "    package: true\n"
             "    editable: true\n"
             "    read_only: false\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -187,21 +184,6 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.ok(result)
         tm.that(result.value, eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_sync_workspace_returns_sync_result(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-
-        result = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace_root=project_root,
-            apply_changes=False,
-        ).execute()
-
-        tm.fail(result)
-        error = result.error or ""
-        tm.that(error, has="codegen drift detected")
-        tm.that(error, has="Makefile")
 
     def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
         result = FlextInfraOrchestratorService(

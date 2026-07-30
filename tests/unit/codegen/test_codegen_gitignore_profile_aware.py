@@ -99,11 +99,7 @@ class TestsCodegenGitignoreProfileAware:
             for file in plan.files
         }
         beads_path = tmp_path / "rendered-beads-config.yaml"
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                beads_path, by_path[".beads/config.yaml"]
-            )
-        )
+        tm.ok(u.Cli.atomic_write_text_file(beads_path, by_path[".beads/config.yaml"]))
         beads_config = u.Cli.yaml_load_mapping(beads_path)
         tm.that(beads_config["issue-prefix"], eq=repository.name)
         dolt = u.Cli.json_as_mapping(beads_config["dolt"])
@@ -112,7 +108,7 @@ class TestsCodegenGitignoreProfileAware:
             by_path[".mise.toml"],
             has=(
                 '"github:gastownhall/beads" = '
-                f'"{config.Infra.codegen.toolchain.beads_version}"'
+                f'"{config.Infra.codegen.toolchain.beads.version}"'
             ),
         )
         tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
@@ -193,9 +189,7 @@ def _plan_independent_overlay(
     )
     plan = tm.ok(
         FlextInfraCodegenConform(
-            workspace_root=root,
-            request=request,
-            initial_workspace=workspace,
+            workspace_root=root, request=request, initial_workspace=workspace
         ).plan(request)
     )
     return repository, plan

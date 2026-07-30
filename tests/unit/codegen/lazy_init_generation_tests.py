@@ -64,10 +64,8 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(content, contains='".api": ("Demo",)')
         tm.that(content, contains="from .__version__ import __version__ as __version__")
         tm.that(
-            content,
-            contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo", "__version__", "r")',
+            content, contains='__all__: tuple[str, ...] = ("Demo", "__version__", "r")'
         )
-        tm.that(content, contains="__all__: tuple[str, ...] = tuple(_PUBLIC_EXPORTS)")
         tm.that(content, contains="if TYPE_CHECKING:")
         tm.that(content, contains="install_lazy_exports(")
         tm.that(content, lacks="__unit__")
@@ -102,7 +100,7 @@ class TestsFlextInfraCodegenGeneration:
         compile(content, "__init__.py", "exec")
         tm.that(content, lacks="from ._utilities.conversion import DemoConversion")
         tm.that(content, lacks="DemoConversion")
-        tm.that(content, contains='_PUBLIC_EXPORTS: tuple[str, ...] = ("Demo",)')
+        tm.that(content, contains='__all__: tuple[str, ...] = ("Demo",)')
 
     def test_root_type_checking_uses_compact_relative_local_imports(self) -> None:
         """Emit relative declarations as explicit public re-exports."""
@@ -256,7 +254,7 @@ class TestsFlextInfraCodegenGeneration:
             content,
             contains="from .protocols import FlextDemoProtocols as FlextDemoProtocols",
         )
-        tm.that(content, contains="p: type[FlextDemoProtocols]")
+        tm.that(content, contains="FlextDemoProtocols as p")
 
     def test_root_service_alias_uses_typed_service_base(self) -> None:
         """Bind ``s`` to the concrete project service base for static analysis."""
@@ -276,7 +274,7 @@ class TestsFlextInfraCodegenGeneration:
             content,
             contains="from .base import FlextDemoServiceBase as FlextDemoServiceBase",
         )
-        tm.that(content, contains="s: type[FlextDemoServiceBase]")
+        tm.that(content, contains="FlextDemoServiceBase as s")
 
     def test_type_checking_renderer_keeps_explicit_aliases(self) -> None:
         """Static imports bind aliases to their facade types explicitly."""
@@ -289,8 +287,7 @@ class TestsFlextInfraCodegenGeneration:
             contains=(
                 "from module import FlextConstants as _FlextConstants, "
                 "FlextModels as _FlextModels\n"
-                "    c: type[_FlextConstants]\n"
-                "    m: type[_FlextModels]"
+                "    from flext_core import FlextConstants as c, FlextModels as m"
             ),
         )
 

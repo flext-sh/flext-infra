@@ -98,7 +98,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
         """Emit one TYPE_CHECKING module import group."""
         alias_exports: t.MutableSequenceOf[str] = []
         parts: t.MutableSequenceOf[str] = []
-        type_aliases: t.MutableSequenceOf[str] = []
         module_basename = mod.rsplit(".", maxsplit=1)[-1]
         selected_items = tuple(
             item
@@ -110,12 +109,6 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 mod, item[0], item[1], root_name
             )
         )
-        identity_attributes = {
-            attr_name
-            for export_name, attr_name in selected_items
-            if attr_name and export_name == attr_name
-        }
-        imported_attributes: set[str] = set()
         for export_name, attr_name in selected_items:
             if not attr_name:
                 if export_name == module_basename:
@@ -127,14 +120,11 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                         )
                     )
                 continue
-            imported_name = (
-                attr_name if attr_name in identity_attributes else f"_{attr_name}"
+            parts.append(
+                FlextInfraCodegenGenerationTypeCheckingMixin._format_import_part(
+                    attr_name, export_name
+                )
             )
-            if attr_name not in imported_attributes:
-                parts.append(f"{attr_name} as {imported_name}")
-                imported_attributes.add(attr_name)
-            if export_name != attr_name:
-                type_aliases.append(f"    {export_name}: type[{imported_name}]")
         for export_name in tuple(dict.fromkeys(alias_exports)):
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_type_checking_module_alias_import(
@@ -142,26 +132,12 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
                 )
             )
         deduped_parts = tuple(dict.fromkeys(parts))
-        combined_parts = tuple(
-            part
-            for part in deduped_parts
-            if " as " not in part or len(set(part.split(" as ", maxsplit=1))) > 1
-        )
-        if combined_parts:
+        if deduped_parts:
             lines.extend(
                 FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
-                    "    ", mod, combined_parts
+                    "    ", mod, deduped_parts
                 )
             )
-        for part in deduped_parts:
-            source_name, separator, target_name = part.partition(" as ")
-            if separator and source_name == target_name:
-                lines.extend(
-                    FlextInfraCodegenGenerationTypeCheckingMixin._format_import(
-                        "    ", mod, (part,)
-                    )
-                )
-        lines.extend(type_aliases)
 
     @staticmethod
     def generate_type_checking(

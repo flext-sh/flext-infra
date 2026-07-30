@@ -3,8 +3,8 @@
 ``custom_handler_policy`` was a single flat rule applied to every profile, but
 the profiles have genuinely different contracts:
 
-* a workspace *member* extends the generated verbs, so its ``custom.mk`` may
-  only define private ``_custom_<verb>_<what>`` handlers and hooks;
+* a standalone repository may only define private
+  ``_custom_<verb>_<what>`` handlers and hooks;
 * a workspace *root* orchestrates the members, so its ``custom.mk`` legitimately
   owns public orchestration targets and the variables they read.
 
@@ -48,10 +48,10 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
 
         tm.that(policy.allow_public_targets, eq=True)
 
-    def test_workspace_member_stays_private_only(self) -> None:
-        """A member custom surface may still only define private handlers."""
+    def test_standalone_stays_private_only(self) -> None:
+        """A standalone custom surface may only define private handlers."""
         policy = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_MEMBER
+            c.Infra.MakeProfile.STANDALONE
         ]
 
         tm.that(policy.allow_public_targets, eq=False)
@@ -65,7 +65,7 @@ class TestsFlextInfraCustomHandlerPolicyIsProfileAware:
         """
         content = "WORKSPACE_BASE ?= 0.12.0-dev\ndone-check:\n\t@echo hi\n"
         strict = config.Infra.codegen.make.custom_handler_policies[
-            c.Infra.MakeProfile.WORKSPACE_MEMBER
+            c.Infra.MakeProfile.STANDALONE
         ]
         permissive = config.Infra.codegen.make.custom_handler_policies[
             c.Infra.MakeProfile.WORKSPACE_ROOT

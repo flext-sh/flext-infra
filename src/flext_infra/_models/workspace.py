@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_core import u
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsWorkspace:
-    """Models for workspace discovery, sync, and migration.
+    """Models for workspace discovery and orchestration.
 
     Canonical base policy:
-    - ``ArbitraryTypesModel`` for mutable discovery and migration payloads.
+    - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
 
@@ -30,35 +27,6 @@ class FlextInfraModelsWorkspace:
         workspace_root: Annotated[
             Path, m.Field(alias="workspace", description="Workspace root path")
         ]
-
-    class RepositoryTopology(m.ContractModel):
-        """One atomic inspection of repository-local Git topology."""
-
-        repository_root: Annotated[
-            Path, m.Field(description="Current repository root without parent crossing")
-        ]
-        mode: Annotated[
-            c.Infra.WorkspaceMode,
-            m.Field(description="Effective workspace execution mode"),
-        ]
-        attached: Annotated[
-            bool, m.Field(description="Repository is checked out as a Git submodule")
-        ]
-        managed_gitlinks: Annotated[
-            t.StrSequence,
-            m.Field(description="Manifest-owned mutable repository gitlinks"),
-        ] = ()
-        external_gitlinks: Annotated[
-            t.StrSequence,
-            m.Field(description="Manifest-declared read-only content gitlinks"),
-        ] = ()
-        beads_enabled: Annotated[
-            bool, m.Field(description="Canonical Beads environment is eligible")
-        ]
-        repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef | None,
-            m.Field(description="Effective repository identity when declared"),
-        ] = None
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
@@ -126,39 +94,6 @@ class FlextInfraModelsWorkspace:
         dependency_names: Annotated[
             t.StrSequence, m.Field(description="Declared dependency names")
         ] = m.Field(default_factory=tuple)
-
-    class SyncResult(m.ArbitraryTypesModel):
-        """Result payload for sync operations."""
-
-        files_changed: Annotated[
-            t.NonNegativeInt, m.Field(description="Total changed files")
-        ] = 0
-        source: Annotated[Path, m.Field(description="Sync source path")]
-        target: Annotated[Path, m.Field(description="Sync target path")]
-        timestamp: Annotated[
-            datetime,
-            m.Field(description="Execution timestamp in the configured timezone"),
-        ] = m.Field(default_factory=u.now)
-
-        @u.field_serializer("source", "target", when_used="json")
-        def serialize_paths(self, value: Path) -> str:
-            """Serialize sync paths for JSON result boundaries."""
-            return str(value)
-
-        @u.field_serializer("timestamp", when_used="json")
-        def serialize_timestamp(self, value: datetime) -> str:
-            """Serialize execution timestamp for JSON result boundaries."""
-            return value.isoformat()
-
-    class MigrationResult(mm.ProjectNameMixin, m.ArbitraryTypesModel):
-        """Migration operation outcome with applied changes and errors."""
-
-        changes: Annotated[t.StrSequence, m.Field(description="Applied changes")] = (
-            m.Field(default_factory=tuple)
-        )
-        errors: Annotated[t.StrSequence, m.Field(description="Migration errors")] = (
-            m.Field(default_factory=tuple)
-        )
 
 
 __all__: list[str] = ["FlextInfraModelsWorkspace"]
