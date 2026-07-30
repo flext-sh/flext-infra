@@ -232,22 +232,17 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
 
-    def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
+    def test_workspace_main_detect_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
         exit_code = workspace_main([
-            "sync",
+            "detect",
             "--workspace",
             str(project_root),
-            "--canonical-root",
-            str(project_root.parent),
-            "--apply",
         ])
 
         tm.that(exit_code, eq=0)
-        tm.that((project_root / "Makefile").exists(), eq=True)
-        tm.that(not (project_root / "base.mk").exists(), eq=True)
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         tm.that(

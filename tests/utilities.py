@@ -454,7 +454,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  path: .\n"
                     "  role: standalone\n"
                     "  state: active\n"
-                    "  profile: standalone\n"
                     "  checkout: independent\n"
                     "  codegen: conform\n"
                     "  package: true\n"
@@ -830,6 +829,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
+                (c.Infra.GIT, "remote", "add", "origin", str(repo_root)),
+                (c.Infra.GIT, "update-ref", "refs/remotes/origin/0.12.0-dev", "HEAD"),
             )
             for command in commands:
                 tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
