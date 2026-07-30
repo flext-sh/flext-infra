@@ -753,6 +753,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered workspace member records"),
         ] = ()
+        workspace_content_only: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Ordered content-only repository records"),
+        ] = ()
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(description="Repository-specific additional public Make verbs"),

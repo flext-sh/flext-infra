@@ -1072,6 +1072,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(codegen)
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+        if destination == c.Infra.GITMODULES:
+            if tooling_runtime is None:
+                return r[p.Model].fail(
+                    f"Gitmodules artifact requires tooling context: {dist}"
+                )
+            make_context = cls._make_render_context(
+                repository, workspace, codegen, tooling_runtime=tooling_runtime
+            )
+            if make_context.failure:
+                return r[p.Model].fail(
+                    make_context.error or f"gitmodules context failed: {dist}"
+                )
+            return r[p.Model].ok(make_context.value)
         if destination == c.Infra.MAKEFILE_FILENAME:
             if project_context is not None:
                 return r[p.Model].ok(project_context)
@@ -1118,8 +1131,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
-                mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
-                mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                 prlimit_command=c.Infra.PRLIMIT_COMMAND,
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
@@ -1136,6 +1149,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_members=tuple(
                     item.path.as_posix() for item in workspace.members
                 ),
+                workspace_content_only=tuple(workspace.content_only),
                 workspace_repositories=members,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
@@ -1224,8 +1238,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
-                mypy_timeout_exit_code=c.Infra.MYPY_TIMEOUT_EXIT_CODE,
-                mypy_signal_exit_offset=c.Infra.MYPY_SIGNAL_EXIT_OFFSET,
+                mypy_timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                mypy_signal_exit_offset=c.Infra.PROCESS_SIGNAL_EXIT_OFFSET,
                 prlimit_command=c.Infra.PRLIMIT_COMMAND,
                 prlimit_address_space_option=c.Infra.PRLIMIT_ADDRESS_SPACE_OPTION,
                 timeout_command=c.Infra.TIMEOUT_COMMAND,
