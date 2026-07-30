@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Repo
 
-from flext_infra.constants import c
 from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
+from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

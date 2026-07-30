@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra._utilities._git_worktree import FlextInfraUtilitiesGitWorktreeMixin
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

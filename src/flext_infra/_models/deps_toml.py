@@ -111,9 +111,7 @@ class FlextInfraModelsDepsToml:
                         )
 
                     @override
-                    def build(
-                        self,
-                    ) -> FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig:
+                    def build(self) -> FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig:
                         """Return the typed immutable phase owned by this builder."""
                         phase: FlextInfraModelsDepsToml.Deps.Toml.PhaseConfig = (
                             self.state

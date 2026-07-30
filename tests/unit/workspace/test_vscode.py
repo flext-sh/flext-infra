@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from flext_tests import tm
-
 from flext_infra import c, config
 from flext_infra.services.codegen import FlextInfraCodegen
+from flext_tests import tm
 
 
 def _write_project(project_root: Path) -> None:

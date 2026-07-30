@@ -16,10 +16,10 @@ from flext_infra.base import s
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.models import m
+from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
 from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.services.codegen import FlextInfraCodegen
 
 # A GNU Make variable assignment: NAME followed by =, :=, ::=, ?= or +=.
 # Matched at column 0 only, so an indented recipe line is never mistaken for

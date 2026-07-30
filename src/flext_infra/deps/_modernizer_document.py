@@ -170,6 +170,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
+        project_kind: str | None = None,
+        analysis_exclusions: t.StrSequence = (),
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path
@@ -181,11 +183,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         is_root = (
             path.parent.resolve() == self.root.resolve() and not child_result.value
         )
-        project_kind = "core"
-        if not is_root:
+        resolved_project_kind: str = project_kind or "core"
+        if project_kind is None and not is_root:
             kind_result = self._classify_project(path.parent, payload=payload)
             if kind_result.success:
-                project_kind = kind_result.value
+                resolved_project_kind = kind_result.value
         # mro-j47u (codex): declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         changes: t.MutableSequenceOf[str] = []
@@ -216,9 +218,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 is_root=is_root,
                 workspace_root=self.root,
                 project_dir=path.parent,
-                project_kind=project_kind,
+                project_kind=resolved_project_kind,
                 paths_manager=paths_manager,
                 declared_python_dirs=declared_python_dirs,
+                analysis_exclusions=analysis_exclusions,
             )
         )
         changes.extend(

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from flext_tests import tm
-
 from flext_infra import c, config, m
+from flext_tests import tm
 
 
 def test_codegen_catalog_builds_every_declared_workspace_from_typed_ssot() -> None:
