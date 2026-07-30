@@ -9,9 +9,7 @@
     "version",
     "name",
     "repository",
-    "members",
-    "exclusions",
-    "repository_policy_overlays"
+    "members"
   ],
   "properties": {
     "version": {
