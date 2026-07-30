@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Protocol, runtime_checkable
 
 from flext_cli import p as cli_p
@@ -108,6 +109,49 @@ class FlextInfraProtocolsDocs(Protocol):
 
         @property
         def source_paths(self) -> tuple[str, ...]: ...
+
+    @runtime_checkable
+    class MkDocsAnyCallable(Protocol):
+        """Generic lazily-loaded MkDocs callable without loose top types."""
+
+        def __call__(
+            self, *args: cli_p.AttributeProbe, **kwargs: cli_p.AttributeProbe
+        ) -> cli_p.AttributeProbe: ...
+
+    @runtime_checkable
+    class MkDocsLoadConfig(Protocol):
+        """Contract for ``mkdocs.config.load_config``."""
+
+        def __call__(
+            self,
+            *,
+            config_file_path: str,
+            site_dir: str,
+        ) -> MutableMapping[str, cli_p.AttributeProbe]: ...
+
+    @runtime_checkable
+    class MkDocsBuild(Protocol):
+        """Contract for ``mkdocs.commands.build.build``."""
+
+        def __call__(
+            self,
+            config: MutableMapping[str, cli_p.AttributeProbe],
+            *,
+            dirty: bool = False,
+        ) -> cli_p.AttributeProbe: ...
+
+    @runtime_checkable
+    class MkDocsServe(Protocol):
+        """Contract for ``mkdocs.commands.serve.serve``."""
+
+        def __call__(
+            self,
+            *,
+            config_file: str,
+            livereload: bool,
+            dev_addr: str,
+            strict: bool = False,
+        ) -> cli_p.AttributeProbe: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsDocs"]

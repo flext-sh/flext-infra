@@ -48,6 +48,14 @@ def test_generated_markdown_is_toc_normalized_before_write(tmp_path: Path) -> No
     tm.that(generated.read_text(), has="[Section](#section)")
 
 
+def test_update_toc_preserves_single_blank_after_level_one_heading() -> None:
+    updated, changed = u.Infra.update_toc("# Main\n\n## Section\n")
+
+    tm.that(changed, eq=1)
+    tm.that(updated, has="# Main\n\n<!-- TOC START -->")
+    tm.that(updated, lacks="# Main\n\n\n<!-- TOC START -->")
+
+
 def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
     generated = tmp_path / "mkdocs.yml"
     content = "site_name: Generated\n"

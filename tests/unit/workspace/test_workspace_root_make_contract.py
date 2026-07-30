@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +12,7 @@ from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from flext_cli import p as cli_p
@@ -36,11 +36,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     )[:2]
     project_names = tuple(member.path.as_posix() for member in members)
     (workspace_root / "pyproject.toml").write_text(
-        "[project]\n"
-        f"name = '{root_repository.distribution}'\n"
-        "version = '0.1.0'\n\n"
-        "[tool.flext.workspace]\n"
-        f"members = {list(project_names)!r}\n",
+        f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
         encoding="utf-8",
     )
     manifest = m.Infra.WorkspaceSpec(
@@ -58,26 +54,33 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     for project_name in project_names:
         project_root = workspace_root / project_name
         project_root.mkdir(parents=True)
+        package_root = project_root / "src" / project_name.replace("-", "_")
+        package_root.mkdir(parents=True)
+        (package_root / "__init__.py").write_text("", encoding="utf-8")
         (project_root / "pyproject.toml").write_text(
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
+    test_u.Tests.initialize_git_repo(workspace_root)
     tm.ok(
         FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=workspace_root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.APPLY,
             )
         )
     )
+    for project_name in project_names:
+        _write_child_makefile(workspace_root / project_name, exit_code=0)
     return workspace_root, project_names
 
 
 def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     (project_root / "Makefile").write_text(
         "SHELL := /bin/sh\n"
-        ".PHONY: check test\n"
+        ".PHONY: setup check test\n"
+        "setup:\n"
+        "\t@true\n"
         "check test:\n"
         "\t@printf 'project=%s verb=%s gates=%s uv_project=%s uv_env=%s "
         "venv=%s fail_fast=%s\\n' '$(notdir $(CURDIR))' '$@' "
@@ -90,13 +93,14 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
 
 def _write_fake_uv(bin_root: Path, log_path: Path) -> None:
     bin_root.mkdir()
-    (bin_root / "uv").write_text(
+    uv_path = bin_root / "uv"
+    uv_path.write_text(
         "#!/bin/sh\n"
         f'printf \'%s|%s|%s|%s\\n\' "$UV_PROJECT" "$UV_PROJECT_ENVIRONMENT" '
         f'"$VIRTUAL_ENV" "$*" >> {log_path}\n',
         encoding="utf-8",
     )
-    (bin_root / "uv").chmod(0o755)
+    uv_path.chmod(0o755)
 
 
 class TestsWorkspaceRootMakeContract:
@@ -116,33 +120,189 @@ class TestsWorkspaceRootMakeContract:
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw([
-                "make",
-                "-C",
-                str(workspace_root),
-                "--dry-run",
-                "check",
-                f"PROJECT={project_names[0]}",
-                "CHECK_GATES=lint,pyrefly",
-            ])
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_check_all",
+                    f"PROJECT={project_names[0]}",
+                    "CHECK_GATES=lint,pyrefly",
+                ],
+                cwd=workspace_root,
+            )
         )
         output = process.stdout + process.stderr
 
-        tm.that(process.exit_code, eq=0)
+        tm.that(process.exit_code, eq=0, msg=output)
         tm.that(output, has=f"--projects {project_names[0]}")
         tm.that(output, has='--make-arg "CHECK_GATES=lint,pyrefly"')
         tm.that(output, lacks=f"--projects {project_names[1]}")
+
+    def test_generated_make_routes_file_and_match_only_to_owning_project(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, project_names = _write_workspace(tmp_path)
+        owner = project_names[0]
+        selected = f"{owner}/tests/unit/test_selected.py"
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    f"FILE={selected}",
+                    "MATCH=selected_case",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has=f"--projects {owner}")
+        tm.that(output, has='--make-arg "FILE=tests/unit/test_selected.py"')
+        tm.that(output, has='--make-arg "MATCH=selected_case"')
+        tm.that(output, lacks=f"--projects {project_names[1]}")
+
+    def test_generated_make_routes_root_file_only_to_workspace_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep provider-owned root tests in the root project execution lane."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+        selected = "tests/unit/test_provider_contract.py"
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_test_all",
+                    f"FILE={selected}",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--projects .")
+        tm.that(output, has=f'--make-arg "FILE={selected}"')
+        for project_name in project_names:
+            tm.that(output, lacks=f"--projects {project_name}")
+
+    def test_generated_make_default_test_includes_root_and_every_member(
+        self, tmp_path: Path
+    ) -> None:
+        """Run provider root tests alongside every configured workspace member."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: cli_p.Cli.CommandOutput = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "_builtin_test_all"],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
+
+    def test_generated_make_exposes_typed_docs_lifecycle(self, tmp_path: Path) -> None:
+        workspace_root, project_names = _write_workspace(tmp_path)
+        docs = config.Infra.codegen.make.docs
+        invocation_log = workspace_root / "docs.log"
+        test_u.Tests.write_executable(
+            workspace_root / ".venv" / "bin" / "python",
+            (
+                "#!/bin/sh\n"
+                "verb=''\n"
+                "previous=''\n"
+                'for argument in "$@"; do\n'
+                '  if [ "$previous" = "--verb" ]; then verb="$argument"; fi\n'
+                '  previous="$argument"\n'
+                "done\n"
+                'if [ -n "$verb" ]; then exec make --no-print-directory "_serialized_${verb}"; fi\n'
+                f'printf "%s\\n" "$*" >> "{invocation_log}"\n'
+            ),
+        )
+        uv = workspace_root / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        for action in docs.actions:
+            invocation_log.write_text("", encoding="utf-8")
+            process: cli_p.Cli.CommandOutput = tm.ok(
+                test_u.Tests.run_isolated_make(
+                    [
+                        "-C",
+                        str(workspace_root),
+                        "docs",
+                        f"WHAT={action}",
+                        f"PROJECTS={project_names[0]}",
+                        f"UV={uv}",
+                    ],
+                    cwd=workspace_root,
+                )
+            )
+            tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+            output = invocation_log.read_text(encoding="utf-8")
+            expected_actions = (
+                tuple(item for item in docs.actions if item != docs.default_action)
+                if action == docs.default_action
+                else (action,)
+            )
+            for expected_action in expected_actions:
+                tm.that(output, has=f"docs {expected_action}")
+            tm.that(output, has=f"--output-dir {workspace_root / docs.reports_dir}")
+            tm.that(output, has=f"--projects {project_names[0]}")
+            tm.that(output, lacks=f"--projects {project_names[1]}")
+            if action in docs.mutable_actions:
+                tm.that(output, has="--check")
+                tm.that(output, lacks="--apply")
+                invocation_log.write_text("", encoding="utf-8")
+                applied = tm.ok(
+                    test_u.Tests.run_isolated_make(
+                        [
+                            "-C",
+                            str(workspace_root),
+                            "docs",
+                            f"WHAT={action}",
+                            "APPLY=Y",
+                            f"PROJECTS={project_names[0]}",
+                            f"UV={uv}",
+                        ],
+                        cwd=workspace_root,
+                    )
+                )
+                tm.that(applied.exit_code, eq=0, msg=applied.stdout + applied.stderr)
+                applied_output = invocation_log.read_text(encoding="utf-8")
+                tm.that(applied_output, has="--apply")
+                tm.that(applied_output, lacks="--check")
+            elif action != docs.default_action:
+                tm.that(output, lacks="--apply")
+                tm.that(output, lacks="--check")
+
+        invalid = tm.ok(
+            test_u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "docs", "WHAT=not-a-docs-action"],
+                cwd=workspace_root,
+            )
+        )
+        tm.that(invalid.exit_code, ne=0)
 
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workspace_root, _ = _write_workspace(tmp_path)
+        (workspace_root / ".gitmodules").write_text("", encoding="utf-8")
         fake_bin = tmp_path / "bin"
         uv_log = tmp_path / "uv.log"
         _write_fake_uv(fake_bin, uv_log)
-        monkeypatch.setenv(
-            "PATH", f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}"
-        )
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
@@ -153,21 +313,24 @@ class TestsWorkspaceRootMakeContract:
                 "-C",
                 str(workspace_root),
                 "setup",
-                "WHAT=environment",
+                f"UV={fake_bin / 'uv'}",
             ])
         )
 
-        tm.that(process.exit_code, eq=0)
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         calls = uv_log.read_text(encoding="utf-8").splitlines()
         expected_environment = str(workspace_root / ".venv")
-        for call in calls:
-            project, environment, virtual_env, arguments = call.split("|", 3)
+        managed_calls = tuple(
+            call for call in calls if call.startswith(f"{workspace_root}|")
+        )
+        for call in managed_calls:
+            project, environment, virtual_env, _arguments = call.split("|", 3)
             tm.that(project, eq=str(workspace_root))
             tm.that(environment, eq=expected_environment)
             tm.that(virtual_env, eq=expected_environment)
-            if "--python" in arguments:
-                tm.that(arguments, lacks=".venv/bin/python")
-                tm.that(arguments, has=f"--python {expected_environment}")
+        arguments_log = "\n".join(managed_calls)
+        tm.that(arguments_log, has=f"venv --clear {expected_environment}")
+        tm.that(arguments_log, has=f"--python {expected_environment}")
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

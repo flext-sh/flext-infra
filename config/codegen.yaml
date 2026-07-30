@@ -86,7 +86,12 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
-      docs_phases: [generate, fix, audit, build, validate]
+      docs:
+        actions: [all, generate, fix, audit, build, validate]
+        default_action: all
+        mutable_actions: [generate, fix]
+        reports_dir: .reports/docs
+        cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
@@ -130,7 +135,7 @@ Infra:
           default_what: diagnostics
           apply_guarded: false
         - name: docs
-          default_what: check
+          default_what: all
           apply_guarded: false
         - name: clean
           default_what: generated

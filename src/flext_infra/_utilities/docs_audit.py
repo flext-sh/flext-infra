@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra import c, config, m
 from flext_infra._utilities._docs_audit_detectors import (
     FlextInfraUtilitiesDocsAuditDetectorsMixin,
 )
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra.constants import c
-from flext_infra.models import m
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -136,6 +136,22 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                     clean_line
                 ):
                     target = FlextInfraUtilitiesDocsAudit.docs_normalize_link(raw)
+                    if re.match(
+                        config.Infra.codegen.make.docs.cross_project_relative_link_pattern,
+                        target,
+                    ):
+                        issues.append(
+                            m.Infra.AuditIssue(
+                                file=rel,
+                                issue_type="cross_project_relative_link",
+                                severity="high",
+                                message=(
+                                    f"line {number}: cross-project links require an "
+                                    f"absolute repository URL -> {raw}"
+                                ),
+                            )
+                        )
+                        continue
                     if (
                         not target
                         or target.startswith("#")
