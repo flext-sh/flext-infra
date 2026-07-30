@@ -64,11 +64,8 @@ class FlextInfraUtilitiesPyprojectConform:
             source,
             project_name=project_name,
             workspace=workspace,
-<<<<<<< HEAD
-=======
             workspace_mode=workspace_mode,
             required_version=toolchain.uv_bootstrap_required_version,
->>>>>>> shared/mro-z89e-export
             link_mode=toolchain.uv_link_mode,
             constraint_dependencies=(f"uv=={toolchain.uv_version}",),
             exclude_dependencies=uv_exclude_dependencies,
@@ -169,7 +166,11 @@ class FlextInfraUtilitiesPyprojectConform:
         # An attached workspace member resolves through [tool.uv.sources]
         # workspace=true, so a git specifier would be a second, contradictory
         # source that uv silently overrides (mro-sw2l.1).
-        attached = frozenset(member.distribution for member in workspace.members)
+        attached = (
+            frozenset(member.distribution for member in workspace.members)
+            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            else frozenset()
+        )
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
@@ -457,11 +458,8 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-<<<<<<< HEAD
-=======
         workspace_mode: c.Infra.WorkspaceMode,
         required_version: str | None = None,
->>>>>>> shared/mro-z89e-export
         link_mode: str | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] = (),
@@ -493,9 +491,6 @@ class FlextInfraUtilitiesPyprojectConform:
             ):
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
-<<<<<<< HEAD
-        u.Cli.toml_remove_key_if_present(uv, "required-version")
-=======
         if required_version is not None:
             u.Cli.toml_sync_value(uv, "required-version", required_version)
         existing_constraints = u.Cli.toml_as_string_list(
@@ -517,7 +512,6 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
->>>>>>> shared/mro-z89e-export
         if link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         exclude_payload = list(

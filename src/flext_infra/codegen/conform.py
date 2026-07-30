@@ -1250,11 +1250,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MiseRenderSpec.model_validate({
                     **codegen.toolchain.model_dump(exclude_computed_fields=True),
-<<<<<<< HEAD
                     "beads_enabled": beads_enabled,
-=======
-                    "beads_enabled": True,
->>>>>>> shared/mro-z89e-export
                 })
             )
         if destination == ".python-version":
