@@ -482,6 +482,9 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 technical_branch_patterns=(
                     config.Infra.codegen.branch_policy.technical_branch_patterns
                 ),
+                baseline_excluded_patterns=(
+                    config.Infra.codegen.branch_policy.baseline_excluded_patterns
+                ),
             )
         )
 

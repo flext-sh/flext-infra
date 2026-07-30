@@ -154,6 +154,16 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        baseline_excluded_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional refs that are not required to descend from the "
+                    "provider baseline (e.g. parallel release/integration lanes)"
+                ),
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -852,6 +862,15 @@ class FlextInfraConfigModels:
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Technical branches excluded from ancestry policy"),
         ] = ()
+        baseline_excluded_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Refs not required to descend from the baseline (parallel lanes)"
+                ),
+            ),
+        ]
 
     class ManagedGitlinkSpec(_ConfigContract):
         """One governed submodule with its provider-owned baseline branch."""

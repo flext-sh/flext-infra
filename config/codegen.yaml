@@ -66,6 +66,9 @@ Infra:
         - __dolt_remote_info__
         - dolt/*
         - gh-readonly-queue/*
+      baseline_excluded_patterns:
+        - main
+        - "0.*.0-dev"
     profiles:
       - name: workspace-root
         environment_scope: root
