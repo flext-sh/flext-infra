@@ -1829,9 +1829,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _beads_command(
         plan: m.Infra.BeadsPlan, *arguments: str
     ) -> p.Result[p.Cli.CommandOutput]:
-        """Run the configured Beads binary only through the repository mise toolchain."""
+        """Run the configured Beads binary only through the repository mise toolchain.
+
+        In transaction worktrees the repository root may be a temporary directory
+        without a local ``.mise.toml``. Resolve the nearest ancestor that owns the
+        toolchain config so ``mise exec`` still finds the managed ``bd`` binary.
+        """
+        config_root = plan.repository_root
+        while config_root != config_root.parent:
+            if (config_root / ".mise.toml").is_file():
+                break
+            config_root = config_root.parent
         return u.Cli.run_raw(
-            ["mise", "exec", "--", "bd", *arguments], cwd=plan.repository_root
+            ["mise", "-C", str(config_root), "exec", "--", "bd", *arguments],
+            cwd=plan.repository_root,
         )
 
     @classmethod

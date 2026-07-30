@@ -796,6 +796,28 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return "\n".join(lines) + "\n"
 
         @staticmethod
+        def configure_git_identity(repository_root: Path) -> None:
+            """Set deterministic repository-local identity for real Git fixtures."""
+            tm.ok(
+                cli_facade.run_checked(
+                    [
+                        c.Infra.GIT,
+                        "config",
+                        "--local",
+                        "user.email",
+                        "tests@flext.local",
+                    ],
+                    cwd=repository_root,
+                )
+            )
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
+                    cwd=repository_root,
+                )
+            )
+
+        @staticmethod
         def initialize_git_repo(repo_root: Path) -> None:
             """Initialize and commit a deterministic Git fixture.
 
@@ -810,21 +832,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
             )
             for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
-
-        @classmethod
-        def initialize_git_repo(cls, repo_root: Path) -> None:
-            """Initialize and commit a deterministic Git fixture."""
-            tm.ok(
-                cli_facade.run_checked(
-                    [c.Infra.GIT, "init", "-b", "main"], cwd=repo_root
-                )
-            )
-            cls.configure_git_identity(repo_root)
-            for command in (
-                (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "-m", "init"),
-            ):
                 tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
