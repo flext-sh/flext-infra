@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+from types import MappingProxyType
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m
+from flext_core import u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
+from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
@@ -207,6 +210,111 @@ class FlextInfraConfigModels:
             default=None, description="Permit toolchain declarations"
         )
 
+    class MakeSerializationSpec(_ConfigContract):
+        """Portable per-checkout serialization for state-sensitive Make verbs."""
+
+        lock_path: Annotated[
+            Path, m.Field(description="Repository-relative native process-lock path")
+        ]
+        single_flight_lock_path: Annotated[
+            Path,
+            m.Field(
+                description=(
+                    "Repository-relative lock around one complete Make operation"
+                )
+            ),
+        ]
+        mutation_fixed_points: Annotated[
+            Mapping[t.NonEmptyStr, Mapping[t.NonEmptyStr, t.NonEmptyStr]],
+            m.Field(
+                default_factory=lambda: MappingProxyType({}),
+                description=(
+                    "Authorized mutating WHATs and the validation WHAT each must "
+                    "run afterward under the same lock"
+                ),
+            ),
+        ]
+        snapshot_excludes: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Repository-relative lock and report artifacts omitted "
+                    "from gate-integrity fingerprints"
+                )
+            ),
+        ]
+        timeout_seconds: Annotated[
+            int,
+            m.Field(
+                gt=0,
+                description="Maximum seconds to wait for the checkout validation lock",
+            ),
+        ]
+        verbs: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1, description="Public Make verbs serialized per checkout"
+            ),
+        ]
+
+        @m.field_validator("lock_path", "single_flight_lock_path")
+        @classmethod
+        def _validate_lock_path(cls, value: Path) -> Path:
+            """Keep every validation lock within its owning checkout."""
+            if value.is_absolute() or not value.parts or ".." in value.parts:
+                msg = "make serialization lock paths must be repository-relative"
+                raise ValueError(msg)
+            return value
+
+        @m.field_validator("snapshot_excludes")
+        @classmethod
+        def _validate_snapshot_excludes(
+            cls, values: tuple[Path, ...]
+        ) -> tuple[Path, ...]:
+            """Keep explicit snapshot exclusions within their owning checkout."""
+            for value in values:
+                if value.is_absolute() or not value.parts or ".." in value.parts:
+                    msg = (
+                        "make serialization snapshot_excludes must be "
+                        "repository-relative"
+                    )
+                    raise ValueError(msg)
+            return values
+
+        @u.model_validator(mode="after")
+        def _validate_lock_excluded_from_snapshot(self) -> Self:
+            """Require the native lock artifact to remain outside fingerprints."""
+            lock_paths = (self.single_flight_lock_path, self.lock_path)
+            if len(set(lock_paths)) != len(lock_paths):
+                msg = "make serialization lock paths must be distinct"
+                raise ValueError(msg)
+            missing_excludes = set(lock_paths) - set(self.snapshot_excludes)
+            if missing_excludes:
+                msg = (
+                    "make serialization lock paths must be snapshot-excluded: "
+                    f"{', '.join(sorted(path.as_posix() for path in missing_excludes))}"
+                )
+                raise ValueError(msg)
+            invalid = set(self.mutation_fixed_points) - set(self.verbs)
+            if invalid:
+                msg = (
+                    "make serialization mutation verbs are not serialized: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
+            empty = [
+                verb
+                for verb, fixed_points in self.mutation_fixed_points.items()
+                if not fixed_points
+            ]
+            if empty:
+                msg = (
+                    "make serialization mutation verbs require fixed points: "
+                    f"{', '.join(sorted(empty))}"
+                )
+                raise ValueError(msg)
+            return self
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -218,6 +326,10 @@ class FlextInfraConfigModels:
         ]
         apply_value: Annotated[
             t.NonEmptyStr, m.Field(description="Only accepted write-enable value")
+        ]
+        serialization: Annotated[
+            FlextInfraConfigModels.MakeSerializationSpec,
+            m.Field(description="Per-checkout Make validation serialization"),
         ]
         verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -234,6 +346,35 @@ class FlextInfraConfigModels:
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_serialized_verbs(self) -> Self:
+            """Require serialization to target declared non-bootstrap verbs."""
+            declared = {verb.name for verb in self.verbs}
+            serialized = set(self.serialization.verbs)
+            invalid = serialized - declared
+            if invalid:
+                msg = (
+                    "make serialization verbs are not declared public verbs: "
+                    f"{', '.join(sorted(invalid))}"
+                )
+                raise ValueError(msg)
+            if "setup" in serialized:
+                msg = "make setup cannot require the managed validation environment"
+                raise ValueError(msg)
+            return self
+
+        @m.computed_field()
+        @property
+        def check_gates_allowed(self) -> tuple[str, ...]:
+            """Canonical generated Make check-gate vocabulary."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES
+
+        @m.computed_field()
+        @property
+        def check_gates_default(self) -> tuple[str, ...]:
+            """Canonical generated Make default check gates."""
+            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
 
         @m.computed_field()
         @property
@@ -281,6 +422,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        conflict_sections: Annotated[
+            tuple[str, ...],
+            m.Field(
+                description=(
+                    "TOML sections whose merge conflicts the canonical owner "
+                    "can recover before regeneration"
+                )
+            ),
+        ] = ()
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""

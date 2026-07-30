@@ -48,6 +48,23 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
+      serialization:
+        lock_path: .state/flext-infra/make-validation.lock
+        single_flight_lock_path: .state/flext-infra/make-single-flight.lock
+        mutation_fixed_points:
+          codegen:
+            apply: check
+        snapshot_excludes:
+          - .state/flext-infra/make-validation.lock
+          - .state/flext-infra/make-single-flight.lock
+          - .reports
+          - .pytest_cache
+          - .coverage
+        timeout_seconds: 1800
+        verbs:
+          - check
+          - test
+          - codegen
       verbs:
         - name: help
           default_what: usage
