@@ -88,7 +88,9 @@ class TestCodegenCiMatrix:
         actions = config.Infra.codegen.github_actions
         for action in actions.values():
             if action.repository in workflow:
-                tm.that(workflow, has=f"{action.repository}@{action.sha} # {action.version}")
+                tm.that(
+                    workflow, has=f"{action.repository}@{action.sha} # {action.version}"
+                )
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -200,10 +202,7 @@ class TestCodegenCiMatrix:
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
-        tm.that(
-            content,
-            has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)",
-        )
+        tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has="'flext-demo [standalone]' '';")
 

@@ -167,7 +167,7 @@ def _write_orchestratable_workspace(
     # workspace and does not trip the "workspace changed during check" guard.
     if capture_fail_fast:
         (member_root / "custom.mk").write_text(
-            "post-check:\n\t@echo \"FAIL_FAST=$(FAIL_FAST)\" > $(CAPTURE_PATH)\n",
+            'post-check:\n\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CAPTURE_PATH)\n',
             encoding="utf-8",
         )
 
@@ -232,9 +232,7 @@ class TestsFlextInfraWorkspaceMain:
         """Fail-fast intent reaches each project's make invocation."""
         workspace_root = tmp_path / "workspace"
         capture_path = tmp_path / "captured.txt"
-        member_root = _write_orchestratable_workspace(
-            workspace_root, capture_fail_fast=True
-        )
+        _write_orchestratable_workspace(workspace_root, capture_fail_fast=True)
         monkeypatch.chdir(workspace_root)
 
         result = FlextInfraOrchestratorService(
@@ -266,11 +264,7 @@ class TestsFlextInfraWorkspaceMain:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
-        exit_code = workspace_main([
-            "detect",
-            "--workspace",
-            str(project_root),
-        ])
+        exit_code = workspace_main(["detect", "--workspace", str(project_root)])
 
         tm.that(exit_code, eq=0)
 
