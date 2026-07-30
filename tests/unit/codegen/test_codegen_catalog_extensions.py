@@ -160,6 +160,34 @@ class TestsCodegenCatalogExtensions:
         twice = merge(once, rendered, managed_paths=managed)
         tm.that(once, eq=twice)
 
+    def test_setup_provisions_only_and_gen_owns_conformance(
+        self, tmp_path: Path
+    ) -> None:
+        """``make setup`` provisions tooling; ``make gen`` owns conformance.
+
+        Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
+        venv, and dependencies — it never generates, conforms, or mutates
+        project code. gen/gen APPLY=Y is the single public conformance and
+        generation surface, and no public ``conform`` verb exists.
+        """
+        template = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "Makefile.j2"
+        )
+        content = template.read_text(encoding="utf-8")
+        tm.that("_builtin_setup_conform" in content, eq=False)
+        setup_env = content.split("_builtin_setup_environment:", 1)[1]
+        tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that("_builtin_gen_check:" in content, eq=True)
+        tm.that("_builtin_gen_apply:" in content, eq=True)
+        verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
+        tm.that("conform" in verb_names, eq=False)
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
