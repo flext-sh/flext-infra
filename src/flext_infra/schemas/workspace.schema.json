@@ -10,12 +10,12 @@
     "name",
     "repository",
     "members",
-    "content_only",
-    "exclusions"
+    "exclusions",
+    "repository_policy_overlays"
   ],
   "properties": {
     "version": {
-      "const": 2
+      "const": 3
     },
     "name": {
       "$ref": "#/$defs/name"
@@ -33,18 +33,18 @@
         "$ref": "#/$defs/repository"
       }
     },
-    "content_only": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "$ref": "#/$defs/repository"
-      }
-    },
     "exclusions": {
       "type": "array",
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/exclusion"
+      }
+    },
+    "repository_policy_overlays": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repositoryPolicyOverlay"
       }
     }
   },
@@ -69,11 +69,9 @@
         "distribution",
         "provider",
         "url",
-        "branch",
         "path",
         "role",
         "state",
-        "profile",
         "checkout",
         "codegen",
         "package",
@@ -94,10 +92,6 @@
           "type": "string",
           "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.git$"
         },
-        "branch": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
-        },
         "path": {
           "$ref": "#/$defs/relativePath"
         },
@@ -106,27 +100,13 @@
             "workspace-root",
             "workspace-member",
             "standalone",
-            "content-only",
             "excluded"
           ]
         },
         "state": {
           "enum": [
             "active",
-            "content-only",
             "excluded"
-          ]
-        },
-        "profile": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "workspace-root",
-            "workspace-member",
-            "standalone",
-            null
           ]
         },
         "checkout": {
@@ -180,6 +160,26 @@
               }
             }
           }
+        }
+      }
+    },
+    "repositoryPolicyOverlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "beads_enabled",
+        "ci_enabled"
+      ],
+      "properties": {
+        "project": {
+          "$ref": "#/$defs/name"
+        },
+        "beads_enabled": {
+          "type": "boolean"
+        },
+        "ci_enabled": {
+          "type": "boolean"
         }
       }
     },

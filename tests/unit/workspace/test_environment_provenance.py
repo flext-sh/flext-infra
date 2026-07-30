@@ -54,7 +54,6 @@ members:
     package: true
     editable: true
     read_only: false
-content_only: []
 exclusions: []
 """.lstrip(),
         encoding="utf-8",

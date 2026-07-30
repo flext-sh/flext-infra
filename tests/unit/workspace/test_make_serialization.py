@@ -13,7 +13,6 @@ from filelock import FileLock, Timeout
 from flext_core import r
 from flext_infra import c, config, m, p, t, u
 from flext_infra.workspace.make_serialization import FlextInfraMakeSerializationService
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 from flext_tests import tm
 from tests import u as test_u
 
@@ -144,7 +143,7 @@ class TestsFlextInfraMakeSerialization:
                         return r[bool].ok(True)
 
                     tm.ok(
-                        FlextInfraSerializationLockOwner.execute(
+                        u.Infra.serialization_lock_execute(
                             (mutation_lock_path,),
                             0,
                             acquire_child_lock,
@@ -249,7 +248,7 @@ class TestsFlextInfraMakeSerialization:
             return r[bool].fail(error)
 
         with pytest.raises(OSError, match=operation_error):
-            FlextInfraSerializationLockOwner.execute(
+            u.Infra.serialization_lock_execute(
                 (lock_path,),
                 serialization.timeout_seconds,
                 operation,

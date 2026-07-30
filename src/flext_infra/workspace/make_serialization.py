@@ -10,7 +10,6 @@ from flext_core import r
 
 from flext_infra import c, config, m, p, t, u
 from flext_infra.base import s
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
 
 
 class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
@@ -241,7 +240,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 )
             return primary
 
-        return FlextInfraSerializationLockOwner.execute(
+        return u.Infra.serialization_lock_execute(
             (lock_path,),
             serialization.timeout_seconds,
             locked_fixed_point,
@@ -323,7 +322,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                     makefile=selected_makefile,
                     lock_path=mutation_lock_path,
                 )
-            return FlextInfraSerializationLockOwner.execute(
+            return u.Infra.serialization_lock_execute(
                 (mutation_lock_path,),
                 serialization.timeout_seconds,
                 lambda: self._execute_locked(
@@ -333,7 +332,7 @@ class FlextInfraMakeSerializationService(s[m.Infra.ProcessExit]):
                 acquisition_failure=self._lock_acquisition_failure,
             )
 
-        return FlextInfraSerializationLockOwner.execute(
+        return u.Infra.serialization_lock_execute(
             (single_flight_lock_path,),
             serialization.timeout_seconds,
             complete_operation,

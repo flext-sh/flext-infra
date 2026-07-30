@@ -66,9 +66,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     repository_url: Annotated[
         str, m.Field(description="Canonical Git clone URL for the new repository.")
     ] = ""
-    repository_branch: Annotated[
-        str, m.Field(description="Required Git branch for the new repository.")
-    ] = ""
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -86,17 +83,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         """Build one typed manifest and delegate all output to conform."""
         if self.effective_dry_run:
             return r[m.Infra.CodegenResult].fail("codegen new requires apply mode")
-        kind = c.Infra.ProjectKind(self.kind)
-        profile = (
-            c.Infra.MakeProfile.WORKSPACE_MEMBER
-            if kind is c.Infra.ProjectKind.INTERNAL
-            else c.Infra.MakeProfile.STANDALONE
-        )
-        role = (
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER
-            if kind is c.Infra.ProjectKind.INTERNAL
-            else c.Infra.RepositoryRole.STANDALONE
-        )
         provider = next(
             (
                 item
@@ -121,16 +107,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
         provider_url = (
             f"{provider.base_url}/{self.name}.git" if provider is not None else ""
         )
-        provider_branch = provider.branch if provider is not None else ""
         repository_url = known.url if known else self.repository_url or provider_url
-        repository_branch = (
-            known.branch if known else self.repository_branch or provider_branch
-        )
         if not repository_url:
             return r[m.Infra.CodegenResult].fail(
                 f"repository URL is required for provider: {self.provider}"
             )
-        if not repository_branch:
+        if provider is None:
             return r[m.Infra.CodegenResult].fail(
                 f"repository branch is required for provider: {self.provider}"
             )
@@ -140,19 +122,13 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             distribution=known.distribution if known is not None else self.name,
             provider=self.provider,
             url=repository_url,
-            branch=repository_branch,
             path=Path(),
-            role=role,
+            role=c.Infra.RepositoryRole.STANDALONE,
             state=c.Infra.RepositoryState.ACTIVE,
-            profile=profile,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if kind is c.Infra.ProjectKind.INTERNAL
-                else c.Infra.CheckoutKind.INDEPENDENT
-            ),
+            checkout=c.Infra.CheckoutKind.INDEPENDENT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
-            editable=kind is c.Infra.ProjectKind.INTERNAL,
+            editable=False,
             read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
@@ -178,9 +154,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 upstream=self.upstream,
                 homepage=repository_page,
                 documentation=repository_page,
-                workspace_root_rel=(
-                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
-                ),
+                workspace_root_rel=".",
                 year=self.year,
             ),
         )

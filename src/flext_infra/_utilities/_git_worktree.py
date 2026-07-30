@@ -200,6 +200,65 @@ class FlextInfraUtilitiesGitWorktreeMixin:
         return r[Path].ok(primary_root)
 
     @classmethod
+    def git_declared_submodule_paths(
+        cls, repository_root: Path
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Read every valid path declared by the repository's ``.gitmodules``.
+
+        Unlike ``git submodule status``, this contract includes uninitialized
+        submodules and treats an empty file as an empty topology. Malformed,
+        duplicate, absolute, or escaping paths fail closed.
+        """
+        gitmodules = repository_root / c.Infra.GITMODULES
+        if not gitmodules.exists():
+            return r[t.SequenceOf[Path]].ok(())
+        if not gitmodules.is_file():
+            return r[t.SequenceOf[Path]].fail(
+                f"Git submodule manifest is not a regular file: {gitmodules}"
+            )
+        result = cls.git_run(
+            repository_root,
+            (
+                "config",
+                "--file",
+                c.Infra.GITMODULES,
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            ),
+        )
+        if result.failure:
+            return r[t.SequenceOf[Path]].fail(
+                result.error or "failed to read Git submodule declarations"
+            )
+        output = result.value
+        if output.exit_code == 1 and not output.stdout.strip():
+            return r[t.SequenceOf[Path]].ok(())
+        if output.exit_code != 0:
+            detail = (output.stderr or output.stdout).strip()
+            return r[t.SequenceOf[Path]].fail(
+                detail or f"invalid Git submodule manifest: {gitmodules}"
+            )
+        paths: t.MutableSequenceOf[Path] = []
+        for raw_line in output.stdout.splitlines():
+            match raw_line.split(maxsplit=1):
+                case [_, raw_path]:
+                    relative = Path(raw_path)
+                case _:
+                    return r[t.SequenceOf[Path]].fail(
+                        f"malformed Git submodule path entry: {raw_line}"
+                    )
+            if relative.is_absolute() or relative == Path() or ".." in relative.parts:
+                return r[t.SequenceOf[Path]].fail(
+                    f"invalid Git submodule path: {raw_path}"
+                )
+            if relative in paths:
+                return r[t.SequenceOf[Path]].fail(
+                    f"duplicate Git submodule path: {raw_path}"
+                )
+            paths.append(relative)
+        return r[t.SequenceOf[Path]].ok(tuple(paths))
+
+    @classmethod
     def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every initialized recursive submodule path."""
         result = cls.git_capture(workspace_root, ("submodule", "status", "--recursive"))

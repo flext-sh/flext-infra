@@ -13,7 +13,9 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
+from flext_infra._utilities.serialization_lock import (
+    FlextInfraUtilitiesSerializationLock,
+)
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -486,7 +488,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         def acquisition_failure(error: str) -> p.Result[bool]:
             return r[bool].fail(f"transaction lock acquisition failed: {error}")
 
-        return FlextInfraSerializationLockOwner.execute(
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
             lock_paths_result.value,
             serialization.timeout_seconds,
             lambda: cls._apply_transaction_patches_locked(deltas),

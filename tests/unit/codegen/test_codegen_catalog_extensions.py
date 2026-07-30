@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
@@ -16,34 +16,24 @@ def _repository(
     role: c.Infra.RepositoryRole,
     state: c.Infra.RepositoryState = c.Infra.RepositoryState.ACTIVE,
 ) -> m.Infra.RepositoryRef:
-    profile = (
-        c.Infra.MakeProfile.WORKSPACE_ROOT
-        if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
-        else c.Infra.MakeProfile.WORKSPACE_MEMBER
-    )
+    provider = config.Infra.codegen.providers[0]
     return m.Infra.RepositoryRef(
         name=name,
         distribution=name,
-        provider="acme-hosting",
-        url=f"https://github.com/acme-hosting/{name}.git",
-        branch="development",
+        provider=provider.name,
+        url=f"{provider.base_url}/{name}.git",
         path=Path(path),
         role=role,
         state=state,
-        profile=profile,
         checkout=(
             c.Infra.CheckoutKind.ROOT
             if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
             else c.Infra.CheckoutKind.SUBMODULE
         ),
-        codegen=(
-            c.Infra.CodegenKind.NONE
-            if role is c.Infra.RepositoryRole.CONTENT_ONLY
-            else c.Infra.CodegenKind.CONFORM
-        ),
+        codegen=c.Infra.CodegenKind.CONFORM,
         package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
         editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-        read_only=role is c.Infra.RepositoryRole.CONTENT_ONLY,
+        read_only=False,
     )
 
 
@@ -96,14 +86,6 @@ class TestsCodegenCatalogExtensions:
                     "acme-charts",
                     path="acme-charts",
                     role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-                ),
-            ),
-            content_only=(
-                _repository(
-                    "acme-content",
-                    path="acme-content",
-                    role=c.Infra.RepositoryRole.CONTENT_ONLY,
-                    state=c.Infra.RepositoryState.CONTENT_ONLY,
                 ),
             ),
         )

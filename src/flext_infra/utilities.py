@@ -55,6 +55,7 @@ from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
 )
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
+from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_analysis_introspection import (
@@ -78,6 +79,9 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+from flext_infra._utilities.serialization_lock import (
+    FlextInfraUtilitiesSerializationLock,
+)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.worktree_transaction import (
     FlextInfraUtilitiesWorktreeTransaction,
@@ -151,8 +155,10 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
+        FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesRopeMroTransform,
         FlextInfraUtilitiesSafety,
+        FlextInfraUtilitiesSerializationLock,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
         # mro-wkii.17.26 (codex): fix/codegen transactions extend the existing

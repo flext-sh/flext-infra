@@ -26,10 +26,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
         path = inherited.get(c.Infra.ORCHESTRATOR_ENV_PATH, "")
         blocked_path_entries = frozenset(
             entry
-            for entry in (
-                inherited.get(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, ""),
-                inherited.get(c.Infra.ORCHESTRATOR_ENV_WORKSPACE_MISE_SHIMS, ""),
-            )
+            for entry in (inherited.get(c.Infra.ORCHESTRATOR_ENV_MISE_SHIMS, ""),)
             if entry
         )
         path_entries = tuple(

@@ -246,7 +246,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "  editable: false\n"
             "  read_only: false\n"
             "members: []\n"
-            "content_only: []\n"
             "exclusions:\n"
             "  - path: data\n"
             "    reason: vendored document submodules\n",

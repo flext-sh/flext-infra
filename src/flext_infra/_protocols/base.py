@@ -98,18 +98,13 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def branch(self) -> str:
-            """Canonical Git branch."""
-            ...
-
-        @property
         def path(self) -> Path:
             """Repository path relative to its workspace root."""
             ...
 
         @property
-        def profile(self) -> str | None:
-            """Generated Make profile when the repository is active."""
+        def provider(self) -> str:
+            """Provider catalog key owning Git policy for this repository."""
             ...
 
         @property
@@ -152,8 +147,58 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def content_only(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
-            """Declared content-only repositories."""
+        def external_dependency_paths(self) -> t.SequenceOf[Path]:
+            """Observed external or fork Git submodule paths."""
+            ...
+
+    @runtime_checkable
+    class ProviderSpec(Protocol):
+        """Provider-owned repository and baseline contract."""
+
+        @property
+        def name(self) -> str:
+            """Provider key."""
+            ...
+
+        @property
+        def organization(self) -> str:
+            """Canonical GitHub organization."""
+            ...
+
+        @property
+        def base_url(self) -> str:
+            """Canonical provider HTTPS base URL."""
+            ...
+
+        @property
+        def branch(self) -> str:
+            """Provider-owned integration baseline."""
+            ...
+
+    @runtime_checkable
+    class ResultOperation[TValue](Protocol):
+        """One typed operation executed while serialization locks are held."""
+
+        def __call__(self) -> p.Result[TValue]:
+            """Run the operation and return its typed result."""
+            ...
+
+    @runtime_checkable
+    class LockTimeoutFailure[TValue](Protocol):
+        """Typed timeout mapping for the public serialization lock facade."""
+
+        def __call__(
+            self, lock_path: Path, timeout_seconds: int, /
+        ) -> p.Result[TValue]:
+            """Map one lock timeout to the caller's result domain."""
+            ...
+
+    @runtime_checkable
+    class LockAcquisitionFailure[TValue](Protocol):
+        """Typed acquisition-error mapping for the serialization lock facade."""
+
+        def __call__(self, detail: str, /) -> p.Result[TValue]:
+            """Map one lock acquisition failure to the caller's result domain."""
             ...
 
     @runtime_checkable
@@ -270,22 +315,6 @@ class FlextInfraProtocolsBase(Protocol):
             self, project: str, gates: t.StrSequence
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
             """Run quality gates for one project."""
-            ...
-
-    @runtime_checkable
-    class Syncer(Protocol):
-        """Contract for synchronization services."""
-
-        def sync(
-            self,
-            _source: str | None = None,
-            _target: str | None = None,
-            *,
-            workspace_root: Path | None = None,
-            settings: m.Infra.BaseMkConfig | None = None,
-            canonical_root: Path | None = None,
-        ) -> p.Result[m.Infra.SyncResult]:
-            """Synchronize generated workspace or project artifacts."""
             ...
 
     @runtime_checkable

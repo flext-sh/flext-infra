@@ -90,7 +90,6 @@ class TestsWorkspaceManifestV2Contract:
             "name": "flext",
             "repository": root,
             "members": [member],
-            "content_only": [],
             "exclusions": [],
         }
 
