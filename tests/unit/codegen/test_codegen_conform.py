@@ -972,16 +972,12 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in make_config.serialization.verbs, eq=True)
         tm.that("codegen" in make_config.serialization.verbs, eq=False)
         tm.that("gen" in make_config.serialization.mutation_fixed_points, eq=True)
-        tm.that(
-            "codegen" in make_config.serialization.mutation_fixed_points, eq=False
-        )
+        tm.that("codegen" in make_config.serialization.mutation_fixed_points, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         public_line = next(
-            line
-            for line in rendered.splitlines()
-            if line.startswith("PUBLIC_VERBS :=")
+            line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
         tm.that(" gen" in public_line, eq=True)
         tm.that(" codegen" in public_line, eq=False)
@@ -994,14 +990,10 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin_gen_check" in handlers, eq=True)
         tm.that("_builtin_gen_apply" in handlers, eq=True)
         # Both handlers drive the conform engine (CLI namespace is unchanged).
-        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split(
-            "\n\n", 1
-        )[0]
+        gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_check_body, eq=True)
         tm.that("--mode check" in gen_check_body, eq=True)
-        gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split(
-            "\n\n", 1
-        )[0]
+        gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("codegen conform" in gen_apply_body, eq=True)
         tm.that("--mode apply" in gen_apply_body, eq=True)
         tm.that("_require_apply" in gen_apply_body, eq=True)
