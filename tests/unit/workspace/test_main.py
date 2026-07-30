@@ -256,11 +256,7 @@ class TestsFlextInfraWorkspaceMain:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
-        exit_code = workspace_main([
-            "detect",
-            "--workspace",
-            str(project_root),
-        ])
+        exit_code = workspace_main(["detect", "--workspace", str(project_root)])
 
         tm.that(exit_code, eq=0)
 
