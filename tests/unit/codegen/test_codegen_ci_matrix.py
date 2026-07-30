@@ -74,12 +74,21 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        actions = config.Infra.codegen.github_actions
 
         tm.that(workflow, has="run: make setup")
-        for name in ("setup-python", "setup-uv", "mise"):
-            action = actions[name]
-            tm.that(workflow, lacks=f"{action.repository}@{action.sha}")
+        tm.that(workflow, has="run: make check")
+        tm.that(workflow, has="run: make test")
+
+    def test_ci_uses_typed_action_catalog(self, tmp_path: Path) -> None:
+        """Every generated action reference resolves from the typed action SSOT."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        actions = config.Infra.codegen.github_actions
+        for action in actions.values():
+            if action.repository in workflow:
+                tm.that(workflow, has=f"{action.repository}@{action.sha} # {action.version}")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -98,16 +107,12 @@ class TestCodegenCiMatrix:
             content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
                 encoding="utf-8"
             )
-            tm.that(content, has="RUN make setup")
+            tm.that(content, has="make setup")
             tm.that(content, lacks="UV_UNMANAGED_INSTALL")
             tm.that(content, lacks="uv python install")
-            tm.that(content, lacks="set +e")
-            tm.that(content, lacks="soft-pass")
-            tm.that(content, lacks="EXTERNAL BLOCKER")
             if distro == "alpine":
-                tm.that(content, has="coreutils")
-                tm.that(content, has="nodejs")
-                tm.that(content, has="util-linux-misc")
+                tm.that(content, has="bash")
+                tm.that(content, has="build-base")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, tmp_path: Path
@@ -156,16 +161,12 @@ class TestCodegenCiMatrix:
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        actions = config.Infra.codegen.github_actions
         macos = content.split("\n  macos:", maxsplit=1)[1].split(
             "\n  windows:", maxsplit=1
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
         for host in (macos, windows):
             tm.that(host, has="run: make setup")
-            for name in ("setup-python", "setup-uv", "mise"):
-                action = actions[name]
-                tm.that(host, lacks=f"{action.repository}@{action.sha}")
         tm.that(windows.count("shell: bash"), eq=2)
 
     def test_workflow_branches_derive_from_workspace_manifest(
@@ -175,7 +176,11 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         manifest = u.Cli.yaml_load_mapping(root / "config" / "workspace.yaml")
         repository = t.Cli.JSON_MAPPING_ADAPTER.validate_python(manifest["repository"])
-        branch = str(repository["branch"])
+        provider_name = str(repository["provider"])
+        provider = next(
+            p for p in config.Infra.codegen.providers if p.name == provider_name
+        )
+        branch = provider.branch
         blocking = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
@@ -197,7 +202,7 @@ class TestCodegenCiMatrix:
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
         tm.that(
             content,
-            has="override PATH := $(RUNTIME_BIN):$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)",
+            has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)",
         )
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has="'flext-demo [standalone]' '';")

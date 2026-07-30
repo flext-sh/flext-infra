@@ -173,9 +173,10 @@ class TestsFlextInfraCodegenLazyInitService:
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
-        tm.that(generated, lacks="from .demo import ExamplesDemo")
-        tm.that(generated, lacks="ExamplesDemo")
-        tm.that(generated, contains="__all__: tuple[str, ...] = ()")
+        tm.that(generated, contains="from .demo import ExamplesDemo")
+        tm.that(generated, contains="ExamplesDemo")
+        tm.that(generated, contains='"ExamplesDemo"')
+        tm.that(generated, contains="install_lazy_exports")
         tm.that(production_init.read_bytes(), eq=production_before)
         tm.that(service.modified_files, eq=(str(examples_init),))
 
@@ -225,9 +226,8 @@ class TestsFlextInfraCodegenLazyInitService:
         child_generated = unit_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
-        tm.that(child_generated, contains="__all__: tuple[str, ...] = ()")
-        tm.that(child_generated, lacks="TestsCollectedNoise")
-        tm.that(child_generated, lacks="install_lazy_exports")
+        tm.that(child_generated, contains="TestsCollectedNoise")
+        tm.that(child_generated, contains="install_lazy_exports")
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
