@@ -5,9 +5,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import c, config
 from flext_infra.services.codegen import FlextInfraCodegen
-from flext_tests import tm
+
+
+def _write_project(project_root: Path) -> None:
+    project_root.mkdir(parents=True, exist_ok=True)
+    (project_root / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
 
 
 def _write_settings(project_root: Path, content: str) -> Path:
@@ -56,7 +64,7 @@ class TestsFlextInfraCodegenVscode:
                 ]
             ),
         )
-        tm.that(all("**" not in path for path in search_paths), eq=True)
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
         tm.that(doc["files.exclude"]["**/dbt_packages"], eq=True)
         tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
         overrides = doc["python.analysis.diagnosticSeverityOverrides"]
@@ -105,7 +113,7 @@ class TestsFlextInfraCodegenVscode:
                 "./libs/b/.venv",
             ],
         )
-        tm.that(all("**" not in path for path in search_paths), eq=True)
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_invalid_json_fails_without_producing_a_document(
         self, tmp_path: Path

@@ -6,10 +6,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+from flext_tests import tm
+
 from flext_infra import config
 from flext_infra.workspace.sync import FlextInfraSyncService
-from flext_tests import tm
 from tests import c, m, t, u
+
+pytestmark = pytest.mark.timeout(60)
 
 if TYPE_CHECKING:
     from tests import p
@@ -153,8 +157,8 @@ class TestsFlextInfraWorkspaceSync:
                 "{\n"
                 '  "editor.formatOnSave": true,\n'
                 '  "python.analysis.diagnosticSeverityOverrides": {\n'
-                '    "reportUnknownMemberType": "none"\n'
-                "  }\n"
+                '    "reportUnknownMemberType": "none",\n'
+                "  },\n"
                 "}\n"
             ),
             encoding="utf-8",
@@ -207,20 +211,19 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         tm.ok(second_result)
         tm.that(second_result.value.files_changed, eq=0)
-        settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-            u.Cli.json_read(settings_path).unwrap()
-        )
-        search_paths = t.Infra.STR_SEQ_ADAPTER.validate_python(
-            settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY], strict=True
+        settings = u.Cli.json_read(settings_path).unwrap()
+        search_paths = t.Cli.JSON_LIST_ADAPTER.validate_python(
+            settings[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         )
         tm.that(
             search_paths,
-            eq=tuple(
+            eq=list(
                 config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
                 ]
             ),
         )
+        tm.that("./apps/*/.venv" in search_paths, eq=False)
 
     def test_sync_fails_when_workspace_root_is_missing(self, tmp_path: Path) -> None:
         """Return a typed failure when the requested workspace does not exist."""
@@ -291,11 +294,10 @@ class TestsFlextInfraWorkspaceSync:
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
         tm.that(makefile_text, has="MAKE_PROFILE := standalone")
-        tm.that(makefile_text, has="UV ?= uv")
-        tm.that(makefile_text, has="UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run")
+        tm.that(makefile_text, has="UV_RUN := uv run")
         tm.that(makefile_text, has="_builtin_setup_environment:")
-        tm.that(makefile_text, has='$(UV) sync --project "$(PROJECT_ROOT)"')
         tm.that(makefile_text, lacks="poetry")
+        tm.that(makefile_text, lacks="pip install")
         tm.that(makefile_text, lacks="_bootstrap-venv")
         tm.that(makefile_text, lacks="BOOTSTRAP_VENV")
         tm.that(
@@ -303,16 +305,13 @@ class TestsFlextInfraWorkspaceSync:
             lacks='[ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]',
         )
         dry_run = u.Cli.capture(
-            ["make", "--dry-run", "help"],
-            cwd=project_root,
-            timeout=c.Infra.TIMEOUT_DEFAULT,
+            ["make", "--dry-run", "help"], cwd=project_root, timeout=30
         )
         tm.ok(dry_run)
 
-    def test_sync_standalone_bootstrap_uses_uv_and_managed_module(
+    def test_sync_standalone_bootstrap_uses_uv_and_public_console(
         self, tmp_path: Path
     ) -> None:
-        """Use only uv and the validated environment interpreter for setup/codegen."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
@@ -324,10 +323,10 @@ class TestsFlextInfraWorkspaceSync:
 
         tm.ok(result)
         makefile_text = (project_root / "Makefile").read_text(encoding="utf-8")
-        tm.that(makefile_text, has="$(UV) sync")
-        tm.that(makefile_text, has="PROJECT_FLEXT_INFRA :=")
-        tm.that(makefile_text, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
+        tm.that(makefile_text, has="uv sync")
+        tm.that(makefile_text, has="uv run flext-infra")
         tm.that(makefile_text, lacks="pip install flext-infra")
+        tm.that(makefile_text, lacks="python -m flext_infra")
 
     def test_atomic_write_ok(self, tmp_path: Path) -> None:
         """Write text atomically through the public CLI utility."""

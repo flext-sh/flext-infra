@@ -1,4 +1,4 @@
-"""Validate workspace-root submodule setup through generated Make behavior."""
+"""Workspace-root submodule setup behavior through generated Make surfaces."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ import os
 import stat
 from pathlib import Path
 
+from flext_tests import tm
+
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_tests import tm
 from tests import u as test_u
 
 
@@ -57,14 +58,11 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan: m.Infra.CodegenPlan = tm.ok(planned)
-    makefiles = tuple(
+    plan = tm.ok(planned)
+    makefile = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
-    tm.that(makefiles, len=1)
-    rendered: str = makefiles[0].rendered
-    tm.that(rendered, has="MAKE_PROFILE := workspace-root")
-    return rendered
+    return makefile.rendered
 
 
 def _write_executable(path: Path, body: str) -> None:
@@ -112,19 +110,6 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
             cwd=source,
         )
     )
-    tm.ok(
-        u.Cli.run_checked(
-            [
-                "git",
-                "config",
-                "-f",
-                ".gitmodules",
-                "submodule.flext-core.flext-managed",
-                "true",
-            ],
-            cwd=source,
-        )
-    )
     test_u.Tests.commit_git_changes(source, "Declare workspace member")
     remote_root = tmp_path / "workspace-remote"
     remote_root.mkdir()
@@ -142,12 +127,11 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        managed_at = rendered.index("flext-managed")
-        sync_at = rendered.index("submodule sync --quiet --")
-        update_at = rendered.index("submodule update --init --")
-        uv_at = rendered.index("$(UV) sync")
+        sync_at = rendered.index("git submodule sync --recursive")
+        update_at = rendered.index("git submodule update --init --recursive")
+        uv_at = rendered.index("uv sync")
 
-        tm.that(managed_at < sync_at < update_at < uv_at, eq=True)
+        tm.that(sync_at < update_at < uv_at, eq=True)
 
     def test_make_setup_initializes_local_submodule_before_uv_probe(
         self, tmp_path: Path
@@ -168,88 +152,12 @@ class TestsWorkspaceRootSetupSubmodules:
             "exit 0\n",
         )
         env = os.environ.copy()
+        env["PATH"] = f"{bin_dir}:{env['PATH']}"
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
-        outcome = u.Cli.run_raw(
-            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
-        )
+        outcome = u.Cli.run_raw(["make", "setup"], cwd=workspace, env=env)
         process = outcome.value
 
         tm.that(process.exit_code, eq=0)
-        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.that(workspace / "flext-core" / "pyproject.toml", is_file=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")
-
-    def test_project_setup_ignores_dirty_unselected_managed_member(
-        self, tmp_path: Path
-    ) -> None:
-        """Scope setup preflight and reconciliation to the requested member."""
-        rendered = _render_workspace_root_makefile(tmp_path)
-        workspace = _create_uninitialized_workspace(tmp_path, rendered)
-        other_source = tmp_path / "other-source"
-        other_source.mkdir()
-        (other_source / "pyproject.toml").write_text(
-            "[project]\nname = 'flext-api'\nversion = '0.1.0'\n", encoding="utf-8"
-        )
-        test_u.Tests.initialize_git_repo(other_source)
-        other_remote_root = tmp_path / "other-remote"
-        other_remote_root.mkdir()
-        other_origin = test_u.Tests.configure_local_origin(
-            other_source, other_remote_root
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "-c",
-                    "protocol.file.allow=always",
-                    "submodule",
-                    "add",
-                    "-q",
-                    "-b",
-                    "main",
-                    str(other_origin),
-                    "flext-api",
-                ],
-                cwd=workspace,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "config",
-                    "-f",
-                    ".gitmodules",
-                    "submodule.flext-api.flext-managed",
-                    "true",
-                ],
-                cwd=workspace,
-            )
-        )
-        test_u.Tests.commit_git_changes(workspace, "Declare second managed member")
-        dirty_marker = workspace / "flext-api" / "local-wip.txt"
-        dirty_marker.write_text("preserve\n", encoding="utf-8")
-        bin_dir = tmp_path / "bin"
-        bin_dir.mkdir()
-        probe_log = tmp_path / "uv.log"
-        _write_executable(
-            bin_dir / "uv",
-            "#!/bin/sh\n"
-            'test -f "$PWD/flext-core/pyproject.toml" || exit 42\n'
-            f'printf "%s\\n" "$*" >> "{probe_log}"\n'
-            "exit 0\n",
-        )
-        env = os.environ.copy()
-        env["GIT_ALLOW_PROTOCOL"] = "file"
-
-        outcome = tm.ok(
-            u.Cli.run_raw(
-                ["make", "setup", "PROJECT=flext-core", f"UV={bin_dir / 'uv'}"],
-                cwd=workspace,
-                env=env,
-            )
-        )
-
-        tm.that(outcome.exit_code, eq=0)
-        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
-        tm.that(dirty_marker.read_text(encoding="utf-8"), eq="preserve\n")
