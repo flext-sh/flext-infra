@@ -1704,7 +1704,34 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
         in_define = False
+        # Collapse backslash continuation lines before validating so that
+        # directives like `.PHONY` can span multiple physical lines. Only
+        # collapse non-recipe lines (recipe lines start with whitespace and are
+        # skipped below); the reported line number is the first physical line.
+        logical_lines: list[tuple[int, str]] = []
+        pending_line: str | None = None
+        pending_number: int = 0
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
+            if (
+                raw_line
+                and not raw_line[0].isspace()
+                and raw_line.rstrip().endswith("\\")
+            ):
+                trimmed = raw_line.rstrip()[:-1].rstrip()
+                if pending_line is None:
+                    pending_line = trimmed
+                    pending_number = line_number
+                else:
+                    pending_line += " " + trimmed
+                continue
+            if pending_line is not None:
+                raw_line = pending_line + " " + raw_line.rstrip()
+                line_number = pending_number
+                pending_line = None
+            logical_lines.append((line_number, raw_line))
+        if pending_line is not None:
+            logical_lines.append((pending_number, pending_line))
+        for line_number, raw_line in logical_lines:
             if in_define:
                 in_define = not raw_line.startswith("endef")
                 continue

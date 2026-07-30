@@ -261,30 +261,6 @@ class FlextInfraConfigModels:
             bool, m.Field(description="Whether mutation requires APPLY=Y")
         ] = False
 
-    class MakeDocsSpec(_ConfigContract):
-        """Generated Make documentation lifecycle policy."""
-
-        actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Ordered public documentation actions"),
-        ]
-        default_action: Annotated[
-            t.NonEmptyStr, m.Field(description="Default documentation WHAT action")
-        ]
-        mutable_actions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Actions enabled for writes only by APPLY=Y"),
-        ]
-        reports_dir: Annotated[
-            Path, m.Field(description="Repository-relative documentation report path")
-        ]
-        cross_project_relative_link_pattern: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description="Forbidden cross-project relative Markdown link pattern"
-            ),
-        ]
-
     class ScriptDispatchSpec(_ConfigContract):
         """Opt-in routing of non-builtin verbs to a script command framework."""
 
@@ -511,10 +487,6 @@ class FlextInfraConfigModels:
         docs: Annotated[
             FlextInfraConfigModels.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
-        ]
-        docs: Annotated[
-            FlextInfraConfigModels.MakeDocsSpec,
-            m.Field(description="Makefile docs verb lifecycle and audit policy"),
         ]
         custom_handler_policy: Annotated[
             FlextInfraConfigModels.CustomHandlerPolicy,
