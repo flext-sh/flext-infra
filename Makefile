@@ -120,11 +120,21 @@ _DEFAULT_worktree := list
 _DEFAULT_basemk := generate
 
 
-ifneq ($(filter $(MAKE_PROFILE),workspace-root standalone),$(MAKE_PROFILE))
+# === SECTION: profile routing (managed) ===
+# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
+# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
+# the governing workspace root); workspace-root and standalone own their
+# runtime locally. An attached member is never promoted to a local runtime.
+ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
+ifeq ($(MAKE_PROFILE),workspace-member)
+RUNTIME_ROOT := $(WORKSPACE_ROOT)
+else
 RUNTIME_ROOT := $(PROJECT_ROOT)
+endif
+# End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
@@ -527,7 +537,15 @@ _builtin_require_environment:
 _builtin_setup_conform: _builtin_setup_submodules
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
-ifeq ($(MAKE_PROFILE),workspace-root)
+# === SECTION: setup environment (managed) ===
+# Source: computed (MAKE_PROFILE routing)
+# Rule: workspace-member delegates the environment to the principal (the uv
+# workspace venv lives at RUNTIME_ROOT); workspace-root and standalone build
+# their own environment locally.
+ifeq ($(MAKE_PROFILE),workspace-member)
+_builtin_setup_environment: _builtin_setup_conform
+	@$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
+else ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_conform
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
@@ -537,6 +555,7 @@ _builtin_setup_environment: _builtin_setup_conform
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 endif
+# End SECTION: setup environment
 
 _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
