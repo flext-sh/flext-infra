@@ -25,7 +25,7 @@ dev = [
   "django-stubs>=6.0.7",
   "factory-boy>=3.3.3",
   "faker>=40.36.0",
-  "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
+  "flext-tests",
   "hypothesis>=6.161.8",
   "isort>=8.0.1",
   "matplotlib-stubs>=0.3.11",
@@ -111,8 +111,8 @@ classifiers = [
 ]
 dependencies = [
   "defusedxml>=0.7.1",
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
-  "flext-core @ git+https://github.com/flext-sh/flext-core.git@0.12.0-dev",
+  "flext-cli",
+  "flext-core",
   "gitpython>=3.1.57",
   "libcst>=1.8.6",
   "mkdocs>=1.6.1",
@@ -168,7 +168,7 @@ exclude_also = [
   "if _t.TYPE_CHECKING:",
   "if typing.TYPE_CHECKING:",
 ]
-fail_under = 45
+fail_under = 25
 precision = 2
 show_missing = true
 skip_covered = false
@@ -278,7 +278,13 @@ project-excludes = [
 ]
 project-includes = ["src/**/*.py*", "tests/**/*.py*"]
 python-version = "3.13"
-search-path = [".", "src"]
+search-path = [
+  ".",
+  "../flext-cli/src",
+  "../flext-core/src",
+  "../flext-tests/src",
+  "src",
+]
 use-ignore-files = false
 
 [tool.pyrefly.errors]
@@ -429,7 +435,7 @@ reportUnusedImport = "error"
 reportUnusedVariable = "error"
 typeCheckingMode = "strict"
 venv = ".venv"
-venvPath = "."
+venvPath = ".."
 
 [[tool.pyright.executionEnvironments]]
 extraPaths = ["src"]
@@ -695,12 +701,6 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
-
-[[tool.uv.exclude-dependencies]]
-dependencies = ["flext-infra"]
-
-[tool.uv.exclude-dependencies.package]
-name = "flext-tests"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]

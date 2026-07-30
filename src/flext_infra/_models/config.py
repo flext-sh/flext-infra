@@ -52,6 +52,10 @@ class FlextInfraConfigModels:
                 description="Python major.minor line, e.g. '3.13'",
             ),
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact uv toolchain version, e.g. '0.11.32'"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]

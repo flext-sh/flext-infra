@@ -148,7 +148,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
 
-    def test_attached_member_rejects_explicit_source(self) -> None:
+    def test_attached_member_normalizes_explicit_source(self) -> None:
         workspace = _workspace()
         member = workspace.members[0]
         attached = (
@@ -163,11 +163,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
+        document = tomllib.loads(tm.ok(result))
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
 
         local_result = u.Infra.pyproject_dependencies_conform(
             attached.replace(
@@ -179,11 +176,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
 
-        tm.that(local_result.failure, eq=True)
-        tm.that(
-            local_result.error or "",
-            has="attached workspace dependency declares direct source",
-        )
+        document = tomllib.loads(tm.ok(local_result))
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
 
     def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
         workspace = _workspace()

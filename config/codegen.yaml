@@ -10,6 +10,7 @@ Infra:
       # uv is supplied by the caller environment and is deliberately not pinned.
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
+      uv_version: "0.11.32"
       uv_link_mode: copy
       # Non-Python binary toolchain pins consumed by the generated .mise.toml.
       # Python quality tools remain open-floor uv dependencies.

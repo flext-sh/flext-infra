@@ -964,21 +964,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"active repository has no Make profile: {repository.name}"
             )
         profile = c.Infra.MakeProfile(repository.profile)
-        context_result: p.Result[
-            m.Infra.MakeRenderContext | m.Infra.ProjectRenderContext
-        ]
-        if workspace.project is None:
-            context_result = self.make_render_context(
-                repository, workspace, codegen, tooling_runtime=tooling_runtime
-            )
-        else:
-            context_result = self._scaffold_render_context(
-                repository, workspace, codegen, tooling_runtime=tooling_runtime
-            )
-        if context_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                context_result.error or "project render context is invalid"
-            )
+        # Artifact render contexts are resolved lazily by _artifact_render_context.
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
         ).resolve()
@@ -1572,6 +1558,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             environment_root=environment_root,
             lock_path=environment_root / c.Infra.UV_LOCK_FILENAME,
             python_version=config.toolchain.python_version,
+            uv_version=config.toolchain.uv_version,
             groups=groups,
             editable_repositories=editable_repositories,
         )

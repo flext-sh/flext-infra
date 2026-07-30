@@ -3,9 +3,6 @@
 /*/
 !/LICENSE
 
-# Allow all FLEXT ecosystem project directories
-!flext-*/
-
 # WHITELIST: Workspace Directories
 !docker/
 !docs/
@@ -20,7 +17,6 @@
 !.claude/
 !.claude-plugin/
 !/config/
-!/config/workspace.yaml
 !.claude/CLAUDE.md
 !.claude/settings.json
 !.claude/settings.local.json
@@ -89,7 +85,6 @@ scripts/maintenance/
 !.env.template
 
 # WHITELIST: Contents Inside Allowed Directories
-!flext-*/**
 !docker/**
 !docs/**
 !examples/**

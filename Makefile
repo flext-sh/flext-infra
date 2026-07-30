@@ -10,10 +10,8 @@ SHELL := /bin/sh
 
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := workspace-member
-WORKSPACE_ROOT_REL := ..
-WORKSPACE_MEMBERS :=
-WORKSPACE_MEMBERS :=
-WORKSPACE_MEMBERS :=
+WORKSPACE_ROOT_REL := .
+WORKSPACE_MEMBERS := flext-api flext-auth flext-cli flext-core flext-db-oracle flext-dbt-ldap flext-dbt-ldif flext-dbt-oracle flext-dbt-oracle-wms flext-grpc flext-infra flext-ldap flext-ldif flext-meltano flext-observability flext-oracle-oic flext-oracle-wms flext-plugin flext-quality flext-tap-ldap flext-tap-ldif flext-tap-oracle flext-tap-oracle-oic flext-tap-oracle-wms flext-target-ldap flext-target-ldif flext-target-oracle flext-target-oracle-oic flext-target-oracle-wms flext-tests flext-web
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
 
@@ -322,37 +320,6 @@ _builtin_require_environment:
 		exit 2; \
 	fi
 
-# A project owns the sources it declares. Setup makes the tree exactly what the
-# manifest declares, using nothing outside the tree: every declared submodule is
-# initialised recursively at its recorded gitlink and placed on the branch
-# declared in .gitmodules. It is a no-op when the project declares no
-# submodules, and it converges on re-run. It never moves a branch that holds
-# work the superproject does not record: that is an error, never a warning, so
-# setup can never report success over a tree that is not what it declares.
-_builtin_setup_submodules:
-	@set -eu; \
-	if [ ! -f "$(PROJECT_ROOT)/.gitmodules" ]; then exit 0; fi; \
-	git -C "$(PROJECT_ROOT)" submodule sync --recursive --quiet; \
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
-	git -C "$(PROJECT_ROOT)" submodule foreach --recursive --quiet ' \
-		branch=$$(git config -f "$$toplevel/.gitmodules" "submodule.$$name.branch" || true); \
-		if [ -z "$$branch" ]; then exit 0; fi; \
-		if ! git rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
-			git checkout --quiet -b "$$branch"; \
-		elif [ "$$(git rev-parse "refs/heads/$$branch")" = "$$(git rev-parse HEAD)" ]; then \
-			git checkout --quiet "$$branch"; \
-		else \
-			printf "ERROR: %s: branch %s is at %s but the superproject records %s\n" "$$name" "$$branch" "$$(git rev-parse --short "refs/heads/$$branch")" "$$(git rev-parse --short HEAD)" >&2; \
-			printf "Reconcile that branch with the recorded gitlink, then re-run setup\n" >&2; \
-			exit 1; \
-		fi'
-
-_builtin_require_environment:
-	@if [ ! -x "$(RUNTIME_ROOT)/.venv/bin/python" ]; then \
-		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_ROOT)/.venv/bin/python" >&2; \
-		exit 2; \
-	fi
-
 ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
@@ -379,7 +346,6 @@ _builtin_setup_environment: _builtin_setup_submodules
 endif
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
 
-_builtin_deps_check: _builtin_require_environment
 _builtin_deps_check: _builtin_require_environment
 	$(call _run_for_selected_projects,--check)
 
@@ -418,21 +384,17 @@ _builtin_test_all: _builtin_require_environment
 
 
 _builtin_format_check: _builtin_require_environment
-_builtin_format_check: _builtin_require_environment
 	@$(UV_RUN) ruff check --no-fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format --check $(RUFF_PATHS)
 
-_builtin_format_apply: _builtin_require_environment
 _builtin_format_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
 	@$(UV_RUN) ruff format $(RUFF_PATHS)
 
 _builtin_run_default: _builtin_require_environment
-_builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-_builtin_status_diagnostics: _builtin_require_environment
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'

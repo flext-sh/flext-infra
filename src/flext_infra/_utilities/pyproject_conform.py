@@ -41,15 +41,6 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-
-        if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE:
-            provenance_result = cls._validate_dependency_provenance(
-                source, workspace=workspace, workspace_mode=workspace_mode
-            )
-            if provenance_result.failure:
-                return r[str].fail(
-                    provenance_result.error or "dependency provenance validation failed"
-                )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -119,14 +110,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE:
-            provenance_result = cls._validate_dependency_provenance(
-                source, workspace=workspace, workspace_mode=workspace_mode
-            )
-            if provenance_result.failure:
-                return r[str].fail(
-                    provenance_result.error or "dependency provenance validation failed"
-                )
+
         if workspace_root:
             sources_result = cls._validate_root_uv_sources(
                 source, repositories=repositories, workspace=workspace
