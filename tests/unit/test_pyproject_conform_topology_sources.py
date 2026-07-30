@@ -101,7 +101,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(result)
         document = tomllib.loads(rendered)
-        group = document["dependency-groups"]["workspace"]
+        group = document["project"]["optional-dependencies"]["workspace"]
         runtime = document["project"]["dependencies"]
 
         tm.that(group, eq=["flext-core"])

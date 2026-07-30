@@ -412,21 +412,30 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
-        if groups is None:
+        project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
+        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        if optional is None:
             if not workspace_root:
                 return
-            # NOTE (multi-agent, mro-qb4y.2): the root dependency overlay is
-            # complete even when an older manifest has no groups table yet.
-            groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
+            optional = u.Cli.toml_ensure_table(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        # NOTE (multi-agent, mro-sw2l): uv does not allow workspace sources inside
+        # PEP 735 dependency groups, so the workspace overlay lives in
+        # [project.optional-dependencies] where workspace=true sources resolve.
         if workspace_root:
             u.Cli.toml_sync_string_list(
-                groups,
+                optional,
                 "workspace",
                 tuple(sorted(member.distribution for member in workspace.members)),
             )
-            return
-        u.Cli.toml_remove_key_if_present(groups, "workspace")
+        else:
+            u.Cli.toml_remove_key_if_present(optional, "workspace")
+            if not tuple(optional):
+                u.Cli.toml_remove_key_if_present(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        # Migrate any legacy [dependency-groups] workspace entry produced before
+        # this canonical location was established.
+        legacy_groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        if legacy_groups is not None:
+            u.Cli.toml_remove_key_if_present(legacy_groups, "workspace")
 
     @staticmethod
     def _is_workspace_root(
@@ -677,52 +686,6 @@ class FlextInfraUtilitiesPyprojectConform:
             ):
                 return r[bool].fail(
                     f"root uv workspace sources differ from workspace SSOT: {source_name}"
-                )
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _validate_dependency_provenance(
-        document: t.Cli.TomlDocument,
-        *,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
-    ) -> p.Result[bool]:
-        """Require one internal dependency provenance for the active topology."""
-        payload = u.Cli.toml_as_mapping(document)
-        if payload is None:
-            return r[bool].fail("pyproject document is not a TOML mapping")
-        member_names = frozenset(member.distribution for member in workspace.members)
-        raw_values: list[str] = []
-        project = payload.get(c.Infra.PROJECT)
-        if isinstance(project, Mapping):
-            for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-                value = project.get(key)
-                if isinstance(value, Mapping):
-                    for group in value.values():
-                        raw_values.extend(u.Cli.toml_as_string_list(group))
-                else:
-                    raw_values.extend(u.Cli.toml_as_string_list(value))
-        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, Mapping):
-            for group in groups.values():
-                raw_values.extend(u.Cli.toml_as_string_list(group))
-        for requirement in raw_values:
-            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-            if dependency_name not in member_names:
-                continue
-            has_direct_source = "@" in requirement.partition(";")[0]
-            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE and has_direct_source:
-                return r[bool].fail(
-                    "attached workspace dependency declares direct source: "
-                    f"{dependency_name}"
-                )
-            if (
-                workspace_mode is c.Infra.WorkspaceMode.STANDALONE
-                and not has_direct_source
-            ):
-                return r[bool].fail(
-                    "standalone dependency lacks configured Git source: "
-                    f"{dependency_name}"
                 )
         return r[bool].ok(True)
 
