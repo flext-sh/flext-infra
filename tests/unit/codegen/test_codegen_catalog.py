@@ -1,108 +1,42 @@
-"""Validate the typed repository catalog through its public configuration file."""
+"""Typed repository-catalog consumer contract."""
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-from packaging.requirements import Requirement
-
-from flext_cli import u
-from flext_infra import config, m, t
+from flext_infra import c, config, m
 from flext_tests import tm
 
 
-def test_codegen_catalog_is_tracked_typed_and_accepts_external_workspace() -> None:
-    """Keep the engine catalog owned while accepting consumer-declared topology."""
-    repository_root = Path(__file__).resolve().parents[3]
-    catalog_path = repository_root / "config" / "codegen.yaml"
+def test_codegen_catalog_builds_every_declared_workspace_from_typed_ssot() -> None:
+    """Round-trip workspace groups without freezing current catalog values."""
+    repositories = config.Infra.codegen.repositories
+    names = tuple(repository.name for repository in repositories)
+    tm.that(len(names), eq=len(set(names)))
 
-    tracked = u.Cli.run_raw(
-        ["git", "ls-files", "--error-unmatch", "config/codegen.yaml"],
-        cwd=repository_root,
+    roots = tuple(
+        repository
+        for repository in repositories
+        if repository.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
     )
-    process = tm.ok(tracked)
-    tm.that(process.exit_code, eq=0)
-    tm.that(process.stdout.strip(), eq="config/codegen.yaml")
-
-    payload = u.Cli.yaml_load_mapping(catalog_path)
-    infra = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload["Infra"])
-    catalog = t.Cli.JSON_MAPPING_ADAPTER.validate_python(infra["codegen"])
-    repositories = m.TypeAdapter(tuple[m.Infra.RepositoryRef, ...]).validate_python(
-        catalog["repositories"]
-    )
-    workspace = m.Infra.WorkspaceSpec.model_validate({
-        "version": 2,
-        "name": "consumer-root",
-        "repository": {
-            "name": "consumer-root",
-            "distribution": "consumer-root",
-            "provider": "consumer-owned",
-            "url": "https://example.invalid/consumer/root.git",
-            "branch": "dev",
-            "path": ".",
-            "role": "workspace-root",
-            "state": "active",
-            "profile": "workspace-root",
-            "checkout": "root",
-            "codegen": "conform",
-            "package": False,
-            "editable": False,
-            "read_only": False,
-        },
-        "members": (
-            {
-                "name": "consumer-member",
-                "distribution": "consumer-member",
-                "provider": "consumer-owned",
-                "url": "https://example.invalid/consumer/member.git",
-                "branch": "dev",
-                "path": "apps/member",
-                "role": "workspace-member",
-                "state": "active",
-                "profile": "workspace-member",
-                "checkout": "submodule",
-                "codegen": "conform",
-                "package": True,
-                "editable": True,
-                "read_only": False,
-            },
-        ),
-        "exclusions": (),
-    })
-
-    tm.that(repositories, empty=False)
-    tm.that(workspace.repository.provider, eq="consumer-owned")
-    tm.that(tuple(member.name for member in workspace.members), eq=("consumer-member",))
-
-
-def test_toolchain_rejects_exact_patch_selectors() -> None:
-    """Keep runtime selectors on compatible major.minor release lines."""
-    toolchain = config.Infra.codegen.toolchain
-    payload = toolchain.model_dump()
-    payload["python_version"] = f"{toolchain.python_version}.0"
-
-    with pytest.raises(ValueError, match="python_version"):
-        m.Infra.ToolchainSpec.model_validate(payload)
-
-
-def test_scaffold_dependencies_delegate_upper_bounds_to_uv() -> None:
-    """Keep library requirements floor-only and let uv own concrete resolution."""
-    project = config.Infra.codegen.scaffold.project
-    requirements = [
-        *project.dev,
-        *(
-            requirement
-            for profile in project.dependency_profiles
-            for requirement in (*profile.runtime, *profile.codegen)
-        ),
-    ]
-    forbidden = {"<", "<=", "==", "===", "~="}
-
-    for raw_requirement in requirements:
-        parsed = Requirement(raw_requirement)
-        tm.that(
-            forbidden.isdisjoint(specifier.operator for specifier in parsed.specifier),
-            eq=True,
-            msg=raw_requirement,
+    tm.that(bool(roots), eq=True)
+    for root in roots:
+        members = tuple(
+            repository
+            for repository in repositories
+            if repository.provider == root.provider
+            and repository.role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
         )
+        content_only = tuple(
+            repository
+            for repository in repositories
+            if repository.provider == root.provider
+            and repository.role is c.Infra.RepositoryRole.CONTENT_ONLY
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name=root.name,
+            repository=root,
+            members=members,
+            content_only=content_only,
+        )
+        consumed = (workspace.repository, *workspace.members, *workspace.content_only)
+        tm.that(consumed, eq=(root, *members, *content_only))

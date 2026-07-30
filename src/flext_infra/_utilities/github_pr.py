@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra._utilities._github_pr_single import (
     FlextInfraUtilitiesGithubPrSingleMixin,
 )
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -76,7 +76,13 @@ class TestsCodegenSetupSubmodules:
 
     @classmethod
     def _add_submodule(
-        cls, superproject: Path, repository: Path, path: str, branch: str
+        cls,
+        superproject: Path,
+        repository: Path,
+        path: str,
+        branch: str,
+        *,
+        managed: bool = True,
     ) -> None:
         cls._git(
             superproject,
@@ -90,6 +96,14 @@ class TestsCodegenSetupSubmodules:
             branch,
             str(repository),
             path,
+        )
+        cls._git(
+            superproject,
+            "config",
+            "-f",
+            ".gitmodules",
+            f"submodule.{path}.flext-managed",
+            str(managed).lower(),
         )
         cls._git(superproject, "add", "-f", ".gitmodules", path)
         cls._git(superproject, "commit", "-q", "-m", f"Add {path}")
@@ -140,6 +154,55 @@ class TestsCodegenSetupSubmodules:
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
 
+    def test_content_only_submodule_is_never_initialized(self, tmp_path: Path) -> None:
+        """A checkout without the config-owned marker remains untouched."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(
+            project, source, "vendor/upstream", "upstream", managed=False
+        )
+        self._git(project, "submodule", "deinit", "-q", "-f", "--all")
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that((project / "vendor/upstream/marker.txt").exists(), eq=False)
+
+    def test_content_only_submodule_config_and_wip_are_never_mutated(
+        self, tmp_path: Path
+    ) -> None:
+        """Setup neither synchronizes nor validates an immutable checkout."""
+        source = tmp_path / "source"
+        self._commit_repository(source, "upstream", "foreign")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(
+            project, source, "vendor/upstream", "upstream", managed=False
+        )
+        checkout = project / "vendor/upstream"
+        marker = checkout / "marker.txt"
+        marker.write_text("foreign wip", encoding="utf-8")
+        configured_url = self._git(
+            project, "config", "--get", "submodule.vendor/upstream.url"
+        )
+        self._git(
+            project,
+            "config",
+            "-f",
+            ".gitmodules",
+            "submodule.vendor/upstream.url",
+            "https://example.test/foreign.git",
+        )
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that(marker.read_text(encoding="utf-8"), eq="foreign wip")
+        tm.that(
+            self._git(project, "config", "--get", "submodule.vendor/upstream.url"),
+            eq=configured_url,
+        )
+
     def test_conflicting_branch_fails_before_environment(self, tmp_path: Path) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
@@ -159,7 +222,9 @@ class TestsCodegenSetupSubmodules:
         )
         tm.that((project / "uv.log").exists(), eq=False)
 
-    def test_local_changes_fail_before_environment(self, tmp_path: Path) -> None:
+    def test_local_changes_are_preserved_on_declared_branch(
+        self, tmp_path: Path
+    ) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
@@ -171,10 +236,9 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.exit_code, eq=2)
-        tm.that(result.stderr, has="local changes must be reconciled")
+        tm.that(result.exit_code, eq=0)
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
-        tm.that((project / "uv.log").exists(), eq=False)
+        tm.that((project / "uv.log").is_file(), eq=True)
 
     def test_declared_branch_ahead_of_gitlink_is_preserved(
         self, tmp_path: Path
@@ -196,6 +260,28 @@ class TestsCodegenSetupSubmodules:
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=advanced_head)
         tm.that(advanced_marker.read_text(encoding="utf-8"), eq="fix forward")
+
+    def test_unmanaged_third_party_submodule_is_never_mutated(
+        self, tmp_path: Path
+    ) -> None:
+        source = tmp_path / "third-party-source"
+        self._commit_repository(source, "vendor-main", "vendor")
+        project = tmp_path / "project"
+        self._generated_project(project)
+        self._add_submodule(
+            project, source, "vendor/third-party", "vendor-main", managed=False
+        )
+        checkout = project / "vendor/third-party"
+        self._git(checkout, "switch", "-q", "-c", "fork-local")
+        marker = checkout / "fork.patch"
+        marker.write_text("third-party wip", encoding="utf-8")
+        head = self._git(checkout, "rev-parse", "HEAD")
+
+        tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=self._fake_uv(project)))
+
+        tm.that(self._git(checkout, "branch", "--show-current"), eq="fork-local")
+        tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
+        tm.that(marker.read_text(encoding="utf-8"), eq="third-party wip")
 
     def test_same_branch_declaration_uses_superproject_branch(
         self, tmp_path: Path

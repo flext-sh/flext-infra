@@ -181,6 +181,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deadline: p.Cli.ProcessDeadline | None = None,
             ) -> p.Result[int]:
                 """Provide the typed test helper `run_to_file`."""
+                # Why: match the full CommandRunner.run_to_file parent contract
+                # (pyright reportIncompatibleMethodOverride); canned double ignores them.
                 del input_data, live, deadline
                 result = self.run_raw(
                     cmd,
@@ -520,6 +522,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             _write(workspace / "docs/guides/README.md", "# Guides\n")
             _write(workspace / "docs/projects/README.md", "# Projects\n")
             _write(workspace / "docs/api-reference/README.md", "# API Reference\n")
+            if project_names:
+                members = ", ".join(f'"{name}"' for name in project_names)
+                _write(
+                    workspace / "pyproject.toml",
+                    (
+                        '[project]\nname = "workspace"\n\n'
+                        f"[tool.uv.workspace]\nmembers = [{members}]\n"
+                    ),
+                )
 
             for name in project_names:
                 project = workspace / name

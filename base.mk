@@ -21,7 +21,6 @@ SCOPE ?= project
 NAMESPACE ?=
 GATES ?=
 PROPAGATE ?=
-DOCS_PHASE ?= all
 FIX ?=
 PR_ACTION ?= status
 PR_BASE ?=
@@ -264,7 +263,7 @@ help: ## Show commands
 
 	$(Q)printf "  %-14s %s\n" "fmt" "Run all formatting"
 
-	$(Q)printf "  %-14s %s\n" "docs" "Build docs (DOCS_PHASE= to select)"
+	$(Q)printf "  %-14s %s\n" "docs" "Run docs (WHAT= to select)"
 
 	$(Q)printf "  %-14s %s\n" "test" "Run pytest (PYTEST_ARGS= for options)"
 
@@ -316,8 +315,6 @@ help: ## Show commands
 	$(Q)echo "  FAIL_FAST=1                 Add -x to pytest"
 
 	$(Q)echo "  DIAG=1                      Emit extended pytest diagnostics"
-
-	$(Q)echo "  DOCS_PHASE=all|generate|fix|audit|build|validate"
 
 	$(Q)echo "  FIX=1                       Auto-fix supported gates"
 
@@ -528,7 +525,7 @@ _fmt_impl:
 	fi
 	$(Q)echo "Format complete: $(PROJECT_NAME)"
 
-docs: ## Build docs
+docs: ## Run docs (WHAT=all|generate|fix|audit|build|validate)
 	$(call _run_verb_hooks,pre,docs,$(WHAT))
 	$(call _run_verb_body,docs,_docs_impl)
 	$(call _run_verb_hooks,post,docs,$(WHAT))
@@ -540,24 +537,27 @@ _docs_impl:
 		echo "PROJECT=$(PROJECT_NAME) PHASE=sync RESULT=FAIL REASON=docs-module-missing"; \
 		exit 1; \
 	fi
-	$(Q)if [ "$(DOCS_PHASE)" = "all" ]; then \
-		phases="generate fix audit build validate"; \
-		all_mode=1; \
+	$(Q)if [ "$(WHAT)" = "all" ]; then \
+		actions="generate fix audit build validate "; \
 	else \
-		phases="$(DOCS_PHASE)"; \
-		all_mode=0; \
+		actions="$(WHAT)"; \
 	fi; \
-	for phase in $$phases; do \
-		case "$$phase" in \
-			audit) subcmd="$(PROJECT_INFRA_DOCS) audit"; extra="--strict" ;; \
-			fix) subcmd="$(PROJECT_INFRA_DOCS) fix"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
-			build) subcmd="$(PROJECT_INFRA_DOCS) build"; extra="" ;; \
-			generate) subcmd="$(PROJECT_INFRA_DOCS) generate"; extra="--apply" ;; \
-			validate) subcmd="$(PROJECT_INFRA_DOCS) validate"; extra="$(if $(filter 1,$(FIX)),--apply,)" ;; \
-				*) echo "ERROR: invalid DOCS_PHASE=$$phase (allowed: all|generate|fix|audit|build|validate)"; exit 2 ;; \
-			esac; \
-		if [ "$$phase" = "fix" ] && [ "$$all_mode" = "1" ]; then extra="--apply"; fi; \
-		cmd="$$subcmd --workspace . --output-dir .reports/docs"; \
+	for action in $$actions; do \
+		case "$$action" in \
+
+			generate) extra="$(if $(filter Y,$(APPLY)),--apply,--check)" ;; \
+
+			fix) extra="$(if $(filter Y,$(APPLY)),--apply,--check)" ;; \
+
+			audit) extra="" ;; \
+
+			build) extra="" ;; \
+
+			validate) extra="" ;; \
+
+			*) echo "ERROR: invalid WHAT=$$action (allowed: all|generate|fix|audit|build|validate)"; exit 2 ;; \
+		esac; \
+		cmd="$(PROJECT_INFRA_DOCS) $$action --workspace . --output-dir .reports/docs"; \
 		if [ -n "$$extra" ]; then cmd="$$cmd $$extra"; fi; \
 		eval $$cmd || exit $$?; \
 	done
@@ -813,7 +813,11 @@ pr: ## Manage pull requests for this repository
 		$(if $(PR_HEAD),--head "$(PR_HEAD)",) \
 		$(if $(PR_TITLE),--title "$(PR_TITLE)",) \
 		$(if $(PR_BODY),--body "$(PR_BODY)",) \
-		--draft "$(PR_DRAFT)"
+		$(if $(filter 1,$(PR_DRAFT)),--draft,--no-draft) \
+		$(if $(filter 1,$(PR_AUTO)),--auto,--no-auto) \
+		$(if $(filter 1,$(PR_DELETE_BRANCH)),--delete-branch,--no-delete-branch) \
+		$(if $(filter 1,$(PR_CHECKS_STRICT)),--checks-strict,--no-checks-strict) \
+		$(if $(filter 1,$(PR_RELEASE_ON_MERGE)),--release-on-merge,--no-release-on-merge)
 
 clean: ## Clean artifacts
 	$(Q)rm -rf build/ dist/ *.egg-info/ .pytest_cache/ htmlcov/ .coverage* \

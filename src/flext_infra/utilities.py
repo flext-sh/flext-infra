@@ -83,11 +83,11 @@ from flext_infra._utilities.serialization_lock import (
     FlextInfraUtilitiesSerializationLock,
 )
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.worktree_transaction import (
-    FlextInfraUtilitiesWorktreeTransaction,
-)
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
+)
+from flext_infra._utilities.worktree_transaction import (
+    FlextInfraUtilitiesWorktreeTransaction,
 )
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 

@@ -108,6 +108,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def classification(self) -> str:
+            """Repository governance ownership classification."""
+            ...
+
+        @property
         def checkout(self) -> str:
             """Physical checkout topology."""
             ...
@@ -202,6 +207,45 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class RepositoryTopology(Protocol):
+        """Atomic repository-local runtime topology inspection."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Current Git repository root."""
+            ...
+
+        @property
+        def mode(self) -> c.Infra.WorkspaceMode:
+            """Effective workspace execution mode."""
+            ...
+
+        @property
+        def attached(self) -> bool:
+            """Whether this checkout is a parent-owned gitlink."""
+            ...
+
+        @property
+        def managed_gitlinks(self) -> t.StrSequence:
+            """Manifest-owned mutable repository gitlinks."""
+            ...
+
+        @property
+        def external_gitlinks(self) -> t.StrSequence:
+            """Manifest-declared read-only content gitlinks."""
+            ...
+
+        @property
+        def beads_enabled(self) -> bool:
+            """Whether canonical Beads provisioning is enabled."""
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef | None:
+            """Effective repository identity when a declaration was supplied."""
+            ...
+
+    @runtime_checkable
     class GithubPullRequestFields(Protocol):
         """Shared PR execution fields accepted at the transport boundary."""
 
@@ -263,6 +307,16 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def uv_link_mode(self) -> str:
             """Portable uv installation link mode."""
+            ...
+
+        @property
+        def uv_bootstrap_required_version(self) -> str:
+            """Minimum uv version allowed to start project bootstrap."""
+            ...
+
+        @property
+        def uv_version(self) -> str:
+            """Exact uv version installed by the project-local toolchain."""
             ...
 
     @runtime_checkable

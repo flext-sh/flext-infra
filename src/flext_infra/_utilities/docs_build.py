@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, MutableMapping
+from collections.abc import MutableMapping
 from importlib import import_module
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
@@ -18,15 +17,16 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 
+
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def _module_callable(module: ModuleType, name: str) -> Callable[..., object]:
+    def _module_callable(module: ModuleType, name: str) -> p.Infra.MkDocsAnyCallable:
         """Return a named callable from a lazily loaded module."""
-        value: object = getattr(module, name)
+        value: p.AttributeProbe = getattr(module, name)
         if callable(value):
-            return value
+            return cast("p.Infra.MkDocsAnyCallable", value)
         msg = f"{module.__name__}.{name} is not callable"
         raise OSError(msg)
 
@@ -42,17 +42,17 @@ class FlextInfraUtilitiesDocsBuild:
         )
         errors: list[type[BaseException]] = []
         for name in names:
-            value: object = getattr(module, name)
+            value: p.AttributeProbe = getattr(module, name)
             if not isinstance(value, type) or not issubclass(value, BaseException):
                 msg = f"{module.__name__}.{name} is not an exception type"
                 raise OSError(msg)
-            errors.append(value)
+            errors.append(cast("type[BaseException]", value))
         return tuple(errors)
 
     @staticmethod
     def _load_mkdocs_config(
-        load: Callable[..., object], settings: Path, site_dir: Path
-    ) -> MutableMapping[str, object]:
+        load: p.Infra.MkDocsLoadConfig, settings: Path, site_dir: Path
+    ) -> MutableMapping[str, p.AttributeProbe]:
         """Load and validate a MkDocs config mapping."""
         config_raw = load(config_file_path=str(settings), site_dir=str(site_dir))
         if not isinstance(config_raw, MutableMapping):
@@ -159,10 +159,12 @@ class FlextInfraUtilitiesDocsBuild:
         mkdocs_build = import_module("mkdocs.commands.build")
         mkdocs_config = import_module("mkdocs.config")
         mkdocs_exceptions = import_module("mkdocs.exceptions")
-        load = FlextInfraUtilitiesDocsBuild._module_callable(
+        load = cast("p.Infra.MkDocsLoadConfig", FlextInfraUtilitiesDocsBuild._module_callable(
             mkdocs_config, "load_config"
-        )
-        build = FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build")
+        ))
+            mkdocs_config, "load_config"
+        ))
+        build = cast("p.Infra.MkDocsBuild", FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"))
         mkdocs_error_types = FlextInfraUtilitiesDocsBuild._mkdocs_exception_types(
             mkdocs_exceptions
         )
@@ -194,9 +196,11 @@ class FlextInfraUtilitiesDocsBuild:
             )
         try:
             serve_module = import_module("mkdocs.commands.serve")
-            serve_fn = FlextInfraUtilitiesDocsBuild._module_callable(
+            serve_fn = cast("p.Infra.MkDocsServe", FlextInfraUtilitiesDocsBuild._module_callable(
                 serve_module, "serve"
-            )
+            ))
+                serve_module, "serve"
+            ))
             serve_fn(
                 config_file=str(settings),
                 livereload=livereload,

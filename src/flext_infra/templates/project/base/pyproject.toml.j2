@@ -300,7 +300,7 @@ testpaths = [
 
 [tool.ruff]
 exclude = [
-{% for item in tooling.tools.ruff.exclude | sort %}
+{% for item in tooling_runtime.ruff_exclude %}
   {{ item | tojson }},
 {% endfor %}
 ]

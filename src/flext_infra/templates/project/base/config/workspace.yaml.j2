@@ -17,6 +17,7 @@ repository:
   package: {{ workspace_repository.package | tojson }}
   editable: {{ workspace_repository.editable | tojson }}
   read_only: {{ workspace_repository.read_only | tojson }}
+  beads: {{ workspace_repository.beads | tojson }}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
@@ -67,6 +68,7 @@ members:
     package: {{ repository.package | tojson }}
     editable: {{ repository.editable | tojson }}
     read_only: {{ repository.read_only | tojson }}
+    beads: {{ repository.beads | tojson }}
 {%- if repository.extra_verbs %}
     extra_verbs:
 {%- for verb in repository.extra_verbs %}
