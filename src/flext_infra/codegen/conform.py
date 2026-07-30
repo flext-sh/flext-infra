@@ -1944,6 +1944,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        current_branch_result = u.Cli.run_raw(
+            (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
+        )
+        current_branch_ref = ""
+        if (
+            current_branch_result.success
+            and current_branch_result.value.exit_code == 0
+        ):
+            current_branch = current_branch_result.value.stdout.strip()
+            if current_branch != "HEAD":
+                current_branch_ref = f"refs/heads/{current_branch}"
         refs_command = (
             c.Infra.GIT,
             "for-each-ref",
@@ -2021,6 +2032,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             excluded = cls._technical_branch(
                 policy_reference, target.technical_branch_patterns
             )
+            # Only enforce ancestry on active checkouts: the current branch and
+            # registered worktrees. Shared local/remote branches that are not
+            # currently checked out are excluded from this repository-local gate.
+            if not excluded and not reference.startswith("worktree:"):
+                is_remote = reference.startswith("refs/remotes/")
+                is_other_local = (
+                    reference.startswith("refs/heads/")
+                    and reference != current_branch_ref
+                )
+                if is_remote or is_other_local:
+                    excluded = True
             ancestor: bool | None = None
             if not excluded:
                 ancestry_command = (
