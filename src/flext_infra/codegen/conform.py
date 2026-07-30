@@ -285,6 +285,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 technical_branch_patterns=(
                     config_spec.branch_policy.technical_branch_patterns
                 ),
+                baseline_excluded_patterns=(
+                    config_spec.branch_policy.baseline_excluded_patterns
+                ),
             )
         selected_result = self._select_repositories(
             request, workspace, current_repository
@@ -1993,6 +1996,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             excluded = cls._technical_branch(
                 policy_reference, target.technical_branch_patterns
+            ) or cls._technical_branch(
+                policy_reference, target.baseline_excluded_patterns
             )
             ancestor: bool | None = None
             if not excluded:
