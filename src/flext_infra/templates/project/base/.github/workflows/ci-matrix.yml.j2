@@ -31,6 +31,8 @@ jobs:
         distro: [ubuntu, debian, fedora, alpine, arch]
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
       - name: Build {% raw %}${{ matrix.distro }}{% endraw %} image
         run: >-
           docker build
@@ -46,6 +48,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
       - name: Bootstrap
         run: make setup
       - name: Verb surface
@@ -55,6 +59,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }} # {{ github_actions["checkout"].version }}
+        with:
+          submodules: recursive
       - name: Bootstrap
         shell: bash
         run: make setup

@@ -63,6 +63,14 @@ Infra:
         - __dolt_remote_info__
         - dolt/*
         - gh-readonly-queue/*
+      # FLEXT branch model: main is the produced release (tagged + published to
+      # PyPI) and 0.20.0-dev is the future line on hold. Both must carry the
+      # current development line, so both are gated. Parked releases (0.10.0-dev,
+      # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
+      governed_branch_patterns:
+        - main
+        - 0.12.0-dev
+        - 0.20.0-dev
     profiles:
       - name: workspace-root
         environment_scope: root
