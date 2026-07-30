@@ -163,11 +163,7 @@ class FlextInfraUtilitiesPyprojectConform:
         # An attached workspace member resolves through [tool.uv.sources]
         # workspace=true, so a git specifier would be a second, contradictory
         # source that uv silently overrides (mro-sw2l.1).
-        attached = (
-            frozenset(member.distribution for member in workspace.members)
-            if workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
-            else frozenset()
-        )
+        attached = frozenset(member.distribution for member in workspace.members)
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
