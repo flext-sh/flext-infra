@@ -13,6 +13,7 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityGate
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
@@ -139,6 +140,12 @@ class CodegenRoutes(CliRouteBase):
                         "Consolidate inline constants into c.Infra.* references",
                         FlextInfraCodegenConsolidator,
                         None,
+                    ),
+                    (
+                        "layout",
+                        "Check/apply the canonical project layout (SSOT-driven)",
+                        FlextInfraCodegenLayout,
+                        "layout conformance complete",
                     ),
                     (
                         "version-file",

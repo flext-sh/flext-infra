@@ -485,7 +485,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
                 rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen, profile=profile
+                    codegen, profile=profile, project_name=root.name
                 )
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -525,8 +525,28 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return Path(__file__).resolve().parent.parent
 
     @staticmethod
+    def render_project_gitignore(
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: c.Infra.MakeProfile,
+        project_name: str,
+    ) -> p.Result[str]:
+        """Render the canonical ``.gitignore`` for one named project.
+
+        Public seam consumed by the layout engine (mro-0wuz): per-project
+        layout ``gitignore_additions`` from the layout SSOT are appended as
+        one trailing derived section so conform and layout never diverge.
+        """
+        return FlextInfraCodegenConform._render_gitignore(
+            codegen, profile=profile, project_name=project_name
+        )
+
+    @staticmethod
     def _render_gitignore(
-        codegen: m.Infra.CodegenConfigSpec, *, profile: c.Infra.MakeProfile
+        codegen: m.Infra.CodegenConfigSpec,
+        *,
+        profile: c.Infra.MakeProfile,
+        project_name: str | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
@@ -552,13 +572,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             / "templates"
             / codegen.templates.root
         ).resolve()
-        context = m.Infra.GitignoreRenderSpec(
-            gitignore_sections=tuple(
-                section
-                for section in codegen.gitignore_sections
-                if not section.profiles or profile in section.profiles
-            )
-        )
+        sections = [
+            section
+            for section in codegen.gitignore_sections
+            if not section.profiles or profile in section.profiles
+        ]
+        if project_name is not None:
+            override = codegen.layout.project_overrides.get(project_name)
+            if override is not None and override.gitignore_additions:
+                sections.append(
+                    m.Infra.ScaffoldGitignoreSectionSpec(
+                        name=c.Infra.GITIGNORE_LAYOUT_SECTION_NAME,
+                        patterns=override.gitignore_additions,
+                    )
+                )
+        context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
         return u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
