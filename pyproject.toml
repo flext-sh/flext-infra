@@ -67,6 +67,7 @@ dev = [
   "pyupgrade>=3.19",
   "radon>=6.0.1",
   "ruff>=0.12.3",
+  "rumdl>=0.2.46",
   "types-cachetools>=6.2",
   "types-cffi>=2.0",
   "types-click>=7.1",
