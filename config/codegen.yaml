@@ -985,6 +985,8 @@ Infra:
             - ".direnv/"
             - ".reports/"
             - ".venv/"
+            - ".bin/"
+            - ".tools/"
             - "__pycache__/"
             - "base.mk"
             - "!.pre-commit-config.yaml"

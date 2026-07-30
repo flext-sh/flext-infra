@@ -1948,10 +1948,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
         current_branch_ref = ""
-        if (
-            current_branch_result.success
-            and current_branch_result.value.exit_code == 0
-        ):
+        if current_branch_result.success and current_branch_result.value.exit_code == 0:
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
                 current_branch_ref = f"refs/heads/{current_branch}"
