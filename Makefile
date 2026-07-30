@@ -1,5 +1,5 @@
 # @flext-managed: continuous
-# @flext-regenerate: make codegen WHAT=apply APPLY=Y
+# @flext-regenerate: make gen WHAT=apply APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
@@ -70,12 +70,12 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs, config:make.check_gates_allowed, config:make.check_gates_default,
 #        config:make.docs.actions, config:make.serialization.verbs
-PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release codegen worktree basemk
+PUBLIC_VERBS := help setup deps build check test fmt run status docs clean release gen worktree basemk
 CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright security markdown smells
 DOCS_ACTIONS := generate fix audit build validate
-SERIALIZED_VERBS := check test codegen
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_codegen
+SERIALIZED_VERBS := check test gen
+SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen
 # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -115,7 +115,7 @@ _DEFAULT_status := diagnostics
 _DEFAULT_docs := all
 _DEFAULT_clean := generated
 _DEFAULT_release := status
-_DEFAULT_codegen := check
+_DEFAULT_gen := check
 _DEFAULT_worktree := list
 _DEFAULT_basemk := generate
 
@@ -232,8 +232,8 @@ _builtin_docs_build \
 _builtin_docs_validate \
 _builtin_clean_generated \
 	_builtin_release_status \
-	_builtin_codegen_check \
-	_builtin_codegen_apply \
+	_builtin_gen_check \
+	_builtin_gen_apply \
 	_builtin_worktree_list \
 	_builtin_worktree_add \
 	_builtin_worktree_update \
@@ -303,11 +303,11 @@ _serialized_test:
 	$(call _dispatch,test)
 
 
-codegen: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "codegen"
+gen: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) workspace serialize-make --workspace "$(PROJECT_ROOT)" --makefile "$(SELF_MAKEFILE)" --verb "gen"
 
-_serialized_codegen:
-	$(call _dispatch,codegen)
+_serialized_gen:
+	$(call _dispatch,gen)
 
 
 
@@ -366,7 +366,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'codegen' 'check';
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' 'check';
 
 
 
@@ -758,10 +758,10 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-_builtin_codegen_check: _builtin_require_environment
+_builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
-_builtin_codegen_apply: _builtin_require_environment
+_builtin_gen_apply: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
