@@ -285,6 +285,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 technical_branch_patterns=(
                     config_spec.branch_policy.technical_branch_patterns
                 ),
+                excluded_branch_patterns=(
+                    config_spec.branch_policy.excluded_branch_patterns
+                ),
             )
         selected_result = self._select_repositories(
             request, workspace, current_repository
@@ -1917,6 +1920,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        head_branch_command = (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD")
+        head_branch_result = u.Cli.run_raw(head_branch_command, cwd=root)
+        active_head_branch = ""
+        if head_branch_result.success and head_branch_result.value.exit_code == 0:
+            active_head_branch = head_branch_result.value.stdout.strip()
+        if active_head_branch == "HEAD":
+            active_head_branch = ""
         refs_command = (
             c.Infra.GIT,
             "for-each-ref",
@@ -1946,6 +1956,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             if reference == "refs/remotes/origin/HEAD":
                 continue
+            if reference.startswith("refs/heads/"):
+                branch_name = reference.removeprefix("refs/heads/")
+                if branch_name != active_head_branch:
+                    continue
             observations.append((reference, sha))
         worktrees_command = (c.Infra.GIT, "worktree", "list", "--porcelain")
         worktrees_result = u.Cli.run_raw(worktrees_command, cwd=root)
@@ -1993,6 +2007,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             excluded = cls._technical_branch(
                 policy_reference, target.technical_branch_patterns
+            ) or cls._technical_branch(
+                policy_reference, target.excluded_branch_patterns
             )
             ancestor: bool | None = None
             if not excluded:

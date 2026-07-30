@@ -151,6 +151,16 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        excluded_branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional non-technical branch refs excluded from ancestry "
+                    "validation (e.g., legacy version lines and archived snapshots)"
+                ),
+            ),
+        ]
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -848,6 +858,13 @@ class FlextInfraConfigModels:
         technical_branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Technical branches excluded from ancestry policy"),
+        ] = ()
+        excluded_branch_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Additional non-technical branches excluded from ancestry policy",
+            ),
         ] = ()
 
     class ManagedGitlinkSpec(_ConfigContract):
