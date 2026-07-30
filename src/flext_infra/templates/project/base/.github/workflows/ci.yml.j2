@@ -25,6 +25,12 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Install toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }} # {{ github_actions["mise"].version }}
+        with:
+          install: true
+          cache: true
+
       - name: Setup (blocking)
         run: make setup
 

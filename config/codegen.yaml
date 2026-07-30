@@ -21,6 +21,9 @@ Infra:
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
       mise_version: "2026.7.16"
+      # uv bootstrap version used by generated CI/Dockerfiles; the project
+      # pyproject required-version floor is independent and remains >=0.11.0.
+      uv_version: "0.11.32"
       beads:
         selector: github:gastownhall/beads
         version: "1.1.2"
@@ -986,8 +989,10 @@ Infra:
             - "*.tpl.rej"
         - name: "--- codegen conform: generated runtime ignores ---"
           patterns:
+            - ".bin/"
             - ".direnv/"
             - ".reports/"
+            - ".tools/"
             - ".venv/"
             - "__pycache__/"
             - "base.mk"

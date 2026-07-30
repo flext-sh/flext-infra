@@ -9,7 +9,7 @@ RUN dnf install -y \
     && dnf clean all
 
 # mise installs the supported Python {{ python_version }} family.
-# uv is supplied by the managed environment without a project patch pin.
+# uv is declared in .mise.toml and installed alongside the Python toolchain.
 RUN curl -fsSL https://mise.run | sh
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:${PATH}"
 

@@ -53,11 +53,11 @@ class FlextInfraConfigModels:
         Only the Python minor line ``python_version`` (e.g. ``3.13``) is
         declared for the language runtime. The environment resolves its newest
         compatible patch. The PEP 440 family requirement is derived, so a
-        version-line bump touches exactly one value. uv is supplied by the caller
-        environment. Python linters/type-checkers are NOT here: their floors live
-        in pyproject and uv.lock owns the resolved versions. Native executables
-        required by canonical Make gates are declared here for reproducible
-        provisioning through mise.
+        version-line bump touches exactly one value. Python linters/type-checkers
+        are NOT here: their floors live in pyproject and uv.lock owns the resolved
+        versions. Native executables required by canonical Make gates are declared
+        here for reproducible provisioning through mise; uv is included so CI and
+        Docker bootstraps agree with local development.
         """
 
         python_version: Annotated[
@@ -105,6 +105,9 @@ class FlextInfraConfigModels:
         ]
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise binary version")
+        ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact uv binary version, e.g. '0.11.32'")
         ]
         beads: Annotated[
             FlextInfraConfigModels.MiseToolSpec,
