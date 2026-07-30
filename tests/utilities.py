@@ -454,7 +454,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  path: .\n"
                     "  role: standalone\n"
                     "  state: active\n"
-                    "  profile: standalone\n"
                     "  checkout: independent\n"
                     "  codegen: conform\n"
                     "  package: true\n"
@@ -810,12 +809,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
-                (
-                    c.Infra.GIT,
-                    "update-ref",
-                    "refs/remotes/origin/0.12.0-dev",
-                    "HEAD",
-                ),
+                (c.Infra.GIT, "update-ref", "refs/remotes/origin/0.12.0-dev", "HEAD"),
             )
             for command in commands:
                 _ = cli_facade.run_checked(list(command), cwd=repo_root)
@@ -1000,7 +994,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (
                     f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
                     "[tool.ruff.lint.per-file-ignores]\n"
-                    '# PEP 562 lazy facades import typing-only names that are '
+                    "# PEP 562 lazy facades import typing-only names that are "
                     "published as strings in __all__.\n"
                     '"**/__init__.py" = ["TC004"]\n'
                 ),

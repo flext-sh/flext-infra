@@ -88,7 +88,9 @@ class TestCodegenCiMatrix:
         actions = config.Infra.codegen.github_actions
         for action in actions.values():
             if action.repository in workflow:
-                tm.that(workflow, has=f"{action.repository}@{action.sha} # {action.version}")
+                tm.that(
+                    workflow, has=f"{action.repository}@{action.sha} # {action.version}"
+                )
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -161,7 +163,6 @@ class TestCodegenCiMatrix:
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        actions = config.Infra.codegen.github_actions
         macos = content.split("\n  macos:", maxsplit=1)[1].split(
             "\n  windows:", maxsplit=1
         )[0]
@@ -201,12 +202,29 @@ class TestCodegenCiMatrix:
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
-        tm.that(
-            content,
-            has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)",
-        )
+        tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has="'flext-demo [standalone]' '';")
+
+    def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
+        """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
+        root = Path(__file__).resolve().parents[4]
+        dockerignore = root / ".dockerignore"
+        tm.that(dockerignore.is_file(), eq=True)
+        content = dockerignore.read_text(encoding="utf-8")
+        for marker in (
+            "!Makefile",
+            "!*.mk",
+            "!pyproject.toml",
+            "!uv.lock",
+            "!.mise.toml",
+            "!.python-version",
+            "!.default-python-packages",
+            "!config/",
+            "!scripts/dispatch.py",
+            "!ci/docker/",
+        ):
+            tm.that(content, has=marker)
 
 
 __all__: list[str] = []

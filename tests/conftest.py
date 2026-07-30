@@ -168,11 +168,7 @@ def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
     # same topology a real clone would have.
     baseline_file = repo / ".infra-baseline"
     baseline_file.write_text("baseline\n", encoding="utf-8")
-    tm.ok(
-        infra_subprocess.run_checked(
-            ["git", "add", str(baseline_file)], cwd=repo
-        )
-    )
+    tm.ok(infra_subprocess.run_checked(["git", "add", str(baseline_file)], cwd=repo))
     tm.ok(
         infra_subprocess.run_checked(
             ["git", "commit", "-q", "-m", "infra fixture baseline"], cwd=repo
@@ -181,12 +177,7 @@ def infra_git_repo(infra_subprocess: u.Cli, infra_test_workspace: Path) -> Path:
     baseline_branch = config.Infra.codegen.providers[0].branch
     tm.ok(
         infra_subprocess.run_checked(
-            [
-                "git",
-                "update-ref",
-                f"refs/remotes/origin/{baseline_branch}",
-                "HEAD",
-            ],
+            ["git", "update-ref", f"refs/remotes/origin/{baseline_branch}", "HEAD"],
             cwd=repo,
         )
     )

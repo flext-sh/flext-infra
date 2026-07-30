@@ -127,10 +127,7 @@ class TestsCodegenGitignoreProfileAware:
             file.path.relative_to(tmp_path / repository.name).as_posix(): file.rendered
             for file in plan.files
         }
-        tm.that(
-            by_path[c.Infra.GITIGNORE],
-            has=_BEADS_CONFIG,
-        )
+        tm.that(by_path[c.Infra.GITIGNORE], has=_BEADS_CONFIG)
         tm.that(
             by_path[".mise.toml"],
             has=(
