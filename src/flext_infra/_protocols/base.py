@@ -79,6 +79,20 @@ class FlextInfraProtocolsBase(Protocol):
     # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
+    class MiseToolSpec(Protocol):
+        """One exact mise backend selector and immutable version."""
+
+        @property
+        def selector(self) -> str:
+            """Canonical mise backend selector."""
+            ...
+
+        @property
+        def version(self) -> str:
+            """Exact tool version installed by mise."""
+            ...
+
+    @runtime_checkable
     class RepositoryRef(Protocol):
         """Repository fields consumed by codegen path and profile selection."""
 
@@ -103,13 +117,18 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def provider(self) -> str:
-            """Provider catalog key owning Git policy for this repository."""
+        def role(self) -> str:
+            """Repository role in the declared topology."""
             ...
 
         @property
-        def classification(self) -> str:
-            """Repository governance ownership classification."""
+        def state(self) -> str:
+            """Repository lifecycle state."""
+            ...
+
+        @property
+        def provider(self) -> str:
+            """Provider catalog key owning Git policy for this repository."""
             ...
 
         @property
@@ -290,18 +309,23 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class ToolchainSpec(Protocol):
-        """Toolchain fields consumed by pyproject conformance."""
+        """Toolchain fields consumed by pyproject conformance and templates."""
 
         # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
         @property
-        def python_required_version(self) -> str:
-            """PEP 440 requirement for the compatible Python line."""
+        def python_version(self) -> str:
+            """Compatible Python major.minor line."""
             ...
 
         @property
-        def python_version(self) -> str:
-            """Compatible Python major.minor line."""
+        def python_selector(self) -> str:
+            """Mise/pyenv-style selector for the Python minor line."""
+            ...
+
+        @property
+        def python_required_version(self) -> str:
+            """PEP 440 requirement for the compatible Python line."""
             ...
 
         @property
@@ -310,13 +334,53 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_bootstrap_required_version(self) -> str:
-            """Minimum uv version allowed to start project bootstrap."""
+        def kubectl_version(self) -> str:
+            """Exact kubectl version."""
             ...
 
         @property
-        def uv_version(self) -> str:
-            """Exact uv version installed by the project-local toolchain."""
+        def helm_version(self) -> str:
+            """Exact Helm version."""
+            ...
+
+        @property
+        def kind_version(self) -> str:
+            """Exact kind version."""
+            ...
+
+        @property
+        def environment_path_prepends(self) -> t.SequenceOf[str]:
+            """Extra directories prepended to PATH by shell activation."""
+            ...
+
+        @property
+        def taplo_version(self) -> str:
+            """Exact Taplo formatter version."""
+            ...
+
+        @property
+        def ast_grep_version(self) -> str:
+            """Exact ast-grep analyzer version."""
+            ...
+
+        @property
+        def gitleaks_version(self) -> str:
+            """Exact Gitleaks scanner version."""
+            ...
+
+        @property
+        def tokei_version(self) -> str:
+            """Exact Tokei analyzer version."""
+            ...
+
+        @property
+        def mise_version(self) -> str:
+            """Exact mise binary version."""
+            ...
+
+        @property
+        def beads(self) -> FlextInfraProtocolsBase.MiseToolSpec:
+            """Official Beads CLI installed through mise."""
             ...
 
     @runtime_checkable

@@ -251,6 +251,42 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         )
 
     @staticmethod
+    def workspace_analysis_exclusion_paths(
+        workspace: m.Infra.WorkspaceSpec,
+    ) -> tuple[Path, ...]:
+        """Return all workspace paths excluded from static analysis scopes.
+
+        Content-only repositories are foreign, read-only trees and therefore
+        never enter Ruff or type-checkers. Explicit ``exclusions`` extend that
+        same typed scope for non-repository paths without duplicating repository
+        declarations.
+        """
+        seen: set[Path] = set()
+        paths: list[Path] = []
+        for path in (
+            *workspace.external_dependency_paths,
+            *(exclusion.path for exclusion in workspace.exclusions),
+        ):
+            if path not in seen:
+                seen.add(path)
+                paths.append(path)
+        return tuple(paths)
+
+    @classmethod
+    def analysis_exclusion_paths(
+        cls, repository_root: Path
+    ) -> p.Result[tuple[Path, ...]]:
+        """Load workspace spec and return all paths excluded from analysis."""
+        spec = cls.load_workspace_spec(repository_root)
+        if spec.failure:
+            return r[tuple[Path, ...]].fail(
+                spec.error or f"unable to load workspace spec: {repository_root}"
+            )
+        return r[tuple[Path, ...]].ok(
+            cls.workspace_analysis_exclusion_paths(spec.value)
+        )
+
+    @staticmethod
     def _validate_local_repository(repository: m.Infra.RepositoryRef) -> p.Result[bool]:
         """Validate immutable relation metadata for a local manifest owner."""
         if repository.path.as_posix() != ".":

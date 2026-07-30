@@ -102,6 +102,9 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact mise binary version")
+        ]
         beads: Annotated[
             FlextInfraConfigModels.MiseToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -114,6 +117,12 @@ class FlextInfraConfigModels:
             major, _, minor = self.python_version.partition(".")
             next_minor = int(minor) + 1
             return f">={self.python_version},<{major}.{next_minor}"
+
+        @m.computed_field()
+        @property
+        def python_selector(self) -> str:
+            """Mise/pyenv-style selector for the configured Python minor line."""
+            return self.python_version
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -409,6 +418,51 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+    class MakeDocsSpec(_ConfigContract):
+        """Generated Makefile docs verb lifecycle and audit policy."""
+
+        actions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Ordered public docs actions"),
+        ]
+        default_action: Annotated[
+            t.NonEmptyStr, m.Field(description="Default docs action")
+        ]
+        mutable_actions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
+        ]
+        reports_dir: Annotated[
+            Path, m.Field(description="Repository-relative docs reports directory")
+        ]
+        cross_project_relative_link_pattern: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Regex rejecting cross-project relative Markdown links"
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_docs_actions(self) -> Self:
+            """Require the default action and every mutable action to be declared."""
+            declared = set(self.actions)
+            if self.default_action not in declared:
+                msg = (
+                    f"docs default action must be one of {', '.join(sorted(declared))}"
+                )
+                raise ValueError(msg)
+            unknown = set(self.mutable_actions) - declared
+            if unknown:
+                msg = (
+                    "docs mutable actions must be declared actions: "
+                    f"{', '.join(sorted(unknown))}"
+                )
+                raise ValueError(msg)
+            if not any(action == "all" for action in self.actions):
+                msg = "docs actions must include the 'all' aggregate action"
+                raise ValueError(msg)
+            return self
+
     class MakeSpec(_ConfigContract):
         """Complete generated Makefile public and extension contract."""
 
@@ -435,6 +489,10 @@ class FlextInfraConfigModels:
                 min_length=1,
                 description="Ordered canonical documentation lifecycle phases",
             ),
+        ]
+        docs: Annotated[
+            FlextInfraConfigModels.MakeDocsSpec,
+            m.Field(description="Makefile docs verb lifecycle and audit policy"),
         ]
         custom_handler_policy: Annotated[
             FlextInfraConfigModels.CustomHandlerPolicy,

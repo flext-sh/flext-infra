@@ -58,7 +58,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
     plan = tm.ok(planned)
-    makefile = next(
+    makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
     return makefile.rendered

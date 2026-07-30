@@ -20,6 +20,7 @@ Infra:
       ast_grep_version: "0.45.0"
       gitleaks_version: "8.30.1"
       tokei_version: "14.0.0"
+      mise_version: "2026.7.16"
       beads:
         selector: github:gastownhall/beads
         version: "1.1.2"
@@ -79,6 +80,12 @@ Infra:
       apply_variable: APPLY
       apply_value: Y
       docs_phases: [generate, fix, audit, build, validate]
+      docs:
+        actions: [all, generate, fix, audit, build, validate]
+        default_action: all
+        mutable_actions: [generate, fix]
+        reports_dir: .reports/docs
+        cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
       serialization:
         lock_path: .state/flext-infra/make-validation.lock
         single_flight_lock_path: .state/flext-infra/make-single-flight.lock
