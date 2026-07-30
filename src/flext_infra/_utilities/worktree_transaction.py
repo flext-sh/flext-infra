@@ -173,8 +173,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
                     if nested_head is None:
                         cls._cleanup_worktrees(created, worktree_root)
                         return r[t.SequenceOf[m.Infra.RepositoryWorktree]].fail(
-                            "missing isolated checkpoint for "
-                            f"{nested.relative_path}"
+                            f"missing isolated checkpoint for {nested.relative_path}"
                         )
                     update_result = FlextInfraUtilitiesGitScope.git_capture(
                         repository.worktree_root,
