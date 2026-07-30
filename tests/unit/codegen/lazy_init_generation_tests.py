@@ -285,9 +285,9 @@ class TestsFlextInfraCodegenGeneration:
         tm.that(
             "\n".join(lines),
             contains=(
-                "from module import FlextConstants as _FlextConstants, "
-                "FlextModels as _FlextModels\n"
-                "    from flext_core import FlextConstants as c, FlextModels as m"
+                "if TYPE_CHECKING:\n"
+                "    from flext_core import FlextTypes\n"
+                "    from module import FlextConstants as c, FlextModels as m"
             ),
         )
 

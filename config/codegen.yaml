@@ -63,6 +63,14 @@ Infra:
         - __dolt_remote_info__
         - dolt/*
         - gh-readonly-queue/*
+      # FLEXT branch model: main is the produced release (tagged + published to
+      # PyPI) and 0.20.0-dev is the future line on hold. Both must carry the
+      # current development line, so both are gated. Parked releases (0.10.0-dev,
+      # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
+      governed_branch_patterns:
+        - main
+        - 0.12.0-dev
+        - 0.20.0-dev
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -79,7 +87,6 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
-      docs_phases: [generate, fix, audit, build, validate]
       docs:
         actions: [all, generate, fix, audit, build, validate]
         default_action: all
@@ -129,7 +136,7 @@ Infra:
           default_what: diagnostics
           apply_guarded: false
         - name: docs
-          default_what: check
+          default_what: all
           apply_guarded: false
         - name: clean
           default_what: generated
@@ -619,6 +626,7 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.0.3
           - ruff>=0.15.12
+          - rumdl>=0.2.46
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:
@@ -989,6 +997,8 @@ Infra:
             - ".direnv/"
             - ".reports/"
             - ".venv/"
+            - ".bin/"
+            - ".tools/"
             - "__pycache__/"
             - "base.mk"
             - "!.pre-commit-config.yaml"

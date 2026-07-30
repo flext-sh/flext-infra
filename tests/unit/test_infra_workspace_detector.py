@@ -252,12 +252,12 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
     def test_unknown_submodule_path_fails_closed(self, tmp_path: Path) -> None:
-        """Reject an attached submodule absent from the parent manifest."""
+        """An attached submodule absent from the parent manifest is standalone."""
         member_root = self._attached_member(tmp_path, declare_member=False)
 
-        tm.fail(
+        tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            has="not one active workspace member",
+            eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
     def test_gitmodule_url_mismatch_fails_closed(self, tmp_path: Path) -> None:
@@ -278,7 +278,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
 
-        tm.fail(FlextInfraWorkspaceDetector().detect(member_root), has="URL mismatch")
+        tm.fail(
+            FlextInfraWorkspaceDetector().detect(member_root),
+            has="governed workspace member contract differs",
+        )
 
     def test_gitmodule_branch_mismatch_fails_closed(self, tmp_path: Path) -> None:
         """Reject a Git submodule whose configured branch differs from the manifest."""
@@ -299,7 +302,8 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
 
         tm.fail(
-            FlextInfraWorkspaceDetector().detect(member_root), has="branch mismatch"
+            FlextInfraWorkspaceDetector().detect(member_root),
+            has="governed workspace member contract differs",
         )
 
     def test_malformed_parent_manifest_fails(self, tmp_path: Path) -> None:

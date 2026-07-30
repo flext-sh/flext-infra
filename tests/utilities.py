@@ -796,28 +796,43 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return "\n".join(lines) + "\n"
 
         @staticmethod
-        def configure_git_identity(repo_root: Path) -> None:
-            """Configure deterministic repository-local identity for a Git fixture."""
-            commands: t.SequenceOf[t.StrSequence] = (
-                (c.Infra.GIT, "config", "--local", "user.email", "tests@flext.local"),
-                (c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"),
-            )
-            for command in commands:
-                tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
-
-        @classmethod
-        def initialize_git_repo(cls, repo_root: Path) -> None:
-            """Initialize and commit a deterministic Git fixture."""
+        @staticmethod
+        def configure_git_identity(repository_root: Path) -> None:
+            """Set deterministic repository-local identity for real Git fixtures."""
             tm.ok(
                 cli_facade.run_checked(
-                    [c.Infra.GIT, "init", "-b", "main"], cwd=repo_root
+                    [
+                        c.Infra.GIT,
+                        "config",
+                        "--local",
+                        "user.email",
+                        "tests@flext.local",
+                    ],
+                    cwd=repository_root,
                 )
             )
-            cls.configure_git_identity(repo_root)
-            for command in (
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "config", "--local", "user.name", "Flext Tests"],
+                    cwd=repository_root,
+                )
+            )
+
+        @staticmethod
+        def initialize_git_repo(repo_root: Path) -> None:
+            """Initialize and commit a deterministic Git fixture.
+
+            The initial commit allows an empty tree so fixtures that seed
+            hooks or config before any file still get a resolvable HEAD.
+            """
+            commands: t.SequenceOf[t.StrSequence] = (
+                (c.Infra.GIT, "init", "-b", "main"),
+                (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
+                (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "-m", "init"),
-            ):
+                (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
+            )
+            for command in commands:
                 tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))
 
         @staticmethod
