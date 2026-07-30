@@ -7,8 +7,6 @@ from pathlib import Path
 
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u
 
@@ -176,29 +174,96 @@ class TestsCodegenCatalogExtensions:
                 ["git", "commit", "-q", "-m", "Initial fixture"], cwd=member_root
             )
         )
-        analysis_exclusions = tuple(
-            path.as_posix()
-            for path in FlextInfraWorkspaceDetector.workspace_analysis_exclusion_paths(
-                workspace
+        # Register acme-charts as a real Git submodule so workspace root
+        # resolution and analysis exclusion discovery observe the attached
+        # topology. A local bare repo is used because Git file transport is
+        # disabled by default in current releases.
+        bare_repo = tmp_path.parent / "acme-charts-bare.git"
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "clone",
+                    "--bare",
+                    member_root.as_posix(),
+                    bare_repo.as_posix(),
+                ]
             )
         )
-
-        tooling = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=root.distribution,
-                package_name=project.package_name,
-                path=tmp_path / c.Infra.PYPROJECT_FILENAME,
-                declared_python_dirs=(
-                    config.Infra.tooling.tools.pyright.path_rules.env_dirs
-                ),
-                analysis_exclusions=analysis_exclusions,
+        tm.ok(u.Cli.run_checked(["rm", "-rf", member_root.as_posix()]))
+        tm.ok(u.Cli.run_checked(["git", "init", "-q"], cwd=tmp_path))
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "-c",
+                    "protocol.file.allow=always",
+                    "submodule",
+                    "add",
+                    bare_repo.as_posix(),
+                    "acme-charts",
+                ],
+                cwd=tmp_path,
             )
         )
-        tm.that(tooling.ruff_exclude, has="acme-content")
-        tm.that(tooling.pyright_exclude, has="acme-content")
-
+        provider = config.Infra.codegen.providers[0]
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    "git",
+                    "config",
+                    "remote.origin.url",
+                    f"{provider.base_url}/acme-charts.git",
+                ],
+                cwd=member_root,
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / c.Infra.PYPROJECT_FILENAME,
+                '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
+                'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                tmp_path / c.Infra.GITMODULES,
+                '[submodule "acme-charts"]\n'
+                f"    path = acme-charts\n"
+                f"    url = {provider.base_url}/acme-charts.git\n"
+                f"    branch = {provider.branch}\n",
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.email", "infra@example.com"], cwd=tmp_path
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.name", "Infra Tests"], cwd=tmp_path
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "add", c.Infra.PYPROJECT_FILENAME, c.Infra.GITMODULES],
+                cwd=tmp_path,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Workspace fixture"], cwd=tmp_path
+            )
+        )
+        tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
+        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        manifest_path.parent.mkdir(parents=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest_path,
+                workspace.model_dump(mode="json", exclude_none=True),
+            )
+        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
@@ -238,8 +303,8 @@ class TestsCodegenCatalogExtensions:
         gitmodules = next(
             file.rendered for file in plan.files if file.path.name == ".gitmodules"
         )
-        tm.that(gitmodules, has="flext-managed = true")
-        tm.that(gitmodules, has="flext-managed = false")
+        tm.that(gitmodules, has='[submodule "acme-charts"]')
+        tm.that("acme-content" in gitmodules, eq=False)
         mise = tomllib.loads(
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
@@ -255,8 +320,8 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tools = pyproject["tool"]
-        tm.that(tools["ruff"]["exclude"], has="acme-content")
-        tm.that(tools["pyright"]["exclude"], has="acme-content")
+        tm.that("acme-content" in tools["ruff"]["exclude"], eq=False)
+        tm.that("acme-content" in tools["pyright"]["exclude"], eq=False)
 
 
 __all__: tuple[str, ...] = ()

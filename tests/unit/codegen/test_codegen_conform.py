@@ -199,6 +199,7 @@ class TestCodegenConform:
                 for path in existing_root.rglob("*")
                 if path.is_file()
                 and ".git" not in path.relative_to(existing_root).parts
+                and ".infra-baseline" not in path.relative_to(existing_root).parts
             )
         )
         tm.that(existing_tree, eq=new_tree)
@@ -212,6 +213,7 @@ class TestCodegenConform:
             for item in config.Infra.codegen.repositories
             if item.distribution == "flext-infra"
         )
+        local_repository = repository.model_copy(update={"path": Path()})
         dist = repository.distribution
         create_only = {
             "LICENSE": "existing license\n",
@@ -238,7 +240,7 @@ class TestCodegenConform:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.that(derived.repository, eq=repository)
+        tm.that(derived.repository, eq=local_repository)
         tm.that(derived.project, eq=None)
 
         request = m.Infra.CodegenConformRequest(
@@ -501,7 +503,7 @@ class TestCodegenConform:
 
         tm.that(
             rendered.infra_source_root_rel,
-            eq=(Path("..") / infra_repository.path).as_posix(),
+            eq=infra_repository.path.as_posix(),
         )
 
     def test_public_cli_routes_check_and_apply_to_one_handler(

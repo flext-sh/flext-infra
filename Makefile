@@ -63,7 +63,7 @@ WORKSPACE ?= $(PROJECT_ROOT)
 # environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
 # must never redirect verbs to another working tree.
 ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+WORKSPACE_ROOT := $(shell root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || pwd -P; fi)
 endif
 # End SECTION: WORKSPACE_ROOT isolation
 

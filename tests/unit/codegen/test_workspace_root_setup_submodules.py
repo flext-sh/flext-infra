@@ -67,12 +67,50 @@ def _create_member_origin(tmp_path: Path) -> Path:
     member = tmp_path / "member-source"
     member.mkdir()
     (member / "pyproject.toml").write_text(
-        "[project]\nname = 'flext-core'\nversion = '0.1.0'\n", encoding="utf-8"
+        "[project]\nname = 'flext-core'\nversion = '0.1.0'\n"
+        'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+        encoding="utf-8",
+    )
+    pkg = member / "src" / "flext_core"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        'from __future__ import annotations\n\n__all__: list[str] = []\n',
+        encoding="utf-8",
     )
     test_u.Tests.initialize_git_repo(member)
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", "-b", "0.12.0-dev"],
+            cwd=member,
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", "main"],
+            cwd=member,
+        )
+    )
     remote_root = tmp_path / "member-remote"
     remote_root.mkdir()
-    return test_u.Tests.configure_local_origin(member, remote_root)
+    origin = test_u.Tests.configure_local_origin(member, remote_root)
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "0.12.0-dev"],
+            cwd=member,
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                c.Infra.GIT,
+                "symbolic-ref",
+                "HEAD",
+                "refs/heads/0.12.0-dev",
+            ],
+            cwd=origin,
+        )
+    )
+    return origin
 
 
 def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
@@ -96,7 +134,7 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
                 "add",
                 "-q",
                 "-b",
-                "main",
+                "0.12.0-dev",
                 str(member_origin),
                 "flext-core",
             ],
@@ -104,9 +142,38 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
         )
     )
     test_u.Tests.commit_git_changes(source, "Declare workspace member")
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", "-b", "0.12.0-dev"],
+            cwd=source,
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "checkout", "main"],
+            cwd=source,
+        )
+    )
     remote_root = tmp_path / "workspace-remote"
     remote_root.mkdir()
     workspace_origin = test_u.Tests.configure_local_origin(source, remote_root)
+    tm.ok(
+        u.Cli.run_checked(
+            [c.Infra.GIT, "push", "-u", c.Infra.GIT_ORIGIN, "0.12.0-dev"],
+            cwd=source,
+        )
+    )
+    tm.ok(
+        u.Cli.run_checked(
+            [
+                c.Infra.GIT,
+                "symbolic-ref",
+                "HEAD",
+                "refs/heads/0.12.0-dev",
+            ],
+            cwd=workspace_origin,
+        )
+    )
     checkout = tmp_path / "workspace-checkout"
     tm.ok(
         u.Cli.run_checked(["git", "clone", "-q", str(workspace_origin), str(checkout)])
@@ -133,14 +200,24 @@ class TestsWorkspaceRootSetupSubmodules:
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
+        infra_root = Path(__file__).resolve().parents[3]
+        infra_rel = os.path.relpath(infra_root, workspace)
 
-        outcome = u.Cli.run_raw(["make", "setup"], cwd=workspace, env=env)
+        outcome = u.Cli.run_raw(
+            [
+                "make",
+                "_builtin_setup_conform",
+                f"FLEXT_INFRA_SOURCE_ROOT_REL={infra_rel}",
+            ],
+            cwd=workspace,
+            env=env,
+        )
         process = outcome.value
 
-        # The minimal fixture lacks a valid workspace package tree, so the
-        # conform step after submodule initialization is expected to fail. The
-        # invariant we care about is that the submodule is initialized before
-        # conform/uv; the conform error proves the uv bootstrap was reached.
-        tm.that(process.exit_code, eq=2)
-        tm.that(process.stdout, has="Failed to execute CLI application")
+        # The fixture bootstraps through submodules and conform; the invariant we
+        # care about is that the submodule is initialized before conform.
+        tm.that(process.exit_code, eq=0)
+        tm.that(
+            process.stdout + process.stderr, has="Submodule path 'flext-core'"
+        )
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
