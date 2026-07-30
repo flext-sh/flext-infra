@@ -9,8 +9,8 @@ SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := standalone
-WORKSPACE_ROOT_REL := .
+MAKE_PROFILE := workspace-member
+WORKSPACE_ROOT_REL := ..
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -53,7 +53,7 @@ MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL := .
+FLEXT_INFRA_SOURCE_ROOT_REL := ../flext-infra
 
 # === MYPY RESOURCE LIMIT ===
 # mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
@@ -179,7 +179,7 @@ ORCHESTRATED_VERBS := build check clean docs scan test val
 
 UV_RUN := env -u PYTHONPATH -u MYPYPATH $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
-PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
+PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # mro-j47u (codex): scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
 UV_SYNC_FLAGS := --all-extras --all-groups
@@ -297,7 +297,7 @@ setup:
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [standalone]' '';
+	@printf '%s\n' 'flext-infra [workspace-member]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' 'usage';
@@ -430,13 +430,25 @@ _builtin_setup_tools:
 _builtin_setup_submodules:
 	@set -eu; \
 	root="$(PROJECT_ROOT)"; \
+	selected=""; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
-	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
+	setup_selected() { \
+		candidate="$$1"; \
+		if [ -z "$$selected" ]; then return 0; fi; \
+		for project in $$selected; do \
+			if [ "$$project" = "." ]; then continue; fi; \
+			case "$$project" in \
+				"$$candidate"|"$$candidate"/*) return 0 ;; \
+			esac; \
+		done; \
+		return 1; \
+	}; \
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -447,10 +459,6 @@ _builtin_setup_submodules:
 			sha1=$$(git -C "$$superproject" rev-parse "HEAD:$$child_path"); \
 			branch=$$(git -C "$$superproject" config -f .gitmodules --get --default "" "$$prefix.branch"); \
 			current=$$(git -C "$$checkout" branch --show-current); \
-			if [ -n "$$(git -C "$$checkout" status --porcelain)" ]; then \
-				printf "ERROR: %s: local changes must be reconciled before setup\n" "$$displaypath" >&2; \
-				exit 1; \
-			fi; \
 			if [ -z "$$branch" ]; then \
 				if [ -n "$$current" ]; then \
 					printf "ERROR: %s: branch %s is checked out but .gitmodules declares no branch\n" "$$displaypath" "$$current" >&2; \
@@ -489,6 +497,7 @@ _builtin_setup_submodules:
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \
@@ -505,6 +514,7 @@ _builtin_setup_submodules:
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
 		git -C "$$superproject" config -f .gitmodules --get-regexp '^submodule\..*\.path$$' 2>/dev/null | \
 		while IFS=' ' read -r path_key child_path; do \
+			if [ "$$superproject" = "$$root" ] && ! setup_selected "$$child_path"; then continue; fi; \
 			prefix=$${path_key%.path}; \
 			managed=$$(git -C "$$superproject" config -f .gitmodules --bool --get --default false "$$prefix.flext-managed"); \
 			if [ "$$managed" != true ]; then continue; fi; \

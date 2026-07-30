@@ -27,7 +27,10 @@ class TestsEnforcementFixerOrchestrator:
     @staticmethod
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
-        return next(rule for rule in catalog.enabled_rules() if rule.id == rule_id)
+        rule: m.EnforcementRuleSpec = next(
+            rule for rule in catalog.enabled_rules() if rule.id == rule_id
+        )
+        return rule
 
     @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:

@@ -60,7 +60,7 @@ class TestsFlextInfraWorktreeService:
         """List is read-only and reports Git's canonical registry."""
         repository = self._repository(tmp_path)
 
-        listed = tm.ok(
+        listed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
             ).execute()
@@ -74,7 +74,7 @@ class TestsFlextInfraWorktreeService:
         branch = "feature/example"
         lane = self._lane(repository, repository, branch)
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -92,7 +92,7 @@ class TestsFlextInfraWorktreeService:
             has=f"worktree {lane}",
         )
 
-        removed = tm.ok(
+        removed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.REMOVE,
@@ -115,7 +115,7 @@ class TestsFlextInfraWorktreeService:
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -148,7 +148,7 @@ class TestsFlextInfraWorktreeService:
         branch = "feature/outer-isolation"
         lane = self._lane(repository, outer_project, branch)
 
-        added = tm.ok(
+        added: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -325,10 +325,12 @@ class TestsFlextInfraWorktreeService:
                 repository, ("commit", "-m", "test: advance update base")
             )
         )
-        base = tm.ok(u.Infra.git_capture(repository, ("rev-parse", "HEAD"))).strip()
+        base: str = tm.ok(
+            u.Infra.git_capture(repository, ("rev-parse", "HEAD"))
+        ).strip()
         tm.that(tm.ok(u.Infra.git_primary_worktree_root(lane)), eq=repository.resolve())
 
-        updated = tm.ok(
+        updated: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=lane,
                 operation=c.Infra.WorktreeOperation.UPDATE,
@@ -422,10 +424,10 @@ class TestsFlextInfraWorktreeService:
             u.Infra.git_capture(linked, ("worktree", "remove", "--force", str(linked)))
         )
         branch = "feature/attached"
-        primary = tm.ok(u.Infra.git_primary_worktree_root(attached))
+        primary: Path = tm.ok(u.Infra.git_primary_worktree_root(attached))
         expected_lane = self._lane(primary, superproject, branch)
 
-        lane = tm.ok(
+        lane: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=attached,
                 operation=c.Infra.WorktreeOperation.ADD,
@@ -441,7 +443,7 @@ class TestsFlextInfraWorktreeService:
             where=bool,
         )
 
-        removed = tm.ok(
+        removed: str = tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=attached,
                 operation=c.Infra.WorktreeOperation.REMOVE,

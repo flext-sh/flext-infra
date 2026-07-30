@@ -20,7 +20,7 @@ import tempfile
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config, u
+from flext_infra import c, config, m, p, u
 from flext_tests import tm
 
 
@@ -31,7 +31,8 @@ def _workspace_root() -> Path:
 
 def _repository_profile() -> c.Infra.MakeProfile:
     """Return this repository's declared Make profile from the catalog SSOT."""
-    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
+    metadata: m.ProjectMetadata = tm.ok(u.read_project_metadata(_workspace_root()))
+    repository_name: str = metadata.project.name
     return next(
         repository.profile
         for repository in config.Infra.codegen.repositories
@@ -62,10 +63,11 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         target.write_text("", encoding="utf-8")
         # `git check-ignore` exits 0 when the path IS ignored, so a failed run
         # is the success case for a file that must stay trackable.
-        probe = tm.ok(
+        probe: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
-    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+        is_allowed: bool = probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+    return is_allowed
 
 
 class TestsFlextInfraLockfileIsTrackedAtTheResolutionRoot:

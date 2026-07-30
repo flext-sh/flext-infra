@@ -101,7 +101,7 @@ dependencies = ["requests>=2"]
 [tool.uv]
 constraint-dependencies = ["uv>=0", "requests<3"]
 """
-        first = tm.ok(
+        first: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
                 repositories=(workspace.repository, *workspace.members),
@@ -109,7 +109,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
         )
-        second = tm.ok(
+        second: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 first,
                 repositories=(workspace.repository, *workspace.members),
@@ -132,7 +132,7 @@ dependencies = ["requests>=2"]
 link-mode = "copy"
 constraint-dependencies = ["uv>=0"]
 """
-        conformed = tm.ok(
+        conformed: str = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
                 repositories=(workspace.repository, *workspace.members),
@@ -202,7 +202,7 @@ constraint-dependencies = ["uv==0.11.31", "requests<3"]
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
 """
-        first = tm.ok(
+        first: str = tm.ok(
             u.Infra.pyproject_conform(
                 source,
                 repositories=repositories,
@@ -212,7 +212,7 @@ python-interpreter-path = "../.venv/bin/python"
                 required_dev_dependencies=required_dev,
             )
         )
-        second = tm.ok(
+        second: str = tm.ok(
             u.Infra.pyproject_conform(
                 first,
                 repositories=repositories,

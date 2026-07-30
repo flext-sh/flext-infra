@@ -267,7 +267,7 @@ class TestsWorkspaceRootMakeContract:
         tm.that(process.exit_code, eq=0, msg=output)
         tm.that(
             output,
-            has=f"for phase in {' '.join(config.Infra.codegen.make.docs_phases)}",
+            has=f"for phase in {' '.join(config.Infra.codegen.make.docs.actions)}",
         )
         tm.that(output, has='docs "$phase"')
         tm.that(output, has=f"--projects {project_names[0]}")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, u
+from flext_infra import config, p, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -35,7 +35,7 @@ class TestsMakeTestSelector:
         tm.that("fmt" in public_verbs, where=bool)
         tm.that("format" not in public_verbs, where=bool)
 
-        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        makefile: str = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
         test_u.Tests.write_executable(
             tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
@@ -46,7 +46,7 @@ class TestsMakeTestSelector:
             uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
         )
 
-        canonical = tm.ok(
+        canonical: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
             )
@@ -56,7 +56,7 @@ class TestsMakeTestSelector:
         tm.that(invocations, has=["ruff check --no-fix", "ruff format --check"])
         calls_before_retired = invocations.splitlines()
 
-        retired = tm.ok(
+        retired: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 ["--no-print-directory", "format", f"UV={uv}"], cwd=tmp_path
             )
@@ -90,7 +90,7 @@ class TestsMakeTestSelector:
         uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 [
                     "--no-print-directory",
@@ -139,7 +139,7 @@ class TestsMakeTestSelector:
         uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 [
                     "--no-print-directory",
@@ -165,7 +165,7 @@ class TestsMakeTestSelector:
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
-        makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
+        makefile: str = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
         test_u.Tests.write_executable(
             tmp_path / ".venv" / "bin" / "python",
@@ -205,7 +205,7 @@ class TestsMakeTestSelector:
             encoding="utf-8",
         )
 
-        executed = tm.ok(
+        executed: p.Cli.CommandOutput = tm.ok(
             test_u.Tests.run_isolated_make(
                 [
                     "--no-print-directory",

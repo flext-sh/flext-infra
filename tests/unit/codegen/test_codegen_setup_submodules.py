@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from flext_infra import c, u
+from flext_infra import c, p, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
 
@@ -212,7 +212,9 @@ class TestsCodegenSetupSubmodules:
         self._git(project / "vendor/source", "switch", "-q", "-c", "local-work")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result: p.Cli.CommandOutput = tm.ok(
+            u.Cli.run_raw(["make", "setup"], cwd=project, env=environment)
+        )
 
         tm.that(result.exit_code, eq=2)
         tm.that(result.stderr, has="conflicting branch")
@@ -234,7 +236,9 @@ class TestsCodegenSetupSubmodules:
         marker.write_text("local change", encoding="utf-8")
         environment = self._fake_uv(project)
 
-        result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
+        result: p.Cli.CommandOutput = tm.ok(
+            u.Cli.run_raw(["make", "setup"], cwd=project, env=environment)
+        )
 
         tm.that(result.exit_code, eq=0)
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")

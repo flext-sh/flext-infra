@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import os
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -204,7 +205,9 @@ class TestCodegenConform:
             )
         )
 
-        derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        derived: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
         tm.that(derived.repository, eq=repository)
         tm.that(derived.project, eq=None)
 
@@ -213,7 +216,7 @@ class TestCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        initial_plan = tm.ok(
+        initial_plan: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(request)
         )
         plans = {
@@ -539,7 +542,7 @@ class TestCodegenConform:
             )
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "help"])
-        output = tm.ok(outcome)
+        output: p.Cli.CommandOutput = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         tm.that(
             output.stdout,
@@ -583,7 +586,7 @@ class TestCodegenConform:
             )
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
-        output = tm.ok(outcome)
+        output: p.Cli.CommandOutput = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
@@ -732,7 +735,7 @@ class TestScriptDispatchMakefile:
         planned = FlextInfraCodegenConform(
             workspace_root=root, request=request, initial_workspace=workspace
         ).plan(request)
-        plan = tm.ok(planned)
+        plan: m.Infra.CodegenPlan = tm.ok(planned)
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )

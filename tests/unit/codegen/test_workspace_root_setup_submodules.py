@@ -57,7 +57,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan = tm.ok(planned)
+    plan: m.Infra.CodegenPlan = tm.ok(planned)
     makefile = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )

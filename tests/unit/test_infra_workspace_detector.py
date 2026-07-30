@@ -75,7 +75,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             for content_record in serialized_content:
                 if isinstance(content_record, dict):
                     content_record["profile"] = None
-        rendered = tm.ok(u.Cli.json_dumps(payload, indent=2))
+        rendered: str = tm.ok(u.Cli.json_dumps(payload, indent=2))
         manifest = repository_root / "config" / "workspace.yaml"
         manifest.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(manifest, f"{rendered}\n"))
@@ -236,7 +236,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
         self._initialize_repository(tmp_path)
         (tmp_path / c.Infra.GITMODULES).write_text("", encoding="utf-8")
 
-        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(tmp_path))
+        topology: m.Infra.RepositoryTopology = tm.ok(
+            FlextInfraWorkspaceDetector.inspect(tmp_path)
+        )
         tm.that(topology.mode, eq=c.Infra.WorkspaceMode.STANDALONE)
         tm.that(topology.managed_gitlinks, eq=())
         tm.that(topology.external_gitlinks, eq=())
@@ -253,11 +255,11 @@ class TestsFlextInfraInfraWorkspaceDetector:
             profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
         )
         external = self._external_repository("members/flext-member")
-        self._write_manifest(
-            workspace_root, root_repository, content_only=(external,)
-        )
+        self._write_manifest(workspace_root, root_repository, content_only=(external,))
 
-        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(workspace_root))
+        topology: m.Infra.RepositoryTopology = tm.ok(
+            FlextInfraWorkspaceDetector.inspect(workspace_root)
+        )
 
         tm.that(topology.mode, eq=c.Infra.WorkspaceMode.STANDALONE)
         tm.that(topology.managed_gitlinks, eq=())
@@ -308,7 +310,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             content_only=(external,),
         )
 
-        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(workspace_root))
+        topology: m.Infra.RepositoryTopology = tm.ok(
+            FlextInfraWorkspaceDetector.inspect(workspace_root)
+        )
 
         tm.that(topology.mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
         tm.that(topology.managed_gitlinks, eq=("members/flext-member",))
@@ -342,7 +346,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         fork = self._external_repository("vendor/upstream-fork")
         self._write_manifest(tmp_path, root, content_only=(fork,))
 
-        excluded = tm.ok(
+        excluded: bool = tm.ok(
             FlextInfraWorkspaceDetector.analysis_exclusion_paths(tmp_path)
         )
 
@@ -364,9 +368,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-    def test_attached_member_feature_branch_is_standalone(
-        self, tmp_path: Path
-    ) -> None:
+    def test_attached_member_feature_branch_is_standalone(self, tmp_path: Path) -> None:
         member_root = self._attached_member(tmp_path)
         tm.ok(
             u.Cli.run_checked(
@@ -380,9 +382,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-    def test_attached_member_detached_head_is_standalone(
-        self, tmp_path: Path
-    ) -> None:
+    def test_attached_member_detached_head_is_standalone(self, tmp_path: Path) -> None:
         member_root = self._attached_member(tmp_path)
         tm.ok(
             u.Cli.run_checked(
@@ -421,8 +421,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         workspace_root = member_root.parents[1]
         tm.ok(
             u.Cli.run_checked(
-                ["git", "submodule", "deinit", "-q", "-f", "--all"],
-                cwd=workspace_root,
+                ["git", "submodule", "deinit", "-q", "-f", "--all"], cwd=workspace_root
             )
         )
 
@@ -437,9 +436,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         member_root = self._attached_member(tmp_path)
 
         tm.that(
-            tm.ok(
-                FlextInfraWorkspaceDetector.resolve_repository_root(member_root)
-            ),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(member_root)),
             eq=member_root.resolve(),
         )
 
@@ -454,7 +451,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             profile=c.Infra.MakeProfile.WORKSPACE_MEMBER,
         )
 
-        topology = tm.ok(FlextInfraWorkspaceDetector.inspect(member_root, declared))
+        topology: m.Infra.RepositoryTopology = tm.ok(
+            FlextInfraWorkspaceDetector.inspect(member_root, declared)
+        )
         effective = topology.repository
         tm.that(effective is not None, eq=True)
         assert effective is not None
@@ -488,11 +487,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
     ) -> None:
         member_root = self._attached_member(tmp_path)
         workspace_root = member_root.parents[1]
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "add", c.Infra.GITMODULES], cwd=workspace_root
-            )
-        )
+        tm.ok(u.Cli.run_checked(["git", "add", c.Infra.GITMODULES], cwd=workspace_root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "rm", "--cached", "-q", "-f", "members/flext-member"],
@@ -577,9 +572,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         (member_root / "change.txt").write_text("changed\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked(["git", "add", "change.txt"], cwd=member_root))
         tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "-m", "change"], cwd=member_root
-            )
+            u.Cli.run_checked(["git", "commit", "-q", "-m", "change"], cwd=member_root)
         )
 
         tm.fail(
@@ -619,7 +612,9 @@ class TestsFlextInfraInfraWorkspaceDetector:
             f'[project]\nname = "{declared.name}"\nversion = "0.0.0"\n',
             encoding="utf-8",
         )
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path)
+        )
         tm.that(spec.name, eq=declared.name)
         tm.that(spec.repository.role, eq=declared.role)
         tm.that(spec.version, eq=c.Infra.WORKSPACE_MANIFEST_VERSION)
@@ -649,6 +644,8 @@ class TestsFlextInfraInfraWorkspaceDetector:
         )
         self._write_manifest(tmp_path, repository)
 
-        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
+        spec: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path)
+        )
         tm.that(spec.name, eq="consumer-project")
         tm.that(spec.repository.name, eq="consumer-project")

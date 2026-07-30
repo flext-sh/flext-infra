@@ -75,7 +75,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
-    plan = tm.ok(
+    plan: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform(
             workspace_root=workspace_root, request=request, initial_workspace=workspace
         ).plan(request)

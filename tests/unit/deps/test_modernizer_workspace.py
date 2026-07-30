@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config, main
+from flext_infra import c, config, main
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_tests import tm
-from tests import c, u
+from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -109,7 +109,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
                 tomlsort_sort_first=sort_first,
             )
         )
-        rendered = tm.ok(modernizer.conform_source(source, path=pyproject))
+        rendered: str = tm.ok(modernizer.conform_source(source, path=pyproject))
         tm.that(rendered.count("[project]"), eq=1)
         payload = u.Cli.toml_mapping_from_text(rendered)
         tm.that(payload, none=False)
@@ -143,7 +143,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             encoding="utf-8",
         )
         u.Tests.initialize_git_repo(source_repository)
-        standalone = tm.ok(
+        standalone: str = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=source_repository, skip_check=True, skip_comments=True
             ).conform_source(source, path=pyproject)
@@ -167,7 +167,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             )
         )
         member = superproject / "member"
-        attached = tm.ok(
+        attached: str = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=member, skip_check=True, skip_comments=True
             ).conform_source(

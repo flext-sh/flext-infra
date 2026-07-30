@@ -147,7 +147,9 @@ class TestsCodegenCatalogExtensions:
             encoding="utf-8",
         )
         tm.ok(
-            u.Cli.run_checked(["git", "init", "-q", "-b", "development"], cwd=member_root)
+            u.Cli.run_checked(
+                ["git", "init", "-q", "-b", "development"], cwd=member_root
+            )
         )
         tm.ok(
             u.Cli.run_checked(
@@ -175,7 +177,7 @@ class TestsCodegenCatalogExtensions:
                 workspace
             )
         )
-        tooling = tm.ok(
+        tooling: m.Infra.ToolingRuntimeContext = tm.ok(
             FlextInfraPyprojectModernizer(
                 workspace_root=tmp_path, skip_check=True
             ).resolve_tooling_context(
@@ -200,7 +202,7 @@ class TestsCodegenCatalogExtensions:
             )
         )
 
-        plan = tm.ok(result)
+        plan: m.Infra.CodegenPlan = tm.ok(result)
         tm.that(
             tuple(item.name for item in plan.repositories),
             eq=(root.name, "acme-charts"),
@@ -222,9 +224,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
-            file
-            for file in plan.files
-            if ".github/workflows" in file.path.as_posix()
+            file for file in plan.files if ".github/workflows" in file.path.as_posix()
         )
         tm.that(workflows, len=4)
         for workflow in workflows:

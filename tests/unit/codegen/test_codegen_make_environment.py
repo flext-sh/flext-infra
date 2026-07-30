@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, p, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
@@ -131,7 +131,7 @@ class TestsCodegenMakeEnvironment:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        plan = tm.ok(
+        plan: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(
                 workspace_root=workspace_root,
                 request=request,
@@ -220,7 +220,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
         }
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [
                     c.Infra.MAKE,
@@ -302,7 +302,7 @@ class TestsCodegenMakeEnvironment:
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
         )
 
-        process = tm.ok(result)
+        process: p.Cli.CommandOutput = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tm.that(
             curl_log.read_text(encoding="utf-8"),
@@ -390,7 +390,7 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
@@ -436,7 +436,7 @@ class TestsCodegenMakeEnvironment:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
@@ -552,7 +552,7 @@ class TestsCodegenMakeEnvironment:
                 env=clean_env,
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
             )
-            process = tm.ok(result)
+            process: p.Cli.CommandOutput = tm.ok(result)
             tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
 
         tm.that(curl_log.exists(), eq=False)
@@ -605,7 +605,7 @@ class TestsCodegenMakeEnvironment:
             env=clean_env,
             remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
         )
-        process = tm.ok(result)
+        process: p.Cli.CommandOutput = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tm.that(
             curl_log.read_text(encoding="utf-8"),

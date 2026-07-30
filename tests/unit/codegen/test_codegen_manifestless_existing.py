@@ -24,7 +24,9 @@ class TestCodegenManifestlessExisting:
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
         }
-        pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
+        pyproject_source: str = tm.ok(
+            u.Cli.files_read_text(Path.cwd() / "pyproject.toml")
+        )
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
@@ -46,7 +48,9 @@ class TestCodegenManifestlessExisting:
             )
         )
 
-        derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        derived: m.Infra.WorkspaceSpec = tm.ok(
+            FlextInfraWorkspaceDetector.load_workspace_spec(root)
+        )
         tm.that(derived.repository, eq=repository)
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
@@ -65,7 +69,7 @@ class TestCodegenManifestlessExisting:
         artifact_request = request.model_copy(
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )
-        initial_plan = tm.ok(
+        initial_plan: m.Infra.CodegenPlan = tm.ok(
             FlextInfraCodegenConform(workspace_root=root).plan(artifact_request)
         )
         plans = {
@@ -100,14 +104,16 @@ class TestCodegenManifestlessExisting:
                 update={"mode": c.Infra.CodegenConformMode.CHECK}
             )
         )
-        verified = tm.ok(fixed_point)
+        verified: m.Infra.CodegenPlan = tm.ok(fixed_point)
         tm.that(tuple(file.path for file in verified.files if file.changed), eq=())
 
     def test_existing_root_rejects_non_regular_create_only_destination(
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        pyproject_source = tm.ok(u.Cli.files_read_text(Path.cwd() / "pyproject.toml"))
+        pyproject_source: str = tm.ok(
+            u.Cli.files_read_text(Path.cwd() / "pyproject.toml")
+        )
         tm.ok(u.Cli.atomic_write_text_file(root / "pyproject.toml", pyproject_source))
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)

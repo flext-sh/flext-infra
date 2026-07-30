@@ -291,17 +291,17 @@ class TestsFlextInfraMakeSerialization:
         tracked.write_text("base", encoding="utf-8")
         test_u.Tests.initialize_git_repo(tmp_path)
         exclusions = config.Infra.codegen.make.serialization.snapshot_excludes
-        baseline = tm.ok(
+        baseline: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
         )
 
         tracked.write_text("staged", encoding="utf-8")
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", tracked.name], cwd=tmp_path))
-        staged = tm.ok(
+        staged: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
         )
         tracked.write_text("base", encoding="utf-8")
-        mixed = tm.ok(
+        mixed: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
         )
 
@@ -320,12 +320,12 @@ class TestsFlextInfraMakeSerialization:
         tracked.write_text("base", encoding="utf-8")
         test_u.Tests.initialize_git_repo(tmp_path)
         exclusions = config.Infra.codegen.make.serialization.snapshot_excludes
-        baseline = tm.ok(
+        baseline: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
         )
 
         tracked.unlink()
-        deleted = tm.ok(
+        deleted: m.Infra.WorkspaceFingerprint = tm.ok(
             u.Infra.workspace_fingerprint(tmp_path, excluded_paths=exclusions)
         )
 
@@ -422,10 +422,10 @@ class TestsFlextInfraMakeSerialization:
             (
                 tmp_path / ".reports" / "serialization-test" / "incumbent-release"
             ).write_text("", encoding="utf-8")
-            incumbent_process = tm.ok(
+            incumbent_process: p.Cli.CommandOutput = tm.ok(
                 incumbent_future.result(timeout=self._process_start_timeout_seconds)
             )
-            contender_process = tm.ok(
+            contender_process: p.Cli.CommandOutput = tm.ok(
                 contender_future.result(timeout=self._process_start_timeout_seconds)
             )
 
@@ -524,10 +524,10 @@ class TestsFlextInfraMakeSerialization:
             tm.that((state / "started").exists(), where=bool)
             contender_future = executor.submit(command, callers[1])
             (state / "release").write_text("", encoding="utf-8")
-            incumbent = tm.ok(
+            incumbent: p.Cli.CommandOutput = tm.ok(
                 incumbent_future.result(timeout=self._process_start_timeout_seconds)
             )
-            contender = tm.ok(
+            contender: p.Cli.CommandOutput = tm.ok(
                 contender_future.result(timeout=self._process_start_timeout_seconds)
             )
 
@@ -562,7 +562,7 @@ class TestsFlextInfraMakeSerialization:
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
-        outer_make = tm.ok(
+        outer_make: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", validation_verb], cwd=tmp_path
             )
@@ -576,7 +576,7 @@ class TestsFlextInfraMakeSerialization:
         self, tmp_path: Path
     ) -> None:
         """A caller cannot silently fall back to a different Make owner."""
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [
                     sys.executable,
@@ -624,7 +624,7 @@ class TestsFlextInfraMakeSerialization:
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [
                     sys.executable,
@@ -681,7 +681,7 @@ class TestsFlextInfraMakeSerialization:
         )
         test_u.Tests.initialize_git_repo(tmp_path)
 
-        process = tm.ok(
+        process: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [
                     sys.executable,
@@ -816,7 +816,7 @@ class TestsFlextInfraMakeSerialization:
                 fixed_point_lock_held = True
             tm.that(fixed_point_lock_held, where=bool)
             (state / "fixed-point-release").write_text("", encoding="utf-8")
-            mutation = tm.ok(
+            mutation: p.Cli.CommandOutput = tm.ok(
                 mutation_future.result(timeout=self._process_start_timeout_seconds)
             )
 

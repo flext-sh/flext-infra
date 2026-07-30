@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import config, t, u
+from flext_infra import config, m, t, u
 from flext_tests import tm
 
 
@@ -27,7 +27,7 @@ from flext_tests import tm
 def owned_provider() -> str:
     """Resolve the engine's own provider from its own catalog entry."""
     engine_root = Path(__file__).resolve().parents[2]
-    metadata = tm.ok(u.read_project_metadata(engine_root))
+    metadata: m.ProjectMetadata = tm.ok(u.read_project_metadata(engine_root))
     distribution = metadata.project.name
     entry = next(
         (

@@ -359,12 +359,13 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
     @staticmethod
     def _classvar_rule() -> m.EnforcementRuleSpec:
         catalog = u.build_canonical_catalog()
-        return next(
+        rule: m.EnforcementRuleSpec = next(
             rule
             for rule in catalog.enabled_rules()
             if rule.fix_action is not None
             and rule.fix_action.target == "classvar_relocation"
         )
+        return rule
 
     @staticmethod
     def _write_classvar_test_module(project_root: Path) -> Path:
