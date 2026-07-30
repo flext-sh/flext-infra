@@ -87,7 +87,6 @@ Infra:
       selector: WHAT
       apply_variable: APPLY
       apply_value: Y
-      docs_phases: [generate, fix, audit, build, validate]
       docs:
         actions: [all, generate, fix, audit, build, validate]
         default_action: all
@@ -137,7 +136,7 @@ Infra:
           default_what: diagnostics
           apply_guarded: false
         - name: docs
-          default_what: check
+          default_what: all
           apply_guarded: false
         - name: clean
           default_what: generated
@@ -504,6 +503,9 @@ Infra:
             - settings.json
           gitignore_additions:
             - settings.json
+        flext-core:
+          archive_names:
+            - config.json
         flext-tap-oracle-wms:
           archive_names:
             - config.json
@@ -624,6 +626,7 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.0.3
           - ruff>=0.15.12
+          - rumdl>=0.2.46
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:
@@ -994,6 +997,8 @@ Infra:
             - ".direnv/"
             - ".reports/"
             - ".venv/"
+            - ".bin/"
+            - ".tools/"
             - "__pycache__/"
             - "base.mk"
             - "!.pre-commit-config.yaml"

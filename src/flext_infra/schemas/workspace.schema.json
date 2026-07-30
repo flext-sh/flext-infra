@@ -38,6 +38,13 @@
         "$ref": "#/$defs/exclusion"
       }
     },
+    "external_dependency_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      }
+    },
     "repository_policy_overlays": {
       "type": "array",
       "uniqueItems": true,

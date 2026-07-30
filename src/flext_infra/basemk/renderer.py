@@ -91,7 +91,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     @staticmethod
     def _render_template(
         template: p.Infra.RenderableTemplate,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> str:
         """Render template."""
         rendered: str = template.render(**kwargs)
@@ -112,7 +112,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
-                    # NOTE: docs configuration was removed from MakeSpec;
+                    docs=config.Infra.codegen.make.docs,
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
@@ -133,7 +133,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_single(
         self,
         template_name: str,
-        **kwargs: m.Infra.BaseMkConfig | t.Infra.InfraValue | type,
+        **kwargs: m.Infra.BaseMkConfig | m.BaseModel | t.Infra.InfraValue | type,
     ) -> p.Result[str]:
         """Render a single named template with the given context."""
         try:

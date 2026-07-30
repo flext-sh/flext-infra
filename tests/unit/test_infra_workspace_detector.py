@@ -126,6 +126,16 @@ class TestsFlextInfraInfraWorkspaceDetector:
             )
         )
         member_root = workspace_root / member_path
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.email", "infra@example.com"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.name", "Infra Tests"], cwd=member_root
+            )
+        )
         provider = config.Infra.codegen.providers[0]
         canonical_url = f"{provider.base_url}/flext-member.git"
         section = "submodule.members/flext-member"

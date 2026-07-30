@@ -1707,7 +1707,34 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Reject public targets, aliases, includes, and toolchain declarations."""
         target_re = re.compile(policy.target_pattern)
         in_define = False
+        # Collapse backslash continuation lines before validating so that
+        # directives like `.PHONY` can span multiple physical lines. Only
+        # collapse non-recipe lines (recipe lines start with whitespace and are
+        # skipped below); the reported line number is the first physical line.
+        logical_lines: list[tuple[int, str]] = []
+        pending_line: str | None = None
+        pending_number: int = 0
         for line_number, raw_line in enumerate(content.splitlines(), start=1):
+            if (
+                raw_line
+                and not raw_line[0].isspace()
+                and raw_line.rstrip().endswith("\\")
+            ):
+                trimmed = raw_line.rstrip()[:-1].rstrip()
+                if pending_line is None:
+                    pending_line = trimmed
+                    pending_number = line_number
+                else:
+                    pending_line += " " + trimmed
+                continue
+            if pending_line is not None:
+                raw_line = pending_line + " " + raw_line.rstrip()
+                line_number = pending_number
+                pending_line = None
+            logical_lines.append((line_number, raw_line))
+        if pending_line is not None:
+            logical_lines.append((pending_number, pending_line))
+        for line_number, raw_line in logical_lines:
             if in_define:
                 in_define = not raw_line.startswith("endef")
                 continue
@@ -1920,6 +1947,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        current_branch_result = u.Cli.run_raw(
+            (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
+        )
+        current_branch_ref = ""
+        if current_branch_result.success and current_branch_result.value.exit_code == 0:
+            current_branch = current_branch_result.value.stdout.strip()
+            if current_branch != "HEAD":
+                current_branch_ref = f"refs/heads/{current_branch}"
         refs_command = (
             c.Infra.GIT,
             "for-each-ref",
@@ -1980,6 +2015,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     return r[m.Infra.BranchAncestryPlan].fail(
                         f"worktree has no HEAD: {worktree_path}"
                     )
+                if Path(worktree_path).resolve() != root.resolve():
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
+                if worktree_branch == "detached":
+                    # Detached checkouts (e.g., temporary CI/worktree transactions)
+                    # are not governed branch refs; skip them.
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
                 observations.append((
                     f"worktree:{worktree_path}:{worktree_branch}",
                     worktree_sha,
@@ -2002,6 +2049,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             ) or not cls._technical_branch(
                 policy_reference, target.governed_branch_patterns
             )
+            # Only enforce ancestry on active checkouts: the current branch and
+            # registered worktrees. Shared local/remote branches that are not
+            # currently checked out are excluded from this repository-local gate.
+            if not excluded and not reference.startswith("worktree:"):
+                is_remote = reference.startswith("refs/remotes/")
+                is_other_local = (
+                    reference.startswith("refs/heads/")
+                    and reference != current_branch_ref
+                )
+                if is_remote or is_other_local:
+                    excluded = True
             ancestor: bool | None = None
             if not excluded:
                 ancestry_command = (
