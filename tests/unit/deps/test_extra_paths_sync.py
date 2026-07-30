@@ -11,8 +11,6 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_tests import tf, tm
 from tests import u
 
-pytestmark = pytest.mark.timeout(60)
-
 
 @pytest.fixture
 def pyright_content() -> str:

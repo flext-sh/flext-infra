@@ -1,0 +1,95 @@
+{% macro submodule_setup_recipe(target, project_root, managed_gitlinks) -%}
+.PHONY: {{ target }}
+
+{{ target }}:
+	@set -eu; \
+	root="{{ project_root }}"; \
+	managed="{{ managed_gitlinks }}"; \
+	if [ -z "$$managed" ]; then exit 0; fi; \
+	if [ ! -f "$$root/.gitmodules" ]; then \
+		printf 'ERROR: governed gitlinks require %s/.gitmodules\n' "$$root" >&2; \
+		exit 2; \
+	fi; \
+	for child_path in $$managed; do \
+		keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+		section=""; \
+		for key in $$keys; do \
+			declared=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
+			if [ "$$declared" = "$$child_path" ]; then \
+				if [ -n "$$section" ]; then \
+					printf 'ERROR: governed gitlink path is duplicated: %s\n' "$$child_path" >&2; \
+					exit 2; \
+				fi; \
+				section=$${key%.path}; \
+			fi; \
+		done; \
+		if [ -z "$$section" ]; then \
+			printf 'ERROR: governed gitlink is absent from .gitmodules: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		git -C "$$root" submodule sync --quiet -- "$$child_path"; \
+		state=$$(git -C "$$root" submodule status -- "$$child_path"); \
+		case "$$state" in \
+			-*) git -C "$$root" submodule update --init -- "$$child_path" ;; \
+		esac; \
+		child_root="$$root/$$child_path"; \
+		if [ -n "$$(git -C "$$child_root" status --porcelain)" ]; then \
+			printf 'ERROR: %s: local changes must be reconciled before setup\n' "$$child_path" >&2; \
+			exit 1; \
+		fi; \
+		branch=$$(git -C "$$root" config -f .gitmodules --get --default "" "$$section.branch"); \
+		if [ -z "$$branch" ]; then \
+			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		if [ "$$branch" = "." ]; then \
+			branch=$$(git -C "$$root" branch --show-current); \
+			if [ -z "$$branch" ]; then \
+				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
+				exit 1; \
+			fi; \
+		fi; \
+		git check-ref-format --branch "$$branch" >/dev/null || { \
+			printf 'ERROR: %s: invalid declared branch %s\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		git -C "$$child_root" fetch --quiet origin "$$branch" || { \
+			printf 'ERROR: %s: fetch origin %s failed\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		gitlink=$$(git -C "$$root" ls-files --stage -- "$$child_path" | awk '$$1 == "160000" {print $$2}'); \
+		if [ -z "$$gitlink" ]; then \
+			printf 'ERROR: governed gitlink is absent from the index: %s\n' "$$child_path" >&2; \
+			exit 2; \
+		fi; \
+		current=$$(git -C "$$child_root" branch --show-current); \
+		head=$$(git -C "$$child_root" rev-parse HEAD); \
+		if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
+			printf 'ERROR: %s: conflicting branch %s; expected %s\n' "$$child_path" "$$current" "$$branch" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$current" ] && [ "$$head" != "$$gitlink" ]; then \
+			printf 'ERROR: %s: detached HEAD diverges from recorded gitlink %s\n' "$$child_path" "$$gitlink" >&2; \
+			exit 1; \
+		fi; \
+		if [ -z "$$current" ]; then \
+			if git -C "$$child_root" rev-parse --verify --quiet "refs/heads/$$branch" >/dev/null; then \
+				git -C "$$child_root" merge-base --is-ancestor "$$gitlink" "refs/heads/$$branch" || { \
+					printf 'ERROR: %s: local branch %s diverges from gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+					exit 1; \
+				}; \
+				git -C "$$child_root" checkout --quiet "$$branch"; \
+			else \
+				git -C "$$child_root" checkout --quiet -b "$$branch"; \
+			fi; \
+		fi; \
+		git -C "$$child_root" pull --ff-only --quiet origin "$$branch" || { \
+			printf 'ERROR: %s: fast-forward pull of origin/%s failed\n' "$$child_path" "$$branch" >&2; \
+			exit 1; \
+		}; \
+		if ! git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+			printf 'ERROR: %s: branch %s diverges from recorded gitlink %s\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
+			exit 1; \
+		fi; \
+	done
+{%- endmacro %}

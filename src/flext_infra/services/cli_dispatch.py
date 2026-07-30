@@ -6,13 +6,13 @@ import sys
 from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
+from flext_infra.services.cli_transaction import CliTransactionService
 from flext_infra.typings import t
 from flext_infra.utilities import u
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
-from flext_infra.services.cli_transaction import CliTransactionService
 
 if TYPE_CHECKING:
     from flext_infra import p

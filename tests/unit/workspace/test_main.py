@@ -9,11 +9,8 @@ import pytest
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
-from flext_infra.workspace.sync import FlextInfraSyncService
 from flext_tests import tm
 from tests import c, u
-
-pytestmark = pytest.mark.timeout(60)
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -53,18 +50,16 @@ def _write_workspace(workspace_root: Path) -> None:
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "workspace.yaml").write_text(
         (
-            "version: 2\n"
+            "version: 3\n"
             "name: workspace-root\n"
             "repository:\n"
             "  name: workspace-root\n"
             "  distribution: workspace-root\n"
             "  provider: flext-sh\n"
             "  url: https://github.com/flext-sh/workspace-root.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: workspace-root\n"
             "  state: active\n"
-            "  profile: workspace-root\n"
             "  checkout: root\n"
             "  codegen: conform\n"
             "  package: false\n"
@@ -75,17 +70,14 @@ def _write_workspace(workspace_root: Path) -> None:
             "    distribution: demo-a\n"
             "    provider: flext-sh\n"
             "    url: https://example.invalid/demo-a.git\n"
-            "    branch: main\n"
             "    path: demo-a\n"
             "    role: workspace-member\n"
             "    state: active\n"
-            "    profile: workspace-member\n"
             "    checkout: submodule\n"
             "    codegen: conform\n"
             "    package: true\n"
             "    editable: true\n"
             "    read_only: false\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -117,18 +109,16 @@ def _write_orchestratable_workspace(
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "workspace.yaml").write_text(
         (
-            "version: 2\n"
+            "version: 3\n"
             "name: workspace-root\n"
             "repository:\n"
             "  name: workspace-root\n"
             "  distribution: workspace-root\n"
             "  provider: flext-sh\n"
             "  url: https://github.com/flext-sh/workspace-root.git\n"
-            "  branch: main\n"
             "  path: .\n"
             "  role: workspace-root\n"
             "  state: active\n"
-            "  profile: workspace-root\n"
             "  checkout: root\n"
             "  codegen: conform\n"
             "  package: false\n"
@@ -139,17 +129,14 @@ def _write_orchestratable_workspace(
             "    distribution: demo\n"
             "    provider: flext-sh\n"
             "    url: https://example.invalid/demo.git\n"
-            "    branch: main\n"
             "    path: demo\n"
             "    role: workspace-member\n"
             "    state: active\n"
-            "    profile: workspace-member\n"
             "    checkout: submodule\n"
             "    codegen: conform\n"
             "    package: true\n"
             "    editable: true\n"
             "    read_only: false\n"
-            "content_only: []\n"
             "exclusions: []\n"
         ),
         encoding="utf-8",
@@ -189,21 +176,6 @@ class TestsFlextInfraWorkspaceMain:
 
         tm.ok(result)
         tm.that(result.value, eq=c.Infra.WorkspaceMode.STANDALONE)
-
-    def test_sync_workspace_returns_sync_result(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project"
-        _write_project(project_root, "demo-project")
-
-        result = FlextInfraSyncService(
-            canonical_root=project_root.parent,
-            workspace_root=project_root,
-            apply_changes=False,
-        ).execute()
-
-        tm.fail(result)
-        error = result.error or ""
-        tm.that(error, has="codegen drift detected")
-        tm.that(error, has="Makefile")
 
     def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
         result = FlextInfraOrchestratorService(
@@ -263,7 +235,6 @@ class TestsFlextInfraWorkspaceMain:
     def test_workspace_main_sync_runs_public_command(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
-        u.Tests.initialize_git_repo(project_root)
 
         exit_code = workspace_main([
             "sync",

@@ -1,3 +1,106 @@
+# BLOCK EVERYTHING BY DEFAULT
+/*
+/*/
+!/LICENSE
+
+# Allow all FLEXT ecosystem project directories
+!flext-*/
+
+# WHITELIST: Workspace Directories
+!docker/
+!docs/
+!examples/
+!.github/
+!src/
+!tests/
+!typings/
+!libs/
+!.vscode/
+!.code-review-graph/
+!.claude/
+!.claude-plugin/
+!/config/
+!/config/workspace.yaml
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/settings.local.json
+!.agents/
+!.agents/**
+.agents/skills/*/report.json
+
+# Dispatcher-based command surface (Make SSOT)
+!scripts/
+!scripts/cmd/
+!scripts/cmd/**
+scripts/*.py
+scripts/*.sh
+scripts/*.md
+scripts/maintenance/
+!scripts/dispatch.py
+!scripts/__init__.py
+
+# TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local.
+!.beads/
+.beads/*
+!.beads/config.yaml
+
+# Python configuration
+!pyproject.toml
+!.taplo.toml
+!pyrefly.toml
+!poetry.lock
+!ruff-shared.toml
+
+# mise toolchain pinning
+!.mise.toml
+!.default-python-packages
+!.python-version
+
+# Docker configuration
+!.dockerignore
+
+# Build and automation
+!Makefile
+!Makefile.flext-docker
+!*.mk
+
+# Documentation
+!README.md
+!AGENTS.md
+!AGENTS.md
+!codex.md
+!.markdownlint.json
+!.markdownlintignore
+!.shellcheckrc
+
+# Git configuration
+!.gitignore
+!.gitmodules
+!.gitattributes
+
+# direnv environment (no secrets — venv activation only)
+!.envrc
+!.envrc.local
+
+# Environment templates (NOT .env - keep secrets out!)
+!.env.test
+!.env.example
+!.env.template
+
+# WHITELIST: Contents Inside Allowed Directories
+!flext-*/**
+!docker/**
+!docs/**
+!examples/**
+!.github/**
+!src/**
+!tests/**
+!typings/**
+!libs/**
+!.vscode/**
+!.claude/**
+!.claude-plugin/**
+
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
 !.agents/skills/
@@ -217,6 +320,7 @@ base.mk
 # Derived build and tool artifacts
 __pyrefly_virtual__/
 .benchmarks/
+.bin/
 .cache/
 .codegraph/
 .dolt_dropped_databases/
@@ -233,6 +337,7 @@ __pyrefly_virtual__/
 .sisyphus/
 .state/
 .superpowers/
+.tools/
 .trash/
 .turbo/
 .venv.*/

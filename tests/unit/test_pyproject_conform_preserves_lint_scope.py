@@ -45,6 +45,12 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
+    def test_ssot_preserves_pytest_assertion_semantics(self) -> None:
+        """Keep generated and external pytest suites valid without migration."""
+        rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/tests/**"]
+
+        tm.that(rules, has="assert")
+
     def test_ssot_declares_every_governed_per_file_ignore(self) -> None:
         """No governed lint exemption is missing from the tooling SSOT."""
         missing = _live_per_file_ignores() - _ssot_per_file_ignores()

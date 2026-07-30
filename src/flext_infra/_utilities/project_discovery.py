@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra.typings import t
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProjectDiscovery(
@@ -32,7 +32,7 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         Algorithm:
           1. Check if workspace_root itself looks like a project
-          2. Enumerate ``.gitmodules``-tracked submodules of the workspace
+          2. Enumerate only internal members declared by workspace config
           3. When explicitly requested, surface external members declared by
              path or glob in the workspace's pyproject.
           4. Return sorted list including the workspace root itself
@@ -44,7 +44,7 @@ class FlextInfraUtilitiesProjectDiscovery(
             include_attached: Include explicitly declared external workspace members.
 
         Returns:
-            List of project root paths sorted by ``.gitmodules`` order, with
+            List of project root paths sorted by configured member order, with
             the workspace root prepended when it satisfies project shape, and
             attached external repos appended in alphabetical order.
 

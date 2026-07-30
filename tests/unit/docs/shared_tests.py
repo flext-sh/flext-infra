@@ -164,7 +164,8 @@ def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
     package_root = project_root / "src" / "demo_pkg"
     package_root.mkdir(parents=True)
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='workspace'\n", encoding="utf-8"
+        "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers=['flext-demo']\n",
+        encoding="utf-8",
     )
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (project_root / c.Infra.PYPROJECT_FILENAME).write_text(

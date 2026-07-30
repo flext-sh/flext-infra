@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
@@ -109,6 +109,29 @@ class FlextInfraModelsDepsToolSettings(
             m.Field(
                 alias="standard-addopts",
                 description="Standard pytest addopts enforced by modernizer.",
+            ),
+        ]
+        profile_sort: Annotated[
+            Literal[
+                "calls",
+                "cumulative",
+                "filename",
+                "line",
+                "name",
+                "nfl",
+                "pcalls",
+                "stdname",
+                "time",
+            ],
+            m.Field(alias="profile-sort", description="Sort key for cProfile reports."),
+        ]
+        profile_limit: Annotated[
+            int,
+            m.Field(
+                alias="profile-limit",
+                gt=0,
+                le=1000,
+                description="Maximum cProfile rows rendered.",
             ),
         ]
 
@@ -426,6 +449,9 @@ class FlextInfraModelsDepsToolSettings(
         ]
         ruff_src: Annotated[
             t.StrTuple, m.Field(description="Resolved Ruff source roots")
+        ]
+        ruff_exclude: Annotated[
+            t.StrTuple, m.Field(description="Resolved Ruff exclusions")
         ]
         ruff_ignore: Annotated[
             t.StrTuple,

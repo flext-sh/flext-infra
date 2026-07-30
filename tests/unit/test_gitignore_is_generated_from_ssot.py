@@ -18,6 +18,7 @@ import flext_infra
 from flext_tests import tm
 
 from flext_infra import c, config, u
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 def _workspace_root() -> Path:
@@ -26,13 +27,10 @@ def _workspace_root() -> Path:
 
 
 def _repository_profile() -> c.Infra.MakeProfile:
-    """Return this repository's declared Make profile from the catalog SSOT."""
-    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
-    return next(
-        repository.profile
-        for repository in config.Infra.codegen.repositories
-        if repository.name == repository_name and repository.profile is not None
-    )
+    """Return this repository's profile inferred by the production detector."""
+    return tm.ok(
+        FlextInfraWorkspaceDetector.conform_target(_workspace_root())
+    ).make_profile
 
 
 def _ssot_patterns() -> tuple[str, ...]:

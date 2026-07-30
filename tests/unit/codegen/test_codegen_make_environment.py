@@ -18,28 +18,47 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool = False
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+        *,
+        attached: bool = False,
+        local_infra: bool = False,
     ) -> tuple[Path, Path]:
+        provider = config.Infra.codegen.providers[0]
+        role = (
+            c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            if attached
+            else c.Infra.RepositoryRole(profile.value)
+        )
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
-            url="https://github.com/flext-sh/fixture-project.git",
-            branch=config.Infra.codegen.providers[0].branch,
+            url=f"{provider.base_url}/fixture-project.git",
             path=Path(),
-            role=c.Infra.RepositoryRole(profile.value),
-            provider="flext-sh",
-            profile=profile,
-            checkout=c.Infra.CheckoutKind.ROOT,
+            role=role,
+            provider=provider.name,
+            checkout=(
+                c.Infra.CheckoutKind.SUBMODULE
+                if attached
+                else c.Infra.CheckoutKind.ROOT
+            ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
             read_only=False,
         )
         project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = (
-            project_root.parent
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            else project_root
+        workspace_root = project_root.parent if attached else project_root
+        infra_repositories = tuple(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        )
+        tm.that(len(infra_repositories), eq=1)
+        local_members = (
+            (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
+            if local_infra
+            else ()
         )
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
@@ -61,12 +80,10 @@ class TestsCodegenMakeEnvironment:
                 upstream="flext_cli",
                 homepage="https://github.com/flext-sh/fixture-project",
                 documentation="https://github.com/flext-sh/fixture-project",
-                workspace_root_rel=(
-                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
-                ),
+                workspace_root_rel=".",
                 year=2026,
             ),
-            members=(),
+            members=local_members,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -121,8 +138,7 @@ class TestsCodegenMakeEnvironment:
         ("profile", "attached"),
         [
             (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, True),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, False),
+            (c.Infra.MakeProfile.STANDALONE, True),
             (c.Infra.MakeProfile.STANDALONE, False),
         ],
     )
@@ -130,10 +146,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
+        project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = workspace_root if attached else project_root
+        runtime_root = project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -187,12 +203,19 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
         tm.that(output[4], eq=str(runtime_python))
 
-    def test_setup_preserves_external_uv_and_removes_hostile_venv(
-        self, tmp_path: Path
+    @pytest.mark.parametrize(
+        ("profile", "local_infra"),
+        [
+            (c.Infra.MakeProfile.STANDALONE, False),
+            (c.Infra.MakeProfile.WORKSPACE_ROOT, True),
+        ],
+    )
+    def test_setup_bootstraps_configured_engine_before_project_environment(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool
     ) -> None:
-        """Clean CI can provision uv on PATH without leaking an active venv."""
+        """Setup conforms stale metadata before project-owned uv reads it."""
         project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
+            tmp_path, profile, local_infra=local_infra
         )
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
@@ -235,9 +258,30 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        commands = uv_log.read_text(encoding="utf-8")
-        tm.that(commands, has="venv --clear")
-        tm.that(commands, has="sync --project")
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(commands[0], has=["run --no-project", "codegen conform"])
+        if local_infra:
+            tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
+            tm.that(commands[0], lacks="git+")
+        else:
+            infra_repository = next(
+                item
+                for item in config.Infra.codegen.repositories
+                if item.distribution == config.Infra.name
+            )
+            infra_provider = tm.ok(
+                u.Infra.repository_provider(
+                    infra_repository, config.Infra.codegen.providers
+                )
+            )
+            tm.that(
+                commands[0],
+                has=(
+                    f"--with {infra_repository.distribution} @ "
+                    f"git+{infra_repository.url}@{infra_provider.branch}"
+                ),
+            )
+        tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -345,7 +389,8 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
+            "MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)",
+            'git -C "$$root" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

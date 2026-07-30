@@ -9,16 +9,15 @@ repository:
   distribution: {{ dist }}
   provider: {{ repository_provider }}
   url: {{ repository_git_url }}
-  branch: {{ repository_branch }}
   path: .
   role: {{ make_profile }}
   state: active
-  profile: {{ make_profile }}
   checkout: {{ workspace_repository.checkout | tojson }}
   codegen: {{ workspace_repository.codegen | tojson }}
   package: {{ workspace_repository.package | tojson }}
   editable: {{ workspace_repository.editable | tojson }}
   read_only: {{ workspace_repository.read_only | tojson }}
+  beads: {{ workspace_repository.beads | tojson }}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
@@ -61,16 +60,15 @@ members:
     distribution: {{ repository.distribution | tojson }}
     provider: {{ repository.provider | tojson }}
     url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
     path: {{ repository.path | tojson }}
     role: {{ repository.role | tojson }}
     state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
     checkout: {{ repository.checkout | tojson }}
     codegen: {{ repository.codegen | tojson }}
     package: {{ repository.package | tojson }}
     editable: {{ repository.editable | tojson }}
     read_only: {{ repository.read_only | tojson }}
+    beads: {{ repository.beads | tojson }}
 {%- if repository.extra_verbs %}
     extra_verbs:
 {%- for verb in repository.extra_verbs %}
@@ -90,22 +88,11 @@ members:
 {% else %}
   []
 {%- endfor %}
-content_only:
-{% for repository in workspace_content_only %}
-  - name: {{ repository.name | tojson }}
-    distribution: {{ repository.distribution | tojson }}
-    provider: {{ repository.provider | tojson }}
-    url: {{ repository.url | tojson }}
-    branch: {{ repository.branch | tojson }}
-    path: {{ repository.path | tojson }}
-    role: {{ repository.role | tojson }}
-    state: {{ repository.state | tojson }}
-    profile: {{ repository.profile | tojson }}
-    checkout: {{ repository.checkout | tojson }}
-    codegen: {{ repository.codegen | tojson }}
-    package: {{ repository.package | tojson }}
-    editable: {{ repository.editable | tojson }}
-    read_only: {{ repository.read_only | tojson }}
+repository_policy_overlays:
+{% for overlay in workspace_policy_overlays %}
+  - project: {{ overlay.project | tojson }}
+    beads_enabled: {{ overlay.beads_enabled | tojson }}
+    ci_enabled: {{ overlay.ci_enabled | tojson }}
 {% else %}
   []
 {%- endfor %}
