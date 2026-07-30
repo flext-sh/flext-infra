@@ -332,12 +332,6 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workspace_root, _ = _write_workspace(tmp_path)
-<<<<<<< HEAD
-        (workspace_root / ".gitmodules").write_text("", encoding="utf-8")
-        fake_bin = tmp_path / "bin"
-        uv_log = tmp_path / "uv.log"
-        _write_fake_uv(fake_bin, uv_log)
-=======
         setup_log = tmp_path / "setup.log"
         curl_log = tmp_path / "curl.log"
         fake_uv = tmp_path / "fake-uv"
@@ -360,7 +354,6 @@ class TestsWorkspaceRootMakeContract:
         )
         fake_bin = tmp_path / "fake" / "bin"
         _write_fake_curl(fake_bin, curl_log, fake_mise_source)
->>>>>>> shared/mro-z89e-export
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
@@ -378,18 +371,6 @@ class TestsWorkspaceRootMakeContract:
         )
         calls = setup_log.read_text(encoding="utf-8").splitlines()
         expected_environment = str(workspace_root / ".venv")
-<<<<<<< HEAD
-        managed_calls = tuple(
-            call for call in calls if call.startswith(f"{workspace_root}|")
-        )
-        for call in managed_calls:
-            project, environment, virtual_env, _arguments = call.split("|", 3)
-            tm.that(project, eq=str(workspace_root))
-            tm.that(environment, eq=expected_environment)
-            tm.that(virtual_env, eq=expected_environment)
-        arguments_log = "\n".join(managed_calls)
-        tm.that(arguments_log, has=f"venv --clear {expected_environment}")
-=======
         for call in (line for line in calls if line.startswith("uv|")):
             _tool, project, environment, virtual_env, arguments = call.split("|", 4)
             if arguments.startswith("run --no-project"):
@@ -400,7 +381,6 @@ class TestsWorkspaceRootMakeContract:
         arguments_log = "\n".join(calls)
         tm.that(arguments_log, lacks="venv --clear")
         tm.that(arguments_log, lacks="uv|venv")
->>>>>>> shared/mro-z89e-export
         tm.that(arguments_log, has=f"--python {expected_environment}")
         uv_install_at = next(
             index

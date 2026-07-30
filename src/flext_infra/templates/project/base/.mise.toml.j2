@@ -13,12 +13,6 @@ taplo = "{{ taplo_version }}"
 ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 tokei = "{{ tokei_version }}"
-<<<<<<< HEAD
-{% if beads_enabled -%}
-"github:gastownhall/beads" = "{{ beads_version }}"
-{% endif -%}
-=======
 {% if beads_enabled %}
 "go:github.com/steveyegge/beads/cmd/bd" = "{{ beads_version }}"
 {% endif %}
->>>>>>> shared/mro-z89e-export

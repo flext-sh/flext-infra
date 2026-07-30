@@ -5,15 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-<<<<<<< HEAD
-from flext_infra import FlextInfraWorkspaceEnvironment, c
-=======
 from flext_tests import tm
 
 from flext_infra import FlextInfraWorkspaceEnvironment
->>>>>>> shared/mro-z89e-export
 from flext_infra.workspace.migrator import FlextInfraProjectMigrator
-from flext_tests import tm
 from tests import u
 
 if TYPE_CHECKING:

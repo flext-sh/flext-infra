@@ -115,15 +115,11 @@ name = "external-consumer"
 dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 
 [tool.uv]
-<<<<<<< HEAD
-required-version = "==0.11.28"
-=======
-required-version = "==0.11.31"
-constraint-dependencies = ["uv==0.11.31", "requests<3"]
+required-version = ">=0.11.0"
+constraint-dependencies = ["uv==0.11.32", "requests<3"]
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
->>>>>>> shared/mro-z89e-export
 """
         first = tm.ok(
             u.Infra.pyproject_conform(
@@ -146,9 +142,6 @@ python-interpreter-path = "../.venv/bin/python"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-<<<<<<< HEAD
-        tm.that("required-version" not in document["tool"]["uv"], eq=True)
-=======
         tm.that(
             document["tool"]["uv"]["required-version"],
             eq=toolchain.uv_bootstrap_required_version,
@@ -157,7 +150,6 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(toolchain.uv_version, eq=config.Infra.codegen.toolchain.uv_version)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
->>>>>>> shared/mro-z89e-export
         tm.that(
             document["project"]["dependencies"][0],
             eq=(

@@ -45,7 +45,7 @@ class FlextInfraUtilitiesDocsBuild:
             if not isinstance(value, type) or not issubclass(value, BaseException):
                 msg = f"{module.__name__}.{name} is not an exception type"
                 raise OSError(msg)
-            errors.append(cast("type[BaseException]", value))
+            errors.append(value)
         return tuple(errors)
 
     @staticmethod
