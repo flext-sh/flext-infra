@@ -5,6 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -185,6 +187,35 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_gen_apply:" in content, eq=True)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
+
+    def test_transaction_worktrees_skip_the_beads_lifecycle(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Inside a worktree transaction the Beads lifecycle is fully skipped.
+
+        The transaction checkout legitimately carries the repository's .beads
+        tree. Disabling beads there while keeping the disabled-but-present
+        guard made every transactional conform fail with 'Beads is disabled
+        but tracker state exists'. Ephemeral transaction worktrees are not
+        tracker owners: verification is skipped, not failed.
+        """
+        root = tmp_path / "tx-checkout"
+        (root / ".beads").mkdir(parents=True)
+        (root / ".beads" / "config.yaml").write_text(
+            'issue-prefix: "mro"\n', encoding="utf-8"
+        )
+        plan = m.Infra.BeadsPlan(
+            repository_root=root,
+            enabled=False,
+            canonical_prefix="mro",
+            expected_version="1.1.0",
+        )
+        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
+        monkeypatch.setenv(c.Infra.WORKTREE_TRANSACTION_ENV, "1")
+        tm.ok(verify(plan, allow_missing=False))
+        # Outside a transaction the disabled-but-present guard still fails.
+        monkeypatch.delenv(c.Infra.WORKTREE_TRANSACTION_ENV)
+        tm.fail(verify(plan, allow_missing=False))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(

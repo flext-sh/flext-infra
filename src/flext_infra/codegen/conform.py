@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -1869,6 +1870,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         cls, plan: m.Infra.BeadsPlan, *, allow_missing: bool
     ) -> p.Result[bool]:
         """Validate Beads ownership and fail closed on namespace disagreement."""
+        if os.environ.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1":
+            # Ephemeral transaction worktrees carry the repository's .beads
+            # tree but never own the tracker lifecycle: skip, don't fail.
+            return r[bool].ok(True)
         beads_dir = plan.repository_root / ".beads"
         if not plan.enabled:
             if beads_dir.exists():
