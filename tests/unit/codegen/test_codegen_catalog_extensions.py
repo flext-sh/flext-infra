@@ -160,9 +160,7 @@ class TestsCodegenCatalogExtensions:
         twice = merge(once, rendered, managed_paths=managed)
         tm.that(once, eq=twice)
 
-    def test_setup_provisions_only_and_gen_owns_conformance(
-        self, tmp_path: Path
-    ) -> None:
+    def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
         Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
