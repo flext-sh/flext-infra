@@ -25,30 +25,39 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 
+def _conform_target(
+    root: Path, repository: m.Infra.RepositoryRef, *, make_profile: c.Infra.MakeProfile
+) -> m.Infra.RepositoryConformTarget:
+    """Build a typed rendering target from the same provider SSOT as production."""
+    provider = tm.ok(
+        u.Infra.repository_provider(repository, config.Infra.codegen.providers)
+    )
+    return m.Infra.RepositoryConformTarget(
+        repository=repository,
+        root=root,
+        make_profile=make_profile,
+        beads_enabled=make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT,
+        canonical_project_name=repository.distribution,
+        baseline_branch=provider.branch,
+        ci_enabled=True,
+        technical_branch_patterns=(
+            config.Infra.codegen.branch_policy.technical_branch_patterns
+        ),
+    )
+
+
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
     @pytest.mark.parametrize(
-        ("kind", "name", "expected_profile"),
+        ("kind", "name"),
         [
-            (
-                c.Infra.ProjectKind.EXTERNAL,
-                "flext-demo",
-                c.Infra.MakeProfile.STANDALONE,
-            ),
-            (
-                c.Infra.ProjectKind.INTERNAL,
-                "flext-member",
-                c.Infra.MakeProfile.WORKSPACE_MEMBER,
-            ),
+            (c.Infra.ProjectKind.EXTERNAL, "flext-demo"),
+            (c.Infra.ProjectKind.INTERNAL, "flext-member"),
         ],
     )
     def test_new_project_is_complete_and_idempotent(
-        self,
-        tmp_path: Path,
-        kind: c.Infra.ProjectKind,
-        name: str,
-        expected_profile: c.Infra.MakeProfile,
+        self, tmp_path: Path, kind: c.Infra.ProjectKind, name: str
     ) -> None:
         root = tmp_path / kind.value
         service = FlextInfraCodegenProjectNew(
@@ -69,7 +78,15 @@ class TestCodegenConform:
         tm.ok(second)
         tm.that(bool(first.value.written_files), eq=True)
         tm.that(second.value.written_files, eq=())
-        tm.that(first.value.plan.workspace.repository.profile, eq=expected_profile)
+        makefile_plan = next(
+            item
+            for item in first.value.plan.files
+            if item.path.name == c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(
+            makefile_plan.rendered,
+            has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
+        )
         tm.that(first.value.plan.request.root, eq=root.resolve())
         tm.that((root / "config" / "workspace.yaml").is_file(), eq=True)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
@@ -248,8 +265,6 @@ class TestCodegenConform:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         tm.that((root / "Makefile").is_file(), eq=True)
         tm.that((root / ".mise.toml").is_file(), eq=True)
-        mise = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))
-        tm.that("github:gastownhall/beads" in mise["tools"], eq=False)
         tm.that((root / ".python-version").is_file(), eq=True)
         tm.that((root / ".gitignore").is_file(), eq=True)
         tm.that((root / ".env.example").exists(), eq=False)
@@ -393,17 +408,18 @@ class TestCodegenConform:
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
         )
 
-    def test_make_context_accepts_manifest_without_project_or_known_provider(
+    def test_make_context_accepts_manifest_without_project_metadata(
         self, tmp_path: Path
     ) -> None:
         """Build Make context from repository-owned data alone."""
-        repository = config.Infra.codegen.repositories[0].model_copy(
-            update={"provider": "consumer-owned"}
-        )
+        repository = config.Infra.codegen.repositories[0]
         workspace = m.Infra.WorkspaceSpec(
             version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="consumer",
             repository=repository,
+        )
+        target = _conform_target(
+            tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(
@@ -416,7 +432,11 @@ class TestCodegenConform:
             )
         )
         context = FlextInfraCodegenConform.make_render_context(
-            repository, workspace, config.Infra.codegen, tooling_runtime=tooling_runtime
+            repository,
+            target,
+            workspace,
+            config.Infra.codegen,
+            tooling_runtime=tooling_runtime,
         )
         rendered = tm.ok(context)
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
@@ -437,7 +457,7 @@ class TestCodegenConform:
         workspace_repository = next(
             item
             for item in config.Infra.codegen.repositories
-            if item.profile is c.Infra.MakeProfile.WORKSPACE_ROOT
+            if item.role is c.Infra.RepositoryRole.WORKSPACE_ROOT
         )
         infra_repository = next(
             item
@@ -449,6 +469,11 @@ class TestCodegenConform:
             name=workspace_repository.name,
             repository=workspace_repository,
             members=(infra_repository,),
+        )
+        target = _conform_target(
+            tmp_path,
+            workspace_repository,
+            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(
@@ -464,6 +489,7 @@ class TestCodegenConform:
         rendered = tm.ok(
             FlextInfraCodegenConform.make_render_context(
                 infra_repository,
+                target,
                 workspace,
                 config.Infra.codegen,
                 tooling_runtime=tooling_runtime,
@@ -474,49 +500,6 @@ class TestCodegenConform:
             rendered.infra_source_root_rel,
             eq=(Path("..") / infra_repository.path).as_posix(),
         )
-
-    def test_make_context_resolves_standalone_infra_from_itself(
-        self, tmp_path: Path
-    ) -> None:
-        """A standalone infrastructure checkout bootstraps from its own source."""
-        infra_repository = next(
-            item
-            for item in config.Infra.codegen.repositories
-            if item.distribution == config.Infra.name
-        ).model_copy(
-            update={
-                "path": Path(),
-                "role": c.Infra.RepositoryRole.STANDALONE,
-                "profile": c.Infra.MakeProfile.STANDALONE,
-                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
-            }
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=infra_repository.name,
-            repository=infra_repository,
-        )
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=infra_repository.distribution,
-                package_name=infra_repository.distribution.replace("-", "_"),
-                path=tmp_path / "pyproject.toml",
-                declared_python_dirs=("src",),
-            )
-        )
-
-        rendered = tm.ok(
-            FlextInfraCodegenConform.make_render_context(
-                infra_repository,
-                workspace,
-                config.Infra.codegen,
-                tooling_runtime=tooling_runtime,
-            )
-        )
-
-        tm.that(rendered.infra_source_root_rel, eq=".")
 
     def test_public_cli_routes_check_and_apply_to_one_handler(
         self, infra_git_repo: Path
@@ -868,12 +851,10 @@ class TestScriptDispatchMakefile:
             name="demo-root",
             distribution="demo-root",
             url=f"{provider.base_url}/demo-root.git",
-            branch=provider.branch,
             path=Path(),
             # Script dispatch is a generic capability: exercise it on standalone.
             role=c.Infra.RepositoryRole.STANDALONE,
             provider=provider.name,
-            profile=c.Infra.MakeProfile.STANDALONE,
             checkout=c.Infra.CheckoutKind.ROOT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=False,

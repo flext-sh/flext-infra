@@ -14,11 +14,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from flext_cli import u
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.constants import c
+from flext_infra.iteration import FlextInfraUtilitiesIteration
 from flext_infra.models import m
 from flext_infra.typings import t
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilitiesRefactorDiscovery:

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra.constants import c
-from flext_infra.models import m
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from flext_infra.constants import c
+from flext_infra.models import m
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         try:
             pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             tree: p.AttributeProbe = pymodule.get_ast()
-            body: object = getattr(tree, "body", ())
+            body: p.AttributeProbe = getattr(tree, "body", ())
             if not isinstance(body, (list, tuple)):
                 return result
             for node in body:
@@ -119,7 +119,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     def _assignment_names(node: p.AttributeProbe, node_kind: str) -> t.StrSequence:
         """Return assignment-like target names from one top-level AST node."""
         if node_kind == "Assign":
-            raw_targets: object = getattr(node, "targets", ())
+            raw_targets: p.AttributeProbe = getattr(node, "targets", ())
             if not isinstance(raw_targets, (list, tuple)):
                 return ()
             return tuple(
@@ -133,7 +133,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
                 )
             )
         if node_kind == "AnnAssign":
-            target: object = getattr(node, "target", None)
+            target: p.AttributeProbe = getattr(node, "target", None)
             name = FlextInfraUtilitiesRopeAnalysisIntrospection._ast_named_value(target)
             return (name,) if name else ()
         if node_kind == "TypeAlias":
@@ -142,17 +142,17 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
         return ()
 
     @staticmethod
-    def _ast_named_value(node: p.AttributeProbe | object | None) -> str:
+    def _ast_named_value(node: p.AttributeProbe | None) -> str:
         """Return ``name``/``id`` carried by a Rope AST node."""
         if node is None:
             return ""
-        direct: object = getattr(node, "name", "")
+        direct: p.AttributeProbe = getattr(node, "name", "")
         if isinstance(direct, str) and direct:
             return direct
-        identifier: object = getattr(node, "id", "")
+        identifier: p.AttributeProbe = getattr(node, "id", "")
         if isinstance(identifier, str) and identifier:
             return identifier
-        nested: object = getattr(direct, "id", "")
+        nested: p.AttributeProbe = getattr(direct, "id", "")
         if isinstance(nested, str):
             return nested
         return ""
@@ -160,7 +160,7 @@ class FlextInfraUtilitiesRopeAnalysisIntrospection:
     @staticmethod
     def _ast_line(node: p.AttributeProbe) -> int:
         """Return a stable one-based source line for a Rope AST node."""
-        line: object = getattr(node, "lineno", 1)
+        line: p.AttributeProbe = getattr(node, "lineno", 1)
         return line if isinstance(line, int) and line > 0 else 1
 
     @classmethod

@@ -14,6 +14,7 @@ PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
 WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor %}
+MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 
@@ -54,7 +55,7 @@ UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository.branch }}
+FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := {{ infra_repository.distribution }} @ git+{{ infra_repository.url }}@{{ infra_repository_branch }}
 FLEXT_INFRA_SOURCE_ROOT_REL := {{ infra_source_root_rel or "" }}
 
 {% include "base_mypy_limit.mk.j2" %}
@@ -66,25 +67,11 @@ _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
 
-ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
+ifneq ($(filter $(MAKE_PROFILE),workspace-root standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
-DECLARED_WORKSPACE_ROOT := $(shell cd "$(PROJECT_ROOT)/$(WORKSPACE_ROOT_REL)" 2>/dev/null && pwd -P)
-SUPERPROJECT_ROOT_RAW := $(shell git rev-parse --show-superproject-working-tree 2>/dev/null)
-SUPERPROJECT_ROOT := $(shell test -n "$(SUPERPROJECT_ROOT_RAW)" && cd "$(SUPERPROJECT_ROOT_RAW)" 2>/dev/null && pwd -P)
-ifeq ($(SUPERPROJECT_ROOT),$(DECLARED_WORKSPACE_ROOT))
-ATTACHED_MEMBER := Y
-RUNTIME_ROOT := $(DECLARED_WORKSPACE_ROOT)
-else
-ATTACHED_MEMBER := N
 RUNTIME_ROOT := $(PROJECT_ROOT)
-endif
-else
-ATTACHED_MEMBER := N
-RUNTIME_ROOT := $(PROJECT_ROOT)
-endif
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
 FLEXT_INFRA_RUNTIME_ROOT := $(if $(filter $(MAKEFILE_ROOT),$(PROJECT_ROOT)),$(RUNTIME_ROOT),$(MAKEFILE_ROOT))
@@ -286,7 +273,6 @@ _serialized_{{ verb }}:
 {% endfor %}
 
 setup:
-	@if [ -n "$(strip $(WHAT))" ]; then printf 'ERROR: setup does not accept WHAT\n' >&2; exit 2; fi
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
@@ -320,7 +306,7 @@ _builtin_help_usage:
 # reconciler validates every initialized checkout before mutation, initializes
 # only missing modules, and preserves declared branches that fix forward beyond
 # the recorded gitlink.
-{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)") }}
+{{ submodule_setup_recipe("_builtin_setup_submodules", "$(PROJECT_ROOT)", "$(MANAGED_GITLINKS)") }}
 
 _builtin_require_environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
@@ -336,15 +322,6 @@ _builtin_setup_environment: _builtin_setup_conform
 	@$(UV) venv --clear "$(RUNTIME_VENV)"
 	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
-else ifeq ($(MAKE_PROFILE),workspace-member)
-ifeq ($(ATTACHED_MEMBER),Y)
-_builtin_setup_environment: _builtin_setup_conform
-	@$(SELF_MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment
-else
-_builtin_setup_environment: _builtin_setup_conform
-	@$(UV) venv --clear "$(RUNTIME_VENV)"
-	@$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
-endif
 else
 _builtin_setup_environment: _builtin_setup_conform
 	@$(UV) venv --clear "$(RUNTIME_VENV)"

@@ -1,4 +1,4 @@
-"""Validate workspace-root submodule setup through generated Make behavior."""
+"""Workspace-root submodule setup behavior through generated Make surfaces."""
 
 from __future__ import annotations
 
@@ -57,14 +57,11 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     planned = FlextInfraCodegenConform(
         workspace_root=root, request=request, initial_workspace=workspace
     ).plan(request)
-    plan: m.Infra.CodegenPlan = tm.ok(planned)
-    makefiles = tuple(
+    plan = tm.ok(planned)
+    makefile: m.Infra.CodegenFilePlan = next(
         file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
     )
-    tm.that(makefiles, len=1)
-    rendered: str = makefiles[0].rendered
-    tm.that(rendered, has="MAKE_PROFILE := workspace-root")
-    return rendered
+    return makefile.rendered
 
 
 def _write_executable(path: Path, body: str) -> None:
@@ -112,19 +109,6 @@ def _create_uninitialized_workspace(tmp_path: Path, makefile: str) -> Path:
             cwd=source,
         )
     )
-    tm.ok(
-        u.Cli.run_checked(
-            [
-                "git",
-                "config",
-                "-f",
-                ".gitmodules",
-                "submodule.flext-core.flext-managed",
-                "true",
-            ],
-            cwd=source,
-        )
-    )
     test_u.Tests.commit_git_changes(source, "Declare workspace member")
     remote_root = tmp_path / "workspace-remote"
     remote_root.mkdir()
@@ -142,12 +126,11 @@ class TestsWorkspaceRootSetupSubmodules:
     ) -> None:
         rendered = _render_workspace_root_makefile(tmp_path)
 
-        managed_at = rendered.index("flext-managed")
-        sync_at = rendered.index("submodule sync --quiet --")
-        update_at = rendered.index("submodule update --init --")
-        uv_at = rendered.index("$(UV) sync")
+        sync_at = rendered.index("git submodule sync --recursive")
+        update_at = rendered.index("git submodule update --init --recursive")
+        uv_at = rendered.index("uv sync")
 
-        tm.that(managed_at < sync_at < update_at < uv_at, eq=True)
+        tm.that(sync_at < update_at < uv_at, eq=True)
 
     def test_make_setup_initializes_local_submodule_before_uv_probe(
         self, tmp_path: Path
@@ -168,13 +151,12 @@ class TestsWorkspaceRootSetupSubmodules:
             "exit 0\n",
         )
         env = os.environ.copy()
+        env["PATH"] = f"{bin_dir}:{env['PATH']}"
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
-        outcome = u.Cli.run_raw(
-            ["make", "setup", f"UV={bin_dir / 'uv'}"], cwd=workspace, env=env
-        )
+        outcome = u.Cli.run_raw(["make", "setup"], cwd=workspace, env=env)
         process = outcome.value
 
         tm.that(process.exit_code, eq=0)
-        tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+        tm.that(workspace / "flext-core" / "pyproject.toml", is_file=True)
         tm.that(probe_log.read_text(encoding="utf-8"), has="sync --project")

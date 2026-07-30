@@ -14,7 +14,9 @@ from flext_cli import u
 from flext_core import r
 from flext_infra import c, config, m, t
 from flext_infra._utilities.git_scope import FlextInfraUtilitiesGitScope
-from flext_infra.workspace.serialization_lock import FlextInfraSerializationLockOwner
+from flext_infra._utilities.serialization_lock import (
+    FlextInfraUtilitiesSerializationLock,
+)
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -258,16 +260,19 @@ class FlextInfraUtilitiesWorktreeTransaction:
 
     @classmethod
     def _lint_commands(cls) -> p.Result[t.StrSequencePairTuple]:
-        """Bind lint tools from the active runtime PATH before cwd mutation."""
+        """Bind lint tools to the transaction interpreter before cwd mutation."""
+        executable_root = Path(sys.executable).parent
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable = shutil.which(command[0])
-            if executable is None:
-                return r[t.StrSequencePairTuple].fail(
-                    "required transaction lint executable not found on runtime PATH: "
-                    f"{command[0]}"
-                )
-            bound_command: t.StrSequence = (executable, *command[1:])
+            executable_path = shutil.which(command[0])
+            if executable_path is None:
+                executable = executable_root / command[0]
+                if not executable.is_file():
+                    return r[t.StrSequencePairTuple].fail(
+                        f"required transaction lint executable not found: {executable}"
+                    )
+                executable_path = str(executable)
+            bound_command: t.StrSequence = (executable_path, *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,
@@ -487,7 +492,7 @@ class FlextInfraUtilitiesWorktreeTransaction:
         def acquisition_failure(error: str) -> p.Result[bool]:
             return r[bool].fail(f"transaction lock acquisition failed: {error}")
 
-        return FlextInfraSerializationLockOwner.execute(
+        return FlextInfraUtilitiesSerializationLock.serialization_lock_execute(
             lock_paths_result.value,
             serialization.timeout_seconds,
             lambda: cls._apply_transaction_patches_locked(deltas),

@@ -1,10 +1,7 @@
-{# NOTE (multi-agent): ordered workspace topology is the sole .gitmodules owner.
-   Members are FLEXT-governed submodules only when config opts them into conform
-   mutation. Content-only/read-only repositories remain real Git submodules but
-   are explicitly non-managed so FLEXT tooling never mutates their checkouts. #}
-{%- set submodules = workspace_repositories | list + (workspace_content_only | selectattr("checkout", "equalto", "submodule") | list) -%}
-{% for repository in submodules %}[submodule "{{ repository.name }}"]
-	path = {{ repository.path }}
-	url = {{ repository.url }}
-	branch = {{ repository.branch }}
-	flext-managed = {{ (repository in workspace_repositories and not repository.read_only and repository.codegen == "conform") | lower }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}
+{# Only mutable first-party governed members are lifecycle-managed Git links.
+   External and fork paths remain observed read-only facts and never enter
+   conform-owned sync/init/checkout/update surfaces. #}
+{% for gitlink in workspace_gitlinks %}[submodule "{{ gitlink.repository.name }}"]
+	path = {{ gitlink.repository.path }}
+	url = {{ gitlink.repository.url }}
+	branch = {{ gitlink.branch }}{{ "\n\n" if not loop.last else "\n" }}{% endfor -%}

@@ -75,7 +75,7 @@ class FlextInfraConstantsCli:
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",
-        "workspace": "Workspace detection, sync, orchestration, migration",
+        "workspace": "Workspace detection and orchestration",
     })
     # mro-wkii.17.26 (codex): write routes share one isolated transaction seam.
     WORKTREE_TRANSACTION_ENV: Final[str] = "FLEXT_INFRA_WORKTREE_TRANSACTION"
@@ -106,8 +106,6 @@ class FlextInfraConstantsCli:
         "refactor:modernize-result-di",
         "refactor:namespace-enforce",
         "refactor:wrapper-root-namespace",
-        "workspace:migrate",
-        "workspace:sync",
     })
     "CLI routes whose mutations must execute in a complete temporary worktree."
     WORKTREE_TRANSACTION_MODE_ROUTES: Final[frozenset[str]] = frozenset({

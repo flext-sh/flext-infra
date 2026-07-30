@@ -224,7 +224,9 @@ class TestsCodegenSetupSubmodules:
         )
         tm.that((project / "uv.log").exists(), eq=False)
 
-    def test_local_changes_fail_before_environment(self, tmp_path: Path) -> None:
+    def test_local_changes_are_preserved_on_declared_branch(
+        self, tmp_path: Path
+    ) -> None:
         source = tmp_path / "source"
         self._commit_repository(source, "declared-dev", "source")
         project = tmp_path / "project"
@@ -236,10 +238,9 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.exit_code, eq=2)
-        tm.that(result.stderr, has="local changes must be reconciled")
+        tm.that(result.exit_code, eq=0)
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
-        tm.that((project / "uv.log").exists(), eq=False)
+        tm.that((project / "uv.log").is_file(), eq=True)
 
     def test_declared_branch_ahead_of_gitlink_is_preserved(
         self, tmp_path: Path

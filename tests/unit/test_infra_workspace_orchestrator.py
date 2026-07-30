@@ -89,9 +89,9 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         @staticmethod
         @override
         def _prepare_projects(
-            projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+            projects: t.SequenceOf[m.Infra.ProjectInfo],
         ) -> p.Result[bool]:
-            _ = (projects, workspace_root)
+            _ = projects
             return r[bool].ok(True)
 
     @staticmethod

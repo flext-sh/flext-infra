@@ -12,6 +12,4 @@ taplo = "{{ taplo_version }}"
 ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 tokei = "{{ tokei_version }}"
-{% if beads_enabled %}
-"github:gastownhall/beads" = "{{ beads_version }}"
-{% endif %}
+"{{ beads.selector }}" = "{{ beads.version }}"

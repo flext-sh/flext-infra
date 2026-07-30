@@ -24,27 +24,31 @@ class TestsCodegenMakeEnvironment:
         attached: bool = False,
         local_infra: bool = False,
     ) -> tuple[Path, Path]:
+        provider = config.Infra.codegen.providers[0]
+        role = (
+            c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            if attached
+            else c.Infra.RepositoryRole(profile.value)
+        )
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
-            url="https://github.com/flext-sh/fixture-project.git",
-            branch=config.Infra.codegen.providers[0].branch,
+            url=f"{provider.base_url}/fixture-project.git",
             path=Path(),
-            role=c.Infra.RepositoryRole(profile.value),
-            provider="flext-sh",
-            profile=profile,
-            checkout=c.Infra.CheckoutKind.ROOT,
+            role=role,
+            provider=provider.name,
+            checkout=(
+                c.Infra.CheckoutKind.SUBMODULE
+                if attached
+                else c.Infra.CheckoutKind.ROOT
+            ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
             read_only=False,
         )
         project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = (
-            project_root.parent
-            if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER
-            else project_root
-        )
+        workspace_root = project_root.parent if attached else project_root
         infra_repositories = tuple(
             item
             for item in config.Infra.codegen.repositories
@@ -76,9 +80,7 @@ class TestsCodegenMakeEnvironment:
                 upstream="flext_cli",
                 homepage="https://github.com/flext-sh/fixture-project",
                 documentation="https://github.com/flext-sh/fixture-project",
-                workspace_root_rel=(
-                    ".." if profile is c.Infra.MakeProfile.WORKSPACE_MEMBER else "."
-                ),
+                workspace_root_rel=".",
                 year=2026,
             ),
             members=local_members,
@@ -136,8 +138,7 @@ class TestsCodegenMakeEnvironment:
         ("profile", "attached"),
         [
             (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, True),
-            (c.Infra.MakeProfile.WORKSPACE_MEMBER, False),
+            (c.Infra.MakeProfile.STANDALONE, True),
             (c.Infra.MakeProfile.STANDALONE, False),
         ],
     )
@@ -145,10 +146,10 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
+        project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = workspace_root if attached else project_root
+        runtime_root = project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -268,11 +269,16 @@ class TestsCodegenMakeEnvironment:
                 for item in config.Infra.codegen.repositories
                 if item.distribution == config.Infra.name
             )
+            infra_provider = tm.ok(
+                u.Infra.repository_provider(
+                    infra_repository, config.Infra.codegen.providers
+                )
+            )
             tm.that(
                 commands[0],
                 has=(
                     f"--with {infra_repository.distribution} @ "
-                    f"git+{infra_repository.url}@{infra_repository.branch}"
+                    f"git+{infra_repository.url}@{infra_provider.branch}"
                 ),
             )
         tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
@@ -383,7 +389,8 @@ class TestsCodegenMakeEnvironment:
             '$(UV) venv --clear "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
-            'git -C "$$superproject" submodule update --init -- "$$child_path"',
+            "MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)",
+            'git -C "$$root" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
         ):
             tm.that(makefile, has=required)

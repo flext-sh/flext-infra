@@ -78,7 +78,9 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_bootstrap_include() -> p.Result[str]:
         """Render the canonical Makefile bootstrap include block."""
         return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            make=c.Infra,
+            mise_version=config.Infra.codegen.toolchain.mise_version,
         )
 
     @override
@@ -110,7 +112,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
                     settings=active_config,
                     apply_value=config.Infra.codegen.make.apply_value,
                     apply_variable=config.Infra.codegen.make.apply_variable,
-                    docs=config.Infra.codegen.make.docs.model_dump(mode="json"),
+                    # NOTE: docs configuration was removed from MakeSpec;
                     lint_gates_csv=lint_gates_csv,
                     make=c.Infra,
                     mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
