@@ -177,7 +177,7 @@ constraint-dependencies = ["uv>=0"]
         )
         tm.fail(result, has="attached workspace dependency declares direct source")
 
-    def test_full_conformance_is_idempotent_without_uv_version_pin(self) -> None:
+    def test_full_conformance_splits_uv_bootstrap_floor_from_exact_pin(self) -> None:
         workspace = _workspace()
         repositories = (
             workspace.repository,
@@ -196,7 +196,8 @@ dependencies = ["flext-core @ ../flext-core", "requests>=2"]
 dev = ["custom-tool>=1"]
 
 [tool.uv]
-required-version = ">=0"
+required-version = "==0.11.31"
+constraint-dependencies = ["uv==0.11.31", "requests<3"]
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
@@ -224,7 +225,12 @@ python-interpreter-path = "../.venv/bin/python"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that("required-version" not in document["tool"]["uv"], eq=True)
+        tm.that(
+            document["tool"]["uv"]["required-version"],
+            eq=toolchain.uv_bootstrap_required_version,
+        )
+        tm.that(document["tool"]["uv"]["constraint-dependencies"], eq=["requests<3"])
+        tm.that(toolchain.uv_version, eq=config.Infra.codegen.toolchain.uv_version)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
         tm.that(

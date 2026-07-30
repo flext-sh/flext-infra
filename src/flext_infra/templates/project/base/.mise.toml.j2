@@ -4,6 +4,7 @@
 
 [tools]
 python = "{{ python_version }}"
+uv = "{{ uv_version }}"
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
 kubectl = "{{ kubectl_version }}"
 helm = "{{ helm_version }}"
@@ -13,5 +14,5 @@ ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 tokei = "{{ tokei_version }}"
 {% if beads_enabled %}
-"github:gastownhall/beads" = "{{ beads_version }}"
+"go:github.com/steveyegge/beads/cmd/bd" = "{{ beads_version }}"
 {% endif %}

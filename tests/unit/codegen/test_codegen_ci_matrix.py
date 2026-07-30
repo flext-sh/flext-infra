@@ -66,19 +66,20 @@ class TestCodegenCiMatrix:
         tm.that(workflows, lacks="|| make")
         tm.that(workflows, lacks="soft-pass")
 
-    def test_blocking_ci_installs_declared_toolchain_before_make(
+    def test_blocking_ci_bootstraps_only_through_make_setup(
         self, tmp_path: Path
     ) -> None:
-        """Generated blocking CI provides every binary consumed by canonical Make."""
+        """Generated blocking CI provisions every binary via the Make surface."""
         root = self._render_project(tmp_path / "external")
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        mise_action = config.Infra.codegen.github_actions["mise"]
-        install = f"{mise_action.repository}@{mise_action.sha}"
+        actions = config.Infra.codegen.github_actions
 
-        tm.that(workflow, has=install)
-        tm.that(workflow.index(install), lt=workflow.index("run: make setup"))
+        tm.that(workflow, has="run: make setup")
+        for name in ("setup-python", "setup-uv", "mise"):
+            action = actions[name]
+            tm.that(workflow, lacks=f"{action.repository}@{action.sha}")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -88,19 +89,18 @@ class TestCodegenCiMatrix:
                 (root / "ci" / "docker" / f"{distro}.Dockerfile").is_file(), eq=True
             )
 
-    def test_distro_bootstrap_is_fail_closed_and_provisions_uv(
+    def test_distro_bootstrap_is_fail_closed_and_self_contained(
         self, tmp_path: Path
     ) -> None:
-        """Every distro provisions uv and runs the canonical bootstrap fail-closed."""
+        """Every distro runs the canonical self-bootstrap fail-closed."""
         root = self._render_project(tmp_path / "external")
         for distro in ("ubuntu", "debian", "fedora", "alpine", "arch"):
             content = (root / "ci" / "docker" / f"{distro}.Dockerfile").read_text(
                 encoding="utf-8"
             )
-            tm.that(content, has="UV_UNMANAGED_INSTALL=/usr/local/bin")
-            tm.that(content, has="RUN uv python install 3.13")
             tm.that(content, has="RUN make setup")
-            tm.that(content, lacks="mise install")
+            tm.that(content, lacks="UV_UNMANAGED_INSTALL")
+            tm.that(content, lacks="uv python install")
             tm.that(content, lacks="set +e")
             tm.that(content, lacks="soft-pass")
             tm.that(content, lacks="EXTERNAL BLOCKER")
@@ -150,28 +150,22 @@ class TestCodegenCiMatrix:
         tm.that(jobs, lacks="wsl")
         tm.that(jobs, lacks="kind")
 
-    def test_host_bootstrap_provisions_python_uv_and_declared_tools(
-        self, tmp_path: Path
-    ) -> None:
-        """MacOS and Windows receive every executable needed before Make."""
+    def test_host_legs_bootstrap_only_through_make_setup(self, tmp_path: Path) -> None:
+        """MacOS and Windows bootstrap through the same Make surface."""
         root = self._render_project(tmp_path / "external")
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
         actions = config.Infra.codegen.github_actions
-        expected = tuple(
-            f"{actions[name].repository}@{actions[name].sha}"
-            for name in ("setup-python", "setup-uv", "mise")
-        )
         macos = content.split("\n  macos:", maxsplit=1)[1].split(
             "\n  windows:", maxsplit=1
         )[0]
         windows = content.split("\n  windows:", maxsplit=1)[1]
         for host in (macos, windows):
-            for action in expected:
-                tm.that(host, has=action)
-            tm.that(host.index(expected[0]), lt=host.index("run: make setup"))
-            tm.that(host.index(expected[1]), lt=host.index("run: make setup"))
+            tm.that(host, has="run: make setup")
+            for name in ("setup-python", "setup-uv", "mise"):
+                action = actions[name]
+                tm.that(host, lacks=f"{action.repository}@{action.sha}")
         tm.that(windows.count("shell: bash"), eq=2)
 
     def test_workflow_branches_derive_from_workspace_manifest(
@@ -201,7 +195,10 @@ class TestCodegenCiMatrix:
         tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
-        tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
+        tm.that(
+            content,
+            has="override PATH := $(RUNTIME_BIN):$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)",
+        )
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has="'flext-demo [standalone]' '';")
 

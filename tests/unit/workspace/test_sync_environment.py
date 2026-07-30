@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 class TestsFlextInfraWorkspaceSyncEnvironment:
     """Behavior contract for generated workspace environment files."""
 
+    def test_conform_is_the_only_mise_writer(self) -> None:
+        tm.that(hasattr(FlextInfraWorkspaceEnvironment, "sync_mise_toml"), eq=False)
+
     @staticmethod
     def _write_project(project_root: Path, name: str) -> None:
         project_root.mkdir(parents=True, exist_ok=True)
@@ -42,7 +45,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         tm.that((project_root / ".envrc").is_file(), eq=True)
-        tm.that((project_root / ".mise.toml").is_file(), eq=True)
+        tm.that((project_root / ".mise.toml").is_file(), eq=False)
 
     def test_sync_preserves_custom_environment_file(self, tmp_path: Path) -> None:
         project_root = tmp_path / "project"
@@ -55,7 +58,7 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
 
         tm.ok(result)
         tm.that(custom_envrc_path.read_text(encoding="utf-8"), eq=custom_envrc)
-        tm.that((project_root / ".mise.toml").is_file(), eq=True)
+        tm.that((project_root / ".mise.toml").is_file(), eq=False)
 
     def test_sync_updates_previously_generated_environment_file(
         self, tmp_path: Path
@@ -84,57 +87,6 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         envrc_text = (project_root / ".envrc").read_text(encoding="utf-8")
         tm.that(envrc_text, has='PYTHON_VERSION="$(python -c')
         tm.that(envrc_text, lacks='"${VENV_DIR}/bin/python"')
-
-    def test_generated_mise_toml_is_registry_safe(self, tmp_path: Path) -> None:
-        project_root = tmp_path / "project"
-        self._write_project(project_root, "demo-project")
-
-        result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
-
-        tm.ok(result)
-        mise_text = (project_root / ".mise.toml").read_text(encoding="utf-8")
-        toolchain = config.Infra.codegen.toolchain
-        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
-        for field in type(toolchain).model_fields:
-            if field == "python_version" or not field.endswith("_version"):
-                continue
-            version = getattr(toolchain, field)
-            tool_name = field.removesuffix("_version").replace("_", "-")
-            tm.that(mise_text, has=f'{tool_name} = "{version}"', msg=field)
-        tm.that(mise_text, lacks="uv =")
-        tm.that(mise_text, lacks="mypy =")
-        tm.that(mise_text, lacks="pyright =")
-        tm.that(mise_text, lacks="pyrefly =")
-
-    def test_sync_merges_custom_mise_toml_and_removes_obsolete_tools(
-        self, tmp_path: Path
-    ) -> None:
-        project_root = tmp_path / "project"
-        self._write_project(project_root, "demo-project")
-        mise_path = project_root / ".mise.toml"
-        mise_path.write_text(
-            (
-                "[tools]\n"
-                'node = "22"\n'
-                'python = "3.12"\n'
-                'mypy = "1.20.2"\n'
-                'pyright = "1.1.410"\n'
-                'pyrefly = "1.0.0"\n'
-            ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
-
-        tm.ok(result)
-        mise_text = mise_path.read_text(encoding="utf-8")
-        toolchain = config.Infra.codegen.toolchain
-        tm.that(mise_text, has='node = "22"')
-        tm.that(mise_text, has=f'python = "{toolchain.python_version}"')
-        tm.that(mise_text, lacks="uv =")
-        tm.that(mise_text, lacks="mypy =")
-        tm.that(mise_text, lacks="pyright =")
-        tm.that(mise_text, lacks="pyrefly =")
 
     def test_sync_rewrites_generated_environment_file(self, tmp_path: Path) -> None:
         """A governed artifact is always rewritten from the canonical template."""
@@ -182,9 +134,9 @@ class TestsFlextInfraWorkspaceSyncEnvironment:
         result = FlextInfraWorkspaceEnvironment.sync_environment_files(project_root)
 
         tm.ok(result)
-        tm.that(result.value, eq=2)
+        tm.that(result.value, eq=1)
         tm.that((project_root / ".envrc").exists(), eq=False)
-        tm.that((project_root / ".mise.toml").exists(), eq=False)
+        tm.that((project_root / ".mise.toml").exists(), eq=True)
 
     def test_environment_sync_preserves_custom_env_without_pyproject(
         self, tmp_path: Path

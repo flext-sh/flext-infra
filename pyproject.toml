@@ -620,6 +620,7 @@ sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
 link-mode = "copy"
+required-version = ">=0.11.0"
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]

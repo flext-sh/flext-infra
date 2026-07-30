@@ -32,8 +32,12 @@ class TestsFlextInfraBasemkRenderer:
             "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
             "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
             'UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"',
-            "SETUP_UV ?= uv",
-            "$(SETUP_UV) venv --clear",
+            "SETUP_BIN := $(SETUP_ROOT)/.bin",
+            "MISE_DATA_DIR := $(SETUP_ROOT)/.tools",
+            "SETUP_MISE ?= $(SETUP_BIN)/mise",
+            "SETUP_UV := $(MISE_DATA_DIR)/shims/uv",
+            "github.com/jdx/mise/releases/download",
+            "$(SETUP_MISE) install --yes",
             "$(SETUP_UV) sync --project",
             "git submodule update --init --recursive",
             'test -z "$$(git status --porcelain)"',
@@ -44,12 +48,12 @@ class TestsFlextInfraBasemkRenderer:
         ):
             tm.that(rendered, has=required)
         for forbidden in (
+            "SETUP_UV ?= uv",
+            "venv --clear",
             "BOOTSTRAP_PIP",
             "pip install",
             "poetry",
-            "UV_VERSION",
             "mise exec",
-            "uv@",
             "$(PYTHON_CMD) -c 'import flext_infra'",
         ):
             tm.that(rendered, lacks=forbidden)

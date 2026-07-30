@@ -8,12 +8,6 @@ RUN pacman -Syu --noconfirm --needed \
       bash ca-certificates curl git make base-devel \
     && pacman -Scc --noconfirm
 
-# uv is an environment-provided executable, intentionally without a project
-# patch pin. It installs the declared Python family before canonical bootstrap.
-RUN curl -LsSf https://astral.sh/uv/install.sh \
-    | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
-RUN uv python install 3.13
-
 WORKDIR /workspace
 COPY . .
 

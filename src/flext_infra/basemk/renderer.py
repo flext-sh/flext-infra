@@ -11,7 +11,7 @@ from jinja2.loaders import FileSystemLoader
 from jinja2.runtime import StrictUndefined
 from jinja2.utils import select_autoescape
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, config, m, p, r, s, t, u
 
 
 def _templates_dir() -> Path:
@@ -78,7 +78,10 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
     def render_bootstrap_include() -> p.Result[str]:
         """Render the canonical Makefile bootstrap include block."""
         return FlextInfraBaseMkTemplateRenderer().render_single(
-            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE, make=c.Infra
+            c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
+            make=c.Infra,
+            uv_version=config.Infra.codegen.toolchain.uv_version,
+            mise_version=config.Infra.codegen.toolchain.mise_version,
         )
 
     @override

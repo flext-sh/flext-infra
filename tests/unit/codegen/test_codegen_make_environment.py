@@ -13,6 +13,49 @@ from flext_tests import tm
 from tests import u as test_u
 
 
+def _fake_uv_body(setup_log: Path) -> str:
+    return f"#!/bin/sh\nprintf 'uv|%s\\n' \"$*\" >> '{setup_log}'\nexit 0\n"
+
+
+def _fake_mise_body(setup_log: Path, fake_uv: Path, version: str) -> str:
+    return (
+        "#!/bin/sh\n"
+        'case "${1:-}" in\n'
+        "  --version)\n"
+        f'    echo "{version} linux-x64 (fake)"\n'
+        "    ;;\n"
+        "  install)\n"
+        f"    printf 'mise|%s\\n' \"$*\" >> '{setup_log}'\n"
+        '    mkdir -p "${MISE_DATA_DIR:?}/shims"\n'
+        f'    cp "{fake_uv}" "${{MISE_DATA_DIR}}/shims/uv"\n'
+        '    chmod +x "${MISE_DATA_DIR}/shims/uv"\n'
+        "    ;;\n"
+        "esac\n"
+        "exit 0\n"
+    )
+
+
+def _write_fake_curl(fake_bin: Path, curl_log: Path, fake_mise_source: Path) -> None:
+    """Plant a curl that logs the URL and serves the fake mise binary."""
+    fake_bin.mkdir(parents=True, exist_ok=True)
+    curl_path = fake_bin / "curl"
+    curl_path.write_text(
+        "#!/bin/sh\n"
+        "out=''; url=''; prev=''\n"
+        'for arg in "$@"; do\n'
+        '  case "$arg" in http*) url="$arg" ;; esac\n'
+        '  if [ "$prev" = "-o" ]; then out="$arg"; fi\n'
+        '  prev="$arg"\n'
+        "done\n"
+        f"printf 'curl|%s\\n' \"$url\" >> '{curl_log}'\n"
+        f"cp '{fake_mise_source}' \"$out\"\n"
+        'chmod +x "$out"\n'
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    curl_path.chmod(0o755)
+
+
 class TestsCodegenMakeEnvironment:
     """Prove generated operations ignore the caller shell environment."""
 
@@ -199,7 +242,12 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[0], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
         tm.that(output[1], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
         tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
+        tm.that(
+            output[3],
+            has=(
+                f"PATH={runtime_bin}:{runtime_root}/.bin:{runtime_root}/.tools/shims:"
+            ),
+        )
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
@@ -216,28 +264,27 @@ class TestsCodegenMakeEnvironment:
         project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, local_infra=local_infra
         )
-        hostile_venv = tmp_path / "hostile" / ".venv"
-        hostile_bin = hostile_venv / "bin"
+        hostile_bin = tmp_path / "hostile" / "bin"
         hostile_bin.mkdir(parents=True)
         hostile_uv = hostile_bin / "uv"
         hostile_uv.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
         hostile_uv.chmod(0o755)
-        provisioned_bin = tmp_path / "provisioned" / "bin"
-        provisioned_bin.mkdir(parents=True)
-        uv_log = tmp_path / "uv.log"
-        provisioned_uv = provisioned_bin / "uv"
-        provisioned_uv.write_text(
-            "#!/bin/sh\n"
-            f"printf '%s\\n' \"$*\" >> '{uv_log}'\n"
-            'if [ "$1" = "venv" ]; then\n'
-            '  mkdir -p "$3/bin"\n'
-            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
-            '  chmod +x "$3/bin/python"\n'
-            "fi\n"
-            "exit 0\n",
+        hostile_mise = hostile_bin / "mise"
+        hostile_mise.write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+        hostile_mise.chmod(0o755)
+        fake_bin = tmp_path / "fake" / "bin"
+        setup_log = tmp_path / "setup.log"
+        curl_log = tmp_path / "curl.log"
+        fake_uv = tmp_path / "fake-uv"
+        fake_uv.write_text(_fake_uv_body(setup_log), encoding="utf-8")
+        fake_mise_source = tmp_path / "fake-mise"
+        fake_mise_source.write_text(
+            _fake_mise_body(
+                setup_log, fake_uv, config.Infra.codegen.toolchain.mise_version
+            ),
             encoding="utf-8",
         )
-        provisioned_uv.chmod(0o755)
+        _write_fake_curl(fake_bin, curl_log, fake_mise_source)
 
         clean_env = {
             **{
@@ -245,8 +292,8 @@ class TestsCodegenMakeEnvironment:
                 for key, value in os.environ.items()
                 if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
             },
-            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
-            "VIRTUAL_ENV": str(hostile_venv),
+            "PATH": f"{hostile_bin}:{fake_bin}:/usr/bin:/bin",
+            "SETUP_LOG": str(setup_log),
         }
         result = u.Cli.run_raw(
             [c.Infra.MAKE, "--no-print-directory", "setup"],
@@ -257,11 +304,18 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(commands[0], has=["run --no-project", "codegen conform"])
+        tm.that(
+            curl_log.read_text(encoding="utf-8"),
+            has=(
+                "github.com/jdx/mise/releases/download/v"
+                f"{config.Infra.codegen.toolchain.mise_version}"
+            ),
+        )
+        commands = setup_log.read_text(encoding="utf-8").splitlines()
+        conform = next(line for line in commands if "codegen conform" in line)
         if local_infra:
-            tm.that(commands[0], has=f"--with-editable {project_root / 'infra-engine'}")
-            tm.that(commands[0], lacks="git+")
+            tm.that(conform, has=f"--with-editable {project_root / 'infra-engine'}")
+            tm.that(conform, lacks="git+")
         else:
             infra_repository = next(
                 item
@@ -269,13 +323,36 @@ class TestsCodegenMakeEnvironment:
                 if item.distribution == config.Infra.name
             )
             tm.that(
-                commands[0],
+                conform,
                 has=(
                     f"--with {infra_repository.distribution} @ "
                     f"git+{infra_repository.url}@{infra_repository.branch}"
                 ),
             )
-        tm.that("\n".join(commands[1:]), has=["venv --clear", "sync --project"])
+        log_text = "\n".join(commands)
+        tm.that(log_text, has="mise|install --yes uv@")
+        tm.that(log_text, has="uv|sync --project")
+        tm.that(log_text, lacks="venv --clear")
+        tm.that(log_text, lacks="uv|venv")
+        uv_install_at = next(
+            index
+            for index, line in enumerate(commands)
+            if line.startswith("mise|install --yes uv@")
+        )
+        first_conform_at = next(
+            index for index, line in enumerate(commands) if "codegen conform" in line
+        )
+        last_conform_at = max(
+            index for index, line in enumerate(commands) if "codegen conform" in line
+        )
+        full_install_at = commands.index("mise|install --yes")
+        sync_at = next(
+            index
+            for index, line in enumerate(commands)
+            if line.startswith("uv|sync --project")
+        )
+        tm.that(uv_install_at < first_conform_at, eq=True)
+        tm.that(last_conform_at < full_install_at < sync_at, eq=True)
 
     def test_serialized_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -287,14 +364,17 @@ class TestsCodegenMakeEnvironment:
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
-        provisioned_bin = tmp_path / "provisioned" / "bin"
-        provisioned_bin.mkdir(parents=True)
+        shims_bin = project_root / ".tools" / "shims"
+        shims_bin.mkdir(parents=True)
         fixture_tool = "managed-tool"
-        for bin_root in (hostile_bin, provisioned_bin):
-            for tool in (fixture_tool, "uv"):
-                test_u.Tests.write_executable(
-                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
-                )
+        for tool in (fixture_tool, "uv"):
+            test_u.Tests.write_executable(
+                hostile_bin / tool,
+                f"#!/bin/sh\nprintf '%s\\n' '{hostile_bin / tool}'\n",
+            )
+            test_u.Tests.write_executable(
+                shims_bin / tool, f"#!/bin/sh\nprintf '%s\\n' '{shims_bin / tool}'\n"
+            )
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
         test_u.Tests.write_executable(
@@ -306,7 +386,7 @@ class TestsCodegenMakeEnvironment:
             ),
         )
         active_env = {
-            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "PATH": f"{hostile_bin}:{os.environ['PATH']}",
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
@@ -321,9 +401,7 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tools = tool_log.read_text(encoding="utf-8").splitlines()
-        tm.that(
-            tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
-        )
+        tm.that(tools, eq=[str(shims_bin / "uv"), str(shims_bin / fixture_tool)])
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -335,7 +413,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
-        tm.that("UV ?= uv" in makefile, eq=True)
+        tm.that("UV := $(MISE_SHIMS)/uv" in makefile, eq=True)
         tm.that(
             (
                 "UV_RUN := env -u PYTHONPATH -u MYPYPATH "
@@ -379,8 +457,15 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         for required in (
-            "UV ?= uv",
-            '$(UV) venv --clear "$(RUNTIME_VENV)"',
+            "TOOLS_BIN := $(PROJECT_ROOT)/.bin",
+            "MISE_DATA_DIR := $(PROJECT_ROOT)/.tools",
+            "MISE ?= $(TOOLS_BIN)/mise",
+            "UV := $(MISE_SHIMS)/uv",
+            "_builtin_setup_tools:",
+            "github.com/jdx/mise/releases/download",
+            "_builtin_setup_conform: _builtin_setup_tools _builtin_setup_submodules",
+            '$(MISE) install --yes "uv@$$uv_version"',
+            "$(MISE) install --yes",
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$(PROJECT_ROOT)" submodule update --init --recursive',
@@ -388,15 +473,147 @@ class TestsCodegenMakeEnvironment:
         ):
             tm.that(makefile, has=required)
         for forbidden in (
+            "Required uv executable not found",
+            "RESOLVED_UV",
             "mise exec -- uv",
-            "uv@",
             "define _setup_submodules",
             "SETUP_BRANCH :=",
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
+            "venv --clear",
             "pip install",
         ):
             tm.that(makefile, lacks=forbidden)
+
+        tm.that(makefile, has="_builtin_setup_mise: _builtin_setup_conform")
+        tm.that(makefile, has="_builtin_setup_environment: _builtin_setup_mise")
+
+    def test_workspace_root_setup_orders_topology_conform_before_gitlinks(
+        self, tmp_path: Path
+    ) -> None:
+        """Conform the root topology before selecting managed Gitlinks."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.WORKSPACE_ROOT
+        )
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+
+        for required in (
+            "_builtin_setup_tools:",
+            "_builtin_setup_topology: _builtin_setup_tools",
+            "_builtin_setup_conform: _builtin_setup_topology _builtin_setup_submodules",
+            "_builtin_setup_mise: _builtin_setup_conform",
+            "_builtin_setup_environment: _builtin_setup_mise",
+            'codegen conform --root "$(PROJECT_ROOT)" --scope "self" --mode apply',
+            "$(MISE) install --yes",
+        ):
+            tm.that(makefile, has=required)
+        tm.that(makefile, lacks="venv --clear")
+
+    def test_setup_rerun_repairs_without_recreating_environment(
+        self, tmp_path: Path
+    ) -> None:
+        """A healthy rerun never clears the venv or reinstalls packages."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        setup_log = tmp_path / "setup.log"
+        curl_log = tmp_path / "curl.log"
+        fake_uv = tmp_path / "fake-uv"
+        fake_uv.write_text(_fake_uv_body(setup_log), encoding="utf-8")
+        fake_mise_source = tmp_path / "fake-mise"
+        fake_mise_source.write_text(
+            _fake_mise_body(
+                setup_log, fake_uv, config.Infra.codegen.toolchain.mise_version
+            ),
+            encoding="utf-8",
+        )
+        tools_bin = project_root / ".bin"
+        tools_bin.mkdir()
+        seeded_mise = tools_bin / "mise"
+        seeded_mise.write_text(
+            fake_mise_source.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        seeded_mise.chmod(0o755)
+        fake_bin = tmp_path / "fake" / "bin"
+        _write_fake_curl(fake_bin, curl_log, fake_mise_source)
+        clean_env = {
+            **{
+                key: value
+                for key, value in os.environ.items()
+                if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
+            },
+            "PATH": f"{fake_bin}:/usr/bin:/bin",
+            "SETUP_LOG": str(setup_log),
+        }
+        for _run in range(2):
+            result = u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                env=clean_env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+            process = tm.ok(result)
+            tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+
+        tm.that(curl_log.exists(), eq=False)
+        commands = setup_log.read_text(encoding="utf-8").splitlines()
+        log_text = "\n".join(commands)
+        tm.that(log_text, lacks="venv --clear")
+        tm.that(log_text, lacks="uv|venv")
+        tm.that(commands.count("mise|install --yes"), eq=2)
+        tm.that(
+            sum(1 for line in commands if line.startswith("uv|sync --project")), eq=2
+        )
+
+    def test_setup_updates_outdated_bootstrap_mise(self, tmp_path: Path) -> None:
+        """A drifted bootstrap binary is updated, never a hard failure."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        setup_log = tmp_path / "setup.log"
+        curl_log = tmp_path / "curl.log"
+        fake_uv = tmp_path / "fake-uv"
+        fake_uv.write_text(_fake_uv_body(setup_log), encoding="utf-8")
+        fake_mise_source = tmp_path / "fake-mise"
+        fake_mise_source.write_text(
+            _fake_mise_body(
+                setup_log, fake_uv, config.Infra.codegen.toolchain.mise_version
+            ),
+            encoding="utf-8",
+        )
+        tools_bin = project_root / ".bin"
+        tools_bin.mkdir()
+        outdated_mise = tools_bin / "mise"
+        outdated_mise.write_text(
+            _fake_mise_body(setup_log, fake_uv, "0.0.1"), encoding="utf-8"
+        )
+        outdated_mise.chmod(0o755)
+        fake_bin = tmp_path / "fake" / "bin"
+        _write_fake_curl(fake_bin, curl_log, fake_mise_source)
+        clean_env = {
+            **{
+                key: value
+                for key, value in os.environ.items()
+                if key not in {"MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"}
+            },
+            "PATH": f"{fake_bin}:/usr/bin:/bin",
+            "SETUP_LOG": str(setup_log),
+        }
+        result = u.Cli.run_raw(
+            [c.Infra.MAKE, "--no-print-directory", "setup"],
+            cwd=project_root,
+            env=clean_env,
+            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+        )
+        process = tm.ok(result)
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            curl_log.read_text(encoding="utf-8"),
+            has=(
+                "github.com/jdx/mise/releases/download/v"
+                f"{config.Infra.codegen.toolchain.mise_version}"
+            ),
+        )
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self, tmp_path: Path

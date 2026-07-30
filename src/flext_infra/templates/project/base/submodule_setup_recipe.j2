@@ -5,6 +5,7 @@
 	@set -eu; \
 	root="{{ project_root }}"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	git -C "$(PROJECT_ROOT)" submodule update --init --recursive; \
 	preflight_managed_submodules() { \
 		superproject="$$1"; \
 		if [ ! -f "$$superproject/.gitmodules" ]; then return 0; fi; \
@@ -68,7 +69,7 @@
 			git -C "$$superproject" submodule sync --quiet -- "$$child_path"; \
 			state=$$(git -C "$$superproject" submodule status -- "$$child_path"); \
 			case "$$state" in \
-				-*) git -C "$$superproject" submodule update --init -- "$$child_path" ;; \
+				-*) git -C "$$superproject" submodule update --init --recursive -- "$$child_path" ;; \
 			esac; \
 			initialize_declared_submodules "$$superproject/$$child_path"; \
 		done; \

@@ -70,6 +70,12 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             )
         )
     )
+    # mro-z89e.2.2: this fixture validates the environment/toolchain contract,
+    # not Gitlink reconciliation. The generated .gitmodules would classify the
+    # plain member directories as managed submodules and fail the setup
+    # preflight; Gitlink behavior is covered by
+    # tests/unit/codegen/test_workspace_root_setup_submodules.py.
+    (workspace_root / ".gitmodules").unlink(missing_ok=True)
     for project_name in project_names:
         _write_child_makefile(workspace_root / project_name, exit_code=0)
     return workspace_root, project_names
@@ -91,16 +97,43 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     )
 
 
-def _write_fake_uv(bin_root: Path, log_path: Path) -> None:
-    bin_root.mkdir()
-    uv_path = bin_root / "uv"
-    uv_path.write_text(
+def _fake_mise_body(setup_log: Path, fake_uv: Path, version: str) -> str:
+    return (
         "#!/bin/sh\n"
-        f'printf \'%s|%s|%s|%s\\n\' "$UV_PROJECT" "$UV_PROJECT_ENVIRONMENT" '
-        f'"$VIRTUAL_ENV" "$*" >> {log_path}\n',
+        'case "${1:-}" in\n'
+        "  --version)\n"
+        f'    echo "{version} linux-x64 (fake)"\n'
+        "    ;;\n"
+        "  install)\n"
+        f"    printf 'mise|%s\\n' \"$*\" >> '{setup_log}'\n"
+        '    mkdir -p "${MISE_DATA_DIR:?}/shims"\n'
+        f'    cp "{fake_uv}" "${{MISE_DATA_DIR}}/shims/uv"\n'
+        '    chmod +x "${MISE_DATA_DIR}/shims/uv"\n'
+        "    ;;\n"
+        "esac\n"
+        "exit 0\n"
+    )
+
+
+def _write_fake_curl(fake_bin: Path, curl_log: Path, fake_mise_source: Path) -> None:
+    """Plant a curl that logs the URL and serves the fake mise binary."""
+    fake_bin.mkdir(parents=True, exist_ok=True)
+    curl_path = fake_bin / "curl"
+    curl_path.write_text(
+        "#!/bin/sh\n"
+        "out=''; url=''; prev=''\n"
+        'for arg in "$@"; do\n'
+        '  case "$arg" in http*) url="$arg" ;; esac\n'
+        '  if [ "$prev" = "-o" ]; then out="$arg"; fi\n'
+        '  prev="$arg"\n'
+        "done\n"
+        f"printf 'curl|%s\\n' \"$url\" >> '{curl_log}'\n"
+        f"cp '{fake_mise_source}' \"$out\"\n"
+        'chmod +x "$out"\n'
+        "exit 0\n",
         encoding="utf-8",
     )
-    uv_path.chmod(0o755)
+    curl_path.chmod(0o755)
 
 
 class TestsWorkspaceRootMakeContract:
@@ -244,34 +277,77 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workspace_root, _ = _write_workspace(tmp_path)
-        fake_bin = tmp_path / "bin"
-        uv_log = tmp_path / "uv.log"
-        _write_fake_uv(fake_bin, uv_log)
+        setup_log = tmp_path / "setup.log"
+        curl_log = tmp_path / "curl.log"
+        fake_uv = tmp_path / "fake-uv"
+        fake_uv.write_text(
+            (
+                "#!/bin/sh\n"
+                f"printf 'uv|%s|%s|%s|%s\\n' \"$UV_PROJECT\" "
+                '"$UV_PROJECT_ENVIRONMENT" "$VIRTUAL_ENV" "$*" '
+                f">> '{setup_log}'\n"
+                "exit 0\n"
+            ),
+            encoding="utf-8",
+        )
+        fake_mise_source = tmp_path / "fake-mise"
+        fake_mise_source.write_text(
+            _fake_mise_body(
+                setup_log, fake_uv, config.Infra.codegen.toolchain.mise_version
+            ),
+            encoding="utf-8",
+        )
+        fake_bin = tmp_path / "fake" / "bin"
+        _write_fake_curl(fake_bin, curl_log, fake_mise_source)
         monkeypatch.setenv("UV_PROJECT", str(tmp_path / "hostile-project"))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(tmp_path / "hostile-venv"))
         monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "hostile-venv"))
+        monkeypatch.setenv("PATH", f"{fake_bin}:/usr/bin:/bin")
+        monkeypatch.setenv("SETUP_LOG", str(setup_log))
 
         process: cli_p.Cli.CommandOutput = tm.ok(
-            cli.run_raw([
-                "make",
-                "-C",
-                str(workspace_root),
-                "setup",
-                f"UV={fake_bin / 'uv'}",
-            ])
+            cli.run_raw(["make", "-C", str(workspace_root), "setup"])
         )
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        calls = uv_log.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            curl_log.read_text(encoding="utf-8"),
+            has="github.com/jdx/mise/releases/download/v",
+        )
+        calls = setup_log.read_text(encoding="utf-8").splitlines()
         expected_environment = str(workspace_root / ".venv")
-        for call in calls:
-            project, environment, virtual_env, _arguments = call.split("|", 3)
+        for call in (line for line in calls if line.startswith("uv|")):
+            _tool, project, environment, virtual_env, arguments = call.split("|", 4)
+            if arguments.startswith("run --no-project"):
+                continue
             tm.that(project, eq=str(workspace_root))
             tm.that(environment, eq=expected_environment)
             tm.that(virtual_env, eq=expected_environment)
         arguments_log = "\n".join(calls)
-        tm.that(arguments_log, has=f"venv --clear {expected_environment}")
+        tm.that(arguments_log, lacks="venv --clear")
+        tm.that(arguments_log, lacks="uv|venv")
         tm.that(arguments_log, has=f"--python {expected_environment}")
+        uv_install_at = next(
+            index
+            for index, line in enumerate(calls)
+            if line.startswith("mise|install --yes uv@")
+        )
+        topology_at = next(
+            index for index, line in enumerate(calls) if "--scope self" in line
+        )
+        full_conform_at = next(
+            index for index, line in enumerate(calls) if "--scope all" in line
+        )
+        full_install_at = calls.index("mise|install --yes")
+        sync_at = next(
+            index
+            for index, line in enumerate(calls)
+            if line.startswith("uv|sync --project")
+        )
+        tm.that(
+            uv_install_at < topology_at < full_conform_at < full_install_at < sync_at,
+            eq=True,
+        )
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

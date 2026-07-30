@@ -217,6 +217,7 @@ base.mk
 # Derived build and tool artifacts
 __pyrefly_virtual__/
 .benchmarks/
+.bin/
 .cache/
 .codegraph/
 .dolt_dropped_databases/
@@ -233,6 +234,7 @@ __pyrefly_virtual__/
 .sisyphus/
 .state/
 .superpowers/
+.tools/
 .trash/
 .turbo/
 .venv.*/

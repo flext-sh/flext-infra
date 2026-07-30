@@ -168,8 +168,6 @@ class TestsFlextInfraInfraWorkspaceMigrator:
         (project_root / "src" / "flext_infra").mkdir(parents=True, exist_ok=True)
         (project_root / "src" / "flext_infra" / "__init__.py").touch()
         FlextInfraWorkspaceEnvironment.sync_envrc(project_root)
-        mise_result = FlextInfraWorkspaceEnvironment.render_mise_toml(project_root)
-        (project_root / ".mise.toml").write_text(mise_result.value, encoding="utf-8")
         migrator = u.Tests.build_project_migrator(
             u.Tests.create_migrator_project(project_root),
             "base.mk",

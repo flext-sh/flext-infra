@@ -1148,15 +1148,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == ".mise.toml":
-            profile = c.Infra.MakeProfile(repository.profile)
-            overlay = codegen.project_overlays.get(repository.name)
             return r[p.Model].ok(
                 m.Infra.MiseRenderSpec.model_validate({
                     **codegen.toolchain.model_dump(exclude_computed_fields=True),
-                    "beads_enabled": (
-                        profile is c.Infra.MakeProfile.WORKSPACE_ROOT
-                        or (overlay is not None and overlay.beads_namespace is not None)
-                    ),
+                    "beads_enabled": True,
                 })
             )
         if destination == ".python-version":
@@ -1169,7 +1164,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     repository_branch=repository.branch,
-                    python_version=codegen.toolchain.python_version,
                     github_actions=codegen.github_actions,
                 )
             )
@@ -1179,10 +1173,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             and destination_path.suffix == ".Dockerfile"
         ):
             return r[p.Model].ok(
-                m.Infra.DistroDockerRenderSpec(
-                    package_name=dist.replace("-", "_"),
-                    python_version=codegen.toolchain.python_version,
-                )
+                m.Infra.DistroDockerRenderSpec(package_name=dist.replace("-", "_"))
             )
         if destination in {c.Infra.MAKEFILE_FILENAME, ".gitmodules"}:
             profile = c.Infra.MakeProfile(repository.profile)
@@ -1216,6 +1207,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_repositories=members,
                     workspace_content_only=tuple(workspace.content_only),
                     uv_link_mode=codegen.toolchain.uv_link_mode,
+                    uv_version=codegen.toolchain.uv_version,
+                    uv_bootstrap_required_version=codegen.toolchain.uv_bootstrap_required_version,
+                    mise_version=codegen.toolchain.mise_version,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1287,6 +1281,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_version=codegen.toolchain.uv_version,
+                uv_bootstrap_required_version=codegen.toolchain.uv_bootstrap_required_version,
+                mise_version=codegen.toolchain.mise_version,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
@@ -1397,6 +1394,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
                 python_version=codegen.toolchain.python_version,
                 uv_link_mode=codegen.toolchain.uv_link_mode,
+                uv_version=codegen.toolchain.uv_version,
+                uv_bootstrap_required_version=codegen.toolchain.uv_bootstrap_required_version,
+                mise_version=codegen.toolchain.mise_version,
                 make_profile=profile,
                 orchestrated_verbs=c.Infra.ORCHESTRATED_PROJECT_VERBS,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,

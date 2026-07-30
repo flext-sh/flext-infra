@@ -8,12 +8,6 @@ RUN dnf install -y \
       bash ca-certificates curl git make gcc gcc-c++ libatomic \
     && dnf clean all
 
-# uv is an environment-provided executable, intentionally without a project
-# patch pin. It installs the declared Python family before canonical bootstrap.
-RUN curl -LsSf https://astral.sh/uv/install.sh \
-    | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
-RUN uv python install {{ python_version }}
-
 WORKDIR /workspace
 COPY . .
 
