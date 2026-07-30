@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import re
+import hashlib
 from fnmatch import fnmatchcase
 from pathlib import Path
 from collections.abc import Mapping
@@ -406,6 +407,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         )
                     ),
                     expected_version=config_spec.toolchain.beads.gate_version,
+                    expected_checksum=config_spec.toolchain.beads.checksum,
+                    expected_schema=config_spec.toolchain.beads.expected_schema,
                     ledger_root=ledger_root,
                     ledger_id=workspace.ledger_id,
                 )
@@ -1933,6 +1936,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "mise-managed Beads CLI version mismatch: "
                 f"{actual_version or '<unparseable>'} != {plan.expected_version}"
             )
+        if plan.expected_checksum is not None:
+            binary = cls._beads_binary(ledger_root)
+            if binary.failure:
+                return r[bool].fail(
+                    binary.error or "mise-managed Beads CLI is unavailable"
+                )
+            digest = hashlib.sha256(binary.value.read_bytes()).hexdigest()
+            if digest != plan.expected_checksum:
+                return r[bool].fail(
+                    "mise-managed Beads CLI checksum mismatch: "
+                    f"{digest} != {plan.expected_checksum}"
+                )
         beads_dir = ledger_root / ".beads"
         if not beads_dir.exists():
             if allow_missing:

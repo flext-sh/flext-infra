@@ -56,6 +56,26 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        checksum: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description=(
+                    "SHA-256 of the pinned artifact; runtime verification fails "
+                    "closed when the resolved binary digest diverges"
+                ),
+            ),
+        ] = None
+        expected_schema: Annotated[
+            int | None,
+            m.Field(
+                gt=0,
+                description=(
+                    "Schema version the pinned tool must report for its managed "
+                    "data store (e.g. the Beads Dolt ledger schema)"
+                ),
+            ),
+        ] = None
 
         @m.computed_field()
         @property
@@ -1848,6 +1868,26 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Exact official Beads version pinned by mise"),
         ]
+        expected_checksum: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description=(
+                    "SHA-256 the resolved Beads binary must match; declared by "
+                    "the toolchain SSOT, verified fail-closed"
+                ),
+            ),
+        ] = None
+        expected_schema: Annotated[
+            int | None,
+            m.Field(
+                gt=0,
+                description=(
+                    "Ledger schema the pinned binary must know; content identity "
+                    "of the artifact is the enforcement surface"
+                ),
+            ),
+        ] = None
         ledger_root: Annotated[
             Path | None,
             m.Field(
