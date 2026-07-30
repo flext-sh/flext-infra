@@ -685,6 +685,18 @@ link-mode = "copy"
 exclude-dependencies = ["flext-infra"]
 required-version = ">=0.11.0"
 
+[tool.uv.sources.flext-cli]
+path = "../flext-cli"
+editable = true
+
+[tool.uv.sources.flext-core]
+path = "../flext-core"
+editable = true
+
+[tool.uv.sources.flext-tests]
+path = "../flext-tests"
+editable = true
+
 [tool.vulture]
 exclude = ["*/_protocols/*"]
 min_confidence = 100
