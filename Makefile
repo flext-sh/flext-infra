@@ -14,7 +14,6 @@ WORKSPACE_ROOT_REL := .
 WORKSPACE_MEMBERS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
-UV_VERSION := >=0.11.0
 MISE_VERSION := 2026.7.16
 
 APPLY ?= N
@@ -146,10 +145,10 @@ export FLEXT_INFRA_PYTHON MISE_DATA_DIR UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIR
 
 ifneq ($(strip $(FLEXT_INFRA_SOURCE_ROOT_REL)),)
 FLEXT_INFRA_SOURCE_ROOT := $(abspath $(PROJECT_ROOT)/$(FLEXT_INFRA_SOURCE_ROOT_REL))
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with-editable "$(FLEXT_INFRA_SOURCE_ROOT)[dev]" python -m flext_infra
 else
 FLEXT_INFRA_SOURCE_ROOT :=
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
+FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(TOOLS_BIN):$(MISE_SHIMS):$(SANITIZED_CALLER_PATH)" $(UV) run --no-project --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)[dev]" python -m flext_infra
 endif
 
 ifeq ($(MAKE_PROFILE),workspace-root)
@@ -383,7 +382,18 @@ _builtin_setup_tools:
 	mise="$(MISE)"; \
 	mise_data_dir="$(MISE_DATA_DIR)"; \
 	mise_version="$(MISE_VERSION)"; \
-	uv_version="$(UV_VERSION)"; \
+	uv_version=""; \
+	if command -v uv >/dev/null 2>&1; then \
+		uv_version=$$(uv --version 2>/dev/null | sed 's/uv //' | cut -d ' ' -f 1 || true); \
+	fi; \
+	if [ -z "$$uv_version" ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0 in PATH; install from https://github.com/astral-sh/uv\n' >&2; \
+		exit 2; \
+	fi; \
+	if [ "$$(printf '%s\n%s' '0.11.0' "$$uv_version" | sort -V | head -n1)" != '0.11.0' ]; then \
+		printf 'ERROR: make setup requires uv >= 0.11.0, found %s\n' "$$uv_version" >&2; \
+		exit 2; \
+	fi; \
 	current=""; \
 	if [ -x "$$mise" ]; then \
 		current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
@@ -423,7 +433,7 @@ _builtin_setup_tools:
 			exit 2; \
 		}; \
 	fi; \
-	$(MISE) install --yes "uv@$$uv_version"
+	$(MISE) install --yes
 
 .PHONY: _builtin_setup_submodules
 

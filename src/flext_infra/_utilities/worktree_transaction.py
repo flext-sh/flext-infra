@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -263,12 +264,15 @@ class FlextInfraUtilitiesWorktreeTransaction:
         executable_root = Path(sys.executable).parent
         commands: t.MutableSequenceOf[t.StrSequencePair] = []
         for tool, command in c.Infra.WORKTREE_TRANSACTION_LINT_COMMANDS:
-            executable = executable_root / command[0]
-            if not executable.is_file():
-                return r[t.StrSequencePairTuple].fail(
-                    f"required transaction lint executable not found: {executable}"
-                )
-            bound_command: t.StrSequence = (str(executable), *command[1:])
+            executable_path = shutil.which(command[0])
+            if executable_path is None:
+                executable = executable_root / command[0]
+                if not executable.is_file():
+                    return r[t.StrSequencePairTuple].fail(
+                        f"required transaction lint executable not found: {executable}"
+                    )
+                executable_path = str(executable)
+            bound_command: t.StrSequence = (executable_path, *command[1:])
             if tool == c.Infra.PYREFLY:
                 bound_command = (
                     *bound_command,

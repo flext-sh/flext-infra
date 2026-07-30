@@ -10,12 +10,12 @@ from flext_cli import u
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m
+
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
 
     from flext_infra.protocols import p
-
 
 
 class FlextInfraUtilitiesDocsBuild:
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesDocsBuild:
             if not isinstance(value, type) or not issubclass(value, BaseException):
                 msg = f"{module.__name__}.{name} is not an exception type"
                 raise OSError(msg)
-            errors.append(cast("type[BaseException]", value))
+            errors.append(value)
         return tuple(errors)
 
     @staticmethod
@@ -159,12 +159,14 @@ class FlextInfraUtilitiesDocsBuild:
         mkdocs_build = import_module("mkdocs.commands.build")
         mkdocs_config = import_module("mkdocs.config")
         mkdocs_exceptions = import_module("mkdocs.exceptions")
-        load = cast("p.Infra.MkDocsLoadConfig", FlextInfraUtilitiesDocsBuild._module_callable(
-            mkdocs_config, "load_config"
-        ))
-            mkdocs_config, "load_config"
-        ))
-        build = cast("p.Infra.MkDocsBuild", FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"))
+        load = cast(
+            "p.Infra.MkDocsLoadConfig",
+            FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_config, "load_config"),
+        )
+        build = cast(
+            "p.Infra.MkDocsBuild",
+            FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"),
+        )
         mkdocs_error_types = FlextInfraUtilitiesDocsBuild._mkdocs_exception_types(
             mkdocs_exceptions
         )
@@ -196,11 +198,10 @@ class FlextInfraUtilitiesDocsBuild:
             )
         try:
             serve_module = import_module("mkdocs.commands.serve")
-            serve_fn = cast("p.Infra.MkDocsServe", FlextInfraUtilitiesDocsBuild._module_callable(
-                serve_module, "serve"
-            ))
-                serve_module, "serve"
-            ))
+            serve_fn = cast(
+                "p.Infra.MkDocsServe",
+                FlextInfraUtilitiesDocsBuild._module_callable(serve_module, "serve"),
+            )
             serve_fn(
                 config_file=str(settings),
                 livereload=livereload,
