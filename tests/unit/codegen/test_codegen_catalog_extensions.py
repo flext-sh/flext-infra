@@ -92,6 +92,35 @@ class TestsCodegenCatalogExtensions:
         tm.that(beads.reported_version, eq="1.1.0")
         tm.that(beads.gate_version, eq="1.1.0")
 
+    def test_beads_prefix_honours_the_committed_tracker_declaration(
+        self, tmp_path: Path
+    ) -> None:
+        """The declared .beads/config.yaml prefix outranks the derived name.
+
+        mro-o0cc: conform derived the tracker namespace from the repository
+        distribution and rejected (or re-initialized) repositories whose
+        committed ``.beads/config.yaml`` declares a shared ledger prefix
+        (e.g. ``mro`` on the machine-wide Dolt server). The committed tracker
+        config IS the declaration; the derived name is only the fallback for
+        repositories without one.
+        """
+        root = tmp_path / "flext-demo"
+        beads_dir = root / ".beads"
+        beads_dir.mkdir(parents=True)
+        (beads_dir / "config.yaml").write_text(
+            'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
+        )
+        declared = FlextInfraCodegenConform.declared_beads_prefix(
+            root, fallback="flext-demo"
+        )
+        tm.that(declared, eq="mro")
+        bare = tmp_path / "bare-demo"
+        bare.mkdir()
+        tm.that(
+            FlextInfraCodegenConform.declared_beads_prefix(bare, fallback="bare-demo"),
+            eq="bare-demo",
+        )
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False

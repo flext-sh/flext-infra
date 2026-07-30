@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Annotated, override
 
 from flext_core import r
@@ -391,7 +392,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.BeadsPlan(
                     repository_root=repository_root,
                     enabled=target.beads_enabled,
-                    canonical_prefix=target.canonical_project_name,
+                    canonical_prefix=self.declared_beads_prefix(
+                        repository_root, fallback=target.canonical_project_name
+                    ),
                     expected_version=config_spec.toolchain.beads.gate_version,
                 )
             )
@@ -1841,6 +1844,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return u.Cli.run_raw(
             ["mise", "exec", "--", "bd", *arguments], cwd=plan.repository_root
         )
+
+    @staticmethod
+    def declared_beads_prefix(repository_root: Path, *, fallback: str) -> str:
+        """Return the committed tracker prefix, falling back to the derived name.
+
+        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
+        ledger on the machine-wide Dolt server) is the tracker declaration for
+        that repository. Deriving the namespace from the repository name and
+        rejecting the declared one inverted the SSOT; the derived name is only
+        the default for repositories without a committed tracker config.
+        """
+        config_path = repository_root / ".beads" / "config.yaml"
+        if not config_path.is_file():
+            return fallback
+        loaded = u.Cli.yaml_load_mapping(config_path)
+        prefix = loaded.get("issue-prefix") if isinstance(loaded, Mapping) else None
+        if isinstance(prefix, str) and prefix.strip():
+            return prefix.strip()
+        return fallback
 
     @classmethod
     def _verify_beads_plan(
