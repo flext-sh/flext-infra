@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 from urllib.parse import urlparse
@@ -457,6 +458,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 mode_result.error or "unable to infer repository topology"
             )
         attached = resolved_root != governing_root
+        in_transaction = os.environ.get(c.Infra.WORKTREE_TRANSACTION_ENV) == "1"
         make_profile = (
             c.Infra.MakeProfile.WORKSPACE_ROOT
             if mode_result.value is c.Infra.WorkspaceMode.WORKSPACE
@@ -469,7 +471,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 make_profile=make_profile,
                 beads_enabled=(
                     False
-                    if attached
+                    if attached or in_transaction
                     else make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                     or overlay.beads_enabled
                 ),
