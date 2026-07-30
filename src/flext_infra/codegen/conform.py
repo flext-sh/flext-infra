@@ -2015,6 +2015,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     return r[m.Infra.BranchAncestryPlan].fail(
                         f"worktree has no HEAD: {worktree_path}"
                     )
+                if Path(worktree_path).resolve() != root.resolve():
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
                 observations.append((
                     f"worktree:{worktree_path}:{worktree_branch}",
                     worktree_sha,
