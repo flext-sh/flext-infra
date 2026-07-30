@@ -110,30 +110,23 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         )
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
-        """Resolve the manifest owner for a repository or attached member."""
+    def resolve_repository_root(repository_root: Path) -> p.Result[Path]:
+        """Resolve the current repository root without crossing a gitlink."""
         resolved_root = repository_root.expanduser().resolve()
-        superproject = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+        repository = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-toplevel"],
             cwd=resolved_root,
         )
-        if superproject.failure:
-            # A path that is not inside ANY Git work tree is a standalone project
-            # that owns its own workspace root (covers freshly scaffolded projects
-            # before `git init`, and repo-less checkouts). Git reports this with a
-            # non-zero rev-parse; confirm it via --is-inside-work-tree so a genuine
-            # in-repo failure still fails closed (NOTE mro-p68a.5, agent codex).
+        if repository.failure:
             inside_work_tree = u.Cli.capture(
                 [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=resolved_root
             )
             if inside_work_tree.failure or inside_work_tree.value.strip() != "true":
                 return r[Path].ok(resolved_root)
             return r[Path].fail(
-                superproject.error or "unable to resolve Git superproject"
+                repository.error or "unable to resolve current Git repository"
             )
-        return r[Path].ok(
-            Path(superproject.value).resolve() if superproject.value else resolved_root
-        )
+        return r[Path].ok(Path(repository.value).resolve())
 
     @staticmethod
     def _validate_local_repository(repository: m.Infra.RepositoryRef) -> p.Result[bool]:
@@ -161,9 +154,16 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         expected_checkout = {
             c.Infra.RepositoryRole.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
             c.Infra.RepositoryRole.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
-            c.Infra.RepositoryRole.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
-        }[repository.role]
-        if repository.checkout is not expected_checkout:
+        }.get(repository.role)
+        standalone_checkout = (
+            repository.role is c.Infra.RepositoryRole.STANDALONE
+            and repository.checkout
+            in {
+                c.Infra.CheckoutKind.INDEPENDENT,
+                c.Infra.CheckoutKind.SUBMODULE,
+            }
+        )
+        if repository.checkout is not expected_checkout and not standalone_checkout:
             return r[bool].fail(
                 "local repository role/checkout mismatch: "
                 f"{repository.role.value}/{repository.checkout.value}"
@@ -173,138 +173,125 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         return r[bool].ok(True)
 
     @staticmethod
-    def _unattached_mode(
-        workspace_spec: m.Infra.WorkspaceSpec | None,
-    ) -> c.Infra.WorkspaceMode:
-        """Classify a repository that Git proves has no superproject."""
-        if (
-            workspace_spec is not None
-            and workspace_spec.repository.role == c.Infra.RepositoryRole.WORKSPACE_ROOT
-        ):
-            return c.Infra.WorkspaceMode.WORKSPACE
-        return c.Infra.WorkspaceMode.STANDALONE
-
-    @classmethod
-    def effective_repository(
-        cls,
-        repository_root: Path,
-        declared: m.Infra.RepositoryRef,
-        overlay: m.Infra.ProjectConformOverlay | None = None,
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Derive conform topology from owned submodules, with explicit exceptions."""
-        if overlay is not None and overlay.profile is not None:
-            profile = overlay.profile
-        else:
-            owned_result = cls.owned_submodules(repository_root)
-            if owned_result.failure:
-                return r[m.Infra.RepositoryRef].fail(
-                    owned_result.error or "unable to resolve owned submodules"
-                )
-            profile = (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if owned_result.value
-                else c.Infra.MakeProfile.STANDALONE
-            )
-        role = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.RepositoryRole.WORKSPACE_ROOT,
-            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.RepositoryRole.WORKSPACE_MEMBER,
-            c.Infra.MakeProfile.STANDALONE: c.Infra.RepositoryRole.STANDALONE,
-        }[profile]
-        checkout = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT: c.Infra.CheckoutKind.ROOT,
-            c.Infra.MakeProfile.WORKSPACE_MEMBER: c.Infra.CheckoutKind.SUBMODULE,
-            c.Infra.MakeProfile.STANDALONE: c.Infra.CheckoutKind.INDEPENDENT,
-        }[profile]
-        return r[m.Infra.RepositoryRef].ok(
-            m.Infra.RepositoryRef.model_validate({
-                **declared.model_dump(),
-                "role": role,
-                "profile": profile,
-                "checkout": checkout,
-            })
+    def _declared_submodule_paths(repository_root: Path) -> p.Result[t.StrSequence]:
+        """Return Git-indexed submodules declared by this repository."""
+        gitmodules_path = repository_root / c.Infra.GITMODULES
+        indexed = u.Cli.capture(
+            [c.Infra.GIT, "ls-files", "--stage"], cwd=repository_root
         )
+        if indexed.failure:
+            return r[t.StrSequence].fail(
+                indexed.error or "unable to inspect repository gitlinks"
+            )
+        indexed_paths: set[str] = set()
+        for line in indexed.value.splitlines():
+            metadata, separator, path = line.partition("\t")
+            match metadata.split():
+                case [mode, _, _] if separator:
+                    if mode == "160000":
+                        indexed_paths.add(path)
+                case _:
+                    return r[t.StrSequence].fail("malformed Git index entry")
+        if not gitmodules_path.is_file():
+            if indexed_paths:
+                return r[t.StrSequence].fail(
+                    f"indexed gitlinks require {c.Infra.GITMODULES}"
+                )
+            return r[t.StrSequence].ok(())
+        declared = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "config",
+                "--file",
+                c.Infra.GITMODULES,
+                "--get-regexp",
+                r"^submodule\..*\.path$",
+            ],
+            cwd=repository_root,
+        )
+        if declared.failure:
+            if not indexed_paths:
+                return r[t.StrSequence].ok(())
+            return r[t.StrSequence].fail(
+                declared.error or "unable to read declared Git submodules"
+            )
+        declared_paths: set[str] = set()
+        for line in declared.value.splitlines():
+            match line.split(maxsplit=1):
+                case [_, path]:
+                    declared_paths.add(path)
+                case _:
+                    return r[t.StrSequence].fail(
+                        "malformed Git submodule path declaration"
+                    )
+        if declared_paths != indexed_paths:
+            return r[t.StrSequence].fail(
+                "declared Git submodules and indexed gitlinks differ"
+            )
+        return r[t.StrSequence].ok(tuple(sorted(indexed_paths)))
 
     @staticmethod
-    def validate_beads_namespace(
-        repository_root: Path,
-        declared: m.Infra.RepositoryRef,
-        overlay: m.Infra.ProjectConformOverlay | None = None,
-    ) -> p.Result[bool]:
-        """Require tracker namespaces to match the project or one legacy overlay."""
-        beads_config = repository_root / ".beads" / "config.yaml"
-        if not beads_config.is_file():
-            return r[bool].ok(True)
-        owned_result = FlextInfraWorkspaceDetector.owned_submodules(repository_root)
-        if owned_result.failure:
-            return r[bool].fail(
-                owned_result.error or "unable to resolve Beads workspace ownership"
+    def _classify_gitlinks(
+        workspace_spec: m.Infra.WorkspaceSpec | None,
+        indexed_gitlinks: t.StrSequence,
+    ) -> p.Result[tuple[t.StrSequence, t.StrSequence]]:
+        """Classify Git links through the typed workspace ownership manifest."""
+        if not indexed_gitlinks:
+            return r[tuple[t.StrSequence, t.StrSequence]].ok(((), ()))
+        if workspace_spec is None:
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
+                "Git submodules require a typed workspace ownership manifest"
             )
-        if not owned_result.value and (
-            overlay is None or overlay.beads_namespace is None
-        ):
-            return r[bool].fail(
-                f"standalone project must not own Beads state: {declared.name}"
-            )
-        loaded = u.Cli.yaml_safe_load(beads_config)
-        if loaded.failure:
-            return r[bool].fail(loaded.error or f"invalid Beads config: {beads_config}")
-        actual = loaded.value.get("issue-prefix")
-        expected = (
-            overlay.beads_namespace
-            if overlay is not None and overlay.beads_namespace is not None
-            else declared.name
+        invalid_members = tuple(
+            repository.name
+            for repository in workspace_spec.members
+            if repository.state is not c.Infra.RepositoryState.ACTIVE
+            or repository.role is not c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            or repository.profile is not c.Infra.MakeProfile.WORKSPACE_MEMBER
+            or repository.checkout is not c.Infra.CheckoutKind.SUBMODULE
+            or repository.codegen is c.Infra.CodegenKind.NONE
+            or repository.read_only
         )
-        if actual != expected:
-            return r[bool].fail(
-                f"Beads namespace mismatch for {declared.name}: "
-                f"expected {expected}, found {actual!r}"
+        if invalid_members:
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
+                "managed workspace member contracts are invalid: "
+                + ", ".join(sorted(invalid_members))
             )
-        return r[bool].ok(True)
-
-    @classmethod
-    def owned_submodules(
-        cls, repository_root: Path
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
-        """Return only mutable submodules owned by the repository manifest."""
-        workspace_result = cls.load_workspace_spec(repository_root)
-        if workspace_result.failure:
-            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                workspace_result.error or "workspace ownership is unavailable"
-            )
-        workspace = workspace_result.value
-        invalid = tuple(
-            member
-            for member in workspace.members
-            if (
-                member.role is not c.Infra.RepositoryRole.WORKSPACE_MEMBER
-                or member.state is not c.Infra.RepositoryState.ACTIVE
-                or member.checkout is not c.Infra.CheckoutKind.SUBMODULE
-                or member.codegen is c.Infra.CodegenKind.NONE
-                or member.read_only
-            )
+        invalid_external = tuple(
+            repository.name
+            for repository in workspace_spec.content_only
+            if repository.role is not c.Infra.RepositoryRole.CONTENT_ONLY
+            or repository.codegen is not c.Infra.CodegenKind.NONE
+            or not repository.read_only
         )
-        if invalid:
-            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                "workspace members must be active, mutable, conform-managed "
-                f"submodules: {', '.join(item.name for item in invalid)}"
+        if invalid_external:
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
+                "external workspace repository contracts are invalid: "
+                + ", ".join(sorted(invalid_external))
             )
-        invalid_content = tuple(
-            repository
-            for repository in workspace.content_only
-            if (
-                repository.role is not c.Infra.RepositoryRole.CONTENT_ONLY
-                or repository.state is not c.Infra.RepositoryState.CONTENT_ONLY
-                or repository.codegen is not c.Infra.CodegenKind.NONE
-                or repository.editable
-                or not repository.read_only
+        managed_paths = {
+            repository.path.as_posix() for repository in workspace_spec.members
+        }
+        external_paths = {
+            repository.path.as_posix()
+            for repository in workspace_spec.content_only
+            if repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+        }
+        overlap = managed_paths & external_paths
+        if overlap:
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
+                "workspace gitlinks have conflicting ownership: "
+                + ", ".join(sorted(overlap))
             )
+        indexed_paths = set(indexed_gitlinks)
+        classified_paths = managed_paths | external_paths
+        if indexed_paths != classified_paths:
+            return r[tuple[t.StrSequence, t.StrSequence]].fail(
+                "Git submodules and typed workspace ownership differ"
+            )
+        return r[tuple[t.StrSequence, t.StrSequence]].ok(
+            (tuple(sorted(managed_paths)), tuple(sorted(external_paths)))
         )
-        if invalid_content:
-            return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                "content-only repositories must be immutable and excluded from "
-                f"FLEXT management: {', '.join(item.name for item in invalid_content)}"
-            )
-        return r[tuple[m.Infra.RepositoryRef, ...]].ok(tuple(workspace.members))
 
     @classmethod
     def analysis_exclusion_paths(
@@ -481,14 +468,12 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 local_repository.provider,
                 local_repository.url,
                 local_repository.branch,
-                local_repository.role,
                 local_repository.state,
-                local_repository.profile,
-                local_repository.checkout,
                 local_repository.codegen,
                 local_repository.package,
                 local_repository.editable,
                 local_repository.read_only,
+                local_repository.beads,
             )
             comparable_declared = (
                 declared.name,
@@ -496,14 +481,12 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 declared.provider,
                 declared.url,
                 declared.branch,
-                declared.role,
                 declared.state,
-                declared.profile,
-                declared.checkout,
                 declared.codegen,
                 declared.package,
                 declared.editable,
                 declared.read_only,
+                declared.beads,
             )
             if comparable_local != comparable_declared:
                 return r[c.Infra.WorkspaceMode].fail(
@@ -560,60 +543,183 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             )
         return r[c.Infra.WorkspaceMode].ok(c.Infra.WorkspaceMode.WORKSPACE)
 
-    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
-        """Detect workspace mode from typed manifests and real Git metadata."""
+    @classmethod
+    def inspect(
+        cls,
+        project_root: Path,
+        declared: m.Infra.RepositoryRef | None = None,
+    ) -> p.Result[m.Infra.RepositoryTopology]:
+        """Inspect Git topology once and derive every runtime policy."""
         try:
             resolved_project_root = project_root.resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[c.Infra.WorkspaceMode].fail_op("Workspace detection", exc)
+            return r[m.Infra.RepositoryTopology].fail_op(
+                "Workspace detection", exc
+            )
         if not resolved_project_root.is_dir():
-            return r[c.Infra.WorkspaceMode].fail(
+            return r[m.Infra.RepositoryTopology].fail(
                 f"project root is not a directory: {resolved_project_root}"
             )
 
         workspace_spec: m.Infra.WorkspaceSpec | None = None
-        local_manifest = self._manifest_path(resolved_project_root)
+        local_manifest = cls._manifest_path(resolved_project_root)
         if local_manifest.is_file():
-            local_result = self.load_workspace_spec(resolved_project_root)
+            local_result = cls.load_workspace_spec(resolved_project_root)
             if local_result.failure:
-                return r[c.Infra.WorkspaceMode].fail(local_result.error)
+                return r[m.Infra.RepositoryTopology].fail(local_result.error)
             # mro-i6nq.10: Unwrap only after the fail-closed result branch.
             local_spec = local_result.unwrap()
-            local_contract = self._validate_local_repository(local_spec.repository)
+            local_contract = cls._validate_local_repository(local_spec.repository)
             if local_contract.failure:
-                return r[c.Infra.WorkspaceMode].fail(local_contract.error)
+                return r[m.Infra.RepositoryTopology].fail(local_contract.error)
             workspace_spec = local_spec
-
+            declared = declared or local_spec.repository
         git_probe = u.Cli.run_raw(
             [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"],
             cwd=resolved_project_root,
         )
         if git_probe.failure:
-            return r[c.Infra.WorkspaceMode].fail(
+            return r[m.Infra.RepositoryTopology].fail(
                 git_probe.error or "unable to execute Git workspace probe"
             )
         if git_probe.value.exit_code != 0:
             if (resolved_project_root / c.Infra.GIT_DIR).exists():
-                return r[c.Infra.WorkspaceMode].fail(
+                return r[m.Infra.RepositoryTopology].fail(
                     git_probe.value.stderr.strip() or "invalid Git repository metadata"
                 )
-            return r[c.Infra.WorkspaceMode].ok(self._unattached_mode(workspace_spec))
-
-        superproject_result = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
-            cwd=resolved_project_root,
-        )
-        if superproject_result.failure:
-            return r[c.Infra.WorkspaceMode].fail(
-                superproject_result.error or "unable to resolve Git superproject"
+            return cls._topology_result(
+                resolved_project_root,
+                declared=declared,
+                mode=c.Infra.WorkspaceMode.STANDALONE,
+                attached=False,
+                managed_gitlinks=(),
+                external_gitlinks=(),
             )
-        if not superproject_result.value:
-            return r[c.Infra.WorkspaceMode].ok(self._unattached_mode(workspace_spec))
-        return self._detect_attached(
-            resolved_project_root,
-            Path(superproject_result.value).resolve(),
-            workspace_spec,
+        repository_root = cls.resolve_repository_root(resolved_project_root)
+        if repository_root.failure:
+            return r[m.Infra.RepositoryTopology].fail(
+                repository_root.error or "unable to resolve current Git repository"
+            )
+        superproject = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--show-superproject-working-tree"],
+            cwd=repository_root.value,
         )
+        if superproject.failure:
+            return r[m.Infra.RepositoryTopology].fail(
+                superproject.error or "unable to resolve Git superproject"
+            )
+        if superproject.value:
+            attached_validation = cls._detect_attached(
+                repository_root.value,
+                Path(superproject.value).resolve(),
+                workspace_spec,
+            )
+            if attached_validation.failure:
+                return r[m.Infra.RepositoryTopology].fail(
+                    attached_validation.error
+                )
+            return cls._topology_result(
+                repository_root.value,
+                declared=declared,
+                mode=c.Infra.WorkspaceMode.STANDALONE,
+                attached=True,
+                managed_gitlinks=(),
+                external_gitlinks=(),
+            )
+        submodules = cls._declared_submodule_paths(repository_root.value)
+        if submodules.failure:
+            return r[m.Infra.RepositoryTopology].fail(
+                submodules.error or "unable to resolve declared Git submodules"
+            )
+        classified = cls._classify_gitlinks(workspace_spec, submodules.value)
+        if classified.failure:
+            return r[m.Infra.RepositoryTopology].fail(
+                classified.error or "unable to classify declared Git submodules"
+            )
+        managed_gitlinks, external_gitlinks = classified.value
+        return cls._topology_result(
+            repository_root.value,
+            declared=declared,
+            mode=(
+                c.Infra.WorkspaceMode.WORKSPACE
+                if managed_gitlinks
+                else c.Infra.WorkspaceMode.STANDALONE
+            ),
+            attached=False,
+            managed_gitlinks=managed_gitlinks,
+            external_gitlinks=external_gitlinks,
+        )
+
+    @staticmethod
+    def _topology_result(
+        repository_root: Path,
+        *,
+        declared: m.Infra.RepositoryRef | None,
+        mode: c.Infra.WorkspaceMode,
+        attached: bool,
+        managed_gitlinks: t.StrSequence,
+        external_gitlinks: t.StrSequence,
+    ) -> p.Result[m.Infra.RepositoryTopology]:
+        """Build the typed runtime projection from one completed inspection."""
+        overlay_enabled = bool(declared and declared.beads)
+        if attached and overlay_enabled:
+            return r[m.Infra.RepositoryTopology].fail(
+                "Beads overlay is forbidden for an attached Git submodule"
+            )
+        if mode is c.Infra.WorkspaceMode.WORKSPACE and overlay_enabled:
+            return r[m.Infra.RepositoryTopology].fail(
+                "Beads overlay is only valid for independent standalone projects"
+            )
+        projected_repository = declared
+        if declared is not None:
+            role = (
+                c.Infra.RepositoryRole.WORKSPACE_ROOT
+                if mode is c.Infra.WorkspaceMode.WORKSPACE
+                else c.Infra.RepositoryRole.STANDALONE
+            )
+            profile = (
+                c.Infra.MakeProfile.WORKSPACE_ROOT
+                if mode is c.Infra.WorkspaceMode.WORKSPACE
+                else c.Infra.MakeProfile.STANDALONE
+            )
+            checkout = (
+                c.Infra.CheckoutKind.SUBMODULE
+                if attached
+                else (
+                    c.Infra.CheckoutKind.ROOT
+                    if mode is c.Infra.WorkspaceMode.WORKSPACE
+                    else c.Infra.CheckoutKind.INDEPENDENT
+                )
+            )
+            projected_repository = m.Infra.RepositoryRef.model_validate({
+                **declared.model_dump(),
+                "role": role,
+                "profile": profile,
+                "checkout": checkout,
+            })
+        return r[m.Infra.RepositoryTopology].ok(
+            m.Infra.RepositoryTopology(
+                repository_root=repository_root,
+                mode=mode,
+                attached=attached,
+                managed_gitlinks=managed_gitlinks,
+                external_gitlinks=external_gitlinks,
+                beads_enabled=(
+                    mode is c.Infra.WorkspaceMode.WORKSPACE or overlay_enabled
+                )
+                and not attached,
+                repository=projected_repository,
+            )
+        )
+
+    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
+        """Project the public mode from the canonical topology inspection."""
+        inspected = self.inspect(project_root)
+        if inspected.failure:
+            return r[c.Infra.WorkspaceMode].fail(
+                inspected.error or "unable to inspect repository topology"
+            )
+        return r[c.Infra.WorkspaceMode].ok(inspected.value.mode)
 
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:

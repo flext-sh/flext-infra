@@ -10,6 +10,7 @@ from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
+from tests import u
 
 
 def _repository(
@@ -111,6 +112,36 @@ class TestsCodegenCatalogExtensions:
                 ),
             ),
         )
+        member_root = tmp_path / "acme-charts"
+        member_root.mkdir()
+        (member_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "acme-charts"\nversion = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\ndependencies = []\n',
+            encoding="utf-8",
+        )
+        tm.ok(
+            u.Cli.run_checked(["git", "init", "-q", "-b", "development"], cwd=member_root)
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.email", "infra@example.com"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "config", "user.name", "Infra Tests"], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "add", c.Infra.PYPROJECT_FILENAME], cwd=member_root
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Initial fixture"], cwd=member_root
+            )
+        )
         analysis_exclusions = tuple(
             path.as_posix()
             for path in FlextInfraWorkspaceDetector.workspace_analysis_exclusion_paths(
@@ -137,13 +168,40 @@ class TestsCodegenCatalogExtensions:
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
                 what=c.Infra.CodegenConformSurface.ALL,
-                scope=c.Infra.CodegenConformScope.SELF,
+                scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
 
         plan = tm.ok(result)
-        tm.that(tuple(item.name for item in plan.repositories), eq=(root.name,))
+        tm.that(
+            tuple(item.name for item in plan.repositories),
+            eq=(root.name, "acme-charts"),
+        )
+        external_root = (tmp_path / "acme-content").resolve()
+        tm.that(
+            any(
+                external_root == file.path or external_root in file.path.parents
+                for file in plan.files
+            ),
+            eq=False,
+        )
+        tm.that(external_root.exists(), eq=False)
+        root_makefile = next(
+            file
+            for file in plan.files
+            if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
+        )
+        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
+        tm.that("acme-content" in root_makefile.rendered, eq=False)
+        workflows = tuple(
+            file
+            for file in plan.files
+            if ".github/workflows" in file.path.as_posix()
+        )
+        tm.that(workflows, len=4)
+        for workflow in workflows:
+            tm.that("acme-content" in workflow.rendered, eq=False)
         gitmodules = next(
             file.rendered for file in plan.files if file.path.name == ".gitmodules"
         )

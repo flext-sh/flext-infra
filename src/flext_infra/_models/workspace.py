@@ -10,6 +10,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 from flext_core import u
 from flext_infra import c, t
+from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -29,6 +30,35 @@ class FlextInfraModelsWorkspace:
         workspace_root: Annotated[
             Path, m.Field(alias="workspace", description="Workspace root path")
         ]
+
+    class RepositoryTopology(m.ContractModel):
+        """One atomic inspection of repository-local Git topology."""
+
+        repository_root: Annotated[
+            Path, m.Field(description="Current repository root without parent crossing")
+        ]
+        mode: Annotated[
+            c.Infra.WorkspaceMode,
+            m.Field(description="Effective workspace execution mode"),
+        ]
+        attached: Annotated[
+            bool, m.Field(description="Repository is checked out as a Git submodule")
+        ]
+        managed_gitlinks: Annotated[
+            t.StrSequence,
+            m.Field(description="Manifest-owned mutable repository gitlinks"),
+        ] = ()
+        external_gitlinks: Annotated[
+            t.StrSequence,
+            m.Field(description="Manifest-declared read-only content gitlinks"),
+        ] = ()
+        beads_enabled: Annotated[
+            bool, m.Field(description="Canonical Beads environment is eligible")
+        ]
+        repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef | None,
+            m.Field(description="Effective repository identity when declared"),
+        ] = None
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""

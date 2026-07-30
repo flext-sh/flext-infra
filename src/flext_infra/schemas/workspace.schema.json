@@ -160,6 +160,10 @@
         "read_only": {
           "type": "boolean"
         },
+        "beads": {
+          "type": "boolean",
+          "default": false
+        },
         "extra_verbs": {
           "type": "array",
           "items": {
