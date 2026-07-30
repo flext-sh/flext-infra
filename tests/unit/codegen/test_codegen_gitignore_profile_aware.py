@@ -95,7 +95,7 @@ class TestsCodegenGitignoreProfileAware:
                     "-f",
                     ".gitmodules",
                     f"submodule.{member.path.as_posix()}.branch",
-                    str(provider.branch),
+                    provider.branch,
                 ],
                 cwd=root,
             )
@@ -108,7 +108,7 @@ class TestsCodegenGitignoreProfileAware:
                     "-f",
                     ".gitmodules",
                     f"submodule.{member.path.as_posix()}.url",
-                    str(member.url),
+                    member.url,
                 ],
                 cwd=root,
             )
