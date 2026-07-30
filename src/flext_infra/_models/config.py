@@ -17,6 +17,7 @@ from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenPro
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+from flext_infra._models.layout import FlextInfraModelsLayout
 
 
 class _ConfigContract(m.ContractModel):
@@ -1467,6 +1468,15 @@ class FlextInfraConfigModels:
                     "Ephemeral/generated artifact SSOT; every ignore/exclude "
                     "projection derives from this list"
                 ),
+            ),
+        ]
+        layout: Annotated[
+            FlextInfraModelsLayout.LayoutSpec,
+            m.Field(
+                description=(
+                    "Declarative project-layout conformance contract consumed "
+                    "by the layout engine and the layout quality gate"
+                )
             ),
         ]
 

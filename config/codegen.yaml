@@ -165,6 +165,9 @@ Infra:
       - { name: .agents }
       - { name: .beads }
       - { name: .benchmarks }
+      # mro-0wuz: archive-not-delete target for the layout engine; the generated
+      # .gitignore projection must never track archived loose files.
+      - { name: .bkp }
       - { name: .cache, source_scan_ignore: true }
       # mro-j47u: agent worktrees are duplicate repositories, never production input.
       - { name: .claude, source_scan_ignore: true }
@@ -325,6 +328,199 @@ Infra:
         terminal.integrated.env.linux:
           PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
           VIRTUAL_ENV: ${workspaceFolder}/.venv
+
+    # NOTE(mro-0wuz, epic mro-hzox): declarative project-layout SSOT consumed by
+    # the layout engine (codegen/layout.py) and the layout quality gate. Every
+    # move/archive/gitignore decision derives from this section — the engine
+    # carries zero hardcoded layout knowledge. severity=warning keeps the gate
+    # report-only; flipping to error makes violations fail the check pipeline.
+    layout:
+      version: 1
+      severity: warning
+      # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
+      archive_root: .bkp
+      docs_target: docs
+      examples_target: examples
+      diagrams_target: docs/diagrams
+      allow_hidden: true
+      canonical_root_files:
+        - pyproject.toml
+        - Makefile
+        - base.mk
+        - custom.mk
+        - README.md
+        - LICENSE
+        - CHANGELOG.md
+        - CONTRIBUTING.md
+        - AGENTS.md
+        - CLAUDE.md
+        - conftest.py
+        - mkdocs.yml
+        - uv.lock
+      canonical_root_dotfiles:
+        - .gitignore
+        - .gitattributes
+        - .gitmodules
+        - .envrc
+        - .env.example
+        - .python-version
+        - .pre-commit-config.yaml
+        - .mise.toml
+        - .mcp.json
+        - .waza.yaml
+        - .sonarcloud.properties
+        - sonar-project.properties
+      canonical_root_dirs:
+        - src
+        - tests
+        - docs
+        - examples
+        - scripts
+        - config
+        - ci
+        - dist
+        - docker
+        - dbt_packages
+      # Per-project-type extra canonical root files; the profile of a project
+      # is resolved by matching its name against profile_project_patterns.
+      profile_extra_root_files:
+        dbt:
+          - dbt_project.yml
+          - packages.yml
+          - profiles.yml
+          - package-lock.yml
+        meltano:
+          - meltano.yml
+          - docker-compose.test.yml
+      profile_project_patterns:
+        dbt:
+          - flext-dbt-*
+        meltano:
+          - flext-meltano
+          - flext-tap-*
+      # Root documentation directories moved under <docs_target>/<name>/.
+      move_docs_dirs:
+        - api-reference
+        - architecture
+        - guides
+        - releases
+        - roadmap
+        - standards
+        - development
+        - improvements
+        - refactor
+        - refactoring
+        - maintenance
+        - integration
+        - adr
+        - diagrams
+        - api
+        - configuration
+        - notebook
+        - getting-started
+        - troubleshooting
+        - testing
+        - overview
+      # Root Markdown documents moved under <docs_target>/.
+      move_docs_files:
+        - index.md
+        - getting-started.md
+        - configuration.md
+        - development.md
+        - architecture.md
+        - api-reference.md
+        - testing.md
+        - troubleshooting.md
+        - quick-start.md
+        - overview.md
+        - integration.md
+        - c4-model.md
+        - TODOS.md
+        - TODO.md
+        - REFACTOR_STATUS.md
+        - DOCUMENTATION_UPDATE_SUMMARY.md
+        - CONTRACT_BUDGET.md
+        - DUPLICATION-DETECTION.md
+        - HOOK_WARNINGS.md
+        - PLUGIN-ARCHITECTURE.md
+        - RULE_MODIFICATION.md
+        - TESTING_WARNING_SYSTEM.md
+        - FLEXT_0_12_BEADS_LANE_REORGANIZATION_PLAN.md
+      # Sample data files moved under <examples_target>/.
+      move_example_files:
+        - directory.ldif
+        - oid_schema.ldif
+        - config.json.example
+      # Diagram sources moved under <diagrams_target>/.
+      move_diagram_globs:
+        - "*.puml"
+      # Root entries archived into <archive_root>/<project>/ (never deleted).
+      # Names match files or directories; globs use fnmatch semantics.
+      archive_names:
+        - $OUT
+        - max
+        - "=4.0.0"
+        - nohup.out
+        - poetry.lock
+        - history
+        - history.json
+        - index.md.bak-legacy-docs-layout
+        - dbt_project_migrated.yml
+        - processed_directory.ldif
+        - output.ldif
+        - replace_list.yml
+        - maintenance_config.yaml
+        - rules.json
+        - output
+        - logs
+        - complete_pipeline_results
+        - legado
+        - __pycache__
+        - b-pipeline
+        - debug-pipeline
+        - exec-pipeline
+        - noexec-pipeline
+        - probe
+        - status-pipeline
+      archive_globs:
+        - "*.log"
+        - pytest_*.txt
+        - pyright_errors*.log
+        - test_output.txt
+        - mro-to59-*
+      # Per-project overrides: extra archives (with the matching .gitignore
+      # additions), explicit nested moves, and empty-directory archives.
+      project_overrides:
+        flext-cli:
+          archive_names:
+            - settings.json
+          gitignore_additions:
+            - settings.json
+        flext-tap-oracle-wms:
+          archive_names:
+            - config.json
+          gitignore_additions:
+            - config.json
+        flext-target-oracle-oic:
+          archive_names:
+            - config.json
+          gitignore_additions:
+            - config.json
+        flext-oracle-oic:
+          archive_names:
+            - config.json
+          gitignore_additions:
+            - config.json
+        flext-dbt-ldif:
+          moves:
+            - { source: profiles/profiles.yml, target: profiles.yml }
+          archive_empty_dirs:
+            - profiles
+        flext-dbt-oracle-wms:
+          moves:
+            - { source: models/reference.md, target: docs/reference.md }
+          archive_empty_dirs:
+            - models
 
     managed_files:
       - path: ci/docker/alpine.Dockerfile
