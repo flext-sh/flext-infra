@@ -159,7 +159,7 @@ def _write_orchestratable_workspace(
     # Stub a managed Python so the generated Makefile can invoke flext_infra.
     venv_python = member_root / ".venv" / "bin" / "python"
     venv_python.parent.mkdir(parents=True, exist_ok=True)
-    venv_python.write_text("#!/bin/sh\nexec python3 \"$@\"\n", encoding="utf-8")
+    venv_python.write_text('#!/bin/sh\nexec python3 "$@"\n', encoding="utf-8")
     venv_python.chmod(0o755)
 
     # Point the generated Makefile at the flext_infra source in this test environment

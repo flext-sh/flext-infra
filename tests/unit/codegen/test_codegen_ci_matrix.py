@@ -161,7 +161,6 @@ class TestCodegenCiMatrix:
         content = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        actions = config.Infra.codegen.github_actions
         macos = content.split("\n  macos:", maxsplit=1)[1].split(
             "\n  windows:", maxsplit=1
         )[0]
