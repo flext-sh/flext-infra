@@ -121,6 +121,45 @@ class TestsCodegenCatalogExtensions:
             eq="bare-demo",
         )
 
+    def test_gitmodules_render_reaches_a_merge_fixed_point(self) -> None:
+        """The gitmodules projection must not grow on every merge pass.
+
+        The template's leading Jinja comment emitted a bare newline, and
+        ``_merge_gitmodules`` prepends a separator when the preserved prefix is
+        non-empty — so each apply added one more blank line and conform never
+        reached its post-apply fixed point on the workspace root.
+        """
+        template = (
+            Path(__file__).parents[3]
+            / "src"
+            / "flext_infra"
+            / "templates"
+            / "project"
+            / "base"
+            / "gitmodules.j2"
+        )
+        import jinja2
+
+        rendered = jinja2.Template(template.read_text(encoding="utf-8")).render(
+            workspace_gitlinks=[
+                {
+                    "repository": {
+                        "name": "demo-member",
+                        "path": "demo-member",
+                        "url": "https://github.com/flext-sh/demo-member.git",
+                    },
+                    "branch": "0.12.0-dev",
+                }
+            ]
+        )
+        tm.that(rendered.startswith("\n"), eq=False)
+        tm.that(rendered.startswith("[submodule"), eq=True)
+        managed = frozenset({"demo-member"})
+        merge = FlextInfraCodegenConform._merge_gitmodules  # ruff: ignore[private-member-access]
+        once = merge(rendered, rendered, managed_paths=managed)
+        twice = merge(once, rendered, managed_paths=managed)
+        tm.that(once, eq=twice)
+
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
             hasattr(FlextInfraCodegenConform, "_validate_workspace_catalog"), eq=False
