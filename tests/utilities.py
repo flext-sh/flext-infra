@@ -883,13 +883,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def initialize_git_repo(repo_root: Path) -> None:
-            """Initialize and commit a deterministic Git fixture."""
+            """Initialize and commit a deterministic Git fixture.
+
+            The initial commit allows an empty tree so fixtures that seed
+            hooks or config before any file still get a resolvable HEAD.
+            """
             commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
-                (c.Infra.GIT, "commit", "-m", "init"),
+                (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
             )
             for command in commands:
                 _ = cli_facade.run_checked(list(command), cwd=repo_root)

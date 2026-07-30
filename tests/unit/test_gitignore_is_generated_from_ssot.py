@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 
 import flext_infra
-from flext_infra import c, config, u
+from flext_infra import c, config, m, p, u
 from flext_tests import tm
 
 
@@ -26,7 +26,8 @@ def _workspace_root() -> Path:
 
 def _repository_profile() -> c.Infra.MakeProfile:
     """Return this repository's declared Make profile from the catalog SSOT."""
-    repository_name = tm.ok(u.read_project_metadata(_workspace_root())).project.name
+    metadata: m.ProjectMetadata = tm.ok(u.read_project_metadata(_workspace_root()))
+    repository_name: str = metadata.project.name
     return next(
         repository.profile
         for repository in config.Infra.codegen.repositories
@@ -34,14 +35,54 @@ def _repository_profile() -> c.Infra.MakeProfile:
     )
 
 
+def _beads_enabled(profile: c.Infra.MakeProfile) -> bool:
+    """Return the beads policy conform derives for this repository's profile."""
+    if profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
+        return True
+    metadata: m.ProjectMetadata = tm.ok(u.read_project_metadata(_workspace_root()))
+    return any(
+        repository.beads
+        for repository in config.Infra.codegen.repositories
+        if repository.name == metadata.project.name
+    )
+
+
 def _ssot_patterns() -> tuple[str, ...]:
-    """Return ignore patterns applicable to this repository's declared profile."""
+    """Return ignore patterns exactly as the generator selects them.
+
+    Mirrors the conform gitignore render filter: a section applies when its
+    profile list matches (empty means universal) AND its ``beads_enabled``
+    marker matches the repository's derived beads policy (``None`` means
+    beads-agnostic).
+    """
     profile = _repository_profile()
+    beads_enabled = _beads_enabled(profile)
     return tuple(
         pattern
         for section in config.Infra.codegen.gitignore_sections
         if not section.profiles or profile in section.profiles
+        if section.beads_enabled is None or section.beads_enabled is beads_enabled
         for pattern in section.patterns
+    )
+
+
+def _applies_to_profile(path: str, profile: c.Infra.MakeProfile) -> bool:
+    """Return whether a managed file is materialized for this profile.
+
+    The template catalog is the SSOT for which profiles receive a generated
+    file: a managed path whose every template entry excludes this profile is
+    never created here, so the ignore policy legitimately hides it.
+    Paths without a template entry are universal committed artifacts.
+    """
+    entries = tuple(
+        entry
+        for entry in config.Infra.codegen.templates.entries
+        if entry.destination == path
+    )
+    if not entries:
+        return True
+    return any(
+        not entry.profiles or profile in entry.profiles for entry in entries
     )
 
 
@@ -62,10 +103,11 @@ def _is_allowed_by_policy(relative_path: str) -> bool:
         target.write_text("", encoding="utf-8")
         # `git check-ignore` exits 0 when the path IS ignored, 1 when it is
         # not, so a failed run is the success case for a tracked artifact.
-        probe = tm.ok(
+        probe: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(["git", "check-ignore", "-q", relative_path], cwd=root)
         )
-    return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+        is_allowed: bool = probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+    return is_allowed
 
 
 class TestsFlextInfraGitignoreIsGeneratedFromSsot:
@@ -79,12 +121,17 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
 
         ``delegated`` entries are the deliberate exception: they are generated
         into each checkout rather than committed, so being ignored is correct.
-        The distinction is read from the managed-file policy, never hardcoded.
+        So are entries whose template catalog excludes this repository's
+        profile (for example ``.beads/config.yaml``, which only workspace
+        roots and opted-in standalone repositories materialize). Both
+        distinctions are read from the typed policy, never hardcoded.
         """
+        profile = _repository_profile()
         committed = tuple(
             item
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
+            and _applies_to_profile(item.path.as_posix(), profile)
         )
         blocked = tuple(
             item.path.as_posix()

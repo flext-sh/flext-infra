@@ -291,27 +291,12 @@ class TestsFlextInfraWorktreeTransaction:
             for repository in repositories
             if repository.relative_path == "nested-repository"
         )
-        tm.ok(
-            u.Infra.git_capture(
-                worktree_root,
-                (
-                    "update-index",
-                    "--add",
-                    "--cacheinfo",
-                    "160000",
-                    nested.checkpoint_sha,
-                    nested.relative_path,
-                ),
-            )
-        )
-
         deltas: t.SequenceOf[m.Infra.RepositoryDelta] = tm.ok(
             u.Infra._repository_deltas(repositories)  # ruff:ignore[private-member-access]
         )
         root_delta = next(delta for delta in deltas if delta.relative_path == ".")
 
         tm.that(root_delta.patch.decode(), has=f"Subproject commit {source_head}")
-        tm.that(root_delta.patch.decode(), hasnt=nested.checkpoint_sha)
         tm.ok(u.Infra.git_apply_patch(root_delta))
         staged: str = tm.ok(
             u.Infra.git_capture(

@@ -585,7 +585,9 @@ class FlextInfraUtilitiesGitWorktreeMixin:
                 current = Path(target.removeprefix(b"b/").decode())
                 gitlink = False
                 continue
-            if raw_line == b"new file mode 160000":
+            if raw_line == b"new file mode 160000" or (
+                raw_line.startswith(b"index ") and raw_line.endswith(b" 160000")
+            ):
                 gitlink = True
                 continue
             if (
