@@ -23,7 +23,7 @@ WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 # Source: config:workspace_members (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors WORKSPACE_MEMBERS for gitlink governance.
 WORKSPACE_MEMBERS :={% for member in workspace_members %} {{ member }}{% endfor %}
-MANAGED_GITLINKS := $(WORKSPACE_MEMBERS)
+MANAGED_GITLINKS :={% if make_profile == "workspace-root" %}$(WORKSPACE_MEMBERS){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
