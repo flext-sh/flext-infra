@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from flext_infra.protocols import p
 
 
-
 class FlextInfraUtilitiesDocsBuild:
     """Reusable build helpers exposed through ``u.Infra``."""
 
@@ -162,8 +161,6 @@ class FlextInfraUtilitiesDocsBuild:
         load = cast("p.Infra.MkDocsLoadConfig", FlextInfraUtilitiesDocsBuild._module_callable(
             mkdocs_config, "load_config"
         ))
-            mkdocs_config, "load_config"
-        ))
         build = cast("p.Infra.MkDocsBuild", FlextInfraUtilitiesDocsBuild._module_callable(mkdocs_build, "build"))
         mkdocs_error_types = FlextInfraUtilitiesDocsBuild._mkdocs_exception_types(
             mkdocs_exceptions
@@ -197,8 +194,6 @@ class FlextInfraUtilitiesDocsBuild:
         try:
             serve_module = import_module("mkdocs.commands.serve")
             serve_fn = cast("p.Infra.MkDocsServe", FlextInfraUtilitiesDocsBuild._module_callable(
-                serve_module, "serve"
-            ))
                 serve_module, "serve"
             ))
             serve_fn(

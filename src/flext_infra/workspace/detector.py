@@ -621,7 +621,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return cls._topology_result(
                 repository_root.value,
                 declared=declared,
-                mode=c.Infra.WorkspaceMode.STANDALONE,
+                mode=c.Infra.WorkspaceMode.WORKSPACE,
                 attached=True,
                 managed_gitlinks=(),
                 external_gitlinks=(),
@@ -672,25 +672,18 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             )
         projected_repository = declared
         if declared is not None:
-            role = (
-                c.Infra.RepositoryRole.WORKSPACE_ROOT
-                if mode is c.Infra.WorkspaceMode.WORKSPACE
-                else c.Infra.RepositoryRole.STANDALONE
-            )
-            profile = (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if mode is c.Infra.WorkspaceMode.WORKSPACE
-                else c.Infra.MakeProfile.STANDALONE
-            )
-            checkout = (
-                c.Infra.CheckoutKind.SUBMODULE
-                if attached
-                else (
-                    c.Infra.CheckoutKind.ROOT
-                    if mode is c.Infra.WorkspaceMode.WORKSPACE
-                    else c.Infra.CheckoutKind.INDEPENDENT
-                )
-            )
+            if attached:
+                role = c.Infra.RepositoryRole.WORKSPACE_MEMBER
+                profile = c.Infra.MakeProfile.WORKSPACE_MEMBER
+                checkout = c.Infra.CheckoutKind.SUBMODULE
+            elif mode is c.Infra.WorkspaceMode.WORKSPACE:
+                role = c.Infra.RepositoryRole.WORKSPACE_ROOT
+                profile = c.Infra.MakeProfile.WORKSPACE_ROOT
+                checkout = c.Infra.CheckoutKind.ROOT
+            else:
+                role = c.Infra.RepositoryRole.STANDALONE
+                profile = c.Infra.MakeProfile.STANDALONE
+                checkout = c.Infra.CheckoutKind.INDEPENDENT
             projected_repository = m.Infra.RepositoryRef.model_validate({
                 **declared.model_dump(),
                 "role": role,
