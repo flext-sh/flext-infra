@@ -2020,6 +2020,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     worktree_sha = ""
                     worktree_branch = "detached"
                     continue
+                if worktree_branch == "detached":
+                    # Detached checkouts (e.g., temporary CI/worktree transactions)
+                    # are not governed branch refs; skip them.
+                    worktree_path = ""
+                    worktree_sha = ""
+                    worktree_branch = "detached"
+                    continue
                 observations.append((
                     f"worktree:{worktree_path}:{worktree_branch}",
                     worktree_sha,
