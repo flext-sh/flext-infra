@@ -207,5 +207,25 @@ class TestCodegenCiMatrix:
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has="'flext-demo [standalone]' '';")
 
+    def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
+        """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
+        root = Path(__file__).resolve().parents[4]
+        dockerignore = root / ".dockerignore"
+        tm.that(dockerignore.is_file(), eq=True)
+        content = dockerignore.read_text(encoding="utf-8")
+        for marker in (
+            "!Makefile",
+            "!*.mk",
+            "!pyproject.toml",
+            "!uv.lock",
+            "!.mise.toml",
+            "!.python-version",
+            "!.default-python-packages",
+            "!config/",
+            "!scripts/dispatch.py",
+            "!ci/docker/",
+        ):
+            tm.that(content, has=marker)
+
 
 __all__: list[str] = []
