@@ -306,7 +306,9 @@ define _run_for_selected_projects
 			*" $$project "*) ;; \
 			*) printf 'ERROR: undeclared project %s\n' "$$project" >&2; exit 2 ;; \
 		esac; \
-		$(UV) lock --project "$(PROJECT_ROOT)/$$project" $(1); \
+		if [ "$$project" = "." ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		$(UV) lock --project "$$project_root" $(1); \
 	done
 endef
 
