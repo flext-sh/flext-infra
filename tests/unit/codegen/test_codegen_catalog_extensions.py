@@ -119,6 +119,40 @@ class TestsCodegenCatalogExtensions:
                 reported_version="",
             )
 
+    def test_beads_plan_declares_the_ledger_root_it_owns(self, tmp_path: Path) -> None:
+        """``BeadsPlan.ledger_root`` is always the tree that owns the ledger.
+
+        It was ``Path | None``, where ``None`` encoded "same as
+        repository_root" — so three separate call sites re-derived the real
+        value with ``plan.ledger_root or plan.repository_root`` and a fourth
+        compared against ``None`` to detect routing. The plan now declares the
+        owning root outright: consumers read one validated field and routing is
+        the honest comparison between two paths.
+        """
+        repo = tmp_path / "member"
+        principal = tmp_path / "principal"
+        own = m.Infra.BeadsPlan(
+            repository_root=repo,
+            enabled=True,
+            canonical_prefix="mro",
+            expected_version="1.1.0",
+            ledger_root=repo,
+            ledger_id="mro",
+        )
+        tm.that(own.ledger_root, eq=repo)
+        tm.that(own.routes_to_principal_ledger, eq=False)
+        routed = own.model_copy(update={"ledger_root": principal})
+        tm.that(routed.routes_to_principal_ledger, eq=True)
+        # The field is required: "no ledger root" is not a representable state.
+        with pytest.raises(c.ValidationError):
+            m.Infra.BeadsPlan(
+                repository_root=repo,
+                enabled=True,
+                canonical_prefix="mro",
+                expected_version="1.1.0",
+                ledger_id="mro",
+            )
+
     def test_beads_tracker_declaration_is_a_validated_model(
         self, tmp_path: Path
     ) -> None:
@@ -249,6 +283,7 @@ class TestsCodegenCatalogExtensions:
             enabled=False,
             canonical_prefix="mro",
             expected_version="1.1.0",
+            ledger_root=tx,
         )
         tm.fail(verify(plan_at_root, allow_missing=False))
 
@@ -272,6 +307,7 @@ class TestsCodegenCatalogExtensions:
             enabled=False,
             canonical_prefix="mro",
             expected_version="1.1.0",
+            ledger_root=root,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
         verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]

@@ -1974,14 +1974,22 @@ class FlextInfraConfigModels:
             ),
         ] = None
         ledger_root: Annotated[
-            Path | None,
+            Path,
             m.Field(
                 description=(
-                    "Principal checkout root owning the ledger; None keeps the "
-                    "tracker at repository_root"
+                    "Checkout root that owns the ledger. Equal to "
+                    "repository_root when this repository owns its own tracker, "
+                    "and the principal checkout when the tracker is routed."
                 )
             ),
-        ] = None
+        ]
+
+        @m.computed_field()
+        @property
+        def routes_to_principal_ledger(self) -> bool:
+            """Whether the tracker lives in another checkout than this one."""
+            return self.ledger_root != self.repository_root
+
         ledger_id: Annotated[
             t.NonEmptyStr | None,
             m.Field(

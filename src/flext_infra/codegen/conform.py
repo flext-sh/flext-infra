@@ -316,7 +316,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ledger_root_result.error or "Beads ledger root resolution failed"
             )
         principal_root = ledger_root_result.value
-        ledger_root = None if principal_root == workspace_root else principal_root
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
         beads_plans: list[m.Infra.BeadsPlan] = []
@@ -406,7 +405,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     expected_version=config_spec.toolchain.beads.reported_version,
                     expected_checksum=config_spec.toolchain.beads.checksum,
                     expected_schema=config_spec.toolchain.beads.expected_schema,
-                    ledger_root=ledger_root,
+                    ledger_root=principal_root,
                     ledger_id=workspace.ledger_id,
                 )
             )
@@ -1913,7 +1912,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         cls, plan: m.Infra.BeadsPlan, *arguments: str
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run the ledger-root Beads binary, never an ambient PATH resolution."""
-        ledger_root = plan.ledger_root or plan.repository_root
+        ledger_root = plan.ledger_root
         binary = cls._beads_binary(ledger_root)
         if binary.failure:
             return r[p.Cli.CommandOutput].fail(
@@ -1979,7 +1978,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         lifecycle: verification is skipped there and re-run at the real tree on
         apply.
         """
-        if plan.ledger_root is not None and plan.ledger_root != plan.repository_root:
+        if plan.routes_to_principal_ledger:
             return r[bool].ok(True)
         if os.environ.get(c.Infra.ENV_VAR_GITHUB_ACTIONS) == "true":
             # CI runners are ephemeral and do not carry a live Dolt tracker;
@@ -1992,7 +1991,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"Beads is disabled but tracker state exists: {beads_dir}"
                 )
             return r[bool].ok(True)
-        ledger_root = plan.ledger_root or plan.repository_root
+        ledger_root = plan.ledger_root
         version = cls._beads_command(plan, "version")
         if version.failure or version.value.exit_code != 0:
             return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
@@ -2052,7 +2051,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         if not plan.enabled:
             return r[bool].ok(False)
-        ledger_root = plan.ledger_root or plan.repository_root
+        ledger_root = plan.ledger_root
         beads_dir = ledger_root / ".beads"
         changed = not beads_dir.exists()
         if changed:
