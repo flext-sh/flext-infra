@@ -213,17 +213,16 @@ class FlextInfraWorkspaceDetector(
         return r[str].ok(captured.value.strip())
 
     @staticmethod
-    def _provider_for_url(url: str) -> m.Infra.ProviderSpec:
-        """Resolve the declared provider owning ``url``, else the default one.
+    def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
+        """Return the declared provider owning ``url``, or ``None`` if ungoverned.
 
         Providers are generic policy (host, organization, integration branch)
         and remain flext-infra's to own. Which projects exist under them is
         not, so the match is made against the URL the repository itself
         declares.
         """
-        providers = config.Infra.codegen.providers
         parsed = urlparse(url)
-        for provider in providers:
+        for provider in config.Infra.codegen.providers:
             provider_url = urlparse(provider.base_url)
             if (
                 provider_url.scheme == parsed.scheme
@@ -231,7 +230,12 @@ class FlextInfraWorkspaceDetector(
                 and parsed.path.strip("/").startswith(f"{provider.organization}/")
             ):
                 return provider
-        return providers[0]
+        return None
+
+    @classmethod
+    def _provider_for_url(cls, url: str) -> m.Infra.ProviderSpec:
+        """Resolve the declared provider owning ``url``, else the default one."""
+        return cls._declared_provider_for_url(url) or config.Infra.codegen.providers[0]
 
     @classmethod
     def _validate_observed_dependencies(
@@ -352,11 +356,15 @@ class FlextInfraWorkspaceDetector(
             if metadata.failure:
                 # Not a Python project at all: no workspace exclusions apply.
                 return r[tuple[Path, ...]].ok(())
-            catalog_names = {
-                item.name for item in config.Infra.codegen.repositories
-            }
-            if metadata.value.project.name not in catalog_names:
-                # A Python project, but not a catalogued FLEXT workspace.
+            # A project without a manifest is a governed FLEXT checkout only
+            # when its own Git origin resolves to a declared provider. That is
+            # derived from the repository itself; flext-infra owns no catalog
+            # of the projects it serves.
+            origin = cls._git_origin_url(repository_root)
+            if origin.failure or not origin.value:
+                return r[tuple[Path, ...]].ok(())
+            if cls._declared_provider_for_url(origin.value) is None:
+                # A Python project, but not a provider-governed FLEXT checkout.
                 return r[tuple[Path, ...]].ok(())
         spec = cls.load_workspace_spec(repository_root)
         if spec.failure:

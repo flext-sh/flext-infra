@@ -876,22 +876,31 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def initialize_git_repo(repo_root: Path) -> None:
+        def initialize_git_repo(repo_root: Path, origin_url: str | None = None) -> None:
             """Initialize and commit a deterministic Git fixture.
 
             The initial commit allows an empty tree so fixtures that seed
             hooks or config before any file still get a resolvable HEAD.
             A fake remote baseline ref is created so workspace discovery
-            matches a real clone.
+            matches a real clone. The baseline branch is read from the same
+            provider config production reads. ``origin_url`` defaults to the
+            repository itself; fixtures that must be recognised as
+            provider-governed pass their declared provider URL instead.
             """
+            baseline_branch = config.Infra.codegen.providers[0].branch
             commands: t.SequenceOf[t.StrSequence] = (
                 (c.Infra.GIT, "init", "-b", "main"),
                 (c.Infra.GIT, "config", "user.email", "tests@flext.local"),
                 (c.Infra.GIT, "config", "user.name", "Flext Tests"),
                 (c.Infra.GIT, "add", "-A"),
                 (c.Infra.GIT, "commit", "--allow-empty", "-m", "init"),
-                (c.Infra.GIT, "remote", "add", "origin", str(repo_root)),
-                (c.Infra.GIT, "update-ref", "refs/remotes/origin/0.12.0-dev", "HEAD"),
+                (c.Infra.GIT, "remote", "add", "origin", origin_url or str(repo_root)),
+                (
+                    c.Infra.GIT,
+                    "update-ref",
+                    f"refs/remotes/origin/{baseline_branch}",
+                    "HEAD",
+                ),
             )
             for command in commands:
                 tm.ok(cli_facade.run_checked(list(command), cwd=repo_root))

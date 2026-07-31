@@ -61,25 +61,10 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         (project_root / "pyproject.toml").write_text(
             f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
         )
-    test_u.Tests.initialize_git_repo(workspace_root)
-    # Seed a fake origin baseline so branch ancestry validation passes in
-    # detached fixture repositories; real ancestry is exercised elsewhere.
-    tm.ok(
-        u.Cli.run_checked(
-            ["git", "remote", "add", "origin", root_repository.url], cwd=workspace_root
-        )
-    )
-    tm.ok(
-        u.Cli.run_checked(
-            [
-                "git",
-                "update-ref",
-                f"refs/remotes/origin/{config.Infra.codegen.providers[0].branch}",
-                "HEAD",
-            ],
-            cwd=workspace_root,
-        )
-    )
+    # Seed the declared provider URL as origin so workspace discovery resolves
+    # this fixture as a provider-governed checkout; the helper owns the fake
+    # baseline ref, and real ancestry is exercised elsewhere.
+    test_u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
     # mro-z89e.2.2: seed a minimal .gitmodules so the conform detector sees the
     # declared members as governed submodules; the real setup/Gitlink lifecycle is
     # covered by tests/unit/codegen/test_workspace_root_setup_submodules.py.
