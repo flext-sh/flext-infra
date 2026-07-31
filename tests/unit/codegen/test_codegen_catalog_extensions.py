@@ -89,8 +89,37 @@ class TestsCodegenCatalogExtensions:
             char in "0123456789abcdef" for char in beads.version
         )
         tm.that(is_commit, eq=True)
+        # ONE declared field, no optional/computed pair: the model states what
+        # the binary prints and the gate reads exactly that.
         tm.that(beads.reported_version, eq="1.1.0")
-        tm.that(beads.gate_version, eq="1.1.0")
+        tm.that(hasattr(beads, "gate_version"), eq=False)
+
+    def test_mise_tool_spec_requires_the_reported_version(self) -> None:
+        """``reported_version`` is a required field validated by Pydantic.
+
+        It was declared ``str | None`` with a ``gate_version`` computed field
+        that silently fell back to ``version`` — a polymorphic runtime
+        decision hidden inside the model. Every mise tool knows what its
+        binary prints, so the value is declared, required, and validated at
+        construction instead.
+        """
+        spec = m.Infra.MiseToolSpec(
+            selector="go:example.com/tool/cmd/x",
+            version="0123456789abcdef0123456789abcdef01234567",
+            reported_version="1.2.3",
+        )
+        tm.that(spec.reported_version, eq="1.2.3")
+        with pytest.raises(c.ValidationError):
+            m.Infra.MiseToolSpec(
+                selector="go:example.com/tool/cmd/x",
+                version="0123456789abcdef0123456789abcdef01234567",
+            )
+        with pytest.raises(c.ValidationError):
+            m.Infra.MiseToolSpec(
+                selector="go:example.com/tool/cmd/x",
+                version="0123456789abcdef0123456789abcdef01234567",
+                reported_version="",
+            )
 
     def test_beads_prefix_honours_the_committed_tracker_declaration(
         self, tmp_path: Path
