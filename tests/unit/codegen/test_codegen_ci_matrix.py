@@ -208,7 +208,7 @@ class TestCodegenCiMatrix:
 
     def test_root_dockerignore_reincludes_bootstrap_surface(self) -> None:
         """Root hand-maintained .dockerignore lets clean-machine bootstrap files into the context."""
-        root = Path(__file__).resolve().parents[4]
+        root = Path(__file__).resolve().parents[3]
         dockerignore = root / ".dockerignore"
         tm.that(dockerignore.is_file(), eq=True)
         content = dockerignore.read_text(encoding="utf-8")

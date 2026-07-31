@@ -10,7 +10,7 @@ FROM alpine:3.21
 # === SECTION: base packages (managed) ===
 # Source: template (distro-specific package list)
 RUN apk add --no-cache \
-      bash ca-certificates curl git make build-base
+      bash ca-certificates curl git make build-base icu-dev icu-libs
 # End SECTION: base packages
 
 # === SECTION: managed tool bootstrap (managed) ===

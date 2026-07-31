@@ -25,12 +25,27 @@ Infra:
       # gastownhall release (1.1.2) only knows v53 and fails preflight with
       # "schema version mismatch". Pin the go-module commit that migrated the
       # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform gate (gate_version) while the
-      # immutable commit stays the installed selector version.
+      # reported_version feeds the conform preflight gate; the immutable commit
+      # stays the installed selector version. The artifact identity is
+      # content-proven: checksum is the SHA-256 of the pinned binary, and
+      # expected_schema is the ledger schema the binary must know.
       beads:
         selector: go:github.com/steveyegge/beads/cmd/bd
         version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
         reported_version: "1.1.0"
+        checksum: "452efe298061b448e87f6b09d56a1733a9e23134e103793e742ff90737f66df7"
+        expected_schema: 61
+        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
+        # host routes through this server; a repository-local server is never
+        # used. Rendered into .beads/config.yaml by codegen for ledger owners
+        # (workspace-root) and attached standalones (routing only).
+        server:
+          mode: server
+          shared_server: true
+          host: 127.0.0.1
+          port: 3308
+          user: root
+          auto_commit: "on"
 
     github_actions:
       checkout:
@@ -614,6 +629,7 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/release.yml
+      - path: .beads/config.yaml
         owner: codegen
         policy: full
       - path: .env.example
@@ -1145,6 +1161,14 @@ Infra:
         - source: base/.mise.toml.j2
           destination: .mise.toml
           profiles: [workspace-root, standalone]
+          delegate: render
+          overwrite: false
+        # Ledger routing config: rendered only for the workspace root (owned
+        # ledger) and marker-attached standalones (routing-only); the engine
+        # planner skips every other profile/class (mro-z89e governance).
+        - source: base/beads-config.yaml.j2
+          destination: .beads/config.yaml
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         - source: base/.envrc.j2

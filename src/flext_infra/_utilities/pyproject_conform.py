@@ -485,16 +485,16 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @staticmethod
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
-        """Delete legacy packaging owners superseded by canonical conformance."""
+        """Delete legacy packaging owners superseded by canonical conformance.
+
+        The ``[tool.flext]`` table is always preserved: it carries declared
+        project policy, including the ``workspace.attached`` marker consumed
+        by the topology detector (mro-z89e governance).
+        """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
-        flext = u.Cli.toml_table_child(tool, "flext")
-        if flext is not None:
-            u.Cli.toml_remove_key_if_present(flext, "workspace")
-            if not tuple(flext):
-                u.Cli.toml_remove_key_if_present(tool, "flext")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:

@@ -51,6 +51,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
         repository: m.Infra.RepositoryRef,
         *,
         members: tuple[m.Infra.RepositoryRef, ...] = (),
+        overlays: tuple[m.Infra.RepositoryPolicyOverlaySpec, ...] = (),
     ) -> None:
         """Write one schema-shaped manifest through the public YAML facade."""
         spec = m.Infra.WorkspaceSpec(
@@ -59,6 +60,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
             repository=repository,
             members=members,
             exclusions=(),
+            repository_policy_overlays=overlays,
         )
         tm.ok(
             u.Cli.yaml_dump(
@@ -107,6 +109,16 @@ class TestsFlextInfraInfraWorkspaceDetector:
         source_root = tmp_path / "member-source"
         cls._initialize_repository(workspace_root)
         cls._initialize_repository(source_root)
+        (source_root / "pyproject.toml").write_text(
+            '[project]\nname = "flext-member"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        tm.ok(u.Cli.run_checked(["git", "add", "pyproject.toml"], cwd=source_root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "-m", "Declare member metadata"],
+                cwd=source_root,
+            )
+        )
         member_path = "members/flext-member"
         tm.ok(
             u.Cli.run_checked(
@@ -217,16 +229,18 @@ class TestsFlextInfraInfraWorkspaceDetector:
             eq=c.Infra.WorkspaceMode.STANDALONE,
         )
 
-    def test_declared_real_submodule_is_standalone(self, tmp_path: Path) -> None:
-        """Attached members own standalone Make and environment profiles."""
+    def test_declared_real_submodule_is_workspace_member(self, tmp_path: Path) -> None:
+        """Classify a fully validated attached member as a workspace member."""
         member_root = self._attached_member(tmp_path)
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.STANDALONE,
+            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
         )
 
-    def test_feature_branch_at_gitlink_is_standalone(self, tmp_path: Path) -> None:
+    def test_feature_branch_at_gitlink_is_workspace_member(
+        self, tmp_path: Path
+    ) -> None:
         member_root = self._attached_member(tmp_path)
         tm.ok(
             u.Cli.run_checked(
@@ -237,10 +251,10 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.STANDALONE,
+            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
         )
 
-    def test_detached_head_at_gitlink_is_standalone(self, tmp_path: Path) -> None:
+    def test_detached_head_at_gitlink_is_workspace_member(self, tmp_path: Path) -> None:
         member_root = self._attached_member(tmp_path)
         tm.ok(
             u.Cli.run_checked(
@@ -250,7 +264,7 @@ class TestsFlextInfraInfraWorkspaceDetector:
 
         tm.ok(
             FlextInfraWorkspaceDetector().detect(member_root),
-            eq=c.Infra.WorkspaceMode.STANDALONE,
+            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
         )
 
     def test_member_head_different_from_gitlink_fails_closed(
@@ -393,3 +407,215 @@ class TestsFlextInfraInfraWorkspaceDetector:
         spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(tmp_path))
         tm.that(spec.name, eq="consumer-project")
         tm.that(spec.repository.name, eq="consumer-project")
+
+    def test_workspace_root_with_governed_member_is_workspace(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify a root owning a real governed member as the workspace."""
+        member_root = self._attached_member(tmp_path)
+        workspace_root = member_root.parents[1]
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(workspace_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE,
+        )
+
+    def test_attached_standalone_marker_is_workspace_member(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify a repo declaring ``[tool.flext.workspace] attached`` as member."""
+        project_root = tmp_path / "attached-standalone"
+        self._initialize_repository(project_root)
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "attached-standalone"\nversion = "0.1.0"\n'
+            "\n[tool.flext.workspace]\nattached = true\n",
+            encoding="utf-8",
+        )
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.WORKSPACE_MEMBER,
+        )
+
+    def test_pyproject_without_attached_marker_stays_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep a repo without the attached opt-in marker standalone."""
+        project_root = tmp_path / "independent"
+        self._initialize_repository(project_root)
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "independent"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+    def test_aggregator_gitmodules_without_toolchain_is_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Never promote an aggregator with .gitmodules but no FLEXT toolchain."""
+        project_root = tmp_path / "aggregator"
+        self._initialize_repository(project_root)
+        (project_root / ".gitmodules").write_text(
+            '[submodule "vendored"]\n'
+            "\tpath = vendored\n"
+            "\turl = https://github.com/other-org/vendored.git\n",
+            encoding="utf-8",
+        )
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "foreign-aggregator"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+
+        tm.ok(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            eq=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+    def test_toolchain_owner_absent_from_catalog_fails_closed(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep catalog validation authoritative once the toolchain is present."""
+        project_root = tmp_path / "toolchain-owner"
+        self._initialize_repository(project_root)
+        (project_root / ".gitmodules").write_text(
+            '[submodule "vendored"]\n'
+            "\tpath = vendored\n"
+            "\turl = https://github.com/other-org/vendored.git\n",
+            encoding="utf-8",
+        )
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "foreign-aggregator"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
+        infra_repository = next(
+            item
+            for item in config.Infra.codegen.repositories
+            if item.distribution == config.Infra.name
+        )
+        toolchain_marker = project_root / infra_repository.path / c.Infra.BASE_MK
+        toolchain_marker.parent.mkdir()
+        toolchain_marker.write_text("# toolchain marker\n", encoding="utf-8")
+
+        tm.fail(
+            FlextInfraWorkspaceDetector().detect(project_root),
+            has="absent from the codegen catalog",
+        )
+
+    def test_conform_target_member_overlay_never_promotes_beads(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep an attached member beadless even with an enabling overlay."""
+        member_root = self._attached_member(tmp_path)
+        workspace_root = member_root.parents[1]
+        provider = config.Infra.codegen.providers[0]
+        canonical_url = f"{provider.base_url}/flext-member.git"
+        self._write_manifest(
+            workspace_root,
+            self._repository(
+                name="workspace-root",
+                path=".",
+                role=c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            ),
+            members=(
+                self._repository(
+                    name="flext-member",
+                    path="members/flext-member",
+                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+                    url=canonical_url,
+                ),
+            ),
+            overlays=(
+                m.Infra.RepositoryPolicyOverlaySpec(
+                    project="flext-member", beads_enabled=True
+                ),
+            ),
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.beads_enabled, eq=False)
+
+    def test_conform_target_standalone_overlay_enables_beads(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep the overlay opt-in for an independent standalone repository."""
+        project_root = tmp_path / "flext-alone"
+        self._initialize_repository(project_root)
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "flext-alone"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        self._write_manifest(
+            project_root,
+            self._repository(
+                name="flext-alone", path=".", role=c.Infra.RepositoryRole.STANDALONE
+            ),
+            overlays=(
+                m.Infra.RepositoryPolicyOverlaySpec(
+                    project="flext-alone", beads_enabled=True
+                ),
+            ),
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(target.beads_enabled, eq=True)
+
+    def test_conform_target_member_is_not_attached_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep a manifest-declared member outside the routing-config class."""
+        member_root = self._attached_member(tmp_path)
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(member_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.attached_standalone, eq=False)
+        tm.that(target.beads_enabled, eq=False)
+
+    def test_conform_target_marker_repo_is_attached_standalone(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify a marker-attached standalone into the routing-config class."""
+        project_root = tmp_path / "attached-standalone"
+        self._initialize_repository(project_root)
+        (project_root / "pyproject.toml").write_text(
+            '[project]\nname = "attached-standalone"\nversion = "0.1.0"\n'
+            "\n[tool.flext.workspace]\nattached = true\n",
+            encoding="utf-8",
+        )
+        self._write_manifest(
+            project_root,
+            self._repository(
+                name="attached-standalone",
+                path=".",
+                role=c.Infra.RepositoryRole.STANDALONE,
+            ),
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(project_root))
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_MEMBER)
+        tm.that(target.attached_standalone, eq=True)
+        tm.that(target.beads_enabled, eq=False)
+
+    def test_persistent_state_artifacts_follow_make_profile(self) -> None:
+        """Own persistent-state directories only at the workspace-root profile."""
+        detector = FlextInfraWorkspaceDetector()
+        ssot_owned = tuple(
+            artifact
+            for artifact in config.Infra.codegen.artifacts
+            if artifact.name in c.Infra.PERSISTENT_STATE_ARTIFACT_NAMES
+        )
+        tm.that(bool(ssot_owned), eq=True)
+        tm.that(
+            detector.persistent_state_artifacts(c.Infra.MakeProfile.WORKSPACE_ROOT),
+            eq=ssot_owned,
+        )
+        for profile in (
+            c.Infra.MakeProfile.WORKSPACE_MEMBER,
+            c.Infra.MakeProfile.STANDALONE,
+        ):
+            tm.that(detector.persistent_state_artifacts(profile), eq=())
+        ssot_names = {artifact.name for artifact in config.Infra.codegen.artifacts}
+        tm.that(c.Infra.PERSISTENT_STATE_ARTIFACT_NAMES.issubset(ssot_names), eq=True)
